@@ -7,8 +7,6 @@ import { ScrollArea } from '../../components/ui/scroll-area';
 import { getAvailableSpells, getAvailableClasses, getAvailableFeats } from '../lib/mod-utils';
 import { AttributeName, SpellInfo, FeatDef } from '../lib/dnd-types';
 import { toast } from 'sonner';
-import { MultiplayerPanel } from '../components/MultiplayerPanel';
-import { networkManager } from '../lib/network';
 
 export function Gameplay() {
   const { character, levelUp, restShort, restLong, modifyHp, updateSpellbook, consumeSpellSlot, updateField } = useCharacterStore();
@@ -17,6 +15,8 @@ export function Gameplay() {
   const [selectedSubclass, setSelectedSubclass] = useState<string>('');
   const [asiChoices, setAsiChoices] = useState<AttributeName[]>([]);
   const [selectedFeat, setSelectedFeat] = useState<string | null>(null);
+  const [diceTray, setDiceTray] = useState<Record<string, number>>({});
+  const [combatLog, setCombatLog] = useState<string[]>(['[系统] 战斗模拟面板已就绪。']);
 
   const SPELL_DATA = getAvailableSpells(character);
   const CLASS_DATA = getAvailableClasses(character);
@@ -37,11 +37,6 @@ export function Gameplay() {
     if (consumeSpellSlot(level)) {
       toast(`内源法力涌动...`, {
         description: `消耗了 1 个 ${level}环 法术位，施展了 ${spellName}!`
-      });
-      networkManager.broadcast({
-        type: 'ACTION',
-        sender: character.name,
-        payload: { action: '施展法术', spellName, level }
       });
     } else {
       toast.error(`法力不足！`, {
@@ -152,11 +147,42 @@ export function Gameplay() {
 
   const attrLabels: Record<AttributeName, string> = { Str: "力量", Dex: "敏捷", Con: "体质", Int: "智力", Wis: "感知", Cha: "魅力" };
 
+  const handleAddDie = (die: string) => {
+    setDiceTray(prev => ({ ...prev, [die]: (prev[die] || 0) + 1 }));
+  };
+
+  const handleClearDice = () => {
+    setDiceTray({});
+  };
+
+  const handleRollDice = () => {
+    let total = 0;
+    let details: string[] = [];
+    for (const [die, count] of Object.entries(diceTray)) {
+      if (count > 0) {
+        const sides = parseInt(die.substring(1), 10);
+        let individualRolls: number[] = [];
+        for (let i = 0; i < count; i++) {
+          const roll = Math.floor(Math.random() * sides) + 1;
+          total += roll;
+          individualRolls.push(roll);
+        }
+        details.push(`${count}${die}[${individualRolls.join(', ')}]`);
+      }
+    }
+    
+    if (details.length === 0) return;
+    
+    const msg = `掷出 ${details.join(' + ')}，总和: ${total}`;
+    setCombatLog(prev => [msg, ...prev].slice(0, 20));
+    toast.success(`掷出骰子`, { description: msg });
+    setDiceTray({});
+  };
+
   return (
     <div className="space-y-6">
-      <MultiplayerPanel />
       {/* ... existing header ... */}
-      <div className="flex justify-between items-center border-b-2 border-[#58180d] pb-4 mb-2">
+      <div className="flex justify-between items-center border-b-2 border-[#58180d] mb-4 pb-2">
         <h2 className="text-2xl font-bold uppercase tracking-tighter text-[#58180d]">战斗与游玩面板</h2>
         <Button onClick={() => setShowLevelUp(true)} className="bg-[#58180d] text-[#fdf6e3] hover:opacity-90 uppercase text-sm font-bold rounded-none">
           ✨ 升级 (当前 Lv.{character.level})
@@ -197,16 +223,31 @@ export function Gameplay() {
           </div>
 
           <div className="border border-[#58180d] p-3 bg-white/30 flex flex-col flex-1">
-            <h3 className="text-xs font-bold uppercase border-b border-[#58180d] mb-2 pb-1 text-[#58180d]">战斗日志 & 状态 Combat Log</h3>
-            <div className="flex-1 font-mono text-[10px] overflow-hidden custom-scrollbar max-h-[150px] overflow-y-auto">
-              <div className="border-b border-[#58180d]/10 py-1">[系统] 战斗模拟面板已就绪。</div>
-              <div className="border-b border-[#58180d]/10 py-1"><span className="text-[#58180d]">提示:</span> 你可以点击角色卡中的检定来进行模拟掷骰。</div>
-              <div className="mt-4 pt-4 flex flex-col items-center gap-2 pb-4">
-                 <div className="text-[9px] uppercase font-black text-[#58180d]/50">模拟掷骰</div>
-                 <div className="w-16 h-16 border-2 border-[#58180d] flex items-center justify-center bg-white shadow-inner cursor-not-allowed">
-                   <span className="text-3xl font-black text-[#58180d]">d20</span>
+            <h3 className="text-xs font-bold uppercase border-b border-[#58180d] mb-2 pb-1 text-[#58180d]">战斗日志 & 自由掷骰</h3>
+            <div className="flex-1 font-mono text-[10px] overflow-hidden custom-scrollbar max-h-[150px] overflow-y-auto mb-2 bg-[#fdf6e3]/50 p-2 border border-[#58180d]/10">
+               {combatLog.map((log, i) => (
+                 <div key={i} className="border-b border-[#58180d]/10 py-1 last:border-0">{log}</div>
+               ))}
+            </div>
+            
+            <div className="mt-auto pt-2 border-t border-[#58180d]/30">
+               <div className="flex justify-between items-center mb-2">
+                 <div className="text-[9px] uppercase font-black text-[#58180d]">选取投掷骰: {Object.entries(diceTray).filter(([_, c]) => c > 0).map(([d, c]) => `${c}${d}`).join(' + ')}</div>
+                 <div className="flex gap-1">
+                   <Button size="sm" variant="outline" className="h-5 px-2 text-[9px] rounded-none border-[#58180d] text-[#58180d]" onClick={handleClearDice}>清空</Button>
+                   <Button size="sm" className="h-5 px-3 text-[9px] rounded-none bg-[#58180d] text-[#fdf6e3]" onClick={handleRollDice} disabled={Object.values(diceTray).every(c => c === 0)}>R O L L</Button>
                  </div>
-              </div>
+               </div>
+               <div className="flex flex-wrap gap-1">
+                 {['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100'].map(die => (
+                   <button key={die} 
+                     className="w-8 h-8 border border-[#58180d] bg-white text-[#58180d] font-bold text-[10px] hover:bg-[#58180d] hover:text-white transition-colors relative"
+                     onClick={() => handleAddDie(die)}>
+                     {die}
+                     {diceTray[die] > 0 && <span className="absolute -top-1 -right-1 bg-red-700 text-white w-3.5 h-3.5 rounded-full flex items-center justify-center text-[8px] leading-none">{diceTray[die]}</span>}
+                   </button>
+                 ))}
+               </div>
             </div>
           </div>
         </div>

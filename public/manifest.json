@@ -1,6 +1,6 @@
 {
-  "name": "D&D 2024 冒险者工具",
-  "short_name": "D&D工具",
+  "name": "D&D 2024 冒险者指南",
+  "short_name": "冒险者指南",
   "description": "基于 5E 2024 规则的纯前端跑团工具",
   "start_url": ".",
   "display": "standalone",

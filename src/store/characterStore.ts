@@ -59,6 +59,7 @@ interface CharacterState {
   toggleMod: (modName: string) => void;
   addCustomMod: (mod: CustomMod) => void;
   removeCustomMod: (modId: string) => void;
+  setMods: (mods: string[]) => void;
   updateAttrPointBuy: (attr: AttributeName, value: number) => void;
   restShort: () => void;
   restLong: () => void;
@@ -89,6 +90,13 @@ export const useCharacterStore = create<CharacterState>()(
           }
         };
       }),
+
+      setMods: (mods) => set((state) => ({
+        character: {
+          ...state.character,
+          activeMods: mods
+        }
+      })),
       
       addCustomMod: (mod) => set((state) => {
         const currentData = state.character.customModsData || [];

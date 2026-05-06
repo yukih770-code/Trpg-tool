@@ -39,7 +39,7 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
       setStep(4); return toast("请选择背景");
     }
     if (!character.feats || character.feats.length === 0) {
-      setStep(4); return toast("请选择一个出身专长");
+      setStep(4); return toast("请选择一个玩家/出身专长");
     }
     if (character.remainingPoints > 0) {
        setStep(5); return toast("属性未分配完毕", { description: "请分配剩余的属性点。" });
@@ -345,7 +345,7 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
 
               {character.background && (
                 <div className="mt-4">
-                  <h3 className="text-xs font-bold uppercase text-[#58180d] mb-2 px-1">确认 1 级出身专长 (Origin Feat)</h3>
+                  <h3 className="text-xs font-bold uppercase text-[#58180d] mb-2 px-1">确认 1 级玩家/出身专长 (Origin Feat)</h3>
                   <div className="grid grid-cols-1 gap-2">
                     {getAvailableFeats(character).filter(f => f.category === 'Origin').map(feat => (
                       <div key={feat.name}

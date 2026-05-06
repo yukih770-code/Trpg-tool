@@ -162,6 +162,8 @@ export interface CustomMod {
   description?: string;
   version?: string;
   author?: string;
+  baseSystem?: string; // e.g., 'D&D', 'CoC'
+  conflictsWith?: string[];
   spells?: SpellInfo[];
   feats?: FeatDef[];
   races?: RaceDef[];

@@ -6,29 +6,71 @@ import { useCharacterStore } from '../store/characterStore';
 import { Badge } from '../../components/ui/badge';
 import { toast } from 'sonner';
 import { ScrollArea } from '../../components/ui/scroll-area';
+import { evaluateModCompatibility } from '../lib/modManager';
 
-const OFFICIAL_MODS = [
-  '玩家手册 2024 (基础规则已集成)',
-  '城主指南 2024',
-  '怪物图鉴 2025',
-  '珊娜萨的万事指南',
-  '塔莎的万事坩埚',
-  '魔邓肯巨献：多元宇宙的怪物',
-  '费资本的巨龙宝库',
-  '毕格比巨献：巨人之荣耀',
-  '万象无常书',
-  '剑湾冒险者指南',
-  '艾伯伦寻路者指南',
-  '拉尼卡公会长指南',
-  '范·里希腾的鸦阁魔域指南',
-  '斯翠海文：混沌研习',
-  '星界冒险者指南'
+export const OFFICIAL_MODS = [
+  { name: '玩家手册 2024 (基础规则已集成)', system: 'D&D' },
+  { name: '城主指南 2024', system: 'D&D' },
+  { name: '怪物图鉴 2025', system: 'D&D' },
+  { name: '珊娜萨的万事指南', system: 'D&D' },
+  { name: '塔莎的万事坩埚', system: 'D&D' },
+  { name: '魔邓肯巨献：多元宇宙的怪物', system: 'D&D' },
+  { name: '费资本的巨龙宝库', system: 'D&D' },
+  { name: '毕格比巨献：巨人之荣耀', system: 'D&D' },
+  { name: '万象无常书', system: 'D&D' },
+  { name: '剑湾冒险者指南', system: 'D&D' },
+  { name: '艾伯伦寻路者指南', system: 'D&D' },
+  { name: '拉尼卡公会长指南', system: 'D&D' },
+  { name: '范·里希腾的鸦阁魔域指南', system: 'D&D' },
+  { name: '斯翠海文：混沌研习', system: 'D&D' },
+  { name: '星界冒险者指南', system: 'D&D' },
+  { name: '克苏鲁的呼唤 7版核心规则 (CoC)', system: 'CoC' },
+  { name: '调查员手册 7版', system: 'CoC' }
 ];
 
 export function ModManager() {
   const [open, setOpen] = useState(false);
-  const { character, toggleMod, addCustomMod, removeCustomMod } = useCharacterStore();
+  const { character, toggleMod, addCustomMod, removeCustomMod, setMods } = useCharacterStore();
   const { activeMods = [], customModsData = [] } = character;
+
+  const handleToggleMod = (modName: string) => {
+    if (activeMods.includes(modName)) {
+      toggleMod(modName);
+      return;
+    }
+
+    const { isValid, conflicts, systemChanges, targetSystem } = evaluateModCompatibility(activeMods, customModsData, modName);
+
+    if (systemChanges && targetSystem) {
+       // Disable all mods not from target system
+       const newlyActive = [modName]; // The user toggled this one explicitly
+
+       // Check official mods compatibility
+       for (const m of activeMods) {
+         const isOfficial = OFFICIAL_MODS.find(o => o.name === m);
+         const isCustom = customModsData.find(c => c.name === m);
+         const sys = isOfficial?.system || isCustom?.baseSystem || 'D&D';
+         if (sys === targetSystem) {
+           newlyActive.push(m);
+         }
+       }
+       
+       setMods(newlyActive);
+       toast.warning(`已切换系统核心至 ${targetSystem}`, {
+         description: '所有与当前系统不兼容的模组已被自动关闭。'
+       });
+       return;
+    }
+
+    if (!isValid) {
+      toast.error('发现模组冲突，拒绝启用。', {
+        description: conflicts.map(c => c.reason).join(' | ')
+      });
+      return;
+    }
+
+    toggleMod(modName);
+  };
 
   const handleImportMod = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -87,14 +129,15 @@ export function ModManager() {
               <h3 className="uppercase text-lg tracking-widest text-[#a68a56] font-bold border-b-2 border-[#58180d]/30 pb-2">一、可用规则书</h3>
               
               <div className="flex flex-wrap gap-2">
-                {OFFICIAL_MODS.map(modName => {
+                {OFFICIAL_MODS.map(mod => {
+                  const modName = mod.name;
                   const isActive = activeMods.includes(modName);
                   const isBase = modName.includes('基础规则已集成');
                   return (
                     <button
                       key={modName}
                       disabled={isBase}
-                      onClick={() => !isBase && toggleMod(modName)}
+                      onClick={() => !isBase && handleToggleMod(modName)}
                       className={`px-3 py-1.5 text-xs font-bold transition-colors border ${
                         isBase
                           ? 'bg-[#58180d]/20 text-[#58180d]/50 border-[#58180d]/20 cursor-default'

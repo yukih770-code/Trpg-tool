@@ -10,7 +10,6 @@ import { AttributeName, SkillName } from '../lib/dnd-types';
 import { BACKGROUND_DATA } from '../data/backgrounds';
 import { getAvailableClasses, getAvailableRaces, getAvailableFeats } from '../lib/mod-utils';
 import { toast } from 'sonner';
-import { MultiplayerPanel } from '../components/MultiplayerPanel';
 
 export function Sheet() {
   const { character, updateField } = useCharacterStore();
@@ -63,16 +62,7 @@ export function Sheet() {
     const roll = Math.floor(Math.random() * 20) + 1;
     const total = roll + modifier;
     toast(`🎲 ${name}检定:`, {
-      description: `d20(${roll}) ${modifier >= 0 ? '+' : ''}${modifier} = ${total}`,
-    });
-
-    // 广播掷骰结果
-    import('../lib/network').then(({ networkManager }) => {
-      networkManager.broadcast({
-        type: 'DICE_ROLL',
-        sender: character.name,
-        payload: { result: total, d20: roll, bonus: modifier, reason: name }
-      });
+      description: `1d20(${roll}) ${modifier >= 0 ? '+' : ''}${modifier} = ${total}`,
     });
   };
 
@@ -130,7 +120,6 @@ export function Sheet() {
 
   return (
     <div className="space-y-4">
-      <MultiplayerPanel />
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
       {/* Header Info - Using the Bento style */}
       <div className="col-span-1 lg:col-span-12 flex flex-col md:flex-row items-start border-b-2 border-[#58180d] pb-4 mb-2 gap-6">
@@ -351,12 +340,15 @@ export function Sheet() {
           </div>
           <div className="flex gap-2 mt-2 pt-2 border-t border-[#58180d]/10">
             <Dialog open={isFeatDialogOpen} onOpenChange={setIsFeatDialogOpen}>
-              <DialogTrigger render={<Button size="sm" className="w-full h-7 rounded-none bg-[#58180d] hover:bg-[#2c1810]" />}>
-                + 选择专长包
+              <DialogTrigger asChild>
+                 <Button size="sm" className="w-full h-7 rounded-none bg-[#58180d] hover:bg-[#2c1810]">
+                   + 自由添加专长 (DM特批/剧情奖励)
+                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-[600px] bg-[#fdf6e3] border-2 border-[#58180d] text-[#2c1810] font-serif rounded-none shadow-[4px_4px_0px_#58180d]">
                 <DialogHeader>
-                  <DialogTitle className="text-xl font-bold uppercase text-[#58180d]">选取专长</DialogTitle>
+                  <DialogTitle className="text-xl font-bold uppercase text-[#58180d]">选取追加专长</DialogTitle>
+                  <p className="text-xs text-[#58180d]/70 italic mt-1 font-sans">注意：正常规则下，角色应该由于类升阶（Level Up - ASI）而在「游玩面板」获得专长。此面板用于手动添加背景扩展或DM给予的额外专长。</p>
                 </DialogHeader>
                 <ScrollArea className="h-[400px] pr-4">
                   <div className="space-y-3 mt-2">
