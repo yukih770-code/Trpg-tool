@@ -1,0 +1,6 @@
+{
+  "name": "DND模拟器",
+  "description": "基于 2024 玩家手册规则的纯前端 DND 模拟器，支持自定义 Mod、联机跑团与角色管理。",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
