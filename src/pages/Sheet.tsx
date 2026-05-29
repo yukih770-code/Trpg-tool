@@ -12,7 +12,7 @@ import { getAvailableClasses, getAvailableRaces, getAvailableFeats } from '../li
 import { toast } from 'sonner';
 
 export function Sheet() {
-  const { character, updateField } = useCharacterStore();
+  const { character, updateField, initializeRuntimeResources } = useCharacterStore();
   const [isFeatDialogOpen, setIsFeatDialogOpen] = useState(false);
 
   const CLASS_DATA = getAvailableClasses(character);
@@ -314,6 +314,55 @@ export function Sheet() {
             <p><strong className="block text-[10px] text-[#58180d] uppercase">防具培训</strong> {finalArmorProf.length > 0 ? finalArmorProf.join(', ') : '无'}</p>
             <p><strong className="block text-[10px] text-[#58180d] uppercase">武器熟练</strong> {finalWeaponProf.length > 0 ? finalWeaponProf.join(', ') : '无'}</p>
             <p><strong className="block text-[10px] text-[#58180d] uppercase">语言</strong> {character.customLanguages}</p>
+          </div>
+        </div>
+
+        <div className="border border-[#58180d] p-3 bg-white/30 flex flex-col min-h-[150px]">
+          <div className="flex items-center justify-between gap-2 border-b border-[#58180d] mb-2 pb-1">
+            <h3 className="text-xs font-bold uppercase">职业资源 Class Resources</h3>
+            <Button
+              size="sm"
+              className="h-6 rounded-none bg-[#58180d] hover:bg-[#2c1810] text-[10px] px-2"
+              onClick={initializeRuntimeResources}
+            >
+              初始化职业资源
+            </Button>
+          </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar text-xs font-sans space-y-2">
+            {character.classResources.length > 0 ? (
+              character.classResources.map((resource) => (
+                <div key={resource.id} className="border border-[#58180d]/20 bg-white/40 p-2">
+                  <div className="flex justify-between gap-2">
+                    <div>
+                      <p className="font-bold text-[#58180d]">{resource.sourceFeature || resource.id}</p>
+                      <p className="text-[10px] text-[#58180d]/60">{resource.id}</p>
+                    </div>
+                    <span className="font-bold text-[#2c1810] shrink-0">{resource.current} / {resource.max}</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#2c1810]/80">
+                    {resource.recoveryType && <span>恢复: {resource.recoveryType}</span>}
+                    {resource.dice && <span>骰面: {resource.dice}</span>}
+                  </div>
+                  {resource.notes && <p className="mt-1 text-[10px] leading-relaxed text-[#2c1810]/70">{resource.notes}</p>}
+                </div>
+              ))
+            ) : (
+              <div className="text-xs italic text-gray-500">暂无职业资源</div>
+            )}
+
+            {character.pactMagicState && (
+              <div className="border border-[#58180d]/30 bg-[#ede1c5]/60 p-2">
+                <div className="flex justify-between gap-2">
+                  <p className="font-bold text-[#58180d]">契约魔法位 Pact Magic</p>
+                  <span className="font-bold text-[#2c1810] shrink-0">{character.pactMagicState.current} / {character.pactMagicState.max}</span>
+                </div>
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#2c1810]/80">
+                  <span>环级: {character.pactMagicState.slotLevel}</span>
+                  <span>恢复: {character.pactMagicState.recoveryType}</span>
+                </div>
+                {character.pactMagicState.notes && <p className="mt-1 text-[10px] leading-relaxed text-[#2c1810]/70">{character.pactMagicState.notes}</p>}
+              </div>
+            )}
           </div>
         </div>
 
