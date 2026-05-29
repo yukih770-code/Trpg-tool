@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { CharacterData, AttributeName, SkillName, SpellInfo, CustomMod, CURRENT_DND_CHARACTER_SCHEMA_VERSION } from '../lib/dnd-types';
 import { migrateCharacter } from '../lib/characterMigration';
+import { initializeClassResourcesForCharacter } from '../lib/dnd2024/resource-utils';
 
 const initialStats = { base: 8, pointbuy: 0, racebonus: 0, extrabonus: 0 };
 
@@ -72,6 +73,7 @@ interface CharacterState {
   modifyHp: (amount: number) => void;
   updateSpellbook: (known: SpellInfo[], prepared: string[]) => void;
   consumeSpellSlot: (level: number) => boolean;
+  initializeRuntimeResources: () => void;
   resetCreator: () => void;
   loadCharacter: (data: CharacterData) => void;
 }
@@ -278,6 +280,17 @@ export const useCharacterStore = create<CharacterState>()(
         });
         return true;
       },
+
+      initializeRuntimeResources: () => set((state) => {
+        const runtimeResources = initializeClassResourcesForCharacter(state.character);
+        return {
+          character: {
+            ...state.character,
+            classResources: runtimeResources.classResources,
+            pactMagicState: runtimeResources.pactMagicState,
+          },
+        };
+      }),
 
       resetCreator: () => set({ character: { ...defaultChar, id: crypto.randomUUID?.() || Date.now().toString() } }),
 
