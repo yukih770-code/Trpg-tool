@@ -10,6 +10,23 @@ function clampResourceCurrent(value: number, max: number): number {
   return Math.max(0, Math.min(max, value));
 }
 
+function recoversOnShortRest(recoveryType?: string): boolean {
+  return recoveryType === 'shortRest' ||
+    recoveryType === 'shortOrLongRest' ||
+    recoveryType === 'short' ||
+    recoveryType === '短休';
+}
+
+function recoversOnLongRest(recoveryType?: string): boolean {
+  return recoveryType === 'shortRest' ||
+    recoveryType === 'longRest' ||
+    recoveryType === 'shortOrLongRest' ||
+    recoveryType === 'short' ||
+    recoveryType === 'long' ||
+    recoveryType === '短休' ||
+    recoveryType === '长休';
+}
+
 const defaultChar: CharacterData = {
   schemaVersion: CURRENT_DND_CHARACTER_SCHEMA_VERSION,
   id: '',
@@ -167,7 +184,17 @@ export const useCharacterStore = create<CharacterState>()(
 
       restShort: () => set((state) => ({
          // Stub: actually you'd manage hit dice usage here
-         character: { ...state.character } 
+         character: {
+           ...state.character,
+           classResources: state.character.classResources.map((resource) =>
+             recoversOnShortRest(resource.recoveryType)
+               ? { ...resource, current: resource.max }
+               : resource,
+           ),
+           pactMagicState: state.character.pactMagicState
+             ? { ...state.character.pactMagicState, current: state.character.pactMagicState.max }
+             : undefined,
+         }
       })),
 
       restLong: () => set((state) => {
@@ -183,7 +210,15 @@ export const useCharacterStore = create<CharacterState>()(
             ...char,
             hpCurrent: char.hpMax,
             spellbook: { ...char.spellbook, slots: newSlots },
-            hitDiceCurrent: Math.min(char.level, char.hitDiceCurrent + Math.max(1, Math.floor(char.level / 2)))
+            hitDiceCurrent: Math.min(char.level, char.hitDiceCurrent + Math.max(1, Math.floor(char.level / 2))),
+            classResources: char.classResources.map((resource) =>
+              recoversOnLongRest(resource.recoveryType)
+                ? { ...resource, current: resource.max }
+                : resource,
+            ),
+            pactMagicState: char.pactMagicState
+              ? { ...char.pactMagicState, current: char.pactMagicState.max }
+              : undefined,
           }
         };
       }),
