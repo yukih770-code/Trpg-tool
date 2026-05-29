@@ -6,6 +6,10 @@ import { initializeClassResourcesForCharacter } from '../lib/dnd2024/resource-ut
 
 const initialStats = { base: 8, pointbuy: 0, racebonus: 0, extrabonus: 0 };
 
+function clampResourceCurrent(value: number, max: number): number {
+  return Math.max(0, Math.min(max, value));
+}
+
 const defaultChar: CharacterData = {
   schemaVersion: CURRENT_DND_CHARACTER_SCHEMA_VERSION,
   id: '',
@@ -74,6 +78,10 @@ interface CharacterState {
   updateSpellbook: (known: SpellInfo[], prepared: string[]) => void;
   consumeSpellSlot: (level: number) => boolean;
   initializeRuntimeResources: () => void;
+  updateClassResourceCurrent: (id: string, nextCurrent: number) => void;
+  resetClassResource: (id: string) => void;
+  updatePactMagicCurrent: (nextCurrent: number) => void;
+  resetPactMagic: () => void;
   resetCreator: () => void;
   loadCharacter: (data: CharacterData) => void;
 }
@@ -288,6 +296,60 @@ export const useCharacterStore = create<CharacterState>()(
             ...state.character,
             classResources: runtimeResources.classResources,
             pactMagicState: runtimeResources.pactMagicState,
+          },
+        };
+      }),
+
+      updateClassResourceCurrent: (id, nextCurrent) => set((state) => ({
+        character: {
+          ...state.character,
+          classResources: state.character.classResources.map((resource) =>
+            resource.id === id
+              ? {
+                  ...resource,
+                  current: clampResourceCurrent(nextCurrent, resource.max),
+                }
+              : resource,
+          ),
+        },
+      })),
+
+      resetClassResource: (id) => set((state) => ({
+        character: {
+          ...state.character,
+          classResources: state.character.classResources.map((resource) =>
+            resource.id === id
+              ? {
+                  ...resource,
+                  current: resource.max,
+                }
+              : resource,
+          ),
+        },
+      })),
+
+      updatePactMagicCurrent: (nextCurrent) => set((state) => {
+        if (!state.character.pactMagicState) return state;
+        return {
+          character: {
+            ...state.character,
+            pactMagicState: {
+              ...state.character.pactMagicState,
+              current: clampResourceCurrent(nextCurrent, state.character.pactMagicState.max),
+            },
+          },
+        };
+      }),
+
+      resetPactMagic: () => set((state) => {
+        if (!state.character.pactMagicState) return state;
+        return {
+          character: {
+            ...state.character,
+            pactMagicState: {
+              ...state.character.pactMagicState,
+              current: state.character.pactMagicState.max,
+            },
           },
         };
       }),

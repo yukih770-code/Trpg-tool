@@ -12,7 +12,15 @@ import { getAvailableClasses, getAvailableRaces, getAvailableFeats } from '../li
 import { toast } from 'sonner';
 
 export function Sheet() {
-  const { character, updateField, initializeRuntimeResources } = useCharacterStore();
+  const {
+    character,
+    updateField,
+    initializeRuntimeResources,
+    updateClassResourceCurrent,
+    resetClassResource,
+    updatePactMagicCurrent,
+    resetPactMagic,
+  } = useCharacterStore();
   const [isFeatDialogOpen, setIsFeatDialogOpen] = useState(false);
 
   const CLASS_DATA = getAvailableClasses(character);
@@ -343,6 +351,34 @@ export function Sheet() {
                     {resource.recoveryType && <span>恢复: {resource.recoveryType}</span>}
                     {resource.dice && <span>骰面: {resource.dice}</span>}
                   </div>
+                  <div className="mt-2 flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 rounded-none border-[#58180d] text-[#58180d] text-[10px]"
+                      disabled={resource.current <= 0}
+                      onClick={() => updateClassResourceCurrent(resource.id, resource.current - 1)}
+                    >
+                      -
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 rounded-none border-[#58180d] text-[#58180d] text-[10px]"
+                      disabled={resource.current >= resource.max}
+                      onClick={() => updateClassResourceCurrent(resource.id, resource.current + 1)}
+                    >
+                      +
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 rounded-none border-[#58180d] text-[#58180d] text-[10px]"
+                      onClick={() => resetClassResource(resource.id)}
+                    >
+                      重置
+                    </Button>
+                  </div>
                   {resource.notes && <p className="mt-1 text-[10px] leading-relaxed text-[#2c1810]/70">{resource.notes}</p>}
                 </div>
               ))
@@ -359,6 +395,34 @@ export function Sheet() {
                 <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#2c1810]/80">
                   <span>环级: {character.pactMagicState.slotLevel}</span>
                   <span>恢复: {character.pactMagicState.recoveryType}</span>
+                </div>
+                <div className="mt-2 flex gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 rounded-none border-[#58180d] text-[#58180d] text-[10px]"
+                    disabled={character.pactMagicState.current <= 0}
+                    onClick={() => updatePactMagicCurrent(character.pactMagicState!.current - 1)}
+                  >
+                    -
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 rounded-none border-[#58180d] text-[#58180d] text-[10px]"
+                    disabled={character.pactMagicState.current >= character.pactMagicState.max}
+                    onClick={() => updatePactMagicCurrent(character.pactMagicState!.current + 1)}
+                  >
+                    +
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 px-2 rounded-none border-[#58180d] text-[#58180d] text-[10px]"
+                    onClick={resetPactMagic}
+                  >
+                    重置
+                  </Button>
                 </div>
                 {character.pactMagicState.notes && <p className="mt-1 text-[10px] leading-relaxed text-[#2c1810]/70">{character.pactMagicState.notes}</p>}
               </div>
