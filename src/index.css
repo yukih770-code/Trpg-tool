@@ -128,3 +128,139 @@
     @apply font-sans;
     }
 }
+
+/* ── System-specific font utilities ─────────────────────── */
+.font-cinzel    { font-family: 'Cinzel', 'Palatino Linotype', serif; }
+.font-cinzel-dec{ font-family: 'Cinzel Decorative', 'Palatino Linotype', serif; }
+.font-orbitron  { font-family: 'Orbitron', 'Courier New', monospace; }
+.font-elite     { font-family: 'Special Elite', 'Courier New', cursive; }
+.font-sharetech { font-family: 'Share Tech Mono', 'Courier New', monospace; }
+
+/* ── CP RED neon glow helpers ────────────────────────────── */
+.neon-gold  { text-shadow: 0 0 6px #f5c518cc, 0 0 14px #f5c518aa, 0 0 30px #f5c51855; }
+.neon-cyan  { text-shadow: 0 0 6px #00e5ffcc, 0 0 14px #00e5ffaa, 0 0 28px #00e5ff55; }
+.neon-red   { text-shadow: 0 0 6px #ff3333cc, 0 0 14px #ff333388, 0 0 24px #ff333344; }
+.neon-green { text-shadow: 0 0 5px #39ff14cc, 0 0 12px #39ff1488, 0 0 22px #39ff1433; }
+
+.glow-gold  { box-shadow: 0 0 10px #f5c518bb, inset 0 0 10px #f5c51814; }
+.glow-cyan  { box-shadow: 0 0 10px #00e5ffbb, inset 0 0 10px #00e5ff14; }
+
+/* ── CP RED scanline overlay (apply to a wrapper div) ────── */
+.cp-scanlines {
+  position: relative;
+  overflow: hidden;
+}
+.cp-scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 229, 255, 0.016) 3px,
+    rgba(0, 229, 255, 0.016) 4px
+  );
+  z-index: 100;
+}
+
+/* ── CP RED panel depth (double-border + inner glow) ─────── */
+.cp-panel {
+  border: 1px solid rgba(245, 197, 24, 0.28);
+  box-shadow: 0 0 0 1px rgba(245, 197, 24, 0.06),
+              inset 0 0 20px rgba(245, 197, 24, 0.04),
+              0 4px 24px rgba(0, 0, 0, 0.65);
+  background: linear-gradient(155deg, #0e0e1a 0%, #090910 100%);
+}
+.cp-panel-cyan {
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  box-shadow: 0 0 0 1px rgba(0, 229, 255, 0.06),
+              inset 0 0 18px rgba(0, 229, 255, 0.04),
+              0 4px 24px rgba(0, 0, 0, 0.65);
+  background: linear-gradient(155deg, #090916 0%, #06060f 100%);
+}
+
+/* ── CP RED data pulse animation ─────────────────────────── */
+@keyframes data-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.7; }
+}
+.data-pulse { animation: data-pulse 3s ease-in-out infinite; }
+
+/* ── Additional HUD bracket variants ────────────────────── */
+.hud-panel-cyan::before, .hud-panel-cyan::after { border-color: #00e5ff; }
+.hud-panel-red::before,  .hud-panel-red::after  { border-color: #ff3333; }
+
+/* ── HUD panel chrome (clip-corner brackets) ─────────────── */
+.hud-panel {
+  position: relative;
+}
+.hud-panel::before, .hud-panel::after {
+  content: '';
+  position: absolute;
+  width: 14px; height: 14px;
+  border-color: #00e5ff;
+  border-style: solid;
+  opacity: 0.6;
+}
+.hud-panel::before { top: 0; left: 0; border-width: 2px 0 0 2px; }
+.hud-panel::after  { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+.hud-panel-gold::before, .hud-panel-gold::after {
+  border-color: #f5c518;
+}
+
+/* ── D&D parchment helpers ───────────────────────────────── */
+.font-dnd-title {
+  font-family: 'Cinzel Decorative', 'Palatino Linotype', serif;
+  letter-spacing: 0.06em;
+}
+.font-dnd-body {
+  font-family: 'Cinzel', 'Palatino Linotype', serif;
+}
+
+/* ── CoC atmosphere helpers ──────────────────────────────── */
+.font-coc-title {
+  font-family: 'Special Elite', 'Courier New', cursive;
+  letter-spacing: 0.04em;
+}
+
+/* ── CP RED helpers ──────────────────────────────────────── */
+.font-cp-title {
+  font-family: 'Orbitron', 'Courier New', monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.font-cp-body {
+  font-family: 'Share Tech Mono', 'Courier New', monospace;
+}
+
+/* ── Glitch animation for CP RED headers ─────────────────── */
+@keyframes glitch-shift {
+  0%, 90%, 100% { clip-path: none; transform: none; }
+  92% { clip-path: inset(20% 0 60% 0); transform: translate(-3px, 0); }
+  94% { clip-path: inset(60% 0 10% 0); transform: translate(3px, 0); }
+  96% { clip-path: inset(40% 0 30% 0); transform: translate(-2px, 0); }
+}
+.glitch {
+  position: relative;
+}
+.glitch::before, .glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+.glitch::before {
+  color: #00e5ff;
+  animation: glitch-shift 6s infinite;
+  animation-delay: 0.5s;
+  opacity: 0.7;
+}
+.glitch::after {
+  color: #ff3333;
+  animation: glitch-shift 6s infinite;
+  animation-delay: 1s;
+  opacity: 0.5;
+}

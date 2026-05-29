@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { CocCharacter, COC_BASE_SKILLS } from '../lib/coc-types';
+import { CocCharacter, COC_BASE_SKILLS, CURRENT_COC_CHARACTER_SCHEMA_VERSION } from '../lib/coc-types';
+import { migrateCocCharacter } from '../lib/cocMigration';
 
 interface CocState {
   character: CocCharacter;
@@ -11,6 +12,7 @@ interface CocState {
 }
 
 const defaultCocChar: CocCharacter = {
+  schemaVersion: CURRENT_COC_CHARACTER_SCHEMA_VERSION,
   id: '',
   name: '',
   player: '',
@@ -88,10 +90,21 @@ export const useCocStore = create<CocState>()(
         return { character: { ...state.character, skills } };
       }),
       
-      loadCharacter: (data) => set({ character: data })
+      loadCharacter: (data) => set({ character: migrateCocCharacter(data) })
     }),
     {
-      name: 'coc-character-storage'
+      name: 'coc-character-storage',
+      // On rehydration, run every saved investigator through the migration
+      // pipeline so localStorage data from older schema versions is safely
+      // upgraded before it reaches any component.
+      merge: (persisted: unknown, current) => {
+        const p = persisted as Partial<{ character: unknown }> | null;
+        if (!p || typeof p !== 'object') return current;
+        return {
+          ...current,
+          character: migrateCocCharacter(p.character ?? {}),
+        };
+      },
     }
   )
 );

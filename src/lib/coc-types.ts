@@ -1,3 +1,12 @@
+// ─── Schema versioning ────────────────────────────────────────────────────────
+// Bump this constant whenever a breaking field change is made to CocCharacter.
+// migrateCocCharacter() in cocMigration.ts contains the corresponding upgrade
+// logic for each version step.
+//
+// Changelog:
+//   v1  Initial versioning (schemaVersion field added).
+export const CURRENT_COC_CHARACTER_SCHEMA_VERSION = 1;
+
 export type CocCharacteristic = 'STR' | 'CON' | 'SIZ' | 'DEX' | 'APP' | 'INT' | 'POW' | 'EDU' | 'LUK';
 
 export interface CocSkill {
@@ -20,6 +29,8 @@ export interface CocWeapon {
 }
 
 export interface CocCharacter {
+  /** Schema version — absent on pre-v1 saves (treated as version 0 by migration). */
+  schemaVersion: number;
   id: string;
   name: string;
   player: string;

@@ -3,6 +3,12 @@ import { useCocStore } from '../store/cocStore';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { toast } from 'sonner';
+import {
+  getCocDerivedHp,
+  getCocDerivedMp,
+  getCocInitialSan,
+  getCocSanMax,
+} from '../lib/coc-utils';
 
 export function CocCreator({ onComplete }: { onComplete: () => void }) {
   const { character, updateField, updateCharacteristic } = useCocStore();
@@ -36,10 +42,15 @@ export function CocCreator({ onComplete }: { onComplete: () => void }) {
         toast.error('请掷出所有的属性值');
         return;
       }
-      // Set derived
-      updateField('hp', { current: Math.floor((character.characteristics.CON + character.characteristics.SIZ) / 10), max: Math.floor((character.characteristics.CON + character.characteristics.SIZ) / 10) });
-      updateField('mp', { current: Math.floor(character.characteristics.POW / 5), max: Math.floor(character.characteristics.POW / 5) });
-      updateField('sanity', { current: character.characteristics.POW, start: character.characteristics.POW, max: 99 });
+      // Set derived stats via pure-function utilities (coc-utils)
+      const hp = getCocDerivedHp(character.characteristics.CON, character.characteristics.SIZ);
+      const mp = getCocDerivedMp(character.characteristics.POW);
+      const sanStart = getCocInitialSan(character.characteristics.POW);
+      const cthulhuMythosValue = character.skills.find(s => s.name === '克苏鲁神话 (Cthulhu Mythos)')?.value ?? 0;
+      const sanMax = getCocSanMax(cthulhuMythosValue);
+      updateField('hp', { current: hp, max: hp });
+      updateField('mp', { current: mp, max: mp });
+      updateField('sanity', { current: sanStart, start: sanStart, max: sanMax });
       updateField('luck', { current: character.characteristics.LUK, start: character.characteristics.LUK });
     }
     if (step < 3) {

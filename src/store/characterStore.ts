@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { CharacterData, AttributeName, SkillName, SpellInfo, CustomMod } from '../lib/dnd-types';
+import { CharacterData, AttributeName, SkillName, SpellInfo, CustomMod, CURRENT_DND_CHARACTER_SCHEMA_VERSION } from '../lib/dnd-types';
+import { migrateCharacter } from '../lib/characterMigration';
 
 const initialStats = { base: 8, pointbuy: 0, racebonus: 0, extrabonus: 0 };
 
 const defaultChar: CharacterData = {
+  schemaVersion: CURRENT_DND_CHARACTER_SCHEMA_VERSION,
   id: '',
   name: '',
   age: '',
@@ -51,6 +53,9 @@ const defaultChar: CharacterData = {
   coin: 0,
   remainingPoints: 27,
   isCompleted: false,
+  // v2 fields
+  classResources: [],
+  pactMagicState: undefined,
 };
 
 interface CharacterState {
@@ -276,11 +281,22 @@ export const useCharacterStore = create<CharacterState>()(
 
       resetCreator: () => set({ character: { ...defaultChar, id: crypto.randomUUID?.() || Date.now().toString() } }),
 
-      loadCharacter: (data) => set({ character: data })
+      loadCharacter: (data) => set({ character: migrateCharacter(data) })
 
     }),
     {
       name: 'dnd-character-storage',
+      // On rehydration, run every saved character through the migration
+      // pipeline so localStorage data from older schema versions is safely
+      // upgraded before it reaches any component.
+      merge: (persisted: unknown, current) => {
+        const p = persisted as Partial<{ character: unknown }> | null;
+        if (!p || typeof p !== 'object') return current;
+        return {
+          ...current,
+          character: migrateCharacter(p.character ?? {}),
+        };
+      },
     }
   )
 );

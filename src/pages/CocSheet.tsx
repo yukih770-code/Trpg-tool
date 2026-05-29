@@ -1,5 +1,5 @@
 import { useCocStore } from '../store/cocStore';
-import { getCocDerivedStats } from '../lib/coc-utils';
+import { getCocDerivedStats, evaluateCocD100Check } from '../lib/coc-utils';
 import { Input } from '../../components/ui/input';
 import { toast } from 'sonner';
 
@@ -8,15 +8,20 @@ export function CocSheet() {
 
   const { db, build, move } = getCocDerivedStats(character.characteristics);
 
+  // ── Success level → display label mapping (UI-layer only, not in coc-utils) ──
+  const COC_LEVEL_LABELS: Record<string, string> = {
+    critical: '大成功 (Critical)',
+    extreme:  '极难成功 (Extreme Success)',
+    hard:     '困难成功 (Hard Success)',
+    regular:  '成功 (Regular Success)',
+    failure:  '失败 (Failure)',
+    fumble:   '大失败 (Fumble)',
+  };
+
   const rollSkill = (name: string, value: number) => {
     const roll = Math.floor(Math.random() * 100) + 1;
-    let result = "失败 (Failure)";
-    if (roll <= value / 5) result = "极难成功 (Extreme Success)";
-    else if (roll <= value / 2) result = "困难成功 (Hard Success)";
-    else if (roll <= value) result = "成功 (Regular Success)";
-    if (roll >= 96 && value < 50) result = "大失败 (Fumble)";
-    if (roll === 100 && value >= 50) result = "大失败 (Fumble)";
-    
+    const { successLevel } = evaluateCocD100Check(value, roll);
+    const result = COC_LEVEL_LABELS[successLevel] ?? successLevel;
     toast(`🎲 ${name} 检定:`, {
       description: `1d100 掷出 ${roll} / ${value}  => ${result}`,
     });
