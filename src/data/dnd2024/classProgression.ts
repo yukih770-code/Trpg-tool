@@ -106,7 +106,7 @@ const BARBARIAN_RAGE: ClassResourceDefinition = {
   recoveryType: 'longRest',
   notes:
     '附赠动作激活。必须在未穿重甲状态下使用。持续时间：直到战斗结束或你倒地或你选择结束。' +
-    '20 级狂暴次数为无限。',
+    '20 级狂暴次数为无限。短休可消耗生命骰恢复 1 次狂暴（每长休限 1 次），本轮不实现该特殊恢复。',
 };
 
 const BARBARIAN_WEAPON_MASTERY: ClassResourceDefinition = {
@@ -252,7 +252,7 @@ function buildBarbarianLevel(level: number): Dnd2024LevelProgression {
 
   if (level === 1) {
     features.push('狂暴', '无甲防御', '武器掌握');
-    resources.push(BARBARIAN_RAGE, BARBARIAN_WEAPON_MASTERY);
+    resources.push(BARBARIAN_RAGE);
     actions.push(BARBARIAN_RAGE_ACTION, BARBARIAN_RAGE_END_ACTION);
     passiveFeatures.push(BARBARIAN_UNARMORED_DEFENSE, BARBARIAN_WEAPON_MASTERY_PASSIVE);
     conditions.push(BARBARIAN_RAGING_CONDITION);
@@ -305,7 +305,8 @@ const BARD_BARDIC_INSPIRATION: ClassResourceDefinition = {
   nameEn: 'Bardic Inspiration',
   sourceFeature: '诗人激励 (Bardic Inspiration)',
   unlockLevel: 1,
-  maxUses: 'proficiencyBonus',
+  maxUses: 'manual',
+  maxFormula: 'charismaModifierMin1',
   recoveryType: 'longRest',
   dice: [
     // 每等级的激励骰面
@@ -317,6 +318,16 @@ const BARD_BARDIC_INSPIRATION: ClassResourceDefinition = {
   notes:
     '最大使用次数 = 魅力调整值（最少1）。' +
     '5 级起恢复类型改为"短休或长休"（Font of Inspiration）。' +
+    '激励骰：1-4级d6，5-10级d8，11-14级d10，15-20级d12。',
+};
+
+const BARD_BARDIC_INSPIRATION_FONT: ClassResourceDefinition = {
+  ...BARD_BARDIC_INSPIRATION,
+  unlockLevel: 5,
+  recoveryType: 'shortOrLongRest',
+  notes:
+    '最大使用次数 = 魅力调整值（最少1）。' +
+    '5 级起诗人激励在短休或长休后恢复（Font of Inspiration）。' +
     '激励骰：1-4级d6，5-10级d8，11-14级d10，15-20级d12。',
 };
 
@@ -448,7 +459,7 @@ function buildBardLevel(level: number): Dnd2024LevelProgression {
   }
   if (level === 5) {
     features.push('字体激励（诗人激励改为短休/长休恢复）', '诗人激励骰升至 d8');
-    // 更新恢复类型为 shortOrLongRest 的说明写在 resource notes 里
+    resources.push(BARD_BARDIC_INSPIRATION_FONT);
   }
 
   return {
@@ -610,7 +621,6 @@ function buildWarlockLevel(level: number): Dnd2024LevelProgression {
   }
   if (level === 2) {
     features.push('邪术师祈求');
-    resources.push(WARLOCK_ELDRITCH_INVOCATIONS);
   }
   if (level === 3) {
     features.push('契约恩赐（Pact Boon）', '邪术师子职业特性');
@@ -809,11 +819,177 @@ const WIZARD_PROGRESSION: Dnd2024ClassProgression = {
 // 占位职业（待后续补全）
 // ─────────────────────────────────────────────────────────────────────────────
 
+const CLERIC_CHANNEL_DIVINITY: ClassResourceDefinition = {
+  id: 'cleric_channel_divinity',
+  nameCn: '引导神力',
+  nameEn: 'Channel Divinity',
+  sourceFeature: '引导神力 (Channel Divinity)',
+  unlockLevel: 2,
+  maxUses: 'table',
+  maxUsesByLevel: [
+    0, 2, 2, 2, 2, // 1-5
+    3, 3, 3, 3, 3, // 6-10
+    3, 3, 3, 3, 3, // 11-15
+    3, 3, 4, 4, 4, // 16-20
+  ],
+  recoveryType: 'special',
+  notes:
+    '用于驱散亡灵等牧师能力。整理资料显示短休可恢复部分使用次数、长休回满；' +
+    '本轮标记为 special，避免基础休息逻辑在短休时错误回满。',
+};
+
+const DRUID_WILD_SHAPE: ClassResourceDefinition = {
+  id: 'druid_wild_shape',
+  nameCn: '荒野形态',
+  nameEn: 'Wild Shape',
+  sourceFeature: '荒野形态 (Wild Shape)',
+  unlockLevel: 2,
+  maxUses: 'table',
+  maxUsesByLevel: [
+    0, 2, 2, 2, 2, // 1-5
+    2, 2, 2, 2, 2, // 6-10
+    2, 2, 2, 2, 2, // 11-15
+    2, 2, 2, 2, 2, // 16-20
+  ],
+  recoveryType: 'special',
+  notes:
+    '荒野形态使用次数。整理资料显示短休可恢复部分使用次数、长休回满；' +
+    '本轮不实现变身形态、属性替换、临时生命值或 special recovery。',
+};
+
+const FIGHTER_SECOND_WIND: ClassResourceDefinition = {
+  id: 'fighter_second_wind',
+  nameCn: '回气',
+  nameEn: 'Second Wind',
+  sourceFeature: '回气 (Second Wind)',
+  unlockLevel: 1,
+  maxUses: 'table',
+  maxUsesByLevel: [
+    2, 2, 2, 3, 3, // 1-5
+    3, 3, 3, 3, 4, // 6-10
+    4, 4, 4, 4, 4, // 11-15
+    4, 4, 4, 4, 4, // 16-20
+  ],
+  recoveryType: 'special',
+  notes:
+    '附赠动作恢复生命值。短休恢复 1 次、长休回满；本轮只记录资源池，不实现治疗骰或 special recovery。',
+};
+
+const FIGHTER_ACTION_SURGE: ClassResourceDefinition = {
+  id: 'fighter_action_surge',
+  nameCn: '动作如潮',
+  nameEn: 'Action Surge',
+  sourceFeature: '动作如潮 (Action Surge)',
+  unlockLevel: 2,
+  maxUses: 'table',
+  maxUsesByLevel: [
+    0, 1, 1, 1, 1, // 1-5
+    1, 1, 1, 1, 1, // 6-10
+    1, 1, 1, 1, 1, // 11-15
+    1, 2, 2, 2, 2, // 16-20
+  ],
+  recoveryType: 'shortOrLongRest',
+  notes:
+    '在自己的回合额外获得一次动作。这里只记录使用次数，不实现动作经济。',
+};
+
+const FIGHTER_INDOMITABLE: ClassResourceDefinition = {
+  id: 'fighter_indomitable',
+  nameCn: '不屈',
+  nameEn: 'Indomitable',
+  sourceFeature: '不屈 (Indomitable)',
+  unlockLevel: 9,
+  maxUses: 'table',
+  maxUsesByLevel: [
+    0, 0, 0, 0, 0, // 1-5
+    0, 0, 0, 1, 1, // 6-10
+    1, 1, 2, 2, 2, // 11-15
+    2, 3, 3, 3, 3, // 16-20
+  ],
+  recoveryType: 'longRest',
+  notes:
+    '失败豁免后可重掷。这里只记录使用次数，不实现豁免重掷流程。',
+};
+
+const MONK_FOCUS_POINTS: ClassResourceDefinition = {
+  id: 'monk_focus_points',
+  nameCn: '专注点',
+  nameEn: 'Focus Points',
+  sourceFeature: '专注点 (Focus Points)',
+  unlockLevel: 2,
+  maxUses: 'level',
+  recoveryType: 'shortOrLongRest',
+  notes:
+    '最大值 = 武僧等级。用于武僧技艺/专注能力；本轮不实现具体动作。',
+};
+
+const PALADIN_LAY_ON_HANDS: ClassResourceDefinition = {
+  id: 'paladin_lay_on_hands',
+  nameCn: '圣疗池',
+  nameEn: 'Lay on Hands Pool',
+  sourceFeature: '圣疗 (Lay on Hands)',
+  unlockLevel: 1,
+  maxUses: 'manual',
+  maxFormula: 'classLevelTimes5',
+  recoveryType: 'longRest',
+  notes:
+    '治疗池最大值 = 5 × 圣武士等级。这里只记录点数，不实现治疗/解毒/疾病等具体选项。',
+};
+
+const PALADIN_CHANNEL_DIVINITY: ClassResourceDefinition = {
+  id: 'paladin_channel_divinity',
+  nameCn: '引导神力',
+  nameEn: 'Channel Divinity',
+  sourceFeature: '引导神力 (Channel Divinity)',
+  unlockLevel: 3,
+  maxUses: 1,
+  recoveryType: 'special',
+  notes:
+    '用于圣武士誓言能力。恢复细节与誓言/版本资料相关，本轮标记为 special，不自动恢复。',
+};
+
+const RANGER_FAVORED_ENEMY_CHARGES: ClassResourceDefinition = {
+  id: 'ranger_favored_enemy_charges',
+  nameCn: '宿敌施法次数',
+  nameEn: 'Favored Enemy Charges',
+  sourceFeature: '宿敌 (Favored Enemy)',
+  unlockLevel: 1,
+  maxUses: 'proficiencyBonus',
+  recoveryType: 'longRest',
+  notes:
+    '最大值 = 熟练加值。用于不消耗法术位施放/维持宿敌相关的 Hunter\'s Mark 支持；本轮不实现法术或专注联动。',
+};
+
+const SORCERER_INNATE_SORCERY: ClassResourceDefinition = {
+  id: 'sorcerer_innate_sorcery',
+  nameCn: '内在魔法',
+  nameEn: 'Innate Sorcery',
+  sourceFeature: '内在魔法 (Innate Sorcery)',
+  unlockLevel: 1,
+  maxUses: 2,
+  recoveryType: 'longRest',
+  notes:
+    '每日有限次数激活术士内在魔法。这里只记录次数，不实现持续时间、法术 DC 或攻击加值。',
+};
+
+const SORCERER_SORCERY_POINTS: ClassResourceDefinition = {
+  id: 'sorcerer_sorcery_points',
+  nameCn: '术法点',
+  nameEn: 'Sorcery Points',
+  sourceFeature: '术法点 (Sorcery Points)',
+  unlockLevel: 2,
+  maxUses: 'level',
+  recoveryType: 'longRest',
+  notes:
+    '最大值 = 术士等级。用于超魔和法术位转换；本轮不实现 Metamagic 或转换规则。',
+};
+
 function makePlaceholder(
   classKey: DndClassKey,
   classNameCn: string,
   classNameEn: string,
   hitDie: 6 | 8 | 10 | 12,
+  resources: ClassResourceDefinition[] = [],
 ): Dnd2024ClassProgression {
   return {
     classKey,
@@ -821,17 +997,21 @@ function makePlaceholder(
     classNameEn,
     hitDie,
     spellcasting: null,
-    levels: Array.from({ length: 20 }, (_, i) => ({
-      level: i + 1,
-      proficiencyBonus: profBonus(i + 1),
-      features: [],
-      resources: [],
-      actions: [],
-      passiveFeatures: [],
-      conditions: [],
-      spellcasting: null,
-      notes: `（${classNameCn} 进阶数据待后续补全）`,
-    })),
+    levels: Array.from({ length: 20 }, (_, i) => {
+      const level = i + 1;
+      const levelResources = resources.filter(resource => resource.unlockLevel === level);
+      return {
+        level,
+        proficiencyBonus: profBonus(level),
+        features: levelResources.map(resource => resource.sourceFeature),
+        resources: levelResources,
+        actions: [],
+        passiveFeatures: [],
+        conditions: [],
+        spellcasting: null,
+        notes: `（${classNameCn} 进阶数据待后续补全）`,
+      };
+    }),
   };
 }
 
@@ -846,14 +1026,24 @@ export const DND2024_CLASS_PROGRESSIONS: Partial<Record<DndClassKey, Dnd2024Clas
   wizard: WIZARD_PROGRESSION,
 
   // 占位职业（待后续补全）
-  cleric: makePlaceholder('cleric', '牧师', 'Cleric', 8),
-  druid: makePlaceholder('druid', '德鲁伊', 'Druid', 8),
-  fighter: makePlaceholder('fighter', '战士', 'Fighter', 10),
-  monk: makePlaceholder('monk', '武僧', 'Monk', 8),
-  paladin: makePlaceholder('paladin', '圣武士', 'Paladin', 10),
-  ranger: makePlaceholder('ranger', '游侠', 'Ranger', 10),
+  cleric: makePlaceholder('cleric', '牧师', 'Cleric', 8, [CLERIC_CHANNEL_DIVINITY]),
+  druid: makePlaceholder('druid', '德鲁伊', 'Druid', 8, [DRUID_WILD_SHAPE]),
+  fighter: makePlaceholder('fighter', '战士', 'Fighter', 10, [
+    FIGHTER_SECOND_WIND,
+    FIGHTER_ACTION_SURGE,
+    FIGHTER_INDOMITABLE,
+  ]),
+  monk: makePlaceholder('monk', '武僧', 'Monk', 8, [MONK_FOCUS_POINTS]),
+  paladin: makePlaceholder('paladin', '圣武士', 'Paladin', 10, [
+    PALADIN_LAY_ON_HANDS,
+    PALADIN_CHANNEL_DIVINITY,
+  ]),
+  ranger: makePlaceholder('ranger', '游侠', 'Ranger', 10, [RANGER_FAVORED_ENEMY_CHARGES]),
   rogue: makePlaceholder('rogue', '游荡者', 'Rogue', 8),
-  sorcerer: makePlaceholder('sorcerer', '术士', 'Sorcerer', 6),
+  sorcerer: makePlaceholder('sorcerer', '术士', 'Sorcerer', 6, [
+    SORCERER_INNATE_SORCERY,
+    SORCERER_SORCERY_POINTS,
+  ]),
 };
 
 // 便于外部按职业名检索

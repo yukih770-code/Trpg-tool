@@ -283,6 +283,11 @@ export type ResourceMaxExpression =
   | 'manual'
   | 'unlimited';
 
+export type ResourceMaxFormula =
+  | 'charismaModifierMin1'
+  | 'classLevel'
+  | 'classLevelTimes5';
+
 /**
  * 职业资源定义（不可变规则数据）
  *
@@ -303,6 +308,12 @@ export interface ClassResourceDefinition {
    * 若为 'table'，参见 maxUsesByLevel
    */
   maxUses: ResourceMaxExpression;
+  /**
+   * Runtime formula for resource maximums that depend on character attributes
+   * or level. When present, initialisation should use this formula instead of
+   * the descriptive maxUses value.
+   */
+  maxFormula?: ResourceMaxFormula;
   /**
    * 每等级的最大使用次数（当 maxUses = 'table' 时使用）
    * index = level - 1，length = 20
