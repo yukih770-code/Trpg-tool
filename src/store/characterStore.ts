@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { CharacterData, AttributeName, SkillName, SpellInfo, CustomMod, CURRENT_DND_CHARACTER_SCHEMA_VERSION } from '../lib/dnd-types';
 import { migrateCharacter } from '../lib/characterMigration';
-import { initializeClassResourcesForCharacter } from '../lib/dnd2024/resource-utils';
+import { initializeClassResourcesForCharacter, refreshClassResourcesForCharacter } from '../lib/dnd2024/resource-utils';
 
 const initialStats = { base: 8, pointbuy: 0, racebonus: 0, extrabonus: 0 };
 
@@ -25,6 +25,23 @@ function recoversOnLongRest(recoveryType?: string): boolean {
     recoveryType === 'long' ||
     recoveryType === '短休' ||
     recoveryType === '长休';
+}
+
+function getSpecialShortRestRecoveryAmount(resource: CharacterData['classResources'][number]): number {
+  if (
+    resource.id === 'fighter_second_wind' ||
+    resource.id === 'cleric_channel_divinity' ||
+    resource.id === 'druid_wild_shape'
+  ) {
+    return 1;
+  }
+  return 0;
+}
+
+function shouldSpecialLongRestFullRecover(resource: CharacterData['classResources'][number]): boolean {
+  return resource.id === 'fighter_second_wind' ||
+    resource.id === 'cleric_channel_divinity' ||
+    resource.id === 'druid_wild_shape';
 }
 
 const defaultChar: CharacterData = {
@@ -189,7 +206,13 @@ export const useCharacterStore = create<CharacterState>()(
            classResources: state.character.classResources.map((resource) =>
              recoversOnShortRest(resource.recoveryType)
                ? { ...resource, current: resource.max }
-               : resource,
+               : {
+                   ...resource,
+                   current: clampResourceCurrent(
+                     resource.current + getSpecialShortRestRecoveryAmount(resource),
+                     resource.max,
+                   ),
+                 },
            ),
            pactMagicState: state.character.pactMagicState
              ? { ...state.character.pactMagicState, current: state.character.pactMagicState.max }
@@ -212,7 +235,7 @@ export const useCharacterStore = create<CharacterState>()(
             spellbook: { ...char.spellbook, slots: newSlots },
             hitDiceCurrent: Math.min(char.level, char.hitDiceCurrent + Math.max(1, Math.floor(char.level / 2))),
             classResources: char.classResources.map((resource) =>
-              recoversOnLongRest(resource.recoveryType)
+              recoversOnLongRest(resource.recoveryType) || shouldSpecialLongRestFullRecover(resource)
                 ? { ...resource, current: resource.max }
                 : resource,
             ),
@@ -249,20 +272,28 @@ export const useCharacterStore = create<CharacterState>()(
            newFeats.push(newFeat);
         }
 
+        const leveledCharacter: CharacterData = {
+          ...char,
+          level: nextLvl,
+          hpMax: char.hpMax + hpIncrease,
+          hpCurrent: char.hpCurrent + hpIncrease,
+          hitDiceCurrent: char.hitDiceCurrent + 1,
+          subclass: newSubclass || char.subclass,
+          attrs: newAttrs,
+          feats: newFeats,
+          spellbook: {
+            ...char.spellbook,
+            slots: newSlots
+          }
+        };
+
+        const refreshedResources = refreshClassResourcesForCharacter(leveledCharacter);
+
         return {
           character: {
-            ...char,
-            level: nextLvl,
-            hpMax: char.hpMax + hpIncrease,
-            hpCurrent: char.hpCurrent + hpIncrease,
-            hitDiceCurrent: char.hitDiceCurrent + 1,
-            subclass: newSubclass || char.subclass,
-            attrs: newAttrs,
-            feats: newFeats,
-            spellbook: {
-              ...char.spellbook,
-              slots: newSlots
-            }
+            ...leveledCharacter,
+            classResources: refreshedResources.classResources,
+            pactMagicState: refreshedResources.pactMagicState,
           }
         };
       }),
