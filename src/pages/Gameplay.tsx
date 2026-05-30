@@ -6,6 +6,8 @@ import { Progress } from '../../components/ui/progress';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { getAvailableSpells, getAvailableClasses, getAvailableFeats } from '../lib/mod-utils';
 import { AttributeName, SkillName, SpellInfo, FeatDef } from '../lib/dnd-types';
+import { DND_ACTION_REGISTRY } from '../lib/dnd2024/actionRegistry';
+import type { DndActionDefinition, ResourceCost } from '../lib/dnd2024/action-registry-types';
 import { toast } from 'sonner';
 
 function dndLogColor(line: string): string {
@@ -164,6 +166,56 @@ export function Gameplay() {
   const rollGameplayCheck = (name: string, modifier: number) => {
     const d20 = Math.floor(Math.random() * 20) + 1;
     setLastCheck({ name, d20, modifier, total: d20 + modifier });
+  };
+
+  const getClassResource = (resourceId?: string) => (
+    resourceId ? character.classResources.find(resource => resource.id === resourceId) : undefined
+  );
+
+  const hasMatchingActionResource = (cost: ResourceCost) => {
+    if (cost.resourceType === 'classResource') return Boolean(getClassResource(cost.resourceId));
+    return Boolean(character.pactMagicState);
+  };
+
+  const canPayActionCost = (cost: ResourceCost) => {
+    if (cost.resourceType === 'classResource') {
+      const resource = getClassResource(cost.resourceId);
+      return Boolean(resource && resource.current >= cost.amount);
+    }
+    return Boolean(character.pactMagicState && character.pactMagicState.current >= cost.amount);
+  };
+
+  const getActionCostLabel = (cost: ResourceCost) => {
+    if (cost.resourceType === 'classResource') {
+      const resource = getClassResource(cost.resourceId);
+      return `${resource?.sourceFeature || cost.resourceId || 'classResource'} -${cost.amount}`;
+    }
+    return `Pact Magic -${cost.amount}`;
+  };
+
+  const visibleRegistryActions = DND_ACTION_REGISTRY.filter(action => (
+    action.resourceCost?.length && action.resourceCost.every(hasMatchingActionResource)
+  ));
+
+  const canUseRegistryAction = (action: DndActionDefinition) => (
+    Boolean(action.resourceCost?.length) && action.resourceCost!.every(canPayActionCost)
+  );
+
+  const useRegistryAction = (action: DndActionDefinition) => {
+    if (!action.resourceCost || !canUseRegistryAction(action)) return;
+
+    action.resourceCost.forEach(cost => {
+      if (cost.resourceType === 'classResource') {
+        const resource = getClassResource(cost.resourceId);
+        if (resource && cost.resourceId) {
+          updateClassResourceCurrent(cost.resourceId, resource.current - cost.amount);
+        }
+      }
+
+      if (cost.resourceType === 'pactMagic' && character.pactMagicState) {
+        updatePactMagicCurrent(character.pactMagicState.current - cost.amount);
+      }
+    });
   };
 
   const handleLevelUpConfirm = () => {
@@ -537,6 +589,56 @@ export function Gameplay() {
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="border border-[#58180d] bg-[#ede1c5] p-3 flex flex-col gap-2 shadow-[2px_2px_0px_#58180d]">
+            <div className="flex justify-between items-center border-b border-[#58180d] pb-2">
+              <h3 className="text-xs font-bold uppercase text-[#58180d]">动作 / Actions v0</h3>
+              <span className="text-[10px] font-bold text-[#58180d]/60 uppercase">{visibleRegistryActions.length} 可用</span>
+            </div>
+
+            {visibleRegistryActions.length > 0 ? (
+              <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
+                {visibleRegistryActions.map(action => {
+                  const canUse = canUseRegistryAction(action);
+                  return (
+                    <div key={action.id} className="bg-white/60 border border-[#58180d]/30 p-2">
+                      <div className="flex justify-between gap-3">
+                        <div>
+                          <div className="font-bold text-[#2c1810] text-sm">{action.name}</div>
+                          <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-[10px] text-[#58180d]/70">
+                            {action.actionType && <span>{action.actionType}</span>}
+                            {action.sourceFeature && <span>来源: {action.sourceFeature}</span>}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="h-7 px-3 text-[10px] rounded-none bg-[#58180d] text-[#fdf6e3] font-black shrink-0 disabled:opacity-40"
+                          disabled={!canUse}
+                          onClick={() => useRegistryAction(action)}
+                        >
+                          使用
+                        </Button>
+                      </div>
+                      {action.resourceCost && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {action.resourceCost.map((cost, index) => (
+                            <span key={`${action.id}-cost-${index}`} className="border border-[#58180d]/30 bg-[#f4ecd8] px-1.5 py-0.5 text-[10px] font-bold text-[#58180d]">
+                              {getActionCostLabel(cost)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {action.notes && <p className="mt-1 text-[10px] leading-relaxed text-[#2c1810]/70">{action.notes}</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-xs text-[#58180d]/60 font-bold uppercase border-2 border-dashed border-[#58180d]/30 p-4 text-center">
+                当前没有匹配已有资源的注册动作
+              </div>
+            )}
           </div>
 
           {isCaster ? (
