@@ -1,23 +1,18 @@
 import { useState } from 'react';
 import { useCharacterStore } from '../store/characterStore';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Progress } from '../../components/ui/progress';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { getAvailableSpells, getAvailableClasses, getAvailableFeats } from '../lib/mod-utils';
-import { AttributeName, SkillName, SpellInfo, FeatDef } from '../lib/dnd-types';
+import { AttributeName, SkillName, SpellInfo } from '../lib/dnd-types';
 import { DND_ACTION_REGISTRY } from '../lib/dnd2024/actionRegistry';
 import type { DndActionDefinition, ResourceCost } from '../lib/dnd2024/action-registry-types';
+import { ActionsPanel } from './gameplay/ActionsPanel';
+import { ChecksPanel } from './gameplay/ChecksPanel';
+import { ClassResourcePanel } from './gameplay/ClassResourcePanel';
+import { DiceTrayPanel } from './gameplay/DiceTrayPanel';
+import { SpellbookPanel } from './gameplay/SpellbookPanel';
+import { VitalsPanel } from './gameplay/VitalsPanel';
 import { toast } from 'sonner';
-
-function dndLogColor(line: string): string {
-  if (line.includes('大成功') || line.includes('自然20')) return 'text-yellow-600 font-bold';
-  if (line.includes('成功') && !line.includes('失败')) return 'text-emerald-700 font-bold';
-  if (line.includes('大失败') || line.includes('自然1')) return 'text-red-700 font-bold';
-  if (line.includes('失败')) return 'text-red-600';
-  if (line.includes('[系统]')) return 'text-[#58180d]/40 italic';
-  return 'text-[#2c1810]';
-}
 
 export function Gameplay() {
   const {
@@ -28,7 +23,6 @@ export function Gameplay() {
     modifyHp,
     updateSpellbook,
     consumeSpellSlot,
-    updateField,
     initializeRuntimeResources,
     updateClassResourceCurrent,
     resetClassResource,
@@ -102,6 +96,20 @@ export function Gameplay() {
   const handleHeal = () => {
     const amount = parseInt(prompt("输入恢复的生命值:") || "0", 10);
     if (amount > 0) modifyHp(amount);
+  };
+
+  const handleShortRest = () => {
+    restShort();
+    toast("进行了短休 (1小时)");
+  };
+
+  const handleLongRest = () => {
+    restLong();
+    toast("进行了长休 (8小时)", {description: "生命值与法术位已全满！"});
+  };
+
+  const handleBasicAttack = () => {
+    toast("发起攻击！");
   };
 
   let modifierAttr: AttributeName = 'Cha';
@@ -185,12 +193,29 @@ export function Gameplay() {
     return Boolean(character.pactMagicState && character.pactMagicState.current >= cost.amount);
   };
 
-  const getActionCostLabel = (cost: ResourceCost) => {
+  const getActionCostPreview = (cost: ResourceCost) => {
     if (cost.resourceType === 'classResource') {
       const resource = getClassResource(cost.resourceId);
-      return `${resource?.sourceFeature || cost.resourceId || 'classResource'} -${cost.amount}`;
+      return {
+        label: resource?.sourceFeature || cost.resourceId || 'classResource',
+        amount: cost.amount,
+        current: resource?.current || 0,
+        max: resource?.max || 0,
+        canPay: Boolean(resource && resource.current >= cost.amount),
+      };
     }
-    return `Pact Magic -${cost.amount}`;
+    return {
+      label: 'Pact Magic',
+      amount: cost.amount,
+      current: character.pactMagicState?.current || 0,
+      max: character.pactMagicState?.max || 0,
+      canPay: Boolean(character.pactMagicState && character.pactMagicState.current >= cost.amount),
+    };
+  };
+
+  const getActionInsufficientLabel = (action: DndActionDefinition) => {
+    const preview = action.resourceCost?.map(getActionCostPreview).find(cost => !cost.canPay);
+    return preview ? `资源不足：需要 ${preview.amount}，当前 ${preview.current}` : undefined;
   };
 
   const visibleRegistryActions = DND_ACTION_REGISTRY.filter(action => (
@@ -204,6 +229,8 @@ export function Gameplay() {
   const useRegistryAction = (action: DndActionDefinition) => {
     if (!action.resourceCost || !canUseRegistryAction(action)) return;
 
+    const previews = action.resourceCost.map(getActionCostPreview);
+
     action.resourceCost.forEach(cost => {
       if (cost.resourceType === 'classResource') {
         const resource = getClassResource(cost.resourceId);
@@ -215,6 +242,12 @@ export function Gameplay() {
       if (cost.resourceType === 'pactMagic' && character.pactMagicState) {
         updatePactMagicCurrent(character.pactMagicState.current - cost.amount);
       }
+    });
+
+    toast.success(`使用动作：${action.name}`, {
+      description: previews
+        .map(cost => `${cost.label} -${cost.amount}，剩余 ${Math.max(0, cost.current - cost.amount)} / ${cost.max}`)
+        .join('；'),
     });
   };
 
@@ -312,396 +345,68 @@ export function Gameplay() {
         {/* ... existing columns ... */}
         {/* Actions & Vitals Column */}
         <div className="col-span-1 lg:col-span-6 flex flex-col gap-4">
-          <div className="border border-[#58180d] bg-[#f4ecd8] p-4 flex flex-col gap-4 shadow-[2px_2px_0px_#58180d]">
-            <h3 className="text-xs font-bold uppercase border-b border-[#58180d]/30 pb-2 text-[#58180d]">生命体征 Vitals</h3>
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between items-end mb-1">
-                <span className="font-bold text-sm uppercase">当前生命 HP</span>
-                <span className={`text-2xl font-black ${character.hpCurrent <= character.hpMax / 4 ? "text-red-600" : ""}`}>
-                  {character.hpCurrent} <span className="text-sm font-normal text-[#58180d]/50">/ {character.hpMax}</span>
-                </span>
-              </div>
-              <Progress value={hpPercent} className="h-3 bg-white border border-[#58180d]/30 rounded-none [&>div]:bg-[#58180d]" />
-            </div>
+          <VitalsPanel
+            character={character}
+            hpPercent={hpPercent}
+            onDamage={handleDamage}
+            onHeal={handleHeal}
+            onShortRest={handleShortRest}
+            onLongRest={handleLongRest}
+          />
 
-            <div className="flex gap-2 mt-2 border-t border-[#58180d]/30 pt-4">
-              <button className="flex-1 bg-red-900 text-white py-2 text-xs font-bold uppercase hover:opacity-90 transition-opacity" onClick={handleDamage}>⚔️ 受到伤害</button>
-              <button className="flex-1 bg-emerald-800 text-white py-2 text-xs font-bold uppercase hover:opacity-90 transition-opacity" onClick={handleHeal}>💚 恢复生命</button>
-            </div>
+          <ChecksPanel
+            character={character}
+            lastCheck={lastCheck}
+            checkAttrs={checkAttrs}
+            allSkills={allSkills}
+            attrLabels={attrLabels}
+            proficiencyBonus={proficiencyBonus}
+            getAttrModifier={getAttrModifier}
+            formatModifier={formatModifier}
+            isSaveProficient={isSaveProficient}
+            rollGameplayCheck={rollGameplayCheck}
+          />
 
-            <div className="flex gap-2">
-               <div className="flex-1 border border-[#58180d]/30 bg-white p-2 text-center cursor-pointer hover:border-[#58180d] transition" onClick={() => { restShort(); toast("进行了短休 (1小时)"); }}>
-                 <div className="text-[10px] font-bold uppercase text-[#58180d]">短休</div>
-                 <div className="text-[9px] text-[#58180d]/60 mt-1 uppercase">消耗生命骰</div>
-               </div>
-               <div className="flex-1 border border-[#58180d]/30 bg-white p-2 text-center cursor-pointer hover:border-[#58180d] transition" onClick={() => { restLong(); toast("进行了长休 (8小时)", {description: "生命值与法术位已全满！"}); }}>
-                 <div className="text-[10px] font-bold uppercase text-[#58180d]">长休</div>
-                 <div className="text-[9px] text-[#58180d]/60 mt-1 uppercase">完全恢复</div>
-               </div>
-            </div>
-          </div>
-
-          <div className="border border-[#58180d] bg-[#f4ecd8] p-3 flex flex-col gap-3 shadow-[2px_2px_0px_#58180d]">
-            <div className="flex justify-between items-center border-b border-[#58180d] pb-2">
-              <h3 className="text-xs font-bold uppercase text-[#58180d]">检定 / Checks</h3>
-              {lastCheck && (
-                <div className="text-[10px] font-black uppercase text-[#58180d]">
-                  总计 {lastCheck.total}
-                </div>
-              )}
-            </div>
-
-            {lastCheck ? (
-              <div className="bg-white/70 border border-[#58180d]/30 p-2 text-sm">
-                <div className="font-bold text-[#2c1810]">{lastCheck.name}</div>
-                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#58180d]/70 font-mono">
-                  <span>d20={lastCheck.d20}</span>
-                  <span>修正={formatModifier(lastCheck.modifier)}</span>
-                  <span>总计={lastCheck.total}</span>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white/50 border border-dashed border-[#58180d]/30 p-2 text-center text-[10px] text-[#58180d]/60 font-bold uppercase">
-                选择属性、技能、豁免或先攻进行检定
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {checkAttrs.map(attr => {
-                const modifier = getAttrModifier(attr);
-                return (
-                  <button
-                    key={`ability-${attr}`}
-                    className="border border-[#58180d]/40 bg-white/70 p-2 text-left hover:border-[#58180d] hover:bg-white transition-colors"
-                    onClick={() => rollGameplayCheck(`属性检定：${attrLabels[attr]} (${attr})`, modifier)}
-                  >
-                    <div className="text-[10px] font-black uppercase text-[#58180d]">{attr} Check</div>
-                    <div className="text-sm font-bold text-[#2c1810]">{attrLabels[attr]} {formatModifier(modifier)}</div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="flex flex-col gap-2">
-                <div className="text-[10px] font-black uppercase text-[#58180d]">豁免检定 Saves</div>
-                <div className="grid grid-cols-2 gap-1">
-                  {checkAttrs.map(attr => {
-                    const modifier = getAttrModifier(attr) + (isSaveProficient(attr) ? proficiencyBonus : 0);
-                    return (
-                      <button
-                        key={`save-${attr}`}
-                        className="border border-[#58180d]/30 bg-white/60 px-2 py-1 text-xs font-bold text-[#2c1810] hover:border-[#58180d] hover:bg-white transition-colors"
-                        onClick={() => rollGameplayCheck(`豁免检定：${attrLabels[attr]} (${attr} Save)`, modifier)}
-                      >
-                        {attr} Save {formatModifier(modifier)}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <div className="text-[10px] font-black uppercase text-[#58180d]">先攻 Initiative</div>
-                <button
-                  className="h-full min-h-16 border border-[#58180d]/40 bg-white/70 p-3 text-left hover:border-[#58180d] hover:bg-white transition-colors"
-                  onClick={() => rollGameplayCheck('先攻检定：Initiative', getAttrModifier('Dex'))}
-                >
-                  <div className="text-[10px] font-black uppercase text-[#58180d]">掷先攻</div>
-                  <div className="text-lg font-black text-[#2c1810]">DEX {formatModifier(getAttrModifier('Dex'))}</div>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="text-[10px] font-black uppercase text-[#58180d]">技能检定 Skills</div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-1 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
-                {allSkills.map(skill => {
-                  const modifier = getAttrModifier(skill.attr) + (character.skillProficiencies.includes(skill.name) ? proficiencyBonus : 0);
-                  return (
-                    <button
-                      key={skill.name}
-                      className="border border-[#58180d]/30 bg-white/60 px-2 py-1 text-left hover:border-[#58180d] hover:bg-white transition-colors"
-                      onClick={() => rollGameplayCheck(`技能检定：${skill.name}`, modifier)}
-                    >
-                      <div className="text-xs font-bold text-[#2c1810]">{skill.name}</div>
-                      <div className="text-[10px] text-[#58180d]/70">{skill.attr} {formatModifier(modifier)}</div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          <div className="border border-[#58180d] p-3 bg-white/30 flex flex-col flex-1">
-            <h3 className="text-xs font-bold uppercase border-b border-[#58180d] mb-2 pb-1 text-[#58180d]">战斗日志 & 自由掷骰</h3>
-            <div className="flex-1 font-mono text-[10px] overflow-hidden custom-scrollbar max-h-[150px] overflow-y-auto mb-2 bg-[#fdf6e3]/50 p-2 border border-[#58180d]/10">
-               {combatLog.map((log, i) => (
-                 <div key={i} className={`border-b border-[#58180d]/10 py-1 last:border-0 ${dndLogColor(log)}`}>{log}</div>
-               ))}
-            </div>
-            
-            {/* Last Roll Result — prominent display */}
-            {lastRoll && (
-              <div className={`mb-3 border-2 p-3 text-center transition-all
-                ${lastRoll.type === 'crit' ? 'border-yellow-500 bg-yellow-900/20' :
-                  lastRoll.type === 'fumble' ? 'border-red-700 bg-red-900/20' :
-                  'border-[#58180d]/60 bg-[#58180d]/10'}`}>
-                <div className="text-[10px] uppercase font-black text-[#58180d] tracking-widest mb-1">
-                  {lastRoll.type === 'crit' ? '⚡ 自然20 — 大成功！' : lastRoll.type === 'fumble' ? '💀 自然1 — 大失败！' : '🎲 掷骰结果'}
-                </div>
-                <div className={`text-5xl font-black font-serif leading-none mb-1
-                  ${lastRoll.type === 'crit' ? 'text-yellow-500' : lastRoll.type === 'fumble' ? 'text-red-600' : 'text-[#58180d]'}`}>
-                  {lastRoll.total}
-                </div>
-                <div className="text-[10px] text-[#58180d]/60 font-mono">{lastRoll.formula}</div>
-              </div>
-            )}
-
-            <div className="mt-auto pt-2 border-t border-[#58180d]/30">
-               <div className="flex justify-between items-center mb-2">
-                 <div className="text-[9px] uppercase font-black text-[#58180d]">选取投掷骰: {(Object.entries(diceTray) as [string, number][]).filter(([_, c]) => c > 0).map(([d, c]) => `${c}${d}`).join(' + ') || '—'}</div>
-                 <div className="flex gap-1">
-                   <Button size="sm" variant="outline" className="h-5 px-2 text-[9px] rounded-none border-[#58180d] text-[#58180d]" onClick={handleClearDice}>清空</Button>
-                   <Button size="sm" className="h-5 px-3 text-[9px] rounded-none bg-[#58180d] text-[#fdf6e3] font-black" onClick={handleRollDice} disabled={Object.values(diceTray).every(c => c === 0)}>R O L L</Button>
-                 </div>
-               </div>
-               <div className="flex flex-wrap gap-1">
-                 {['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100'].map(die => (
-                   <button key={die}
-                     className="w-9 h-9 border-2 border-[#58180d] bg-white text-[#58180d] font-black text-[11px] hover:bg-[#58180d] hover:text-white transition-colors relative shadow-sm"
-                     onClick={() => handleAddDie(die)}>
-                     {die}
-                     {diceTray[die] > 0 && <span className="absolute -top-1.5 -right-1.5 bg-red-700 text-white w-4 h-4 rounded-full flex items-center justify-center text-[8px] leading-none font-black">{diceTray[die]}</span>}
-                   </button>
-                 ))}
-               </div>
-            </div>
-          </div>
+          <DiceTrayPanel
+            combatLog={combatLog}
+            diceTray={diceTray}
+            lastRoll={lastRoll}
+            onAddDie={handleAddDie}
+            onClearDice={handleClearDice}
+            onRollDice={handleRollDice}
+          />
         </div>
 
         {/* Spells & Equipment Column */}
         <div className="col-span-1 lg:col-span-6 flex flex-col gap-4">
-          <div className="border border-[#58180d] bg-[#f4ecd8] p-3 flex flex-col gap-2 shadow-[2px_2px_0px_#58180d]">
-            <div className="flex justify-between items-center border-b border-[#58180d] pb-2">
-              <h3 className="text-xs font-bold uppercase text-[#58180d]">职业资源 / Class Resources</h3>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-6 text-[10px] rounded-none border-[#58180d] text-[#58180d] px-2 py-0 uppercase"
-                onClick={initializeRuntimeResources}
-              >
-                初始化
-              </Button>
-            </div>
+          <ClassResourcePanel
+            character={character}
+            initializeRuntimeResources={initializeRuntimeResources}
+            updateClassResourceCurrent={updateClassResourceCurrent}
+            resetClassResource={resetClassResource}
+            updatePactMagicCurrent={updatePactMagicCurrent}
+            resetPactMagic={resetPactMagic}
+          />
 
-            <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar font-sans">
-              {character.classResources.length > 0 ? (
-                character.classResources.map((resource) => (
-                  <div key={resource.id} className="bg-white/60 border border-[#58180d]/30 p-2">
-                    <div className="flex justify-between gap-3">
-                      <div>
-                        <div className="font-bold text-[#2c1810] text-sm">{resource.sourceFeature || resource.id}</div>
-                        <div className="text-[10px] text-[#58180d]/60">{resource.id}</div>
-                      </div>
-                      <div className="text-sm font-black text-[#58180d] shrink-0">{resource.current} / {resource.max}</div>
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#58180d]/70">
-                      {resource.recoveryType && <span>恢复: {resource.recoveryType}</span>}
-                      {resource.dice && <span>骰面: {resource.dice}</span>}
-                    </div>
-                    <div className="mt-2 flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 px-2 text-[10px] rounded-none border-[#58180d] text-[#58180d]"
-                        disabled={resource.current <= 0}
-                        onClick={() => updateClassResourceCurrent(resource.id, resource.current - 1)}
-                      >
-                        -
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 px-2 text-[10px] rounded-none border-[#58180d] text-[#58180d]"
-                        disabled={resource.current >= resource.max}
-                        onClick={() => updateClassResourceCurrent(resource.id, resource.current + 1)}
-                      >
-                        +
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 px-2 text-[10px] rounded-none border-[#58180d] text-[#58180d]"
-                        onClick={() => resetClassResource(resource.id)}
-                      >
-                        重置
-                      </Button>
-                    </div>
-                    {resource.notes && <p className="mt-1 text-[10px] leading-relaxed text-[#2c1810]/70">{resource.notes}</p>}
-                  </div>
-                ))
-              ) : (
-                <div className="text-xs text-[#58180d]/60 font-bold uppercase border-2 border-dashed border-[#58180d]/30 p-4 text-center">
-                  暂无职业资源
-                </div>
-              )}
+          <ActionsPanel
+            visibleRegistryActions={visibleRegistryActions}
+            canUseRegistryAction={canUseRegistryAction}
+            getActionInsufficientLabel={getActionInsufficientLabel}
+            getActionCostPreview={getActionCostPreview}
+            useRegistryAction={useRegistryAction}
+          />
 
-              {character.pactMagicState && (
-                <div className="bg-[#ede1c5]/80 border border-[#58180d]/40 p-2">
-                  <div className="flex justify-between gap-3">
-                    <div className="font-bold text-[#58180d] text-sm">契约魔法位 Pact Magic</div>
-                    <div className="text-sm font-black text-[#58180d] shrink-0">{character.pactMagicState.current} / {character.pactMagicState.max}</div>
-                  </div>
-                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#58180d]/70">
-                    <span>环级: {character.pactMagicState.slotLevel}</span>
-                    <span>恢复: {character.pactMagicState.recoveryType}</span>
-                  </div>
-                  <div className="mt-2 flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-6 px-2 text-[10px] rounded-none border-[#58180d] text-[#58180d]"
-                      disabled={character.pactMagicState.current <= 0}
-                      onClick={() => updatePactMagicCurrent(character.pactMagicState!.current - 1)}
-                    >
-                      -
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-6 px-2 text-[10px] rounded-none border-[#58180d] text-[#58180d]"
-                      disabled={character.pactMagicState.current >= character.pactMagicState.max}
-                      onClick={() => updatePactMagicCurrent(character.pactMagicState!.current + 1)}
-                    >
-                      +
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-6 px-2 text-[10px] rounded-none border-[#58180d] text-[#58180d]"
-                      onClick={resetPactMagic}
-                    >
-                      重置
-                    </Button>
-                  </div>
-                  {character.pactMagicState.notes && <p className="mt-1 text-[10px] leading-relaxed text-[#2c1810]/70">{character.pactMagicState.notes}</p>}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="border border-[#58180d] bg-[#ede1c5] p-3 flex flex-col gap-2 shadow-[2px_2px_0px_#58180d]">
-            <div className="flex justify-between items-center border-b border-[#58180d] pb-2">
-              <h3 className="text-xs font-bold uppercase text-[#58180d]">动作 / Actions v0</h3>
-              <span className="text-[10px] font-bold text-[#58180d]/60 uppercase">{visibleRegistryActions.length} 可用</span>
-            </div>
-
-            {visibleRegistryActions.length > 0 ? (
-              <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
-                {visibleRegistryActions.map(action => {
-                  const canUse = canUseRegistryAction(action);
-                  return (
-                    <div key={action.id} className="bg-white/60 border border-[#58180d]/30 p-2">
-                      <div className="flex justify-between gap-3">
-                        <div>
-                          <div className="font-bold text-[#2c1810] text-sm">{action.name}</div>
-                          <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-1 text-[10px] text-[#58180d]/70">
-                            {action.actionType && <span>{action.actionType}</span>}
-                            {action.sourceFeature && <span>来源: {action.sourceFeature}</span>}
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          className="h-7 px-3 text-[10px] rounded-none bg-[#58180d] text-[#fdf6e3] font-black shrink-0 disabled:opacity-40"
-                          disabled={!canUse}
-                          onClick={() => useRegistryAction(action)}
-                        >
-                          使用
-                        </Button>
-                      </div>
-                      {action.resourceCost && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {action.resourceCost.map((cost, index) => (
-                            <span key={`${action.id}-cost-${index}`} className="border border-[#58180d]/30 bg-[#f4ecd8] px-1.5 py-0.5 text-[10px] font-bold text-[#58180d]">
-                              {getActionCostLabel(cost)}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {action.notes && <p className="mt-1 text-[10px] leading-relaxed text-[#2c1810]/70">{action.notes}</p>}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-xs text-[#58180d]/60 font-bold uppercase border-2 border-dashed border-[#58180d]/30 p-4 text-center">
-                当前没有匹配已有资源的注册动作
-              </div>
-            )}
-          </div>
-
-          {isCaster ? (
-            <div className="border border-[#58180d] bg-[#ede1c5] p-3 flex flex-col gap-2 shadow-[2px_2px_0px_#58180d] min-h-[300px]">
-              <div className="flex justify-between items-center border-b border-[#58180d] pb-2">
-                <h3 className="text-xs font-bold uppercase text-[#58180d] flex items-center">
-                  魔法书 & 法术位
-                  {isPreparedCaster && <span className="ml-2 font-normal text-[10px] bg-[#58180d]/10 px-1 py-0.5 rounded">已准备 {preparedSpells.length}/{maxPrepared}</span>}
-                </h3>
-                <Button size="sm" variant="outline" className="h-6 text-[10px] rounded-none border-[#58180d] text-[#58180d] px-2 py-0 uppercase" onClick={() => setShowSpellManager(true)}>管理法术</Button>
-              </div>
-              
-              {/* SLOTS RENDER */}
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                {Object.entries(character.spellbook.slots).map(([lvl, slotData]) => (
-                  <div key={lvl} className="bg-white/50 border border-[#58180d]/30 p-2">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] uppercase font-bold text-[#58180d]">{lvl}环法术位</span>
-                      <span className="text-xs font-bold">{slotData.current} / {slotData.max}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {Array.from({length: slotData.max}).map((_, i) => (
-                        <div key={i} className={`w-3.5 h-3.5 border ${i < slotData.current ? 'bg-[#58180d] border-[#58180d]' : 'bg-transparent border-[#58180d]/30'}`}/>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {activeSpells.length === 0 ? (
-                <div className="flex-1 flex items-center justify-center text-xs text-[#58180d]/60 font-bold uppercase border-2 border-dashed border-[#58180d]/30 p-4 text-center">
-                  尚未准备或学习任何法术。<br />点击右上角 "管理法术" 开始配置。
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar font-sans">
-                  {activeSpells.map(spell => (
-                    <div key={spell.name_cn} className="flex justify-between items-center text-sm p-2 bg-white border-l-2 border-[#58180d] hover:bg-[#58180d]/5 transition">
-                      <div>
-                        <div className="font-bold text-[#2c1810]">{spell.name_cn} <span className="text-xs font-normal italic text-[#58180d]">({spell.level}环)</span></div>
-                        <div className="text-[10px] text-[#58180d]/70 line-clamp-1 mt-0.5">{spell.desc}</div>
-                      </div>
-                      <button className="bg-[#58180d] text-white px-3 py-1 text-[10px] font-bold uppercase rounded-none shrink-0" 
-                        onClick={() => castSpell(spell.name_cn, spell.level)}>
-                        施展
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="border border-[#58180d] bg-[#f4ecd8] p-3 flex flex-col gap-2 min-h-[300px]">
-              <h3 className="text-xs font-bold uppercase border-b border-[#58180d] pb-2 text-[#58180d]">战斗行动 Actions</h3>
-              <div className="space-y-2 flex-1">
-                <div className="flex justify-between items-center text-sm p-2 bg-white/40 border-l-2 border-[#58180d]">
-                  <span className="font-serif">普通攻击 Attack</span>
-                  <div className="flex gap-4 items-center">
-                    <button className="bg-[#58180d] text-white px-3 py-1 text-[10px] font-bold uppercase" onClick={() => toast("发起攻击！")}>执行</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          <SpellbookPanel
+            character={character}
+            isCaster={isCaster}
+            isPreparedCaster={isPreparedCaster}
+            preparedSpells={preparedSpells}
+            activeSpells={activeSpells}
+            maxPrepared={maxPrepared}
+            onManageSpells={() => setShowSpellManager(true)}
+            onCastSpell={castSpell}
+            onBasicAttack={handleBasicAttack}
+          />
         </div>
       </div>
 
