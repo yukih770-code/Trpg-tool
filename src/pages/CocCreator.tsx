@@ -3,6 +3,7 @@ import { useCocStore } from '../store/cocStore';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { toast } from 'sonner';
+import type { CocSkill } from '../lib/coc-types';
 import {
   getCocDerivedHp,
   getCocDerivedMp,
@@ -10,9 +11,53 @@ import {
   getCocSanMax,
 } from '../lib/coc-utils';
 
+const COC_CREATION_SKILL_MAX = 90;
+
+type SkillAllocationType = 'none' | 'occupational' | 'personal';
+
+type SkillAllocationEntry = {
+  type: SkillAllocationType;
+  invested: number;
+};
+
+type SkillAllocationState = Record<string, SkillAllocationEntry>;
+
+function getInitialSkillAllocation(characterSkills: CocSkill[]): SkillAllocationState {
+  return Object.fromEntries(
+    characterSkills.map((skill) => {
+      const invested = Math.max(0, skill.value - skill.baseValue);
+      const type: SkillAllocationType = skill.isOccupational
+        ? 'occupational'
+        : skill.isPersonal
+          ? 'personal'
+          : 'none';
+
+      return [skill.name, {
+        type,
+        invested: type === 'none' ? 0 : Math.min(invested, COC_CREATION_SKILL_MAX - skill.baseValue),
+      }];
+    }),
+  );
+}
+
 export function CocCreator({ onComplete }: { onComplete: () => void }) {
   const { character, updateField, updateCharacteristic } = useCocStore();
   const [step, setStep] = useState(1);
+  const [skillAllocation, setSkillAllocation] = useState<SkillAllocationState>(() =>
+    getInitialSkillAllocation(character.skills),
+  );
+
+  const occupationalBudget = character.characteristics.EDU * 4;
+  const personalBudget = character.characteristics.INT * 2;
+  const allocationEntries = Object.values(skillAllocation) as SkillAllocationEntry[];
+  const occupationalSpent = allocationEntries
+    .filter(entry => entry.type === 'occupational')
+    .reduce((sum, entry) => sum + entry.invested, 0);
+  const personalSpent = allocationEntries
+    .filter(entry => entry.type === 'personal')
+    .reduce((sum, entry) => sum + entry.invested, 0);
+  const occupationalRemaining = occupationalBudget - occupationalSpent;
+  const personalRemaining = personalBudget - personalSpent;
 
   const rollCharacteristic = (char: string) => {
     let result = 0;
@@ -30,6 +75,61 @@ export function CocCreator({ onComplete }: { onComplete: () => void }) {
 
   const rollAll = () => {
     ['STR', 'CON', 'SIZ', 'DEX', 'APP', 'INT', 'POW', 'EDU', 'LUK'].forEach(c => rollCharacteristic(c));
+  };
+
+  const getSkillAllocationEntry = (skillName: string) =>
+    skillAllocation[skillName] ?? { type: 'none' as SkillAllocationType, invested: 0 };
+
+  const setSkillAllocationType = (skillName: string, type: SkillAllocationType) => {
+    setSkillAllocation(prev => ({
+      ...prev,
+      [skillName]: {
+        type,
+        invested: 0,
+      },
+    }));
+  };
+
+  const adjustSkillInvestment = (skillName: string, baseValue: number, delta: number) => {
+    setSkillAllocation(prev => {
+      const current = prev[skillName] ?? { type: 'none' as SkillAllocationType, invested: 0 };
+      if (current.type === 'none') return prev;
+
+      const spent = (Object.entries(prev) as Array<[string, SkillAllocationEntry]>)
+        .filter(([name, entry]) => name !== skillName && entry.type === current.type)
+        .reduce((sum, [, entry]) => sum + entry.invested, 0);
+      const budget = current.type === 'occupational' ? occupationalBudget : personalBudget;
+      const maxBySkill = Math.max(0, COC_CREATION_SKILL_MAX - baseValue);
+      const maxByBudget = Math.max(0, budget - spent);
+      const nextInvested = Math.max(0, Math.min(current.invested + delta, maxBySkill, maxByBudget));
+
+      if (!Number.isFinite(nextInvested)) return prev;
+
+      return {
+        ...prev,
+        [skillName]: {
+          ...current,
+          invested: nextInvested,
+        },
+      };
+    });
+  };
+
+  const saveAllocatedSkills = () => {
+    updateField('skills', character.skills.map(skill => {
+      const entry = getSkillAllocationEntry(skill.name);
+      const invested = Number.isFinite(entry.invested) ? entry.invested : 0;
+      const safeInvested = entry.type === 'none'
+        ? 0
+        : Math.max(0, Math.min(invested, COC_CREATION_SKILL_MAX - skill.baseValue));
+
+      return {
+        ...skill,
+        value: skill.baseValue + safeInvested,
+        isOccupational: entry.type === 'occupational',
+        isPersonal: entry.type === 'personal',
+      };
+    }));
   };
 
   const handleNextStep = () => {
@@ -52,10 +152,16 @@ export function CocCreator({ onComplete }: { onComplete: () => void }) {
       updateField('mp', { current: mp, max: mp });
       updateField('sanity', { current: sanStart, start: sanStart, max: sanMax });
       updateField('luck', { current: character.characteristics.LUK, start: character.characteristics.LUK });
+      setSkillAllocation(getInitialSkillAllocation(character.skills));
     }
     if (step < 3) {
       setStep(step + 1);
     } else {
+      if (occupationalRemaining < 0 || personalRemaining < 0) {
+        toast.error('技能点预算超支。可能是返回重掷属性后预算降低，请重新分配技能点。');
+        return;
+      }
+      saveAllocatedSkills();
       onComplete();
     }
   };
@@ -130,15 +236,108 @@ export function CocCreator({ onComplete }: { onComplete: () => void }) {
 
       {step === 3 && (
         <div className="space-y-4 text-sm">
-          <h3 className="text-lg font-bold border-b border-[#059669]/50 pb-2 mb-4">技能分配 (Skills)</h3>
-          <p className="opacity-80 leading-relaxed max-w-2xl text-xs">
-            在标准规则下，你拥有基于 <strong>EDU × 4 ({character.characteristics.EDU * 4})</strong> 的本职技能点，以及 <strong>INT × 2 ({character.characteristics.INT * 2})</strong> 的个人兴趣技能点。<br/><br/>
-            (为了工具的便利性，我们暂时跳过加点验证，你可以直接在之后的“角色卡”页面任意调整技能点数，请遵循你车卡的具体规则。)
-          </p>
+          <div className="border-b border-[#059669]/50 pb-3">
+            <h3 className="text-lg font-bold">技能分配 / SKILL ALLOCATION</h3>
+            <p className="mt-2 text-xs text-[#d4d4d8]/80">
+              本轮为最小创建期分配：玩家手动选择本职或兴趣类别，完整职业技能表和信用评级范围后续实现。
+            </p>
+          </div>
 
-          <div className="mt-8 p-4 border border-[#059669]/30 bg-[#059669]/5 text-center">
-            <p className="text-lg font-bold text-[#059669]">调查员已准备就绪</p>
-            <p className="text-xs opacity-60 mt-2">“那些最古老、最强烈的恐惧，是对未知的恐惧。”</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="border border-[#059669]/40 bg-[#059669]/10 p-3">
+              <div className="text-xs uppercase font-mono text-[#059669]">本职技能点</div>
+              <div className="text-lg font-bold">EDU × 4 = {occupationalBudget}</div>
+              <div className="text-sm">本职剩余：<span className="font-bold text-[#34d399]">{occupationalRemaining}</span></div>
+            </div>
+            <div className="border border-[#059669]/40 bg-[#059669]/10 p-3">
+              <div className="text-xs uppercase font-mono text-[#059669]">兴趣技能点</div>
+              <div className="text-lg font-bold">INT × 2 = {personalBudget}</div>
+              <div className="text-sm">兴趣剩余：<span className="font-bold text-[#34d399]">{personalRemaining}</span></div>
+            </div>
+          </div>
+
+          <div className="max-h-[460px] overflow-y-auto pr-2 space-y-2">
+            {character.skills.map(skill => {
+              const entry = getSkillAllocationEntry(skill.name);
+              const currentValue = skill.baseValue + entry.invested;
+              const remainingForType = entry.type === 'occupational'
+                ? occupationalRemaining
+                : entry.type === 'personal'
+                  ? personalRemaining
+                  : 0;
+              const canIncrease = entry.type !== 'none'
+                && currentValue < COC_CREATION_SKILL_MAX
+                && remainingForType > 0;
+              const canDecrease = entry.type !== 'none' && entry.invested > 0;
+
+              return (
+                <div key={skill.name} className="border border-[#059669]/25 bg-[#111] p-3">
+                  <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-[#d4d4d8]">{skill.name}</div>
+                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#d4d4d8]/75">
+                        <span>基础值：{skill.baseValue}</span>
+                        <span>当前值：<strong className="text-[#34d399]">{currentValue}</strong></span>
+                        <span>投入：{entry.invested}</span>
+                        <span>上限：{COC_CREATION_SKILL_MAX}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-mono text-[#059669]">分配类型</span>
+                      {[
+                        ['none', '未分配'],
+                        ['occupational', '本职'],
+                        ['personal', '兴趣'],
+                      ].map(([type, label]) => (
+                        <Button
+                          key={type}
+                          type="button"
+                          size="sm"
+                          variant={entry.type === type ? 'default' : 'outline'}
+                          onClick={() => setSkillAllocationType(skill.name, type as SkillAllocationType)}
+                          className={entry.type === type
+                            ? 'h-7 rounded-none bg-[#059669] text-[#111] hover:bg-[#059669]/80'
+                            : 'h-7 rounded-none border-[#059669]/40 text-[#059669] hover:bg-[#059669]/20 hover:text-white'
+                          }
+                        >
+                          {label}
+                        </Button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      {[-5, -1, 1, 5].map(amount => {
+                        const isIncrease = amount > 0;
+                        return (
+                          <Button
+                            key={amount}
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={isIncrease ? !canIncrease : !canDecrease}
+                            onClick={() => adjustSkillInvestment(skill.name, skill.baseValue, amount)}
+                            className="h-7 w-10 rounded-none border-[#059669]/40 text-[#059669] hover:bg-[#059669]/20 hover:text-white disabled:opacity-30"
+                          >
+                            {amount > 0 ? `+${amount}` : amount}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {entry.type === 'none' && (
+                    <div className="mt-2 text-xs text-[#fbbf24]">未选择分配类型，技能保持基础值。</div>
+                  )}
+                  {entry.type !== 'none' && currentValue >= COC_CREATION_SKILL_MAX && (
+                    <div className="mt-2 text-xs text-[#fbbf24]">已达到创建期上限 {COC_CREATION_SKILL_MAX}。</div>
+                  )}
+                  {entry.type !== 'none' && remainingForType <= 0 && currentValue < COC_CREATION_SKILL_MAX && (
+                    <div className="mt-2 text-xs text-[#fbbf24]">对应技能点预算已用尽。</div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
