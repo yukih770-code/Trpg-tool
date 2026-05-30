@@ -19,20 +19,13 @@ export function ClassResourcePanel({
   resetPactMagic,
 }: ClassResourcePanelProps) {
   return (
-    <div className="border border-[#58180d] bg-[#f4ecd8] p-3 flex flex-col gap-2 shadow-[2px_2px_0px_#58180d]">
+    <div className="border border-[#58180d] bg-[#f4ecd8] p-3 flex flex-col gap-2 shadow-[2px_2px_0px_#58180d] lg:h-[250px] lg:shrink-0 lg:overflow-hidden">
       <div className="flex justify-between items-center border-b border-[#58180d] pb-2">
-        <h3 className="text-xs font-bold uppercase text-[#58180d]">职业资源 / Class Resources</h3>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-6 text-[10px] rounded-none border-[#58180d] text-[#58180d] px-2 py-0 uppercase"
-          onClick={initializeRuntimeResources}
-        >
-          初始化
-        </Button>
+        <h3 className="text-xs font-bold uppercase text-[#58180d]">职业资源 / CLASS RESOURCES</h3>
+        <span className="text-[10px] font-bold uppercase text-[#58180d]/50">状态维护</span>
       </div>
 
-      <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar font-sans">
+      <div className="space-y-2 max-h-[260px] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto pr-1 custom-scrollbar font-sans">
         {character.classResources.length > 0 ? (
           character.classResources.map((resource) => (
             <div key={resource.id} className="bg-white/60 border border-[#58180d]/30 p-2">
@@ -47,11 +40,11 @@ export function ClassResourcePanel({
                 {resource.recoveryType && <span>恢复: {resource.recoveryType}</span>}
                 {resource.dice && <span>骰面: {resource.dice}</span>}
               </div>
-              <div className="mt-2 flex gap-1">
+              <div className="mt-2 flex gap-1 opacity-70">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-6 px-2 text-[10px] rounded-none border-[#58180d] text-[#58180d]"
+                  className="h-5 px-1.5 text-[9px] rounded-none border-[#58180d]/40 text-[#58180d]/70 bg-transparent"
                   disabled={resource.current <= 0}
                   onClick={() => updateClassResourceCurrent(resource.id, resource.current - 1)}
                 >
@@ -60,7 +53,7 @@ export function ClassResourcePanel({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-6 px-2 text-[10px] rounded-none border-[#58180d] text-[#58180d]"
+                  className="h-5 px-1.5 text-[9px] rounded-none border-[#58180d]/40 text-[#58180d]/70 bg-transparent"
                   disabled={resource.current >= resource.max}
                   onClick={() => updateClassResourceCurrent(resource.id, resource.current + 1)}
                 >
@@ -69,7 +62,7 @@ export function ClassResourcePanel({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-6 px-2 text-[10px] rounded-none border-[#58180d] text-[#58180d]"
+                  className="h-5 px-1.5 text-[9px] rounded-none border-[#58180d]/40 text-[#58180d]/70 bg-transparent"
                   onClick={() => resetClassResource(resource.id)}
                 >
                   重置
@@ -94,11 +87,11 @@ export function ClassResourcePanel({
               <span>环级: {character.pactMagicState.slotLevel}</span>
               <span>恢复: {character.pactMagicState.recoveryType}</span>
             </div>
-            <div className="mt-2 flex gap-1">
+            <div className="mt-2 flex gap-1 opacity-70">
               <Button
                 size="sm"
                 variant="outline"
-                className="h-6 px-2 text-[10px] rounded-none border-[#58180d] text-[#58180d]"
+                className="h-5 px-1.5 text-[9px] rounded-none border-[#58180d]/40 text-[#58180d]/70 bg-transparent"
                 disabled={character.pactMagicState.current <= 0}
                 onClick={() => updatePactMagicCurrent(character.pactMagicState!.current - 1)}
               >
@@ -107,7 +100,7 @@ export function ClassResourcePanel({
               <Button
                 size="sm"
                 variant="outline"
-                className="h-6 px-2 text-[10px] rounded-none border-[#58180d] text-[#58180d]"
+                className="h-5 px-1.5 text-[9px] rounded-none border-[#58180d]/40 text-[#58180d]/70 bg-transparent"
                 disabled={character.pactMagicState.current >= character.pactMagicState.max}
                 onClick={() => updatePactMagicCurrent(character.pactMagicState!.current + 1)}
               >
@@ -116,7 +109,7 @@ export function ClassResourcePanel({
               <Button
                 size="sm"
                 variant="outline"
-                className="h-6 px-2 text-[10px] rounded-none border-[#58180d] text-[#58180d]"
+                className="h-5 px-1.5 text-[9px] rounded-none border-[#58180d]/40 text-[#58180d]/70 bg-transparent"
                 onClick={resetPactMagic}
               >
                 重置
@@ -125,6 +118,17 @@ export function ClassResourcePanel({
             {character.pactMagicState.notes && <p className="mt-1 text-[10px] leading-relaxed text-[#2c1810]/70">{character.pactMagicState.notes}</p>}
           </div>
         )}
+      </div>
+
+      <div className="border-t border-[#58180d]/20 pt-2 flex justify-end">
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-5 text-[9px] rounded-none border-[#58180d]/30 text-[#58180d]/60 px-2 py-0 uppercase bg-transparent"
+          onClick={initializeRuntimeResources}
+        >
+          初始化职业资源
+        </Button>
       </div>
     </div>
   );

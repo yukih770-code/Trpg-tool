@@ -25,10 +25,10 @@ export function SpellbookPanel({
   onBasicAttack,
 }: SpellbookPanelProps) {
   return isCaster ? (
-    <div className="border border-[#58180d] bg-[#ede1c5] p-3 flex flex-col gap-2 shadow-[2px_2px_0px_#58180d] min-h-[300px]">
+    <div className="border border-[#58180d] bg-[#ede1c5] p-3 flex flex-col gap-2 shadow-[2px_2px_0px_#58180d] min-h-[300px] lg:flex-1 lg:min-h-[360px] lg:overflow-hidden">
       <div className="flex justify-between items-center border-b border-[#58180d] pb-2">
         <h3 className="text-xs font-bold uppercase text-[#58180d] flex items-center">
-          魔法书 & 法术位
+          法术 / SPELLBOOK
           {isPreparedCaster && <span className="ml-2 font-normal text-[10px] bg-[#58180d]/10 px-1 py-0.5 rounded">已准备 {preparedSpells.length}/{maxPrepared}</span>}
         </h3>
         <Button size="sm" variant="outline" className="h-6 text-[10px] rounded-none border-[#58180d] text-[#58180d] px-2 py-0 uppercase" onClick={onManageSpells}>管理法术</Button>
@@ -56,7 +56,7 @@ export function SpellbookPanel({
           尚未准备或学习任何法术。<br />点击右上角 "管理法术" 开始配置。
         </div>
       ) : (
-        <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar font-sans">
+        <div className="space-y-2 max-h-[300px] lg:max-h-none lg:flex-1 lg:min-h-0 overflow-y-auto pr-2 custom-scrollbar font-sans">
           {activeSpells.map(spell => (
             <div key={spell.name_cn} className="flex justify-between items-center text-sm p-2 bg-white border-l-2 border-[#58180d] hover:bg-[#58180d]/5 transition">
               <div>
@@ -73,11 +73,11 @@ export function SpellbookPanel({
       )}
     </div>
   ) : (
-    <div className="border border-[#58180d] bg-[#f4ecd8] p-3 flex flex-col gap-2 min-h-[300px]">
-      <h3 className="text-xs font-bold uppercase border-b border-[#58180d] pb-2 text-[#58180d]">战斗行动 Actions</h3>
+    <div className="border border-[#58180d] bg-[#f4ecd8] p-3 flex flex-col gap-2 min-h-[300px] lg:flex-1 lg:min-h-[360px] lg:overflow-hidden">
+      <h3 className="text-xs font-bold uppercase border-b border-[#58180d] pb-2 text-[#58180d]">战斗行动 / ACTIONS</h3>
       <div className="space-y-2 flex-1">
         <div className="flex justify-between items-center text-sm p-2 bg-white/40 border-l-2 border-[#58180d]">
-          <span className="font-serif">普通攻击 Attack</span>
+          <span className="font-serif">普通攻击 / ATTACK</span>
           <div className="flex gap-4 items-center">
             <button className="bg-[#58180d] text-white px-3 py-1 text-[10px] font-bold uppercase" onClick={onBasicAttack}>执行</button>
           </div>

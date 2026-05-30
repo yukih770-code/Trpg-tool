@@ -100,7 +100,7 @@ If a DV exists:
 - `total >= DV`: success.
 - `total < DV`: failure.
 
-## 7. Player Mode / Host Tools
+## 7. Player Gameplay / Host Console Boundary
 
 Player mode defaults to:
 
@@ -109,18 +109,22 @@ Player mode defaults to:
 - Historical log.
 - System prompts.
 
-Player mode should not default to a large free-roll tool.
+Player character Gameplay should not display host tools by default, and the current phase does not place a host-tools entry inside player Gameplay.
 
-Free roll belongs to host tools or advanced tools:
+Free roll, hidden rolls, random tables, NPC / monster operations, map controls, and similar host-side tools belong to future dedicated host consoles:
 
 - DND: DM Tools
 - COC: KP Tools
 - Cyberpunk RED: GM Tools
 
-Current phase does not implement real permissions. Use local UI collapsed state only:
+If future work needs free roll, it should live in a DM/KP/GM Console or an independent advanced tool area, not inside the player Roll Console.
 
-- `主持人工具 / GM Tools`
-- `自由掷骰 / Free Roll`
+In player Gameplay, Roll Console is only responsible for:
+
+- Latest Result.
+- Historical result log.
+- Calculation details.
+- System prompts relevant to the player.
 
 Do not write this state to store. Do not write it to schema. Do not add account permissions or multiplayer permission sync.
 
@@ -176,7 +180,7 @@ DM/KP/GM Console may show:
 - `playerOnly`
 - `revealed`
 
-Free roll is not a primary player Gameplay feature. It should mainly belong to DM/KP/GM Console or advanced tools.
+Free roll is not a primary player Gameplay feature. It should mainly belong to DM/KP/GM Console or advanced tools, not the player Roll Console.
 
 Free-roll results should also support visibility.
 
@@ -211,5 +215,5 @@ Current phase does not implement real permissions, store changes, or schema chan
 
 - Player Roll Console should not display `gmOnly` results.
 - Player Roll Console should display `public`, `revealed`, and self-visible `playerOnly` results.
-- Future Host Console should display `gmOnly` results and host tools.
-- Current player Gameplay should not be overloaded with full host tooling.
+- Future Host Console should display `gmOnly` results and host tools such as free roll, hidden roll controls, random tables, NPC / monster operations, and map controls.
+- Current player Gameplay should not display a host-tools entry and should not be overloaded with host tooling.

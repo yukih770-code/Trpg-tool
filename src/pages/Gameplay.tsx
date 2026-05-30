@@ -9,10 +9,19 @@ import type { DndActionDefinition, ResourceCost } from '../lib/dnd2024/action-re
 import { ActionsPanel } from './gameplay/ActionsPanel';
 import { ChecksPanel } from './gameplay/ChecksPanel';
 import { ClassResourcePanel } from './gameplay/ClassResourcePanel';
-import { DiceTrayPanel } from './gameplay/DiceTrayPanel';
+import { RollConsolePanel } from './gameplay/RollConsolePanel';
 import { SpellbookPanel } from './gameplay/SpellbookPanel';
 import { VitalsPanel } from './gameplay/VitalsPanel';
 import { toast } from 'sonner';
+
+interface LatestRollConsoleResult {
+  kind: 'check' | 'roll' | 'action' | 'system';
+  title: string;
+  displayValue: string;
+  calculation: string;
+  tag?: string;
+  outcome?: string;
+}
 
 export function Gameplay() {
   const {
@@ -34,10 +43,15 @@ export function Gameplay() {
   const [selectedSubclass, setSelectedSubclass] = useState<string>('');
   const [asiChoices, setAsiChoices] = useState<AttributeName[]>([]);
   const [selectedFeat, setSelectedFeat] = useState<string | null>(null);
-  const [diceTray, setDiceTray] = useState<Record<string, number>>({});
   const [combatLog, setCombatLog] = useState<string[]>(['[系统] 战斗模拟面板已就绪。']);
-  const [lastRoll, setLastRoll] = useState<{ total: number; formula: string; detail: string; type: 'crit'|'fumble'|'success'|'neutral' } | null>(null);
-  const [lastCheck, setLastCheck] = useState<{ name: string; d20: number; modifier: number; total: number } | null>(null);
+  const [latestResult, setLatestResult] = useState<LatestRollConsoleResult>({
+    kind: 'system',
+    title: '系统提示',
+    displayValue: '待命',
+    calculation: '等待检定、动作或掷骰。',
+    outcome: '未设置 DC，等待 DM 判定',
+  });
+  const [checkDc, setCheckDc] = useState('');
 
   const SPELL_DATA = getAvailableSpells(character);
   const CLASS_DATA = getAvailableClasses(character);
@@ -173,7 +187,26 @@ export function Gameplay() {
 
   const rollGameplayCheck = (name: string, modifier: number) => {
     const d20 = Math.floor(Math.random() * 20) + 1;
-    setLastCheck({ name, d20, modifier, total: d20 + modifier });
+    const total = d20 + modifier;
+    const parsedDc = checkDc.trim() === '' ? undefined : Number(checkDc);
+    const hasDc = typeof parsedDc === 'number' && Number.isFinite(parsedDc);
+    const natTag = d20 === 20 ? '天然 20 / NAT 20' : d20 === 1 ? '天然 1 / NAT 1' : undefined;
+    const outcome = hasDc
+      ? `${total >= parsedDc ? '成功' : '失败'}`
+      : '未设置 DC，等待 DM 判定';
+    const dcPart = hasDc ? `DC=${parsedDc}，${outcome}` : outcome;
+    const natPart = natTag ? `，${natTag}` : '';
+    const logLine = `[检定] ${name}：d20=${d20}，修正=${formatModifier(modifier)}，总计=${total}${natPart}，${dcPart}`;
+
+    setLatestResult({
+      kind: 'check',
+      title: name,
+      displayValue: String(total),
+      calculation: `d20=${d20} + 修正=${formatModifier(modifier)}`,
+      tag: natTag,
+      outcome: dcPart,
+    });
+    setCombatLog(prev => [logLine, ...prev].slice(0, 20));
   };
 
   const getClassResource = (resourceId?: string) => (
@@ -249,6 +282,21 @@ export function Gameplay() {
         .map(cost => `${cost.label} -${cost.amount}，剩余 ${Math.max(0, cost.current - cost.amount)} / ${cost.max}`)
         .join('；'),
     });
+    setLatestResult({
+      kind: 'action',
+      title: `动作：${action.name}`,
+      displayValue: '使用',
+      calculation: previews
+        .map(cost => `${cost.label} -${cost.amount}，剩余 ${Math.max(0, cost.current - cost.amount)}/${cost.max}`)
+        .join('；'),
+      outcome: '动作已记录，具体效果由当前规则流程处理',
+    });
+    setCombatLog(prev => [
+      `[动作] ${action.name}：${previews
+        .map(cost => `消耗 ${cost.label} ${cost.amount}，剩余 ${Math.max(0, cost.current - cost.amount)}/${cost.max}`)
+        .join('；')}`,
+      ...prev,
+    ].slice(0, 20));
   };
 
   const handleLevelUpConfirm = () => {
@@ -294,57 +342,20 @@ export function Gameplay() {
     setAsiChoices([]); // Clear ASI if feat is chosen
   };
 
-  const handleAddDie = (die: string) => {
-    setDiceTray(prev => ({ ...prev, [die]: (prev[die] || 0) + 1 }));
-  };
-
-  const handleClearDice = () => {
-    setDiceTray({});
-  };
-
-  const handleRollDice = () => {
-    let total = 0;
-    let details: string[] = [];
-    for (const [die, count] of (Object.entries(diceTray) as [string, number][])) {
-      if (count > 0) {
-        const sides = parseInt(die.substring(1), 10);
-        let individualRolls: number[] = [];
-        for (let i = 0; i < count; i++) {
-          const roll = Math.floor(Math.random() * sides) + 1;
-          total += roll;
-          individualRolls.push(roll);
-        }
-        details.push(`${count}${die}[${individualRolls.join(', ')}]`);
-      }
-    }
-    
-    if (details.length === 0) return;
-
-    const msg = `掷出 ${details.join(' + ')}，总和: ${total}`;
-    setCombatLog(prev => [msg, ...prev].slice(0, 20));
-    toast.success(`掷出骰子`, { description: msg });
-
-    // Detect d20 crits/fumbles
-    const hasD20 = 'd20' in diceTray && diceTray['d20'] > 0;
-    const rollType = hasD20 && total === 20 ? 'crit' : hasD20 && total === 1 ? 'fumble' : 'neutral';
-    setLastRoll({ total, formula: details.join(' + '), detail: details.join(' + ') + ' = ' + total, type: rollType });
-    setDiceTray({});
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-0 lg:h-[calc(100vh-96px)] lg:max-h-[calc(100vh-96px)] lg:min-h-0 lg:overflow-hidden lg:flex lg:flex-col lg:gap-3">
       {/* ... existing header ... */}
-      <div className="flex justify-between items-center border-b-2 border-[#58180d] mb-4 pb-2">
+      <div className="flex justify-between items-center border-b-2 border-[#58180d] mb-2 pb-2">
         <h2 className="text-2xl font-bold uppercase tracking-tighter text-[#58180d]">战斗与游玩面板</h2>
         <Button onClick={() => setShowLevelUp(true)} className="bg-[#58180d] text-[#fdf6e3] hover:opacity-90 uppercase text-sm font-bold rounded-none">
           ✨ 升级 (当前 Lv.{character.level})
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-4 lg:flex-1 lg:min-h-0 lg:overflow-hidden">
         {/* ... existing columns ... */}
         {/* Actions & Vitals Column */}
-        <div className="col-span-1 lg:col-span-6 flex flex-col gap-4">
+        <div className="flex flex-col gap-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1 custom-scrollbar">
           <VitalsPanel
             character={character}
             hpPercent={hpPercent}
@@ -354,9 +365,19 @@ export function Gameplay() {
             onLongRest={handleLongRest}
           />
 
+          <ActionsPanel
+            visibleRegistryActions={visibleRegistryActions}
+            canUseRegistryAction={canUseRegistryAction}
+            getActionInsufficientLabel={getActionInsufficientLabel}
+            getActionCostPreview={getActionCostPreview}
+            useRegistryAction={useRegistryAction}
+          />
+
           <ChecksPanel
             character={character}
-            lastCheck={lastCheck}
+            checkDc={checkDc}
+            onCheckDcChange={setCheckDc}
+            onClearCheckDc={() => setCheckDc('')}
             checkAttrs={checkAttrs}
             allSkills={allSkills}
             attrLabels={attrLabels}
@@ -367,18 +388,10 @@ export function Gameplay() {
             rollGameplayCheck={rollGameplayCheck}
           />
 
-          <DiceTrayPanel
-            combatLog={combatLog}
-            diceTray={diceTray}
-            lastRoll={lastRoll}
-            onAddDie={handleAddDie}
-            onClearDice={handleClearDice}
-            onRollDice={handleRollDice}
-          />
         </div>
 
         {/* Spells & Equipment Column */}
-        <div className="col-span-1 lg:col-span-6 flex flex-col gap-4">
+        <div className="flex flex-col gap-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1 custom-scrollbar">
           <ClassResourcePanel
             character={character}
             initializeRuntimeResources={initializeRuntimeResources}
@@ -386,14 +399,6 @@ export function Gameplay() {
             resetClassResource={resetClassResource}
             updatePactMagicCurrent={updatePactMagicCurrent}
             resetPactMagic={resetPactMagic}
-          />
-
-          <ActionsPanel
-            visibleRegistryActions={visibleRegistryActions}
-            canUseRegistryAction={canUseRegistryAction}
-            getActionInsufficientLabel={getActionInsufficientLabel}
-            getActionCostPreview={getActionCostPreview}
-            useRegistryAction={useRegistryAction}
           />
 
           <SpellbookPanel
@@ -409,6 +414,11 @@ export function Gameplay() {
           />
         </div>
       </div>
+
+      <RollConsolePanel
+        combatLog={combatLog}
+        latestResult={latestResult}
+      />
 
       {/* Level Up Modal Overlay */}
       {showLevelUp && (

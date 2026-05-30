@@ -19,8 +19,8 @@ export function VitalsPanel({
   onLongRest,
 }: VitalsPanelProps) {
   return (
-    <div className="border border-[#58180d] bg-[#f4ecd8] p-4 flex flex-col gap-4 shadow-[2px_2px_0px_#58180d]">
-      <h3 className="text-xs font-bold uppercase border-b border-[#58180d]/30 pb-2 text-[#58180d]">生命体征 Vitals</h3>
+    <div className="border border-[#58180d] bg-[#f4ecd8] p-3 flex flex-col gap-3 shadow-[2px_2px_0px_#58180d] lg:shrink-0">
+      <h3 className="text-xs font-bold uppercase border-b border-[#58180d]/30 pb-2 text-[#58180d]">生命体征 / VITALS</h3>
       <div className="flex flex-col gap-2">
         <div className="flex justify-between items-end mb-1">
           <span className="font-bold text-sm uppercase">当前生命 HP</span>
@@ -31,7 +31,7 @@ export function VitalsPanel({
         <Progress value={hpPercent} className="h-3 bg-white border border-[#58180d]/30 rounded-none [&>div]:bg-[#58180d]" />
       </div>
 
-      <div className="flex gap-2 mt-2 border-t border-[#58180d]/30 pt-4">
+      <div className="flex gap-2 mt-1 border-t border-[#58180d]/30 pt-3">
         <button className="flex-1 bg-red-900 text-white py-2 text-xs font-bold uppercase hover:opacity-90 transition-opacity" onClick={onDamage}>⚔️ 受到伤害</button>
         <button className="flex-1 bg-emerald-800 text-white py-2 text-xs font-bold uppercase hover:opacity-90 transition-opacity" onClick={onHeal}>💚 恢复生命</button>
       </div>
