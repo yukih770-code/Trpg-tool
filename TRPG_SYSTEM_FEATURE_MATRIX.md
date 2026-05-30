@@ -161,4 +161,10 @@ Current freeze:
 - Do not implement Host Console.
 - Do not implement Multiplayer.
 - Do not implement complex combat automation.
+- Do not modify multiple systems' business code in a single implementation round.
+- Each implementation round must target only one system unless explicitly approved as a docs-only or shared-types-only task.
 
+Freeze exit criteria:
+
+- Freeze is not lifted until both `COC_RULE_COVERAGE.md` and `CPRED_RULE_COVERAGE.md` exist and have been reviewed.
+- After those rule coverage docs exist, `IMPLEMENTATION_ROADMAP.md` should define the next code phase before new feature coding resumes.
