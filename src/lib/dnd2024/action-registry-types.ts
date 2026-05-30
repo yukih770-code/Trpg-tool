@@ -8,6 +8,13 @@ export type DndActionType =
 
 export type DndResourceCostType = 'classResource' | 'pactMagic';
 
+export type DndActionCategory =
+  | 'classFeature'
+  | 'spellcasting'
+  | 'combat'
+  | 'utility'
+  | 'special';
+
 export interface ResourceCost {
   resourceType: DndResourceCostType;
   resourceId?: string;
@@ -19,6 +26,7 @@ export interface DndActionDefinition {
   id: string;
   name: string;
   sourceFeature?: string;
+  category?: DndActionCategory;
   actionType?: DndActionType;
   description?: string;
   resourceCost?: ResourceCost[];
