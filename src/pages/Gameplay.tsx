@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/button';
 import { Progress } from '../../components/ui/progress';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { getAvailableSpells, getAvailableClasses, getAvailableFeats } from '../lib/mod-utils';
-import { AttributeName, SpellInfo, FeatDef } from '../lib/dnd-types';
+import { AttributeName, SkillName, SpellInfo, FeatDef } from '../lib/dnd-types';
 import { toast } from 'sonner';
 
 function dndLogColor(line: string): string {
@@ -41,6 +41,7 @@ export function Gameplay() {
   const [diceTray, setDiceTray] = useState<Record<string, number>>({});
   const [combatLog, setCombatLog] = useState<string[]>(['[系统] 战斗模拟面板已就绪。']);
   const [lastRoll, setLastRoll] = useState<{ total: number; formula: string; detail: string; type: 'crit'|'fumble'|'success'|'neutral' } | null>(null);
+  const [lastCheck, setLastCheck] = useState<{ name: string; d20: number; modifier: number; total: number } | null>(null);
 
   const SPELL_DATA = getAvailableSpells(character);
   const CLASS_DATA = getAvailableClasses(character);
@@ -51,6 +52,28 @@ export function Gameplay() {
   }
 
   const hpPercent = Math.max(0, Math.min(100, (character.hpCurrent / character.hpMax) * 100));
+  const attrLabels: Record<AttributeName, string> = { Str: "力量", Dex: "敏捷", Con: "体质", Int: "智力", Wis: "感知", Cha: "魅力" };
+  const checkAttrs: AttributeName[] = ['Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha'];
+  const allSkills: { name: SkillName; attr: AttributeName }[] = [
+    { name: '运动', attr: 'Str' },
+    { name: '特技', attr: 'Dex' },
+    { name: '巧手', attr: 'Dex' },
+    { name: '隐匿', attr: 'Dex' },
+    { name: '奥秘', attr: 'Int' },
+    { name: '历史', attr: 'Int' },
+    { name: '调查', attr: 'Int' },
+    { name: '自然', attr: 'Int' },
+    { name: '宗教', attr: 'Int' },
+    { name: '驯兽', attr: 'Wis' },
+    { name: '洞察', attr: 'Wis' },
+    { name: '医药', attr: 'Wis' },
+    { name: '察觉', attr: 'Wis' },
+    { name: '生存', attr: 'Wis' },
+    { name: '欺瞒', attr: 'Cha' },
+    { name: '威吓', attr: 'Cha' },
+    { name: '表演', attr: 'Cha' },
+    { name: '游说', attr: 'Cha' },
+  ];
 
   const castSpell = (spellName: string, level: number) => {
     if (level === 0) {
@@ -126,6 +149,23 @@ export function Gameplay() {
   const isAsiLevel = [4, 8, 12, 16, 19].includes(nextLvl);
   const subclassOptions = classDef?.subclasses.filter(sc => sc.unlockLevel === nextLvl && !character.subclass) || [];
 
+  const getAttrScore = (attr: AttributeName) => {
+    const statBlock = character.attrs[attr];
+    return statBlock.base + statBlock.pointbuy + statBlock.racebonus + (statBlock.extrabonus || 0);
+  };
+
+  const getAttrModifier = (attr: AttributeName) => Math.floor((getAttrScore(attr) - 10) / 2);
+  const proficiencyBonus = Math.ceil(1 + character.level / 4);
+  const formatModifier = (modifier: number) => modifier >= 0 ? `+${modifier}` : `${modifier}`;
+  const isSaveProficient = (attr: AttributeName) => (
+    character.savingThrowProficiencies.includes(attr) || Boolean(classDef?.savingThrows.includes(attr))
+  );
+
+  const rollGameplayCheck = (name: string, modifier: number) => {
+    const d20 = Math.floor(Math.random() * 20) + 1;
+    setLastCheck({ name, d20, modifier, total: d20 + modifier });
+  };
+
   const handleLevelUpConfirm = () => {
     if (subclassOptions.length > 0 && !selectedSubclass) {
       toast("请选择子职业");
@@ -168,8 +208,6 @@ export function Gameplay() {
     setSelectedFeat(featName);
     setAsiChoices([]); // Clear ASI if feat is chosen
   };
-
-  const attrLabels: Record<AttributeName, string> = { Str: "力量", Dex: "敏捷", Con: "体质", Int: "智力", Wis: "感知", Cha: "魅力" };
 
   const handleAddDie = (die: string) => {
     setDiceTray(prev => ({ ...prev, [die]: (prev[die] || 0) + 1 }));
@@ -248,6 +286,98 @@ export function Gameplay() {
                  <div className="text-[10px] font-bold uppercase text-[#58180d]">长休</div>
                  <div className="text-[9px] text-[#58180d]/60 mt-1 uppercase">完全恢复</div>
                </div>
+            </div>
+          </div>
+
+          <div className="border border-[#58180d] bg-[#f4ecd8] p-3 flex flex-col gap-3 shadow-[2px_2px_0px_#58180d]">
+            <div className="flex justify-between items-center border-b border-[#58180d] pb-2">
+              <h3 className="text-xs font-bold uppercase text-[#58180d]">检定 / Checks</h3>
+              {lastCheck && (
+                <div className="text-[10px] font-black uppercase text-[#58180d]">
+                  总计 {lastCheck.total}
+                </div>
+              )}
+            </div>
+
+            {lastCheck ? (
+              <div className="bg-white/70 border border-[#58180d]/30 p-2 text-sm">
+                <div className="font-bold text-[#2c1810]">{lastCheck.name}</div>
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#58180d]/70 font-mono">
+                  <span>d20={lastCheck.d20}</span>
+                  <span>修正={formatModifier(lastCheck.modifier)}</span>
+                  <span>总计={lastCheck.total}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white/50 border border-dashed border-[#58180d]/30 p-2 text-center text-[10px] text-[#58180d]/60 font-bold uppercase">
+                选择属性、技能、豁免或先攻进行检定
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {checkAttrs.map(attr => {
+                const modifier = getAttrModifier(attr);
+                return (
+                  <button
+                    key={`ability-${attr}`}
+                    className="border border-[#58180d]/40 bg-white/70 p-2 text-left hover:border-[#58180d] hover:bg-white transition-colors"
+                    onClick={() => rollGameplayCheck(`属性检定：${attrLabels[attr]} (${attr})`, modifier)}
+                  >
+                    <div className="text-[10px] font-black uppercase text-[#58180d]">{attr} Check</div>
+                    <div className="text-sm font-bold text-[#2c1810]">{attrLabels[attr]} {formatModifier(modifier)}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex flex-col gap-2">
+                <div className="text-[10px] font-black uppercase text-[#58180d]">豁免检定 Saves</div>
+                <div className="grid grid-cols-2 gap-1">
+                  {checkAttrs.map(attr => {
+                    const modifier = getAttrModifier(attr) + (isSaveProficient(attr) ? proficiencyBonus : 0);
+                    return (
+                      <button
+                        key={`save-${attr}`}
+                        className="border border-[#58180d]/30 bg-white/60 px-2 py-1 text-xs font-bold text-[#2c1810] hover:border-[#58180d] hover:bg-white transition-colors"
+                        onClick={() => rollGameplayCheck(`豁免检定：${attrLabels[attr]} (${attr} Save)`, modifier)}
+                      >
+                        {attr} Save {formatModifier(modifier)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="text-[10px] font-black uppercase text-[#58180d]">先攻 Initiative</div>
+                <button
+                  className="h-full min-h-16 border border-[#58180d]/40 bg-white/70 p-3 text-left hover:border-[#58180d] hover:bg-white transition-colors"
+                  onClick={() => rollGameplayCheck('先攻检定：Initiative', getAttrModifier('Dex'))}
+                >
+                  <div className="text-[10px] font-black uppercase text-[#58180d]">掷先攻</div>
+                  <div className="text-lg font-black text-[#2c1810]">DEX {formatModifier(getAttrModifier('Dex'))}</div>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <div className="text-[10px] font-black uppercase text-[#58180d]">技能检定 Skills</div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-1 max-h-[180px] overflow-y-auto pr-1 custom-scrollbar">
+                {allSkills.map(skill => {
+                  const modifier = getAttrModifier(skill.attr) + (character.skillProficiencies.includes(skill.name) ? proficiencyBonus : 0);
+                  return (
+                    <button
+                      key={skill.name}
+                      className="border border-[#58180d]/30 bg-white/60 px-2 py-1 text-left hover:border-[#58180d] hover:bg-white transition-colors"
+                      onClick={() => rollGameplayCheck(`技能检定：${skill.name}`, modifier)}
+                    >
+                      <div className="text-xs font-bold text-[#2c1810]">{skill.name}</div>
+                      <div className="text-[10px] text-[#58180d]/70">{skill.attr} {formatModifier(modifier)}</div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
