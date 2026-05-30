@@ -20,11 +20,15 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | TRPG_SYSTEM_FEATURE_MATRIX.md | ✅ Added |
 | SYSTEM_PAGE_RESPONSIBILITY.md | ✅ Added |
 | AI_HOST_ARCHITECTURE.md | ✅ Added |
+| COC_RULE_COVERAGE.md | ✅ Added |
+| CPRED_RULE_COVERAGE.md | ✅ Added |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
 - Documents AI Assistant / AI Co-Host / AI Host roles and future ProposedCommand boundaries.
+- Materializes COC and CP RED rule coverage matrices.
 - No `src` changes, package changes, store changes, schema changes, or migration changes.
+- Freeze remains active until COC/CP RED coverage docs are audited and `IMPLEMENTATION_ROADMAP.md` defines the next code phase.
 
 ### D&D 5e / 2024
 
