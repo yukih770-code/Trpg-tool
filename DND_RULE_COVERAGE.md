@@ -56,17 +56,30 @@ This document tracks how far DND 2024 rules are represented in the current app. 
 
 | Rule Area | currentCoverageLevel | currentImplementation | missingPieces | nextStep |
 |---|---:|---|---|---|
-| Attack roll | 1 | Gameplay has generic attack button/toast and free dice roller. | No weapon attack model, proficiency, ability, AC target, advantage, or hit resolution. | Equipment and Action Registry. |
+| Attack roll | 1 | Gameplay has generic attack button/toast and free dice roller. | No weapon attack model, proficiency, ability, AC target, advantage, or hit resolution. | Equipment and attack/damage panel. |
 | Damage roll | 1 | Free dice roller can roll damage dice manually. | No damage formulas, resistances, vulnerabilities, or target HP application. | Damage model after equipment. |
 | Saving throw | 4 | Sheet shows saving throw modifiers and rolls checks manually. | No DC targeting or spell/condition-driven saves. | Action Registry with save definitions. |
 | Conditions | 2 | Structured progression type supports `ConditionDefinition`; sample Barbarian/Bard conditions exist. | No runtime condition state or UI tracker. | Add condition state later. |
-| Action / Bonus Action / Reaction | 2 | Structured action definitions exist in progression data for sample classes. | No runtime action economy, no UI execution path. | Future Action Registry. |
+| Action Registry v0 | 5 | Minimal `DndActionDefinition` / `ResourceCost` types exist; `actionRegistry.ts` registers resource-backed actions; Gameplay has an Actions v0 panel; classResource and pactMagic costs can be consumed manually. | No `spellSlot` resource cost support, full action economy, attack/damage, enemy target, concentration, or combat log integration. | Action Registry audit, then targeted attack/damage or spellcasting action work. |
+| Action / Bonus Action / Reaction | 4 | Action definitions can carry `actionType`; Gameplay displays Action v0 entries that match existing runtime resources. | No per-turn action economy, no reaction timing, no enforcement of action limits. | Future action economy state after registry stabilizes. |
 | Divine Smite | 0 | Not represented. | This is not a class resource; it is a spell/action damage rider using spell slots. | Future attack rider / spell action integration. |
 | Cunning Strike | 0 | Not represented. | Not a class resource; it is an attack rider choice tied to Sneak Attack. | Future Action Registry / attack rider model. |
 | Hunter's Mark | 1 | Spell data likely covers spell text; no Ranger feature automation. | Not modeled as Favored Enemy charges or concentration target state. | Ranger progression plus concentration state. |
 | Metamagic | 0 | Not represented. | Metamagic options and Sorcery Point costs missing; not a direct class resource by itself. | Sorcery Points first, then Metamagic option registry. |
 | Action Surge | 1 | Legacy Fighter text only. | No structured resource or extra action execution. | Fighter progression, then Action Registry. |
 | Wild Shape | 1 | Legacy Druid text only. | No charges, forms, transformed stats, or duration. | Druid progression, then forms registry. |
+
+Action Registry v0 implemented:
+- Minimal `DndActionDefinition` and `ResourceCost` types.
+- `actionRegistry.ts` with v0 resource-backed action definitions.
+- Gameplay Actions v0 panel.
+- `classResource` consumption through existing runtime resource controls.
+- `pactMagic` consumption through existing pact magic controls.
+
+Action Registry v0 explicitly not implemented:
+- `spellSlot` resource costs or spell slot consumption.
+- Divine Smite, Cunning Strike, Metamagic, or Hunter's Mark automation.
+- Attack rolls, damage rolls, enemy targets, concentration, full action economy, or combat log integration.
 
 ## 5. Rest / Recovery Coverage
 
@@ -113,7 +126,7 @@ This document tracks how far DND 2024 rules are represented in the current app. 
 
 | Gap | Why It Matters | Suggested Fix |
 |---|---|---|
-| Action Registry absent | Actions, bonus actions, reactions, riders, and resource costs cannot be executed consistently. | Design Action Registry after runtime resources stabilize. |
+| Action Registry v0 needs audit and next-layer design | v0 now describes resource-backed actions and consumes classResource / pactMagic, but it intentionally excludes spellSlot costs, full action economy, attacks, damage, targets, concentration, and combat logging. | Audit v0 registry entries, then design the next narrow layer. |
 | Concentration absent | Many spells and features need single-active concentration tracking. | Add concentration runtime state. |
 | Divine Smite / Cunning Strike / Metamagic not modeled | These are action/spell/attack option systems, not generic class resources. | Add as future Action Registry or option registry work, not as `classResources`. |
 | Invocations modeled as count-like resource | Invocations are choices/passives, not spendable uses. | Move to feature choice registry later. |

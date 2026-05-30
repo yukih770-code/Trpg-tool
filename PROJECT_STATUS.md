@@ -20,6 +20,13 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | 2024 progression foundation (XP / proficiency / ASI) | ✅ Done |
 | classResources container | ✅ Done |
 | pactMagicState container | ✅ Done |
+| DND Gameplay Interaction v0 | ✅ Done |
+| Action Registry v0 | ✅ Done |
+
+Action Registry v0 scope:
+- Supports only `classResource` and `pactMagic` resource costs.
+- Does not support `spellSlot` resource costs.
+- Does not implement full action economy, attack resolution, damage resolution, enemy targets, concentration, or combat log integration.
 
 ### Call of Cthulhu (COC)
 
