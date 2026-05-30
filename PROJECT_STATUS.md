@@ -19,9 +19,11 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | Cross-System Rule & Feature Architecture phase | 🚧 In Progress |
 | TRPG_SYSTEM_FEATURE_MATRIX.md | ✅ Added |
 | SYSTEM_PAGE_RESPONSIBILITY.md | ✅ Added |
+| AI_HOST_ARCHITECTURE.md | ✅ Added |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
+- Documents AI Assistant / AI Co-Host / AI Host roles and future ProposedCommand boundaries.
 - No `src` changes, package changes, store changes, schema changes, or migration changes.
 
 ### D&D 5e / 2024
