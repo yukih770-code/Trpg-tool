@@ -1,15 +1,11 @@
 import { useState } from 'react';
 import { useCharacterStore } from '../store/characterStore';
-import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { AttributeName, SkillName } from '../lib/dnd-types';
 import { BACKGROUND_DATA } from '../data/backgrounds';
 import { getAvailableClasses, getAvailableRaces, getAvailableFeats } from '../lib/mod-utils';
-import { toast } from 'sonner';
 
 export function Sheet() {
   const {
@@ -65,14 +61,6 @@ export function Sheet() {
     { name: '驯兽', attr: 'Wis' }, { name: '洞察', attr: 'Wis' }, { name: '医药', attr: 'Wis' }, { name: '察觉', attr: 'Wis' }, { name: '生存', attr: 'Wis' },
     { name: '欺瞒', attr: 'Cha' }, { name: '威吓', attr: 'Cha' }, { name: '表演', attr: 'Cha' }, { name: '游说', attr: 'Cha' }
   ];
-
-  const rollCheck = (name: string, modifier: number) => {
-    const roll = Math.floor(Math.random() * 20) + 1;
-    const total = roll + modifier;
-    toast(`🎲 ${name}检定:`, {
-      description: `1d20(${roll}) ${modifier >= 0 ? '+' : ''}${modifier} = ${total}`,
-    });
-  };
 
   if (!character.isCompleted) {
     return <div className="text-center py-20 text-[#58180d]/60 font-bold uppercase tracking-widest text-sm">请先在创建器中完成角色创建。</div>;
@@ -159,11 +147,10 @@ export function Sheet() {
           const { score, mod } = getAttrData(a.key);
           return (
             <div key={a.key} 
-                className="bg-[#ede1c5] p-3 border border-[#58180d] flex flex-col items-center cursor-pointer hover:bg-[#58180d] hover:text-white transition-colors group" 
-                onClick={() => rollCheck(`${a.label}检定`, mod)}>
-              <span className="text-xs uppercase font-bold text-[#58180d] group-hover:text-white/80">{a.label} {a.key}</span>
+                className="bg-[#ede1c5] p-3 border border-[#58180d] flex flex-col items-center">
+              <span className="text-xs uppercase font-bold text-[#58180d]">{a.label} {a.key}</span>
               <span className="text-3xl font-black">{score}</span>
-              <span className="bg-[#58180d] text-white text-xs px-2 py-0.5 rounded-full group-hover:bg-white group-hover:text-[#58180d]">{mod >= 0 ? '+' : ''}{mod}</span>
+              <span className="bg-[#58180d] text-white text-xs px-2 py-0.5 rounded-full">{mod >= 0 ? '+' : ''}{mod}</span>
             </div>
           )
         })}
@@ -178,8 +165,8 @@ export function Sheet() {
               const isProf = activeSkills.includes(skill.name);
               const mod = getAttrData(skill.attr).mod + (isProf ? profBonus : 0);
               return (
-                <div key={skill.name} onClick={() => rollCheck(skill.name, mod)}
-                    className={`flex justify-between items-center p-1 cursor-pointer hover:bg-[#58180d]/10 ${!isProf ? 'opacity-70' : ''}`}>
+                <div key={skill.name}
+                    className={`flex justify-between items-center p-1 ${!isProf ? 'opacity-70' : ''}`}>
                   <span className="flex gap-2">
                     {isProf ? <span className="text-[#58180d] font-bold">●</span> : <span>○</span>} 
                     {skill.name}
@@ -199,7 +186,7 @@ export function Sheet() {
               const isProf = savingThrows.includes(a.key); 
               const totalMod = mod + (isProf ? profBonus : 0);
               return (
-                 <div key={`save-${a.key}`} className={`flex justify-between p-1 cursor-pointer hover:bg-[#58180d]/10 ${!isProf ? 'opacity-70' : ''}`} onClick={() => rollCheck(`${a.label}豁免`, totalMod)}>
+                 <div key={`save-${a.key}`} className={`flex justify-between p-1 ${!isProf ? 'opacity-70' : ''}`}>
                    <span className="flex gap-2">
                      {isProf ? <span className="text-[#58180d] font-bold">●</span> : <span>○</span>}
                      {a.label} {a.key}
@@ -215,11 +202,11 @@ export function Sheet() {
       {/* Combat Stats Column */}
       <div className="col-span-1 lg:col-span-4 flex flex-col gap-4">
         <div className="grid grid-cols-3 gap-2 h-24">
-          <div className="border-2 border-[#58180d] bg-white flex flex-col items-center justify-center cursor-pointer hover:bg-neutral-100" onClick={() => rollCheck("防御检定", acTotal)}>
+          <div className="border-2 border-[#58180d] bg-white flex flex-col items-center justify-center">
             <span className="text-[10px] font-bold uppercase">护甲等级 AC</span>
             <span className="text-3xl font-bold">{acTotal}</span>
           </div>
-          <div className="border-2 border-[#58180d] bg-white flex flex-col items-center justify-center cursor-pointer hover:bg-neutral-100" onClick={() => rollCheck("先攻", initiative)}>
+          <div className="border-2 border-[#58180d] bg-white flex flex-col items-center justify-center">
             <span className="text-[10px] font-bold uppercase">先攻 Init</span>
             <span className="text-3xl font-bold">{initiative >= 0 ? '+' : ''}{initiative}</span>
           </div>
