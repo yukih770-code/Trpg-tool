@@ -22,11 +22,18 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | pactMagicState container | ✅ Done |
 | DND Gameplay Interaction v0 | ✅ Done |
 | Action Registry v0 | ✅ Done |
+| DND Structured LogEntry v1 | ✅ Done |
 
 Action Registry v0 scope:
 - Supports only `classResource` and `pactMagic` resource costs.
 - Does not support `spellSlot` resource costs.
 - Does not implement full action economy, attack resolution, damage resolution, enemy targets, concentration, or combat log integration.
+
+DND Structured LogEntry v1 scope:
+- DND Gameplay local `combatLog` uses `RuntimeLogEntry[]` instead of `string[]`.
+- Default visibility is `public`.
+- Local UI state only; no store, schema, or migration changes.
+- No visibility filtering, reveal workflow, Host Console, or multiplayer sync.
 
 ### Call of Cthulhu (COC)
 

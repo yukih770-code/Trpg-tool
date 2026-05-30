@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { getAvailableSpells, getAvailableClasses, getAvailableFeats } from '../lib/mod-utils';
 import { AttributeName, SkillName, SpellInfo } from '../lib/dnd-types';
+import type { RuntimeLogEntry, RuntimeLogKind } from '../lib/runtime-log-types';
 import { DND_ACTION_REGISTRY } from '../lib/dnd2024/actionRegistry';
 import type { DndActionDefinition, ResourceCost } from '../lib/dnd2024/action-registry-types';
 import { ActionsPanel } from './gameplay/ActionsPanel';
@@ -14,13 +15,39 @@ import { SpellbookPanel } from './gameplay/SpellbookPanel';
 import { VitalsPanel } from './gameplay/VitalsPanel';
 import { toast } from 'sonner';
 
-interface LatestRollConsoleResult {
-  kind: 'check' | 'roll' | 'action' | 'system';
+type DndLogInput = {
+  kind: RuntimeLogKind;
   title: string;
-  displayValue: string;
-  calculation: string;
-  tag?: string;
+  summary: string;
+  detail?: string;
+  displayValue?: number | string;
+  calculation?: string;
   outcome?: string;
+  tags?: string[];
+  payload?: unknown;
+};
+
+function createDndLogEntry(input: DndLogInput): RuntimeLogEntry {
+  return {
+    id: `dnd-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    timestamp: Date.now(),
+    system: 'dnd',
+    visibility: 'public',
+    ...input,
+    tags: ['dnd', ...(input.tags || [])],
+  };
+}
+
+function createDndSystemLogEntry(summary: string): RuntimeLogEntry {
+  return createDndLogEntry({
+    kind: 'system',
+    title: '系统提示',
+    summary,
+    displayValue: '待命',
+    calculation: summary,
+    outcome: '等待 DM 判定',
+    tags: ['system'],
+  });
 }
 
 export function Gameplay() {
@@ -43,14 +70,9 @@ export function Gameplay() {
   const [selectedSubclass, setSelectedSubclass] = useState<string>('');
   const [asiChoices, setAsiChoices] = useState<AttributeName[]>([]);
   const [selectedFeat, setSelectedFeat] = useState<string | null>(null);
-  const [combatLog, setCombatLog] = useState<string[]>(['[系统] 战斗模拟面板已就绪。']);
-  const [latestResult, setLatestResult] = useState<LatestRollConsoleResult>({
-    kind: 'system',
-    title: '系统提示',
-    displayValue: '待命',
-    calculation: '等待检定、动作或掷骰。',
-    outcome: '未设置 DC，等待 DM 判定',
-  });
+  const [combatLog, setCombatLog] = useState<RuntimeLogEntry[]>([
+    createDndSystemLogEntry('战斗模拟面板已就绪。'),
+  ]);
   const [checkDc, setCheckDc] = useState('');
 
   const SPELL_DATA = getAvailableSpells(character);
@@ -193,20 +215,32 @@ export function Gameplay() {
     const natTag = d20 === 20 ? '天然 20 / NAT 20' : d20 === 1 ? '天然 1 / NAT 1' : undefined;
     const outcome = hasDc
       ? `${total >= parsedDc ? '成功' : '失败'}`
-      : '未设置 DC，等待 DM 判定';
-    const dcPart = hasDc ? `DC=${parsedDc}，${outcome}` : outcome;
-    const natPart = natTag ? `，${natTag}` : '';
-    const logLine = `[检定] ${name}：d20=${d20}，修正=${formatModifier(modifier)}，总计=${total}${natPart}，${dcPart}`;
-
-    setLatestResult({
+      : '等待 DM 判定';
+    const dcPart = hasDc ? `DC=${parsedDc}，${outcome}` : '未设置 DC，等待 DM 判定';
+    const calculation = `d20=${d20} + 修正=${formatModifier(modifier)} = ${total}`;
+    const tags = ['check'];
+    if (d20 === 20) tags.push('nat20');
+    if (d20 === 1) tags.push('nat1');
+    const entry = createDndLogEntry({
       kind: 'check',
       title: name,
-      displayValue: String(total),
-      calculation: `d20=${d20} + 修正=${formatModifier(modifier)}`,
-      tag: natTag,
-      outcome: dcPart,
+      summary: `总计 ${total}，${dcPart}`,
+      detail: natTag ? `${calculation}，${natTag}，${dcPart}` : `${calculation}，${dcPart}`,
+      displayValue: total,
+      calculation,
+      outcome,
+      tags,
+      payload: {
+        d20,
+        modifier,
+        total,
+        dc: hasDc ? parsedDc : undefined,
+        nat20: d20 === 20,
+        nat1: d20 === 1,
+        checkName: name,
+      },
     });
-    setCombatLog(prev => [logLine, ...prev].slice(0, 20));
+    setCombatLog(prev => [entry, ...prev].slice(0, 20));
   };
 
   const getClassResource = (resourceId?: string) => (
@@ -282,21 +316,38 @@ export function Gameplay() {
         .map(cost => `${cost.label} -${cost.amount}，剩余 ${Math.max(0, cost.current - cost.amount)} / ${cost.max}`)
         .join('；'),
     });
-    setLatestResult({
+    const actionSummary = previews
+      .map(cost => `消耗 ${cost.label} ${cost.amount}，剩余 ${Math.max(0, cost.current - cost.amount)}/${cost.max}`)
+      .join('；');
+    const firstCost = action.resourceCost[0];
+    const firstPreview = previews[0];
+    const entry = createDndLogEntry({
       kind: 'action',
       title: `动作：${action.name}`,
+      summary: actionSummary,
       displayValue: '使用',
-      calculation: previews
-        .map(cost => `${cost.label} -${cost.amount}，剩余 ${Math.max(0, cost.current - cost.amount)}/${cost.max}`)
-        .join('；'),
-      outcome: '动作已记录，具体效果由当前规则流程处理',
+      outcome: '已使用',
+      tags: ['action', ...(action.category ? [action.category] : [])],
+      payload: {
+        actionId: action.id,
+        actionName: action.name,
+        resourceId: firstCost?.resourceId || firstCost?.resourceType,
+        amount: firstCost?.amount,
+        remaining: firstPreview ? Math.max(0, firstPreview.current - firstPreview.amount) : undefined,
+        max: firstPreview?.max,
+        costs: action.resourceCost.map((cost, index) => {
+          const preview = previews[index];
+          return {
+            resourceType: cost.resourceType,
+            resourceId: cost.resourceId,
+            amount: cost.amount,
+            remaining: preview ? Math.max(0, preview.current - preview.amount) : undefined,
+            max: preview?.max,
+          };
+        }),
+      },
     });
-    setCombatLog(prev => [
-      `[动作] ${action.name}：${previews
-        .map(cost => `消耗 ${cost.label} ${cost.amount}，剩余 ${Math.max(0, cost.current - cost.amount)}/${cost.max}`)
-        .join('；')}`,
-      ...prev,
-    ].slice(0, 20));
+    setCombatLog(prev => [entry, ...prev].slice(0, 20));
   };
 
   const handleLevelUpConfirm = () => {
@@ -417,7 +468,6 @@ export function Gameplay() {
 
       <RollConsolePanel
         combatLog={combatLog}
-        latestResult={latestResult}
       />
 
       {/* Level Up Modal Overlay */}
