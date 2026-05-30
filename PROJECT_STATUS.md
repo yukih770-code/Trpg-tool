@@ -12,6 +12,18 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 
 ## System Status
 
+### Cross-System Rule & Feature Architecture
+
+| Item | Status |
+|------|--------|
+| Cross-System Rule & Feature Architecture phase | 🚧 In Progress |
+| TRPG_SYSTEM_FEATURE_MATRIX.md | ✅ Added |
+| SYSTEM_PAGE_RESPONSIBILITY.md | ✅ Added |
+
+Architecture phase scope:
+- Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
+- No `src` changes, package changes, store changes, schema changes, or migration changes.
+
 ### D&D 5e / 2024
 
 | Item | Status |
@@ -46,6 +58,7 @@ DND Structured LogEntry v1 scope:
 | CocGameplay — uses evaluateCocD100Check | ✅ Done |
 | COC runtime state v2 foundation | ✅ Done |
 | COC Creator skill point constraint v1 | ✅ Done |
+| COC Sheet responsibility cleanup v1 | ✅ Done |
 
 COC runtime state v2 foundation scope:
 - Adds local character `runtime` state for HP, MP, SAN, Luck, status flags, skill growth marks, and pushed roll context.
@@ -57,6 +70,11 @@ COC Creator skill point constraint v1 scope:
 - CocCreator Step 3 now provides creation-time skill allocation with EDU × 4 occupational points and INT × 2 personal interest points.
 - Skills can be marked occupational, personal, or unallocated, with current values clamped between base value and 90.
 - No occupation skill table, Credit Rating range, age adjustments, Sheet cleanup, Gameplay automation, or Keeper Console.
+
+COC Sheet responsibility cleanup v1 scope:
+- CocSheet no longer performs sheet-side roll/toast checks or unrestricted skill value editing.
+- HP, MP, SAN, and Luck are displayed read-only from runtime state with legacy field fallback.
+- Skill growth checkboxes use `runtime.skillGrowthMarks`; no automatic growth resolution or Gameplay RollConsole wiring.
 
 ### Cyberpunk RED (CP)
 

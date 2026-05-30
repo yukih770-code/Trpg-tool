@@ -1,38 +1,27 @@
 import { useCocStore } from '../store/cocStore';
-import { getCocDerivedStats, evaluateCocD100Check } from '../lib/coc-utils';
+import { getCocDerivedStats } from '../lib/coc-utils';
 import { Input } from '../../components/ui/input';
-import { toast } from 'sonner';
 
 export function CocSheet() {
-  const { character, updateField, updateCharacteristic, updateSkill } = useCocStore();
+  const { character, updateField, toggleSkillGrowthMark } = useCocStore();
 
   const { db, build, move } = getCocDerivedStats(character.characteristics);
-
-  // ── Success level → display label mapping (UI-layer only, not in coc-utils) ──
-  const COC_LEVEL_LABELS: Record<string, string> = {
-    critical: '大成功 (Critical)',
-    extreme:  '极难成功 (Extreme Success)',
-    hard:     '困难成功 (Hard Success)',
-    regular:  '成功 (Regular Success)',
-    failure:  '失败 (Failure)',
-    fumble:   '大失败 (Fumble)',
+  const runtime = character.runtime;
+  const runtimeHp = runtime?.hp ?? character.hp;
+  const runtimeMp = runtime?.mp ?? character.mp;
+  const runtimeSan = runtime?.san ?? {
+    current: character.sanity.current,
+    max: character.sanity.max,
+    initial: character.sanity.start,
   };
-
-  const rollSkill = (name: string, value: number) => {
-    const roll = Math.floor(Math.random() * 100) + 1;
-    const { successLevel } = evaluateCocD100Check(value, roll);
-    const result = COC_LEVEL_LABELS[successLevel] ?? successLevel;
-    toast(`🎲 ${name} 检定:`, {
-      description: `1d100 掷出 ${roll} / ${value}  => ${result}`,
-    });
-  };
+  const runtimeLuck = runtime?.luck ?? { current: character.luck.current };
 
   const renderCharacteristic = (label: string, key: keyof typeof character.characteristics) => {
     const val = character.characteristics[key];
     return (
       <div className="border border-[#059669]/30 p-2 bg-[#1a1a1a] flex flex-col items-center">
         <div className="text-[10px] uppercase font-mono text-[#059669]/70 mb-1">{label}</div>
-        <div className="text-2xl font-bold cursor-pointer hover:text-[#059669] transition-colors" onClick={() => rollSkill(label, val)}>
+        <div className="text-2xl font-bold">
           {val}
         </div>
         <div className="flex w-full justify-between px-2 mt-1 gap-1 text-[10px] opacity-60">
@@ -66,16 +55,16 @@ export function CocSheet() {
           {renderCharacteristic('教育 EDU', 'EDU')}
           {renderCharacteristic('体型 SIZ', 'SIZ')}
           {renderCharacteristic('智力 INT', 'INT')}
-          <div className="border border-[#059669]/30 p-2 bg-[#1a1a1a] flex flex-col items-center border-l-[#059669]">
-             <div className="text-[10px] uppercase font-mono text-[#059669]/70 mb-1">幸运 LUK</div>
-             <div className="text-2xl font-bold cursor-pointer hover:text-[#059669] transition-colors" onClick={() => rollSkill('幸运', character.luck.current)}>
-               {character.luck.current}
-             </div>
-             <div className="flex w-full justify-between px-2 mt-1 gap-1 text-[10px] opacity-60">
-               <div>{Math.floor(character.luck.current/2)}</div>
-               <div>{Math.floor(character.luck.current/5)}</div>
-             </div>
-          </div>
+           <div className="border border-[#059669]/30 p-2 bg-[#1a1a1a] flex flex-col items-center border-l-[#059669]">
+              <div className="text-[10px] uppercase font-mono text-[#059669]/70 mb-1">幸运 LUK</div>
+              <div className="text-2xl font-bold">
+                {runtimeLuck.current}
+              </div>
+              <div className="flex w-full justify-between px-2 mt-1 gap-1 text-[10px] opacity-60">
+                <div>{Math.floor(runtimeLuck.current/2)}</div>
+                <div>{Math.floor(runtimeLuck.current/5)}</div>
+              </div>
+           </div>
         </div>
       </div>
 
@@ -86,23 +75,26 @@ export function CocSheet() {
              <div className="flex justify-between items-center pb-2 border-b border-[#059669]/20">
                <span className="text-[#059669]">理智 (SAN)</span>
                <div className="flex items-center gap-2">
-                 <Input className="w-12 h-6 p-1 text-center bg-transparent border-[#059669]/30 text-white rounded-none" value={character.sanity.current} onChange={(e) => updateField('sanity', {...character.sanity, current: parseInt(e.target.value)||0})} />
-                 <span>/ {character.sanity.max}</span>
+                  <span className="font-bold text-white">{runtimeSan.current}</span>
+                  <span>/ {runtimeSan.max}</span>
                </div>
              </div>
              <div className="flex justify-between items-center pb-2 border-b border-[#059669]/20">
                <span className="text-[#059669]">体数 (HP)</span>
                <div className="flex items-center gap-2">
-                 <Input className="w-12 h-6 p-1 text-center bg-transparent border-[#059669]/30 text-white rounded-none" value={character.hp.current} onChange={(e) => updateField('hp', {...character.hp, current: parseInt(e.target.value)||0})} />
-                 <span>/ {character.hp.max}</span>
+                  <span className="font-bold text-white">{runtimeHp.current}</span>
+                  <span>/ {runtimeHp.max}</span>
                </div>
              </div>
              <div className="flex justify-between items-center pb-2 border-b border-[#059669]/20">
                <span className="text-[#059669]">魔法 (MP)</span>
                <div className="flex items-center gap-2">
-                 <Input className="w-12 h-6 p-1 text-center bg-transparent border-[#059669]/30 text-white rounded-none" value={character.mp.current} onChange={(e) => updateField('mp', {...character.mp, current: parseInt(e.target.value)||0})} />
-                 <span>/ {character.mp.max}</span>
+                  <span className="font-bold text-white">{runtimeMp.current}</span>
+                  <span>/ {runtimeMp.max}</span>
                </div>
+             </div>
+             <div className="text-[10px] text-[#059669]/70 leading-relaxed">
+               运行时数值请在游玩面板修改。
              </div>
              <div className="flex justify-between items-center">
                <span className="text-[#059669] opacity-70">克苏鲁神话</span>
@@ -130,32 +122,33 @@ export function CocSheet() {
         <div className="md:col-span-9 border border-[#059669]/30 bg-[#111] p-4 text-[#d4d4d8]">
            <h3 className="text-[#059669] font-bold uppercase tracking-widest mb-4 border-b border-[#059669]/30 pb-2">调查员技能 (Investigator Skills)</h3>
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
-             {character.skills.sort((a,b) => a.name.localeCompare(b.name)).map(skill => (
-                <div key={skill.name} className="flex items-center justify-between group">
-                  <div className="flex items-center gap-2 flex-1">
-                    <input type="checkbox" className="accent-[#059669]" checked={skill.canImprove} onChange={(e) => {
-                       const newSkills = [...character.skills];
-                       const s = newSkills.find(ns => ns.name === skill.name);
-                       if (s) s.canImprove = e.target.checked;
-                       updateField('skills', newSkills);
-                    }} />
-                    <span 
-                      className="text-xs sm:text-sm font-mono cursor-pointer hover:text-[#059669] transition-colors truncate block flex-1"
-                      onClick={() => rollSkill(skill.name, skill.value)}
-                      title={skill.name}
-                    >
-                      {skill.name.split(' (')[0]} <span className="opacity-40 text-[9px] uppercase hidden sm:inline">{skill.name.split(' (')[1]?.replace(')','')}</span>
-                    </span>
-                  </div>
-                  <div className="flex gap-1 ml-2 shrink-0">
-                    <Input 
-                       className="w-8 h-6 p-0 text-center bg-transparent border-b border-t-0 border-x-0 border-dashed border-[#059669]/50 focus:border-[#059669] text-white rounded-none font-bold font-mono text-sm"
-                       value={skill.value}
-                       onChange={(e) => updateSkill(skill.name, parseInt(e.target.value) || 0)}
-                    />
-                    <div className="flex flex-col text-[8px] font-mono opacity-50 justify-center w-4">
-                       <span>{Math.floor(skill.value/2)}</span>
-                       <span>{Math.floor(skill.value/5)}</span>
+             {[...character.skills].sort((a,b) => a.name.localeCompare(b.name)).map(skill => (
+                 <div key={skill.name} className="flex items-center justify-between group">
+                   <div className="flex items-center gap-2 flex-1">
+                     <input
+                       type="checkbox"
+                       className="accent-[#059669]"
+                       checked={Boolean(runtime?.skillGrowthMarks?.[skill.name])}
+                       onChange={() => toggleSkillGrowthMark(skill.name)}
+                       title="成长标记"
+                     />
+                     <div className="flex-1 min-w-0">
+                       <div className="text-xs sm:text-sm font-mono truncate" title={skill.name}>
+                         {skill.name.split(' (')[0]} <span className="opacity-40 text-[9px] uppercase hidden sm:inline">{skill.name.split(' (')[1]?.replace(')','')}</span>
+                       </div>
+                       <div className="flex gap-1 mt-0.5 text-[9px] font-mono">
+                         {skill.isOccupational && <span className="text-[#34d399]">本职</span>}
+                         {skill.isPersonal && <span className="text-[#a7f3d0]">兴趣</span>}
+                       </div>
+                     </div>
+                   </div>
+                   <div className="flex gap-1 ml-2 shrink-0">
+                     <div className="w-9 text-center text-white font-bold font-mono text-sm">
+                       {skill.value}
+                     </div>
+                     <div className="flex flex-col text-[8px] font-mono opacity-50 justify-center w-4">
+                        <span>{Math.floor(skill.value/2)}</span>
+                        <span>{Math.floor(skill.value/5)}</span>
                     </div>
                   </div>
                 </div>
