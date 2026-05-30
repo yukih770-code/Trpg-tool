@@ -5,7 +5,9 @@
 //
 // Changelog:
 //   v1  Initial versioning (schemaVersion field added).
-export const CURRENT_COC_CHARACTER_SCHEMA_VERSION = 1;
+//   v2  Added optional runtime state for player-side HP/MP/SAN/Luck flags,
+//       skill growth marks, and pushed roll context.
+export const CURRENT_COC_CHARACTER_SCHEMA_VERSION = 2;
 
 export type CocCharacteristic = 'STR' | 'CON' | 'SIZ' | 'DEX' | 'APP' | 'INT' | 'POW' | 'EDU' | 'LUK';
 
@@ -26,6 +28,38 @@ export interface CocWeapon {
   attacks: number;
   ammo: number;
   malfunction: number;
+}
+
+export interface CocRuntimeState {
+  hp: {
+    current: number;
+    max: number;
+  };
+  mp: {
+    current: number;
+    max: number;
+  };
+  san: {
+    current: number;
+    max: number;
+    initial: number;
+  };
+  luck: {
+    current: number;
+  };
+  flags: {
+    isMajorWound: boolean;
+    isDying: boolean;
+    isUnconscious: boolean;
+    isTemporarilyInsane: boolean;
+    isIndefinitelyInsane: boolean;
+  };
+  skillGrowthMarks: Record<string, boolean>;
+  pushedRollContext?: {
+    skillKey: string;
+    skillName: string;
+    previousRoll: number;
+  };
 }
 
 export interface CocCharacter {
@@ -59,6 +93,8 @@ export interface CocCharacter {
     current: number;
     start: number;
   };
+
+  runtime?: CocRuntimeState;
   
   skills: CocSkill[];
   weapons: CocWeapon[];

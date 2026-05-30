@@ -44,6 +44,19 @@ DND Structured LogEntry v1 scope:
 | CocCreator — uses getCocDerivedHp/Mp/InitialSan/SanMax | ✅ Done |
 | CocSheet — uses evaluateCocD100Check | ✅ Done |
 | CocGameplay — uses evaluateCocD100Check | ✅ Done |
+| COC runtime state v2 foundation | ✅ Done |
+| COC Creator skill point constraint v1 | ✅ Done |
+
+COC runtime state v2 foundation scope:
+- Adds local character `runtime` state for HP, MP, SAN, Luck, status flags, skill growth marks, and pushed roll context.
+- Migrates old COC characters to schemaVersion 2 and fills missing runtime fields idempotently.
+- Adds store actions for runtime initialization and manual HP/MP/SAN/Luck/flag/growth-mark/pushed-roll updates.
+- No COC UI wiring, Keeper Console, visibility filtering, full insanity flow, Luck spending UI, or pushed roll UI.
+
+COC Creator skill point constraint v1 scope:
+- CocCreator Step 3 now provides creation-time skill allocation with EDU × 4 occupational points and INT × 2 personal interest points.
+- Skills can be marked occupational, personal, or unallocated, with current values clamped between base value and 90.
+- No occupation skill table, Credit Rating range, age adjustments, Sheet cleanup, Gameplay automation, or Keeper Console.
 
 ### Cyberpunk RED (CP)
 

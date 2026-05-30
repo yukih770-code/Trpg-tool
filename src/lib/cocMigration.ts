@@ -22,11 +22,13 @@
  * ─────────
  *   v0 → v1  Initial versioning; no field changes — this migration only adds
  *             `schemaVersion: 1` to pre-existing saves.
+ *   v1 → v2  Adds optional runtime state for HP/MP/SAN/Luck pools, status flags,
+ *             skill growth marks, and pushed roll context.
  *
  * Reserved future versions (do NOT implement yet — placeholders only)
  * ─────────────────────────────────────────────────────────────────────
- *   v2  sanityState?: SanityState           — runtime insanity tracking
- *   v3  woundState?: WoundState             — major wound / unconscious
+ *   v3  sanityState?: SanityState           — runtime insanity tracking
+ *   v4  woundState?: WoundState             — major wound / unconscious
  *   v4  temporaryInsanityState?: ...        — temporary insanity
  *   v5  indefiniteInsanityState?: ...       — indefinite insanity
  *   v6  skillGrowthMarks: string[]          — skills checked this session
@@ -38,6 +40,7 @@
 
 import {
   CocCharacter,
+  CocRuntimeState,
   CocSkill,
   CocWeapon,
   CocCharacteristic,
@@ -67,6 +70,10 @@ function str(v: unknown, fallback: string): string {
 /** Return v if it is a non-null array, otherwise []. */
 function arr<T>(v: unknown): T[] {
   return Array.isArray(v) ? (v as T[]) : [];
+}
+
+function bool(v: unknown, fallback = false): boolean {
+  return typeof v === 'boolean' ? v : fallback;
 }
 
 // ─── Field-level coercions ────────────────────────────────────────────────────
@@ -235,6 +242,100 @@ function migrateFinances(raw: unknown): CocCharacter['finances'] {
   };
 }
 
+function findSkillValue(skills: CocSkill[], includes: string): number {
+  const found = skills.find(skill => skill.name.includes(includes));
+  return found ? found.value : 0;
+}
+
+function getRuntimeFallback(character: Pick<CocCharacter, 'characteristics' | 'hp' | 'mp' | 'sanity' | 'luck' | 'skills'>): CocRuntimeState {
+  const derivedHp = Math.floor((character.characteristics.CON + character.characteristics.SIZ) / 10);
+  const derivedMp = Math.floor(character.characteristics.POW / 5);
+  const initialSan = character.sanity.start || character.characteristics.POW;
+  const mythos = findSkillValue(character.skills, '克苏鲁神话');
+
+  return {
+    hp: {
+      current: character.hp.current || character.hp.max || derivedHp,
+      max: character.hp.max || derivedHp,
+    },
+    mp: {
+      current: character.mp.current || character.mp.max || derivedMp,
+      max: character.mp.max || derivedMp,
+    },
+    san: {
+      current: character.sanity.current || initialSan,
+      max: character.sanity.max || Math.max(0, 99 - mythos),
+      initial: initialSan,
+    },
+    luck: {
+      current: character.luck.current || character.luck.start || character.characteristics.LUK,
+    },
+    flags: {
+      isMajorWound: false,
+      isDying: false,
+      isUnconscious: false,
+      isTemporarilyInsane: false,
+      isIndefinitelyInsane: false,
+    },
+    skillGrowthMarks: {},
+    pushedRollContext: undefined,
+  };
+}
+
+function migrateRuntime(raw: unknown, fallback: CocRuntimeState): CocRuntimeState {
+  const r = obj(raw);
+  const hp = obj(r.hp);
+  const mp = obj(r.mp);
+  const san = obj(r.san);
+  const luck = obj(r.luck);
+  const flags = obj(r.flags);
+  const marks = obj(r.skillGrowthMarks);
+  const pushed = obj(r.pushedRollContext);
+  const pushedSkillKey = pushed.skillKey;
+  const pushedSkillName = pushed.skillName;
+  const pushedPreviousRoll = pushed.previousRoll;
+  const hasPushedContext =
+    typeof pushedSkillKey === 'string' &&
+    typeof pushedSkillName === 'string' &&
+    typeof pushedPreviousRoll === 'number';
+
+  return {
+    hp: {
+      current: num(hp.current, fallback.hp.current),
+      max: num(hp.max, fallback.hp.max),
+    },
+    mp: {
+      current: num(mp.current, fallback.mp.current),
+      max: num(mp.max, fallback.mp.max),
+    },
+    san: {
+      current: num(san.current, fallback.san.current),
+      max: num(san.max, fallback.san.max),
+      initial: num(san.initial, fallback.san.initial),
+    },
+    luck: {
+      current: num(luck.current, fallback.luck.current),
+    },
+    flags: {
+      isMajorWound: bool(flags.isMajorWound, fallback.flags.isMajorWound),
+      isDying: bool(flags.isDying, fallback.flags.isDying),
+      isUnconscious: bool(flags.isUnconscious, fallback.flags.isUnconscious),
+      isTemporarilyInsane: bool(flags.isTemporarilyInsane, fallback.flags.isTemporarilyInsane),
+      isIndefinitelyInsane: bool(flags.isIndefinitelyInsane, fallback.flags.isIndefinitelyInsane),
+    },
+    skillGrowthMarks: Object.fromEntries(
+      Object.entries(marks).map(([key, value]) => [key, Boolean(value)]),
+    ),
+    pushedRollContext: hasPushedContext
+      ? {
+          skillKey: pushedSkillKey,
+          skillName: pushedSkillName,
+          previousRoll: pushedPreviousRoll,
+        }
+      : undefined,
+  };
+}
+
 // ─── Main migration entry point ───────────────────────────────────────────────
 
 export function migrateCocCharacter(data: unknown): CocCharacter {
@@ -273,30 +374,9 @@ export function migrateCocCharacter(data: unknown): CocCharacter {
     inventory: arr<string>(d.inventory),
     backstory: migrateBackstory(d.backstory),
     finances:  migrateFinances(d.finances),
-
-    // ── Future runtime-state fields (reserved — not yet implemented) ──────
-    // sanityState?: SanityState;
-    //   Temporary / indefinite insanity tracking; will be added in a future
-    //   migration step.
-    //
-    // woundState?: WoundState;
-    //   Major wound / unconscious flags; will be added in a future step.
-    //
-    // skillGrowthMarks?: string[];
-    //   Skills checked for improvement this session; future step.
-    //
-    // pushedRollState?: PushedRollState;
-    //   Tracks a pending push attempt; future step.
-    //
-    // bonusPenaltyDice?: number;
-    //   Net bonus/penalty dice modifier for the next roll; future step.
-    //
-    // caseLog?: string[];
-    //   Free-form session notes; future step.
-    //
-    // clueLog?: string[];
-    //   Structured clue entries; future step.
   };
+
+  migrated.runtime = migrateRuntime(d.runtime, getRuntimeFallback(migrated));
 
   // ─── Version-gated migration steps ────────────────────────────────────────
   // Each case upgrades the object from version N to N+1.
@@ -310,12 +390,19 @@ export function migrateCocCharacter(data: unknown): CocCharacter {
         migrated.schemaVersion = 1;
         break;
 
+      case 1:
+        // v1 → v2: Runtime was reconstructed above. Existing runtime current
+        // values are preserved by migrateRuntime().
+        version = 2;
+        migrated.schemaVersion = 2;
+        break;
+
       // ── Future migration steps ──────────────────────────────────────────
-      // case 1:
-      //   // v1 → v2: Add sanityState with default undefined.
+      // case 2:
+      //   // v2 → v3: Add sanityState with default undefined.
       //   // (migrated as sanityState is already undefined from base construction)
-      //   version = 2;
-      //   migrated.schemaVersion = 2;
+      //   version = 3;
+      //   migrated.schemaVersion = 3;
       //   break;
 
       default:

@@ -289,6 +289,16 @@ export interface CocRollCheckResult {
   isSuccess: boolean;
   isCritical: boolean;
   isFumble: boolean;
+  hardThreshold: number;
+  extremeThreshold: number;
+}
+
+export type CocCheckKind = 'skill' | 'attribute' | 'luck' | 'san';
+
+export interface CocD100CheckParams {
+  roll: number;
+  target: number;
+  checkKind?: CocCheckKind;
 }
 
 // ─── 5. Roll-evaluation function ─────────────────────────────────────────────
@@ -307,8 +317,7 @@ export interface CocRollCheckResult {
  * Success tiers (evaluated in priority order)
  * ───────────────────────────────────────────
  * 1. Critical  (大成功)   checked FIRST — highest priority
- *      target < 50  →  roll === 1
- *      target ≥ 50  →  roll ∈ [1, 5]
+ *      roll === 1
  *
  * 2. Fumble    (大失败)   checked SECOND — prevents roll=1 at high skill from
  *                        being re-classified as a normal success on the way down
@@ -329,19 +338,18 @@ export interface CocRollCheckResult {
  *     even though 100 ≤ target would normally be a regular success.
  */
 export function evaluateCocD100Check(
-  target: number,
-  roll: number,
+  targetOrParams: number | CocD100CheckParams,
+  maybeRoll?: number,
 ): CocRollCheckResult {
   // ── Input coercion ───────────────────────────────────────────────────────
   // rolls outside [1, 100] are clamped (e.g. a d% result read as 0 → 1)
+  const target = typeof targetOrParams === 'number' ? targetOrParams : targetOrParams.target;
+  const roll = typeof targetOrParams === 'number' ? maybeRoll : targetOrParams.roll;
   const clampedRoll   = Math.max(1, Math.min(100, safeInt(roll,   50)));
   const clampedTarget = Math.max(0,              safeInt(target,   0));
 
   // ── Critical threshold ───────────────────────────────────────────────────
-  const isCritical =
-    clampedTarget < 50
-      ? clampedRoll === 1
-      : clampedRoll >= 1 && clampedRoll <= 5;
+  const isCritical = clampedRoll === 1;
 
   // ── Fumble threshold ─────────────────────────────────────────────────────
   const isFumble =
@@ -383,5 +391,91 @@ export function evaluateCocD100Check(
     isSuccess,
     isCritical,
     isFumble,
+    hardThreshold,
+    extremeThreshold,
+  };
+}
+
+// ─── 6. SAN loss expression helpers ──────────────────────────────────────────
+
+export function parseCocSanLossExpression(expr: string): {
+  successExpr: string;
+  failureExpr: string;
+} {
+  const trimmed = String(expr || '').trim();
+  if (!trimmed) return { successExpr: '0', failureExpr: '0' };
+  const [successExpr, failureExpr] = trimmed.split('/').map(part => part.trim());
+  return {
+    successExpr: successExpr || '0',
+    failureExpr: failureExpr || successExpr || '0',
+  };
+}
+
+function rollCocSimpleExpression(expr: string): { rolls: number[]; total: number } {
+  const normalized = String(expr || '').trim().toLowerCase();
+  if (!normalized) return { rolls: [], total: 0 };
+
+  const fixed = Number(normalized);
+  if (Number.isFinite(fixed)) {
+    return { rolls: [], total: Math.max(0, Math.floor(fixed)) };
+  }
+
+  const match = normalized.match(/^(\d*)d(\d+)$/);
+  if (!match) return { rolls: [], total: 0 };
+
+  const count = Math.max(1, safeInt(match[1] || 1, 1));
+  const sides = Math.max(1, safeInt(match[2], 1));
+  const rolls = Array.from({ length: count }, () => Math.floor(Math.random() * sides) + 1);
+  return {
+    rolls,
+    total: rolls.reduce((sum, roll) => sum + roll, 0),
+  };
+}
+
+export function rollCocSanLoss(expr: string, succeeded: boolean): {
+  expression: string;
+  rolls: number[];
+  total: number;
+} {
+  const parsed = parseCocSanLossExpression(expr);
+  const expression = succeeded ? parsed.successExpr : parsed.failureExpr;
+  const result = rollCocSimpleExpression(expression);
+  return {
+    expression,
+    rolls: result.rolls,
+    total: result.total,
+  };
+}
+
+// ─── 7. Runtime HP helpers ───────────────────────────────────────────────────
+
+export function applyCocHpDelta(params: {
+  currentHp: number;
+  maxHp: number;
+  delta: number;
+  wasMajorWound: boolean;
+}): {
+  nextHp: number;
+  isMajorWound: boolean;
+  isDying: boolean;
+  isUnconscious: boolean;
+  majorWoundTriggered: boolean;
+} {
+  const currentHp = Math.max(0, safeInt(params.currentHp));
+  const maxHp = Math.max(0, safeInt(params.maxHp));
+  const delta = safeInt(params.delta);
+  const nextHp = Math.max(0, Math.min(maxHp, currentHp + delta));
+  const damage = delta < 0 ? Math.abs(delta) : 0;
+  const majorWoundTriggered = damage >= Math.floor(maxHp / 2) && damage > 0;
+  const isMajorWound = Boolean(params.wasMajorWound) || majorWoundTriggered;
+  const isDying = nextHp <= 0 && isMajorWound;
+  const isUnconscious = nextHp <= 0 && !isMajorWound;
+
+  return {
+    nextHp,
+    isMajorWound,
+    isDying,
+    isUnconscious,
+    majorWoundTriggered,
   };
 }
