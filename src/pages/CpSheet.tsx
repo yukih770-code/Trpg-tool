@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useCpStore } from '../store/cpStore';
 import { CP_STAT_ORDER, CP_STAT_LABELS, CP_ROLE_LABELS, CP_SKILLS, CP_ROLE_ABILITIES, CpRelation, CpEnemy, CpLifePath, makeEmptyInventory, type CpInventory, type CpArmor, type CpCyberware } from '../lib/cp-types';
-import { evaluateCpExplodingD10, evaluateCpSkillCheck } from '../lib/cp2024/cp-utils';
 import { toast } from 'sonner';
 
 const T = {
@@ -11,37 +10,14 @@ const T = {
   bgCard: 'bg-[#111]',
 };
 
-// ── 1d10 exploding roll — delegates to evaluateCpExplodingD10 ─
-function rollExplodingD10(): { total: number; label: string; isCrit: boolean } {
-  const natural = Math.floor(Math.random() * 10) + 1;
-  const extra   = (natural === 10 || natural === 1) ? Math.floor(Math.random() * 10) + 1 : undefined;
-  const r       = evaluateCpExplodingD10(natural, extra);
-  const total   = r.natural + r.totalModifierFromCritical;
-  const label   = r.isCriticalSuccess
-    ? `🎯 大成功! [10]+[${r.extra}]=${total}`
-    : r.isCriticalFailure
-    ? `💀 大失败! [1]-[${r.extra}]=${total}`
-    : `[${r.natural}]`;
-  return { total, label, isCrit: r.isCriticalSuccess };
-}
-
-function rollDamage(diceStr: string): { rolls: number[]; total: number; critInjury: boolean } {
-  const m = diceStr.match(/(\d+)d(\d+)/i);
-  if (!m) return { rolls: [], total: 0, critInjury: false };
-  const count = parseInt(m[1]), sides = parseInt(m[2]);
-  const rolls = Array.from({ length: count }, () => Math.floor(Math.random() * sides) + 1);
-  return { rolls, total: rolls.reduce((a, b) => a + b, 0), critInjury: rolls.filter(r => r === sides).length >= 2 };
-}
-
 export function CpSheet() {
-  const { character, updateField, changeHp,
+  const { character, updateField,
           addFriend, removeFriend, addRomance, removeRomance,
           addEnemy, removeEnemy, updateLifePath,
           carryWeapon, removeWeapon, equipArmor, unequipArmor,
           wearFashion, removeClothing, installCyberware, removeCyberware,
         } = useCpStore();
   const { stats, skills, armorBody, armorHead, cyberware, weapons, humanity, clothing, injuries } = character;
-  const [rollLog, setRollLog] = useState<{ msg: string; color: string }[]>([]);
 
   const armorPenalty = Math.max(armorBody?.refPenalty ?? 0, armorHead?.refPenalty ?? 0);
 
@@ -51,37 +27,6 @@ export function CpSheet() {
     return { label: '正常 (OK)', color: 'text-green-400' };
   };
   const wound = woundState();
-
-  // ── Quick roll a skill from sheet — uses evaluateCpSkillCheck ─
-  const quickRollSkill = (skillName: string) => {
-    const skillDef = CP_SKILLS.find(s => s.name === skillName);
-    if (!skillDef) return;
-    const level   = skills[skillName] ?? skillDef.baseLevel;
-    const statVal = stats[skillDef.linkedStat];
-    const natural = Math.floor(Math.random() * 10) + 1;
-    const extra   = (natural === 10 || natural === 1) ? Math.floor(Math.random() * 10) + 1 : undefined;
-    const result  = evaluateCpSkillCheck({ stat: statVal, skill: level, natural, extra, luckSpent: 0, modifiers: 0 });
-    const total   = result.total;
-    const rollLabel = result.isCriticalSuccess
-      ? `🎯 大成功! [10]+[${result.extra}]=${natural + (result.extra ?? 0)}`
-      : result.isCriticalFailure
-      ? `💀 大失败! [1]-[${result.extra}]=${natural - (result.extra ?? 0)}`
-      : `[${natural}]`;
-    const color = result.isCriticalSuccess ? 'text-[#f5c518] font-bold' : total >= 15 ? 'text-green-400' : 'text-[#d4d4d8]';
-    const msg   = `🎲 ${skillName}: ${rollLabel} + 技能(${level}) + ${skillDef.linkedStat}(${statVal}) = ${total}`;
-    setRollLog(prev => [{ msg, color }, ...prev].slice(0, 10));
-    toast(result.isCriticalSuccess ? '🎯 大成功！' : `掷骰: ${skillName}`, { description: `总分 ${total}` });
-  };
-
-  // ── Quick roll weapon damage ───────────────────────────
-  const quickRollWeapon = (weaponName: string, damage: string) => {
-    const { rolls, total, critInjury } = rollDamage(damage);
-    let msg = `🔫 ${weaponName} ${damage}: [${rolls.join(',')}] = ${total}`;
-    const color = critInjury ? 'text-orange-400 font-bold' : 'text-red-300';
-    if (critInjury) msg += ' ⚠ 重伤触发！';
-    setRollLog(prev => [{ msg, color }, ...prev].slice(0, 10));
-    toast(critInjury ? '⚠ 重伤触发！' : `伤害: ${total}`, { description: msg });
-  };
 
   const roleAbility = CP_ROLE_ABILITIES[character.role];
 
@@ -128,14 +73,7 @@ export function CpSheet() {
             const base = stats[stat];
             const eff = ['REF', 'DEX', 'MOVE'].includes(stat) ? Math.max(0, base - armorPenalty) : base;
             return (
-              <div key={stat} className="cp-panel p-1.5 flex flex-col items-center cursor-pointer hover:shadow-[0_0_12px_#f5c51840]"
-                onClick={() => {
-                  const r = rollExplodingD10();
-                  const total = r.total + eff;
-                  const color = r.isCrit ? 'text-[#f5c518] font-bold' : 'text-white';
-                  setRollLog(prev => [{ msg: `🎲 ${CP_STAT_LABELS[stat]}: ${r.label} + ${eff} = ${total}`, color }, ...prev].slice(0, 10));
-                  toast(`${CP_STAT_LABELS[stat]} 检定`, { description: `总分 ${total}` });
-                }}>
+              <div key={stat} className="cp-panel p-1.5 flex flex-col items-center">
                 <div className="font-cp-title text-[7px] uppercase text-[#f5c518]/45 tracking-widest mb-0.5">{stat}</div>
                 <div className={`font-cp-title text-xl ${eff < base ? 'text-orange-400' : 'neon-gold'}`}>{eff}</div>
                 {eff < base && <div className="text-[8px] text-orange-400/50">({base})</div>}
@@ -171,16 +109,15 @@ export function CpSheet() {
 
       {/* ── Skills (non-zero only) ──────────────────────── */}
       <div>
-        <div className="font-cp-title text-[9px] uppercase tracking-widest text-[#f5c518]/55 mb-1.5">// SKILLS · 点击快速掷骰</div>
+        <div className="font-cp-title text-[9px] uppercase tracking-widest text-[#f5c518]/55 mb-1.5">// SKILLS · 只读展示</div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-px">
           {CP_SKILLS.filter(s => (skills[s.name] ?? s.baseLevel) > 0).map(skillDef => {
             const level = skills[skillDef.name] ?? skillDef.baseLevel;
             const statVal = stats[skillDef.linkedStat];
             const total = level + statVal;
             return (
-              <button key={skillDef.name}
-                onClick={() => quickRollSkill(skillDef.name)}
-                className={`flex items-center justify-between px-2 py-1.5 border-b ${T.border} text-xs hover:bg-[#f5c518]/5 text-left w-full transition-colors`}>
+              <div key={skillDef.name}
+                className={`flex items-center justify-between px-2 py-1.5 border-b ${T.border} text-xs text-left w-full`}>
                 <span className="truncate flex-1">{skillDef.name}</span>
                 <span className="text-[#d4d4d8]/30 mx-1.5 text-[10px]">{skillDef.linkedStat}</span>
                 <span className="text-[#d4d4d8]/50 w-4 text-center">{level}</span>
@@ -188,7 +125,7 @@ export function CpSheet() {
                 <span className="text-[#d4d4d8]/50 w-4 text-center">{statVal}</span>
                 <span className="text-[#d4d4d8]/20 mx-0.5">=</span>
                 <span className={`font-bold w-5 text-center ${T.text}`}>{total}</span>
-              </button>
+              </div>
             );
           })}
         </div>
@@ -197,23 +134,22 @@ export function CpSheet() {
       {/* ── Equipment row ───────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
-        {/* Weapons — with inline roll */}
+        {/* Weapons */}
         <div className="cp-panel p-3">
-          <div className="font-cp-title text-[9px] uppercase tracking-widest text-[#f5c518]/55 mb-2">// WEAPONS · 点击掷伤害</div>
+          <div className="font-cp-title text-[9px] uppercase tracking-widest text-[#f5c518]/55 mb-2">// WEAPONS · 只读展示</div>
           {weapons.length === 0 && <div className="text-xs opacity-40">无武器</div>}
           {weapons.map(w => (
-            <button key={w.name}
-              onClick={() => quickRollWeapon(w.name, w.damage)}
-              className={`flex items-center justify-between w-full text-xs mb-1.5 p-1.5 border ${T.border} hover:bg-[#f5c518]/10 hover:border-[#f5c518] transition-colors text-left`}>
+            <div key={w.name}
+              className={`flex items-center justify-between w-full text-xs mb-1.5 p-1.5 border ${T.border} text-left`}>
               <div>
                 <div className="font-bold">{w.name}</div>
                 <div className="text-[#d4d4d8]/40 text-[10px]">{w.skill}</div>
               </div>
               <div className="text-right">
                 <div className={`font-bold ${T.text}`}>{w.damage}</div>
-                <div className="text-[#d4d4d8]/30 text-[10px]">点击掷骰</div>
+                <div className="text-[#d4d4d8]/30 text-[10px]">ROF {w.rof}</div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
 
@@ -279,18 +215,6 @@ export function CpSheet() {
           {(injuries ?? []).map((inj, i) => (
             <div key={i} className="text-xs text-orange-300 border-b border-orange-500/20 py-1 last:border-0">{inj}</div>
           ))}
-        </div>
-      )}
-
-      {/* ── Quick Roll Log ──────────────────────────────── */}
-      {rollLog.length > 0 && (
-        <div className="cp-panel p-3">
-          <div className="font-cp-title text-[9px] uppercase tracking-widest text-[#f5c518]/55 mb-2">// ROLL LOG</div>
-          <div className="space-y-0.5 max-h-[120px] overflow-y-auto">
-            {rollLog.map((entry, i) => (
-              <div key={i} className={`text-xs font-mono ${entry.color}`}>{entry.msg}</div>
-            ))}
-          </div>
         </div>
       )}
 
