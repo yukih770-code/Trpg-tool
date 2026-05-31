@@ -22,12 +22,11 @@
  * ─────────
  *   v0 → v1  Initial versioning; no field changes — this migration only adds
  *             `schemaVersion: 1` to pre-existing saves.
+ *   v1 → v2  Adds `runtime` state for HP, Humanity, EMP, armor SP shell,
+ *             wound flags, and critical injuries.
  *
  * Reserved future versions (do NOT implement yet — placeholders only)
  * ─────────────────────────────────────────────────────────────────────
- *   v2  armorState?: ArmorRuntimeState
- *         Per-slot currentSp tracking (SP ablation after hits).
- *
  *   v3  weaponState?: WeaponRuntimeState[]
  *         Per-weapon ammo tracking (currentAmmo, magazineCapacity).
  *
@@ -66,12 +65,17 @@ import {
   CpLifePath,
   CpRelation,
   CpEnemy,
+  CpRuntimeState,
   CP_ROLES,
   CP_STAT_ORDER,
   CP_SKILLS,
   makeEmptyInventory,
   CURRENT_CP_CHARACTER_SCHEMA_VERSION,
 } from './cp-types';
+import {
+  buildInitialCpRuntime,
+  refreshCpRuntimeDerived,
+} from './cp2024/cp-utils';
 
 // ─── Primitive helpers ────────────────────────────────────────────────────────
 
@@ -362,6 +366,67 @@ function migrateEnemyItem(raw: unknown): CpEnemy | null {
   };
 }
 
+function migrateRuntime(raw: unknown, character: CpCharacter): CpRuntimeState {
+  const fallback = buildInitialCpRuntime(character);
+  const r = obj(raw);
+  if (Object.keys(r).length === 0) return fallback;
+
+  const hp = obj(r.hp);
+  const humanity = obj(r.humanity);
+  const emp = obj(r.emp);
+  const flags = obj(r.flags);
+  const armor = obj(r.armor);
+  const head = obj(armor.head);
+  const body = obj(armor.body);
+
+  const runtime: CpRuntimeState = {
+    hp: {
+      current: num(hp.current, fallback.hp.current),
+      max: num(hp.max, fallback.hp.max),
+    },
+    humanity: {
+      current: num(humanity.current, fallback.humanity.current),
+      max: num(humanity.max, fallback.humanity.max),
+    },
+    emp: {
+      current: num(emp.current, fallback.emp.current),
+      max: num(emp.max, fallback.emp.max),
+    },
+    armor: {
+      head: Object.keys(head).length > 0
+        ? {
+            currentSp: num(head.currentSp, fallback.armor?.head?.currentSp ?? 0),
+            maxSp: num(head.maxSp, fallback.armor?.head?.maxSp ?? 0),
+          }
+        : fallback.armor?.head,
+      body: Object.keys(body).length > 0
+        ? {
+            currentSp: num(body.currentSp, fallback.armor?.body?.currentSp ?? 0),
+            maxSp: num(body.maxSp, fallback.armor?.body?.maxSp ?? 0),
+          }
+        : fallback.armor?.body,
+    },
+    flags: {
+      isSeriouslyWounded: typeof flags.isSeriouslyWounded === 'boolean'
+        ? flags.isSeriouslyWounded
+        : fallback.flags.isSeriouslyWounded,
+      isMortallyWounded: typeof flags.isMortallyWounded === 'boolean'
+        ? flags.isMortallyWounded
+        : fallback.flags.isMortallyWounded,
+    },
+    criticalInjuries: arr<unknown>(r.criticalInjuries).filter((i): i is string => typeof i === 'string'),
+  };
+
+  if (!runtime.armor?.head && !runtime.armor?.body) {
+    runtime.armor = undefined;
+  }
+  if (runtime.criticalInjuries.length === 0) {
+    runtime.criticalInjuries = fallback.criticalInjuries;
+  }
+
+  return refreshCpRuntimeDerived(runtime, character);
+}
+
 // ─── Main migration entry point ───────────────────────────────────────────────
 
 export function migrateCpCharacter(data: unknown): CpCharacter {
@@ -474,10 +539,9 @@ export function migrateCpCharacter(data: unknown): CpCharacter {
       .map(migrateEnemyItem)
       .filter((e): e is CpEnemy => e !== null),
 
+    runtime: undefined,
+
     // ── Future runtime-state fields (reserved — not yet implemented) ───────
-    // armorState?: ArmorRuntimeState;
-    //   Per-slot SP ablation tracking. Will be added in a future migration step.
-    //
     // weaponState?: WeaponRuntimeState[];
     //   Per-weapon ammo / durability. Future step.
     //
@@ -512,12 +576,14 @@ export function migrateCpCharacter(data: unknown): CpCharacter {
         migrated.schemaVersion = 1;
         break;
 
-      // ── Future migration steps ──────────────────────────────────────────
-      // case 1:
-      //   // v1 → v2: Add armorState with default undefined.
-      //   version = 2;
-      //   migrated.schemaVersion = 2;
-      //   break;
+      case 1:
+        // v1 → v2: Add runtime state. Existing runtime current values are
+        // preserved by migrateRuntime(); missing runtime is derived from the
+        // legacy HP/Humanity/armor/injuries fields.
+        migrated.runtime = migrateRuntime(d.runtime, migrated);
+        version = 2;
+        migrated.schemaVersion = 2;
+        break;
 
       default:
         // Unknown version — skip to current to avoid infinite loop
@@ -526,6 +592,8 @@ export function migrateCpCharacter(data: unknown): CpCharacter {
         break;
     }
   }
+
+  migrated.runtime = migrateRuntime(d.runtime ?? migrated.runtime, migrated);
 
   return migrated;
 }

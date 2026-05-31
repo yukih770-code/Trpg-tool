@@ -9,7 +9,9 @@
 //
 // Changelog:
 //   v1  Initial versioning (schemaVersion field added).
-export const CURRENT_CP_CHARACTER_SCHEMA_VERSION = 1;
+//   v2  Runtime state foundation for HP, Humanity, EMP, armor SP shell,
+//       wound flags, and critical injury tracking.
+export const CURRENT_CP_CHARACTER_SCHEMA_VERSION = 2;
 
 export type CpStat =
   | 'INT' | 'REF' | 'DEX' | 'TECH' | 'COOL'
@@ -403,6 +405,37 @@ export function makeEmptyInventory(): CpInventory {
   return { cyberware: [], weapons: [], armor: [], fashion: [], gear: [] };
 }
 
+// ── Runtime State ──────────────────────────────────────────
+export interface CpRuntimeState {
+  hp: {
+    current: number;
+    max: number;
+  };
+  humanity: {
+    current: number;
+    max: number;
+  };
+  emp: {
+    current: number;
+    max: number;
+  };
+  armor?: {
+    head?: {
+      currentSp: number;
+      maxSp: number;
+    };
+    body?: {
+      currentSp: number;
+      maxSp: number;
+    };
+  };
+  flags: {
+    isSeriouslyWounded: boolean;
+    isMortallyWounded: boolean;
+  };
+  criticalInjuries: string[];
+}
+
 // ── CP Character ──────────────────────────────────────────
 export interface CpCharacter {
   /** Schema version — absent on pre-v1 saves (treated as version 0 by migration). */
@@ -426,6 +459,9 @@ export interface CpCharacter {
   // Current tracked values
   hp: { current: number; max: number };
   humanity: { current: number; max: number };
+
+  // Runtime state foundation. Optional for old saves; migration fills it.
+  runtime?: CpRuntimeState;
 
   // Skills: name → level
   skills: Record<string, number>;

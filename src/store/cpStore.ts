@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
   CpCharacter, CpStat, CpRole, CpArmor, CpCyberware, CpWeapon, CpClothing,
-  CpLifePath, CpRelation, CpEnemy, CpInventory,
+  CpLifePath, CpRelation, CpEnemy, CpInventory, CpRuntimeState,
   CP_SKILLS, makeEmptyInventory,
   CURRENT_CP_CHARACTER_SCHEMA_VERSION,
 } from '../lib/cp-types';
@@ -13,6 +13,10 @@ import {
   getCpDeathSaveBase,
   getCpHumanityMax,
   isCpCyberpsycho,
+  buildInitialCpRuntime,
+  refreshCpRuntimeDerived,
+  applyCpHpDelta,
+  applyCpHumanityDelta,
 } from '../lib/cp2024/cp-utils';
 
 // ── Helpers ────────────────────────────────────────────────
@@ -41,6 +45,19 @@ function safeInv(char: CpCharacter): CpInventory {
   return char.inventory ?? makeEmptyInventory();
 }
 
+function ensureRuntime(char: CpCharacter): CpRuntimeState {
+  return char.runtime
+    ? refreshCpRuntimeDerived(char.runtime, char)
+    : buildInitialCpRuntime(char);
+}
+
+function withRuntime(char: CpCharacter, runtime?: CpRuntimeState): CpCharacter {
+  return {
+    ...char,
+    runtime: runtime ? refreshCpRuntimeDerived(runtime, char) : ensureRuntime(char),
+  };
+}
+
 // ── Default blank character ────────────────────────────────
 const defaultStats: Record<CpStat, number> = {
   INT: 5, REF: 5, DEX: 5, TECH: 5, COOL: 5,
@@ -56,7 +73,7 @@ function makeDefaultChar(): CpCharacter {
     skills[s.name] = s.baseLevel;
   }
 
-  return {
+  const character: CpCharacter = {
     schemaVersion: CURRENT_CP_CHARACTER_SCHEMA_VERSION,
     id: crypto.randomUUID?.() || Date.now().toString(),
     name: '',
@@ -94,6 +111,11 @@ function makeDefaultChar(): CpCharacter {
       childhoodEnv: '', childhoodHero: '',
       lifeEvent1: '', lifeEvent2: '', careerPath: '',
     },
+  };
+
+  return {
+    ...character,
+    runtime: buildInitialCpRuntime(character),
   };
 }
 
@@ -159,8 +181,13 @@ interface CpState {
   spendEb: (amount: number) => boolean;
   gainEb: (amount: number) => void;
   spendFashionEb: (amount: number) => boolean;
+  initializeRuntime: () => void;
+  refreshRuntime: () => void;
   changeHp: (delta: number) => void;
   changeHumanity: (delta: number) => void;
+  setCpRuntimeFlag: (flagName: keyof CpRuntimeState['flags'], value: boolean) => void;
+  addCriticalInjury: (name: string) => void;
+  removeCriticalInjury: (nameOrIndex: string | number) => void;
 
   // ── Misc ─────────────────────────────────────────────────
   addInjury: (injury: string) => void;
@@ -189,14 +216,15 @@ export const useCpStore = create<CpState>()(
         const clamped = Math.max(2, Math.min(8, value));
         const newStats = { ...state.character.stats, [stat]: clamped };
         const derived = computeCpDerived(newStats);
+        const nextCharacter: CpCharacter = {
+          ...state.character,
+          stats: newStats,
+          ...derived,
+          hp: { ...state.character.hp, max: derived.maxHp },
+          humanity: { ...state.character.humanity, max: derived.maxHumanity },
+        };
         return {
-          character: {
-            ...state.character,
-            stats: newStats,
-            ...derived,
-            hp: { ...state.character.hp, max: derived.maxHp },
-            humanity: { ...state.character.humanity, max: derived.maxHumanity },
-          }
+          character: withRuntime(nextCharacter)
         };
       }),
 
@@ -205,13 +233,17 @@ export const useCpStore = create<CpState>()(
           Object.entries(stats).map(([k, v]) => [k, Math.max(2, Math.min(8, v as number))])
         ) as Record<CpStat, number>;
         const derived = computeCpDerived(clamped);
+        const nextCharacter: CpCharacter = {
+          ...state.character,
+          stats: clamped,
+          ...derived,
+          hp: { current: derived.maxHp, max: derived.maxHp },
+          humanity: { current: derived.maxHumanity, max: derived.maxHumanity },
+        };
         return {
           character: {
-            ...state.character,
-            stats: clamped,
-            ...derived,
-            hp: { current: derived.maxHp, max: derived.maxHp },
-            humanity: { current: derived.maxHumanity, max: derived.maxHumanity },
+            ...nextCharacter,
+            runtime: buildInitialCpRuntime(nextCharacter),
           }
         };
       }),
@@ -248,17 +280,19 @@ export const useCpStore = create<CpState>()(
         const newStats = { ...state.character.stats, EMP: newEmp };
         const derived = computeCpDerived(newStats);
 
+        const nextCharacter: CpCharacter = {
+          ...state.character,
+          cyberware: [...state.character.cyberware, cw],
+          // Remove from inventory if it was there (it should be, but handle gracefully)
+          inventory: { ...inv, cyberware: inv.cyberware.filter(c => c.name !== cw.name) },
+          humanity: { current: newHumanity, max: derived.maxHumanity },
+          stats: newStats,
+          ...derived,
+          cyberPsycho: isCpCyberpsycho(newHumanity),
+        };
+
         return {
-          character: {
-            ...state.character,
-            cyberware: [...state.character.cyberware, cw],
-            // Remove from inventory if it was there (it should be, but handle gracefully)
-            inventory: { ...inv, cyberware: inv.cyberware.filter(c => c.name !== cw.name) },
-            humanity: { current: newHumanity, max: derived.maxHumanity },
-            stats: newStats,
-            ...derived,
-            cyberPsycho: isCpCyberpsycho(newHumanity),
-          }
+          character: withRuntime(nextCharacter)
         };
       }),
 
@@ -278,14 +312,16 @@ export const useCpStore = create<CpState>()(
         const alreadyInInv = inv.cyberware.some(c => c.name === name);
         const newInvCyberware = alreadyInInv ? inv.cyberware : [...inv.cyberware, cw];
 
+        const nextCharacter: CpCharacter = {
+          ...state.character,
+          cyberware: newInstalled,
+          inventory: { ...inv, cyberware: newInvCyberware },
+          humanity: { current: newHumanity, max: maxHumanity },
+          cyberPsycho: isCpCyberpsycho(newHumanity),
+        };
+
         return {
-          character: {
-            ...state.character,
-            cyberware: newInstalled,
-            inventory: { ...inv, cyberware: newInvCyberware },
-            humanity: { current: newHumanity, max: maxHumanity },
-            cyberPsycho: isCpCyberpsycho(newHumanity),
-          }
+          character: withRuntime(nextCharacter)
         };
       }),
 
@@ -328,12 +364,14 @@ export const useCpStore = create<CpState>()(
           }
         }
 
+        const nextCharacter: CpCharacter = {
+          ...state.character,
+          [key]: armor,
+          inventory: { ...inv, armor: newInvArmor }
+        };
+
         return {
-          character: {
-            ...state.character,
-            [key]: armor,
-            inventory: { ...inv, armor: newInvArmor }
-          }
+          character: withRuntime(nextCharacter)
         };
       }),
 
@@ -344,15 +382,17 @@ export const useCpStore = create<CpState>()(
 
         const inv = safeInv(state.character);
         const alreadyInInv = inv.armor.some(a => a.name === armor.name);
-        return {
-          character: {
-            ...state.character,
-            [key]: null,
-            inventory: {
-              ...inv,
-              armor: alreadyInInv ? inv.armor : [...inv.armor, armor]
-            }
+        const nextCharacter: CpCharacter = {
+          ...state.character,
+          [key]: null,
+          inventory: {
+            ...inv,
+            armor: alreadyInInv ? inv.armor : [...inv.armor, armor]
           }
+        };
+
+        return {
+          character: withRuntime(nextCharacter)
         };
       }),
 
@@ -528,10 +568,29 @@ export const useCpStore = create<CpState>()(
         return true;
       },
 
+      initializeRuntime: () => set(state => {
+        if (state.character.runtime) return state;
+        return {
+          character: {
+            ...state.character,
+            runtime: buildInitialCpRuntime(state.character),
+          }
+        };
+      }),
+
+      refreshRuntime: () => set(state => ({
+        character: withRuntime(state.character)
+      })),
+
       changeHp: (delta) => set(state => {
-        const { hp } = state.character;
-        const newCurrent = Math.max(0, Math.min(hp.max, hp.current + delta));
-        return { character: { ...state.character, hp: { ...hp, current: newCurrent } } };
+        const runtime = applyCpHpDelta(ensureRuntime(state.character), delta);
+        return {
+          character: {
+            ...state.character,
+            hp: { current: runtime.hp.current, max: runtime.hp.max },
+            runtime,
+          }
+        };
       }),
 
       changeHumanity: (delta) => set(state => {
@@ -540,25 +599,109 @@ export const useCpStore = create<CpState>()(
         const newEmp = computeEmpFromHumanity(oldHumanity, newHumanity, state.character.stats.EMP);
         const newStats = { ...state.character.stats, EMP: newEmp };
         const derived = computeCpDerived(newStats);
+        const nextCharacter: CpCharacter = {
+          ...state.character,
+          stats: newStats,
+          ...derived,
+          humanity: { current: newHumanity, max: derived.maxHumanity },
+          cyberPsycho: isCpCyberpsycho(newHumanity),
+        };
+        const runtime = refreshCpRuntimeDerived(
+          applyCpHumanityDelta(ensureRuntime(state.character), delta),
+          nextCharacter,
+        );
+        return {
+          character: {
+            ...nextCharacter,
+            humanity: { current: runtime.humanity.current, max: runtime.humanity.max },
+            cyberPsycho: isCpCyberpsycho(runtime.humanity.current),
+            runtime,
+          }
+        };
+      }),
+
+      setCpRuntimeFlag: (flagName, value) => set(state => {
+        const runtime = ensureRuntime(state.character);
         return {
           character: {
             ...state.character,
-            stats: newStats,
-            ...derived,
-            humanity: { current: newHumanity, max: derived.maxHumanity },
-            cyberPsycho: isCpCyberpsycho(newHumanity),
+            runtime: {
+              ...runtime,
+              flags: {
+                ...runtime.flags,
+                [flagName]: value,
+              },
+            },
+          }
+        };
+      }),
+
+      addCriticalInjury: (name) => set(state => {
+        const trimmed = name.trim();
+        if (!trimmed) return state;
+        const runtime = ensureRuntime(state.character);
+        const criticalInjuries = [...runtime.criticalInjuries, trimmed];
+        return {
+          character: {
+            ...state.character,
+            injuries: [...(state.character.injuries ?? []), trimmed],
+            runtime: {
+              ...runtime,
+              criticalInjuries,
+            },
+          }
+        };
+      }),
+
+      removeCriticalInjury: (nameOrIndex) => set(state => {
+        const runtime = ensureRuntime(state.character);
+        const removeByIndex = typeof nameOrIndex === 'number';
+        const criticalInjuries = runtime.criticalInjuries.filter((injury, index) =>
+          removeByIndex ? index !== nameOrIndex : injury !== nameOrIndex
+        );
+        const injuries = (state.character.injuries ?? []).filter((injury, index) =>
+          removeByIndex ? index !== nameOrIndex : injury !== nameOrIndex
+        );
+        return {
+          character: {
+            ...state.character,
+            injuries,
+            runtime: {
+              ...runtime,
+              criticalInjuries,
+            },
           }
         };
       }),
 
       // ── Misc ─────────────────────────────────────────────────
 
-      addInjury: (injury) => set(state => ({
-        character: { ...state.character, injuries: [...(state.character.injuries ?? []), injury] }
-      })),
-      removeInjury: (injury) => set(state => ({
-        character: { ...state.character, injuries: (state.character.injuries ?? []).filter(i => i !== injury) }
-      })),
+      addInjury: (injury) => set(state => {
+        const runtime = ensureRuntime(state.character);
+        return {
+          character: {
+            ...state.character,
+            injuries: [...(state.character.injuries ?? []), injury],
+            runtime: {
+              ...runtime,
+              criticalInjuries: [...runtime.criticalInjuries, injury],
+            },
+          }
+        };
+      }),
+      removeInjury: (injury) => set(state => {
+        const runtime = ensureRuntime(state.character);
+        return {
+          character: {
+            ...state.character,
+            injuries: (state.character.injuries ?? []).filter(i => i !== injury),
+            runtime: {
+              ...runtime,
+              criticalInjuries: runtime.criticalInjuries.filter(i => i !== injury),
+            },
+          }
+        };
+      }),
       loadCharacter: (data) => set({ character: migrateCpCharacter(data) }),
       resetCharacter: () => set({ character: makeDefaultChar() }),
 

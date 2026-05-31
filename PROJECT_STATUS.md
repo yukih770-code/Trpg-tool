@@ -66,6 +66,7 @@ DND Structured LogEntry v1 scope:
 | CocSheet — uses evaluateCocD100Check | ✅ Done |
 | CocGameplay — uses evaluateCocD100Check | ✅ Done |
 | COC runtime state v2 foundation | ✅ Done |
+| COC Runtime State UI Panel v1 | ✅ Done |
 | COC Creator skill point constraint v1 | ✅ Done |
 | COC Sheet responsibility cleanup v1 | ✅ Done |
 
@@ -74,6 +75,11 @@ COC runtime state v2 foundation scope:
 - Migrates old COC characters to schemaVersion 2 and fills missing runtime fields idempotently.
 - Adds store actions for runtime initialization and manual HP/MP/SAN/Luck/flag/growth-mark/pushed-roll updates.
 - No COC UI wiring, Keeper Console, visibility filtering, full insanity flow, Luck spending UI, or pushed roll UI.
+
+COC Runtime State UI Panel v1 scope:
+- CocGameplay displays runtime-first HP, MP, SAN, and Luck values with legacy fallback.
+- CocGameplay uses existing runtime store actions for HP/MP/SAN/Luck adjustment and manual runtime flag toggles.
+- No RollConsole, RuntimeLogEntry, Skill Check wiring, SAN Check workflow, Luck spending workflow, Pushed Roll UI, Keeper Console, or visibility filtering.
 
 COC Creator skill point constraint v1 scope:
 - CocCreator Step 3 now provides creation-time skill allocation with EDU × 4 occupational points and INT × 2 personal interest points.
@@ -91,9 +97,16 @@ COC Sheet responsibility cleanup v1 scope:
 |------|--------|
 | schemaVersion + migrateCpCharacter | ✅ Done |
 | cp-utils pure functions (HP/SW/DB/Humanity/exploding-d10/skill-check) | ✅ Done |
-| CpSheet — uses evaluateCpExplodingD10 / evaluateCpSkillCheck | ✅ Done |
+| CpSheet responsibility cleanup v1 | ✅ Done |
+| CP RED runtime state foundation v2 | ✅ Done |
 | CpGameplay — uses evaluateCpExplodingD10 / evaluateCpSkillCheck | ✅ Done |
 | cpStore — uses getCpMaxHp / getCpSeriouslyWoundedThreshold / getCpDeathSaveBase / getCpHumanityMax / isCpCyberpsycho | ✅ Done |
+
+CP RED runtime state foundation v2 scope:
+- Adds optional `runtime` state for HP, Humanity, runtime EMP, armor SP shell, wound flags, and critical injury tracking.
+- Migrates old CP RED characters to schemaVersion 2 and fills missing runtime state idempotently.
+- Adds runtime store actions for initialization, refresh, HP/Humanity deltas, runtime flags, and critical injury tracking.
+- No CP RED UI changes, RuntimeLogEntry integration, RollConsole, no-DV path, armor/ammo/damage automation, Netrunning, GM Console, or AI Host.
 
 ---
 

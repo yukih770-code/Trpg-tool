@@ -36,6 +36,8 @@
  *   Critical injuries    p.184
  */
 
+import type { CpCharacter, CpRuntimeState } from '../cp-types';
+
 // ─── 1. Internal helpers ──────────────────────────────────────────────────────
 
 /**
@@ -52,6 +54,12 @@ function safeNum(v: unknown, fallback = 0): number {
  */
 function safeInt(v: unknown, fallback = 0): number {
   return Math.floor(safeNum(v, fallback));
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  const low = Math.min(min, max);
+  const high = Math.max(min, max);
+  return Math.max(low, Math.min(high, safeNum(value, low)));
 }
 
 // ─── 2. Derived stat functions ────────────────────────────────────────────────
@@ -149,6 +157,15 @@ export function getCpRuntimeEmp(humanityCurrent: number): number {
 }
 
 /**
+ * Explicit alias for the absolute runtime EMP calculation. This intentionally
+ * does not replace cpStore.computeEmpFromHumanity(), which preserves legacy
+ * delta-based EMP behavior for existing store actions.
+ */
+export function computeCpRuntimeEmpFromHumanity(humanityCurrent: number): number {
+  return getCpRuntimeEmp(humanityCurrent);
+}
+
+/**
  * isCpCyberpsycho
  *
  * Returns true when Humanity reaches 0 or below, triggering Cyberpsychosis.
@@ -191,6 +208,140 @@ export function getCpFinalRef(rawRef: number, armorPenalty: number): number {
  */
 export function getCpFinalMove(rawMove: number, armorPenalty: number): number {
   return Math.max(0, safeNum(rawMove) - safeNum(armorPenalty));
+}
+
+// ── Runtime state helpers ─────────────────────────────────────────────────────
+
+export function getCpRuntimeMaxHp(character: CpCharacter): number {
+  return Math.max(
+    0,
+    safeNum(character.hp?.max, safeNum(character.maxHp, getCpMaxHp(character.stats.BODY, character.stats.WILL))),
+  );
+}
+
+export function getCpRuntimeMaxHumanity(character: CpCharacter): number {
+  return Math.max(
+    0,
+    safeNum(character.humanity?.max, safeNum(character.maxHumanity, getCpHumanityMax(character.stats.EMP))),
+  );
+}
+
+function buildCpRuntimeArmor(character: CpCharacter, previous?: CpRuntimeState['armor']): CpRuntimeState['armor'] {
+  const armor: CpRuntimeState['armor'] = {};
+
+  if (character.armorHead) {
+    const maxSp = Math.max(0, safeNum(character.armorHead.sp));
+    armor.head = {
+      currentSp: clampNumber(previous?.head?.currentSp ?? maxSp, 0, maxSp),
+      maxSp,
+    };
+  }
+
+  if (character.armorBody) {
+    const maxSp = Math.max(0, safeNum(character.armorBody.sp));
+    armor.body = {
+      currentSp: clampNumber(previous?.body?.currentSp ?? maxSp, 0, maxSp),
+      maxSp,
+    };
+  }
+
+  return armor.head || armor.body ? armor : undefined;
+}
+
+export function buildInitialCpRuntime(character: CpCharacter): CpRuntimeState {
+  const hpMax = getCpRuntimeMaxHp(character);
+  const hpCurrent = clampNumber(character.hp?.current ?? hpMax, 0, hpMax);
+  const humanityMax = getCpRuntimeMaxHumanity(character);
+  const humanityCurrent = clampNumber(character.humanity?.current ?? humanityMax, 0, humanityMax);
+  const empMax = Math.max(0, safeNum(character.stats.EMP));
+  const empCurrent = clampNumber(computeCpRuntimeEmpFromHumanity(humanityCurrent), 0, empMax);
+
+  return {
+    hp: {
+      current: hpCurrent,
+      max: hpMax,
+    },
+    humanity: {
+      current: humanityCurrent,
+      max: humanityMax,
+    },
+    emp: {
+      current: empCurrent,
+      max: empMax,
+    },
+    armor: buildCpRuntimeArmor(character),
+    flags: {
+      isSeriouslyWounded: isCpSeriouslyWounded(hpCurrent, hpMax),
+      isMortallyWounded: isCpMortallyWounded(hpCurrent),
+    },
+    criticalInjuries: [...(character.injuries ?? [])],
+  };
+}
+
+export function refreshCpRuntimeDerived(
+  runtime: CpRuntimeState,
+  character: CpCharacter,
+): CpRuntimeState {
+  const hpMax = getCpRuntimeMaxHp(character);
+  const hpCurrent = clampNumber(runtime.hp.current, 0, hpMax);
+  const humanityMax = getCpRuntimeMaxHumanity(character);
+  const humanityCurrent = clampNumber(runtime.humanity.current, 0, humanityMax);
+  const empMax = Math.max(0, safeNum(character.stats.EMP));
+  const empCurrent = clampNumber(computeCpRuntimeEmpFromHumanity(humanityCurrent), 0, empMax);
+
+  return {
+    ...runtime,
+    hp: {
+      current: hpCurrent,
+      max: hpMax,
+    },
+    humanity: {
+      current: humanityCurrent,
+      max: humanityMax,
+    },
+    emp: {
+      current: empCurrent,
+      max: empMax,
+    },
+    armor: buildCpRuntimeArmor(character, runtime.armor),
+    flags: {
+      ...runtime.flags,
+      isSeriouslyWounded: isCpSeriouslyWounded(hpCurrent, hpMax),
+      isMortallyWounded: isCpMortallyWounded(hpCurrent),
+    },
+    criticalInjuries: runtime.criticalInjuries ?? [],
+  };
+}
+
+export function applyCpHpDelta(runtime: CpRuntimeState, delta: number): CpRuntimeState {
+  const nextHp = clampNumber(runtime.hp.current + safeNum(delta), 0, runtime.hp.max);
+  return {
+    ...runtime,
+    hp: {
+      ...runtime.hp,
+      current: nextHp,
+    },
+    flags: {
+      ...runtime.flags,
+      isSeriouslyWounded: isCpSeriouslyWounded(nextHp, runtime.hp.max),
+      isMortallyWounded: isCpMortallyWounded(nextHp),
+    },
+  };
+}
+
+export function applyCpHumanityDelta(runtime: CpRuntimeState, delta: number): CpRuntimeState {
+  const nextHumanity = clampNumber(runtime.humanity.current + safeNum(delta), 0, runtime.humanity.max);
+  return {
+    ...runtime,
+    humanity: {
+      ...runtime.humanity,
+      current: nextHumanity,
+    },
+    emp: {
+      ...runtime.emp,
+      current: clampNumber(computeCpRuntimeEmpFromHumanity(nextHumanity), 0, runtime.emp.max),
+    },
+  };
 }
 
 // ─── 3. Roll-evaluation types ─────────────────────────────────────────────────
