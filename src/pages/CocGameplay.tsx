@@ -16,10 +16,57 @@ function cocLogColor(line: string): string {
 }
 
 export function CocGameplay() {
-  const { character, updateField } = useCocStore();
+  const {
+    character,
+    initializeRuntime,
+    changeHp,
+    changeMp,
+    changeSan,
+    changeLuck,
+    setCocFlag,
+  } = useCocStore();
   const [diceTray, setDiceTray] = useState<Record<string, number>>({});
   const [combatLog, setCombatLog] = useState<string[]>(['[系统] 克苏鲁的呼唤游玩面板已就绪。']);
   const [lastRoll, setLastRoll] = useState<{ total: number; formula: string; type: 'extreme'|'hard'|'success'|'fail'|'fumble'|'neutral' } | null>(null);
+
+  const runtime = character.runtime;
+  const runtimePools = {
+    hp: runtime?.hp ?? character.hp,
+    mp: runtime?.mp ?? character.mp,
+    san: runtime?.san ?? {
+      current: character.sanity.current,
+      max: character.sanity.max,
+      initial: character.sanity.start,
+    },
+    luck: runtime?.luck ?? {
+      current: character.luck.current,
+    },
+  };
+  const luckMax = 99;
+  const runtimeFlags = runtime?.flags ?? {
+    isMajorWound: false,
+    isDying: false,
+    isUnconscious: false,
+    isTemporarilyInsane: false,
+    isIndefinitelyInsane: false,
+  };
+
+  const flagItems = [
+    { key: 'isMajorWound', label: '重伤', english: 'Major Wound' },
+    { key: 'isDying', label: '濒死', english: 'Dying' },
+    { key: 'isUnconscious', label: '昏迷', english: 'Unconscious' },
+    { key: 'isTemporarilyInsane', label: '临时疯狂', english: 'Temporary Insanity' },
+    { key: 'isIndefinitelyInsane', label: '不定疯狂', english: 'Indefinite Insanity' },
+  ] as const;
+
+  const handleRuntimeDelta = (
+    label: string,
+    delta: number,
+    action: (delta: number) => void,
+  ) => {
+    action(delta);
+    setCombatLog(prev => [`[状态] ${label} ${delta > 0 ? '+' : ''}${delta}`, ...prev].slice(0, 20));
+  };
 
   const handleAddDie = (die: string) => {
     setDiceTray(prev => ({ ...prev, [die]: (prev[die] || 0) + 1 }));
@@ -27,19 +74,6 @@ export function CocGameplay() {
 
   const handleClearDice = () => {
     setDiceTray({});
-  };
-
-  const handleChangeHP = (amt: number) => {
-    const newHP = Math.max(0, Math.min(character.hp.max, character.hp.current + amt));
-    updateField('hp', { ...character.hp, current: newHP });
-    let msg = '';
-    if (amt > 0) msg = `恢复了 ${amt} 点体数 (HP)。当前 HP: ${newHP}/${character.hp.max}`;
-    else msg = `受到了 ${Math.abs(amt)} 点伤害。当前 HP: ${newHP}/${character.hp.max}`;
-    
-    setCombatLog(prev => [msg, ...prev].slice(0, 20));
-    if (newHP <= 0) {
-      toast.error('意识模糊或者面临死亡...', { description: '你的HP已归零。请根据规则判定是否重伤死亡。' });
-    }
   };
 
   const handleRollDice = () => {
@@ -79,53 +113,66 @@ export function CocGameplay() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div className="border border-[#059669]/30 bg-[#111] p-4">
-            <h3 className="text-[#059669] font-bold uppercase mb-2 border-b border-[#059669]/30 pb-1">状态管理</h3>
-            <div className="grid grid-cols-2 gap-4">
-               <div>
-                 <div className="text-xs opacity-70 mb-1">体数 (HP) 操作</div>
-                 <div className="flex gap-1">
-                   <Button size="sm" variant="outline" className="h-7 px-2 border-[#059669]/50 rounded-none text-[#d4d4d8] hover:bg-red-900" onClick={() => handleChangeHP(-1)}>-1</Button>
-                   <Button size="sm" variant="outline" className="h-7 px-2 border-[#059669]/50 rounded-none text-[#d4d4d8] hover:bg-red-900" onClick={() => handleChangeHP(-5)}>-5</Button>
-                   <Button size="sm" variant="outline" className="h-7 px-2 border-[#059669]/50 rounded-none text-[#d4d4d8] hover:bg-[#059669] hover:text-[#111]" onClick={() => handleChangeHP(1)}>+1</Button>
-                 </div>
-               </div>
-               <div>
-                 <div className="text-xs opacity-70 mb-1">理智 (SAN) 操作</div>
-                 <div className="flex gap-1">
-                   <Button size="sm" variant="outline" className="h-7 px-2 border-[#059669]/50 rounded-none text-[#d4d4d8] hover:bg-[#58180d]" onClick={() => {
-                     const newSan = Math.max(0, character.sanity.current - 1);
-                     updateField('sanity', { ...character.sanity, current: newSan });
-                     setCombatLog(prev => [`失去了 1 点理智 (SAN)。当前 SAN: ${newSan}`, ...prev].slice(0, 20));
-                   }}>-1</Button>
-                   <Button size="sm" variant="outline" className="h-7 px-2 border-[#059669]/50 rounded-none text-[#d4d4d8] hover:bg-[#58180d]" onClick={() => {
-                     const newSan = Math.max(0, character.sanity.current - 10);
-                     updateField('sanity', { ...character.sanity, current: newSan });
-                     setCombatLog(prev => [`失去了 10 点理智 (SAN)!! 可能触发疯狂。当前 SAN: ${newSan}`, ...prev].slice(0, 20));
-                   }}>-10</Button>
-                   <Button size="sm" variant="outline" className="h-7 px-2 border-[#059669]/50 rounded-none text-[#d4d4d8] hover:bg-[#059669] hover:text-[#111]" onClick={() => {
-                     const newSan = Math.min(character.sanity.max, character.sanity.current + 1);
-                     updateField('sanity', { ...character.sanity, current: newSan });
-                     setCombatLog(prev => [`恢复了 1 点理智 (SAN)。当前 SAN: ${newSan}`, ...prev].slice(0, 20));
-                   }}>+1</Button>
-                 </div>
-               </div>
-               <div>
-                 <div className="text-xs opacity-70 mb-1">魔法 (MP) 操作</div>
-                 <div className="flex gap-1">
-                   <Button size="sm" variant="outline" className="h-7 px-2 border-[#059669]/50 rounded-none text-[#d4d4d8] hover:bg-red-900" onClick={() => {
-                     const newMp = Math.max(0, character.mp.current - 1);
-                     updateField('mp', { ...character.mp, current: newMp });
-                     setCombatLog(prev => [`消耗了 1 点魔法 (MP)。当前 MP: ${newMp}`, ...prev].slice(0, 20));
-                   }}>-1</Button>
-                   <Button size="sm" variant="outline" className="h-7 px-2 border-[#059669]/50 rounded-none text-[#d4d4d8] hover:bg-[#059669] hover:text-[#111]" onClick={() => {
-                     const newMp = Math.min(character.mp.max, character.mp.current + 1);
-                     updateField('mp', { ...character.mp, current: newMp });
-                     setCombatLog(prev => [`恢复了 1 点魔法 (MP)。当前 MP: ${newMp}`, ...prev].slice(0, 20));
-                   }}>+1</Button>
-                 </div>
-               </div>
+            <div className="flex items-center justify-between gap-3 border-b border-[#059669]/30 pb-1 mb-3">
+              <h3 className="text-[#059669] font-bold uppercase">运行时状态 / Runtime State</h3>
+              {!runtime && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 border-[#059669]/50 rounded-none text-[#059669] hover:bg-[#059669] hover:text-[#111]"
+                  onClick={initializeRuntime}
+                >
+                  初始化运行时状态
+                </Button>
+              )}
             </div>
-            
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { label: '体数 / HP', value: `${runtimePools.hp.current}/${runtimePools.hp.max}`, onMinus: () => handleRuntimeDelta('HP', -1, changeHp), onPlus: () => handleRuntimeDelta('HP', 1, changeHp) },
+                { label: '魔法 / MP', value: `${runtimePools.mp.current}/${runtimePools.mp.max}`, onMinus: () => handleRuntimeDelta('MP', -1, changeMp), onPlus: () => handleRuntimeDelta('MP', 1, changeMp) },
+                { label: '理智 / SAN', value: `${runtimePools.san.current}/${runtimePools.san.max}`, onMinus: () => handleRuntimeDelta('SAN', -1, changeSan), onPlus: () => handleRuntimeDelta('SAN', 1, changeSan) },
+                { label: '幸运 / Luck', value: `${runtimePools.luck.current}/${luckMax}`, onMinus: () => handleRuntimeDelta('Luck', -1, changeLuck), onPlus: () => handleRuntimeDelta('Luck', 1, changeLuck) },
+              ].map(item => (
+                <div key={item.label} className="border border-[#059669]/20 bg-black/30 p-3">
+                  <div className="text-[10px] uppercase tracking-widest text-[#9bd8b9] mb-1">{item.label}</div>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-2xl font-bold text-[#d4d4d8] font-mono">{item.value}</div>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline" className="h-7 px-2 border-[#059669]/50 rounded-none text-[#d4d4d8] hover:bg-red-900" onClick={item.onMinus}>-1</Button>
+                      <Button size="sm" variant="outline" className="h-7 px-2 border-[#059669]/50 rounded-none text-[#d4d4d8] hover:bg-[#059669] hover:text-[#111]" onClick={item.onPlus}>+1</Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 border border-[#059669]/20 bg-black/20 p-3">
+              <div className="text-[10px] uppercase tracking-widest text-[#9bd8b9] mb-2">状态标记 / Runtime Flags</div>
+              <div className="flex flex-wrap gap-2">
+                {flagItems.map(flag => {
+                  const active = runtimeFlags[flag.key];
+                  return (
+                    <button
+                      key={flag.key}
+                      type="button"
+                      className={`border px-2 py-1 text-[11px] transition-colors ${
+                        active
+                          ? 'border-red-500/70 bg-red-950/50 text-red-200'
+                          : 'border-[#059669]/30 bg-[#111] text-[#9bd8b9]'
+                      }`}
+                      onClick={() => setCocFlag(flag.key, !active)}
+                    >
+                      {flag.label} / {flag.english}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-2 text-[10px] text-[#9bd8b9]">
+                标记仅供手动维护；本轮不执行疯狂表、INT 检定或 Keeper 流程。
+              </div>
+            </div>
+
             <div className="mt-8 border-t border-[#059669]/30 pt-4">
                <h3 className="text-[#059669] font-bold uppercase mb-2">常用检定 (Quick Rolls)</h3>
                <div className="flex flex-wrap gap-2">
@@ -135,7 +182,7 @@ export function CocGameplay() {
                     // Use evaluateCocD100Check so fumble/critical rules are consistent with CocSheet
                     const checkResult = evaluateCocD100Check(val, roll);
                     const success = checkResult.isSuccess;
-                    const msg = `理智 (SAN) 检定: 1d100 掷出 ${roll} / ${val}。结果: ${success ? '成功' : '失败 (扣除理智)'}！`;
+                    const msg = `理智 (SAN) 检定: 1d100 掷出 ${roll} / ${val}。结果: ${success ? '成功' : '失败（请手动扣除理智）'}！`;
                     setCombatLog(prev => [msg, ...prev].slice(0, 20));
                     toast(success ? '理智检定成功' : '理智检定失败', { description: msg });
                  }}>
