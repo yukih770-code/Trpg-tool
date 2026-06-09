@@ -407,6 +407,12 @@ const THEMES = {
 
 type System = 'D&D' | 'CoC' | 'CP';
 
+const SYSTEM_DISPLAY_LABELS: Record<System, string> = {
+  'D&D': 'DND 5e 2024',
+  CoC: 'COC 7e',
+  CP: 'Cyberpunk RED',
+};
+
 export default function App() {
   const [tab, setTab] = useState('creator');
   const { system, setSystem } = useAppStore();
@@ -466,6 +472,10 @@ export default function App() {
     setTab('creator');
   };
 
+  const handleToolbarPlaceholder = (message: string) => {
+    toast.info(message);
+  };
+
   const tabLabels: Record<System, string[]> = {
     'D&D': ['创建器', '角色卡', '游玩 / 战斗'],
     'CoC': ['建卡 (Creation)', '调查员卡 (Sheet)', '掷骰 & 日志 (Gameplay)'],
@@ -478,6 +488,7 @@ export default function App() {
   };
   const labels = tabLabels[system];
   const tabVals = tabValues[system];
+  const currentPageLabel = labels[tabVals.indexOf(tab)] ?? labels[0];
 
   return (
     <div className={`min-h-screen font-serif p-4 md:p-8 transition-colors duration-500
@@ -485,82 +496,119 @@ export default function App() {
       <div className="max-w-6xl mx-auto">
 
         {/* ── Top bar ─────────────────────────────────── */}
-        <div className={`flex flex-col md:flex-row md:items-end justify-between mb-8 pb-4 gap-4 ${theme.headerBorder}`}>
+        <div className={`flex flex-col gap-4 mb-8 pb-4 ${theme.headerBorder}`}>
 
-          {/* D&D title — Cinzel Decorative, parchment fantasy */}
-          {system === 'D&D' && (
-            <div className="flex flex-col gap-1">
-              <h1 className="font-dnd-title text-3xl md:text-4xl text-[#58180d] leading-tight">
-                D&amp;D 2024
-              </h1>
-              <div className="flex items-center gap-2">
-                <span className="text-[#58180d]/40 select-none">✦</span>
-                <span className="font-dnd-body text-sm tracking-[0.22em] text-[#58180d]/75 uppercase">
-                  冒险者指南
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+            {/* D&D title — Cinzel Decorative, parchment fantasy */}
+            {system === 'D&D' && (
+              <div className="flex flex-col gap-1">
+                <h1 className="font-dnd-title text-3xl md:text-4xl text-[#58180d] leading-tight">
+                  D&amp;D 2024
+                </h1>
+                <div className="flex items-center gap-2">
+                  <span className="text-[#58180d]/40 select-none">✦</span>
+                  <span className="font-dnd-body text-sm tracking-[0.22em] text-[#58180d]/75 uppercase">
+                    冒险者指南
+                  </span>
+                  <span className="text-[#58180d]/40 select-none">✦</span>
+                </div>
+              </div>
+            )}
+
+            {/* CoC title — Special Elite typewriter */}
+            {system === 'CoC' && (
+              <div className="flex flex-col gap-1">
+                <h1 className="font-coc-title text-3xl md:text-4xl text-[#059669] leading-tight">
+                  克苏鲁的呼唤
+                </h1>
+                <span className="font-elite text-xs tracking-[0.18em] text-[#059669]/60 uppercase">
+                  Call of Cthulhu &nbsp;·&nbsp; 调查员笔记
                 </span>
-                <span className="text-[#58180d]/40 select-none">✦</span>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* CoC title — Special Elite typewriter */}
-          {system === 'CoC' && (
-            <div className="flex flex-col gap-1">
-              <h1 className="font-coc-title text-3xl md:text-4xl text-[#059669] leading-tight">
-                克苏鲁的呼唤
-              </h1>
-              <span className="font-elite text-xs tracking-[0.18em] text-[#059669]/60 uppercase">
-                Call of Cthulhu &nbsp;·&nbsp; 调查员笔记
-              </span>
-            </div>
-          )}
-
-          {/* CP RED title — Orbitron + glitch + neon */}
-          {system === 'CP' && (
-            <div className="flex flex-col gap-1">
-              <h1
-                className="font-cp-title text-2xl md:text-3xl neon-gold glitch leading-tight"
-                data-text="CYBERPUNK RED"
-              >
-                CYBERPUNK RED
-              </h1>
-              <div className="flex items-center gap-1 font-cp-body text-[11px] text-[#00e5ff] neon-cyan tracking-[0.16em] uppercase">
-                <span>&gt;&gt;</span>
-                <span>角色卡</span>
-                <span className="opacity-50">·</span>
-                <span>Night City</span>
-                <span>&gt;&gt;</span>
+            {/* CP RED title — Orbitron + glitch + neon */}
+            {system === 'CP' && (
+              <div className="flex flex-col gap-1">
+                <h1
+                  className="font-cp-title text-2xl md:text-3xl neon-gold glitch leading-tight"
+                  data-text="CYBERPUNK RED"
+                >
+                  CYBERPUNK RED
+                </h1>
+                <div className="flex items-center gap-1 font-cp-body text-[11px] text-[#00e5ff] neon-cyan tracking-[0.16em] uppercase">
+                  <span>&gt;&gt;</span>
+                  <span>角色卡</span>
+                  <span className="opacity-50">·</span>
+                  <span>Night City</span>
+                  <span>&gt;&gt;</span>
+                </div>
               </div>
+            )}
+
+            <div className="text-xs md:text-sm opacity-75">
+              <span className={`${theme.primary} font-bold`}>当前：</span>
+              <span>{SYSTEM_DISPLAY_LABELS[system]}</span>
+              <span className="opacity-50 mx-2">/</span>
+              <span>{currentPageLabel}</span>
+              {(activeCharacter as any).name && (
+                <>
+                  <span className="opacity-50 mx-2">/</span>
+                  <span>{(activeCharacter as any).name}</span>
+                </>
+              )}
             </div>
-          )}
-          <div className="flex gap-2 flex-wrap items-center">
+          </div>
 
-            {/* System selector — 3-way dropdown */}
-            <div className="relative">
-              <select
-                value={system}
-                onChange={handleSwitchSystem}
-                className={`appearance-none cursor-pointer h-9 px-3 pr-8 border-2 ${theme.border} ${theme.primary} font-bold uppercase text-sm font-mono
-                  bg-transparent focus:outline-none hover:opacity-80 transition-opacity`}
-              >
-                <option value="D&D"  style={{ background: '#fdf6e3', color: '#2c1810' }}>⚔  D&amp;D 5E</option>
-                <option value="CoC"  style={{ background: '#111',    color: '#059669' }}>🐙 克苏鲁 CoC</option>
-                <option value="CP"   style={{ background: '#0d0d0d', color: '#f5c518' }}>🤖 赛博朋克红</option>
-              </select>
-              <div className={`pointer-events-none absolute right-2 top-2.5 text-xs ${theme.primary}`}>▼</div>
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+            <div className="flex gap-2 flex-wrap items-center">
+
+              {/* System selector — 3-way dropdown */}
+              <div className="relative">
+                <select
+                  value={system}
+                  onChange={handleSwitchSystem}
+                  className={`appearance-none cursor-pointer h-9 px-3 pr-8 border-2 ${theme.border} ${theme.primary} font-bold uppercase text-sm font-mono
+                    bg-transparent focus:outline-none hover:opacity-80 transition-opacity`}
+                  aria-label="切换规则系统"
+                >
+                  <option value="D&D"  style={{ background: '#fdf6e3', color: '#2c1810' }}>DND 5e 2024</option>
+                  <option value="CoC"  style={{ background: '#111',    color: '#059669' }}>COC 7e</option>
+                  <option value="CP"   style={{ background: '#0d0d0d', color: '#f5c518' }}>Cyberpunk RED</option>
+                </select>
+                <div className={`pointer-events-none absolute right-2 top-2.5 text-xs ${theme.primary}`}>▼</div>
+              </div>
+
+              {system === 'D&D' && <ModManager />}
             </div>
 
-            {system === 'D&D' && <ModManager />}
+            <div className="flex gap-2 flex-wrap items-center">
+              <div className="relative">
+                <input type="file" onChange={handleImport} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" accept=".json" />
+                <Button variant="outline" size="sm"
+                  className={`uppercase font-bold transition-colors rounded-none ${theme.btnOutline}`}>
+                  <Upload className="w-4 h-4 mr-2" /> 导入角色
+                </Button>
+              </div>
 
-            <Button variant="outline" size="sm" onClick={handleExport}
-              className={`uppercase font-bold transition-colors rounded-none ${theme.btnOutline}`}>
-              <Save className="w-4 h-4 mr-2" /> 导出角色
-            </Button>
-            <div className="relative">
-              <input type="file" onChange={handleImport} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" accept=".json" />
-              <Button variant="outline" size="sm"
+              <Button variant="outline" size="sm" onClick={handleExport}
                 className={`uppercase font-bold transition-colors rounded-none ${theme.btnOutline}`}>
-                <Upload className="w-4 h-4 mr-2" /> 导入角色
+                <Save className="w-4 h-4 mr-2" /> 导出角色
+              </Button>
+
+              <Button variant="outline" size="sm" onClick={() => handleToolbarPlaceholder('数据管理功能后续实现')}
+                className={`uppercase font-bold transition-colors rounded-none ${theme.btnOutline}`}>
+                数据
+              </Button>
+
+              <Button variant="outline" size="sm" onClick={() => handleToolbarPlaceholder('设置功能后续实现')}
+                className={`uppercase font-bold transition-colors rounded-none ${theme.btnOutline}`}>
+                设置
+              </Button>
+
+              <Button variant="outline" size="sm" onClick={() => handleToolbarPlaceholder('帮助与规则说明后续整理')}
+                className={`uppercase font-bold transition-colors rounded-none ${theme.btnOutline}`}>
+                帮助
               </Button>
             </div>
           </div>

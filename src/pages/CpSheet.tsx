@@ -10,6 +10,15 @@ const T = {
   bgCard: 'bg-[#111]',
 };
 
+const CP_SHEET_STAT_CN_OVERRIDES: Partial<Record<(typeof CP_STAT_ORDER)[number], string>> = {
+  LUCK: '幸运',
+};
+
+function getCpSheetStatChineseLabel(stat: (typeof CP_STAT_ORDER)[number]): string {
+  const label = CP_STAT_LABELS[stat] ?? stat;
+  return CP_SHEET_STAT_CN_OVERRIDES[stat] ?? label.replace(stat, '').trim();
+}
+
 export function CpSheet() {
   const { character, updateField,
           addFriend, removeFriend, addRomance, removeRomance,
@@ -72,9 +81,13 @@ export function CpSheet() {
           {CP_STAT_ORDER.map(stat => {
             const base = stats[stat];
             const eff = ['REF', 'DEX', 'MOVE'].includes(stat) ? Math.max(0, base - armorPenalty) : base;
+            const cnLabel = getCpSheetStatChineseLabel(stat);
             return (
               <div key={stat} className="cp-panel p-1.5 flex flex-col items-center">
-                <div className="font-cp-title text-[7px] uppercase text-[#f5c518]/45 tracking-widest mb-0.5">{stat}</div>
+                <div className="font-cp-title text-[7px] uppercase text-[#f5c518]/65 tracking-widest mb-0.5 text-center leading-tight">
+                  <div>{stat}</div>
+                  <div className="text-[8px] tracking-normal text-[#f5c518]/75 font-cp-body">{cnLabel}</div>
+                </div>
                 <div className={`font-cp-title text-xl ${eff < base ? 'text-orange-400' : 'neon-gold'}`}>{eff}</div>
                 {eff < base && <div className="text-[8px] text-orange-400/50">({base})</div>}
               </div>

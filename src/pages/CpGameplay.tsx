@@ -255,7 +255,7 @@ function RoleAbilityPanel({ role, roleLevel, stats, skills, addLog }: RoleAbilit
       kind: 'check',
       title: label,
       summary: `${label} 职业能力检定`,
-      detail: dv ? `对抗 DV${dv}` : '未设置 DV，由 GM 判定结果。',
+      detail: dv !== undefined ? `对抗 DV${dv}` : '未设置 DV，由 GM 判定结果。',
       displayValue: total,
       calculation: `d10[${d10}] + 基础${base} + 职业${lvBonus} = ${total}`,
       outcome,
@@ -266,6 +266,8 @@ function RoleAbilityPanel({ role, roleLevel, stats, skills, addLog }: RoleAbilit
         success === true ? 'success' : '',
         success === false ? 'failure' : '',
         success === undefined ? 'waiting-gm' : '',
+        success === undefined ? 'no-dv' : '',
+        success === undefined ? 'gm-adjudication' : '',
       ].filter(Boolean),
       payload: {
         system: 'cpred',
@@ -276,6 +278,44 @@ function RoleAbilityPanel({ role, roleLevel, stats, skills, addLog }: RoleAbilit
         roleLevel: lvBonus,
         dv,
         success,
+      },
+    }));
+  };
+
+  const addRoleAction = (title: string, summary: string, detail?: string, tags: string[] = []) => {
+    addLog(makeCpRuntimeLogEntry({
+      kind: 'action',
+      title,
+      summary,
+      detail,
+      displayValue: 'ACTION',
+      outcome: '已记录',
+      tags: ['role-ability', ...tags],
+      payload: {
+        system: 'cpred',
+        action: title,
+        role,
+        roleLevel,
+      },
+    }));
+  };
+
+  const addRoleDamage = (title: string, total: number, calculation: string, detail?: string, tags: string[] = []) => {
+    addLog(makeCpRuntimeLogEntry({
+      kind: 'damage',
+      title,
+      summary: `${title} 伤害提示`,
+      detail,
+      displayValue: total,
+      calculation,
+      outcome: '伤害已掷出',
+      tags: ['role-ability', 'damage-roll', ...tags],
+      payload: {
+        system: 'cpred',
+        rollType: 'roleDamage',
+        role,
+        roleLevel,
+        total,
       },
     }));
   };
@@ -361,7 +401,10 @@ function RoleAbilityPanel({ role, roleLevel, stats, skills, addLog }: RoleAbilit
               ))}
             </div>
             <button className={`${b} text-[9px]`}
-              onClick={() => { setSoloPool(poolInit); addLog('[佣兵] 战斗意识点数已重置'); }}>
+              onClick={() => {
+                setSoloPool(poolInit);
+                addRoleAction('佣兵战斗意识重置', '战斗意识点数已重置。', `可重新分配 ${roleLevel} 点战斗意识。`, ['solo', 'pool-reset']);
+              }}>
               重置
             </button>
           </div>
@@ -397,10 +440,10 @@ function RoleAbilityPanel({ role, roleLevel, stats, skills, addLog }: RoleAbilit
               roll: () => doRoll('识别 Eye-Dee', stats.INT + (skills['接口'] ?? 0), roleLevel, 6) },
             { name: '探针',     en: 'Ping',       cost: 1, cat: 'utility',
               desc: `扫描当前节点，揭示所有 ICE。不需要检定`,
-              roll: () => { addLog(`🔍 [探针 Ping] 扫描节点：揭示所有 ICE（Lv${roleLevel}）`); } },
+              roll: () => { addRoleAction('探针 Ping', '扫描当前节点，揭示所有 ICE。', `Interface Lv${roleLevel}；无需检定。`, ['netrunner', 'utility', 'no-roll']); } },
             { name: '滑行',     en: 'Slide',      cost: 1, cat: 'utility',
               desc: `在 NET 架构中移动一层，自动成功`,
-              roll: () => { addLog(`⚡ [滑行 Slide] 向深处推进一层 NET 架构`); } },
+              roll: () => { addRoleAction('滑行 Slide', '向深处推进一层 NET 架构。', '现有 UI 仅记录动作，不实现 Netrunning 状态机。', ['netrunner', 'utility', 'no-roll']); } },
             { name: '蠕虫',     en: 'Worm',       cost: 1, cat: 'utility',
               desc: `缓慢穿透 ICE（需3轮）。INT+接口+Lv`,
               roll: () => doRoll('蠕虫 Worm', stats.INT + (skills['接口'] ?? 0), roleLevel) },
@@ -410,41 +453,41 @@ function RoleAbilityPanel({ role, roleLevel, stats, skills, addLog }: RoleAbilit
               roll: () => {
                 const dmg = rollD6();
                 doRoll('冰锥 Zap', stats.INT + (skills['接口'] ?? 0), roleLevel);
-                addLog(`  ↳ 伤害: [${dmg}] = ${dmg} NET 伤害`);
+                addRoleDamage('冰锥 Zap', dmg, `1d6[${dmg}] = ${dmg}`, 'NET 伤害提示；未实现 Netrunning 状态机。', ['netrunner', 'net-damage']);
               }},
             { name: '重锤',     en: 'Banhammer',  cost: 1, cat: 'attack',
               desc: `摧毁 ICE，造成 3d6 伤害。INT+接口+Lv vs ICE DEF`,
               roll: () => {
                 const dmg = rollD6() + rollD6() + rollD6();
                 doRoll('重锤 Banhammer', stats.INT + (skills['接口'] ?? 0), roleLevel);
-                addLog(`  ↳ 伤害: 3d6 = ${dmg} NET 伤害`);
+                addRoleDamage('重锤 Banhammer', dmg, `3d6 = ${dmg}`, 'NET 伤害提示；未实现 Netrunning 状态机。', ['netrunner', 'net-damage']);
               }},
             { name: '长剑',     en: 'Sword',      cost: 1, cat: 'attack',
               desc: `近战攻击 ICE，3d6+${roleLevel} NET 伤害`,
               roll: () => {
                 const dmg = rollD6() + rollD6() + rollD6() + roleLevel;
                 doRoll('长剑 Sword', stats.INT + (skills['接口'] ?? 0), roleLevel);
-                addLog(`  ↳ 伤害: 3d6+${roleLevel} = ${dmg} NET 伤害`);
+                addRoleDamage('长剑 Sword', dmg, `3d6 + ${roleLevel} = ${dmg}`, 'NET 伤害提示；未实现 Netrunning 状态机。', ['netrunner', 'net-damage']);
               }},
             { name: '神经撕裂', en: 'Nervesplice', cost: 1, cat: 'attack',
               desc: `攻击敌方网行者大脑，BRAIN伤害。INT+接口+Lv vs DEF`,
               roll: () => {
                 const dmg = rollD6() + rollD6();
                 doRoll('神经撕裂 Nervesplice', stats.INT + (skills['接口'] ?? 0), roleLevel);
-                addLog(`  ↳ BRAIN 伤害: 2d6 = ${dmg}`);
+                addRoleDamage('神经撕裂 Nervesplice', dmg, `2d6 = ${dmg}`, 'BRAIN 伤害提示；未实现 Netrunning 状态机。', ['netrunner', 'brain-damage']);
               }},
             // Defense
             { name: '盾牌',     en: 'Shield',     cost: 1, cat: 'defense',
               desc: `本轮 NET 护甲 +4，直到下次激活`,
-              roll: () => { addLog(`🛡 [盾牌 Shield] 激活：NET 护甲 +4（本轮有效）`); } },
+              roll: () => { addRoleAction('盾牌 Shield', 'NET 护甲 +4（本轮有效）。', '仅记录动作，不修改角色护甲或运行时状态。', ['netrunner', 'defense', 'no-roll']); } },
             { name: '硬壳',     en: 'Armor',      cost: 1, cat: 'defense',
               desc: `被动 NET 护甲 +6，与盾牌叠加`,
-              roll: () => { addLog(`🛡 [硬壳 Armor] 激活：NET 护甲 +6（持续）`); } },
+              roll: () => { addRoleAction('硬壳 Armor', 'NET 护甲 +6（持续）。', '仅记录动作，不修改角色护甲或运行时状态。', ['netrunner', 'defense', 'no-roll']); } },
             { name: '散弹',     en: 'Flak',       cost: 1, cat: 'defense',
               desc: `AoE 干扰，当前节点所有 ICE 各受 1d6 伤害`,
               roll: () => {
                 const dmg = rollD6();
-                addLog(`💥 [散弹 Flak] AoE 干扰：所有 ICE 受 ${dmg} 伤害`);
+                addRoleDamage('散弹 Flak', dmg, `1d6[${dmg}] = ${dmg}`, 'AoE 干扰提示：当前节点所有 ICE 各受伤害；未实现 Netrunning 状态机。', ['netrunner', 'aoe', 'net-damage']);
               }},
           ];
 
@@ -482,7 +525,10 @@ function RoleAbilityPanel({ role, roleLevel, stats, skills, addLog }: RoleAbilit
                     Lv{roleLevel} · INT{stats.INT} · 基础池 {iBase}
                   </span>
                   <button className="font-cp-body text-[10px] px-3 py-1 border border-[#00e5ff]/40 text-[#00e5ff] hover:bg-[#00e5ff]/10 tracking-wider"
-                    onClick={() => { setNetUsed(0); addLog('[网行者] ▸ 新回合 — NET行动已重置'); }}>
+                    onClick={() => {
+                      setNetUsed(0);
+                      addRoleAction('NET 行动重置', '新回合：NET 行动已重置。', `本轮可用 NET actions: ${netMax}`, ['netrunner', 'round-reset']);
+                    }}>
                     ▶ 新回合
                   </button>
                 </div>
@@ -641,11 +687,26 @@ function RoleAbilityPanel({ role, roleLevel, stats, skills, addLog }: RoleAbilit
             <button className={`${b} w-full py-2`} onClick={() => {
               const roll = rollD10(), arr = Math.floor(Math.random()*6)+1;
               const ok = roll <= roleLevel;
-              const msg = ok
-                ? `[执法者] 呼叫成功！1d10[${roll}] ≤ Lv${roleLevel}，${arr}回合后支援抵达`
-                : `[执法者] 呼叫失败。1d10[${roll}] > Lv${roleLevel}`;
               setBackupMsg(ok ? `✅ ${arr}回合后支援到达` : '❌ 呼叫失败');
-              addLog(msg);
+              addLog(makeCpRuntimeLogEntry({
+                kind: 'action',
+                title: '呼叫后备支援',
+                summary: `执法者后备支援呼叫${ok ? '成功' : '失败'}`,
+                detail: ok ? `${arr} 回合后支援抵达。` : '本次呼叫未成功。',
+                displayValue: roll,
+                calculation: `1d10[${roll}] ${ok ? '<=' : '>'} Lv${roleLevel}`,
+                outcome: ok ? '成功' : '失败',
+                tags: ['role-ability', 'lawman', ok ? 'success' : 'failure'],
+                payload: {
+                  system: 'cpred',
+                  action: 'backupRequest',
+                  role: 'Lawman',
+                  roleLevel,
+                  d10: roll,
+                  arrivalRounds: ok ? arr : undefined,
+                  success: ok,
+                },
+              }));
             }}>
               📻 呼叫后备支援 (1d10 ≤ Lv{roleLevel})
             </button>
@@ -767,7 +828,7 @@ export function CpGameplay() {
       luckSpent: 0, modifiers: modifier + woundPenalty, dv: selectedDV,
     });
     const finalScore = result.total;
-    const success    = result.success!;
+    const success    = result.success === true;
     const dvLabel    = CP_DV_TABLE.find(d => d.dv === selectedDV)?.label ?? `DV${selectedDV}`;
     const rollLabel  = result.isCriticalSuccess
       ? `🎯 大成功! [10]+[${result.extra}] = ${natural + (result.extra ?? 0)}`

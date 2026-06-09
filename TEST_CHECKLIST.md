@@ -33,14 +33,18 @@ Open the app in the browser and verify each page loads without crashing.
 ### Call of Cthulhu
 
 - [ ] COC Creator — opens, fields editable
-- [ ] COC Sheet — opens, skill roll clickable (toast appears)
+- [ ] COC Sheet — opens and displays investigator data; no Sheet skill-roll toast expected
 - [ ] COC Gameplay — opens, HP/SAN/MP buttons functional, dice tray functional
+- [ ] COC Gameplay — public skill checks run from Gameplay and update RollConsole Latest Result
+- [ ] COC Gameplay — RuntimeLogEntry history log updates after skill checks / runtime changes
 
 ### Cyberpunk RED
 
 - [ ] CP Creator — opens, fields editable
-- [ ] CP Sheet — opens, skill quick-roll clickable (toast appears)
+- [ ] CP Sheet — opens and displays character data; no Sheet skill quick-roll toast expected
 - [ ] CP Gameplay — opens, skill check and stat check functional
+- [ ] CP Gameplay — after RollConsole/RuntimeLogEntry wiring is implemented, check results enter Latest Result and history log
+- [ ] CP Gameplay — after no-DV support is implemented, checks without DV show "waiting GM judgment"
 - [ ] CP Market — opens without crash
 
 ---
