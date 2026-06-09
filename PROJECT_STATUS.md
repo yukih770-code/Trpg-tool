@@ -113,6 +113,7 @@ COC Sheet responsibility cleanup v1 scope:
 | cp-utils pure functions (HP/SW/DB/Humanity/exploding-d10/skill-check) | ✅ Done |
 | CpSheet responsibility cleanup v1 | ✅ Done |
 | CP RED runtime state foundation v2 | ✅ Done |
+| CP RED Gameplay RollConsole RuntimeLogEntry v1 | ✅ Done |
 | CpGameplay — uses evaluateCpExplodingD10 / evaluateCpSkillCheck | ✅ Done |
 | cpStore — uses getCpMaxHp / getCpSeriouslyWoundedThreshold / getCpDeathSaveBase / getCpHumanityMax / isCpCyberpsycho | ✅ Done |
 
@@ -121,6 +122,13 @@ CP RED runtime state foundation v2 scope:
 - Migrates old CP RED characters to schemaVersion 2 and fills missing runtime state idempotently.
 - Adds runtime store actions for initialization, refresh, HP/Humanity deltas, runtime flags, and critical injury tracking.
 - No CP RED UI changes, RuntimeLogEntry integration, RollConsole, no-DV path, armor/ammo/damage automation, Netrunning, GM Console, or AI Host.
+
+CP RED Gameplay RollConsole RuntimeLogEntry v1 scope:
+- CpGameplay local logs now use `RuntimeLogEntry[]` instead of `string[]`.
+- CpGameplay displays a RollConsole-style Latest Result derived from the first runtime log entry, with structured history in the same result center.
+- Existing CP RED skill checks, stat checks, role ability checks, death saves, damage rolls, resource adjustments, injury handling, free dice rolls, and system messages now write local CP RED `RuntimeLogEntry` objects.
+- No store, schema, migration, CP RED type, cp-utils, Sheet, Creator, DND, or COC changes.
+- No armor ablation, ammo tracking, full combat automation, critical injury pipeline expansion, Netrunning expansion, GM Console, gmOnly/reveal, AI Host, multiplayer, map, or scene work.
 
 ---
 

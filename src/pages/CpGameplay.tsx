@@ -8,6 +8,7 @@ import {
   CP_STAT_ORDER, CP_STAT_LABELS, CpStat, CpRole
 } from '../lib/cp-types';
 import { evaluateCpExplodingD10, evaluateCpSkillCheck } from '../lib/cp2024/cp-utils';
+import type { RuntimeLogEntry } from '../lib/runtime-log-types';
 
 // ── Cyberpunk Theme ────────────────────────────────────────
 const T = {
@@ -38,27 +39,140 @@ function SysHeader({ children, color = 'cyan' }: { children: ReactNode; color?: 
   );
 }
 
-// ── Last roll display ──────────────────────────────────────
-interface RollDisplay {
-  label: string;
-  d10: number;
-  bonus: string;
-  total: number;
-  dv?: number;
-  success?: boolean;
-  type: 'crit' | 'fumble' | 'success' | 'fail' | 'neutral';
+// ── Runtime log helpers ────────────────────────────────────
+function makeCpRuntimeLogEntry(entry: Omit<RuntimeLogEntry, 'id' | 'timestamp' | 'system' | 'visibility'>): RuntimeLogEntry {
+  return {
+    id: `cpred-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    timestamp: Date.now(),
+    system: 'cpred',
+    visibility: 'public',
+    ...entry,
+  };
 }
 
-// ── Log color ──────────────────────────────────────────────
-function cpLogColor(line: string): string {
-  if (line.includes('大成功') || line.includes('🎯')) return 'text-[#f5c518] font-bold';
-  if (line.includes('大失败') || line.includes('💀')) return 'text-red-400 font-bold';
-  if (line.includes('✅') || (line.includes('成功') && !line.includes('失败'))) return 'text-[#39ff14]';
-  if (line.includes('❌') || line.includes('失败')) return 'text-red-400';
-  if (line.includes('重伤') || line.includes('⚠')) return 'text-orange-400 font-bold';
-  if (line.includes('EMP') || line.includes('人性')) return 'text-purple-400';
-  if (line.includes('[系统]')) return 'text-[#00e5ff]/30 italic';
-  return 'text-[#9ab0c8]';
+function makeCpSystemEntry(summary: string, detail?: string, tags: string[] = ['system']): RuntimeLogEntry {
+  return makeCpRuntimeLogEntry({
+    kind: 'system',
+    title: '系统提示',
+    summary,
+    detail,
+    displayValue: 'LOG',
+    tags,
+    payload: { system: 'cpred' },
+  });
+}
+
+function cpEntryTone(entry: RuntimeLogEntry): string {
+  const tags = entry.tags ?? [];
+  const outcome = entry.outcome ?? '';
+  if (tags.includes('critical-success')) return 'hud-panel-gold border-2 border-[#f5c518] shadow-[0_0_28px_rgba(245,197,24,0.22)]';
+  if (tags.includes('critical-failure')) return 'hud-panel-red border-2 border-red-500 shadow-[0_0_24px_rgba(255,51,51,0.22)]';
+  if (tags.includes('resource-humanity')) return 'border-2 border-purple-500/50 bg-purple-950/15';
+  if (entry.kind === 'damage' || tags.includes('injury')) return 'border-2 border-orange-500/50 bg-orange-950/15';
+  if (outcome.includes('成功') || tags.includes('success')) return 'border-2 border-[#39ff14]/70 bg-[#39ff14]/5';
+  if (outcome.includes('失败') || tags.includes('failure')) return 'border-2 border-red-500/60 bg-red-950/20';
+  return 'hud-panel-cyan border-[#00e5ff]/40';
+}
+
+function cpDisplayColor(entry: RuntimeLogEntry): string {
+  const tags = entry.tags ?? [];
+  if (tags.includes('critical-success')) return 'neon-gold';
+  if (tags.includes('critical-failure')) return 'text-red-500 neon-red';
+  if (tags.includes('success')) return 'text-[#39ff14] neon-green';
+  if (tags.includes('failure')) return 'text-red-400';
+  if (tags.includes('resource-humanity')) return 'text-purple-400';
+  if (entry.kind === 'damage') return 'text-orange-300';
+  return 'text-[#00e5ff]';
+}
+
+function cpKindLabel(kind: RuntimeLogEntry['kind']): string {
+  const labels: Record<RuntimeLogEntry['kind'], string> = {
+    check: 'CHECK',
+    roll: 'ROLL',
+    action: 'ACTION',
+    damage: 'DAMAGE',
+    resource: 'RESOURCE',
+    system: 'SYSTEM',
+    narration: 'NARRATION',
+  };
+  return labels[kind];
+}
+
+function CpRollConsolePanel({ entries }: { entries: RuntimeLogEntry[] }) {
+  const latest = entries[0];
+
+  return (
+    <div className="cp-panel-cyan hud-panel-cyan hud-panel p-4 space-y-4">
+      <SysHeader>ROLL CONSOLE // 最新结果</SysHeader>
+      {latest ? (
+        <div className={`hud-panel p-4 flex gap-4 items-start transition-all ${cpEntryTone(latest)}`}>
+          <div className="text-center shrink-0 min-w-[92px]">
+            <div className="text-[9px] tracking-[0.2em] uppercase mb-0.5 text-[#00e5ff]/55">
+              // {cpKindLabel(latest.kind)} //
+            </div>
+            <div className={`font-cp-title text-6xl leading-none break-all ${cpDisplayColor(latest)}`}>
+              {latest.displayValue ?? '—'}
+            </div>
+            {latest.outcome && (
+              <div className="text-[10px] text-[#9ab0c8]/65 mt-1">{latest.outcome}</div>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] border border-[#00e5ff]/25 px-1.5 py-0.5 text-[#00e5ff]/70">
+                {latest.kind}
+              </span>
+              <span className="text-xs font-bold text-[#f5c518] uppercase tracking-wide">{latest.title}</span>
+            </div>
+            <div className="text-[11px] text-[#d4d4d8] leading-relaxed whitespace-pre-wrap">{latest.summary}</div>
+            {latest.detail && (
+              <div className="text-[10px] text-[#9ab0c8]/75 leading-relaxed whitespace-pre-wrap">{latest.detail}</div>
+            )}
+            {latest.calculation && (
+              <div className="text-[10px] text-[#00e5ff]/70 font-mono border border-[#00e5ff]/10 bg-[#050508] p-2 whitespace-pre-wrap">
+                {latest.calculation}
+              </div>
+            )}
+            {(latest.tags ?? []).length > 0 && (
+              <div className="flex flex-wrap gap-1 pt-1">
+                {latest.tags?.map(tag => (
+                  <span key={tag} className="text-[9px] border border-[#f5c518]/20 text-[#f5c518]/70 px-1.5 py-0.5 uppercase">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="border border-[#00e5ff]/15 p-4 text-[#9ab0c8]/50 text-xs">等待首次掷骰结果。</div>
+      )}
+
+      <div>
+        <div className="font-cp-title text-[9px] uppercase tracking-widest mb-2 text-[#00e5ff]/45">
+          HISTORY // 历史日志
+        </div>
+        <div className="font-mono text-[10px] overflow-y-auto max-h-[260px] bg-[#050508] p-3 border border-[#00e5ff]/8 space-y-2"
+          style={{ backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 5px,rgba(0,229,255,0.008) 5px,rgba(0,229,255,0.008) 6px)' }}>
+          {entries.map(entry => (
+            <div key={entry.id} className="border-b border-[#00e5ff]/8 pb-2 last:border-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <span className="text-[#00e5ff]/45 uppercase">{cpKindLabel(entry.kind)}</span>
+                <span className="text-[#f5c518]/85 font-bold">{entry.title}</span>
+                {entry.displayValue !== undefined && (
+                  <span className={`font-bold ${cpDisplayColor(entry)}`}>[{entry.displayValue}]</span>
+                )}
+                {entry.outcome && <span className="text-[#9ab0c8]/60">{entry.outcome}</span>}
+              </div>
+              <div className="text-[#d4d4d8]/85 whitespace-pre-wrap leading-relaxed">{entry.summary}</div>
+              {entry.calculation && <div className="text-[#00e5ff]/45 mt-1 whitespace-pre-wrap">{entry.calculation}</div>}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── 1d10 exploding dice ────────────────────────────────────
@@ -105,11 +219,10 @@ interface RoleAbilityPanelProps {
   roleLevel: number;
   stats: Record<CpStat, number>;
   skills: Record<string, number>;
-  addLog: (msg: string) => void;
-  onRoll: (r: RollDisplay) => void;
+  addLog: (entry: RuntimeLogEntry | string) => void;
 }
 
-function RoleAbilityPanel({ role, roleLevel, stats, skills, addLog, onRoll }: RoleAbilityPanelProps) {
+function RoleAbilityPanel({ role, roleLevel, stats, skills, addLog }: RoleAbilityPanelProps) {
   const ability = CP_ROLE_ABILITIES[role];
   const [showLevelTable, setShowLevelTable] = useState(false);
 
@@ -137,14 +250,34 @@ function RoleAbilityPanel({ role, roleLevel, stats, skills, addLog, onRoll }: Ro
     const d10 = rollD10();
     const total = d10 + base + lvBonus;
     const success = dv !== undefined ? total >= dv : undefined;
-    const type: RollDisplay['type'] = d10 === 10 ? 'crit' : d10 === 1 ? 'fumble'
-      : success === true ? 'success' : success === false ? 'fail' : 'neutral';
-    const r: RollDisplay = {
-      label, d10, bonus: `+${base}+Lv${lvBonus}`, total, dv, success, type
-    };
-    onRoll(r);
-    const line = `🎯 [${label}] d10[${d10}] +${base} +职业${lvBonus} = ${total}${dv ? ` vs DV${dv} → ${success ? '✅ 成功' : '❌ 失败'}` : ''}`;
-    addLog(line);
+    const outcome = success === undefined ? '等待 GM 判定' : success ? '成功' : '失败';
+    addLog(makeCpRuntimeLogEntry({
+      kind: 'check',
+      title: label,
+      summary: `${label} 职业能力检定`,
+      detail: dv ? `对抗 DV${dv}` : '未设置 DV，由 GM 判定结果。',
+      displayValue: total,
+      calculation: `d10[${d10}] + 基础${base} + 职业${lvBonus} = ${total}`,
+      outcome,
+      tags: [
+        'role-ability',
+        d10 === 10 ? 'critical-success' : '',
+        d10 === 1 ? 'critical-failure' : '',
+        success === true ? 'success' : '',
+        success === false ? 'failure' : '',
+        success === undefined ? 'waiting-gm' : '',
+      ].filter(Boolean),
+      payload: {
+        system: 'cpred',
+        rollType: 'roleAbility',
+        d10,
+        total,
+        base,
+        roleLevel: lvBonus,
+        dv,
+        success,
+      },
+    }));
   };
 
   const b = 'px-2 py-1 text-[10px] uppercase font-mono border border-[#00e5ff]/30 text-[#00e5ff] hover:bg-[#00e5ff]/10 cursor-pointer transition-colors';
@@ -596,16 +729,27 @@ function RoleAbilityPanel({ role, roleLevel, stats, skills, addLog, onRoll }: Ro
 // ══════════════════════════════════════════════════════════
 export function CpGameplay() {
   const { character, changeHp, changeHumanity, updateField, addInjury, removeInjury } = useCpStore();
-  const [log, setLog] = useState<string[]>(['[系统] // NIGHT CITY LINK ESTABLISHED. Ready.']);
+  const [log, setLog] = useState<RuntimeLogEntry[]>([
+    makeCpRuntimeLogEntry({
+      kind: 'system',
+      title: 'Night City Link',
+      summary: 'NIGHT CITY LINK ESTABLISHED. Ready.',
+      displayValue: 'READY',
+      tags: ['system'],
+      payload: { system: 'cpred' },
+    }),
+  ]);
   const [selectedSkill, setSelectedSkill] = useState('');
   const [modifier, setModifier] = useState(0);
   const [selectedDV, setSelectedDV] = useState(13);
   const [selectedWeapon, setSelectedWeapon] = useState(character.weapons[0]?.name ?? '');
   const [aimAtHead, setAimAtHead] = useState(false);
   const [diceTray, setDiceTray] = useState<Record<string, number>>({});
-  const [lastRoll, setLastRoll] = useState<RollDisplay | null>(null);
 
-  const addLog = (msg: string) => setLog(prev => [msg, ...prev].slice(0, 40));
+  const addLog = (entry: RuntimeLogEntry | string) => {
+    const nextEntry = typeof entry === 'string' ? makeCpSystemEntry(entry) : entry;
+    setLog(prev => [nextEntry, ...prev].slice(0, 20));
+  };
 
   const woundPenalty = character.hp.current <= character.seriouslyWounded && character.hp.current > 0 ? -2 : 0;
 
@@ -630,22 +774,35 @@ export function CpGameplay() {
       : result.isCriticalFailure
       ? `💀 大失败! [1]-[${result.extra}] = ${natural - (result.extra ?? 0)}`
       : `[${natural}]`;
-    const type: RollDisplay['type'] = result.isCriticalSuccess ? 'crit' : result.isCriticalFailure ? 'fumble'
-      : success ? 'success' : 'fail';
-
-    setLastRoll({
-      label: selectedSkill,
-      d10: natural + (result.isCriticalSuccess ? (result.extra ?? 0) : result.isCriticalFailure ? -(result.extra ?? 0) : 0),
-      bonus: `+技${skillLevel}+${skillDef.linkedStat}${statVal}${modifier !== 0 ? (modifier > 0 ? `+${modifier}` : `${modifier}`) : ''}`,
-      total: finalScore, dv: selectedDV, success, type,
-    });
-
-    const msg = [
-      `🎲 [${selectedSkill}]  ${rollLabel}  +技${skillLevel} +${skillDef.linkedStat}(${statVal})${modifier !== 0 ? ` +修正(${modifier})` : ''}${woundPenalty ? ` +伤势(${woundPenalty})` : ''}`,
-      `   总分: ${finalScore}  对阵: ${dvLabel} (DV${selectedDV})  → ${success ? '✅ 成功' : '❌ 失败'}`,
-    ].join('\n');
-
-    addLog(msg);
+    const margin = finalScore - selectedDV;
+    addLog(makeCpRuntimeLogEntry({
+      kind: 'check',
+      title: selectedSkill,
+      summary: `${selectedSkill} 技能检定 ${success ? '成功' : '失败'}`,
+      detail: `对阵 ${dvLabel} (DV${selectedDV})，差值 ${margin >= 0 ? '+' : ''}${margin}`,
+      displayValue: finalScore,
+      calculation: `${rollLabel} + 技能${skillLevel} + ${skillDef.linkedStat}(${statVal})${modifier !== 0 ? ` + 修正(${modifier})` : ''}${woundPenalty ? ` + 伤势(${woundPenalty})` : ''} = ${finalScore}`,
+      outcome: success ? '成功' : '失败',
+      tags: [
+        'skill-check',
+        result.isCriticalSuccess ? 'critical-success' : '',
+        result.isCriticalFailure ? 'critical-failure' : '',
+        success ? 'success' : 'failure',
+      ].filter(Boolean),
+      payload: {
+        system: 'cpred',
+        rollType: 'explodingD10',
+        d10: natural,
+        explosions: result.extra !== undefined ? [result.extra] : undefined,
+        total: finalScore,
+        stat: skillDef.linkedStat,
+        skill: selectedSkill,
+        base: result.base,
+        dv: selectedDV,
+        success,
+        margin,
+      },
+    }));
     toast(success ? '检定成功' : '检定失败', { description: `${finalScore} vs DV${selectedDV}` });
   };
 
@@ -654,31 +811,42 @@ export function CpGameplay() {
     const weapon = character.weapons.find(w => w.name === selectedWeapon);
     if (!weapon) { toast.error('请先选择武器'); return; }
     const { rolls, total, critInjury } = rollDamage(weapon.damage);
-    let msg = `🔫 [${weapon.name}] ${weapon.damage} → [${rolls.join(', ')}] = ${total}`;
-
-    setLastRoll({
-      label: `${weapon.name} 伤害`,
-      d10: total,
-      bonus: `[${rolls.join(',')}]`,
-      total,
-      type: critInjury ? 'crit' : 'neutral',
-    });
+    const detailLines: string[] = [];
 
     if (critInjury) {
       const d6a = rollD6(), d6b = rollD6(), sum = d6a + d6b;
       const table  = aimAtHead ? CP_CRIT_INJURIES_HEAD : CP_CRIT_INJURIES_BODY;
       const injury = table.find(e => e.roll === sum) ?? table[table.length - 1];
       const injuryStr = `${aimAtHead ? '[头部]' : '[身体]'} ${injury.name} — ${injury.effect}`;
-      msg += `\n  ⚠ 重伤! 2d6=[${d6a}+${d6b}=${sum}] 额外 -5 HP`;
-      msg += `\n  📍 ${injuryStr}`;
-      if (injury.quickFix) msg += `\n  🩹 ${injury.quickFix}`;
+      detailLines.push(`重伤触发: 2d6=[${d6a}+${d6b}=${sum}]，额外 -5 HP`);
+      detailLines.push(`伤势: ${injuryStr}`);
+      if (injury.quickFix) detailLines.push(`快速处理: ${injury.quickFix}`);
       addInjury(injuryStr);
       changeHp(-5);
       toast.error('重伤触发！', { description: injury.name });
     } else {
       toast.success(`伤害: ${total}`, { description: `[${rolls.join(', ')}]` });
     }
-    addLog(msg);
+    addLog(makeCpRuntimeLogEntry({
+      kind: 'damage',
+      title: `${weapon.name} 伤害`,
+      summary: `${weapon.name} 伤害掷骰 ${weapon.damage}`,
+      detail: detailLines.join('\n') || '仅掷出伤害值；未自动结算护甲、弹药或完整伤害流程。',
+      displayValue: total,
+      calculation: `${weapon.damage} -> [${rolls.join(', ')}] = ${total}`,
+      outcome: critInjury ? '重伤触发' : '伤害已掷出',
+      tags: ['damage-roll', critInjury ? 'injury' : '', aimAtHead ? 'aimed-head' : ''].filter(Boolean),
+      payload: {
+        system: 'cpred',
+        rollType: 'damage',
+        weapon: weapon.name,
+        formula: weapon.damage,
+        rolls,
+        total,
+        criticalInjury: critInjury,
+        aimedLocation: aimAtHead ? 'head' : 'body',
+      },
+    }));
   };
 
   // ── Stat Check ────────────────────────────────────────
@@ -686,9 +854,25 @@ export function CpGameplay() {
     const statVal = character.stats[stat];
     const roll    = rollExploding();
     const final   = roll.total + statVal + woundPenalty;
-    const type: RollDisplay['type'] = roll.isCrit ? 'crit' : roll.isFumble ? 'fumble' : 'neutral';
-    setLastRoll({ label: CP_STAT_LABELS[stat], d10: roll.total, bonus: `+${stat}(${statVal})`, total: final, type });
-    addLog(`🎲 属性检定 [${CP_STAT_LABELS[stat]}]: ${roll.label} +${statVal} = ${final}`);
+    addLog(makeCpRuntimeLogEntry({
+      kind: 'check',
+      title: CP_STAT_LABELS[stat],
+      summary: `${CP_STAT_LABELS[stat]} 属性检定`,
+      detail: '未设置 DV，由 GM 判定结果。',
+      displayValue: final,
+      calculation: `${roll.label} + ${stat}(${statVal})${woundPenalty ? ` + 伤势(${woundPenalty})` : ''} = ${final}`,
+      outcome: '等待 GM 判定',
+      tags: ['stat-check', roll.isCrit ? 'critical-success' : '', roll.isFumble ? 'critical-failure' : '', 'waiting-gm'].filter(Boolean),
+      payload: {
+        system: 'cpred',
+        rollType: 'explodingD10',
+        d10: roll.initial,
+        explosions: roll.bonus !== undefined ? [roll.bonus] : roll.penalty !== undefined ? [roll.penalty] : undefined,
+        total: final,
+        stat,
+        base: statVal,
+      },
+    }));
     toast('属性检定', { description: `总分: ${final}` });
   };
 
@@ -696,9 +880,23 @@ export function CpGameplay() {
   const handleDeathSave = () => {
     const roll    = rollD10();
     const success = roll <= character.deathSave;
-    setLastRoll({ label: '死亡豁免', d10: roll, bonus: `vs ${character.deathSave}`, total: roll,
-      success, type: success ? 'success' : 'fail' });
-    addLog(`💀 死亡豁免: d10[${roll}] vs ${character.deathSave} → ${success ? '✅ 存活' : '❌ 濒死'}`);
+    addLog(makeCpRuntimeLogEntry({
+      kind: 'check',
+      title: '死亡豁免',
+      summary: `死亡豁免 ${success ? '成功' : '失败'}`,
+      detail: `d10 必须小于等于死亡豁免基础值 ${character.deathSave}`,
+      displayValue: roll,
+      calculation: `d10[${roll}] vs ${character.deathSave}`,
+      outcome: success ? '存活' : '濒死',
+      tags: ['death-save', success ? 'success' : 'failure'],
+      payload: {
+        system: 'cpred',
+        rollType: 'deathSave',
+        d10: roll,
+        base: character.deathSave,
+        success,
+      },
+    }));
     toast(success ? '死亡豁免成功！' : '死亡豁免失败！', { description: `掷出 ${roll}` });
   };
 
@@ -714,8 +912,23 @@ export function CpGameplay() {
       total += rolls.reduce((a, b) => a + b, 0);
       parts.push(`${count}${die}[${rolls.join(',')}]`);
     }
-    setLastRoll({ label: '自由掷骰', d10: total, bonus: parts.join('+'), total, type: 'neutral' });
-    addLog(`🎲 自由掷骰: ${parts.join(' + ')} = ${total}`);
+    const formula = parts.join(' + ');
+    addLog(makeCpRuntimeLogEntry({
+      kind: 'roll',
+      title: '自由掷骰',
+      summary: 'Free Roll / Utility',
+      detail: '自由掷骰只记录结果，不触发任何规则自动化。',
+      displayValue: total,
+      calculation: `${formula} = ${total}`,
+      outcome: '已掷出',
+      tags: ['free-roll', 'utility'],
+      payload: {
+        system: 'cpred',
+        rollType: 'freeDice',
+        formula,
+        total,
+      },
+    }));
     toast.success(`掷出 ${total}`, { description: parts.join(' + ') });
     setDiceTray({});
   };
@@ -768,47 +981,7 @@ export function CpGameplay() {
         </div>
       </div>
 
-      {/* ── Last Roll — PROMINENT DISPLAY ────────────────── */}
-      {lastRoll && (
-        <div className={`hud-panel p-4 flex gap-4 items-center transition-all
-          ${lastRoll.type === 'crit'    ? 'hud-panel-gold border-2 border-[#f5c518] shadow-[0_0_28px_rgba(245,197,24,0.25)]' :
-            lastRoll.type === 'fumble'  ? 'hud-panel-red  border-2 border-red-500 shadow-[0_0_24px_rgba(255,51,51,0.25)]' :
-            lastRoll.type === 'success' ? 'border-2 border-[#39ff14] bg-[#39ff14]/5 shadow-[0_0_20px_rgba(57,255,20,0.18)]' :
-            lastRoll.type === 'fail'    ? 'border-2 border-red-500/60 bg-red-950/20' :
-            'hud-panel-cyan border-[#00e5ff]/40'}`}>
-          {/* Big number */}
-          <div className="text-center shrink-0">
-            <div className="text-[9px] tracking-[0.2em] uppercase mb-0.5
-              text-[#00e5ff]/50">
-              {lastRoll.type === 'crit' ? '// CRITICAL //' : lastRoll.type === 'fumble' ? '// FUMBLE //'
-                : lastRoll.type === 'success' ? '// SUCCESS //' : lastRoll.type === 'fail' ? '// FAIL //'
-                : '// ROLL //'}
-            </div>
-            <div className={`font-cp-title text-6xl leading-none
-              ${lastRoll.type === 'crit' ? 'neon-gold' :
-                lastRoll.type === 'fumble' ? 'text-red-500 neon-red' :
-                lastRoll.type === 'success' ? 'text-[#39ff14] neon-green' :
-                lastRoll.type === 'fail' ? 'text-red-400' : 'text-[#00e5ff]'}`}>
-              {lastRoll.total}
-            </div>
-            {lastRoll.dv !== undefined && (
-              <div className="text-[10px] text-[#9ab0c8]/50 mt-0.5">vs DV{lastRoll.dv}</div>
-            )}
-          </div>
-          {/* Detail */}
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-bold text-[#f5c518] uppercase tracking-wide truncate">{lastRoll.label}</div>
-            <div className="text-[10px] text-[#9ab0c8]/60 mt-0.5 font-mono">
-              d10[{lastRoll.d10}] {lastRoll.bonus}
-            </div>
-            {lastRoll.success !== undefined && (
-              <div className={`text-sm font-bold mt-1 ${lastRoll.success ? 'text-[#39ff14]' : 'text-red-400'}`}>
-                {lastRoll.success ? '✓ 成功 SUCCESS' : '✕ 失败 FAILURE'}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <CpRollConsolePanel entries={log} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {/* ── Left column ──────────────────────────────── */}
@@ -836,7 +1009,22 @@ export function CpGameplay() {
                     : 'border-[#39ff14]/40 text-[#39ff14] hover:bg-[#39ff14]/10 hover:border-[#39ff14]'}`}
                   onClick={() => {
                     changeHp(amt);
-                    addLog(`${amt > 0 ? '恢复' : '受到'} ${Math.abs(amt)} HP → ${Math.max(0, Math.min(character.hp.max, character.hp.current + amt))}/${character.hp.max}`);
+                    const nextHp = Math.max(0, Math.min(character.hp.max, character.hp.current + amt));
+                    addLog(makeCpRuntimeLogEntry({
+                      kind: 'resource',
+                      title: 'HP 调整',
+                      summary: `${amt > 0 ? '恢复' : '受到'} ${Math.abs(amt)} HP`,
+                      detail: `HP: ${character.hp.current} -> ${nextHp}/${character.hp.max}`,
+                      displayValue: nextHp,
+                      calculation: `${character.hp.current} ${amt >= 0 ? '+' : ''}${amt} = ${nextHp}`,
+                      outcome: nextHp <= character.seriouslyWounded && nextHp > 0 ? '重伤状态' : nextHp <= 0 ? '濒死' : '已更新',
+                      tags: ['resource', 'resource-hp', amt < 0 ? 'damage' : 'healing'],
+                      payload: {
+                        system: 'cpred',
+                        resource: 'hp',
+                        delta: amt,
+                      },
+                    }));
                   }}>
                   {amt > 0 ? '+' : ''}{amt}
                 </button>
@@ -870,7 +1058,21 @@ export function CpGameplay() {
                     const old = character.humanity.current;
                     changeHumanity(amt);
                     const nw = Math.max(0, Math.min(character.humanity.max, old + amt));
-                    addLog(`人性 ${amt > 0 ? '+' : ''}${amt}: ${old} → ${nw}${Math.floor(old/10) > Math.floor(nw/10) ? '  ⚠ EMP↓' : ''}`);
+                    addLog(makeCpRuntimeLogEntry({
+                      kind: 'resource',
+                      title: '人性调整',
+                      summary: `人性 ${amt > 0 ? '+' : ''}${amt}`,
+                      detail: `Humanity: ${old} -> ${nw}${Math.floor(old/10) > Math.floor(nw/10) ? '\nEMP 阶段下降提示。' : ''}`,
+                      displayValue: nw,
+                      calculation: `${old} ${amt >= 0 ? '+' : ''}${amt} = ${nw}`,
+                      outcome: nw <= 0 ? '人性归零' : '已更新',
+                      tags: ['resource', 'resource-humanity', amt < 0 ? 'humanity-loss' : 'humanity-gain'],
+                      payload: {
+                        system: 'cpred',
+                        resource: 'humanity',
+                        delta: amt,
+                      },
+                    }));
                     if (nw <= 0) toast.error('人性归零！赛博精神病！');
                   }}>
                   {amt > 0 ? '+' : ''}{amt}
@@ -1023,7 +1225,22 @@ export function CpGameplay() {
               <div key={i} className="flex items-start gap-2 border border-orange-500/20 px-3 py-1.5">
                 <span className="text-orange-300 flex-1 text-[10px] leading-relaxed font-mono">{inj}</span>
                 <button
-                  onClick={() => { removeInjury(inj); addLog(`✅ 伤势处理: ${inj}`); }}
+                  onClick={() => {
+                    removeInjury(inj);
+                    addLog(makeCpRuntimeLogEntry({
+                      kind: 'action',
+                      title: '伤势处理',
+                      summary: `已处理伤势: ${inj}`,
+                      displayValue: 'DONE',
+                      outcome: '已处理',
+                      tags: ['injury', 'resource'],
+                      payload: {
+                        system: 'cpred',
+                        action: 'removeInjury',
+                        injury: inj,
+                      },
+                    }));
+                  }}
                   className="text-[9px] border border-orange-500/30 text-orange-400 px-1.5 py-0.5 hover:bg-orange-900/30 shrink-0 uppercase font-mono">
                   处理
                 </button>
@@ -1040,21 +1257,7 @@ export function CpGameplay() {
         stats={character.stats}
         skills={character.skills}
         addLog={addLog}
-        onRoll={setLastRoll}
       />
-
-      {/* ── Combat Log ─────────────────────────────────── */}
-      <div className="cp-panel-cyan hud-panel-cyan hud-panel p-4">
-        <SysHeader>COMBAT LOG // 战斗日志</SysHeader>
-        <div className="font-mono text-[10px] overflow-y-auto max-h-[220px] bg-[#050508] p-3 border border-[#00e5ff]/8 space-y-0.5"
-          style={{ backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 5px,rgba(0,229,255,0.008) 5px,rgba(0,229,255,0.008) 6px)' }}>
-          {log.map((line, i) => (
-            <div key={i} className={`border-b border-[#00e5ff]/5 pb-0.5 last:border-0 whitespace-pre-wrap leading-relaxed ${cpLogColor(line)}`}>
-              {line}
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
