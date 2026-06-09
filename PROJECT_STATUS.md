@@ -67,6 +67,8 @@ DND Structured LogEntry v1 scope:
 | CocGameplay — uses evaluateCocD100Check | ✅ Done |
 | COC runtime state v2 foundation | ✅ Done |
 | COC Runtime State UI Panel v1 | ✅ Done |
+| COC Gameplay RollConsole RuntimeLogEntry v1 | ✅ Done |
+| COC Skill Check Wiring v1 | ✅ Done |
 | COC Creator skill point constraint v1 | ✅ Done |
 | COC Sheet responsibility cleanup v1 | ✅ Done |
 
@@ -80,6 +82,18 @@ COC Runtime State UI Panel v1 scope:
 - CocGameplay displays runtime-first HP, MP, SAN, and Luck values with legacy fallback.
 - CocGameplay uses existing runtime store actions for HP/MP/SAN/Luck adjustment and manual runtime flag toggles.
 - No RollConsole, RuntimeLogEntry, Skill Check wiring, SAN Check workflow, Luck spending workflow, Pushed Roll UI, Keeper Console, or visibility filtering.
+
+COC Gameplay RollConsole RuntimeLogEntry v1 scope:
+- CocGameplay local logs use `RuntimeLogEntry[]` instead of `string[]`.
+- CocGameplay displays a RollConsole-style Latest Result and structured history log from local runtime log entries.
+- Existing resource adjustments, flag toggles, runtime initialization, SAN quick roll, and free dice roll log producers write local COC RuntimeLogEntry objects.
+- No store, schema, migration, full Skill Check wiring, SAN Check workflow, Luck spending workflow, Pushed Roll UI, Keeper Console, gmOnly filtering, reveal workflow, combat, or chase changes.
+
+COC Skill Check Wiring v1 scope:
+- CocGameplay displays player-facing public skill checks from the existing character skills list.
+- Skill check results use `evaluateCocD100Check` and write local `RuntimeLogEntry` objects for CocRollConsolePanel Latest Result and history display.
+- SAN quick roll now uses the runtime-first SAN current value.
+- No store, schema, migration, Luck spending, Pushed Roll, growth resolution, SAN Check workflow, Keeper Console, gmOnly filtering, reveal workflow, combat, or chase changes.
 
 COC Creator skill point constraint v1 scope:
 - CocCreator Step 3 now provides creation-time skill allocation with EDU × 4 occupational points and INT × 2 personal interest points.
