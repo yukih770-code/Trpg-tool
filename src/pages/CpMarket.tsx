@@ -152,7 +152,7 @@ export function CpMarket() {
       {/* ── Humanity warning ─────────────────────────────── */}
       {character.humanity.current <= 0 && (
         <div className="border border-red-500 bg-red-950/30 p-2 font-cp-body text-[10px] text-red-400 animate-pulse tracking-widest">
-          ⚠ 人性归零 — 赛博精神病 // 无法安装更多义体
+          ⚠ 人性归零 — 赛博精神病风险 // 义体安装不自动结算人性
         </div>
       )}
 
@@ -198,7 +198,7 @@ export function CpMarket() {
           CYBERWARE
           States: NOT_OWNED → BUY (→ inventory)
                   OWNED (inventory) → INSTALL + SELL
-                  INSTALLED → REMOVE (→ inventory, restores humanity)
+                  INSTALLED → REMOVE (→ inventory; humanity automation deferred)
          ════════════════════════════════════════════════════ */}
       {activeTab === 'cyberware' && (
         <div className="space-y-2">
@@ -232,8 +232,7 @@ export function CpMarket() {
                       </div>
                       <div className="font-cp-body text-[10px] text-[#9ab0c8]/55 leading-relaxed">{cw.description}</div>
                       <div className="flex items-center gap-3 mt-1">
-                        <span className="font-cp-body text-[9px] text-red-400/70">人性 −{cw.humanityCost}</span>
-                        {installed && <span className="font-cp-body text-[9px] text-green-400/60">→ 卸除后人性恢复 +{cw.humanityCost}</span>}
+                        <span className="font-cp-body text-[9px] text-red-400/70">人性成本 {cw.humanityCost}（未自动扣除）</span>
                       </div>
                     </div>
                     <div className="shrink-0 flex flex-col items-end gap-1.5">
@@ -243,18 +242,17 @@ export function CpMarket() {
                         // INSTALLED → can remove (returns to inventory)
                         <ActionBtn label="REMOVE" color="border-orange-500/50 text-orange-400 hover:bg-orange-900/20" onClick={() => {
                           removeCyberware(cw.name);
-                          toast.success(`// 已卸除: ${cw.name} → 已归还背包，人性恢复 +${cw.humanityCost}`);
+                          toast.success(`// 已卸除: ${cw.name} → 已归还背包`);
                         }} />
                       ) : ownedInInventory ? (
                         // OWNED IN INVENTORY → can install (free) or sell
                         <div className="flex flex-col gap-1 items-end">
                           <ActionBtn
                             label="INSTALL"
-                            disabled={character.humanity.current <= 0}
                             color="border-green-400/50 text-green-400 hover:bg-green-900/20"
                             onClick={() => {
                               installCyberware(cw);
-                              toast.success(`// 安装完成: ${cw.name}（人性 −${cw.humanityCost}）`);
+                              toast.success(`// 安装完成: ${cw.name}（未自动扣除人性）`);
                             }}
                           />
                           <ActionBtn label="SELL" color="border-red-500/40 text-red-400/80 hover:bg-red-900/15" onClick={() => {

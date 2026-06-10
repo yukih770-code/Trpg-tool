@@ -51,6 +51,12 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] CP Gameplay — check / role / damage / resource results enter RollConsole Latest Result and RuntimeLogEntry history
 - [ ] CP Gameplay — checks without DV show `等待 GM 判定`
 - [ ] CP Market — opens without crash
+- [ ] CP Market — item can be added to character inventory
+- [ ] CP Sheet — inventory and equipment state are visible
+- [ ] CP Sheet — equip / unequip weapon does not lose the item
+- [ ] CP Sheet — equip / unequip armor does not lose the item
+- [ ] CP Sheet — install / uninstall cyberware preserves the item and does not automate Humanity Loss
+- [ ] CP RED — no armor ablation or ammo automation expected
 
 ---
 

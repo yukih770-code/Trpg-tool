@@ -136,6 +136,7 @@ COC Sheet responsibility cleanup v1 scope:
 | CP RED Gameplay RollConsole RuntimeLogEntry v1 | ✅ Done |
 | CP RED Skill Check Wiring v1 | ✅ Done |
 | CP RED Gameplay Componentization v1 | ✅ Done |
+| CP RED Equipment / Market Inventory Flow v1 | ✅ Done |
 | CpGameplay — uses evaluateCpExplodingD10 / evaluateCpSkillCheck | ✅ Done |
 | cpStore — uses getCpMaxHp / getCpSeriouslyWoundedThreshold / getCpDeathSaveBase / getCpHumanityMax / isCpCyberpsycho | ✅ Done |
 
@@ -165,6 +166,13 @@ CP RED Gameplay Componentization v1 scope:
 - Behavior is intended to stay unchanged: local RuntimeLogEntry history remains capped at 20, latest entry stays first, entries use `system: 'cpred'` and `visibility: 'public'`.
 - Free Dice Tray remains in Gameplay as an isolated utility panel for now.
 - No store, schema, migration, armor/ammo automation, Netrunning state machine, GM Console, AI Host, multiplayer, DND, or COC changes.
+
+CP RED Equipment / Market Inventory Flow v1 scope:
+- Reuses existing CP RED inventory/equipment fields and store actions for market-to-inventory flow.
+- CpMarket can add weapons, armor, cyberware, fashion, and gear to character inventory using existing EB/fashion EB purchase paths.
+- CpSheet shows inventory/equipment state and supports equip/unequip/install/uninstall without losing items.
+- Cyberware install/uninstall is state-only; Humanity Loss automation remains deferred.
+- No armor ablation, ammo tracking, full damage pipeline, Netrunning state machine, GM Console, AI Host, DND, or COC changes.
 
 ---
 

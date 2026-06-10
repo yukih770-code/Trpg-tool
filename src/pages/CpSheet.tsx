@@ -182,7 +182,7 @@ export function CpSheet() {
             {cyberware.map(cw => (
               <div key={cw.name} className="text-xs flex justify-between">
                 <span>{cw.name}</span>
-                <span className="text-red-400/60 text-[10px]">−{cw.humanityCost}人性</span>
+                <span className="text-red-400/60 text-[10px]">人性成本 {cw.humanityCost}</span>
               </div>
             ))}
             {character.cyberPsycho && <div className="text-red-400 text-xs font-bold mt-1 animate-pulse">⚠ 赛博精神病</div>}
@@ -210,14 +210,13 @@ export function CpSheet() {
         armorHead={character.armorHead}
         weaponsCarried={character.weapons}
         clothingWorn={character.clothing ?? []}
-        humanityLeft={character.humanity.current}
         onCarryWeapon={carryWeapon}
         onDropWeapon={removeWeapon}
         onEquipArmor={(armor) => { equipArmor(armor, armor.location); toast.success(`// 已装备: ${armor.name}`); }}
         onUnequipArmor={(location) => { unequipArmor(location); toast.success(`// 已卸下护甲 → 存入背包`); }}
         onWearFashion={wearFashion}
         onTakeOffFashion={removeClothing}
-        onInstallCyberware={(cw) => { installCyberware(cw); toast.success(`// 安装完成: ${cw.name}`); }}
+        onInstallCyberware={(cw) => { installCyberware(cw); toast.success(`// 安装完成: ${cw.name}（未自动扣除人性）`); }}
         onRemoveCyberware={(name) => { removeCyberware(name); toast.success(`// 已卸除义体 → 存入背包`); }}
         T={T}
       />
@@ -264,7 +263,6 @@ export function CpSheet() {
 // ── Inventory Panel ───────────────────────────────────────
 function InventoryPanel({
   inv, cyberwareInstalled, armorBody, armorHead, weaponsCarried, clothingWorn,
-  humanityLeft,
   onCarryWeapon, onDropWeapon, onEquipArmor, onUnequipArmor,
   onWearFashion, onTakeOffFashion, onInstallCyberware, onRemoveCyberware,
   T,
@@ -275,7 +273,6 @@ function InventoryPanel({
   armorHead: CpArmor | null;
   weaponsCarried: { name: string; damage: string; skill: string; rof: number; cost: number }[];
   clothingWorn: { name: string; style: string; cost: number; description: string }[];
-  humanityLeft: number;
   onCarryWeapon: (name: string) => void;
   onDropWeapon: (name: string) => void;
   onEquipArmor: (a: CpArmor) => void;
@@ -406,7 +403,7 @@ function InventoryPanel({
                   <div key={cw.name} className="flex items-center justify-between text-xs border border-green-500/20 bg-green-950/10 px-2 py-1">
                     <div>
                       <span className="text-green-400 font-bold">{cw.name}</span>
-                      <span className="text-red-400/60 ml-2 text-[10px]">−{cw.humanityCost}人性</span>
+                      <span className="text-red-400/60 ml-2 text-[10px]">人性成本 {cw.humanityCost}</span>
                       <span className="font-cp-title text-[8px] text-green-400 border border-green-400/30 px-1 ml-2">已安装</span>
                     </div>
                     <button onClick={() => onRemoveCyberware(cw.name)}
@@ -419,13 +416,12 @@ function InventoryPanel({
                   <div key={cw.name} className="flex items-center justify-between text-xs border border-yellow-400/20 bg-yellow-950/10 px-2 py-1">
                     <div>
                       <span className="text-[#d4d4d8]">{cw.name}</span>
-                      <span className="text-red-400/60 ml-2 text-[10px]">−{cw.humanityCost}人性</span>
+                      <span className="text-red-400/60 ml-2 text-[10px]">人性成本 {cw.humanityCost}</span>
                       <span className="font-cp-title text-[8px] text-yellow-400 border border-yellow-400/30 px-1 ml-2">背包</span>
                     </div>
                     <button
-                      disabled={humanityLeft <= 0}
                       onClick={() => onInstallCyberware(cw)}
-                      className={`${btnBase} ${humanityLeft > 0 ? 'border-purple-400/50 text-purple-400 hover:bg-purple-900/15' : 'border-[#f5c518]/10 text-[#f5c518]/20 cursor-not-allowed'}`}>
+                      className={`${btnBase} border-purple-400/50 text-purple-400 hover:bg-purple-900/15`}>
                       安装
                     </button>
                   </div>

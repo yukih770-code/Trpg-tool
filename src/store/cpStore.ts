@@ -130,9 +130,9 @@ interface CpState {
   // ── Cyberware ──────────────────────────────────────────
   /** Buy cyberware → adds to inventory.cyberware (no humanity cost yet) */
   addCyberwareToInventory: (cw: CpCyberware) => void;
-  /** Install cyberware from inventory → moves to character.cyberware, applies humanity cost */
+  /** Install cyberware from inventory → moves to character.cyberware; humanity automation deferred */
   installCyberware: (cw: CpCyberware) => void;
-  /** Uninstall cyberware → returns to inventory.cyberware, restores humanity */
+  /** Uninstall cyberware → returns to inventory.cyberware; humanity automation deferred */
   removeCyberware: (name: string) => void;
   /** Permanently sell/discard cyberware from inventory (does NOT remove from installed) */
   discardCyberware: (name: string) => void;
@@ -274,25 +274,15 @@ export const useCpStore = create<CpState>()(
         if (state.character.cyberware.find(c => c.name === cw.name)) return state;
 
         const inv = safeInv(state.character);
-        const oldHumanity = state.character.humanity.current;
-        const newHumanity = Math.max(0, oldHumanity - cw.humanityCost);
-        const newEmp = computeEmpFromHumanity(oldHumanity, newHumanity, state.character.stats.EMP);
-        const newStats = { ...state.character.stats, EMP: newEmp };
-        const derived = computeCpDerived(newStats);
-
         const nextCharacter: CpCharacter = {
           ...state.character,
           cyberware: [...state.character.cyberware, cw],
           // Remove from inventory if it was there (it should be, but handle gracefully)
           inventory: { ...inv, cyberware: inv.cyberware.filter(c => c.name !== cw.name) },
-          humanity: { current: newHumanity, max: derived.maxHumanity },
-          stats: newStats,
-          ...derived,
-          cyberPsycho: isCpCyberpsycho(newHumanity),
         };
 
         return {
-          character: withRuntime(nextCharacter)
+          character: nextCharacter
         };
       }),
 
@@ -303,11 +293,6 @@ export const useCpStore = create<CpState>()(
         const inv = safeInv(state.character);
         const newInstalled = state.character.cyberware.filter(c => c.name !== name);
 
-        // Restore humanity
-        const oldHumanity = state.character.humanity.current;
-        const maxHumanity = state.character.humanity.max;
-        const newHumanity = Math.min(maxHumanity, oldHumanity + cw.humanityCost);
-
         // Return to inventory if not already there
         const alreadyInInv = inv.cyberware.some(c => c.name === name);
         const newInvCyberware = alreadyInInv ? inv.cyberware : [...inv.cyberware, cw];
@@ -316,12 +301,10 @@ export const useCpStore = create<CpState>()(
           ...state.character,
           cyberware: newInstalled,
           inventory: { ...inv, cyberware: newInvCyberware },
-          humanity: { current: newHumanity, max: maxHumanity },
-          cyberPsycho: isCpCyberpsycho(newHumanity),
         };
 
         return {
-          character: withRuntime(nextCharacter)
+          character: nextCharacter
         };
       }),
 

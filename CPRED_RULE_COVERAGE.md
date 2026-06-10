@@ -57,12 +57,12 @@ CpCreator, cp-types, cpStore, and cp-utils have partial foundations. Role, Stats
 | HP display | 4 | Existing. | Runtime mutation should belong in Gameplay. | P0 |
 | Seriously Wounded / Death Save display | 3 | Utilities exist. | UI alignment needs audit. | P1 |
 | Humanity / EMP display | 4 | Existing logic. | Runtime semantics need audit. | P1 |
-| Weapons display | 1 | Existing partial/static. | Structured attack model deferred. | P1 |
-| Armor display | 1 | Existing partial/static. | SP/ablation deferred. | P1 |
-| Cyberware display | 1 | Existing partial/static. | Install/removal automation deferred. | P2 |
-| Gear / Inventory display | 2 | Existing partial. | Needs structured gear audit. | P2 |
+| Weapons display | 5 | Sheet shows carried weapons and inventory weapons. | Structured attack model deferred. | P1 |
+| Armor display | 5 | Sheet shows equipped body/head armor and inventory armor. | SP/ablation deferred. | P1 |
+| Cyberware display | 5 | Sheet shows installed and inventory cyberware. | Humanity Loss automation deferred. | P2 |
+| Gear / Inventory display | 5 | Sheet shows inventory and equipment state. | Weight/carry limits deferred. | P2 |
 | Lifepath display | 1 | Existing partial/static. | Needs audit. | P2 |
-| Sheet runtime operations | 5 | Sheet cleanup removed gameplay runtime ownership. | Inventory/cyberware follow-up remains deferred. | P0 |
+| Sheet runtime operations | 5 | Sheet cleanup removed gameplay runtime ownership; inventory equip/unequip is downtime maintenance. | Combat runtime remains in Gameplay. | P0 |
 | Sheet roll/check responsibility | 5 | Sheet no longer owns gameplay checks or local Roll Log. | Gameplay owns rolls/results. | P0 |
 
 CpSheet has received DND/COC-style responsibility cleanup. Sheet is display plus downtime maintenance; Player Gameplay owns rolls/results and runtime operation.
@@ -93,7 +93,7 @@ CpSheet has received DND/COC-style responsibility cleanup. Sheet is display plus
 | Ammo | 0 | Deferred. | Needs weapon runtime model. | P2 |
 | Critical Injuries | 0 | Deferred. | Needs table/workflow. | P2 |
 | Netrunning | 0 | Deferred. | Large subsystem. | P3 |
-| Market / Gear | 2 | CpMarket exists. | Dynamic gear economy deferred. | P2 |
+| Market / Gear | 5 | CpMarket can add weapons, armor, cyberware, fashion, and gear to character inventory. | Dynamic gear economy deferred. | P2 |
 | Vehicles | 0 | Deferred. | Future subsystem. | P3 |
 
 CP Gameplay is unified to local RuntimeLogEntry and RollConsole, with componentized panels. Complex combat, armor, ammo, netrunning, vehicles, GM Console, and visibility filtering are deferred.
@@ -144,16 +144,16 @@ Weapons, armor, and critical injury static data may exist, but full combat is de
 |---|---:|---|---|---|
 | Humanity | 3 | Pure/store logic exists. | Runtime state/UI audit needed. | P1 |
 | EMP | 3 | Utility support exists. | Semantics need audit. | P1 |
-| Humanity Loss | 1 | Partially represented. | Cyberware install automation missing. | P2 |
-| Cyberware installation | 0 | Not implemented. | Needs cyberware model and confirmation. | P2 |
-| Cyberware removal | 0 | Not implemented. | Needs cyberware model. | P3 |
+| Humanity Loss | 1 | Humanity cost is displayed. | Cyberware-driven Humanity Loss automation deferred. | P2 |
+| Cyberware installation | 5 | Cyberware can be installed from inventory as state-only equipment flow. | Humanity Loss automation deferred. | P2 |
+| Cyberware removal | 5 | Cyberware can be uninstalled back to inventory without losing the item. | Humanity restoration automation deferred. | P3 |
 | Therapy | 0 | Deferred. | Needs downtime workflow. | P3 |
 | Cyberpsychosis | 1 | Utility/threshold may exist. | Needs runtime prompts/workflow. | P2 |
 | Cyberware categories | 1 | Static data may exist. | Needs audit. | P2 |
 | Humanity current vs max | 2 | Existing concepts likely. | Needs runtime semantics audit. | P1 |
 | `computeEmpFromHumanity` / `getCpRuntimeEmp` semantic difference | 1 | Known project note exists. | Must be respected in future refactors. | P1 |
 
-Humanity/EMP pure logic has a foundation. Runtime state and UI semantics still need a dedicated pass. Cyberware installation, humanity loss automation, and therapy are deferred or GM-adjudicated.
+Humanity/EMP pure logic has a foundation. Cyberware inventory install/uninstall is state-only and preserves items. Humanity Loss, therapy, and full cyberpsychosis workflows remain deferred or GM-adjudicated.
 
 ## 9. Netrunning Coverage
 
@@ -179,21 +179,21 @@ Netrunning is fully deferred and should not enter current Player Gameplay v1/v2.
 
 | Rule Area | Current Level | Current Status | Gaps | Priority |
 |---|---:|---|---|---|
-| Market | 2 | CpMarket exists. | Needs audit. | P1 |
-| Gear | 1 | Static/fields likely exist. | Needs structured gear model audit. | P2 |
-| Weapons | 1 | Static/fields likely exist. | No full attack/damage workflow. | P2 |
-| Armor | 1 | Static/fields likely exist. | No SP/ablation runtime. | P2 |
-| Cyberware | 1 | Static/fields likely exist. | No install/humanity workflow. | P2 |
-| Fashion | 1 | Static/fields likely exist. | Lifestyle/aesthetic workflow deferred. | P3 |
+| Market | 5 | CpMarket can add items to character inventory and uses existing EB/fashion EB where available. | Dynamic economy deferred. | P1 |
+| Gear | 5 | Gear can be added to and shown in inventory. | Weight/carry limits deferred. | P2 |
+| Weapons | 5 | Weapons can be bought, carried, dropped back to inventory, and displayed. | No full attack/damage workflow. | P2 |
+| Armor | 5 | Armor can be bought, equipped, unequipped back to inventory, and displayed. | No SP/ablation runtime. | P2 |
+| Cyberware | 5 | Cyberware can be bought, installed, uninstalled back to inventory, and displayed as state-only. | Humanity Loss automation deferred. | P2 |
+| Fashion | 5 | Fashion can be bought, worn, removed back to inventory, and displayed. | Lifestyle/aesthetic workflow deferred. | P3 |
 | Lifestyle | 0 | Deferred. | Future economy layer. | P3 |
 | Rent | 0 | Deferred. | Future economy layer. | P3 |
-| Buying / selling | 1 | CpMarket may support basic interactions. | Needs audit. | P2 |
+| Buying / selling | 5 | Basic buy/sell/add-to-inventory flow exists for current market categories. | Availability/price volatility deferred. | P2 |
 | Availability | 0 | Deferred. | Future market rules. | P3 |
 | Black market | 0 | Deferred. | Future market rules. | P3 |
 | Repair | 0 | Deferred. | Future gear workflow. | P3 |
 | Upgrades | 0 | Deferred. | Future tech workflow. | P3 |
 
-Market/gear are not P0 blockers. Dynamic economy, repair, upgrades, and black market are deferred.
+Market/gear v1 now supports basic character inventory flow: market items can be added to inventory, Sheet shows inventory/equipment state, and equip/unequip/install/uninstall preserves items. Armor ablation, ammo automation, full damage pipeline, Humanity Loss automation, dynamic economy, repair, upgrades, and advanced black market rules are deferred.
 
 ## 11. GM Console / Hidden Results / AI Host Coverage
 
