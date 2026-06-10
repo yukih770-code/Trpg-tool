@@ -3,10 +3,11 @@ import { useCharacterStore } from '../store/characterStore';
 import { Button } from '../../components/ui/button';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { getAvailableSpells, getAvailableClasses, getAvailableFeats } from '../lib/mod-utils';
-import { AttributeName, SkillName, SpellInfo } from '../lib/dnd-types';
+import { AttributeName, SkillName, SpellInfo, type CharacterData } from '../lib/dnd-types';
 import type { RuntimeLogEntry, RuntimeLogKind } from '../lib/runtime-log-types';
 import { DND_ACTION_REGISTRY } from '../lib/dnd2024/actionRegistry';
 import type { DndActionDefinition, ResourceCost } from '../lib/dnd2024/action-registry-types';
+import { getDndSpellPreparationModel } from '../lib/dnd2024/spell-preparation-model';
 import { ActionsPanel } from './gameplay/ActionsPanel';
 import { ChecksPanel } from './gameplay/ChecksPanel';
 import { ClassResourcePanel } from './gameplay/ClassResourcePanel';
@@ -26,6 +27,8 @@ type DndLogInput = {
   tags?: string[];
   payload?: unknown;
 };
+
+type RestKind = 'short' | 'long';
 
 function createDndLogEntry(input: DndLogInput): RuntimeLogEntry {
   return {
@@ -48,6 +51,61 @@ function createDndSystemLogEntry(summary: string): RuntimeLogEntry {
     outcome: '等待 DM 判定',
     tags: ['system'],
   });
+}
+
+function describeRestResourceChanges(
+  before: CharacterData,
+  after: CharacterData,
+  restKind: RestKind,
+): { summary: string; detail: string; tags: string[]; payload: unknown } {
+  const beforeById = new Map(before.classResources.map(resource => [resource.id, resource]));
+  const changes = after.classResources
+    .map(resource => {
+      const previous = beforeById.get(resource.id);
+      if (!previous || previous.current === resource.current) return null;
+      return {
+        id: resource.id,
+        label: resource.sourceFeature || resource.id,
+        before: previous.current,
+        after: resource.current,
+        max: resource.max,
+        recoveryType: resource.recoveryType,
+      };
+    })
+    .filter((change): change is NonNullable<typeof change> => Boolean(change));
+  const pactBefore = before.pactMagicState;
+  const pactAfter = after.pactMagicState;
+  const pactChanged = Boolean(pactBefore && pactAfter && pactBefore.current !== pactAfter.current);
+  const resourceSummary = changes.length > 0
+    ? changes.map(change => `${change.label} ${change.before}->${change.after}/${change.max}`).join('；')
+    : '没有职业资源变化';
+  const pactSummary = pactChanged && pactBefore && pactAfter
+    ? `契约魔法位 ${pactBefore.current}->${pactAfter.current}/${pactAfter.max}`
+    : pactAfter
+      ? `契约魔法位保持 ${pactAfter.current}/${pactAfter.max}`
+      : '无契约魔法位';
+  const restLabel = restKind === 'short' ? '短休' : '长休';
+  const detail = `${restLabel}恢复：${resourceSummary}；${pactSummary}。`;
+
+  return {
+    summary: detail,
+    detail: restKind === 'long'
+      ? `${detail} 长休在本工具 v1 模型中会刷新长休资源，并覆盖短休级别资源恢复。`
+      : detail,
+    tags: ['rest', restKind === 'short' ? 'short-rest' : 'long-rest'],
+    payload: {
+      restKind,
+      classResourceChanges: changes,
+      pactMagic: pactBefore || pactAfter
+        ? {
+            before: pactBefore?.current,
+            after: pactAfter?.current,
+            max: pactAfter?.max ?? pactBefore?.max,
+            slotLevel: pactAfter?.slotLevel ?? pactBefore?.slotLevel,
+          }
+        : undefined,
+    },
+  };
 }
 
 export function Gameplay() {
@@ -135,12 +193,34 @@ export function Gameplay() {
   };
 
   const handleShortRest = () => {
+    const before = character;
     restShort();
+    const after = useCharacterStore.getState().character;
+    const restLog = describeRestResourceChanges(before, after, 'short');
+    setCombatLog(prev => [createDndLogEntry({
+      kind: 'system',
+      title: '短休 / SHORT REST',
+      displayValue: '短休',
+      outcome: '已完成',
+      calculation: restLog.detail,
+      ...restLog,
+    }), ...prev].slice(0, 20));
     toast("进行了短休 (1小时)");
   };
 
   const handleLongRest = () => {
+    const before = character;
     restLong();
+    const after = useCharacterStore.getState().character;
+    const restLog = describeRestResourceChanges(before, after, 'long');
+    setCombatLog(prev => [createDndLogEntry({
+      kind: 'system',
+      title: '长休 / LONG REST',
+      displayValue: '长休',
+      outcome: '已完成',
+      calculation: restLog.detail,
+      ...restLog,
+    }), ...prev].slice(0, 20));
     toast("进行了长休 (8小时)", {description: "生命值与法术位已全满！"});
   };
 
@@ -148,15 +228,10 @@ export function Gameplay() {
     toast("发起攻击！");
   };
 
-  let modifierAttr: AttributeName = 'Cha';
-  if (['法师'].includes(character.jobClass)) modifierAttr = 'Int';
-  if (['牧师', '德鲁伊', '游侠'].includes(character.jobClass)) modifierAttr = 'Wis';
-  const stat = character.attrs[modifierAttr];
-  const castingMod = Math.floor((stat.base + stat.pointbuy + stat.racebonus + (stat.extrabonus||0) - 10) / 2);
-
-  const isPreparedCaster = ['牧师', '德鲁伊', '圣武士', '法师'].includes(character.jobClass);
-  const maxPrepared = Math.max(1, character.level + castingMod);
-  const isCaster = ['法师', '吟游诗人', '牧师', '术士', '邪术师', '德鲁伊', '圣武士', '游侠'].includes(character.jobClass);
+  const spellPreparationModel = getDndSpellPreparationModel(character);
+  const isPreparedCaster = spellPreparationModel.isPreparedCaster;
+  const maxPrepared = spellPreparationModel.preparedSpellLimit ?? 0;
+  const isCaster = spellPreparationModel.isCaster;
 
   const classSpells = SPELL_DATA.filter(s => s.classes.includes(character.jobClass));
   const maxSpellLevel = Object.keys(character.spellbook.slots).length > 0 ? Math.max(...Object.keys(character.spellbook.slots).map(Number)) : 0;
@@ -562,7 +637,8 @@ export function Gameplay() {
                 <>
                   <p className="font-bold text-[#58180d] mb-1">施法准备 (Prepared Spellcaster)</p>
                   <p>作为{character.jobClass}，你需要在进行长休时准备你的法术。你可以准备 <strong className="text-red-800">{maxPrepared}</strong> 个法术。</p>
-                  {character.jobClass === '法师' && <p className="mt-1 text-xs italic">法师需要首先将法术抄录（学习）到法术书中，然后只能从法术书中准备法术。</p>}
+                  <p className="mt-1 text-xs italic">{spellPreparationModel.ruleHint}</p>
+                  {spellPreparationModel.usesSpellbook && <p className="mt-1 text-xs italic">法师需要首先将法术抄录（学习）到法术书中，然后只能从法术书中准备法术。完整法术书工作流仍 deferred。</p>}
                 </>
               ) : (
                 <>

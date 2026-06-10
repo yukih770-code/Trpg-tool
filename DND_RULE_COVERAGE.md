@@ -1,6 +1,6 @@
 # DND Rule Coverage Matrix
 
-Last updated: 2026-05-30
+Last updated: 2026-06-10
 
 This document tracks how far DND 2024 rules are represented in the current app. For this matrix, "In Data" means structured DND 2024 rule data under `src/data/dnd2024` / `src/lib/dnd2024`, not legacy descriptive text in class definitions.
 
@@ -20,33 +20,33 @@ This document tracks how far DND 2024 rules are represented in the current app. 
 
 | Feature | shouldBeClassResource | currentCoverageLevel | currentImplementation | missingPieces | nextStep |
 |---|---:|---:|---|---|---|
-| Barbarian Rage | Yes | 5 | Structured `ClassResourceDefinition`; initialized into `classResources`; shown and manually adjusted in Sheet. | No automatic use rules, duration, damage bonus, resistance, or rest recovery. | Rest recovery v1, then Action Registry entry for activating Rage. |
-| Bard Bardic Inspiration | Yes | 5 | Structured resource with dice progression; initialized into `classResources`; shown and manually adjusted. | Max currently resolves from generic expression support; no Cha minimum rule, target state, reaction usage, or Font of Inspiration recovery automation. | Improve max formula support, then rest recovery and target/effect model. |
+| Barbarian Rage | Yes | 5 | Structured `ClassResourceDefinition`; initialized into `classResources`; shown and manually adjusted in Gameplay; long rest recovery writes RollConsole `RuntimeLogEntry`. | No duration, damage bonus, resistance, or full Rage condition workflow. | Future Rage action/state workflow after combat boundaries are defined. |
+| Bard Bardic Inspiration | Yes | 5 | Structured resource with dice progression and Cha minimum max formula; initialized into `classResources`; shown and manually adjusted; rest recovery follows normal long rest then Font of Inspiration short/long rest data when unlocked. | No target state, reaction usage, or die application workflow. | Future target/effect model. |
 | Cleric Channel Divinity | Yes | 1 | Exists only as legacy descriptive class feature text. | No structured 2024 progression resource, actions, or recovery. | Add Cleric progression resource data. |
 | Druid Wild Shape | Yes | 1 | Exists only as legacy descriptive class feature text. | No structured charges, forms, stat replacement, temp HP, or recovery. | Add Druid progression resource data; later forms registry. |
-| Fighter Second Wind | Yes | 1 | Exists only as legacy descriptive class feature text. | No structured resource, healing roll, scaling, or recovery. | Add Fighter progression resource data and manual state. |
-| Fighter Action Surge | Yes | 1 | Exists only as legacy descriptive class feature text. | No structured resource or action economy integration. | Add Fighter progression data; later Action Registry. |
+| Fighter Second Wind | Yes | 5 | Structured resource exists, initializes into runtime state, supports manual controls, special short rest +1 recovery, long rest full recovery, and rest logs. | No healing roll workflow. | Future narrow Second Wind action. |
+| Fighter Action Surge | Yes | 5 | Structured `shortOrLongRest` resource exists, initializes into runtime state, supports manual controls and rest recovery logs. | No action economy enforcement. | Future action economy layer. |
 | Fighter Indomitable | Yes | 0 | Not represented as structured data or runtime state. | Resource count and reroll automation missing. | Add Fighter progression data. |
-| Monk Focus Points | Yes | 1 | Exists only as legacy descriptive class feature text. | No structured Focus Point pool, discipline actions, or recovery. | Add Monk progression resource data. |
-| Paladin Lay on Hands | Yes | 1 | Exists only as legacy descriptive class feature text. | No structured healing pool, disease/poison options, or manual controls. | Add Paladin progression resource data. |
+| Monk Focus Points | Yes | 5 | Structured Focus Point pool exists, max = Monk level, initializes into runtime state, supports manual controls and short/long rest recovery logs. | No discipline action catalog or per-technique costs beyond Action Registry v0 examples. | Future Monk action registry expansion. |
+| Paladin Lay on Hands | Yes | 5 | Structured healing pool exists, max = 5 × Paladin level, initializes into runtime state, supports manual controls and long rest recovery logs. | No healing/poison/disease option workflow. | Future Lay on Hands action panel. |
 | Paladin Channel Divinity | Yes | 0 | Not represented as structured data. | Resource count, oath options, and recovery missing. | Add Paladin progression and oath data. |
 | Ranger Favored Enemy Charges | Yes | 1 | Legacy Ranger text mentions favored enemy concept, but no structured charges. | No 2024 structured charge pool or Hunter's Mark linkage. | Add Ranger progression data. |
 | Rogue Cunning Strike | No | 0 | Not represented. | This is an attack rider / action option, not a generic spendable `classResources` pool. | Future Action Registry / attack rider model. |
-| Sorcerer Sorcery Points | Yes | 0 | Not represented as structured data. | Point pool, conversion, Metamagic options, and recovery missing. | Add Sorcerer progression resource data. |
-| Sorcerer Innate Sorcery | Yes | 0 | Not represented as structured data. | Uses, duration, spell save DC benefit, and recovery missing. | Add Sorcerer progression data. |
-| Warlock Pact Magic | Yes | 5 | Structured pact progression; initialized into `pactMagicState`; shown and manually adjusted in Sheet. | Not connected to spell casting; no automatic short rest recovery. | Pact Magic casting integration or rest recovery v1. |
+| Sorcerer Sorcery Points | Yes | 5 | Structured point pool exists, max = Sorcerer level, initializes into runtime state, supports manual controls and long rest recovery logs. | No Metamagic options or spell slot conversion workflow. | Future Metamagic / conversion layer. |
+| Sorcerer Innate Sorcery | Yes | 5 | Structured long-rest resource exists, initializes into runtime state, supports manual controls and rest recovery logs. | No duration, spell save DC benefit, or attack bonus automation. | Future Sorcerer action workflow. |
+| Warlock Pact Magic | Yes | 5 | Structured pact progression; initialized into `pactMagicState`; shown and manually adjusted in Gameplay; short and long rest recovery writes RollConsole `RuntimeLogEntry`. | Not connected to spell casting; no upcasting or pact-slot casting path. | Pact Magic casting integration later. |
 | Warlock Invocations | No | 2 | Currently represented in structured data as a count-like resource, but Invocations are choices/passive features, not spendable resources. | Needs choice registry / passive feature selection; should not become consume/recover controls long term. | Move toward feature choice registry; avoid Action Registry consumption semantics. |
-| Wizard Arcane Recovery | Yes | 5 | Structured `ClassResourceDefinition`; initialized into `classResources`; shown and manually adjusted. | No special recovery rule, spell slot restoration chooser, or once-per-long-rest automation. | Special recovery workflow after standard rest recovery. |
+| Wizard Arcane Recovery | Yes | 5 | Structured `ClassResourceDefinition`; initialized into `classResources`; shown and manually adjusted. | Special spell-slot restoration chooser and once-per-long-rest workflow remain deferred. | Special recovery workflow after standard rest recovery. |
 
 ## 3. Spellcasting Coverage
 
 | Rule Area | currentCoverageLevel | currentImplementation | missingPieces | nextStep |
 |---|---:|---|---|---|
 | Standard spell slots | 5 | `spellbook.slots` runtime state exists; Sheet/Gameplay show slots; Gameplay can consume a slot when casting. | Slot progression still partly hardcoded in store level-up; no DND 2024 full integration. | Replace hardcoded slot updates with progression utilities. |
-| pactMagicState | 5 | Dedicated runtime state; initialized from progression; shown and manually adjusted in Sheet. | Not used by Gameplay spell casting; no short rest recovery. | Add Pact Magic spell casting path or rest recovery. |
-| Prepared spells | 5 | `spellbook.prepared`; Gameplay spell manager can prepare/unprepare. | Prepared limits are simplified and not fully 2024 accurate for every class. | Wire preparation modes and formulas from progression data. |
+| pactMagicState | 5 | Dedicated runtime state; initialized from progression; shown and manually adjusted in Gameplay; short and long rest recovery is logged to RollConsole. | Not used by Gameplay spell casting. | Add Pact Magic spell casting path later. |
+| Prepared spells | 5 | `spellbook.prepared`; Gameplay spell manager can prepare/unprepare; `getDndSpellPreparationModel` exposes mode, ability, slots, pact magic, prepared limit, ruleHint, and deferred markers. | Prepared limits using formula-based classes remain v1 approximations; full official list / Wizard spellbook workflow is deferred. | Refine class-specific preparation only after spell data is expanded. |
 | Known spells | 5 | `spellbook.known`; Gameplay spell manager can learn/remove for known casters. | Known spell limits and upgrade replacement are not fully enforced. | Add class-specific known spell limits. |
-| Spell casting action | 6 | Gameplay "施展" button consumes standard slots for leveled spells and permits cantrips. | No action economy, components, range, target, save/attack resolution, or Pact Magic use. | Future Action Registry. |
+| Spell casting action | 6 | Gameplay "施展" button consumes standard slots for leveled spells and permits cantrips. | No action economy, components, range, target, save/attack resolution, or Pact Magic use. | Future Action Registry; `spellSlot` costs are intentionally not part of v0. |
 | Spell slot consumption | 6 | `consumeSpellSlot(level)` reduces standard slot current when available. | Only standard slots; no upcasting decision model or pact slots. | Generalize casting resource selection. |
 | Concentration | 0 | Not represented. | No concentration state, break checks, or replacement warnings. | Add `concentrationState`. |
 | Bonus action spell restriction | 0 | Not represented. | No action economy tracking or spell cast timing. | Future Action Registry / turn state. |
@@ -87,10 +87,14 @@ Action Registry v0 explicitly not implemented:
 |---|---:|---|---|---|
 | Short rest HP / hit dice | 1 | `restShort` exists as a stub and does not spend hit dice. | Hit dice spending, healing roll, and UI choices missing. | Implement short rest hit dice flow. |
 | Long rest HP / hit dice | 6 | `restLong` restores HP and some hit dice. | DND 2024 edge cases and exhaustion/conditions not modeled. | Keep simple unless broader rest system is added. |
-| Spell slot recovery | 6 | `restLong` restores standard spell slots. | Does not use progression data; Pact Magic not included. | Align with progression and pact recovery. |
-| Class resource recovery | 2 | Resources contain `recoveryType`; no automatic recovery. | No short/long/special recovery execution. | DND restShort/restLong resource recovery v1. |
-| Pact magic recovery | 5 | Pact slots are manual state; recoveryType is known. | Not automatically restored on short rest. | Add short rest pact recovery. |
-| Special recovery rules | 2 | `recoveryType: special` and notes exist for examples like Arcane Recovery. | No custom workflows or per-feature limits. | Handle after basic rest recovery. |
+| Spell slot recovery | 6 | `restLong` restores standard spell slots. | Does not yet use progression data for every slot update; Pact Magic is tracked separately. | Align store slot refresh with progression utilities later. |
+| Class resource recovery | 5 | `restShort` / `restLong` recover runtime class resources according to `recoveryType` plus selected special v1 recoveries, and Gameplay writes recovery results to RollConsole `RuntimeLogEntry`. | HP / Hit Dice detailed rest automation, exhaustion, conditions, and full special feature workflows are deferred. | Keep v1 narrow unless broader rest system is scheduled. |
+| Pact magic recovery | 5 | `pactMagicState` restores on short rest and long rest; recovery result is logged in RollConsole. | Pact-slot spell casting path is still deferred. | Add Pact Magic casting integration later. |
+| Special recovery rules | 3 | `recoveryType: special` and notes exist; v1 implements limited short/long rest handling for selected resources such as Fighter Second Wind. | Arcane Recovery spell slot chooser and per-feature special workflows remain deferred. | Handle feature-specific recovery workflows separately. |
+
+Rest recovery semantics:
+- In this tool's v1 model, long rest refreshes long-rest resources and also refreshes short-rest resources because a long rest subsumes short-rest recovery.
+- This does not implement full HP / Hit Dice spending choices, exhaustion, conditions, or detailed feature-specific recovery flows.
 
 ## 6. Equipment / Inventory Coverage
 
@@ -117,9 +121,9 @@ Action Registry v0 explicitly not implemented:
 
 | Gap | Why It Matters | Suggested Fix |
 |---|---|---|
-| Class resource recovery is not automated | Resources can be initialized and manually adjusted, but rests do not restore them. | Implement DND restShort/restLong resource recovery v1 using `recoveryType`. |
-| Pact Magic is not recovered on short rest | Warlock pact slots are visible/manual but not integrated into rest. | Add pact recovery to short rest. |
-| Structured class resources missing for most classes | Only sample progression classes have meaningful structured resource data. | Add Cleric, Druid, Fighter, Monk, Paladin, Ranger, Sorcerer progression resources. |
+| Full special recovery workflows remain deferred | Basic rest recovery is wired, but Arcane Recovery, detailed Second Wind healing, and other feature-specific choices are not automated. | Implement one special recovery flow at a time. |
+| Pact Magic casting is not integrated | Pact slots recover on rest and are manually adjustable, but spell casting still consumes standard spell slots only. | Add Pact Magic casting path later without expanding Action Registry v0. |
+| Subclass resources and choices remain incomplete | Base class runtime resources cover the v1 target, but subclass resource pools and feature choices are not broadly modeled. | Add subclass resource definitions only when the subclass layer is scheduled. |
 | Spell slot progression still partly hardcoded | Level-up slot changes can diverge from DND 2024 progression data. | Use `getSpellSlotsAtLevel()` in a controlled data-layer/store pass. |
 
 ### P2: Later Automation

@@ -18,6 +18,7 @@ function recoversOnShortRest(recoveryType?: string): boolean {
 }
 
 function recoversOnLongRest(recoveryType?: string): boolean {
+  // V1 rest model: long rest subsumes short-rest recovery in addition to long-rest recovery.
   return recoveryType === 'shortRest' ||
     recoveryType === 'longRest' ||
     recoveryType === 'shortOrLongRest' ||

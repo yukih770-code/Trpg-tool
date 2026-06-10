@@ -30,6 +30,12 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] DND Sheet — opens, displays character data
 - [ ] DND Gameplay — opens, runtime resources / checks / actions panels render
 - [ ] DND Gameplay — checks and action use update RollConsole Latest Result and RuntimeLogEntry history
+- [ ] DND Gameplay — old or newly loaded characters do not crash when classResources / pactMagicState are missing or initialized
+- [ ] DND Gameplay — class resources initialize with current/max and manual +/- or reset controls update current values
+- [ ] DND Gameplay — short rest restores short-rest resources and pact magic slots, then writes a RuntimeLogEntry to RollConsole
+- [ ] DND Gameplay — long rest restores long-rest resources and, by v1 model, also covers short-rest recovery; result writes to RollConsole
+- [ ] DND Gameplay — spell preparation model shows mode, ability, spell slots, pact magic, prepared limit approximation, and deferred hints
+- [ ] DND Sheet — does not own gameplay roll controls; checks/resources are validated in Gameplay
 
 ### Call of Cthulhu
 

@@ -45,6 +45,7 @@ Architecture phase scope:
 | Action Registry v0 | ✅ Done |
 | DND Structured LogEntry v1 | ✅ Done |
 | DND Gameplay Componentization v1 | ✅ Done |
+| DND 2024 Class Resources and Spell Preparation Closure v1 | ✅ Done |
 
 Action Registry v0 scope:
 - Supports only `classResource` and `pactMagic` resource costs.
@@ -61,6 +62,13 @@ DND Gameplay Componentization v1 scope:
 - `Gameplay.tsx` orchestrates local state, checks, action use, resources, spellbook, and RollConsole through panel components under `src/pages/gameplay/`.
 - Sheet no longer owns gameplay roll controls; Player Gameplay owns checks, actions, runtime resource use, and player-visible result logging.
 - No attack/damage target layer, spellSlot Action Registry refactor, Host Console, AI Host, or multiplayer work.
+
+DND 2024 Class Resources and Spell Preparation Closure v1 scope:
+- Base class resource definitions and runtime state cover Barbarian Rage, Bardic Inspiration, Fighter Second Wind / Action Surge, Monk Focus, Paladin Lay on Hands, Sorcerer Sorcery Points, Warlock Pact Magic state, and Wizard Arcane Recovery definition.
+- DND short rest / long rest resource recovery now writes local `RuntimeLogEntry` records into the RollConsole; toast remains supplemental only.
+- Long rest v1 refreshes long-rest resources and also covers short-rest resources because a long rest subsumes short-rest recovery in this tool model.
+- `getDndSpellPreparationModel` centralizes preparation mode, spellcasting ability, standard slots, pact magic, prepared limit approximation, rule hints, and deferred markers.
+- Prepared spell limits for formula-based classes remain v1 approximations; full official spell list, full spell preparation UI, Wizard spellbook workflow, HP/Hit Dice rest automation, exhaustion/conditions, enemy/target/damage pipeline, and full combat Action Registry remain deferred.
 
 ### Call of Cthulhu (COC)
 
