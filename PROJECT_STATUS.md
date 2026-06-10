@@ -69,6 +69,7 @@ DND Structured LogEntry v1 scope:
 | COC Runtime State UI Panel v1 | ✅ Done |
 | COC Gameplay RollConsole RuntimeLogEntry v1 | ✅ Done |
 | COC Skill Check Wiring v1 | ✅ Done |
+| COC Gameplay Componentization v1 | ✅ Done |
 | COC Creator skill point constraint v1 | ✅ Done |
 | COC Sheet responsibility cleanup v1 | ✅ Done |
 
@@ -94,6 +95,13 @@ COC Skill Check Wiring v1 scope:
 - Skill check results use `evaluateCocD100Check` and write local `RuntimeLogEntry` objects for CocRollConsolePanel Latest Result and history display.
 - SAN quick roll now uses the runtime-first SAN current value.
 - No store, schema, migration, Luck spending, Pushed Roll, growth resolution, SAN Check workflow, Keeper Console, gmOnly filtering, reveal workflow, combat, or chase changes.
+
+COC Gameplay Componentization v1 scope:
+- `CocGameplay.tsx` now orchestrates local state, runtime handlers, roll handlers, and panel composition while COC Gameplay UI sections live under `src/pages/cocGameplay/`.
+- Extracted RollConsole, Runtime State, Checks, Dice Tray, and COC Gameplay shared helper modules.
+- Behavior is intended to stay unchanged: local RuntimeLogEntry history remains capped at 20, latest entry stays first, entries use `system: 'coc'` and `visibility: 'public'`.
+- Free Dice Tray remains in Gameplay as an isolated utility panel for now.
+- No store, schema, migration, SAN Check workflow expansion, Luck Spending, Pushed Roll, Growth resolution, Keeper Console, AI Host, multiplayer, DND, or CP RED changes.
 
 COC Creator skill point constraint v1 scope:
 - CocCreator Step 3 now provides creation-time skill allocation with EDU × 4 occupational points and INT × 2 personal interest points.
