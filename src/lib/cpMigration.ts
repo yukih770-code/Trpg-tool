@@ -24,32 +24,34 @@
  *             `schemaVersion: 1` to pre-existing saves.
  *   v1 → v2  Adds `runtime` state for HP, Humanity, EMP, armor SP shell,
  *             wound flags, and critical injuries.
+ *   v2 → v3  Adds stable `instanceId` values to CP RED inventory and
+ *             equipped item instances. Legacy gear strings become gear items.
  *
  * Reserved future versions (do NOT implement yet — placeholders only)
  * ─────────────────────────────────────────────────────────────────────
- *   v3  weaponState?: WeaponRuntimeState[]
+ *   v4  weaponState?: WeaponRuntimeState[]
  *         Per-weapon ammo tracking (currentAmmo, magazineCapacity).
  *
- *   v4  humanityState?: HumanityRuntimeState
+ *   v5  humanityState?: HumanityRuntimeState
  *         Cyberpsychosis staging beyond the binary cyberPsycho flag.
  *
- *   v5  roleAbilityState?: RoleAbilityState
+ *   v6  roleAbilityState?: RoleAbilityState
  *         Per-role runtime resource pool (Solo bonusPool, Netrunner netActions,
  *         Exec teamMembers, Nomad vehicleCount, Lawman backupStatus, etc.).
  *         Replaces the current useState-only approach in CpGameplay.tsx.
  *
- *   v6  netrunningState?: NetrunningState
+ *   v7  netrunningState?: NetrunningState
  *         Active NET session: currentNode, loadedPrograms[], RAM used/total,
  *         cyberDeckSlots, active ICE encounters.
  *
- *   v7  vehicleState?: VehicleState[]
+ *   v8  vehicleState?: VehicleState[]
  *         Structured vehicle records (HP, SP, speed, passengers).
  *         Replaces the current inventory.gear string approach.
  *
- *   v8  deathSaveState?: DeathSaveState
+ *   v9  deathSaveState?: DeathSaveState
  *         Consecutive death save counter, accumulated failure penalty.
  *
- *   v9  seriouslyWoundedState?: SeriouslyWoundedState
+ *   v10 seriouslyWoundedState?: SeriouslyWoundedState
  *         Active wound modifiers, bleed-out ticks, active critical injuries.
  */
 
@@ -62,6 +64,7 @@ import {
   CpWeapon,
   CpClothing,
   CpInventory,
+  CpGearItem,
   CpLifePath,
   CpRelation,
   CpEnemy,
@@ -99,6 +102,23 @@ function str(v: unknown, fallback: string): string {
 /** Return v if it is a non-null array, otherwise []. */
 function arr<T>(v: unknown): T[] {
   return Array.isArray(v) ? (v as T[]) : [];
+}
+
+function instanceId(v: unknown, fallback: string): string {
+  return typeof v === 'string' && v.trim() !== '' ? v.trim() : fallback;
+}
+
+function slugIdPart(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 36) || 'item';
+}
+
+function migratedInstanceId(scope: string, name: string, index: number): string {
+  return `cp-${scope}-${index}-${slugIdPart(name)}`;
 }
 
 // ─── Default stat block ───────────────────────────────────────────────────────
@@ -205,7 +225,7 @@ function migratePool(
  * Coerce a CpArmor or null.
  * Returns null for absent, null, or structurally invalid values.
  */
-function migrateArmorSlot(raw: unknown): CpArmor | null {
+function migrateArmorSlot(raw: unknown, scope = 'armor', index = 0): CpArmor | null {
   if (raw === null || raw === undefined) return null;
   if (typeof raw !== 'object' || Array.isArray(raw)) return null;
   const a = raw as Record<string, unknown>;
@@ -213,6 +233,7 @@ function migrateArmorSlot(raw: unknown): CpArmor | null {
   const location: 'body' | 'head' =
     (a.location === 'body' || a.location === 'head') ? a.location : 'body';
   return {
+    instanceId: instanceId(a.instanceId, migratedInstanceId(scope, a.name.trim(), index)),
     name:       a.name.trim(),
     sp:         num(a.sp,         0),
     location,
@@ -224,11 +245,12 @@ function migrateArmorSlot(raw: unknown): CpArmor | null {
 /**
  * Coerce a single CpCyberware entry.  Returns null for invalid entries.
  */
-function migrateCyberwareItem(raw: unknown): CpCyberware | null {
+function migrateCyberwareItem(raw: unknown, scope = 'cyberware', index = 0): CpCyberware | null {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const c = raw as Record<string, unknown>;
   if (typeof c.name !== 'string' || c.name.trim() === '') return null;
   return {
+    instanceId:    instanceId(c.instanceId, migratedInstanceId(scope, c.name.trim(), index)),
     name:          c.name.trim(),
     humanityCost:  num(c.humanityCost,  0),
     cost:          num(c.cost,          0),
@@ -239,11 +261,12 @@ function migrateCyberwareItem(raw: unknown): CpCyberware | null {
 /**
  * Coerce a single CpWeapon entry.  Returns null for invalid entries.
  */
-function migrateWeaponItem(raw: unknown): CpWeapon | null {
+function migrateWeaponItem(raw: unknown, scope = 'weapon', index = 0): CpWeapon | null {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const w = raw as Record<string, unknown>;
   if (typeof w.name !== 'string' || w.name.trim() === '') return null;
   return {
+    instanceId: instanceId(w.instanceId, migratedInstanceId(scope, w.name.trim(), index)),
     name:   w.name.trim(),
     damage: str(w.damage, '1d6'),
     skill:  str(w.skill,  ''),
@@ -255,15 +278,40 @@ function migrateWeaponItem(raw: unknown): CpWeapon | null {
 /**
  * Coerce a single CpClothing entry.  Returns null for invalid entries.
  */
-function migrateClothingItem(raw: unknown): CpClothing | null {
+function migrateClothingItem(raw: unknown, scope = 'fashion', index = 0): CpClothing | null {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const c = raw as Record<string, unknown>;
   if (typeof c.name !== 'string' || c.name.trim() === '') return null;
   return {
+    instanceId:   instanceId(c.instanceId, migratedInstanceId(scope, c.name.trim(), index)),
     name:        c.name.trim(),
     style:       str(c.style,       ''),
     cost:        num(c.cost,        0),
     description: str(c.description, ''),
+  };
+}
+
+function migrateGearItem(raw: unknown, scope = 'gear', index = 0): CpGearItem | null {
+  if (typeof raw === 'string') {
+    const name = raw.trim();
+    if (!name) return null;
+    return {
+      instanceId: migratedInstanceId(scope, name, index),
+      name,
+    };
+  }
+
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const g = raw as Record<string, unknown>;
+  if (typeof g.name !== 'string' || g.name.trim() === '') return null;
+  const name = g.name.trim();
+  return {
+    instanceId: instanceId(g.instanceId, migratedInstanceId(scope, name, index)),
+    name,
+    category: typeof g.category === 'string' ? g.category : undefined,
+    tag: typeof g.tag === 'string' ? g.tag : undefined,
+    cost: typeof g.cost === 'number' && isFinite(g.cost) ? g.cost : undefined,
+    description: typeof g.description === 'string' ? g.description : undefined,
   };
 }
 
@@ -279,19 +327,20 @@ function migrateInventory(raw: unknown): CpInventory {
   const inv = raw as Record<string, unknown>;
   return {
     cyberware: arr<unknown>(inv.cyberware)
-      .map(migrateCyberwareItem)
+      .map((item, index) => migrateCyberwareItem(item, 'inventory-cyberware', index))
       .filter((c): c is CpCyberware => c !== null),
     weapons:   arr<unknown>(inv.weapons)
-      .map(migrateWeaponItem)
+      .map((item, index) => migrateWeaponItem(item, 'inventory-weapon', index))
       .filter((w): w is CpWeapon => w !== null),
     armor:     arr<unknown>(inv.armor)
-      .map(migrateArmorSlot)
+      .map((item, index) => migrateArmorSlot(item, 'inventory-armor', index))
       .filter((a): a is CpArmor => a !== null),
     fashion:   arr<unknown>(inv.fashion)
-      .map(migrateClothingItem)
+      .map((item, index) => migrateClothingItem(item, 'inventory-fashion', index))
       .filter((c): c is CpClothing => c !== null),
     gear:      arr<unknown>(inv.gear)
-      .filter((g): g is string => typeof g === 'string'),
+      .map((item, index) => migrateGearItem(item, 'inventory-gear', index))
+      .filter((g): g is CpGearItem => g !== null),
   };
 }
 
@@ -481,17 +530,17 @@ export function migrateCpCharacter(data: unknown): CpCharacter {
     skills: migrateSkills(d.skills),
 
     // ── Equipped armor (null = bare) ──────────────────────────────────────
-    armorBody: migrateArmorSlot(d.armorBody),
-    armorHead: migrateArmorSlot(d.armorHead),
+    armorBody: migrateArmorSlot(d.armorBody, 'equipped-armor-body', 0),
+    armorHead: migrateArmorSlot(d.armorHead, 'equipped-armor-head', 0),
 
     // ── Installed cyberware ───────────────────────────────────────────────
     cyberware: arr<unknown>(d.cyberware)
-      .map(migrateCyberwareItem)
+      .map((item, index) => migrateCyberwareItem(item, 'installed-cyberware', index))
       .filter((c): c is CpCyberware => c !== null),
 
     // ── Carried weapons ───────────────────────────────────────────────────
     weapons: arr<unknown>(d.weapons)
-      .map(migrateWeaponItem)
+      .map((item, index) => migrateWeaponItem(item, 'carried-weapon', index))
       .filter((w): w is CpWeapon => w !== null),
 
     // ── Economy ───────────────────────────────────────────────────────────
@@ -507,7 +556,7 @@ export function migrateCpCharacter(data: unknown): CpCharacter {
 
     // ── Worn clothing ─────────────────────────────────────────────────────
     clothing: arr<unknown>(d.clothing)
-      .map(migrateClothingItem)
+      .map((item, index) => migrateClothingItem(item, 'worn-fashion', index))
       .filter((c): c is CpClothing => c !== null),
 
     // ── Status flags / injury log ─────────────────────────────────────────
@@ -583,6 +632,14 @@ export function migrateCpCharacter(data: unknown): CpCharacter {
         migrated.runtime = migrateRuntime(d.runtime, migrated);
         version = 2;
         migrated.schemaVersion = 2;
+        break;
+
+      case 2:
+        // v2 → v3: Inventory and equipped item records now carry stable
+        // instance IDs. The safe reconstruction above has already filled any
+        // missing IDs without changing EB, Humanity, EMP, HP, or cyberPsycho.
+        version = 3;
+        migrated.schemaVersion = 3;
         break;
 
       default:

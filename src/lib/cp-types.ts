@@ -11,7 +11,7 @@
 //   v1  Initial versioning (schemaVersion field added).
 //   v2  Runtime state foundation for HP, Humanity, EMP, armor SP shell,
 //       wound flags, and critical injury tracking.
-export const CURRENT_CP_CHARACTER_SCHEMA_VERSION = 2;
+export const CURRENT_CP_CHARACTER_SCHEMA_VERSION = 3;
 
 export type CpStat =
   | 'INT' | 'REF' | 'DEX' | 'TECH' | 'COOL'
@@ -179,6 +179,7 @@ export const CP_ROLE_ABILITIES: Record<CpRole, CpRoleAbility> = {
 
 // ── Fashion / Clothing ────────────────────────────────────
 export interface CpClothing {
+  instanceId?: string;
   name: string;
   style: string;   // 风格标签
   cost: number;
@@ -294,6 +295,7 @@ export const CP_BASE_SKILL_NAMES = new Set<string>(
 
 // ── Armor ─────────────────────────────────────────────────
 export interface CpArmor {
+  instanceId?: string;
   name: string;
   sp: number;
   location: 'body' | 'head';
@@ -315,6 +317,7 @@ export const CP_ARMOR_LIST: CpArmor[] = [
 
 // ── Cyberware ─────────────────────────────────────────────
 export interface CpCyberware {
+  instanceId?: string;
   name: string;
   humanityCost: number;
   cost: number;
@@ -336,11 +339,21 @@ export const CP_CYBERWARE_LIST: CpCyberware[] = [
 
 // ── Weapons ───────────────────────────────────────────────
 export interface CpWeapon {
+  instanceId?: string;
   name: string;
   damage: string; // e.g. "2d6"
   skill: string;
   rof: number;    // rate of fire
   cost: number;
+}
+
+export interface CpGearItem {
+  instanceId?: string;
+  name: string;
+  category?: string;
+  tag?: string;
+  cost?: number;
+  description?: string;
 }
 
 export const CP_WEAPON_LIST: CpWeapon[] = [
@@ -398,7 +411,7 @@ export interface CpInventory {
   weapons:   CpWeapon[];
   armor:     CpArmor[];
   fashion:   CpClothing[];
-  gear:      string[];   // misc item names
+  gear:      CpGearItem[];   // misc owned gear entries
 }
 
 export function makeEmptyInventory(): CpInventory {

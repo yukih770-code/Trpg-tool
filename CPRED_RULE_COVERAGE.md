@@ -93,7 +93,7 @@ CpSheet has received DND/COC-style responsibility cleanup. Sheet is display plus
 | Ammo | 0 | Deferred. | Needs weapon runtime model. | P2 |
 | Critical Injuries | 0 | Deferred. | Needs table/workflow. | P2 |
 | Netrunning | 0 | Deferred. | Large subsystem. | P3 |
-| Market / Gear | 5 | CpMarket can add weapons, armor, cyberware, fashion, and gear to character inventory. | Dynamic gear economy deferred. | P2 |
+| Market / Gear | 5 | CpMarket can add weapons, armor, cyberware, fashion, and gear to character inventory with stable item instance ids. | Dynamic gear economy deferred. | P2 |
 | Vehicles | 0 | Deferred. | Future subsystem. | P3 |
 
 CP Gameplay is unified to local RuntimeLogEntry and RollConsole, with componentized panels. Complex combat, armor, ammo, netrunning, vehicles, GM Console, and visibility filtering are deferred.
@@ -180,11 +180,11 @@ Netrunning is fully deferred and should not enter current Player Gameplay v1/v2.
 | Rule Area | Current Level | Current Status | Gaps | Priority |
 |---|---:|---|---|---|
 | Market | 5 | CpMarket can add items to character inventory and uses existing EB/fashion EB where available. | Dynamic economy deferred. | P1 |
-| Gear | 5 | Gear can be added to and shown in inventory. | Weight/carry limits deferred. | P2 |
-| Weapons | 5 | Weapons can be bought, carried, dropped back to inventory, and displayed. | No full attack/damage workflow. | P2 |
-| Armor | 5 | Armor can be bought, equipped, unequipped back to inventory, and displayed. | No SP/ablation runtime. | P2 |
-| Cyberware | 5 | Cyberware can be bought, installed, uninstalled back to inventory, and displayed as state-only. | Humanity Loss automation deferred. | P2 |
-| Fashion | 5 | Fashion can be bought, worn, removed back to inventory, and displayed. | Lifestyle/aesthetic workflow deferred. | P3 |
+| Gear | 5 | Gear can be added to and shown in inventory as stable item instances. | Weight/carry limits deferred. | P2 |
+| Weapons | 5 | Weapons can be bought, carried, dropped back to inventory, and displayed; same-name instances remain distinct. | No full attack/damage workflow. | P2 |
+| Armor | 5 | Armor can be bought, equipped, unequipped back to inventory, and displayed; body/head slots preserve item instances. | No SP/ablation runtime. | P2 |
+| Cyberware | 5 | Cyberware can be bought, installed, uninstalled back to inventory, and displayed as state-only stable instances. | Humanity Loss automation deferred. | P2 |
+| Fashion | 5 | Fashion can be bought, worn, removed back to inventory, and displayed as stable instances. | Lifestyle/aesthetic workflow deferred. | P3 |
 | Lifestyle | 0 | Deferred. | Future economy layer. | P3 |
 | Rent | 0 | Deferred. | Future economy layer. | P3 |
 | Buying / selling | 5 | Basic buy/sell/add-to-inventory flow exists for current market categories. | Availability/price volatility deferred. | P2 |
@@ -195,7 +195,7 @@ Netrunning is fully deferred and should not enter current Player Gameplay v1/v2.
 
 Market/gear v1 now supports basic character inventory flow: market items can be added to inventory, weapons can be carried/dropped, body/head armor can be equipped/unequipped, cyberware can be installed/removed as state flow, fashion can be worn/removed, and items remain in inventory/equipment flow instead of disappearing.
 
-Current v1 limitations: inventory matching/dedupe is primarily based on item `name`, so unique item instance ids and same-name duplicate disambiguation are not covered. Ammo tracking, armor ablation, Humanity Loss automation, and the full damage pipeline are deferred.
+Stable Item Instance ID v1 adds `instanceId` to owned/equipped weapons, armor, cyberware, fashion, and gear. Same-name duplicate items can now coexist at the inventory/equip flow level, and legacy missing IDs use safe fallback/migration. Remaining deferred work includes ammo tracking, armor ablation, Humanity Loss automation, full damage pipeline, durability/repair, and deeper economy rules.
 
 Humanity boundary: cyberware install/remove does not automatically deduct Humanity, restore Humanity, modify EMP, or modify `cyberPsycho`. UI copy should describe a displayed "Humanity cost" only, not imply that Humanity Loss has already been applied.
 

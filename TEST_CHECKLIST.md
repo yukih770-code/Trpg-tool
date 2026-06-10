@@ -58,10 +58,15 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] CP Gameplay — checks without DV show `等待 GM 判定`
 - [ ] CP Market — opens without crash
 - [ ] CP Market — item can be added to character inventory
+- [ ] CP Market — buying the same-name item twice creates two distinct inventory entries
 - [ ] CP Sheet — inventory and equipment state are visible
 - [ ] CP Sheet — equip / unequip weapon does not lose the item
+- [ ] CP Sheet — equip / unequip one same-name weapon instance does not remove the other instance
 - [ ] CP Sheet — equip / unequip armor does not lose the item
+- [ ] CP Sheet — equip / unequip one same-name armor instance preserves the other instance
 - [ ] CP Sheet — install / uninstall cyberware preserves the item and does not automate Humanity Loss
+- [ ] CP Sheet — install / uninstall one same-name cyberware instance preserves the other instance
+- [ ] CP Sheet — cyberware install / uninstall does not change Humanity, EMP, or cyberPsycho automatically
 - [ ] CP RED — no armor ablation or ammo automation expected
 
 ---

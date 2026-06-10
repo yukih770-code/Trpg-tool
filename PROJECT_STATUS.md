@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-06-10
+Last updated: 2026-06-11
 
 ## Project Overview
 
@@ -23,6 +23,8 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | COC_RULE_COVERAGE.md | ✅ Added |
 | CPRED_RULE_COVERAGE.md | ✅ Added |
 | IMPLEMENTATION_ROADMAP.md | ✅ Added |
+| PLATFORM_ARCHITECTURE.md | ✅ Added |
+| AI Context Index v1 (`PROJECT_INDEX.md`, `SYMBOL_MAP.md`, `TASK_CONTEXT_TEMPLATE.md`) | ✅ Added |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -145,12 +147,13 @@ COC Sheet responsibility cleanup v1 scope:
 | CP RED Skill Check Wiring v1 | ✅ Done |
 | CP RED Gameplay Componentization v1 | ✅ Done |
 | CP RED Equipment / Market Inventory Flow v1 | ✅ Done |
+| CP RED Stable Item Instance ID v1 | ✅ Done |
 | CpGameplay — uses evaluateCpExplodingD10 / evaluateCpSkillCheck | ✅ Done |
 | cpStore — uses getCpMaxHp / getCpSeriouslyWoundedThreshold / getCpDeathSaveBase / getCpHumanityMax / isCpCyberpsycho | ✅ Done |
 
 CP RED runtime state foundation v2 scope:
 - Adds optional `runtime` state for HP, Humanity, runtime EMP, armor SP shell, wound flags, and critical injury tracking.
-- Migrates old CP RED characters to schemaVersion 2 and fills missing runtime state idempotently.
+- Runtime foundation migrated old CP RED characters to schemaVersion 2 and filled missing runtime state idempotently; Stable Item Instance ID v1 now bumps CP RED character schemaVersion to 3.
 - Adds runtime store actions for initialization, refresh, HP/Humanity deltas, runtime flags, and critical injury tracking.
 - No CP RED UI changes, RuntimeLogEntry integration, RollConsole, no-DV path, armor/ammo/damage automation, Netrunning, GM Console, or AI Host.
 
@@ -180,8 +183,9 @@ CP RED Equipment / Market Inventory Flow v1 scope:
 - CpMarket can add weapons, armor, cyberware, fashion, and gear to character inventory using existing EB/fashion EB purchase paths.
 - CpSheet shows inventory/equipment state and supports equip/unequip/install/uninstall without losing items.
 - Cyberware install/uninstall is state-only; Humanity Loss automation remains deferred.
-- Inventory matching/dedupe in v1 is primarily based on item `name`; this is an accepted v1 limitation, not a bug.
-- Supporting multiple same-name item instances, durability, ammo, armor ablation, or unique item instance tracking will require stable inventory item ids.
+- CP RED Stable Item Instance ID v1 adds `instanceId` to inventory/equipped weapons, armor, cyberware, fashion, and gear.
+- Same-name duplicate items can coexist at the inventory/equip flow level; legacy missing `instanceId` values are migrated or handled by safe fallback.
+- Durability, ammo, armor ablation, Humanity Loss automation, and full damage pipeline remain deferred.
 - No armor ablation, ammo tracking, full damage pipeline, Netrunning state machine, GM Console, AI Host, DND, or COC changes.
 
 ---

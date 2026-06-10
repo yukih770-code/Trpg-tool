@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useCpStore } from '../store/cpStore';
-import { CP_STAT_ORDER, CP_STAT_LABELS, CP_ROLE_LABELS, CP_SKILLS, CP_ROLE_ABILITIES, CpRelation, CpEnemy, CpLifePath, makeEmptyInventory, type CpInventory, type CpArmor, type CpCyberware } from '../lib/cp-types';
+import { CP_STAT_ORDER, CP_STAT_LABELS, CP_ROLE_LABELS, CP_SKILLS, CP_ROLE_ABILITIES, CpRelation, CpEnemy, CpLifePath, makeEmptyInventory, type CpInventory, type CpArmor, type CpCyberware, type CpWeapon, type CpClothing } from '../lib/cp-types';
 import { toast } from 'sonner';
 
 const T = {
@@ -18,6 +18,10 @@ const CP_SHEET_STAT_CN_OVERRIDES: Partial<Record<(typeof CP_STAT_ORDER)[number],
 function getCpSheetStatChineseLabel(stat: (typeof CP_STAT_ORDER)[number]): string {
   const label = CP_STAT_LABELS[stat] ?? stat;
   return CP_SHEET_STAT_CN_OVERRIDES[stat] ?? label.replace(stat, '').trim();
+}
+
+function itemInstanceKey(item: { instanceId?: string; name: string }): string {
+  return item.instanceId ?? item.name;
 }
 
 export function CpSheet() {
@@ -153,7 +157,7 @@ export function CpSheet() {
           <div className="font-cp-title text-[9px] uppercase tracking-widest text-[#f5c518]/55 mb-2">// WEAPONS · 只读展示</div>
           {weapons.length === 0 && <div className="text-xs opacity-40">无武器</div>}
           {weapons.map(w => (
-            <div key={w.name}
+            <div key={itemInstanceKey(w)}
               className={`flex items-center justify-between w-full text-xs mb-1.5 p-1.5 border ${T.border} text-left`}>
               <div>
                 <div className="font-bold">{w.name}</div>
@@ -180,7 +184,7 @@ export function CpSheet() {
             <div className="font-cp-title text-[9px] uppercase tracking-widest text-[#f5c518]/55 mb-1.5">// CYBERWARE ({cyberware.length})</div>
             {cyberware.length === 0 && <div className="text-xs opacity-40">无义体</div>}
             {cyberware.map(cw => (
-              <div key={cw.name} className="text-xs flex justify-between">
+              <div key={itemInstanceKey(cw)} className="text-xs flex justify-between">
                 <span>{cw.name}</span>
                 <span className="text-red-400/60 text-[10px]">人性成本 {cw.humanityCost}</span>
               </div>
@@ -194,7 +198,7 @@ export function CpSheet() {
           <div className="font-cp-title text-[9px] uppercase tracking-widest text-[#f5c518]/55 mb-1.5">// FASHION</div>
           {(!clothing || clothing.length === 0) && <div className="text-xs opacity-40">无时装</div>}
           {(clothing ?? []).map(c => (
-            <div key={c.name} className="text-xs mb-1 flex justify-between">
+            <div key={itemInstanceKey(c)} className="text-xs mb-1 flex justify-between">
               <span>{c.name}</span>
               <span className={`text-[10px] border ${T.border} px-1 ${T.text}`}>{c.style}</span>
             </div>
@@ -217,7 +221,7 @@ export function CpSheet() {
         onWearFashion={wearFashion}
         onTakeOffFashion={removeClothing}
         onInstallCyberware={(cw) => { installCyberware(cw); toast.success(`// 安装完成: ${cw.name}（未自动扣除人性）`); }}
-        onRemoveCyberware={(name) => { removeCyberware(name); toast.success(`// 已卸除义体 → 存入背包`); }}
+        onRemoveCyberware={(idOrName) => { removeCyberware(idOrName); toast.success(`// 已卸除义体 → 存入背包`); }}
         T={T}
       />
 
@@ -271,16 +275,16 @@ function InventoryPanel({
   cyberwareInstalled: CpCyberware[];
   armorBody: CpArmor | null;
   armorHead: CpArmor | null;
-  weaponsCarried: { name: string; damage: string; skill: string; rof: number; cost: number }[];
-  clothingWorn: { name: string; style: string; cost: number; description: string }[];
-  onCarryWeapon: (name: string) => void;
-  onDropWeapon: (name: string) => void;
+  weaponsCarried: CpWeapon[];
+  clothingWorn: CpClothing[];
+  onCarryWeapon: (idOrName: string) => void;
+  onDropWeapon: (idOrName: string) => void;
   onEquipArmor: (a: CpArmor) => void;
   onUnequipArmor: (loc: 'body' | 'head') => void;
-  onWearFashion: (name: string) => void;
-  onTakeOffFashion: (name: string) => void;
+  onWearFashion: (idOrName: string) => void;
+  onTakeOffFashion: (idOrName: string) => void;
   onInstallCyberware: (cw: CpCyberware) => void;
-  onRemoveCyberware: (name: string) => void;
+  onRemoveCyberware: (idOrName: string) => void;
   T: TTheme;
 }) {
   const [open, setOpen] = useState(false);
@@ -317,26 +321,26 @@ function InventoryPanel({
               <div className="font-cp-title text-[9px] text-[#f5c518]/40 tracking-widest mb-1.5">// 武器</div>
               <div className="space-y-1">
                 {weaponsCarried.map(w => (
-                  <div key={w.name} className="flex items-center justify-between text-xs border border-green-500/20 bg-green-950/10 px-2 py-1">
+                  <div key={itemInstanceKey(w)} className="flex items-center justify-between text-xs border border-green-500/20 bg-green-950/10 px-2 py-1">
                     <div>
                       <span className="text-green-400 font-bold">{w.name}</span>
                       <span className="text-[#d4d4d8]/40 ml-2">{w.damage}</span>
                       <span className="font-cp-title text-[8px] text-green-400 border border-green-400/30 px-1 ml-2">CARRYING</span>
                     </div>
-                    <button onClick={() => onDropWeapon(w.name)}
+                    <button onClick={() => onDropWeapon(itemInstanceKey(w))}
                       className={`${btnBase} border-orange-500/40 text-orange-400/80 hover:bg-orange-900/15`}>
                       收起
                     </button>
                   </div>
                 ))}
                 {inv.weapons.map(w => (
-                  <div key={w.name} className="flex items-center justify-between text-xs border border-yellow-400/20 bg-yellow-950/10 px-2 py-1">
+                  <div key={itemInstanceKey(w)} className="flex items-center justify-between text-xs border border-yellow-400/20 bg-yellow-950/10 px-2 py-1">
                     <div>
                       <span className="text-[#d4d4d8]">{w.name}</span>
                       <span className="text-[#d4d4d8]/40 ml-2">{w.damage}</span>
                       <span className="font-cp-title text-[8px] text-yellow-400 border border-yellow-400/30 px-1 ml-2">背包</span>
                     </div>
-                    <button onClick={() => onCarryWeapon(w.name)}
+                    <button onClick={() => onCarryWeapon(itemInstanceKey(w))}
                       className={`${btnBase} border-red-400/50 text-red-400 hover:bg-red-900/15`}>
                       携带
                     </button>
@@ -378,7 +382,7 @@ function InventoryPanel({
                   </div>
                 )}
                 {inv.armor.map(a => (
-                  <div key={a.name} className="flex items-center justify-between text-xs border border-yellow-400/20 bg-yellow-950/10 px-2 py-1">
+                  <div key={itemInstanceKey(a)} className="flex items-center justify-between text-xs border border-yellow-400/20 bg-yellow-950/10 px-2 py-1">
                     <div>
                       <span className="text-[#d4d4d8]">{a.name}</span>
                       <span className="text-[#00e5ff]/60 ml-2">SP{a.sp}</span>
@@ -400,20 +404,20 @@ function InventoryPanel({
               <div className="font-cp-title text-[9px] text-[#f5c518]/40 tracking-widest mb-1.5">// 义体</div>
               <div className="space-y-1">
                 {cyberwareInstalled.map(cw => (
-                  <div key={cw.name} className="flex items-center justify-between text-xs border border-green-500/20 bg-green-950/10 px-2 py-1">
+                  <div key={itemInstanceKey(cw)} className="flex items-center justify-between text-xs border border-green-500/20 bg-green-950/10 px-2 py-1">
                     <div>
                       <span className="text-green-400 font-bold">{cw.name}</span>
                       <span className="text-red-400/60 ml-2 text-[10px]">人性成本 {cw.humanityCost}</span>
                       <span className="font-cp-title text-[8px] text-green-400 border border-green-400/30 px-1 ml-2">已安装</span>
                     </div>
-                    <button onClick={() => onRemoveCyberware(cw.name)}
+                    <button onClick={() => onRemoveCyberware(itemInstanceKey(cw))}
                       className={`${btnBase} border-orange-500/40 text-orange-400/80 hover:bg-orange-900/15`}>
                       卸除
                     </button>
                   </div>
                 ))}
                 {inv.cyberware.map(cw => (
-                  <div key={cw.name} className="flex items-center justify-between text-xs border border-yellow-400/20 bg-yellow-950/10 px-2 py-1">
+                  <div key={itemInstanceKey(cw)} className="flex items-center justify-between text-xs border border-yellow-400/20 bg-yellow-950/10 px-2 py-1">
                     <div>
                       <span className="text-[#d4d4d8]">{cw.name}</span>
                       <span className="text-red-400/60 ml-2 text-[10px]">人性成本 {cw.humanityCost}</span>
@@ -436,26 +440,26 @@ function InventoryPanel({
               <div className="font-cp-title text-[9px] text-[#f5c518]/40 tracking-widest mb-1.5">// 时装</div>
               <div className="space-y-1">
                 {clothingWorn.map(c => (
-                  <div key={c.name} className="flex items-center justify-between text-xs border border-green-500/20 bg-green-950/10 px-2 py-1">
+                  <div key={itemInstanceKey(c)} className="flex items-center justify-between text-xs border border-green-500/20 bg-green-950/10 px-2 py-1">
                     <div>
                       <span className="text-green-400 font-bold">{c.name}</span>
                       <span className="text-pink-400/60 ml-2 text-[10px]">{c.style}</span>
                       <span className="font-cp-title text-[8px] text-green-400 border border-green-400/30 px-1 ml-2">穿着中</span>
                     </div>
-                    <button onClick={() => onTakeOffFashion(c.name)}
+                    <button onClick={() => onTakeOffFashion(itemInstanceKey(c))}
                       className={`${btnBase} border-orange-500/40 text-orange-400/80 hover:bg-orange-900/15`}>
                       脱下
                     </button>
                   </div>
                 ))}
                 {inv.fashion.map(c => (
-                  <div key={c.name} className="flex items-center justify-between text-xs border border-yellow-400/20 bg-yellow-950/10 px-2 py-1">
+                  <div key={itemInstanceKey(c)} className="flex items-center justify-between text-xs border border-yellow-400/20 bg-yellow-950/10 px-2 py-1">
                     <div>
                       <span className="text-[#d4d4d8]">{c.name}</span>
                       <span className="text-pink-400/60 ml-2 text-[10px]">{c.style}</span>
                       <span className="font-cp-title text-[8px] text-yellow-400 border border-yellow-400/30 px-1 ml-2">背包</span>
                     </div>
-                    <button onClick={() => onWearFashion(c.name)}
+                    <button onClick={() => onWearFashion(itemInstanceKey(c))}
                       className={`${btnBase} border-pink-400/50 text-pink-400 hover:bg-pink-900/15`}>
                       穿上
                     </button>
@@ -470,9 +474,9 @@ function InventoryPanel({
             <div>
               <div className="font-cp-title text-[9px] text-[#f5c518]/40 tracking-widest mb-1.5">// 装备</div>
               <div className="flex flex-wrap gap-1.5">
-                {inv.gear.map(name => (
-                  <span key={name} className="font-cp-body text-[10px] border border-[#f5c518]/25 bg-[#f5c518]/5 text-[#d4d4d8] px-2 py-0.5">
-                    {name}
+                {inv.gear.map(gear => (
+                  <span key={itemInstanceKey(gear)} className="font-cp-body text-[10px] border border-[#f5c518]/25 bg-[#f5c518]/5 text-[#d4d4d8] px-2 py-0.5">
+                    {gear.name}
                   </span>
                 ))}
               </div>

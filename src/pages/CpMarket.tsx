@@ -210,8 +210,12 @@ export function CpMarket() {
           {CP_CYBERWARE_LIST
             .filter(cw => !search || cw.name.toLowerCase().includes(search.toLowerCase()) || cw.description.includes(search))
             .map(cw => {
-              const installed = character.cyberware.some(c => c.name === cw.name);
-              const ownedInInventory = inv.cyberware.some(c => c.name === cw.name);
+              const installedItems = character.cyberware.filter(c => c.name === cw.name);
+              const ownedItems = inv.cyberware.filter(c => c.name === cw.name);
+              const installedItem = installedItems[0];
+              const ownedItem = ownedItems[0];
+              const installed = installedItems.length > 0;
+              const ownedInInventory = ownedItems.length > 0;
 
               return (
                 <div key={cw.name}
@@ -227,8 +231,8 @@ export function CpMarket() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-0.5">
                         <span className="font-cp-body text-xs text-[#d4d4d8] font-bold">{cw.name}</span>
-                        {installed && <StatusBadge label="INSTALLED" color="text-green-400 border-green-400/50" />}
-                        {ownedInInventory && <StatusBadge label="IN INVENTORY" color="text-yellow-400 border-yellow-400/50" />}
+                        {installed && <StatusBadge label={`INSTALLED x${installedItems.length}`} color="text-green-400 border-green-400/50" />}
+                        {ownedInInventory && <StatusBadge label={`IN INVENTORY x${ownedItems.length}`} color="text-yellow-400 border-yellow-400/50" />}
                       </div>
                       <div className="font-cp-body text-[10px] text-[#9ab0c8]/55 leading-relaxed">{cw.description}</div>
                       <div className="flex items-center gap-3 mt-1">
@@ -240,10 +244,13 @@ export function CpMarket() {
 
                       {installed ? (
                         // INSTALLED → can remove (returns to inventory)
-                        <ActionBtn label="REMOVE" color="border-orange-500/50 text-orange-400 hover:bg-orange-900/20" onClick={() => {
-                          removeCyberware(cw.name);
-                          toast.success(`// 已卸除: ${cw.name} → 已归还背包`);
-                        }} />
+                        <div className="flex flex-col gap-1 items-end">
+                          <ActionBtn label="REMOVE" color="border-orange-500/50 text-orange-400 hover:bg-orange-900/20" onClick={() => {
+                            removeCyberware(installedItem?.instanceId ?? cw.name);
+                            toast.success(`// 已卸除: ${cw.name} → 已归还背包`);
+                          }} />
+                          <ActionBtn label="BUY" disabled={!canAfford(cw.cost)} color="border-[#f5c518]/50 text-[#f5c518] hover:bg-[#f5c518]/10 hover:border-[#f5c518]" onClick={() => buy(cw.cost, cw.name, () => addCyberwareToInventory(cw))} />
+                        </div>
                       ) : ownedInInventory ? (
                         // OWNED IN INVENTORY → can install (free) or sell
                         <div className="flex flex-col gap-1 items-end">
@@ -251,13 +258,14 @@ export function CpMarket() {
                             label="INSTALL"
                             color="border-green-400/50 text-green-400 hover:bg-green-900/20"
                             onClick={() => {
-                              installCyberware(cw);
+                              installCyberware(ownedItem ?? cw);
                               toast.success(`// 安装完成: ${cw.name}（未自动扣除人性）`);
                             }}
                           />
                           <ActionBtn label="SELL" color="border-red-500/40 text-red-400/80 hover:bg-red-900/15" onClick={() => {
-                            sell(cw.cost, cw.name, () => discardCyberware(cw.name));
+                            sell(cw.cost, cw.name, () => discardCyberware(ownedItem?.instanceId ?? cw.name));
                           }} />
+                          <ActionBtn label="BUY" disabled={!canAfford(cw.cost)} color="border-[#f5c518]/50 text-[#f5c518] hover:bg-[#f5c518]/10 hover:border-[#f5c518]" onClick={() => buy(cw.cost, cw.name, () => addCyberwareToInventory(cw))} />
                         </div>
                       ) : (
                         // NOT OWNED → can buy to inventory
@@ -292,8 +300,12 @@ export function CpMarket() {
           {CP_WEAPON_LIST
             .filter(w => !search || w.name.toLowerCase().includes(search.toLowerCase()))
             .map(weapon => {
-              const carried = character.weapons.some(w => w.name === weapon.name);
-              const ownedInInventory = inv.weapons.some(w => w.name === weapon.name);
+              const carriedItems = character.weapons.filter(w => w.name === weapon.name);
+              const ownedItems = inv.weapons.filter(w => w.name === weapon.name);
+              const carriedItem = carriedItems[0];
+              const ownedItem = ownedItems[0];
+              const carried = carriedItems.length > 0;
+              const ownedInInventory = ownedItems.length > 0;
 
               return (
                 <div key={weapon.name}
@@ -309,8 +321,8 @@ export function CpMarket() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-0.5">
                         <span className="font-cp-body text-xs text-[#d4d4d8] font-bold">{weapon.name}</span>
-                        {carried && <StatusBadge label="CARRYING" color="text-green-400 border-green-400/50" />}
-                        {ownedInInventory && <StatusBadge label="IN INVENTORY" color="text-yellow-400 border-yellow-400/50" />}
+                        {carried && <StatusBadge label={`CARRYING x${carriedItems.length}`} color="text-green-400 border-green-400/50" />}
+                        {ownedInInventory && <StatusBadge label={`IN INVENTORY x${ownedItems.length}`} color="text-yellow-400 border-yellow-400/50" />}
                       </div>
                       <div className="flex items-center gap-3 mt-0.5">
                         <span className="font-cp-body text-[10px] text-red-400">伤害 {weapon.damage}</span>
@@ -322,19 +334,23 @@ export function CpMarket() {
                       <span className="font-cp-title text-sm neon-gold">{weapon.cost.toLocaleString()} eb</span>
 
                       {carried ? (
-                        <ActionBtn label="DROP" color="border-orange-500/50 text-orange-400 hover:bg-orange-900/20" onClick={() => {
-                          removeWeapon(weapon.name);
-                          toast.success(`// 已收起: ${weapon.name} → 存入背包`);
-                        }} />
+                        <div className="flex flex-col gap-1 items-end">
+                          <ActionBtn label="DROP" color="border-orange-500/50 text-orange-400 hover:bg-orange-900/20" onClick={() => {
+                            removeWeapon(carriedItem?.instanceId ?? weapon.name);
+                            toast.success(`// 已收起: ${weapon.name} → 存入背包`);
+                          }} />
+                          <ActionBtn label="BUY" disabled={!canAfford(weapon.cost)} color="border-[#f5c518]/50 text-[#f5c518] hover:bg-[#f5c518]/10 hover:border-[#f5c518]" onClick={() => buy(weapon.cost, weapon.name, () => addWeaponToInventory(weapon))} />
+                        </div>
                       ) : ownedInInventory ? (
                         <div className="flex flex-col gap-1 items-end">
                           <ActionBtn label="CARRY" color="border-green-400/50 text-green-400 hover:bg-green-900/20" onClick={() => {
-                            carryWeapon(weapon.name);
+                            carryWeapon(ownedItem?.instanceId ?? weapon.name);
                             toast.success(`// 已装备: ${weapon.name}`);
                           }} />
                           <ActionBtn label="SELL" color="border-red-500/40 text-red-400/80 hover:bg-red-900/15" onClick={() => {
-                            sell(weapon.cost, weapon.name, () => discardWeapon(weapon.name));
+                            sell(weapon.cost, weapon.name, () => discardWeapon(ownedItem?.instanceId ?? weapon.name));
                           }} />
+                          <ActionBtn label="BUY" disabled={!canAfford(weapon.cost)} color="border-[#f5c518]/50 text-[#f5c518] hover:bg-[#f5c518]/10 hover:border-[#f5c518]" onClick={() => buy(weapon.cost, weapon.name, () => addWeaponToInventory(weapon))} />
                         </div>
                       ) : (
                         <ActionBtn
@@ -367,10 +383,16 @@ export function CpMarket() {
           {CP_ARMOR_LIST
             .filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()))
             .map(armor => {
-              const equipped =
-                (armor.location === 'body' && character.armorBody?.name === armor.name) ||
-                (armor.location === 'head' && character.armorHead?.name === armor.name);
-              const ownedInInventory = inv.armor.some(a => a.name === armor.name);
+              const equippedItem =
+                armor.location === 'body' && character.armorBody?.name === armor.name
+                  ? character.armorBody
+                  : armor.location === 'head' && character.armorHead?.name === armor.name
+                    ? character.armorHead
+                    : null;
+              const ownedItems = inv.armor.filter(a => a.name === armor.name);
+              const ownedItem = ownedItems[0];
+              const equipped = Boolean(equippedItem);
+              const ownedInInventory = ownedItems.length > 0;
 
               return (
                 <div key={armor.name}
@@ -387,7 +409,7 @@ export function CpMarket() {
                       <div className="flex items-center gap-2 flex-wrap mb-0.5">
                         <span className="font-cp-body text-xs text-[#d4d4d8] font-bold">{armor.name}</span>
                         {equipped && <StatusBadge label="EQUIPPED" color="text-green-400 border-green-400/50" />}
-                        {ownedInInventory && <StatusBadge label="IN INVENTORY" color="text-yellow-400 border-yellow-400/50" />}
+                        {ownedInInventory && <StatusBadge label={`IN INVENTORY x${ownedItems.length}`} color="text-yellow-400 border-yellow-400/50" />}
                       </div>
                       <div className="flex items-center gap-3 mt-0.5">
                         <span className="font-cp-body text-[10px] text-[#00e5ff]">SP {armor.sp}</span>
@@ -399,19 +421,23 @@ export function CpMarket() {
                       <span className="font-cp-title text-sm neon-gold">{armor.cost.toLocaleString()} eb</span>
 
                       {equipped ? (
-                        <ActionBtn label="UNEQUIP" color="border-orange-500/50 text-orange-400 hover:bg-orange-900/20" onClick={() => {
-                          unequipArmor(armor.location);
-                          toast.success(`// 已卸下: ${armor.name} → 存入背包`);
-                        }} />
+                        <div className="flex flex-col gap-1 items-end">
+                          <ActionBtn label="UNEQUIP" color="border-orange-500/50 text-orange-400 hover:bg-orange-900/20" onClick={() => {
+                            unequipArmor(armor.location);
+                            toast.success(`// 已卸下: ${armor.name} → 存入背包`);
+                          }} />
+                          <ActionBtn label="BUY" disabled={!canAfford(armor.cost)} color="border-[#f5c518]/50 text-[#f5c518] hover:bg-[#f5c518]/10 hover:border-[#f5c518]" onClick={() => buy(armor.cost, armor.name, () => addArmorToInventory(armor))} />
+                        </div>
                       ) : ownedInInventory ? (
                         <div className="flex flex-col gap-1 items-end">
                           <ActionBtn label="EQUIP" color="border-[#00e5ff]/50 text-[#00e5ff] hover:bg-[#00e5ff]/10" onClick={() => {
-                            equipArmor(armor, armor.location);
+                            equipArmor(ownedItem ?? armor, armor.location);
                             toast.success(`// 已装备: ${armor.name}`);
                           }} />
                           <ActionBtn label="SELL" color="border-red-500/40 text-red-400/80 hover:bg-red-900/15" onClick={() => {
-                            sell(armor.cost, armor.name, () => discardArmor(armor.name));
+                            sell(armor.cost, armor.name, () => discardArmor(ownedItem?.instanceId ?? armor.name));
                           }} />
+                          <ActionBtn label="BUY" disabled={!canAfford(armor.cost)} color="border-[#f5c518]/50 text-[#f5c518] hover:bg-[#f5c518]/10 hover:border-[#f5c518]" onClick={() => buy(armor.cost, armor.name, () => addArmorToInventory(armor))} />
                         </div>
                       ) : (
                         <ActionBtn
@@ -445,8 +471,12 @@ export function CpMarket() {
           {CP_CLOTHING_LIST
             .filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.style.includes(search))
             .map(cloth => {
-              const wearing = (character.clothing ?? []).some(c => c.name === cloth.name);
-              const ownedInInventory = inv.fashion.some(c => c.name === cloth.name);
+              const wornItems = (character.clothing ?? []).filter(c => c.name === cloth.name);
+              const ownedItems = inv.fashion.filter(c => c.name === cloth.name);
+              const wornItem = wornItems[0];
+              const ownedItem = ownedItems[0];
+              const wearing = wornItems.length > 0;
+              const ownedInInventory = ownedItems.length > 0;
               const canUseFashionEb = character.fashionEb >= cloth.cost;
               const affordable = canAfford(cloth.cost) || canUseFashionEb;
 
@@ -464,8 +494,8 @@ export function CpMarket() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-0.5">
                         <span className="font-cp-body text-xs text-[#d4d4d8] font-bold">{cloth.name}</span>
-                        {wearing && <StatusBadge label="WEARING" color="text-green-400 border-green-400/50" />}
-                        {ownedInInventory && <StatusBadge label="IN INVENTORY" color="text-yellow-400 border-yellow-400/50" />}
+                        {wearing && <StatusBadge label={`WEARING x${wornItems.length}`} color="text-green-400 border-green-400/50" />}
+                        {ownedInInventory && <StatusBadge label={`IN INVENTORY x${ownedItems.length}`} color="text-yellow-400 border-yellow-400/50" />}
                         <span className={`font-cp-title text-[8px] border px-1 ${
                           cloth.style === '企业' ? 'text-yellow-400 border-yellow-400/40' :
                           cloth.style === '赛博' ? 'text-[#00e5ff] border-[#00e5ff]/40' :
@@ -481,18 +511,38 @@ export function CpMarket() {
                       <span className="font-cp-title text-sm neon-gold">{cloth.cost.toLocaleString()} eb</span>
 
                       {wearing ? (
-                        <ActionBtn label="TAKE OFF" color="border-orange-500/50 text-orange-400 hover:bg-orange-900/20" onClick={() => {
-                          removeClothing(cloth.name);
-                          toast.success(`// 已脱下: ${cloth.name} → 存入背包`);
-                        }} />
+                        <div className="flex flex-col gap-1 items-end">
+                          <ActionBtn label="TAKE OFF" color="border-orange-500/50 text-orange-400 hover:bg-orange-900/20" onClick={() => {
+                            removeClothing(wornItem?.instanceId ?? cloth.name);
+                            toast.success(`// 已脱下: ${cloth.name} → 存入背包`);
+                          }} />
+                          <ActionBtn label="BUY" disabled={!affordable} color="border-[#f5c518]/50 text-[#f5c518] hover:bg-[#f5c518]/10 hover:border-[#f5c518]" onClick={() => {
+                            const spend = canUseFashionEb ? spendFashionEb : spendEb;
+                            if (spend(cloth.cost)) {
+                              addFashionToInventory(cloth);
+                              toast.success(`// 购入: ${cloth.name}（−${cloth.cost} eb）`);
+                            } else {
+                              toast.error(`eb 不足！需要 ${cloth.cost} eb`);
+                            }
+                          }} />
+                        </div>
                       ) : ownedInInventory ? (
                         <div className="flex flex-col gap-1 items-end">
                           <ActionBtn label="WEAR" color="border-pink-400/50 text-pink-400 hover:bg-pink-900/20" onClick={() => {
-                            wearFashion(cloth.name);
+                            wearFashion(ownedItem?.instanceId ?? cloth.name);
                             toast.success(`// 已穿上: ${cloth.name}`);
                           }} />
                           <ActionBtn label="SELL" color="border-red-500/40 text-red-400/80 hover:bg-red-900/15" onClick={() => {
-                            sell(cloth.cost, cloth.name, () => discardFashion(cloth.name));
+                            sell(cloth.cost, cloth.name, () => discardFashion(ownedItem?.instanceId ?? cloth.name));
+                          }} />
+                          <ActionBtn label="BUY" disabled={!affordable} color="border-[#f5c518]/50 text-[#f5c518] hover:bg-[#f5c518]/10 hover:border-[#f5c518]" onClick={() => {
+                            const spend = canUseFashionEb ? spendFashionEb : spendEb;
+                            if (spend(cloth.cost)) {
+                              addFashionToInventory(cloth);
+                              toast.success(`// 购入: ${cloth.name}（−${cloth.cost} eb）`);
+                            } else {
+                              toast.error(`eb 不足！需要 ${cloth.cost} eb`);
+                            }
                           }} />
                         </div>
                       ) : (
@@ -539,7 +589,9 @@ export function CpMarket() {
                   // {cat.toUpperCase()}
                 </div>
                 {items.map(item => {
-                  const owned = inv.gear.includes(item.name);
+                  const ownedItems = inv.gear.filter(g => g.name === item.name);
+                  const ownedItem = ownedItems[0];
+                  const owned = ownedItems.length > 0;
                   const affordable = canAfford(item.cost);
                   const tagCls = TAG_COLORS[item.tag] ?? 'text-[#f5c518] border-[#f5c518]/40';
 
@@ -555,7 +607,7 @@ export function CpMarket() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-0.5">
                             <span className="font-cp-body text-xs text-[#d4d4d8] font-bold">{item.name}</span>
-                            {owned && <StatusBadge label="OWNED" color="text-yellow-400 border-yellow-400/50" />}
+                            {owned && <StatusBadge label={`OWNED x${ownedItems.length}`} color="text-yellow-400 border-yellow-400/50" />}
                             <span className={`font-cp-title text-[8px] border px-1 ${tagCls}`}>{item.tag}</span>
                           </div>
                           <div className="font-cp-body text-[10px] text-[#9ab0c8]/55">{item.description}</div>
@@ -563,15 +615,23 @@ export function CpMarket() {
                         <div className="shrink-0 flex flex-col items-end gap-1.5">
                           <span className="font-cp-title text-sm neon-gold">{item.cost.toLocaleString()} eb</span>
                           {owned ? (
-                            <ActionBtn label="SELL" color="border-red-500/40 text-red-400/80 hover:bg-red-900/15" onClick={() => {
-                              sell(item.cost, item.name, () => discardGear(item.name));
-                            }} />
+                            <div className="flex flex-col gap-1 items-end">
+                              <ActionBtn label="SELL" color="border-red-500/40 text-red-400/80 hover:bg-red-900/15" onClick={() => {
+                                sell(item.cost, item.name, () => discardGear(ownedItem?.instanceId ?? item.name));
+                              }} />
+                              <ActionBtn
+                                label="BUY"
+                                disabled={!affordable}
+                                color="border-[#f5c518]/50 text-[#f5c518] hover:bg-[#f5c518]/10 hover:border-[#f5c518]"
+                                onClick={() => buy(item.cost, item.name, () => addGearToInventory(item))}
+                              />
+                            </div>
                           ) : (
                             <ActionBtn
                               label="BUY"
                               disabled={!affordable}
                               color="border-[#f5c518]/50 text-[#f5c518] hover:bg-[#f5c518]/10 hover:border-[#f5c518]"
-                              onClick={() => buy(item.cost, item.name, () => addGearToInventory(item.name))}
+                              onClick={() => buy(item.cost, item.name, () => addGearToInventory(item))}
                             />
                           )}
                         </div>
