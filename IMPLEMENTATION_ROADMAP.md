@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-Last updated: 2026-05-31
+Last updated: 2026-06-10
 
 ## 1. Purpose
 
@@ -38,6 +38,7 @@ It does not implement code. It defines the order, scope, forbidden areas, audit 
 
 - DND is the reference implementation for Player Gameplay, RollConsole, and `RuntimeLogEntry[]`.
 - DND runtime resources, class resources, pact magic state, checks, optional DC, and structured local logs are in place.
+- DND Gameplay is componentized under `src/pages/gameplay/`.
 - Do not continue Action Registry expansion now.
 - Do not implement attack / damage / target model now.
 - Do not refactor spellSlot into Action Registry now.
@@ -48,14 +49,13 @@ It does not implement code. It defines the order, scope, forbidden areas, audit 
 - Runtime Foundation v2 is complete.
 - Creator Skill Point Constraint v1 is complete.
 - Sheet Responsibility Cleanup v1 is complete.
-- Next COC work should wire CocGameplay runtime state panels and RollConsole.
+- CocGameplay runtime state panel, RollConsole, RuntimeLogEntry history, public skill checks, and componentization are complete.
 - Do not implement full insanity automation, Keeper Console, combat/chase, or hidden-result filtering now.
 
 ### Cyberpunk RED
 
 - CP RED has basic pages, store, types, and utilities.
-- CP RED needs Creator / Sheet Responsibility Audit before more implementation.
-- CP RED should then receive Sheet cleanup and Runtime Foundation.
+- CP RED Creator / Sheet audit, Sheet cleanup, Runtime Foundation, RollConsole, Skill Check Wiring, and Gameplay componentization are complete.
 - Do not jump directly into combat, armor ablation, ammo automation, netrunning, or vehicles.
 
 ### AI / Host
@@ -64,6 +64,12 @@ It does not implement code. It defines the order, scope, forbidden areas, audit 
 - Do not implement AI API.
 - Do not implement Host Console.
 - Do not implement ProposedCommand runtime.
+
+### Roadmap Execution Update
+
+- The original first code phases have been executed through COC / CP RED Player Gameplay RuntimeLogEntry and componentization work.
+- This roadmap still defines scope discipline and deferred work, but the next implementation prompt should be chosen from current audit findings, not from the original "First Code Phase Recommendation" alone.
+- Any next code round must remain single-system and narrowly scoped.
 - Do not implement permissions, multiplayer, or AI memory.
 
 ## 5. Recommended Phase Order
@@ -263,4 +269,3 @@ Not chosen because AI Host is only architectural right now, and the three system
 - Freeze planning phase now has a roadmap.
 - Next recommended action: CP RED Creator / Sheet Responsibility Audit.
 - No `src` changes.
-

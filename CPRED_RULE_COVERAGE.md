@@ -1,6 +1,6 @@
 # CPRED Rule Coverage Matrix
 
-Last updated: 2026-05-31
+Last updated: 2026-06-10
 
 ## 1. Purpose
 
@@ -50,9 +50,9 @@ CpCreator, cp-types, cpStore, and cp-utils have partial foundations. Role, Stats
 
 | Rule Area | Current Level | Current Status | Gaps | Priority |
 |---|---:|---|---|---|
-| Basic info display | 5 | CpSheet exists. | Needs responsibility audit. | P0 |
-| Stats display | 5 | Existing. | Needs no-roll Sheet boundary check. | P0 |
-| Skills display | 5 | Existing. | Needs audit for direct rolling/editing. | P0 |
+| Basic info display | 5 | CpSheet exists and responsibility cleanup is complete. | Polish only. | P0 |
+| Stats display | 5 | Sheet displays stats without sheet-side rolling. | None for current Sheet scope. | P0 |
+| Skills display | 5 | Sheet displays skills without sheet-side rolling. | None for current Sheet scope. | P0 |
 | Role / Role Ability display | 2 | Likely partial. | Needs role coverage audit. | P1 |
 | HP display | 4 | Existing. | Runtime mutation should belong in Gameplay. | P0 |
 | Seriously Wounded / Death Save display | 3 | Utilities exist. | UI alignment needs audit. | P1 |
@@ -62,29 +62,29 @@ CpCreator, cp-types, cpStore, and cp-utils have partial foundations. Role, Stats
 | Cyberware display | 1 | Existing partial/static. | Install/removal automation deferred. | P2 |
 | Gear / Inventory display | 2 | Existing partial. | Needs structured gear audit. | P2 |
 | Lifepath display | 1 | Existing partial/static. | Needs audit. | P2 |
-| Sheet runtime operations | Unknown | Needs audit. | Sheet should not own runtime changes. | P0 |
-| Sheet roll/check responsibility | Unknown | Needs audit. | Sheet should not own gameplay checks. | P0 |
+| Sheet runtime operations | 5 | Sheet cleanup removed gameplay runtime ownership. | Inventory/cyberware follow-up remains deferred. | P0 |
+| Sheet roll/check responsibility | 5 | Sheet no longer owns gameplay checks or local Roll Log. | Gameplay owns rolls/results. | P0 |
 
-CpSheet should receive a DND/COC-style responsibility audit and cleanup. Sheet should not continue to own rolls or runtime state changes.
+CpSheet has received DND/COC-style responsibility cleanup. Sheet is display plus downtime maintenance; Player Gameplay owns rolls/results and runtime operation.
 
 ## 5. Gameplay Coverage
 
 | Rule Area | Current Level | Current Status | Gaps | Priority |
 |---|---:|---|---|---|
-| Runtime state panel | 1 | Existing Gameplay has some controls. | Needs structured runtime design. | P0 |
-| HP changes | 4 | Store/util support exists. | Needs contract-aligned UI/logs. | P0 |
-| Humanity changes | 4 | Store/util support exists. | Needs RuntimeLogEntry and UI audit. | P1 |
-| EMP display | 3 | Utility support exists. | Runtime semantics need audit. | P1 |
-| Seriously Wounded display | 3 | Utility support exists. | Needs runtime UI/log integration. | P1 |
-| Death Save display | 3 | Utility support exists. | Needs gameplay workflow. | P1 |
-| Skill Checks | 3 | Pure function support exists. | Needs RollConsole/RuntimeLogEntry. | P0 |
-| Stat Checks | 3 | Pure function support exists. | Needs RollConsole/RuntimeLogEntry. | P0 |
-| Exploding d10 | 3 | cp-utils foundation exists. | Needs unified Latest Result display. | P0 |
-| DV input / no DV waiting GM judgment | 1 | Needs audit. | Must align with Gameplay UI contract. | P0 |
-| RollConsole | 0 | Not unified. | Needs player RollConsole. | P0 |
-| RuntimeLogEntry[] | 0 | Not unified. | Needs structured log migration. | P0 |
-| Latest Result | 0 | Not unified. | Needs RollConsole. | P0 |
-| History Log | 1 | Existing string logs likely. | Needs RuntimeLogEntry. | P0 |
+| Runtime state panel | 5 | CpGameplay has runtime state/resource panels. | Armor/ammo runtime remains deferred. | P0 |
+| HP changes | 5 | Store/util support and Gameplay RuntimeLogEntry logs exist. | No full combat damage pipeline. | P0 |
+| Humanity changes | 5 | Store/util support and Gameplay RuntimeLogEntry logs exist. | Cyberware install/therapy automation deferred. | P1 |
+| EMP display | 5 | Runtime foundation and Gameplay display exist. | Deeper semantics can be audited later. | P1 |
+| Seriously Wounded display | 5 | Runtime and Gameplay handling exist. | Full death/damage pipeline deferred. | P1 |
+| Death Save display | 5 | Gameplay death save action exists and logs RuntimeLogEntry. | Full mortally wounded workflow deferred. | P1 |
+| Skill Checks | 5 | Gameplay skill checks write RuntimeLogEntry results. | Opposed/target model deferred. | P0 |
+| Stat Checks | 5 | Gameplay stat checks write RuntimeLogEntry results. | Opposed/target model deferred. | P0 |
+| Exploding d10 | 5 | cp-utils foundation is used in Gameplay and displayed through RollConsole. | None for current check scope. | P0 |
+| DV input / no DV waiting GM judgment | 5 | No-DV checks display `等待 GM 判定`. | No target/enemy model. | P0 |
+| RollConsole | 5 | Player RollConsole is wired. | GM Console remains deferred. | P0 |
+| RuntimeLogEntry[] | 5 | CpGameplay uses local RuntimeLogEntry[]. | No store/schema persistence by design. | P0 |
+| Latest Result | 5 | Derived from latest local RuntimeLogEntry. | No visibility filtering. | P0 |
+| History Log | 5 | RuntimeLogEntry history is displayed in RollConsole. | No persistent session log. | P0 |
 | Result visibility | 0 | Documented only. | No filtering/reveal. | P3 |
 | GM Console boundary | 1 | Documented. | No GM Console implementation. | P3 |
 | Weapons / attacks | 1 | Existing partial/static. | Combat automation deferred. | P2 |
@@ -96,20 +96,20 @@ CpSheet should receive a DND/COC-style responsibility audit and cleanup. Sheet s
 | Market / Gear | 2 | CpMarket exists. | Dynamic gear economy deferred. | P2 |
 | Vehicles | 0 | Deferred. | Future subsystem. | P3 |
 
-CP Gameplay is not yet unified to RuntimeLogEntry. Skill/stat check utilities exist, but RollConsole is missing. Complex combat, armor, ammo, netrunning, and vehicles are deferred.
+CP Gameplay is unified to local RuntimeLogEntry and RollConsole, with componentized panels. Complex combat, armor, ammo, netrunning, vehicles, GM Console, and visibility filtering are deferred.
 
 ## 6. Skill / Stat Check Coverage
 
 | Rule Area | Current Level | Current Status | Gaps | Priority |
 |---|---:|---|---|---|
-| d10 roll | 3 | Pure function exists. | Needs unified UI/logs. | P0 |
-| Natural 10 upward explosion | 3 | cp-utils supports exploding d10. | Needs Latest Result tag. | P0 |
-| Natural 1 downward explosion | 3 | cp-utils supports exploding d10. | Needs Latest Result tag. | P0 |
-| stat + skill + modifier | 3 | Pure function support exists. | Needs contract-aligned UI. | P0 |
-| DV comparison | 3 | Pure function support likely exists. | Needs optional/no-DV display audit. | P0 |
+| d10 roll | 5 | Gameplay checks roll and log exploding d10 results. | None for current check scope. | P0 |
+| Natural 10 upward explosion | 5 | cp-utils supports exploding d10 and Gameplay logs it. | None for current check scope. | P0 |
+| Natural 1 downward explosion | 5 | cp-utils supports exploding d10 and Gameplay logs it. | None for current check scope. | P0 |
+| stat + skill + modifier | 5 | Gameplay checks use stat + skill + modifier. | Luck/spend modifiers beyond current UI deferred. | P0 |
+| DV comparison | 5 | DV comparison is wired when DV is present. | Target model deferred. | P0 |
 | Opposed check | 0 | Not implemented. | Needs target/opposed model. | P2 |
-| No DV = waiting GM judgment | 1 | Contract exists. | Needs CP Gameplay implementation. | P0 |
-| Result calculation display | 1 | Existing UI likely partial. | Needs RollConsole. | P0 |
+| No DV = waiting GM judgment | 5 | No-DV checks display `等待 GM 判定`. | None for current check scope. | P0 |
+| Result calculation display | 5 | RollConsole displays structured calculation details. | None for current check scope. | P0 |
 
 ## 7. Combat / Damage / Armor Coverage
 
@@ -124,9 +124,9 @@ CP Gameplay is not yet unified to RuntimeLogEntry. Skill/stat check utilities ex
 | Head / body armor | 0 | Deferred. | Needs hit location/body part model. | P2 |
 | Cover | 0 | Deferred. | Needs combat scene model. | P3 |
 | HP damage | 2 | HP state exists. | Combat damage application not automated. | P2 |
-| Seriously Wounded | 3 | Utility exists. | Needs Gameplay flow. | P1 |
+| Seriously Wounded | 5 | Runtime and Gameplay display exist. | Auto trigger prompt deferred. | P1 |
 | Mortally Wounded | 1 | Needs audit. | Death workflow not complete. | P2 |
-| Death Saves | 3 | Utility exists. | Needs UI/log workflow. | P1 |
+| Death Saves | 5 | Gameplay death save action exists and logs RuntimeLogEntry. | Full mortally wounded workflow deferred. | P1 |
 | Critical Injuries | 0 | Deferred. | Needs tables/manual tracking first. | P2 |
 | Critical Injury tables | 0 | Deferred. | Static data may need extraction. | P2 |
 | Stabilization | 0 | Deferred. | Needs medical workflow. | P2 |

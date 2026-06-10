@@ -1,7 +1,7 @@
 # Runtime Log Architecture
 
-Last updated: 2026-05-30  
-Status: **Architecture Principle Document — No Code Implementation This Round**
+Last updated: 2026-06-10  
+Status: **RuntimeLogEntry implemented as local UI state across DND / COC / CP RED Gameplay; Host / GM / Keeper / AI Host persistence and reveal flows remain deferred**
 
 ---
 
@@ -27,30 +27,31 @@ Architecture principles and recommended shapes only.
 ### DND
 
 - `Gameplay.tsx` uses a `RollConsole` component as the single result center.
-- `latestResult` is local React UI state (`useState`) — not persisted to store or schema.
-- `combatLog` is a local `string[]` — appended on each roll, trimmed to a recent window.
+- `combatLog` is local `RuntimeLogEntry[]` UI state — not persisted to store or schema.
 - `ChecksPanel` does not display the latest result (result lives only in RollConsole).
 - `ActionsPanel` sends toast notifications on action use; does not display an independent result area.
 - `GAMEPLAY_UI_CONTRACT.md` defines the Player Gameplay / Host Console boundary and the visibility principle.
 
 ### COC
 
-- `CocGameplay.tsx` uses a local `string[]` `combatLog` and a local `lastRoll` UI state.
+- `CocGameplay.tsx` uses local `RuntimeLogEntry[]` history and panel components under `src/pages/cocGameplay/`.
 - Success level display uses `evaluateCocD100Check` from `coc-utils.ts`.
-- No structured log entry. Results are formatted as plain strings.
+- COC has a player RollConsole aligned with the DND reference pattern.
+- Keeper Console, `gmOnly` filtering, Luck spending, Pushed Roll, and full SAN / insanity automation remain deferred.
 
 ### Cyberpunk RED
 
-- `CpGameplay.tsx` uses a local `string[]` log and a local `RollDisplay` UI state.
+- `CpGameplay.tsx` uses local `RuntimeLogEntry[]` history and panel components under `src/pages/cpGameplay/`.
 - Exploding d10 results use `evaluateCpExplodingD10` / `evaluateCpSkillCheck` from `cp-utils.ts`.
-- No structured log entry. Results are formatted as plain strings.
+- CP RED has a player RollConsole aligned with the DND reference pattern.
+- Armor/ammo automation, full damage pipeline, Netrunning state machine, GM Console, and `gmOnly` filtering remain deferred.
 
 ### Across all three systems
 
 - No real Host Console exists.
 - No real permission or visibility system exists.
 - No multiplayer sync exists.
-- The three systems have diverging log string formats with no shared envelope.
+- The three systems now share the local `RuntimeLogEntry[]` envelope for Player Gameplay result history.
 
 ---
 
@@ -74,7 +75,7 @@ Per `GAMEPLAY_UI_CONTRACT.md`:
 
 ### History Log
 
-The scrollable list of past Log Entries. Displayed below or alongside Latest Result. Currently a `string[]`; the target shape is `RuntimeLogEntry[]`.
+The scrollable list of past Log Entries. Displayed below or alongside Latest Result. The current cross-system target shape is local `RuntimeLogEntry[]`.
 
 ### Visibility
 
@@ -87,7 +88,7 @@ A host action that changes a Result's effective visibility from `gmOnly` to `rev
 ### Player Gameplay
 
 The per-character play console. Contains character state, actions, checks, and the player-visible Roll Console.  
-Does not contain host tools, free-roll panels, or NPC controls.
+Does not contain host tools or NPC controls. DND omits player free-roll tools; COC and CP RED still have pre-existing free dice tray utilities isolated as Gameplay panels until a future Host Console ownership cleanup.
 
 ### Host Console
 
@@ -112,7 +113,7 @@ Per `GAMEPLAY_UI_CONTRACT.md` §9–§11, the recommended visibility types are:
 - **Hidden rolls are not a separate dice type.** A hidden roll is a `gmOnly` result, produced by the same roll machinery as any other roll.
 - **Player Roll Console** must show only: `public`, `revealed`, and `playerOnly` results that belong to the current player.
 - **Host Console** (future) must show all: `public`, `gmOnly`, `playerOnly`, and `revealed`.
-- **Free roll** (dice tray, random tables) should also carry a visibility. In the current phase, free roll in player Gameplay is omitted; when it appears in Host Console, it defaults to `gmOnly` unless the host chooses to reveal it.
+- **Free roll** (dice tray, random tables) should also carry a visibility. DND player Gameplay currently omits free roll tools; COC and CP RED still expose pre-existing free dice tray utilities as isolated Gameplay panels until a future Host Console ownership cleanup. When free roll appears in Host Console, it should default to `gmOnly` unless the host chooses to reveal it.
 - **Default visibility** for any player-initiated result is `public`.
 - **Default visibility** for host-initiated results is `gmOnly` until the host reveals.
 
@@ -146,10 +147,10 @@ The `revealMode` field lives on the Log Entry and can be updated by the host at 
 
 ## 6. Recommended LogEntry Shape / 推荐日志结构
 
-The following is the **recommended future shape** for a structured log entry shared across all three systems. **This is not implemented in the current round.** No types are added to `src/`.
+The following is the shared structured log entry shape now used as local UI state across DND / COC / CP RED Gameplay. Host / GM / Keeper / AI Host persistence, reveal flows, and server-side synchronization remain deferred.
 
 ```ts
-// Future target — NOT implemented this round.
+// Shared local UI log entry shape used by DND / COC / CP RED Gameplay.
 
 type RuntimeLogVisibility =
   | "public"

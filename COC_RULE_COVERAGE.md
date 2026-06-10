@@ -1,6 +1,6 @@
 # COC Rule Coverage Matrix
 
-Last updated: 2026-05-31
+Last updated: 2026-06-10
 
 ## 1. Purpose
 
@@ -26,7 +26,7 @@ It is a planning and freeze document. It does not implement rules, UI, store sta
 |---|---:|---|---|---|
 | Basic information | 5 | CocCreator captures basic investigator info. | Needs later polish only. | P0 |
 | Attribute generation | 5 | Creator supports rolling characteristics. | Age adjustments and EDU improvement are not integrated. | P0 |
-| HP / MP / SAN / Luck derived values | 4 | Derived values are written during creation; runtime foundation exists. | Runtime panel not wired in CocGameplay. | P0 |
+| HP / MP / SAN / Luck derived values | 5 | Derived values are written during creation; runtime foundation and CocGameplay runtime panel exist. | Advanced workflows remain deferred. | P0 |
 | Occupation selection | 1 | Occupation text field exists. | No structured occupation table. | P1 |
 | Occupational skill points EDU x 4 | 5 | Creator Skill Point Constraint v1 implemented. | No occupation-specific allowed skill list. | P0 |
 | Personal interest skill points INT x 2 | 5 | Creator Skill Point Constraint v1 implemented. | No advanced validation beyond budget and cap. | P0 |
@@ -54,7 +54,7 @@ Runtime Foundation v2, Creator Skill Point Constraint v1, and Sheet Responsibili
 | Backstory maintenance | 5 | Editable on Sheet. | No structured story graph. | P1 |
 | Inventory maintenance | 5 | Editable text inventory. | No structured equipment system. | P2 |
 | Asset maintenance | 5 | Finance fields remain editable. | No economy automation. | P2 |
-| Sheet-side rolls removed | 5 | Sheet no longer owns roll/toast checks. | Gameplay RollConsole still needed. | P0 |
+| Sheet-side rolls removed | 5 | Sheet no longer owns roll/toast checks. | Gameplay RollConsole now owns player-visible results. | P0 |
 | Sheet-side unrestricted skill editing removed | 5 | Skill values are no longer direct inputs. | Downtime growth workflow deferred. | P0 |
 
 Sheet Responsibility Cleanup v1 is complete. Sheet is display plus downtime maintenance; it does not own checks or unrestricted creation-time skill editing.
@@ -63,37 +63,37 @@ Sheet Responsibility Cleanup v1 is complete. Sheet is display plus downtime main
 
 | Rule Area | Current Level | Current Status | Gaps | Priority |
 |---|---:|---|---|---|
-| Runtime state panel | 0 | Not wired. | Needs CocGameplay runtime panel. | P0 |
-| HP / MP / SAN / Luck changes | 4 | Store actions exist. | CocGameplay does not use them yet. | P0 |
-| Major Wound / Dying / Unconscious | 4 | Runtime flags and HP delta utility exist. | Gameplay prompts/UI not wired. | P1 |
-| Temporary / Indefinite Insanity flags | 2 | Runtime flags exist. | No full insanity workflow. | P2 |
-| Skill Checks | 3 | Pure function exists; existing UI is not contract-aligned. | Needs RollConsole/RuntimeLogEntry integration. | P0 |
+| Runtime state panel | 5 | CocGameplay displays runtime HP / MP / SAN / Luck and flags. | Advanced workflows remain deferred. | P0 |
+| HP / MP / SAN / Luck changes | 5 | CocGameplay uses existing runtime store actions. | No full SAN/Luck workflow automation. | P0 |
+| Major Wound / Dying / Unconscious | 5 | Runtime flags can be displayed/toggled manually. | No automatic Keeper prompts or full medical workflow. | P1 |
+| Temporary / Indefinite Insanity flags | 5 | Runtime flags can be displayed/toggled manually. | No full insanity workflow. | P2 |
+| Skill Checks | 5 | Public skill checks run in CocGameplay and write RuntimeLogEntry results. | No Luck spending, Pushed Roll, or growth resolution. | P0 |
 | SAN Check | 3 | SAN loss parser exists. | No SAN Check UI/workflow. | P1 |
 | Luck Check | 3 | d100 evaluator can cover checks. | No dedicated Luck Check UI. | P1 |
 | Luck spending | 4 | Luck current/action exists. | No spending UI/rule validation. | P1 |
 | Pushed Roll | 2 | `pushedRollContext` exists. | No UI or consequence workflow. | P2 |
 | Growth marks from successful checks | 2 | Growth mark state exists. | No automatic eligibility or marking from checks. | P2 |
-| RollConsole | 0 | Not wired for COC. | Needs DND-style player RollConsole. | P0 |
-| RuntimeLogEntry[] | 0 | Not wired for COC. | Needs structured log migration. | P0 |
-| Latest Result | 0 | Not wired for COC. | Needs RollConsole. | P0 |
-| History Log | 1 | Existing logs may be strings. | Needs RuntimeLogEntry. | P0 |
+| RollConsole | 5 | CocGameplay has a player RollConsole. | Keeper Console remains deferred. | P0 |
+| RuntimeLogEntry[] | 5 | CocGameplay local logs use RuntimeLogEntry[]. | No store/schema persistence by design. | P0 |
+| Latest Result | 5 | Derived from latest local RuntimeLogEntry. | No visibility filtering. | P0 |
+| History Log | 5 | RuntimeLogEntry history is displayed in RollConsole. | No persistent session log. | P0 |
 | Result visibility | 0 | Documented only. | No filtering/reveal. | P3 |
 | Keeper Console boundary | 1 | Documented. | No Keeper Console implementation. | P3 |
 
-Runtime state and store actions have a foundation, but CocGameplay is not yet wired to runtime actions, RollConsole, or RuntimeLogEntry. Keeper Console and `gmOnly` visibility remain deferred.
+Runtime state, store actions, player skill checks, RollConsole, and local RuntimeLogEntry history are wired in CocGameplay. Keeper Console, `gmOnly` visibility, Luck spending, Pushed Roll, growth resolution, and full SAN / insanity automation remain deferred.
 
 ## 6. Skill Check Coverage
 
 | Rule Area | Current Level | Current Status | Gaps | Priority |
 |---|---:|---|---|---|
-| d100 | 3 | Pure function exists. | Needs unified UI/log wiring. | P0 |
-| Critical | 3 | Evaluator returns critical. | Needs COC RollConsole display. | P0 |
-| Extreme | 3 | Evaluator returns extreme. | Needs COC RollConsole display. | P0 |
-| Hard | 3 | Evaluator returns hard. | Needs COC RollConsole display. | P0 |
-| Regular | 3 | Evaluator returns regular. | Needs COC RollConsole display. | P0 |
-| Failure | 3 | Evaluator returns failure. | Needs COC RollConsole display. | P0 |
-| Fumble | 3 | Evaluator returns fumble. | Needs COC RollConsole display. | P0 |
-| Target value | 3 | Evaluator accepts target value. | Needs UI wiring. | P0 |
+| d100 | 5 | Public skill checks roll d100 in CocGameplay and log results. | Bonus/penalty dice remain deferred. | P0 |
+| Critical | 5 | Evaluator returns critical and RollConsole displays the result. | None for current public skill-check scope. | P0 |
+| Extreme | 5 | Evaluator returns extreme and RollConsole displays the result. | None for current public skill-check scope. | P0 |
+| Hard | 5 | Evaluator returns hard and RollConsole displays the result. | None for current public skill-check scope. | P0 |
+| Regular | 5 | Evaluator returns regular and RollConsole displays the result. | None for current public skill-check scope. | P0 |
+| Failure | 5 | Evaluator returns failure and RollConsole displays the result. | None for current public skill-check scope. | P0 |
+| Fumble | 5 | Evaluator returns fumble and RollConsole displays the result. | None for current public skill-check scope. | P0 |
+| Target value | 5 | Skill value is used as the target for public skill checks. | Opposed/hidden targets remain deferred. | P0 |
 | Bonus / penalty dice | 0 | Not implemented. | Needs COC-specific roll UI and evaluator. | P1 |
 | Opposed rolls | 0 | Not implemented. | Needs target/opposed result model. | P2 |
 | Pushed roll | 2 | Context container exists. | No UI or consequences. | P2 |
@@ -120,8 +120,8 @@ SAN loss parser and runtime flags exist. Full insanity automation is deferred, a
 
 | Rule Area | Current Level | Current Status | Gaps | Priority |
 |---|---:|---|---|---|
-| HP current | 4 | Runtime state/action exists. | Gameplay UI not wired. | P0 |
-| Damage / healing | 4 | `changeHp` and `applyCocHpDelta` exist. | Gameplay UI not wired. | P0 |
+| HP current | 5 | CocGameplay HP +/-1 is wired. | Broader HP workflow remains manual. | P0 |
+| Damage / healing | 5 | CocGameplay HP manual adjustment is wired. | Auto major wound trigger and full medical workflow deferred. | P0 |
 | Major Wound | 3 | Pure function detects trigger. | UI/prompt not wired. | P1 |
 | Unconscious | 3 | Pure function derives flag. | UI/prompt not wired. | P1 |
 | Dying | 3 | Pure function derives flag. | UI/prompt not wired. | P1 |
@@ -135,7 +135,7 @@ SAN loss parser and runtime flags exist. Full insanity automation is deferred, a
 
 | Rule Area | Current Level | Current Status | Gaps | Priority |
 |---|---:|---|---|---|
-| Luck current | 4 | Runtime state/action exists. | Gameplay UI not wired. | P0 |
+| Luck current | 5 | CocGameplay Luck +/-1 is wired. | Luck spending workflow deferred. | P0 |
 | Luck spending | 2 | State exists. | No UI, restrictions, or post-failure workflow. | P1 |
 | Luck check | 3 | d100 evaluator can support it. | No dedicated UI/log integration. | P1 |
 | Forbidden Luck spend cases | 0 | Not implemented. | Needs rule-specific validation. | P2 |
@@ -199,4 +199,3 @@ Priority guidance:
 ## 13. Current Freeze Note
 
 This document records rule coverage only. It does not lift the project freeze. Freeze exit still requires `CPRED_RULE_COVERAGE.md` to exist and both COC/CPRED rule coverage documents to be reviewed, followed by `IMPLEMENTATION_ROADMAP.md` defining the next code phase.
-

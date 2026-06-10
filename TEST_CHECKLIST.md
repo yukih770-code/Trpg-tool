@@ -28,23 +28,25 @@ Open the app in the browser and verify each page loads without crashing.
 
 - [ ] DND Creator — opens, fields editable
 - [ ] DND Sheet — opens, displays character data
-- [ ] DND Gameplay — opens, dice tray functional
+- [ ] DND Gameplay — opens, runtime resources / checks / actions panels render
+- [ ] DND Gameplay — checks and action use update RollConsole Latest Result and RuntimeLogEntry history
 
 ### Call of Cthulhu
 
 - [ ] COC Creator — opens, fields editable
-- [ ] COC Sheet — opens and displays investigator data; no Sheet skill-roll toast expected
-- [ ] COC Gameplay — opens, HP/SAN/MP buttons functional, dice tray functional
+- [ ] COC Sheet — opens and displays investigator data; no gameplay roll controls expected on Sheet
+- [ ] COC Gameplay — opens, HP/SAN/MP/Luck runtime buttons functional, dice tray functional
 - [ ] COC Gameplay — public skill checks run from Gameplay and update RollConsole Latest Result
-- [ ] COC Gameplay — RuntimeLogEntry history log updates after skill checks / runtime changes
+- [ ] COC Gameplay — SAN quick roll writes a RuntimeLogEntry and does not auto-deduct SAN
+- [ ] COC Gameplay — RuntimeLogEntry history log updates after skill checks / runtime changes / free dice rolls
 
 ### Cyberpunk RED
 
 - [ ] CP Creator — opens, fields editable
-- [ ] CP Sheet — opens and displays character data; no Sheet skill quick-roll toast expected
+- [ ] CP Sheet — opens and displays character data; no gameplay roll controls expected on Sheet
 - [ ] CP Gameplay — opens, skill check and stat check functional
-- [ ] CP Gameplay — after RollConsole/RuntimeLogEntry wiring is implemented, check results enter Latest Result and history log
-- [ ] CP Gameplay — after no-DV support is implemented, checks without DV show "waiting GM judgment"
+- [ ] CP Gameplay — check / role / damage / resource results enter RollConsole Latest Result and RuntimeLogEntry history
+- [ ] CP Gameplay — checks without DV show `等待 GM 判定`
 - [ ] CP Market — opens without crash
 
 ---

@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-05-30
+Last updated: 2026-06-10
 
 ## Project Overview
 
@@ -31,7 +31,7 @@ Architecture phase scope:
 - Defines the post-freeze implementation roadmap.
 - No `src` changes, package changes, store changes, schema changes, or migration changes.
 - Freeze planning now has a roadmap; resumed code work must follow it one narrow, single-system phase at a time.
-- Next recommended action: CP RED Creator / Sheet Responsibility Audit.
+- Current readiness state: DND, COC, and CP RED Player Gameplay pages are componentized and aligned around local `RuntimeLogEntry[]` RollConsole patterns.
 
 ### D&D 5e / 2024
 
@@ -44,6 +44,7 @@ Architecture phase scope:
 | DND Gameplay Interaction v0 | ✅ Done |
 | Action Registry v0 | ✅ Done |
 | DND Structured LogEntry v1 | ✅ Done |
+| DND Gameplay Componentization v1 | ✅ Done |
 
 Action Registry v0 scope:
 - Supports only `classResource` and `pactMagic` resource costs.
@@ -55,6 +56,11 @@ DND Structured LogEntry v1 scope:
 - Default visibility is `public`.
 - Local UI state only; no store, schema, or migration changes.
 - No visibility filtering, reveal workflow, Host Console, or multiplayer sync.
+
+DND Gameplay Componentization v1 scope:
+- `Gameplay.tsx` orchestrates local state, checks, action use, resources, spellbook, and RollConsole through panel components under `src/pages/gameplay/`.
+- Sheet no longer owns gameplay roll controls; Player Gameplay owns checks, actions, runtime resource use, and player-visible result logging.
+- No attack/damage target layer, spellSlot Action Registry refactor, Host Console, AI Host, or multiplayer work.
 
 ### Call of Cthulhu (COC)
 
@@ -162,7 +168,7 @@ CP RED Gameplay Componentization v1 scope:
 |-------|--------|
 | npx tsc --noEmit | ✅ Passing |
 | npm run build | ✅ Passing |
-| Git committed | ✅ Yes |
+| Git committed | ⏳ Pending |
 
 ---
 

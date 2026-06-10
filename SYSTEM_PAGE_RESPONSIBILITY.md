@@ -1,6 +1,6 @@
 # System Page Responsibility
 
-Last updated: 2026-05-31
+Last updated: 2026-06-10
 
 ## 1. Purpose
 
@@ -130,13 +130,12 @@ Current phase does not implement Host Console.
 
 - Creator skill constraints are complete.
 - Sheet cleanup is complete.
-- Gameplay runtime actions and RollConsole are not complete.
-- Keeper Console is deferred.
+- Gameplay runtime actions, skill checks, RollConsole, and local RuntimeLogEntry history are wired and componentized.
+- Luck Spending, Pushed Roll, full SAN / insanity automation, and Keeper Console are deferred.
 
 ### Cyberpunk RED
 
-- CP RED needs rule coverage audit before more feature work.
-- Gameplay and RollConsole need RuntimeLogEntry alignment.
+- CP RED rule coverage, Sheet cleanup, runtime foundation, Gameplay RollConsole, and local RuntimeLogEntry history are aligned and componentized.
 - Combat, armor, ammo, netrunning, and vehicles are deferred.
 
 ## 9. Anti-Patterns
@@ -151,4 +150,3 @@ Do not:
 - Fake success/failure when no DC/DV/target exists.
 - Persist logs into store/schema too early.
 - Modify multiple systems' business logic in one implementation round.
-
