@@ -75,6 +75,7 @@ DND Gameplay Componentization v1 scope:
 | COC Runtime State UI Panel v1 | ✅ Done |
 | COC Gameplay RollConsole RuntimeLogEntry v1 | ✅ Done |
 | COC Skill Check Wiring v1 | ✅ Done |
+| COC SAN Check + Luck Spending v1 | ✅ Done |
 | COC Gameplay Componentization v1 | ✅ Done |
 | COC Creator skill point constraint v1 | ✅ Done |
 | COC Sheet responsibility cleanup v1 | ✅ Done |
@@ -101,6 +102,11 @@ COC Skill Check Wiring v1 scope:
 - Skill check results use `evaluateCocD100Check` and write local `RuntimeLogEntry` objects for CocRollConsolePanel Latest Result and history display.
 - SAN quick roll now uses the runtime-first SAN current value.
 - No store, schema, migration, Luck spending, Pushed Roll, growth resolution, SAN Check workflow, Keeper Console, gmOnly filtering, reveal workflow, combat, or chase changes.
+
+COC SAN Check + Luck Spending v1 scope:
+- CocGameplay has a minimum SAN Check panel with preset/custom SAN loss expressions, applies SAN loss through existing `changeSan`, and writes local `RuntimeLogEntry` results.
+- Eligible failed public skill checks can spend Luck to become ordinary success through existing `changeLuck`, with a follow-up `RuntimeLogEntry`.
+- No full insanity automation, Pushed Roll, growth resolution, Keeper Console, AI Host, multiplayer, store, schema, migration, DND, or CP RED changes.
 
 COC Gameplay Componentization v1 scope:
 - `CocGameplay.tsx` now orchestrates local state, runtime handlers, roll handlers, and panel composition while COC Gameplay UI sections live under `src/pages/cocGameplay/`.

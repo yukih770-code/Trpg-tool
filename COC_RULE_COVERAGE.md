@@ -67,10 +67,10 @@ Sheet Responsibility Cleanup v1 is complete. Sheet is display plus downtime main
 | HP / MP / SAN / Luck changes | 5 | CocGameplay uses existing runtime store actions. | No full SAN/Luck workflow automation. | P0 |
 | Major Wound / Dying / Unconscious | 5 | Runtime flags can be displayed/toggled manually. | No automatic Keeper prompts or full medical workflow. | P1 |
 | Temporary / Indefinite Insanity flags | 5 | Runtime flags can be displayed/toggled manually. | No full insanity workflow. | P2 |
-| Skill Checks | 5 | Public skill checks run in CocGameplay and write RuntimeLogEntry results. | No Luck spending, Pushed Roll, or growth resolution. | P0 |
-| SAN Check | 3 | SAN loss parser exists. | No SAN Check UI/workflow. | P1 |
+| Skill Checks | 5 | Public skill checks run in CocGameplay and write RuntimeLogEntry results. | Pushed Roll and growth resolution remain deferred. | P0 |
+| SAN Check | 5 | CocGameplay can run SAN Check, apply basic SAN loss, and write RuntimeLogEntry results. | Full insanity automation remains deferred. | P1 |
 | Luck Check | 3 | d100 evaluator can cover checks. | No dedicated Luck Check UI. | P1 |
-| Luck spending | 4 | Luck current/action exists. | No spending UI/rule validation. | P1 |
+| Luck spending | 5 | Eligible failed skill checks can spend Luck to become regular success. | Pushed Roll, growth, and advanced restrictions remain deferred. | P1 |
 | Pushed Roll | 2 | `pushedRollContext` exists. | No UI or consequence workflow. | P2 |
 | Growth marks from successful checks | 2 | Growth mark state exists. | No automatic eligibility or marking from checks. | P2 |
 | RollConsole | 5 | CocGameplay has a player RollConsole. | Keeper Console remains deferred. | P0 |
@@ -80,7 +80,7 @@ Sheet Responsibility Cleanup v1 is complete. Sheet is display plus downtime main
 | Result visibility | 0 | Documented only. | No filtering/reveal. | P3 |
 | Keeper Console boundary | 1 | Documented. | No Keeper Console implementation. | P3 |
 
-Runtime state, store actions, player skill checks, RollConsole, and local RuntimeLogEntry history are wired in CocGameplay. Keeper Console, `gmOnly` visibility, Luck spending, Pushed Roll, growth resolution, and full SAN / insanity automation remain deferred.
+Runtime state, store actions, player skill checks, basic SAN Check, basic Luck Spending, RollConsole, and local RuntimeLogEntry history are wired in CocGameplay. Keeper Console, `gmOnly` visibility, Pushed Roll, growth resolution, and full SAN / insanity automation remain deferred.
 
 ## 6. Skill Check Coverage
 
@@ -97,24 +97,24 @@ Runtime state, store actions, player skill checks, RollConsole, and local Runtim
 | Bonus / penalty dice | 0 | Not implemented. | Needs COC-specific roll UI and evaluator. | P1 |
 | Opposed rolls | 0 | Not implemented. | Needs target/opposed result model. | P2 |
 | Pushed roll | 2 | Context container exists. | No UI or consequences. | P2 |
-| Luck spending after failure | 2 | Luck state/action exists. | No rule UI or validations. | P1 |
+| Luck spending after failure | 5 | Eligible failed public skill checks can spend Luck to become regular success. | Advanced restrictions and Keeper approval deferred. | P1 |
 | Growth mark eligibility | 2 | Growth mark state exists. | No automatic mark from successful checks. | P2 |
 
 ## 7. SAN / Insanity Coverage
 
 | Rule Area | Current Level | Current Status | Gaps | Priority |
 |---|---:|---|---|---|
-| SAN Check | 3 | SAN loss parser exists; d100 evaluator exists. | No integrated UI. | P1 |
-| SAN loss expression | 3 | Basic parser/roller exists. | Complex expressions need later support. | P1 |
-| Success/failure loss | 3 | Parser separates success/failure expressions. | No UI integration. | P1 |
-| Single SAN loss 5+ prompt | 0 | Not implemented. | Needs temporary insanity prompt. | P2 |
+| SAN Check | 5 | CocGameplay runs d100 SAN Check and writes RuntimeLogEntry results. | Keeper/hidden variants deferred. | P1 |
+| SAN loss expression | 5 | Basic preset/custom expressions are supported in CocGameplay. | Complex expressions need later support. | P1 |
+| Success/failure loss | 5 | Success/failure loss is applied through runtime SAN action. | Full insanity consequence flow deferred. | P1 |
+| Single SAN loss 5+ prompt | 5 | RuntimeLogEntry detail warns about temporary insanity risk. | INT check and full temporary insanity workflow deferred. | P2 |
 | INT check for temporary insanity | 0 | Not implemented. | Needs workflow. | P2 |
 | One-day cumulative 1/5 initial SAN loss | 0 | Not implemented. | Needs session/day tracking. | P3 |
 | Bout of Madness | 0 | Not implemented. | Needs table/workflow. | P3 |
 | Insanity symptom tables | 0 | Not implemented. | Needs data and Keeper control. | P3 |
-| Manual flags | 2 | Runtime flags exist. | UI not wired. | P1 |
+| Manual flags | 5 | Runtime flags can be displayed/toggled manually in CocGameplay. | Automatic insanity flagging deferred. | P1 |
 
-SAN loss parser and runtime flags exist. Full insanity automation is deferred, and Keeper judgment remains necessary.
+Basic SAN Check and manual runtime flags exist in CocGameplay. Full insanity automation is deferred, and Keeper judgment remains necessary.
 
 ## 8. HP / Major Wound / Dying Coverage
 
@@ -135,8 +135,8 @@ SAN loss parser and runtime flags exist. Full insanity automation is deferred, a
 
 | Rule Area | Current Level | Current Status | Gaps | Priority |
 |---|---:|---|---|---|
-| Luck current | 5 | CocGameplay Luck +/-1 is wired. | Luck spending workflow deferred. | P0 |
-| Luck spending | 2 | State exists. | No UI, restrictions, or post-failure workflow. | P1 |
+| Luck current | 5 | CocGameplay Luck +/-1 is wired. | Dedicated Luck Check UI remains deferred. | P0 |
+| Luck spending | 5 | Eligible failed skill checks can spend Luck to become regular success. | Advanced restrictions and Keeper approval deferred. | P1 |
 | Luck check | 3 | d100 evaluator can support it. | No dedicated UI/log integration. | P1 |
 | Forbidden Luck spend cases | 0 | Not implemented. | Needs rule-specific validation. | P2 |
 | Pushed Roll eligibility | 2 | Context state exists. | No eligibility UI. | P2 |

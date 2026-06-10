@@ -11,7 +11,7 @@ const T = {
 };
 
 const CP_SHEET_STAT_CN_OVERRIDES: Partial<Record<(typeof CP_STAT_ORDER)[number], string>> = {
-  COOL: '酷 / 时尚',
+  COOL: '时尚',
   LUCK: '幸运',
 };
 

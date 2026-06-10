@@ -7,11 +7,20 @@ import type { RuntimeLogEntry } from '../lib/runtime-log-types';
 import { CocChecksPanel } from './cocGameplay/CocChecksPanel';
 import { CocRollConsolePanel } from './cocGameplay/CocRollConsolePanel';
 import { CocRuntimeStatePanel } from './cocGameplay/CocRuntimeStatePanel';
+import { CocSanCheckPanel } from './cocGameplay/CocSanCheckPanel';
 import {
   COC_SUCCESS_LEVEL_LABELS,
   createCocLogEntry,
   createCocSystemLogEntry,
 } from './cocGameplay/CocGameplayShared';
+import { rollCocGameplaySanLoss } from './cocGameplay/cocSanUtils';
+
+type PendingLuckSpend = {
+  skillName: string;
+  roll: number;
+  skillValue: number;
+  neededLuck: number;
+};
 
 export function CocGameplay() {
   const {
@@ -27,6 +36,7 @@ export function CocGameplay() {
   const [combatLog, setCombatLog] = useState<RuntimeLogEntry[]>([
     createCocSystemLogEntry('克苏鲁的呼唤游玩面板已就绪。'),
   ]);
+  const [pendingLuckSpend, setPendingLuckSpend] = useState<PendingLuckSpend | null>(null);
 
   const runtime = character.runtime;
   const runtimePools = {
@@ -195,7 +205,113 @@ export function CocGameplay() {
         isFumble: result.isFumble,
       },
     }));
+    if (!result.isSuccess && !result.isFumble && roll > skill.value) {
+      setPendingLuckSpend({
+        skillName: skill.name,
+        roll,
+        skillValue: skill.value,
+        neededLuck: roll - skill.value,
+      });
+    } else {
+      setPendingLuckSpend(null);
+    }
     toast(result.isSuccess ? '技能检定成功' : '技能检定失败', { description: msg });
+  };
+
+  const handleSpendLuck = () => {
+    if (!pendingLuckSpend) return;
+
+    const luckBefore = runtimePools.luck.current;
+    if (pendingLuckSpend.neededLuck > luckBefore) {
+      toast.error('Luck 不足，无法改为普通成功。');
+      return;
+    }
+
+    changeLuck(-pendingLuckSpend.neededLuck);
+    const luckAfter = Math.max(0, luckBefore - pendingLuckSpend.neededLuck);
+
+    pushLog(createCocLogEntry({
+      kind: 'check',
+      title: 'Luck Spending',
+      summary: `消耗 ${pendingLuckSpend.neededLuck} Luck 将 ${pendingLuckSpend.skillName} 检定改为普通成功`,
+      displayValue: `-${pendingLuckSpend.neededLuck} Luck`,
+      calculation: `roll ${pendingLuckSpend.roll} - skill ${pendingLuckSpend.skillValue} = ${pendingLuckSpend.neededLuck} Luck`,
+      outcome: '普通成功 / Regular Success',
+      tags: ['luck', 'luck-spending', 'regular'],
+      payload: {
+        system: 'coc',
+        skillName: pendingLuckSpend.skillName,
+        roll: pendingLuckSpend.roll,
+        skillValue: pendingLuckSpend.skillValue,
+        luckSpent: pendingLuckSpend.neededLuck,
+        luckBefore,
+        luckAfter,
+      },
+    }));
+    toast.success('Luck Spending 已应用', {
+      description: `消耗 ${pendingLuckSpend.neededLuck} Luck，剩余 ${luckAfter}`,
+    });
+    setPendingLuckSpend(null);
+  };
+
+  const handleSanCheck = (lossExpression: string) => {
+    const sanBefore = runtimePools.san.current;
+    const roll = Math.floor(Math.random() * 100) + 1;
+    const checkResult = evaluateCocD100Check(sanBefore, roll);
+    const succeeded = checkResult.isSuccess;
+    const lossRoll = rollCocGameplaySanLoss(lossExpression, succeeded);
+
+    if (!lossRoll) {
+      toast.error('SAN 损失表达式无效', {
+        description: '请使用 0/1d4、1/1d6、1d3/1d10 等简单格式。',
+      });
+      return;
+    }
+
+    changeSan(-lossRoll.total);
+    const sanAfter = Math.max(0, sanBefore - lossRoll.total);
+    const outcome = succeeded ? '成功' : '失败';
+    const successLevel = COC_SUCCESS_LEVEL_LABELS[checkResult.successLevel] ?? checkResult.successLevel;
+    const riskNote = lossRoll.total >= 5
+      ? '单次损失 >= 5，可能触发临时疯狂风险，需要 Keeper 判定。'
+      : '未自动执行疯狂流程。';
+
+    pushLog(createCocLogEntry({
+      kind: 'check',
+      title: 'SAN Check',
+      summary: `${outcome}，损失 SAN ${lossRoll.total}`,
+      detail: `${successLevel}。${riskNote}`,
+      displayValue: roll,
+      calculation: `SAN ${sanBefore}, roll ${roll}, loss ${lossRoll.detail}; SAN ${sanBefore} -> ${sanAfter}`,
+      outcome,
+      tags: [
+        'san',
+        'san-check',
+        checkResult.successLevel,
+        succeeded ? 'success' : 'failure',
+        ...(checkResult.isCritical ? ['critical'] : []),
+        ...(checkResult.isFumble ? ['fumble'] : []),
+        ...(lossRoll.total >= 5 ? ['insanity-risk'] : []),
+      ],
+      payload: {
+        system: 'coc',
+        rollType: 'd100',
+        checkType: 'san',
+        roll,
+        sanBefore,
+        sanAfter,
+        target: sanBefore,
+        success: succeeded,
+        successLevel: checkResult.successLevel,
+        lossExpression,
+        lossSideExpression: lossRoll.expression,
+        lossRolls: lossRoll.rolls,
+        lossApplied: lossRoll.total,
+      },
+    }));
+    toast(succeeded ? 'SAN Check 成功' : 'SAN Check 失败', {
+      description: `损失 SAN ${lossRoll.total}，当前 ${sanAfter}`,
+    });
   };
 
   const handleSanQuickRoll = () => {
@@ -257,9 +373,21 @@ export function CocGameplay() {
             onSanQuickRoll={handleSanQuickRoll}
           />
 
+          <CocSanCheckPanel
+            currentSan={runtimePools.san.current}
+            onRunSanCheck={handleSanCheck}
+          />
+
           <CocChecksPanel
             skills={character.skills}
             onRollSkill={handleSkillCheck}
+            pendingLuckSpend={pendingLuckSpend ? {
+              ...pendingLuckSpend,
+              canSpend: pendingLuckSpend.neededLuck <= runtimePools.luck.current,
+              reason: `需要 ${pendingLuckSpend.neededLuck} Luck，当前 ${runtimePools.luck.current}。`,
+            } : null}
+            onSpendLuck={handleSpendLuck}
+            onClearLuckSpend={() => setPendingLuckSpend(null)}
           />
         </div>
 

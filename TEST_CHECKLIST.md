@@ -37,7 +37,10 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] COC Sheet — opens and displays investigator data; no gameplay roll controls expected on Sheet
 - [ ] COC Gameplay — opens, HP/SAN/MP/Luck runtime buttons functional, dice tray functional
 - [ ] COC Gameplay — public skill checks run from Gameplay and update RollConsole Latest Result
+- [ ] COC Gameplay — SAN Check preset and custom expressions apply runtime SAN loss and update RollConsole Latest Result
 - [ ] COC Gameplay — SAN quick roll writes a RuntimeLogEntry and does not auto-deduct SAN
+- [ ] COC Gameplay — eligible failed skill check can spend Luck; Luck decreases and a RuntimeLogEntry is appended
+- [ ] COC Gameplay — fumble cannot spend Luck; Pushed Roll remains not implemented
 - [ ] COC Gameplay — RuntimeLogEntry history log updates after skill checks / runtime changes / free dice rolls
 
 ### Cyberpunk RED

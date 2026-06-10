@@ -4,9 +4,25 @@ import type { CocSkill } from '../../lib/coc-types';
 type CocChecksPanelProps = {
   skills: CocSkill[];
   onRollSkill: (skill: CocSkill) => void;
+  pendingLuckSpend?: {
+    skillName: string;
+    roll: number;
+    skillValue: number;
+    neededLuck: number;
+    canSpend: boolean;
+    reason?: string;
+  } | null;
+  onSpendLuck?: () => void;
+  onClearLuckSpend?: () => void;
 };
 
-export function CocChecksPanel({ skills, onRollSkill }: CocChecksPanelProps) {
+export function CocChecksPanel({
+  skills,
+  onRollSkill,
+  pendingLuckSpend,
+  onSpendLuck,
+  onClearLuckSpend,
+}: CocChecksPanelProps) {
   const sortedSkills = [...skills].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
@@ -14,9 +30,38 @@ export function CocChecksPanel({ skills, onRollSkill }: CocChecksPanelProps) {
       <div className="border-b border-[#2f7f68]/30 pb-2 mb-3">
         <h3 className="text-[#8fb7aa] font-bold uppercase">技能检定 <span className="text-[10px] tracking-widest text-[#8fb7aa]/65 ml-2">SKILL CHECKS</span></h3>
         <p className="mt-1 text-xs text-[#8fb7aa]">
-          本轮仅执行公开技能检定；Luck spending / Pushed Roll / 成长结算后续实现。
+          本轮执行公开技能检定；失败后可进行最小 Luck Spending。Pushed Roll / 成长结算后续实现。
         </p>
       </div>
+
+      {pendingLuckSpend && (
+        <div className="mb-3 border border-[#b7a46a]/45 bg-[#19170f] p-3">
+          <div className="text-xs font-bold text-[#d8c987]">Luck Spending</div>
+          <div className="mt-1 text-xs text-[#d4d4d8]">
+            {pendingLuckSpend.canSpend
+              ? `可消耗 ${pendingLuckSpend.neededLuck} Luck 将 ${pendingLuckSpend.skillName} 改为普通成功。`
+              : pendingLuckSpend.reason ?? `需要 ${pendingLuckSpend.neededLuck} Luck，当前 Luck 不足。`}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              className="h-7 rounded-none bg-[#b7a46a] px-3 text-xs font-bold text-[#111] hover:bg-[#d8c987]"
+              disabled={!pendingLuckSpend.canSpend}
+              onClick={onSpendLuck}
+            >
+              Spend Luck
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 rounded-none border-[#2f7f68]/55 px-3 text-xs text-[#8fb7aa] hover:bg-[#2f7f68] hover:text-[#06100d]"
+              onClick={onClearLuckSpend}
+            >
+              取消
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="max-h-[420px] overflow-y-auto custom-scrollbar pr-1 space-y-2">
         {sortedSkills.map(skill => {
