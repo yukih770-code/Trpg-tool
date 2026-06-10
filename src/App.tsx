@@ -365,43 +365,43 @@ const THEMES = {
     bg: 'bg-[#fdf6e3]',
     text: 'text-[#2c1810]',
     selection: 'selection:bg-[#58180d] selection:text-white',
-    border: 'border-[#58180d]',
+    border: 'border-[#58180d]/85',
     primary: 'text-[#58180d]',
     primaryBg: 'bg-[#58180d]',
-    tabBg: 'bg-[#ede1c5]',
+    tabBg: 'bg-[#eadbb8]/85',
     tabActive: 'data-[state=active]:bg-[#58180d] data-[state=active]:text-white text-[#58180d]',
     tabFont: 'font-dnd-body font-bold uppercase tracking-wider text-xs',
-    panelBg: 'bg-white/50 border-2 border-[#58180d]',
-    btnOutline: 'border-[#58180d] text-[#58180d] hover:bg-[#58180d] hover:text-[#fdf6e3]',
-    headerBorder: 'border-b-2 border-[#58180d]',
+    panelBg: 'bg-[#fff8e6]/65 border-2 border-[#58180d]/85 shadow-[0_10px_32px_rgba(88,24,13,0.10),inset_0_0_36px_rgba(88,24,13,0.045)]',
+    btnOutline: 'bg-[#f7ebcf]/70 border-[#58180d]/70 text-[#58180d] hover:bg-[#58180d] hover:text-[#fdf6e3] shadow-[inset_0_0_0_1px_rgba(88,24,13,0.10)]',
+    headerBorder: 'border-b-2 border-[#58180d]/80 shadow-[0_6px_18px_rgba(88,24,13,0.08)]',
   },
   'CoC': {
-    bg: 'bg-[#1a1a1a]',
+    bg: 'bg-[#151a18]',
     text: 'text-[#d4d4d8]',
-    selection: 'selection:bg-[#059669] selection:text-white',
-    border: 'border-[#059669]',
-    primary: 'text-[#059669]',
-    primaryBg: 'bg-[#059669]',
-    tabBg: 'bg-[#111]',
-    tabActive: 'data-[state=active]:bg-[#059669] data-[state=active]:text-[#111] text-[#059669]',
+    selection: 'selection:bg-[#2f7f68] selection:text-white',
+    border: 'border-[#2f7f68]',
+    primary: 'text-[#5aa58f]',
+    primaryBg: 'bg-[#2f7f68]',
+    tabBg: 'bg-[#0d1211]',
+    tabActive: 'data-[state=active]:bg-[#2f7f68] data-[state=active]:text-[#06100d] text-[#8fb7aa]',
     tabFont: 'font-elite uppercase tracking-widest text-xs',
-    panelBg: 'bg-[#111]/80 border-2 border-[#059669]',
-    btnOutline: 'border-[#059669] text-[#059669] hover:bg-[#059669] hover:text-[#1a1a1a]',
-    headerBorder: 'border-b-2 border-[#059669]',
+    panelBg: 'bg-[#0f1413]/90 border-2 border-[#2f7f68]/80 shadow-[0_10px_30px_rgba(0,0,0,0.38),inset_0_0_28px_rgba(47,127,104,0.045)]',
+    btnOutline: 'bg-[#0f1413]/80 border-[#2f7f68]/70 text-[#8fb7aa] hover:bg-[#2f7f68]/25 hover:text-[#d4f3e7]',
+    headerBorder: 'border-b-2 border-[#2f7f68]/80 shadow-[0_6px_18px_rgba(47,127,104,0.10)]',
   },
   'CP': {
     bg: 'bg-[#0d0d0d]',
     text: 'text-[#d4d4d8]',
     selection: 'selection:bg-[#f5c518] selection:text-[#0d0d0d]',
-    border: 'border-[#f5c518]',
-    primary: 'text-[#f5c518]',
+    border: 'border-[#8a6f25]',
+    primary: 'text-[#d8b954]',
     primaryBg: 'bg-[#f5c518]',
     tabBg: 'bg-[#111]',
-    tabActive: 'data-[state=active]:bg-[#f5c518] data-[state=active]:text-[#0d0d0d] text-[#f5c518]',
+    tabActive: 'data-[state=active]:bg-[#f5c518] data-[state=active]:text-[#0d0d0d] text-[#d8b954]/85',
     tabFont: 'font-cp-title text-[9px] tracking-widest',
-    panelBg: 'bg-[#111]/80 border-2 border-[#f5c518]',
-    btnOutline: 'border-[#f5c518] text-[#f5c518] hover:bg-[#f5c518] hover:text-[#0d0d0d]',
-    headerBorder: 'border-b-2 border-[#f5c518] shadow-[0_2px_16px_#f5c51830]',
+    panelBg: 'bg-[#0b0b12]/90 border border-[#8a6f25]/70 shadow-[0_10px_30px_rgba(0,0,0,0.48),inset_0_0_20px_rgba(245,197,24,0.035)]',
+    btnOutline: 'bg-[#0b0b12]/70 border-[#8a6f25]/60 text-[#d8b954]/80 hover:bg-[#f5c518]/12 hover:text-[#f5c518] hover:border-[#f5c518]/80',
+    headerBorder: 'border-b border-[#8a6f25]/70 shadow-[0_2px_14px_rgba(245,197,24,0.12)]',
   },
 } as const;
 
@@ -518,10 +518,10 @@ export default function App() {
             {/* CoC title — Special Elite typewriter */}
             {system === 'CoC' && (
               <div className="flex flex-col gap-1">
-                <h1 className="font-coc-title text-3xl md:text-4xl text-[#059669] leading-tight">
+                <h1 className="font-coc-title text-3xl md:text-4xl text-[#5aa58f] leading-tight">
                   克苏鲁的呼唤
                 </h1>
-                <span className="font-elite text-xs tracking-[0.18em] text-[#059669]/60 uppercase">
+                <span className="font-elite text-xs tracking-[0.18em] text-[#8fb7aa]/75 uppercase">
                   Call of Cthulhu &nbsp;·&nbsp; 调查员笔记
                 </span>
               </div>
@@ -546,7 +546,7 @@ export default function App() {
               </div>
             )}
 
-            <div className="text-xs md:text-sm opacity-75">
+            <div className={`self-start lg:self-end text-xs md:text-sm opacity-85 border ${theme.border} px-3 py-1 bg-black/5`}>
               <span className={`${theme.primary} font-bold`}>当前：</span>
               <span>{SYSTEM_DISPLAY_LABELS[system]}</span>
               <span className="opacity-50 mx-2">/</span>
@@ -569,12 +569,12 @@ export default function App() {
                   value={system}
                   onChange={handleSwitchSystem}
                   className={`appearance-none cursor-pointer h-9 px-3 pr-8 border-2 ${theme.border} ${theme.primary} font-bold uppercase text-sm font-mono
-                    bg-transparent focus:outline-none hover:opacity-80 transition-opacity`}
+                    bg-black/5 focus:outline-none hover:opacity-85 transition-opacity`}
                   aria-label="切换规则系统"
                 >
                   <option value="D&D"  style={{ background: '#fdf6e3', color: '#2c1810' }}>DND 5e 2024</option>
-                  <option value="CoC"  style={{ background: '#111',    color: '#059669' }}>COC 7e</option>
-                  <option value="CP"   style={{ background: '#0d0d0d', color: '#f5c518' }}>Cyberpunk RED</option>
+                  <option value="CoC"  style={{ background: '#111',    color: '#5aa58f' }}>COC 7e</option>
+                  <option value="CP"   style={{ background: '#0d0d0d', color: '#d8b954' }}>Cyberpunk RED</option>
                 </select>
                 <div className={`pointer-events-none absolute right-2 top-2.5 text-xs ${theme.primary}`}>▼</div>
               </div>
@@ -597,17 +597,17 @@ export default function App() {
               </Button>
 
               <Button variant="outline" size="sm" onClick={() => handleToolbarPlaceholder('数据管理功能后续实现')}
-                className={`uppercase font-bold transition-colors rounded-none ${theme.btnOutline}`}>
+                className={`uppercase font-bold transition-colors rounded-none opacity-75 hover:opacity-100 ${theme.btnOutline}`}>
                 数据
               </Button>
 
               <Button variant="outline" size="sm" onClick={() => handleToolbarPlaceholder('设置功能后续实现')}
-                className={`uppercase font-bold transition-colors rounded-none ${theme.btnOutline}`}>
+                className={`uppercase font-bold transition-colors rounded-none opacity-75 hover:opacity-100 ${theme.btnOutline}`}>
                 设置
               </Button>
 
               <Button variant="outline" size="sm" onClick={() => handleToolbarPlaceholder('帮助与规则说明后续整理')}
-                className={`uppercase font-bold transition-colors rounded-none ${theme.btnOutline}`}>
+                className={`uppercase font-bold transition-colors rounded-none opacity-75 hover:opacity-100 ${theme.btnOutline}`}>
                 帮助
               </Button>
             </div>
@@ -617,20 +617,20 @@ export default function App() {
         {/* ── Tabs ────────────────────────────────────── */}
         <Tabs value={tab} onValueChange={setTab} className="w-full">
           <TabsList className={`grid w-full mb-8 p-1 border rounded-none gap-1
-            ${system === 'CP' ? 'grid-cols-4 shadow-[0_0_14px_#f5c51830] border-[#f5c518]' : 'grid-cols-3'}
+            ${system === 'CP' ? 'grid-cols-4 shadow-[0_0_12px_rgba(245,197,24,0.12)] border-[#8a6f25]/70' : 'grid-cols-3'}
             ${theme.tabBg} ${theme.border}
-            ${system === 'CoC' ? 'border-[#059669]' : ''}`}>
+            ${system === 'CoC' ? 'border-[#2f7f68]/80' : ''}`}>
             {tabVals.map((v, i) => (
               <TabsTrigger key={v} value={v}
                 className={`rounded-none transition-colors ${theme.tabActive} ${theme.tabFont}
-                  ${system === 'CP' && v === 'market' ? 'data-[state=active]:bg-[#f5c518] data-[state=active]:shadow-[0_0_10px_#f5c51860]' : ''}`}>
+                  ${system === 'CP' && v === 'market' ? 'data-[state=active]:bg-[#f5c518] data-[state=active]:shadow-[0_0_8px_rgba(245,197,24,0.30)]' : ''}`}>
                 {labels[i]}
               </TabsTrigger>
             ))}
           </TabsList>
 
           <div className={`${theme.panelBg} p-6 min-h-[70vh] relative overflow-hidden
-            ${system === 'CP' ? 'cp-scanlines shadow-[inset_0_0_60px_#f5c51810,0_0_0_1px_rgba(245,197,24,0.08)]' : ''}`}>
+            ${system === 'CP' ? 'cp-scanlines shadow-[inset_0_0_44px_rgba(245,197,24,0.045),0_0_0_1px_rgba(245,197,24,0.045)]' : ''}`}>
             {/* System-specific decorative background */}
             {system === 'D&D' && <DndBackground />}
             {system === 'CoC' && <CocBackground />}

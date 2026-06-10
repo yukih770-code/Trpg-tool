@@ -69,8 +69,8 @@ function cocLogColor(entry: RuntimeLogEntry): string {
   if (tags.includes('critical') || tags.includes('extreme')) return 'text-yellow-300 font-bold';
   if (outcome.includes('失败')) return 'text-red-300';
   if (outcome.includes('成功')) return 'text-green-300';
-  if (entry.kind === 'resource') return 'text-[#9bd8b9]';
-  if (entry.kind === 'system') return 'text-[#9bd8b9] italic';
+  if (entry.kind === 'resource') return 'text-[#8fb7aa]';
+  if (entry.kind === 'system') return 'text-[#8fb7aa] italic';
   return 'text-[#d4d4d8]';
 }
 
@@ -83,10 +83,10 @@ function CocSkillCheckPanel({ skills, onRollSkill }: CocSkillCheckPanelProps) {
   const sortedSkills = [...skills].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <div className="border border-[#059669]/30 bg-[#111] p-4">
-      <div className="border-b border-[#059669]/30 pb-2 mb-3">
-        <h3 className="text-[#059669] font-bold uppercase">技能检定 / Skill Checks</h3>
-        <p className="mt-1 text-xs text-[#9bd8b9]">
+    <div className="border border-[#2f7f68]/35 bg-[#101413] p-4">
+      <div className="border-b border-[#2f7f68]/30 pb-2 mb-3">
+        <h3 className="text-[#8fb7aa] font-bold uppercase">技能检定 <span className="text-[10px] tracking-widest text-[#8fb7aa]/65 ml-2">SKILL CHECKS</span></h3>
+        <p className="mt-1 text-xs text-[#8fb7aa]">
           本轮仅执行公开技能检定；Luck spending / Pushed Roll / 成长结算后续实现。
         </p>
       </div>
@@ -97,13 +97,13 @@ function CocSkillCheckPanel({ skills, onRollSkill }: CocSkillCheckPanelProps) {
           const fifth = Math.floor(skill.value / 5);
 
           return (
-            <div key={skill.name} className="border border-[#059669]/20 bg-black/30 p-3">
+            <div key={skill.name} className="border border-[#2f7f68]/22 bg-black/30 p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="font-mono text-sm font-bold text-[#d4d4d8] truncate" title={skill.name}>
                     {skill.name}
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-[#9bd8b9]">
+                  <div className="mt-1 flex flex-wrap gap-2 text-[10px] text-[#8fb7aa]">
                     <span>当前值 {skill.value}</span>
                     <span>困难 {half}</span>
                     <span>极难 {fifth}</span>
@@ -117,14 +117,14 @@ function CocSkillCheckPanel({ skills, onRollSkill }: CocSkillCheckPanelProps) {
                       <span className="border border-[#a7f3d0]/40 px-1.5 py-0.5 text-[#a7f3d0]">兴趣</span>
                     )}
                     {!skill.isOccupational && !skill.isPersonal && (
-                      <span className="border border-[#059669]/20 px-1.5 py-0.5 text-[#9bd8b9]">公开</span>
+                      <span className="border border-[#2f7f68]/25 px-1.5 py-0.5 text-[#8fb7aa]">公开</span>
                     )}
                   </div>
                 </div>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-8 shrink-0 rounded-none border-[#059669]/50 text-[#059669] hover:bg-[#059669] hover:text-[#111]"
+                  className="h-8 shrink-0 rounded-none border-[#2f7f68]/55 text-[#8fb7aa] hover:bg-[#2f7f68] hover:text-[#06100d]"
                   onClick={() => onRollSkill(skill)}
                 >
                   检定
@@ -160,22 +160,22 @@ function CocRollConsolePanel({
     .join(' + ');
 
   return (
-    <div className="border border-[#059669]/30 bg-[#111] p-4 flex flex-col min-h-[420px]">
-      <h3 className="text-[#059669] font-bold uppercase mb-3 border-b border-[#059669]/30 pb-1">
-        掷骰日志 / Roll Console
+    <div className="border border-[#2f7f68]/35 bg-[#101413] p-4 flex flex-col min-h-[420px]">
+      <h3 className="text-[#8fb7aa] font-bold uppercase mb-3 border-b border-[#2f7f68]/30 pb-1">
+        掷骰日志 <span className="text-[10px] tracking-widest text-[#8fb7aa]/65 ml-2">ROLL CONSOLE</span>
       </h3>
 
-      <div className="mb-3 border border-[#059669]/50 bg-[#059669]/10 p-3">
+      <div className="mb-3 border border-[#2f7f68]/55 bg-[#2f7f68]/10 p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-[#9bd8b9] mb-1">
-              最新结果 / Latest Result
+            <div className="text-[10px] uppercase tracking-widest text-[#8fb7aa] mb-1">
+              最新结果 <span className="text-[#8fb7aa]/60">LATEST RESULT</span>
             </div>
             <div className="text-sm font-bold text-[#d4d4d8]">{latest?.title ?? '暂无结果'}</div>
-            <div className="text-[11px] text-[#9bd8b9]">{latest ? COC_KIND_LABELS[latest.kind] : '等待检定或掷骰'}</div>
+            <div className="text-[11px] text-[#8fb7aa]">{latest ? COC_KIND_LABELS[latest.kind] : '等待检定或掷骰'}</div>
           </div>
           <div className="text-right">
-            <div className="text-4xl font-black font-mono leading-none text-[#059669]">
+            <div className="text-4xl font-black font-mono leading-none text-[#5aa58f]">
               {latest?.displayValue ?? '--'}
             </div>
             {latest?.outcome && (
@@ -191,7 +191,7 @@ function CocRollConsolePanel({
         {latest?.tags && latest.tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {latest.tags.slice(0, 5).map(tag => (
-              <span key={tag} className="border border-[#059669]/30 bg-black/30 px-1.5 py-0.5 text-[10px] text-[#9bd8b9]">
+              <span key={tag} className="border border-[#2f7f68]/30 bg-black/30 px-1.5 py-0.5 text-[10px] text-[#8fb7aa]">
                 {tag}
               </span>
             ))}
@@ -199,36 +199,36 @@ function CocRollConsolePanel({
         )}
       </div>
 
-      <div className="flex-1 min-h-0 font-mono text-xs overflow-y-auto custom-scrollbar mb-4 bg-black/40 p-2 border border-[#059669]/10">
+      <div className="flex-1 min-h-0 font-mono text-xs overflow-y-auto custom-scrollbar mb-4 bg-black/40 p-2 border border-[#2f7f68]/15">
         {combatLog.map(entry => (
-          <div key={entry.id} className={`border-b border-[#059669]/10 py-2 last:border-0 ${cocLogColor(entry)}`}>
+          <div key={entry.id} className={`border-b border-[#2f7f68]/12 py-2 last:border-0 ${cocLogColor(entry)}`}>
             <div className="flex items-center justify-between gap-2">
               <span className="font-bold">{entry.title}</span>
-              <span className="text-[10px] text-[#9bd8b9]">{COC_KIND_LABELS[entry.kind]}</span>
+              <span className="text-[10px] text-[#8fb7aa]">{COC_KIND_LABELS[entry.kind]}</span>
             </div>
             <div className="mt-1 text-[#d4d4d8]">{entry.summary}</div>
             {(entry.calculation || entry.detail) && (
-              <div className="mt-1 text-[11px] text-[#9bd8b9]">{entry.calculation ?? entry.detail}</div>
+              <div className="mt-1 text-[11px] text-[#8fb7aa]">{entry.calculation ?? entry.detail}</div>
             )}
           </div>
         ))}
       </div>
 
-      <div className="mt-auto pt-2 border-t border-[#059669]/30">
+      <div className="mt-auto pt-2 border-t border-[#2f7f68]/30">
         <div className="flex justify-between items-center mb-2 gap-2">
-          <div className="text-[10px] uppercase font-bold text-[#9bd8b9]">
+          <div className="text-[10px] uppercase font-bold text-[#8fb7aa]">
             选取投掷骰: {selectedDice || '—'}
           </div>
           <div className="flex gap-1">
-            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] rounded-none border-[#059669]/50 text-[#059669]" onClick={onClearDice}>清空</Button>
-            <Button size="sm" className="h-6 px-3 text-[10px] rounded-none bg-[#059669] text-[#111] hover:bg-[#059669]/80 font-bold" onClick={onRollDice} disabled={Object.values(diceTray).every(count => count === 0)}>R O L L</Button>
+            <Button size="sm" variant="outline" className="h-6 px-2 text-[10px] rounded-none border-[#2f7f68]/55 text-[#8fb7aa]" onClick={onClearDice}>清空</Button>
+            <Button size="sm" className="h-6 px-3 text-[10px] rounded-none bg-[#2f7f68] text-[#06100d] hover:bg-[#3a9278] font-bold" onClick={onRollDice} disabled={Object.values(diceTray).every(count => count === 0)}>R O L L</Button>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100'].map(die => (
             <button
               key={die}
-              className="w-10 h-10 border-2 border-[#059669] bg-[#1a1a1a] text-[#059669] font-bold text-xs hover:bg-[#059669] hover:text-[#111] transition-colors relative"
+              className="w-10 h-10 border-2 border-[#2f7f68] bg-[#151a18] text-[#8fb7aa] font-bold text-xs hover:bg-[#2f7f68] hover:text-[#06100d] transition-colors relative"
               onClick={() => onAddDie(die)}
             >
               {die}
@@ -409,20 +409,20 @@ export function CocGameplay() {
 
   return (
     <div className="space-y-6 text-[#d4d4d8] font-serif">
-      <div className="flex justify-between items-center border-b border-[#059669]/50 pb-2">
-        <h2 className="text-2xl font-bold uppercase tracking-widest text-[#059669]">游玩面板 (Gameplay)</h2>
+      <div className="flex justify-between items-center border-b border-[#2f7f68]/45 pb-2">
+        <h2 className="text-2xl font-bold uppercase tracking-widest text-[#8fb7aa]">游玩面板 <span className="text-sm tracking-widest text-[#8fb7aa]/65 ml-2">GAMEPLAY</span></h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
-          <div className="border border-[#059669]/30 bg-[#111] p-4">
-            <div className="flex items-center justify-between gap-3 border-b border-[#059669]/30 pb-1 mb-3">
-              <h3 className="text-[#059669] font-bold uppercase">运行时状态 / Runtime State</h3>
+          <div className="border border-[#2f7f68]/35 bg-[#101413] p-4">
+            <div className="flex items-center justify-between gap-3 border-b border-[#2f7f68]/30 pb-1 mb-3">
+              <h3 className="text-[#8fb7aa] font-bold uppercase">运行时状态 <span className="text-[10px] tracking-widest text-[#8fb7aa]/65 ml-2">RUNTIME STATE</span></h3>
               {!runtime && (
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-7 px-2 border-[#059669]/50 rounded-none text-[#059669] hover:bg-[#059669] hover:text-[#111]"
+                  className="h-7 px-2 border-[#2f7f68]/55 rounded-none text-[#8fb7aa] hover:bg-[#2f7f68] hover:text-[#06100d]"
                   onClick={() => {
                     initializeRuntime();
                     setCombatLog(prev => [
@@ -452,21 +452,21 @@ export function CocGameplay() {
                 { label: '理智 / SAN', value: `${runtimePools.san.current}/${runtimePools.san.max}`, onMinus: () => handleRuntimeDelta('SAN', -1, changeSan), onPlus: () => handleRuntimeDelta('SAN', 1, changeSan) },
                 { label: '幸运 / Luck', value: `${runtimePools.luck.current}/${luckMax}`, onMinus: () => handleRuntimeDelta('Luck', -1, changeLuck), onPlus: () => handleRuntimeDelta('Luck', 1, changeLuck) },
               ].map(item => (
-                <div key={item.label} className="border border-[#059669]/20 bg-black/30 p-3">
-                  <div className="text-[10px] uppercase tracking-widest text-[#9bd8b9] mb-1">{item.label}</div>
+                <div key={item.label} className="border border-[#2f7f68]/25 bg-black/30 p-3">
+                  <div className="text-[10px] uppercase tracking-widest text-[#8fb7aa] mb-1">{item.label}</div>
                   <div className="flex items-center justify-between gap-3">
                     <div className="text-2xl font-bold text-[#d4d4d8] font-mono">{item.value}</div>
                     <div className="flex gap-1">
-                      <Button size="sm" variant="outline" className="h-7 px-2 border-[#059669]/50 rounded-none text-[#d4d4d8] hover:bg-red-900" onClick={item.onMinus}>-1</Button>
-                      <Button size="sm" variant="outline" className="h-7 px-2 border-[#059669]/50 rounded-none text-[#d4d4d8] hover:bg-[#059669] hover:text-[#111]" onClick={item.onPlus}>+1</Button>
+                      <Button size="sm" variant="outline" className="h-7 px-2 border-[#2f7f68]/55 rounded-none text-[#d4d4d8] hover:bg-red-900" onClick={item.onMinus}>-1</Button>
+                      <Button size="sm" variant="outline" className="h-7 px-2 border-[#2f7f68]/55 rounded-none text-[#d4d4d8] hover:bg-[#2f7f68] hover:text-[#06100d]" onClick={item.onPlus}>+1</Button>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-4 border border-[#059669]/20 bg-black/20 p-3">
-              <div className="text-[10px] uppercase tracking-widest text-[#9bd8b9] mb-2">状态标记 / Runtime Flags</div>
+            <div className="mt-4 border border-[#2f7f68]/25 bg-black/20 p-3">
+              <div className="text-[10px] uppercase tracking-widest text-[#8fb7aa] mb-2">状态标记 <span className="text-[#8fb7aa]/65">RUNTIME FLAGS</span></div>
               <div className="flex flex-wrap gap-2">
                 {flagItems.map(flag => {
                   const active = runtimeFlags[flag.key];
@@ -477,7 +477,7 @@ export function CocGameplay() {
                       className={`border px-2 py-1 text-[11px] transition-colors ${
                         active
                           ? 'border-red-500/70 bg-red-950/50 text-red-200'
-                          : 'border-[#059669]/30 bg-[#111] text-[#9bd8b9]'
+                          : 'border-[#2f7f68]/35 bg-[#111] text-[#8fb7aa]'
                       }`}
                       onClick={() => {
                         const nextValue = !active;
@@ -502,15 +502,15 @@ export function CocGameplay() {
                   );
                 })}
               </div>
-              <div className="mt-2 text-[10px] text-[#9bd8b9]">
+              <div className="mt-2 text-[10px] text-[#8fb7aa]">
                 标记仅供手动维护；本轮不执行疯狂表、INT 检定或 Keeper 流程。
               </div>
             </div>
 
-            <div className="mt-8 border-t border-[#059669]/30 pt-4">
-               <h3 className="text-[#059669] font-bold uppercase mb-2">常用检定 (Quick Rolls)</h3>
+            <div className="mt-8 border-t border-[#2f7f68]/30 pt-4">
+               <h3 className="text-[#8fb7aa] font-bold uppercase mb-2">常用检定 <span className="text-[10px] tracking-widest text-[#8fb7aa]/65 ml-2">QUICK ROLLS</span></h3>
                <div className="flex flex-wrap gap-2">
-                 <Button size="sm" variant="outline" className="text-xs h-8 rounded-none border-[#059669] text-[#059669] hover:bg-[#059669] hover:text-[#111]" onClick={() => {
+                 <Button size="sm" variant="outline" className="text-xs h-8 rounded-none border-[#2f7f68] text-[#8fb7aa] hover:bg-[#2f7f68] hover:text-[#06100d]" onClick={() => {
                     const roll = Math.floor(Math.random() * 100) + 1;
                     const val = runtimePools.san.current;
                     // Use evaluateCocD100Check so fumble/critical rules are consistent with CocSheet

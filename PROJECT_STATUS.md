@@ -115,6 +115,7 @@ COC Sheet responsibility cleanup v1 scope:
 | CP RED runtime state foundation v2 | ✅ Done |
 | CP RED Gameplay RollConsole RuntimeLogEntry v1 | ✅ Done |
 | CP RED Skill Check Wiring v1 | ✅ Done |
+| CP RED Gameplay Componentization v1 | ✅ Done |
 | CpGameplay — uses evaluateCpExplodingD10 / evaluateCpSkillCheck | ✅ Done |
 | cpStore — uses getCpMaxHp / getCpSeriouslyWoundedThreshold / getCpDeathSaveBase / getCpHumanityMax / isCpCyberpsycho | ✅ Done |
 
@@ -137,6 +138,13 @@ CP RED Skill Check Wiring v1 scope:
 - Netrunner no-roll actions, NET damage prompts, Solo pool reset, and Lawman backup calls now write structured local `RuntimeLogEntry` objects instead of string system logs.
 - The string `addLog` compatibility path remains as a fallback only.
 - No rule expansion, Netrunning state machine, armor ablation, ammo tracking, full damage pipeline, GM Console, AI Host, store, schema, migration, DND, or COC changes.
+
+CP RED Gameplay Componentization v1 scope:
+- `CpGameplay.tsx` now orchestrates local state, handlers, and panel composition while CP RED Gameplay UI sections live under `src/pages/cpGameplay/`.
+- Extracted RollConsole, runtime state, checks, role ability, damage/death save/injury, and free dice tray panels.
+- Behavior is intended to stay unchanged: local RuntimeLogEntry history remains capped at 20, latest entry stays first, entries use `system: 'cpred'` and `visibility: 'public'`.
+- Free Dice Tray remains in Gameplay as an isolated utility panel for now.
+- No store, schema, migration, armor/ammo automation, Netrunning state machine, GM Console, AI Host, multiplayer, DND, or COC changes.
 
 ---
 

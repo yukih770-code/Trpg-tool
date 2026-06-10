@@ -47,13 +47,13 @@ function StatRing({ value, min = 2, max = 8 }: { value: number; min?: number; ma
 
 // ── Theme helpers ─────────────────────────────────────────
 const T = {
-  border:      'border-[#f5c518]/30',
-  borderFull:  'border-[#f5c518]',
-  text:        'text-[#f5c518]',
+  border:      'border-[#d8b954]/20',
+  borderFull:  'border-[#d8b954]/80',
+  text:        'text-[#d8b954]',
   bg:          'bg-[#0d0d0d]',
   bgCard:      'bg-[#111]',
   btn:         'bg-[#f5c518] text-[#0d0d0d] hover:bg-[#f5c518]/80 rounded-none font-bold uppercase font-mono',
-  btnOutline:  'border-[#f5c518] text-[#f5c518] hover:bg-[#f5c518]/10 rounded-none uppercase font-mono',
+  btnOutline:  'border-[#8a6f25]/60 text-[#d8b954]/85 hover:bg-[#f5c518]/10 hover:text-[#f5c518] rounded-none uppercase font-mono',
 };
 
 const TOTAL_STAT_POINTS  = 62;
@@ -142,7 +142,7 @@ export function CpCreator({ onComplete }: { onComplete: () => void }) {
     <div className="space-y-4 text-[#d4d4d8]">
 
       {/* ── Header ───────────────────────────────────────── */}
-      <div className="hud-panel flex justify-between items-center border-b border-[#f5c518]/50 pb-3 px-1 pt-1">
+      <div className="hud-panel flex justify-between items-center border-b border-[#d8b954]/25 pb-3 px-1 pt-1">
         <div>
           <h2 className="font-cp-title text-lg md:text-xl neon-gold tracking-widest">
             // CHARACTER CREATION
@@ -157,7 +157,7 @@ export function CpCreator({ onComplete }: { onComplete: () => void }) {
       </div>
 
       {/* ── Tab bar ──────────────────────────────────────── */}
-      <div className="flex gap-1 flex-wrap border-b border-[#f5c518]/20 pb-3">
+      <div className="flex gap-1 flex-wrap border-b border-[#d8b954]/15 pb-3">
         {TABS.map(t => {
           const status = tabStatus[t.id];
           return (
@@ -165,14 +165,14 @@ export function CpCreator({ onComplete }: { onComplete: () => void }) {
               className={`flex items-center gap-1.5 px-3 py-1.5 font-cp-body text-[10px] uppercase tracking-widest border transition-all
                 ${activeTab === t.id
                   ? 'bg-[#f5c518] text-[#0d0d0d] border-[#f5c518] shadow-[0_0_10px_rgba(245,197,24,0.35)]'
-                  : 'border-[#f5c518]/25 text-[#f5c518]/55 hover:border-[#f5c518]/60 hover:text-[#f5c518] hover:bg-[#f5c518]/5'}`}>
+                  : 'border-[#8a6f25]/35 text-[#d8b954]/60 hover:border-[#d8b954]/65 hover:text-[#f5c518] hover:bg-[#f5c518]/5'}`}>
               {t.label}
               {status === 'done'    && <span className="text-[9px] text-green-400">✓</span>}
               {status === 'partial' && <span className="text-[9px] text-yellow-400">●</span>}
             </button>
           );
         })}
-        <div className="ml-auto font-cp-body text-[9px] text-[#f5c518]/25 self-center pr-1 hidden md:block tracking-wider">
+        <div className="ml-auto font-cp-body text-[9px] text-[#d8b954]/35 self-center pr-1 hidden md:block tracking-wider">
           &gt;&gt; 可任意顺序填写
         </div>
       </div>
@@ -183,7 +183,9 @@ export function CpCreator({ onComplete }: { onComplete: () => void }) {
         {/* ── 基本信息 ──────────────────────────────────── */}
         {activeTab === 'info' && (
           <div className="space-y-5">
-            <h3 className={`font-cp-title text-sm neon-gold tracking-widest border-b ${T.border} pb-2`}>// BASIC INFO</h3>
+            <h3 className={`font-cp-title text-sm neon-gold tracking-widest border-b ${T.border} pb-2`}>
+              基础信息 <span className="text-[10px] tracking-widest text-[#d8b954]/55 ml-2">BASIC INFO</span>
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {([
                 ['姓名 Handle', 'name',   'text',   '例如: V、强尼·银手'],
@@ -192,34 +194,34 @@ export function CpCreator({ onComplete }: { onComplete: () => void }) {
                 ['性别 Gender', 'gender', 'text',   ''],
               ] as const).map(([label, field, type, placeholder]) => (
                 <div key={field} className="space-y-1">
-                  <label className="uppercase text-xs font-bold font-mono text-[#f5c518]/70">{label}</label>
+                  <label className="uppercase text-xs font-bold font-mono text-[#d8b954]/75">{label}</label>
                   <Input
                     type={type}
                     value={(character as any)[field]}
                     onChange={e => updateField(field as any, type === 'number' ? parseInt(e.target.value) || 0 : e.target.value)}
                     placeholder={placeholder}
-                    className={`${T.bgCard} border-[#f5c518]/20 focus:border-[#f5c518] text-[#d4d4d8] font-mono rounded-none`}
+                    className={`${T.bgCard} border-[#d8b954]/20 focus:border-[#f5c518] text-[#d4d4d8] font-mono rounded-none`}
                   />
                 </div>
               ))}
             </div>
 
             {/* Role selector */}
-            <div className="space-y-2">
-              <label className="uppercase text-xs font-bold font-mono text-[#f5c518]/70">职业 Role</label>
+            <div className="space-y-1.5">
+              <label className="uppercase text-xs font-bold font-mono text-[#d8b954]/75">职业 Role</label>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                 {CP_ROLES.map(role => (
                   <button key={role} onClick={() => updateField('role', role)}
                     className={`p-2 border text-xs font-bold font-mono uppercase transition-colors rounded-none
                       ${character.role === role
                         ? `${T.borderFull} ${T.text} bg-[#f5c518]/10`
-                        : `border-[#f5c518]/20 text-[#d4d4d8]/60 hover:border-[#f5c518]/50`}`}>
+                        : `border-[#8a6f25]/30 text-[#d4d4d8]/60 hover:border-[#d8b954]/55`}`}>
                     <div>{CP_ROLE_LABELS[role]}</div>
                     <div className="text-[10px] opacity-60">{role}</div>
                   </button>
                 ))}
               </div>
-              <div className="text-xs text-[#f5c518]/50 mt-1">
+              <div className="text-xs text-[#d8b954]/60 mt-1">
                 职业能力等级强制为 <strong className="text-[#f5c518]">4</strong>。
                 {CP_EXEC_ROLES.includes(character.role)
                   ? ' 主管职业：企业公寓（月花销 600 eb）'

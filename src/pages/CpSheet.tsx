@@ -4,13 +4,14 @@ import { CP_STAT_ORDER, CP_STAT_LABELS, CP_ROLE_LABELS, CP_SKILLS, CP_ROLE_ABILI
 import { toast } from 'sonner';
 
 const T = {
-  border: 'border-[#f5c518]/30',
-  borderFull: 'border-[#f5c518]',
-  text: 'text-[#f5c518]',
+  border: 'border-[#d8b954]/20',
+  borderFull: 'border-[#d8b954]/80',
+  text: 'text-[#d8b954]',
   bgCard: 'bg-[#111]',
 };
 
 const CP_SHEET_STAT_CN_OVERRIDES: Partial<Record<(typeof CP_STAT_ORDER)[number], string>> = {
+  COOL: '酷 / 时尚',
   LUCK: '幸运',
 };
 
@@ -76,7 +77,7 @@ export function CpSheet() {
 
       {/* ── Stats ──────────────────────────────────────── */}
       <div>
-        <div className="font-cp-title text-[9px] uppercase tracking-widest text-[#f5c518]/55 mb-1.5">// CORE STATS</div>
+        <div className="font-cp-title text-[9px] uppercase tracking-widest text-[#d8b954]/60 mb-1.5">// CORE STATS</div>
         <div className="grid grid-cols-5 md:grid-cols-10 gap-1">
           {CP_STAT_ORDER.map(stat => {
             const base = stats[stat];
@@ -84,9 +85,9 @@ export function CpSheet() {
             const cnLabel = getCpSheetStatChineseLabel(stat);
             return (
               <div key={stat} className="cp-panel p-1.5 flex flex-col items-center">
-                <div className="font-cp-title text-[7px] uppercase text-[#f5c518]/65 tracking-widest mb-0.5 text-center leading-tight">
+                <div className="font-cp-title text-[7px] uppercase text-[#d8b954]/70 tracking-widest mb-0.5 text-center leading-tight">
                   <div>{stat}</div>
-                  <div className="text-[8px] tracking-normal text-[#f5c518]/75 font-cp-body">{cnLabel}</div>
+                  <div className="text-[8px] tracking-normal text-[#d8b954]/80 font-cp-body">{cnLabel}</div>
                 </div>
                 <div className={`font-cp-title text-xl ${eff < base ? 'text-orange-400' : 'neon-gold'}`}>{eff}</div>
                 {eff < base && <div className="text-[8px] text-orange-400/50">({base})</div>}
