@@ -172,6 +172,8 @@ CP RED Equipment / Market Inventory Flow v1 scope:
 - CpMarket can add weapons, armor, cyberware, fashion, and gear to character inventory using existing EB/fashion EB purchase paths.
 - CpSheet shows inventory/equipment state and supports equip/unequip/install/uninstall without losing items.
 - Cyberware install/uninstall is state-only; Humanity Loss automation remains deferred.
+- Inventory matching/dedupe in v1 is primarily based on item `name`; this is an accepted v1 limitation, not a bug.
+- Supporting multiple same-name item instances, durability, ammo, armor ablation, or unique item instance tracking will require stable inventory item ids.
 - No armor ablation, ammo tracking, full damage pipeline, Netrunning state machine, GM Console, AI Host, DND, or COC changes.
 
 ---

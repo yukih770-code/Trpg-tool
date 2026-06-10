@@ -108,4 +108,10 @@ After modifying one system, verify the other two are unaffected:
 | Old character import OK | Manual | ☐ |
 | Console clean | DevTools | ☐ |
 
-All rows checked → `git add -A && git commit`.
+Do not use `git add .` or `git add -A`.
+Stage only files modified by the current task, for example:
+
+```powershell
+git add path/to/file1 path/to/file2
+git commit -m "..."
+```

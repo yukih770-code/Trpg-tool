@@ -193,7 +193,11 @@ Netrunning is fully deferred and should not enter current Player Gameplay v1/v2.
 | Repair | 0 | Deferred. | Future gear workflow. | P3 |
 | Upgrades | 0 | Deferred. | Future tech workflow. | P3 |
 
-Market/gear v1 now supports basic character inventory flow: market items can be added to inventory, Sheet shows inventory/equipment state, and equip/unequip/install/uninstall preserves items. Armor ablation, ammo automation, full damage pipeline, Humanity Loss automation, dynamic economy, repair, upgrades, and advanced black market rules are deferred.
+Market/gear v1 now supports basic character inventory flow: market items can be added to inventory, weapons can be carried/dropped, body/head armor can be equipped/unequipped, cyberware can be installed/removed as state flow, fashion can be worn/removed, and items remain in inventory/equipment flow instead of disappearing.
+
+Current v1 limitations: inventory matching/dedupe is primarily based on item `name`, so unique item instance ids and same-name duplicate disambiguation are not covered. Ammo tracking, armor ablation, Humanity Loss automation, and the full damage pipeline are deferred.
+
+Humanity boundary: cyberware install/remove does not automatically deduct Humanity, restore Humanity, modify EMP, or modify `cyberPsycho`. UI copy should describe a displayed "Humanity cost" only, not imply that Humanity Loss has already been applied.
 
 ## 11. GM Console / Hidden Results / AI Host Coverage
 
