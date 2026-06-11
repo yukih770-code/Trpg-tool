@@ -24,6 +24,29 @@ Both must pass before committing.
 
 Open the app in the browser and verify each page loads without crashing.
 
+### Platform Shell
+
+- [ ] App opens to Platform Home by default
+- [ ] Home Quick Start / Enter Play opens the preserved PlayWorkspace
+- [ ] Ruleset cards enter PlayWorkspace and select DND / COC / Cyberpunk RED
+- [ ] Sidebar Play opens the preserved PlayWorkspace without a router
+- [ ] Campaigns shows a Coming Soon placeholder and does not crash
+- [ ] Community Modules shows a Coming Soon placeholder and does not crash
+- [ ] Private Import explains v1 character JSON import boundary and does not implement module / ZIP import
+- [ ] Content Studio shows a Coming Soon placeholder and does not crash
+- [ ] AI Host shows a Coming Soon placeholder and does not crash
+- [ ] Settings shows a placeholder if no real settings surface exists
+- [ ] Platform Home defaults to Chinese
+- [ ] Language toggle switches between 中文 and English
+- [ ] Locale persists after refresh via localStorage
+- [ ] Platform Shell / Home / Placeholder copy is read through `src/i18n` translation keys
+- [ ] New locale support can be added by adding a locale file and registering it in `src/i18n/index.ts`
+- [ ] Small helper text / placeholder text / Coming Soon text is localized
+- [ ] Ruleset names and common acronyms remain readable
+- [ ] PlayWorkspace behavior remains unchanged
+- [ ] PlayWorkspace still exposes DND / COC / Cyberpunk RED system selector
+- [ ] PlayWorkspace still exposes creator / sheet / gameplay tabs, and CP RED market tab
+
 ### D&D
 
 - [ ] DND Creator — opens, fields editable

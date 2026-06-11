@@ -37,6 +37,24 @@ This file helps AI quickly locate important types, helper functions, store actio
 - `CpMarket`: `src/pages/CpMarket.tsx`
 - `InventoryPanel`: `src/pages/CpSheet.tsx`
 
+## Platform Shell / Home / Play Workspace
+
+- Platform shell default entry: `src/App.tsx`
+- Platform Home dashboard: `src/pages/Home.tsx`
+- Preserved previous main interface: `src/pages/PlayWorkspace.tsx`
+- `appView: "home" | "play" | "placeholder"` state: `src/App.tsx`
+- Lightweight i18n foundation: `src/i18n/index.ts`
+- Default locale and `trpg-platform-locale` localStorage key: `src/i18n/index.ts`
+- Chinese Platform Shell / Home / Placeholder messages: `src/i18n/locales/zh-CN.ts`
+- English Platform Shell / Home / Placeholder messages: `src/i18n/locales/en.ts`
+- Translation helpers: `createTranslator`, `t`, and `tList` in `src/i18n/index.ts`
+- Shell locale state: `src/App.tsx`
+- Home, Shell, and Placeholder translation key usage: `src/App.tsx`, `src/pages/Home.tsx`
+- Shell placeholder definitions: `src/App.tsx`
+- Existing system selector and creator / sheet / gameplay / market tabs: `src/pages/PlayWorkspace.tsx`
+- Current ruleset state: `useAppStore` in `src/store/appStore.ts`
+- Home character snapshot reads: `useCharacterStore`, `useCocStore`, and `useCpStore`
+
 ## DND Runtime / Resources
 
 - DND main gameplay: `src/pages/Gameplay.tsx`

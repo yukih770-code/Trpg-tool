@@ -31,7 +31,7 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | Documentation Consolidation v1 | ✅ Done |
 | Hardcore Platform Reorientation v1 | ✅ Done |
 | Open-Source Community Ecosystem Goal | ✅ Planned |
-| Platform Shell / Home / Play Workspace Layering | ✅ Planned |
+| Platform Shell / Home / Play Workspace Layering | ✅ Added |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -45,8 +45,13 @@ Architecture phase scope:
 - Current phase is P1 Rules Runtime Closure; low-barrier UX is a delivery principle, not a feature ceiling.
 - Full map, multiplayer, AI Host, full DND Wild Shape / Active Form, and outer platform layers remain deferred until Actor/Target, condition/effect, permissions, and schema dependencies are ready.
 - Records open-source community content ecosystem as a long-term hard-core platform goal; public ecosystem content must be original or redistributable, private user import remains separate, and implementation is deferred until stable schemas and content package boundaries exist.
-- Records future Platform Home as an outer shell/dashboard while preserving the current main interface as Play Workspace; implementation is deferred until the active DND Spellcasting task is closed, and this planning update has no code changes.
-- No `src` changes, package changes, store changes, schema changes, or migration changes.
+- Platform Home Shell v1 added: default entry is now Platform Home, and the previous complete main interface is preserved as `PlayWorkspace`.
+- Platform Home Shell v1 now includes a lightweight i18n foundation in `src/i18n/`; default locale is `zh-CN`, English UI remains available, and locale persists via `localStorage` key `trpg-platform-locale`.
+- Only Platform Shell / Home / placeholder text was localized through translation keys; PlayWorkspace internal rules UI is not translated by this shell layer.
+- Play enters the preserved ruleset workspace; DND / COC / Cyberpunk RED creator, sheet, gameplay, and CP RED market tabs remain inside `PlayWorkspace`.
+- Campaigns, Community Modules, Content Studio, Private Import expansion, map, multiplayer, and AI Host remain explicit placeholders/deferred.
+- No DND / COC / CP RED rule logic was changed.
+- No package changes, store schema changes, schema changes, or migration changes.
 - Freeze planning now has a roadmap; resumed code work must follow it one narrow, single-system phase at a time.
 - Current readiness state: DND, COC, and CP RED Player Gameplay pages are componentized and aligned around local `RuntimeLogEntry[]` RollConsole patterns.
 

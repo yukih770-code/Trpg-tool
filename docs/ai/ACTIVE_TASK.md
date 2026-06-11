@@ -6,46 +6,47 @@
 
 ## Task
 
-- ID: DND Spellcasting Path Unification v1
-- Name: DND Spellcasting Path Unification v1
-- Goal: unify DND spellcasting resource consumption so standard spell slots and pact slots flow through one explicit path before future Action Registry / target / concentration work.
-- Phase: P1
+- ID: Platform Home Shell v1 i18n Polish
+- Name: Platform Home Shell v1 i18n Polish
+- Goal: move Platform Shell, Home, and placeholder copy into a lightweight translation-key i18n foundation while preserving the PlayWorkspace and all rules runtime behavior.
+- Phase: P1 Platform Shell / Home / Play Workspace
 
 ## Scope
 
 ### Allowed Files
 
-- DND Gameplay related files
-- DND store spell slot / spellcasting logic
-- DND Action Registry files if already involved
-- DND spell / progression utilities if directly relevant
+- `src/App.tsx`
+- `src/pages/Home.tsx`
+- `src/i18n/index.ts`
+- `src/i18n/locales/zh-CN.ts`
+- `src/i18n/locales/en.ts`
+- `src/pages/PlayWorkspace.tsx` only if wrapper/import changes are necessary
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
-- `docs/rules/DND_RULE_COVERAGE.md`
 - `docs/ai/SYMBOL_MAP.md`
 - `docs/ai/TASK_ARCHIVE.md`
 - `docs/ai/ACTIVE_TASK.md`
 
 ### Forbidden Files
 
-- COC code
-- Cyberpunk RED code
-- map / multiplayer / AI Host
-- module / community ecosystem
-- package / vite / tsconfig
-- README
+- DND / COC / CP RED Gameplay internal rule logic
+- `src/store/*` state structure or actions
+- schema / migration files
+- `RuntimeLogEntry` types
+- `src/lib/*`
+- `src/data/*`
+- package / Vite / TypeScript config
 - `PLATFORM_ARCHITECTURE.md`
 - `AI_WORKFLOW.md`
 - `docs/archive/**`
-- store schema / migration unless proven necessary
 
 ### Do Not Do
 
-- Do not implement target selection.
-- Do not implement concentration.
-- Do not implement spell effects or damage automation.
-- Do not implement enemy / map / multiplayer / AI Host.
-- Do not create a platform middle layer.
+- Do not introduce `react-router`.
+- Do not add external dependencies or an external i18n framework.
+- Do not implement Campaigns, Community Modules, Private Import expansion, Content Studio, map, multiplayer, AI Host, account, cloud, marketplace, or real Campaign features.
+- Do not change DND / COC / CP RED gameplay behavior.
+- Do not change store schema, migration, or RuntimeLogEntry.
 - Do not use `git add .` or `git add -A`.
 - Do not auto commit.
 
@@ -53,32 +54,35 @@
 
 ### Key Symbols
 
-- `castSpell`
-- `consumeSpellSlot`
-- `spellSlot`
-- `pactMagicState`
-- `pactSlot`
-- `DND_SPELLCASTING_RESOURCE_CONSUMPTION`
-
-### Relevant Landmarks
-
-- `AI-LANDMARK: DND_SPELLCASTING_RESOURCE_CONSUMPTION`
+- `Locale`
+- `defaultLocale`
+- `trpg-platform-locale`
+- `messages`
+- `createTranslator`
+- `t`
+- `tList`
+- `Home`
+- `PlayWorkspace`
 
 ### Locate Commands
 
 ```powershell
-rg -n "castSpell|consumeSpellSlot|spellSlot|spellSlots|pactSlot|pactSlots|preparedSpells|ActionRegistry|DND_SPELL" src/pages src/store src/lib src/data
-rg -n "DND_SPELLCASTING_RESOURCE_CONSUMPTION|AI-LANDMARK" src/pages src/store src/lib
+rg -n "Locale|defaultLocale|trpg-platform-locale|messages|createTranslator|tList|glossary" src/App.tsx src/pages/Home.tsx src/i18n
+rg -n "Platform Home Shell v1|language toggle|localStorage|localized" PROJECT_STATUS.md TEST_CHECKLIST.md docs/ai
 ```
 
 ## Completion Criteria
 
-- Current DND spell slot consumption paths are audited.
-- Standard spellcasting resource consumption flows through one explicit function.
-- Pact Magic remains supported or clearly routed through the same resource path.
-- DND spellcasting RuntimeLogEntry is structured.
-- No target, concentration, damage, map, multiplayer, COC, or CP RED changes.
-- No schema or migration changes unless strictly required.
+- Platform Home defaults to `zh-CN`.
+- Language toggle switches between Chinese and English immediately.
+- Locale persists after refresh via `localStorage`.
+- English UI remains available.
+- Home / Shell / Placeholder text, helper text, empty states, and Coming Soon text are read through translation keys such as `t('home.hero.title')`.
+- Common acronyms and system names live under glossary keys and remain readable.
+- Future locale support only needs adding a locale file and registering it in `src/i18n/index.ts`, without restructuring Home.
+- No DND / COC / CP RED rule logic changed.
+- No store schema, migration, package, router, or dependency changes.
+- Owner docs updated.
 
 ## Verification
 
@@ -91,10 +95,14 @@ npm run build
 
 ## Report Requirements
 
-- Files read
 - Files changed
-- Old spellcasting paths audited
-- Unified resource consumption path
-- Landmark changes
+- Language toggle location
+- Default locale status
+- English availability
+- `localStorage` persistence status
+- Localization coverage
+- Preserved terms
+- Rule logic and store schema status
+- Dependency and router status
 - Verification results
 - Unexpected changes
