@@ -92,6 +92,7 @@ DND Spellcasting Path Unification v1 scope:
 - Gameplay spell casting now routes through `consumeSpellcastingResource` for cantrips, standard spell slots, and Pact Magic slots.
 - Legacy `consumeSpellSlot` remains as a compatibility wrapper instead of a separate UI path.
 - Spell casting writes structured local `RuntimeLogEntry` records with spell name, spell level, resource type, slot level, previous/remaining slots, and pact magic metadata.
+- Pact Magic slots take priority over standard spell slots for any spell at or below `pactMagicState.slotLevel`. When pact slots are exhausted, the cast returns `ok: false` without falling back to standard slots. This is correct for pure Warlocks and is a v1 simplification for multiclass characters who hold both slot types.
 - No spell effects, target selection, concentration, saving throws, damage automation, Action Registry spellSlot costs, schema, migration, COC, or CP RED changes.
 
 ### Call of Cthulhu (COC)
