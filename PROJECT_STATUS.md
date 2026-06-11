@@ -29,6 +29,7 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | AI Task Lifecycle v1 (`docs/ai/ACTIVE_TASK.md`, `docs/ai/TASK_ARCHIVE.md`) | ✅ Added |
 | Documentation Governance v1 (`AI_WORKFLOW.md`, `docs/ai/*`, `docs/archive/README.md`) | ✅ Added |
 | Documentation Consolidation v1 | ✅ Done |
+| Hardcore Platform Reorientation v1 | ✅ Done |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -38,6 +39,9 @@ Architecture phase scope:
 - Establishes ephemeral active-task context and compressed task archive; no `CODE_LANDMARKS.md`, with markdown navigation based on symbols and `rg -n`.
 - Establishes documentation governance owner rules, archive firewall, active task lifecycle, and exact-file git safety.
 - Consolidates A-class rule/index docs into `docs/rules/` and `docs/ai/`, archives one-off historical architecture docs under `docs/archive/`, and removes stale `CURRENT_PROJECT_STATE.md`.
+- Clarifies the final target as a hardcore multi-system TRPG platform and the current strategy as staged hard-core architecture.
+- Current phase is P1 Rules Runtime Closure; low-barrier UX is a delivery principle, not a feature ceiling.
+- Full map, multiplayer, AI Host, full DND Wild Shape / Active Form, and outer platform layers remain deferred until Actor/Target, condition/effect, permissions, and schema dependencies are ready.
 - No `src` changes, package changes, store changes, schema changes, or migration changes.
 - Freeze planning now has a roadmap; resumed code work must follow it one narrow, single-system phase at a time.
 - Current readiness state: DND, COC, and CP RED Player Gameplay pages are componentized and aligned around local `RuntimeLogEntry[]` RollConsole patterns.
@@ -136,8 +140,8 @@ COC Pushed Roll v1 scope:
 COC Growth Check v1 scope:
 - Successful public skill checks can be marked for growth using existing persisted `runtime.skillGrowthMarks`.
 - Marked skills can run a minimum growth check in CocGameplay: roll d100, improve only when roll is greater than current skill, then add 1d10 to the skill value.
+- Growth success now applies maximum skill cap 99; the RuntimeLogEntry payload records `rawNewValue`, `cap`, and `capped`.
 - Growth mark, clear, and resolution events write local `RuntimeLogEntry` records for the CocGameplay RollConsole.
-- V1 simplification: skill growth writes raw `previousValue + 1d10`; the COC 7e standard maximum skill cap of 99 is deferred.
 - No Keeper Console, full campaign advancement, occupation/archetype progression, full insanity automation, map, multiplayer, AI Host, DND, or CP RED changes.
 
 COC Gameplay Componentization v1 scope:

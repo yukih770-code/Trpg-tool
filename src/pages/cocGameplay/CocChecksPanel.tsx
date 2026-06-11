@@ -147,6 +147,7 @@ export function CocChecksPanel({
       {growthMarkedSkills.length > 0 && (
         <div className="mb-3 border border-[#2f7f68]/35 bg-black/25 p-3">
           <div className="text-xs font-bold text-[#8fb7aa]">已标记成长 / MARKED FOR GROWTH</div>
+          <div className="mt-1 text-[10px] text-[#8fb7aa]">成长成功增加 1d10，最高 99。</div>
           <div className="mt-2 space-y-2">
             {growthMarkedSkills.map(skill => (
               <div key={skill.name} className="flex flex-wrap items-center justify-between gap-2 border border-[#2f7f68]/20 bg-[#101413] px-2 py-2">

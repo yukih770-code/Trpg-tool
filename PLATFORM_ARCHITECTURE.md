@@ -1,14 +1,101 @@
 # 中文 TRPG 运行平台 — 长期产品架构与技术路线规划
 
-Last updated: 2026-06-10
+Last updated: 2026-06-11
+
+## Final Target
+
+This project targets a hardcore multi-system TRPG platform, not a lightweight character-sheet tool.
+
+It should eventually support complete multi-ruleset character management, runtime rules, action resolution, actors/targets, conditions, inventory/equipment, scenes/encounters, maps/tokens, GM/Keeper/Host tools, multiplayer synchronization, module/homebrew content, and AI Host / ProposedCommand workflows.
+
+Low barrier to entry is a UX delivery principle, not a feature ceiling.
+
+## Current Strategy
+
+The project uses staged hard-core architecture.
+
+Hard-core capabilities must be built in dependency order:
+
+```text
+rules runtime -> actor/action/resource/equipment layers -> scene/encounter -> map/multiplayer -> AI Host/module ecosystem
+```
+
+Current phase: P1 Rules Runtime Closure inside a staged hard-core platform roadmap.
+
+Do not implement hard-core outer layers before their dependencies are ready. Do not use future platform needs as an excuse for uncontrolled rewrites.
+
+## Dependency Order
+
+```text
+RuntimeLogEntry / RollConsole / schema discipline
+-> system-local rules runtime
+-> runtime resources / action registry / inventory-equipment
+-> condition-effect / actor-target
+-> opposed roll / damage pipeline / NPC-lite
+-> scene / encounter
+-> map / token
+-> campaign log persistence
+-> multiplayer / permissions
+-> GM/Keeper/Host console
+-> module / plugin / AI Host
+```
+
+Dependency constraints:
+
+- Map / token depends on Actor + Scene.
+- Multiplayer depends on structured runtime state + permissions.
+- AI Host depends on Action Registry + ProposedCommand + permission model.
+- DND Wild Shape / Active Form depends on Actor + Condition + overlay.
+- Module import depends on stable data schema.
+
+## Platform Layer Classification
+
+### Can Stay System-Local First
+
+- DND spell runtime
+- CP damage pipeline
+- COC sanity / madness details
+- CP netrunning
+- DND Active Form implementation
+
+### Must Be Cross-System From The Start
+
+- RuntimeLogEntry / RollConsole
+- Actor / Target
+- Condition / Status Effect
+- Thin Runtime Resource interface
+- Visibility / future permission semantics
+
+### Interface / Concept Only For Now
+
+- Actor schema with `baseStats + activeOverlay?`
+- Campaign Log persistence
+- ProposedCommand
+- Module / ruleset extension
+- Permission model
+
+These are architecture directions, not current implementation tasks.
+
+## P0-P5 Hard-Core Roadmap
+
+| Phase | Goal | Deliverables | Dependencies | Exit Criteria |
+|---|---|---|---|---|
+| P0 Engineering governance / documentation / foundation | Stabilize collaboration, owner docs, test discipline, and cross-system boundaries. | Documentation governance, rule coverage docs, task context, RollConsole baseline. | Existing app foundation. | AI/coding tasks can navigate current truth without stale root docs. |
+| P1 Rules Runtime Closure | Finish system-local player runtime loops for DND / COC / CP RED. | Checks, resources, common rule workflows, local RuntimeLogEntry results. | P0 governance and per-system stores. | Core player-facing runtime flows work without Sheet roll regressions. |
+| P2 Cross-System Gameplay Middle Layer | Extract proven shared concepts without rewriting systems. | Thin Resource / RollResult / Item probes, Actor/Target interface design. | P1 rules runtime in at least two systems. | Shared interfaces are justified by working system-local implementations. |
+| P3 Scene / Encounter / Map | Add scene and encounter substrate before map complexity. | Scene model, NPC-lite, encounter notes, map/token v1. | Actor/Target and condition/effect direction. | Map/token can reference stable actors and scene state. |
+| P4 Multiplayer / Shared State / Permissions | Add synchronized state and visibility semantics. | Permission model, shared runtime state, campaign log persistence. | Structured runtime state, visibility, Host Console boundary. | Public/gmOnly/playerOnly/revealed data can be protected. |
+| P5 AI Host / Module / Plugin Ecosystem | Add extensibility and AI-assisted/AI-hosted workflows. | ProposedCommand runtime, module import, homebrew/ruleset extension, AI Host tools. | Permissions, Action Registry, stable schema, campaign logs. | High-risk AI/module actions are validated and reviewable. |
 
 ## 1. 产品定位
 
 本项目长期定位为：
 
-> 面向中文跑团玩家的低门槛、多规则 TRPG 运行平台。以多规则角色卡、规则自动化和统一日志中心为内核，网页即用、无需自托管，逐步扩展到轻量地图、剧情演绎、GM 工具、多人同步与 AI 辅助备团。
+> 面向中文跑团玩家的硬核多规则 TRPG 运行平台。以多规则角色卡、规则自动化和统一日志中心为内核，网页即用、无需自托管，分阶段扩展到 Actor/Target、条件/效果、场景/遭遇、地图、多人同步、GM/Keeper/Host 工具、模组生态与 AI Host。
 
-当前项目仍处于“多规则角色与运行时控制台”阶段，不是完整平台阶段。平台化是长期方向，不是当前重构理由。后续所有平台能力都应从已经稳定的 DND / COC / Cyberpunk RED 实现中逐步抽象，而不是为了“做平台”提前推翻现有结构。
+当前项目是硬核平台路线的 P1 Rules Runtime Closure 阶段。它还没有完成外层地图、多人、Host Console 或 AI Host，但这些是最终平台能力，而不是可有可无的玩具功能。低门槛是 UX 交付原则，不是能力上限。
+
+平台化仍不是无序重构的理由。后续所有平台能力都应从已经稳定的 DND / COC / Cyberpunk RED 实现中逐步抽象，而不是为了“做平台”提前推翻现有结构。
 
 当前已具备的平台种子能力：
 
@@ -464,22 +551,23 @@ Last updated: 2026-06-10
 
 以下是路线，不在本轮执行：
 
-1. CP Stable Item Instance ID v1
-2. CP 日志 envelope 纯化
-3. COC Pushed Roll v1
-4. COC Growth Check v1
-5. DND 施法路径 v1
-6. DND Action Registry v1
-7. DND 结构化装备 / 背包 v1
-8. 共享 RollResult 抽象探测
-9. 文档与 readiness 同步
+1. DND 施法路径 v1
+2. DND Action Registry v1
+3. DND 结构化装备 / 背包 v1
+4. DND Active Form / Wild Shape architecture spike
+5. CP RED armor / ammo / damage pipeline planning
+6. CP RED Netrunning architecture doc / audit
+7. COC bonus / penalty dice v1
+8. COC opposed roll / Keeper clue flow planning
+9. 共享 RollResult 抽象探测
 10. visibility filter v1，本地
 
 优先级解释：
 
-- CP equipment v1 已经暴露 same-name item instance 问题，应先补 stable item id。
-- COC 已具备 SAN / Luck 基础，可继续 Pushed Roll / Growth。
+- CP RED stable item instance id、CP RED log envelope consolidation、COC Pushed Roll、COC Growth Check 已完成，不再作为 next task。
 - DND 的 spellcasting / equipment / Action Registry 是下一轮系统闭环关键。
+- CP RED damage / armor / ammo 与 Netrunning 都是硬核目标，但需要先规划依赖层。
+- COC 的下一步应补 bonus/penalty dice、opposed roll 和 Keeper clue flow，而不是重复已完成的 Pushed/Growth。
 - visibility filter 必须先做本地、非权限版本，不能直接跳到多人。
 
 ## 6. 核心数据模型演进顺序
@@ -773,3 +861,104 @@ AI / API Output
 ```
 
 默认不实现 AI API、Host Console、ProposedCommand runtime、权限系统、AI memory 或多人同步。高风险结果，例如死亡、疯狂、重伤、永久属性变化、角色删除和重大 reveal，必须保留人工确认边界。
+
+## 15. 内容与商业边界 / Content and Business Boundary
+
+这是一条长期、稳定的架构与商业决策，约束本项目如何对待版权内容、社区生态与商业化。它既保护项目，也不妨碍未来盈利。
+
+### 15.0 一句话边界
+
+> 我们卖平台能力，不卖未经授权的版权内容。
+> 我们支持用户私有导入，不把用户私有内容变成公共分发。
+> 我们建设开源社区原创生态，不建设盗版资源站。
+>
+> We sell platform capability, not unauthorized copyrighted content.
+> We support private user import, not public redistribution of private content.
+> We build an open-source original-content ecosystem, not a piracy repository.
+
+### 15.1 三层内容边界
+
+平台内容长期划分为三层，互不混淆：
+
+**A. Official Core / 官方核心（本仓库）**
+- 只包含：平台代码、数据 schema、导入器、校验器、编辑器、原创示例内容、开放授权内容、文档。
+- 禁止包含：官方规则书全文、商业模组、未授权的怪物/法术/职业全文、盗版翻译、官方图片/地图。
+
+**B. Public Community Content / 公共社区内容（未来）**
+- 只接受：原创内容（模组/NPC/Boss/小怪/武器/物品/职业/地图/线索）或明确可再分发的开放授权内容。
+- 每个公共内容包必须带元数据：author、source、license、redistributable、containsOfficialText。
+- 必须具备：举报入口、下架机制、版本记录、作者声明、许可证记录、重复侵权账号处理。
+
+**C. Private User Import / 用户私有导入**
+- 允许用户本地导入自有资料，用于本地、私有团或私有服务器；可保存私有内容库、自用数据转换。
+- 私有内容默认不公开、不进公共搜索、不进社区仓库、不作官方推荐、不作订阅卖点。
+- 这是“用户自主选择权”的安全实现：平台不公开托管、不公开推荐、不公开分发未经授权内容。
+
+### 15.2 法律风险分层
+
+- 低风险（建议做）：开源代码/schema/编辑器；内置原创示例；用户本地私有导入。
+- 低-中风险（可做，需记录）：内置开放授权内容（记 license）；用户私有云端存储（默认 private）。
+- 中风险（可做，需机制）：公共社区原创内容库，必须有审核/举报/下架（参考 GitHub DMCA 托管平台处理模式）。
+- 高风险（禁止）：官方仓库或公共库托管官方规则书全文/怪物库/法术全文/商业模组/官方地图美术/未授权翻译搬运/爬取资源站数据。
+- 很高风险（绝对禁止）：订阅解锁未经授权官方内容。多家厂商 fan/homebrew 政策明确要求同人内容免费、不得置于付费墙或订阅墙后（Wizards Fan Content Policy、R. Talsorian Homebrew Content Policy、Chaosium fan material 条款）。
+
+### 15.3 商业化对象
+
+可商业化（卖平台服务/算力/存储/协作）：云同步、多人房间、私有 campaign 空间、AI Host / Co-Host 额度、自动备份、高级模组编辑器、地图容量、私有内容库容量、团队协作权限、版本管理、内容校验器、高级导入器、私有服务器托管、跨设备同步。
+
+不可商业化（卖版权内容本体）：官方规则书内容、商业模组、官方怪物库、官方法术全文、官方地图素材、未授权翻译包、爬取资料库。
+
+> 收费对象是平台服务、算力、存储、协作、编辑器、AI、同步和私有空间，不是版权内容本体。
+
+### 15.4 schema 预留（stable architecture decision）
+
+为支撑导入/校验/搜索/版本/署名/许可证过滤/公私隔离/下架，内容包 schema 应从一开始预留以下字段（属第 6 节数据模型演进中的稳定决策，先定形状，按依赖顺序实现）：
+
+`id, name, version, author, license, source, system, rulesetVersion, contentType, dependencies, redistributable, containsOfficialText, visibility(private|public), createdBy, importedFrom`
+
+未来 module package 示例：
+
+```json
+{
+  "id": "community.dark-harbor",
+  "name": "Dark Harbor",
+  "version": "1.0.0",
+  "author": "username",
+  "system": ["coc7e"],
+  "license": "CC-BY-SA-4.0",
+  "source": "original",
+  "redistributable": true,
+  "containsOfficialText": false,
+  "contentType": ["scenario", "npc", "handout", "map"],
+  "dependencies": []
+}
+```
+
+### 15.5 正式原则条文 / Formal Principle
+
+Content and Business Boundary
+
+The project monetizes platform services, not copyrighted official content.
+The official repository may contain code, schemas, editors, importers, validators, original sample content, and open-license content.
+The public community ecosystem may accept original or explicitly redistributable content only. Public content packages must include author, source, license, redistribution, and official-text metadata.
+The platform may support private user import of user-provided content for local, private campaign, or private server use. Private user content is not part of the official repository or public community ecosystem.
+The official project must not host, redistribute, scrape, recommend, or monetize unauthorized official books, commercial modules, monster databases, spell text, maps, artwork, translations, or derivative dumps.
+Paid plans, if any, should monetize hosting, sync, storage, AI usage, collaboration, private libraries, editors, backup, versioning, and multiplayer services, not access to unauthorized copyrighted content.
+
+内容与商业边界
+
+本项目商业化的是平台服务，而不是受版权保护的官方内容。
+官方仓库可以包含代码、schema、编辑器、导入器、校验器、原创示例内容和开放授权内容。
+公共社区生态只接受原创内容或明确可再分发内容。公共内容包必须包含作者、来源、许可证、再分发权限和是否包含官方文本的元数据。
+平台可以支持用户私有导入用户自行提供的内容，用于本地、私有团或私有服务器。用户私有内容不属于官方仓库或公共社区生态。
+官方项目不得托管、再分发、爬取、推荐或商业化未经授权的官方规则书、商业模组、怪物库、法术全文、地图、美术、翻译搬运或衍生整理。
+如果未来有付费计划，付费内容应是托管、同步、存储、AI 用量、协作、私有内容库、编辑器、备份、版本管理和多人服务，而不是未经授权版权内容的访问权。
+
+### 15.6 最终定位
+
+> 开源硬核多规则 TRPG 平台，公开生态只收原创和开放授权内容，用户私有内容自行导入，商业化只卖平台服务。
+>
+> Open-source hard-core multi-system TRPG platform; the public ecosystem accepts only original and open-license content; users import private content themselves; monetization sells platform services only.
+
+商业路线 = 免费开源核心 + 原创/开放授权社区内容 + 用户私有导入能力 + 付费平台服务。
+不走 = 盗版官方内容库 + 订阅解锁官方资料 + 公共分发商业模组。

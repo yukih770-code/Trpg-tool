@@ -50,6 +50,7 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] COC Gameplay — Pushed Roll failure shows Keeper adjudication / escalated consequence text; fumble cannot spend Luck
 - [ ] COC Gameplay — successful skill check can be marked for growth using the existing runtime growth mark state
 - [ ] COC Gameplay — marked skill can run a growth check; roll greater than current skill increases value by 1d10 and writes RuntimeLogEntry
+- [ ] COC Gameplay — growth success caps final skill value at 99 and logs rawNewValue / cap / capped in RuntimeLogEntry payload
 - [ ] COC Gameplay — growth marks can be manually cleared and do not require Keeper Console / campaign management
 - [ ] COC Gameplay — RuntimeLogEntry history log updates after skill checks / runtime changes / free dice rolls
 

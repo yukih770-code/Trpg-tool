@@ -1,6 +1,6 @@
 # DND Rule Coverage Matrix
 
-Last updated: 2026-06-10
+Last updated: 2026-06-11
 
 This document tracks how far DND 2024 rules are represented in the current app. For this matrix, "In Data" means structured DND 2024 rule data under `src/data/dnd2024` / `src/lib/dnd2024`, not legacy descriptive text in class definitions.
 
@@ -49,6 +49,7 @@ This document tracks how far DND 2024 rules are represented in the current app. 
 | Spell casting action | 6 | Gameplay "施展" button consumes standard slots for leveled spells and permits cantrips. | No action economy, components, range, target, save/attack resolution, or Pact Magic use. | Future Action Registry; `spellSlot` costs are intentionally not part of v0. |
 | Spell slot consumption | 6 | `consumeSpellSlot(level)` reduces standard slot current when available. | Only standard slots; no upcasting decision model or pact slots. | Generalize casting resource selection. |
 | Concentration | 0 | Not represented. | No concentration state, break checks, or replacement warnings. | Add `concentrationState`. |
+| Exhaustion | 0 | Not represented. | No exhaustion state, penalties, or recovery workflow. | Future condition/effect layer. |
 | Bonus action spell restriction | 0 | Not represented. | No action economy tracking or spell cast timing. | Future Action Registry / turn state. |
 | Ritual casting | 2 | Ritual metadata exists on spells; progression notes describe ritual behavior. | No ritual casting UI/action path or class-specific validation. | Add ritual action support later. |
 
@@ -62,12 +63,30 @@ This document tracks how far DND 2024 rules are represented in the current app. 
 | Conditions | 2 | Structured progression type supports `ConditionDefinition`; sample Barbarian/Bard conditions exist. | No runtime condition state or UI tracker. | Add condition state later. |
 | Action Registry v0 | 5 | Minimal `DndActionDefinition` / `ResourceCost` types exist; `actionRegistry.ts` registers resource-backed actions; Gameplay has an Actions v0 panel; classResource and pactMagic costs can be consumed manually. | No `spellSlot` resource cost support, full action economy, attack/damage, enemy target, concentration, or combat log integration. | Action Registry audit, then targeted attack/damage or spellcasting action work. |
 | Action / Bonus Action / Reaction | 4 | Action definitions can carry `actionType`; Gameplay displays Action v0 entries that match existing runtime resources. | No per-turn action economy, no reaction timing, no enforcement of action limits. | Future action economy state after registry stabilizes. |
+| Reactions / opportunity attacks | 0 | Not represented. | Needs turn state, trigger model, movement/position, and target layer. | Future action economy + encounter layer. |
 | Divine Smite | 0 | Not represented. | This is not a class resource; it is a spell/action damage rider using spell slots. | Future attack rider / spell action integration. |
 | Cunning Strike | 0 | Not represented. | Not a class resource; it is an attack rider choice tied to Sneak Attack. | Future Action Registry / attack rider model. |
 | Hunter's Mark | 1 | Spell data likely covers spell text; no Ranger feature automation. | Not modeled as Favored Enemy charges or concentration target state. | Ranger progression plus concentration state. |
 | Metamagic | 0 | Not represented. | Metamagic options and Sorcery Point costs missing; not a direct class resource by itself. | Sorcery Points first, then Metamagic option registry. |
-| Action Surge | 1 | Legacy Fighter text only. | No structured resource or extra action execution. | Fighter progression, then Action Registry. |
+| Action Surge | 5 | Structured short/long rest resource exists and is manually controlled/logged through Gameplay resources. | No action economy enforcement or extra-action execution workflow. | Future action economy layer. |
 | Wild Shape | 1 | Legacy Druid text only. | No charges, forms, transformed stats, or duration. | Druid progression, then forms registry. |
+| Summoned creatures | 0 | Not represented. | Needs Actor/Target model, creature stat blocks, ownership, initiative, and duration. | Future Actor/Encounter layer. |
+
+## 4.1 Active Forms / Transformation Coverage
+
+Active forms are planned hard-core platform capabilities, but they depend on Actor + Condition + active overlay infrastructure. They should not be implemented as one-off UI swaps before that substrate exists.
+
+| Rule Area | currentCoverageLevel | currentImplementation | missingPieces | nextStep |
+|---|---:|---|---|---|
+| Wild Shape | 1 | Legacy Druid text exists; no active form runtime. | Beast form registry, active overlay, duration, resource recovery, temp HP/stat replacement. | Future Active Form layer after Actor/Condition substrate. |
+| Polymorph | 0 | Not represented. | Target transformation, concentration, stat replacement, form duration. | Future Active Form + spell effect model. |
+| Shapechange | 0 | Not represented. | High-level form choice, retained features, condition/effect interactions. | Future Active Form model. |
+| True Polymorph | 0 | Not represented. | Permanent/temporary transformation, target state, concentration, ownership. | Future Active Form + Actor layer. |
+| Alter Self | 0 | Not represented. | Non-combat transformation utility, active effect duration. | Future condition/effect layer. |
+| Disguise Self | 0 | Not represented. | Appearance overlay only; no actor stat replacement. | Future non-combat overlay/effect model. |
+| Enlarge / Reduce | 0 | Not represented. | Size overlay, damage modifiers, concentration. | Future active overlay + condition/effect model. |
+| Gaseous Form | 0 | Not represented. | Movement/condition overlay, concentration, action restrictions. | Future active overlay + condition/effect model. |
+| Non-combat transformation utility | 0 | Not represented. | Needs active overlay that can affect narration, appearance, movement, and scene interaction. | Future Scene/Actor layer. |
 
 Action Registry v0 implemented:
 - Minimal `DndActionDefinition` and `ResourceCost` types.
@@ -108,6 +127,15 @@ Rest recovery semantics:
 | Attunement | 0 | Not represented. | Attunement slots and prerequisites missing. | Add after magic item schema. |
 | Weight | 0 | Not represented. | Item weights, carrying capacity, encumbrance missing. | Add after structured inventory. |
 | Item actions | 0 | Not represented. | No use/equip/activate action model. | Future Action Registry. |
+
+## 6.1 Exploration / Travel Coverage
+
+| Rule Area | currentCoverageLevel | currentImplementation | missingPieces | nextStep |
+|---|---:|---|---|---|
+| Exploration turns / travel pace | 0 | Not represented. | Needs time, movement, party pace, and scene context. | Future Scene/Exploration layer. |
+| Stealth / hiding | 1 | Skill checks can be rolled manually. | No opposed passive perception, cover, lighting, or scene state. | Future Actor/Scene + opposed check model. |
+| Perception / passive checks | 1 | Character values can be displayed/rolled manually. | No passive check automation or hidden DC flow. | Future Host/Scene layer. |
+| Traps / hazards | 0 | Not represented. | Needs hazard data, detection/disarm workflows, damage/effects. | Future Scene/Encounter layer. |
 
 ## 7. Current Priority Gap List
 

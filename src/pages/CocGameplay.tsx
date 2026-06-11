@@ -310,7 +310,10 @@ export function CocGameplay() {
     const shouldImprove = roll > skill.value;
     const increaseRoll = shouldImprove ? Math.floor(Math.random() * 10) + 1 : 0;
     const previousValue = skill.value;
-    const newValue = previousValue + increaseRoll;
+    const rawNewValue = previousValue + increaseRoll;
+    const cap = 99;
+    const capped = rawNewValue > cap;
+    const newValue = shouldImprove ? Math.min(cap, rawNewValue) : previousValue;
 
     if (shouldImprove) {
       updateSkill(skill.name, newValue);
@@ -326,17 +329,17 @@ export function CocGameplay() {
       kind: 'check',
       title: `成长检定：${skill.name}`,
       summary: shouldImprove
-        ? `${roll} > ${previousValue}，成长 +${increaseRoll}`
+        ? `技能成长 +${increaseRoll}：${previousValue} → ${newValue}${capped ? `（已达上限，原始结果 ${rawNewValue}）` : ''}`
         : `${roll} <= ${previousValue}，未成长`,
       detail: shouldImprove
-        ? `成长检定成功，${skill.name} 从 ${previousValue} 提升到 ${newValue}。`
+        ? `成长检定成功，${skill.name} 从 ${previousValue} 提升到 ${newValue}${capped ? `；99 上限已生效，原始结果 ${rawNewValue}。` : '。'}`
         : `成长检定未通过，${skill.name} 保持 ${previousValue}。`,
       displayValue: roll,
       calculation: shouldImprove
-        ? `1d100=${roll} > ${previousValue}; 1d10=${increaseRoll}; ${previousValue}+${increaseRoll}=${newValue}`
+        ? `1d100=${roll} > ${previousValue}; 1d10=${increaseRoll}; raw ${previousValue}+${increaseRoll}=${rawNewValue}; cap 99 -> ${newValue}`
         : `1d100=${roll} <= ${previousValue}; no improvement`,
       outcome: shouldImprove ? '成长成功' : '未成长',
-      tags: ['growth', 'growth-check', shouldImprove ? 'improved' : 'no-improvement'],
+      tags: ['growth', 'growth-check', shouldImprove ? 'improved' : 'no-improvement', ...(capped ? ['capped'] : [])],
       payload: {
         system: 'coc',
         rollType: 'd100',
@@ -346,11 +349,16 @@ export function CocGameplay() {
         roll,
         improved: shouldImprove,
         increase: increaseRoll,
+        rawNewValue,
         newValue,
+        cap,
+        capped,
       },
     }));
     toast(shouldImprove ? '成长检定成功' : '成长检定未通过', {
-      description: shouldImprove ? `${skill.name} +${increaseRoll}，当前 ${newValue}` : `${skill.name} 保持 ${previousValue}`,
+      description: shouldImprove
+        ? `${skill.name} +${increaseRoll}，当前 ${newValue}${capped ? `（99 上限，原始 ${rawNewValue}）` : ''}`
+        : `${skill.name} 保持 ${previousValue}`,
     });
   };
 

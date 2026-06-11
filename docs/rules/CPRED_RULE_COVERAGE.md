@@ -1,6 +1,6 @@
 # CPRED Rule Coverage Matrix
 
-Last updated: 2026-06-10
+Last updated: 2026-06-11
 
 ## 1. Purpose
 
@@ -135,8 +135,15 @@ CP Gameplay is unified to local RuntimeLogEntry and RollConsole, with componenti
 | Aimed shots | 0 | Deferred. | Combat subsystem later. | P3 |
 | Martial arts | 0 | Deferred. | Combat subsystem later. | P3 |
 | Brawling / melee weapon rules | 0 | Deferred. | Combat subsystem later. | P3 |
+| Drones | 0 | Deferred. | Needs actor/control model, hardware inventory, NET/security links, and encounter state. | P3 |
+| Vehicles | 0 | Deferred. | Needs vehicle stats, movement, combat positioning, damage, and repair workflow. | P3 |
 
 Weapons, armor, and critical injury static data may exist, but full combat is deferred. P1/P2 work should favor manual tracking and UI-assisted workflows rather than attempting full combat in one round.
+
+Combat dependency note:
+- Armor SP / ablation, ammo, aimed shots, autofire, critical injuries, death saves, and full damage pipeline are hard-core platform targets.
+- They should be built after weapon/equipment instances, actor/target references, condition/effect handling, and encounter state are ready.
+- Current CP RED Gameplay can log checks/results, but it is not a complete combat engine.
 
 ## 8. Humanity / Cyberware Coverage
 
@@ -154,6 +161,10 @@ Weapons, armor, and critical injury static data may exist, but full combat is de
 | `computeEmpFromHumanity` / `getCpRuntimeEmp` semantic difference | 1 | Known project note exists. | Must be respected in future refactors. | P1 |
 
 Humanity/EMP pure logic has a foundation. Cyberware inventory install/uninstall is state-only and preserves items. Humanity Loss, therapy, and full cyberpsychosis workflows remain deferred or GM-adjudicated.
+
+Humanity dependency note:
+- Humanity Loss automation, therapy, and cyberpsychosis are planned hard-core CP RED domains.
+- Cyberware install/remove remains state-only until Humanity/EMP runtime semantics and confirmation boundaries are explicitly scheduled.
 
 ## 9. Netrunning Coverage
 
@@ -174,6 +185,10 @@ Humanity/EMP pure logic has a foundation. Cyberware inventory install/uninstall 
 | Netrunning combat | 0 | Not implemented. | Future subsystem. | P3 |
 
 Netrunning is fully deferred and should not enter current Player Gameplay v1/v2.
+
+Netrunning dependency note:
+- NET architecture, Interface actions, programs, Black ICE, nodes, meatspace/NET time, and Netrunning combat are hard-core platform targets.
+- They depend on actor/action/resource/equipment layers, scene/encounter context, and eventually GM/Host tooling.
 
 ## 10. Market / Gear / Economy Coverage
 
@@ -254,17 +269,15 @@ Priority guidance:
 
 ## 13. Recommended Next Steps
 
-1. CP RED Creator / Sheet Responsibility Audit
-2. CP RED Sheet Responsibility Cleanup v1
-3. CP RED Runtime State Foundation v2
-4. CP RED Gameplay RollConsole RuntimeLogEntry v1
-5. CP RED Skill Check Wiring v1
-6. CP RED HP / Humanity Runtime Panel v1
-7. CP RED Weapon / Damage Display v1
-8. CP RED Critical Injury Manual Tracking v1
-9. Armor / SP / ablation later
-10. Netrunning later
-11. GM Console / AI Host later
+1. CP RED armor SP / ablation planning
+2. CP RED ammo tracking planning
+3. CP RED damage pipeline architecture
+4. CP RED critical injury manual tracking v1
+5. CP RED Humanity / therapy / cyberpsychosis workflow planning
+6. CP RED role ability coverage audit
+7. CP RED Netrunning architecture doc / audit
+8. CP RED vehicles / drones later
+9. GM Console / AI Host later
 
 ## 14. Current Freeze Note
 

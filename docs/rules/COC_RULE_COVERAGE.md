@@ -71,7 +71,7 @@ Sheet Responsibility Cleanup v1 is complete. Sheet is display plus downtime main
 | SAN Check | 5 | CocGameplay can run SAN Check, apply basic SAN loss, and write RuntimeLogEntry results. | Full insanity automation remains deferred. | P1 |
 | Luck Check | 3 | d100 evaluator can cover checks. | No dedicated Luck Check UI. | P1 |
 | Luck spending | 5 | Eligible failed skill checks can spend Luck to become regular success. | Advanced restrictions and Keeper approval deferred. | P1 |
-| Pushed Roll | 2 | `pushedRollContext` exists. | No UI or consequence workflow. | P2 |
+| Pushed Roll | 5 | Eligible failed non-fumble public skill checks can make one Pushed Roll in CocGameplay and append a RuntimeLogEntry. | Keeper consequence workflow remains deferred. | P1 |
 | Growth marks from successful checks | 5 | Successful public skill checks can be marked for growth in CocGameplay. | Keeper/campaign management remains deferred. | P1 |
 | RollConsole | 5 | CocGameplay has a player RollConsole. | Keeper Console remains deferred. | P0 |
 | RuntimeLogEntry[] | 5 | CocGameplay local logs use RuntimeLogEntry[]. | No store/schema persistence by design. | P0 |
@@ -96,7 +96,7 @@ Runtime state, store actions, player skill checks, basic SAN Check, basic Luck S
 | Target value | 5 | Skill value is used as the target for public skill checks. | Opposed/hidden targets remain deferred. | P0 |
 | Bonus / penalty dice | 0 | Not implemented. | Needs COC-specific roll UI and evaluator. | P1 |
 | Opposed rolls | 0 | Not implemented. | Needs target/opposed result model. | P2 |
-| Pushed roll | 2 | Context container exists. | No UI or consequences. | P2 |
+| Pushed roll | 5 | Eligible failed non-fumble public skill checks can push once and log the result. | Failed pushed consequences remain Keeper-adjudicated. | P1 |
 | Luck spending after failure | 5 | Eligible failed public skill checks can spend Luck to become regular success. | Advanced restrictions and Keeper approval deferred. | P1 |
 | Growth mark eligibility | 5 | Successful public skill checks can create a pending growth mark prompt in CocGameplay. | Full Keeper review workflow deferred. | P1 |
 
@@ -139,13 +139,13 @@ Basic SAN Check and manual runtime flags exist in CocGameplay. Full insanity aut
 | Luck spending | 5 | Eligible failed skill checks can spend Luck to become regular success. | Advanced restrictions and Keeper approval deferred. | P1 |
 | Luck check | 3 | d100 evaluator can support it. | No dedicated UI/log integration. | P1 |
 | Forbidden Luck spend cases | 0 | Not implemented. | Needs rule-specific validation. | P2 |
-| Pushed Roll eligibility | 2 | Context state exists. | No eligibility UI. | P2 |
-| Pushed Roll consequences | 0 | Not implemented. | Requires Keeper/AI/host adjudication. | P2 |
+| Pushed Roll eligibility | 5 | CocGameplay exposes a Pushed Roll option for eligible failed non-fumble skill checks. | Advanced Keeper approval/restriction workflow deferred. | P1 |
+| Pushed Roll consequences | 1 | Failed Pushed Roll logs Keeper adjudication / escalated consequence text. | Actual consequence application requires Keeper/AI/host adjudication. | P2 |
 | Skill growth marks | 5 | Runtime marks, Sheet checkbox, and CocGameplay mark/clear controls exist. | Full campaign advancement remains deferred. | P1 |
 | Improvement check | 5 | CocGameplay can run a marked skill growth check. | Keeper Console / campaign phase workflow deferred. | P1 |
-| 1d10 improvement | 5 | Successful growth check applies raw `previousValue + 1d10` through existing skill update action. | Maximum skill cap 99 and occupation/archetype progression automation deferred. | P1 |
+| 1d10 improvement | 5 | Successful growth check rolls 1d10 and caps final skill value at 99. | Occupation/archetype progression automation deferred. | P1 |
 
-V1 note: improvement currently applies raw `previousValue + 1d10`; the COC 7e maximum skill cap of 99 is deferred.
+V1 note: improvement records raw `previousValue + 1d10`, final capped value, `cap: 99`, and `capped` in the RuntimeLogEntry payload.
 
 ## 10. Keeper Console / Hidden Results Coverage
 
@@ -162,6 +162,21 @@ V1 note: improvement currently applies raw `previousValue + 1d10`; the COC 7e ma
 | Scene / clue management | 0 | Not implemented. | Future module/scene layer. | P3 |
 
 All Keeper Console and hidden-result features are deferred. They do not belong in Player Gameplay.
+
+## 10.1 Campaign / Investigation Domain Coverage
+
+| Rule Area | Current Level | Current Status | Gaps | Priority |
+|---|---:|---|---|---|
+| Opposed rolls | 0 | Not implemented beyond normal public checks. | Needs opposed result model and target/actor references. | P2 |
+| Bonus / penalty dice | 0 | Not implemented. | Needs COC-specific roll input and evaluator extension. | P1 |
+| Sanity / madness depth | 1 | Basic SAN Check and manual flags exist. | Full temporary/indefinite insanity workflows, bouts, and Keeper prompts deferred. | P2 |
+| Bouts of Madness | 0 | Not implemented. | Needs tables, timing, narration, and Keeper control. | P3 |
+| Phobias / manias | 0 | Not implemented. | Needs structured symptoms and long-term character effects. | P3 |
+| Major wounds / dying / healing | 3 | Pure HP delta helpers and manual runtime flags exist. | Medical workflow, natural healing, CON death flow deferred. | P2 |
+| Chases | 0 | Not implemented. | Needs movement, hazards, participant order, and scene state. | P3 |
+| Keeper clue flow | 0 | Not implemented. | Needs hidden clue checks, reveal controls, and scene/clue management. | P3 |
+| Mythos tomes / magic | 0 | Not implemented as structured workflow. | Needs tomes, spells, SAN costs, study time, and Keeper adjudication. | P3 |
+| Campaign / session log | 0 | Local RuntimeLogEntry history exists only inside Gameplay sessions. | Persistent campaign log and Keeper notes deferred. | P3 |
 
 ## 11. RuntimeLogEntry Payload Recommendation
 
@@ -182,6 +197,9 @@ Recommended COC payload fields:
 - `insanityTriggered`
 - `growthRoll`
 - `growthIncrease`
+- `rawNewValue`
+- `cap`
+- `capped`
 - `skillValueBefore`
 - `skillValueAfter`
 
@@ -193,15 +211,14 @@ Priority guidance:
 
 ## 12. Recommended Next Steps
 
-1. COC Runtime State UI Panel v1
-2. COC Gameplay RollConsole RuntimeLogEntry v1
-3. COC Skill Check Wiring v1
-4. COC SAN Check v1
-5. COC Luck Spending v1
-6. COC Pushed Roll v1
-7. COC Growth Check v1
-8. COC Insanity Flags / Prompts v1
-9. Keeper Console later
+1. COC bonus / penalty dice v1
+2. COC opposed rolls v1
+3. COC Keeper clue flow planning
+4. COC insanity flags / prompts v1
+5. COC major wound / dying workflow v1
+6. COC mythos tomes / magic planning
+7. Persistent campaign / session log later
+8. Keeper Console later
 
 ## 13. Current Freeze Note
 
