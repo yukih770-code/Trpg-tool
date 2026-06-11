@@ -141,7 +141,7 @@ COC Pushed Roll v1 scope:
 
 COC Growth Check v1 scope:
 - Successful public skill checks can be marked for growth using existing persisted `runtime.skillGrowthMarks`.
-- Marked skills can run a minimum growth check in CocGameplay: roll d100, improve only when roll is greater than current skill, then add 1d10 to the skill value.
+- Marked skills can run a minimum growth check in CocGameplay: roll d100, improve only when roll is greater than current skill, then write `min(99, previousValue + 1d10)`.
 - Growth success now applies maximum skill cap 99; the RuntimeLogEntry payload records `rawNewValue`, `cap`, and `capped`.
 - Growth mark, clear, and resolution events write local `RuntimeLogEntry` records for the CocGameplay RollConsole.
 - No Keeper Console, full campaign advancement, occupation/archetype progression, full insanity automation, map, multiplayer, AI Host, DND, or CP RED changes.

@@ -145,7 +145,7 @@ Basic SAN Check and manual runtime flags exist in CocGameplay. Full insanity aut
 | Improvement check | 5 | CocGameplay can run a marked skill growth check. | Keeper Console / campaign phase workflow deferred. | P1 |
 | 1d10 improvement | 5 | Successful growth check rolls 1d10 and caps final skill value at 99. | Occupation/archetype progression automation deferred. | P1 |
 
-V1 note: improvement records raw `previousValue + 1d10`, final capped value, `cap: 99`, and `capped` in the RuntimeLogEntry payload.
+V1 note: growth success writes `min(99, previousValue + 1d10)` and records raw `previousValue + 1d10`, final capped value, `cap: 99`, and `capped` in the RuntimeLogEntry payload.
 
 ## 10. Keeper Console / Hidden Results Coverage
 

@@ -6,8 +6,8 @@
 
 ## Task
 
-- ID: COC Growth Skill Cap v1
-- Name: COC Growth Skill Cap v1
+- ID: COC Growth Skill Cap 99 v1
+- Name: COC Growth Skill Cap 99 v1
 - Goal: Cap COC skill growth results at 99 while preserving the existing Growth Check v1 flow.
 - Phase: P1
 
@@ -64,7 +64,7 @@ Select-String -Path src\pages\CocGameplay.tsx,src\pages\cocGameplay\CocChecksPan
 ## Completion Criteria
 
 - Growth success uses `rawNewValue = previousValue + increaseRoll`.
-- Final skill value uses `newValue = Math.Min(99, rawNewValue)` equivalent.
+- Final skill value uses `newValue = Math.min(99, rawNewValue)` equivalent.
 - RuntimeLogEntry payload records `rawNewValue`, `cap`, and `capped`.
 - Growth Check UI mentions the 99 cap.
 - Docs no longer describe the 99 cap as deferred.
