@@ -1,6 +1,6 @@
 # COC Rule Coverage Matrix
 
-Last updated: 2026-06-10
+Last updated: 2026-06-11
 
 ## 1. Purpose
 
@@ -67,12 +67,12 @@ Sheet Responsibility Cleanup v1 is complete. Sheet is display plus downtime main
 | HP / MP / SAN / Luck changes | 5 | CocGameplay uses existing runtime store actions. | No full SAN/Luck workflow automation. | P0 |
 | Major Wound / Dying / Unconscious | 5 | Runtime flags can be displayed/toggled manually. | No automatic Keeper prompts or full medical workflow. | P1 |
 | Temporary / Indefinite Insanity flags | 5 | Runtime flags can be displayed/toggled manually. | No full insanity workflow. | P2 |
-| Skill Checks | 5 | Public skill checks run in CocGameplay and write RuntimeLogEntry results. | Pushed Roll and growth resolution remain deferred. | P0 |
+| Skill Checks | 5 | Public skill checks run in CocGameplay and write RuntimeLogEntry results; successful checks can be marked for growth. | Advanced growth/campaign management remains deferred. | P0 |
 | SAN Check | 5 | CocGameplay can run SAN Check, apply basic SAN loss, and write RuntimeLogEntry results. | Full insanity automation remains deferred. | P1 |
 | Luck Check | 3 | d100 evaluator can cover checks. | No dedicated Luck Check UI. | P1 |
-| Luck spending | 5 | Eligible failed skill checks can spend Luck to become regular success. | Pushed Roll, growth, and advanced restrictions remain deferred. | P1 |
+| Luck spending | 5 | Eligible failed skill checks can spend Luck to become regular success. | Advanced restrictions and Keeper approval deferred. | P1 |
 | Pushed Roll | 2 | `pushedRollContext` exists. | No UI or consequence workflow. | P2 |
-| Growth marks from successful checks | 2 | Growth mark state exists. | No automatic eligibility or marking from checks. | P2 |
+| Growth marks from successful checks | 5 | Successful public skill checks can be marked for growth in CocGameplay. | Keeper/campaign management remains deferred. | P1 |
 | RollConsole | 5 | CocGameplay has a player RollConsole. | Keeper Console remains deferred. | P0 |
 | RuntimeLogEntry[] | 5 | CocGameplay local logs use RuntimeLogEntry[]. | No store/schema persistence by design. | P0 |
 | Latest Result | 5 | Derived from latest local RuntimeLogEntry. | No visibility filtering. | P0 |
@@ -80,7 +80,7 @@ Sheet Responsibility Cleanup v1 is complete. Sheet is display plus downtime main
 | Result visibility | 0 | Documented only. | No filtering/reveal. | P3 |
 | Keeper Console boundary | 1 | Documented. | No Keeper Console implementation. | P3 |
 
-Runtime state, store actions, player skill checks, basic SAN Check, basic Luck Spending, RollConsole, and local RuntimeLogEntry history are wired in CocGameplay. Keeper Console, `gmOnly` visibility, Pushed Roll, growth resolution, and full SAN / insanity automation remain deferred.
+Runtime state, store actions, player skill checks, basic SAN Check, basic Luck Spending, basic Growth Check, RollConsole, and local RuntimeLogEntry history are wired in CocGameplay. Keeper Console, `gmOnly` visibility, full campaign management, and full SAN / insanity automation remain deferred.
 
 ## 6. Skill Check Coverage
 
@@ -98,7 +98,7 @@ Runtime state, store actions, player skill checks, basic SAN Check, basic Luck S
 | Opposed rolls | 0 | Not implemented. | Needs target/opposed result model. | P2 |
 | Pushed roll | 2 | Context container exists. | No UI or consequences. | P2 |
 | Luck spending after failure | 5 | Eligible failed public skill checks can spend Luck to become regular success. | Advanced restrictions and Keeper approval deferred. | P1 |
-| Growth mark eligibility | 2 | Growth mark state exists. | No automatic mark from successful checks. | P2 |
+| Growth mark eligibility | 5 | Successful public skill checks can create a pending growth mark prompt in CocGameplay. | Full Keeper review workflow deferred. | P1 |
 
 ## 7. SAN / Insanity Coverage
 
@@ -141,9 +141,11 @@ Basic SAN Check and manual runtime flags exist in CocGameplay. Full insanity aut
 | Forbidden Luck spend cases | 0 | Not implemented. | Needs rule-specific validation. | P2 |
 | Pushed Roll eligibility | 2 | Context state exists. | No eligibility UI. | P2 |
 | Pushed Roll consequences | 0 | Not implemented. | Requires Keeper/AI/host adjudication. | P2 |
-| Skill growth marks | 4 | Runtime marks and Sheet checkbox exist. | No auto mark from checks. | P1 |
-| Improvement check | 0 | Not implemented. | Needs downtime growth phase. | P2 |
-| 1d10 improvement | 0 | Not implemented. | Needs growth resolution workflow. | P2 |
+| Skill growth marks | 5 | Runtime marks, Sheet checkbox, and CocGameplay mark/clear controls exist. | Full campaign advancement remains deferred. | P1 |
+| Improvement check | 5 | CocGameplay can run a marked skill growth check. | Keeper Console / campaign phase workflow deferred. | P1 |
+| 1d10 improvement | 5 | Successful growth check applies raw `previousValue + 1d10` through existing skill update action. | Maximum skill cap 99 and occupation/archetype progression automation deferred. | P1 |
+
+V1 note: improvement currently applies raw `previousValue + 1d10`; the COC 7e maximum skill cap of 99 is deferred.
 
 ## 10. Keeper Console / Hidden Results Coverage
 
@@ -178,11 +180,15 @@ Recommended COC payload fields:
 - `mpChange`
 - `majorWoundTriggered`
 - `insanityTriggered`
+- `growthRoll`
+- `growthIncrease`
+- `skillValueBefore`
+- `skillValueAfter`
 
 Priority guidance:
 
 - P0: `d100`, `skillValue`, `successLevel`, `outcome`
-- P1: `luckSpent`, `isPushed`, `sanLoss`, `hpChange`
+- P1: `luckSpent`, `isPushed`, `sanLoss`, `hpChange`, growth check fields
 - P2/P3: full insanity details and Keeper reveal metadata
 
 ## 12. Recommended Next Steps
@@ -193,8 +199,9 @@ Priority guidance:
 4. COC SAN Check v1
 5. COC Luck Spending v1
 6. COC Pushed Roll v1
-7. COC Insanity Flags / Prompts v1
-8. Keeper Console later
+7. COC Growth Check v1
+8. COC Insanity Flags / Prompts v1
+9. Keeper Console later
 
 ## 13. Current Freeze Note
 

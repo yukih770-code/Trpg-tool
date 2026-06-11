@@ -30,15 +30,23 @@ type PendingPushedRoll = {
   originalRoll: number;
 };
 
+type PendingGrowthMark = {
+  sourceEntryId: string;
+  skillName: string;
+  skillValue: number;
+};
+
 export function CocGameplay() {
   const {
     character,
+    updateSkill,
     initializeRuntime,
     changeHp,
     changeMp,
     changeSan,
     changeLuck,
     setCocFlag,
+    toggleSkillGrowthMark,
   } = useCocStore();
   const [diceTray, setDiceTray] = useState<Record<string, number>>({});
   const [combatLog, setCombatLog] = useState<RuntimeLogEntry[]>([
@@ -46,6 +54,7 @@ export function CocGameplay() {
   ]);
   const [pendingLuckSpend, setPendingLuckSpend] = useState<PendingLuckSpend | null>(null);
   const [pendingPushedRoll, setPendingPushedRoll] = useState<PendingPushedRoll | null>(null);
+  const [pendingGrowthMark, setPendingGrowthMark] = useState<PendingGrowthMark | null>(null);
 
   const runtime = character.runtime;
   const runtimePools = {
@@ -68,6 +77,7 @@ export function CocGameplay() {
     isTemporarilyInsane: false,
     isIndefinitelyInsane: false,
   };
+  const skillGrowthMarks = runtime?.skillGrowthMarks ?? {};
 
   const pushLog = (entry: RuntimeLogEntry) => {
     setCombatLog(prev => [entry, ...prev].slice(0, 20));
@@ -229,11 +239,119 @@ export function CocGameplay() {
         skillValue: skill.value,
         originalRoll: roll,
       });
+      setPendingGrowthMark(null);
     } else {
       setPendingLuckSpend(null);
       setPendingPushedRoll(null);
+      setPendingGrowthMark(result.isSuccess ? {
+        sourceEntryId: entry.id,
+        skillName: skill.name,
+        skillValue: skill.value,
+      } : null);
     }
     toast(result.isSuccess ? '技能检定成功' : '技能检定失败', { description: msg });
+  };
+
+  const handleMarkSkillGrowth = () => {
+    if (!pendingGrowthMark) return;
+
+    const alreadyMarked = Boolean(skillGrowthMarks[pendingGrowthMark.skillName]);
+    if (!alreadyMarked) {
+      toggleSkillGrowthMark(pendingGrowthMark.skillName);
+    }
+
+    pushLog(createCocLogEntry({
+      kind: 'system',
+      title: `成长标记：${pendingGrowthMark.skillName}`,
+      summary: alreadyMarked ? '该技能已经标记成长' : '已标记成长检查',
+      displayValue: alreadyMarked ? 'MARKED' : 'MARK',
+      calculation: `${pendingGrowthMark.skillName} successful check -> growth mark`,
+      outcome: alreadyMarked ? '已存在' : '已标记',
+      tags: ['growth', 'growth-mark', alreadyMarked ? 'already-marked' : 'marked'],
+      payload: {
+        system: 'coc',
+        sourceEntryId: pendingGrowthMark.sourceEntryId,
+        skillName: pendingGrowthMark.skillName,
+        skillValue: pendingGrowthMark.skillValue,
+        marked: true,
+        alreadyMarked,
+      },
+    }));
+    toast(alreadyMarked ? '成长标记已存在' : '已标记成长检查', {
+      description: pendingGrowthMark.skillName,
+    });
+    setPendingGrowthMark(null);
+  };
+
+  const handleClearGrowthMark = (skillName: string) => {
+    if (!skillGrowthMarks[skillName]) return;
+
+    toggleSkillGrowthMark(skillName);
+    pushLog(createCocLogEntry({
+      kind: 'system',
+      title: `清除成长标记：${skillName}`,
+      summary: '已清除成长标记',
+      displayValue: 'CLEAR',
+      calculation: `${skillName} growth mark cleared manually`,
+      outcome: '已清除',
+      tags: ['growth', 'growth-mark', 'cleared'],
+      payload: {
+        system: 'coc',
+        skillName,
+        marked: false,
+      },
+    }));
+    toast('已清除成长标记', { description: skillName });
+  };
+
+  // AI-LANDMARK: COC_GROWTH_CHECK_RESOLUTION
+  const handleGrowthCheck = (skill: CocSkill) => {
+    const roll = Math.floor(Math.random() * 100) + 1;
+    const shouldImprove = roll > skill.value;
+    const increaseRoll = shouldImprove ? Math.floor(Math.random() * 10) + 1 : 0;
+    const previousValue = skill.value;
+    const newValue = previousValue + increaseRoll;
+
+    if (shouldImprove) {
+      updateSkill(skill.name, newValue);
+    }
+    if (skillGrowthMarks[skill.name]) {
+      toggleSkillGrowthMark(skill.name);
+    }
+    if (pendingGrowthMark?.skillName === skill.name) {
+      setPendingGrowthMark(null);
+    }
+
+    pushLog(createCocLogEntry({
+      kind: 'check',
+      title: `成长检定：${skill.name}`,
+      summary: shouldImprove
+        ? `${roll} > ${previousValue}，成长 +${increaseRoll}`
+        : `${roll} <= ${previousValue}，未成长`,
+      detail: shouldImprove
+        ? `成长检定成功，${skill.name} 从 ${previousValue} 提升到 ${newValue}。`
+        : `成长检定未通过，${skill.name} 保持 ${previousValue}。`,
+      displayValue: roll,
+      calculation: shouldImprove
+        ? `1d100=${roll} > ${previousValue}; 1d10=${increaseRoll}; ${previousValue}+${increaseRoll}=${newValue}`
+        : `1d100=${roll} <= ${previousValue}; no improvement`,
+      outcome: shouldImprove ? '成长成功' : '未成长',
+      tags: ['growth', 'growth-check', shouldImprove ? 'improved' : 'no-improvement'],
+      payload: {
+        system: 'coc',
+        rollType: 'd100',
+        checkType: 'growth',
+        skillName: skill.name,
+        previousValue,
+        roll,
+        improved: shouldImprove,
+        increase: increaseRoll,
+        newValue,
+      },
+    }));
+    toast(shouldImprove ? '成长检定成功' : '成长检定未通过', {
+      description: shouldImprove ? `${skill.name} +${increaseRoll}，当前 ${newValue}` : `${skill.name} 保持 ${previousValue}`,
+    });
   };
 
   const handleSpendLuck = () => {
@@ -457,6 +575,12 @@ export function CocGameplay() {
           <CocChecksPanel
             skills={character.skills}
             onRollSkill={handleSkillCheck}
+            growthMarks={skillGrowthMarks}
+            pendingGrowthMark={pendingGrowthMark}
+            onMarkGrowth={handleMarkSkillGrowth}
+            onClearPendingGrowth={() => setPendingGrowthMark(null)}
+            onGrowthCheck={handleGrowthCheck}
+            onClearGrowthMark={handleClearGrowthMark}
             pendingLuckSpend={pendingLuckSpend ? {
               ...pendingLuckSpend,
               canSpend: pendingLuckSpend.neededLuck <= runtimePools.luck.current,

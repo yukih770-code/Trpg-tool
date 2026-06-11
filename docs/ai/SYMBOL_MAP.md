@@ -61,6 +61,8 @@ This file helps AI quickly locate important types, helper functions, store actio
 - COC RollConsole panel: `src/pages/cocGameplay/CocRollConsolePanel.tsx`
 - COC Pushed Roll handler: `src/pages/CocGameplay.tsx`
 - `AI-LANDMARK: COC_PUSHED_ROLL_RUNTIME_LOG`: `src/pages/CocGameplay.tsx`
+- COC Growth Check handler: `src/pages/CocGameplay.tsx`
+- `AI-LANDMARK: COC_GROWTH_CHECK_RESOLUTION`: `src/pages/CocGameplay.tsx`
 
 ## Shared Logs
 

@@ -94,6 +94,7 @@ DND 2024 Class Resources and Spell Preparation Closure v1 scope:
 | COC Skill Check Wiring v1 | ✅ Done |
 | COC SAN Check + Luck Spending v1 | ✅ Done |
 | COC Pushed Roll v1 | ✅ Done |
+| COC Growth Check v1 | ✅ Done |
 | COC Gameplay Componentization v1 | ✅ Done |
 | COC Creator skill point constraint v1 | ✅ Done |
 | COC Sheet responsibility cleanup v1 | ✅ Done |
@@ -131,6 +132,13 @@ COC Pushed Roll v1 scope:
 - Pushed Roll does not modify the original failed skill check entry; it appends a new local `RuntimeLogEntry` with `pushed-roll`, source entry id, result tags, and Keeper-adjudication note on failure.
 - Luck Spending and Pushed Roll are mutually cleared after either correction path is used; no store/schema/migration changes.
 - No full Keeper Console, full insanity automation, Growth Check, AI Host, map, multiplayer, DND, or CP RED changes.
+
+COC Growth Check v1 scope:
+- Successful public skill checks can be marked for growth using existing persisted `runtime.skillGrowthMarks`.
+- Marked skills can run a minimum growth check in CocGameplay: roll d100, improve only when roll is greater than current skill, then add 1d10 to the skill value.
+- Growth mark, clear, and resolution events write local `RuntimeLogEntry` records for the CocGameplay RollConsole.
+- V1 simplification: skill growth writes raw `previousValue + 1d10`; the COC 7e standard maximum skill cap of 99 is deferred.
+- No Keeper Console, full campaign advancement, occupation/archetype progression, full insanity automation, map, multiplayer, AI Host, DND, or CP RED changes.
 
 COC Gameplay Componentization v1 scope:
 - `CocGameplay.tsx` now orchestrates local state, runtime handlers, roll handlers, and panel composition while COC Gameplay UI sections live under `src/pages/cocGameplay/`.

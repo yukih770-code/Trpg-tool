@@ -48,6 +48,9 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] COC Gameplay — eligible failed skill check can spend Luck; Luck decreases and a RuntimeLogEntry is appended
 - [ ] COC Gameplay — eligible failed non-fumble skill check can make one Pushed Roll; original failed entry remains unchanged and a new RuntimeLogEntry is appended
 - [ ] COC Gameplay — Pushed Roll failure shows Keeper adjudication / escalated consequence text; fumble cannot spend Luck
+- [ ] COC Gameplay — successful skill check can be marked for growth using the existing runtime growth mark state
+- [ ] COC Gameplay — marked skill can run a growth check; roll greater than current skill increases value by 1d10 and writes RuntimeLogEntry
+- [ ] COC Gameplay — growth marks can be manually cleared and do not require Keeper Console / campaign management
 - [ ] COC Gameplay — RuntimeLogEntry history log updates after skill checks / runtime changes / free dice rolls
 
 ### Cyberpunk RED
