@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useCharacterStore } from '../store/characterStore';
+import { useCharacterStore, type DndSpellcastingResourceConsumption } from '../store/characterStore';
 import { Button } from '../../components/ui/button';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { getAvailableSpells, getAvailableClasses, getAvailableFeats } from '../lib/mod-utils';
@@ -116,7 +116,7 @@ export function Gameplay() {
     restLong,
     modifyHp,
     updateSpellbook,
-    consumeSpellSlot,
+    consumeSpellcastingResource,
     initializeRuntimeResources,
     updateClassResourceCurrent,
     resetClassResource,
@@ -165,19 +165,80 @@ export function Gameplay() {
     { name: '游说', attr: 'Cha' },
   ];
 
-  const castSpell = (spellName: string, level: number) => {
-    if (level === 0) {
-      toast(`作为戏法施展了 ${spellName}!`);
-      return;
+  const describeSpellcastingResource = (
+    result: DndSpellcastingResourceConsumption,
+    spellName: string,
+    spellLevel: number,
+  ) => {
+    if (result.resourceType === 'cantrip') {
+      return {
+        summary: `作为戏法施展 ${spellName}`,
+        detail: `${spellName} 是戏法，不消耗法术位。`,
+        displayValue: '戏法',
+        calculation: 'Cantrip: no spell slot consumed',
+        outcome: '已施展',
+      };
     }
-    
-    if (consumeSpellSlot(level)) {
-      toast(`内源法力涌动...`, {
-        description: `消耗了 1 个 ${level}环 法术位，施展了 ${spellName}!`
+
+    const resourceLabel = result.resourceType === 'pactMagic' ? '契约魔法位' : `${result.slotLevel ?? spellLevel}环法术位`;
+    const slotText = `${result.previousSlots ?? 0}->${result.remainingSlots ?? 0}/${result.maxSlots ?? 0}`;
+    return {
+      summary: result.ok
+        ? `消耗 1 个 ${resourceLabel} 施展 ${spellName}`
+        : `${resourceLabel}不足，无法施展 ${spellName}`,
+      detail: result.ok
+        ? `${resourceLabel} ${slotText}。未处理目标、伤害、豁免或专注。`
+        : result.reason ?? `${resourceLabel}不足。`,
+      displayValue: result.ok ? `${result.remainingSlots ?? 0}/${result.maxSlots ?? 0}` : '不足',
+      calculation: result.ok
+        ? `${resourceLabel}: ${slotText}`
+        : `${resourceLabel}: ${result.previousSlots ?? 0}/${result.maxSlots ?? 0}`,
+      outcome: result.ok ? '已施展' : '资源不足',
+    };
+  };
+
+  const castSpell = (spellName: string, level: number) => {
+    const result = consumeSpellcastingResource(level);
+    const resourceDescription = describeSpellcastingResource(result, spellName, level);
+    const entry = createDndLogEntry({
+      kind: 'action',
+      title: `施法：${spellName}`,
+      summary: resourceDescription.summary,
+      detail: resourceDescription.detail,
+      displayValue: resourceDescription.displayValue,
+      calculation: resourceDescription.calculation,
+      outcome: resourceDescription.outcome,
+      tags: [
+        'spellcasting',
+        result.resourceType,
+        result.ok ? 'cast' : 'insufficient-resource',
+        ...(result.pactMagic ? ['pactMagic'] : []),
+      ],
+      payload: {
+        spellName,
+        spellLevel: level,
+        resourceType: result.resourceType,
+        slotLevel: result.slotLevel,
+        previousSlots: result.previousSlots,
+        remainingSlots: result.remainingSlots,
+        maxSlots: result.maxSlots,
+        pactMagic: result.pactMagic,
+        source: 'spellcasting',
+        success: result.ok,
+        reason: result.reason,
+      },
+    });
+    setCombatLog(prev => [entry, ...prev].slice(0, 20));
+
+    if (result.ok) {
+      toast(level === 0 ? `作为戏法施展了 ${spellName}!` : `内源法力涌动...`, {
+        description: level === 0
+          ? `${spellName} 不消耗法术位。`
+          : resourceDescription.summary,
       });
     } else {
       toast.error(`法力不足！`, {
-        description: `你没有剩余的 ${level}环 法术位了。`
+        description: result.reason ?? `没有可用的施法资源。`
       });
     }
   };

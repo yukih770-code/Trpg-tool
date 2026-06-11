@@ -4,6 +4,17 @@ import { CharacterData, AttributeName, SkillName, SpellInfo, CustomMod, CURRENT_
 import { migrateCharacter } from '../lib/characterMigration';
 import { initializeClassResourcesForCharacter, refreshClassResourcesForCharacter } from '../lib/dnd2024/resource-utils';
 
+export type DndSpellcastingResourceConsumption = {
+  ok: boolean;
+  resourceType: 'cantrip' | 'spellSlot' | 'pactMagic';
+  slotLevel?: number;
+  previousSlots?: number;
+  remainingSlots?: number;
+  maxSlots?: number;
+  pactMagic?: boolean;
+  reason?: string;
+};
+
 const initialStats = { base: 8, pointbuy: 0, racebonus: 0, extrabonus: 0 };
 
 function clampResourceCurrent(value: number, max: number): number {
@@ -111,6 +122,7 @@ interface CharacterState {
   levelUp: (hpIncrease: number, subclass?: string, attrs?: AttributeName[], feat?: string) => void;
   modifyHp: (amount: number) => void;
   updateSpellbook: (known: SpellInfo[], prepared: string[]) => void;
+  consumeSpellcastingResource: (spellLevel: number) => DndSpellcastingResourceConsumption;
   consumeSpellSlot: (level: number) => boolean;
   initializeRuntimeResources: () => void;
   updateClassResourceCurrent: (id: string, nextCurrent: number) => void;
@@ -336,11 +348,72 @@ export const useCharacterStore = create<CharacterState>()(
         }
       })),
 
-      consumeSpellSlot: (level) => {
+      // AI-LANDMARK: DND_SPELLCASTING_RESOURCE_CONSUMPTION
+      consumeSpellcastingResource: (spellLevel) => {
         const state = get();
-        const slots = state.character.spellbook.slots[level];
-        if (!slots || slots.current <= 0) return false;
-        
+        if (spellLevel <= 0) {
+          return {
+            ok: true,
+            resourceType: 'cantrip',
+            slotLevel: 0,
+            previousSlots: undefined,
+            remainingSlots: undefined,
+            maxSlots: undefined,
+            pactMagic: false,
+          };
+        }
+
+        const pactMagic = state.character.pactMagicState;
+        if (pactMagic && spellLevel <= pactMagic.slotLevel) {
+          if (pactMagic.current <= 0) {
+            return {
+              ok: false,
+              resourceType: 'pactMagic',
+              slotLevel: pactMagic.slotLevel,
+              previousSlots: pactMagic.current,
+              remainingSlots: pactMagic.current,
+              maxSlots: pactMagic.max,
+              pactMagic: true,
+              reason: `没有剩余的契约魔法位。`,
+            };
+          }
+
+          const remainingSlots = pactMagic.current - 1;
+          set({
+            character: {
+              ...state.character,
+              pactMagicState: {
+                ...pactMagic,
+                current: remainingSlots,
+              },
+            },
+          });
+          return {
+            ok: true,
+            resourceType: 'pactMagic',
+            slotLevel: pactMagic.slotLevel,
+            previousSlots: pactMagic.current,
+            remainingSlots,
+            maxSlots: pactMagic.max,
+            pactMagic: true,
+          };
+        }
+
+        const slots = state.character.spellbook.slots[spellLevel];
+        if (!slots || slots.current <= 0) {
+          return {
+            ok: false,
+            resourceType: 'spellSlot',
+            slotLevel: spellLevel,
+            previousSlots: slots?.current ?? 0,
+            remainingSlots: slots?.current ?? 0,
+            maxSlots: slots?.max ?? 0,
+            pactMagic: false,
+            reason: `你没有剩余的 ${spellLevel}环 法术位。`,
+          };
+        }
+
+        const remainingSlots = slots.current - 1;
         set({
           character: {
             ...state.character,
@@ -348,12 +421,24 @@ export const useCharacterStore = create<CharacterState>()(
               ...state.character.spellbook,
               slots: {
                 ...state.character.spellbook.slots,
-                [level]: { ...slots, current: slots.current - 1 }
+                [spellLevel]: { ...slots, current: remainingSlots }
               }
             }
           }
         });
-        return true;
+        return {
+          ok: true,
+          resourceType: 'spellSlot',
+          slotLevel: spellLevel,
+          previousSlots: slots.current,
+          remainingSlots,
+          maxSlots: slots.max,
+          pactMagic: false,
+        };
+      },
+
+      consumeSpellSlot: (level) => {
+        return get().consumeSpellcastingResource(level).ok;
       },
 
       initializeRuntimeResources: () => set((state) => {

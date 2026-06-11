@@ -48,6 +48,9 @@ This file helps AI quickly locate important types, helper functions, store actio
 - spell preparation model: `src/lib/dnd2024/spell-preparation-model.ts`
 - progression utilities: `src/lib/dnd2024/progression-utils.ts`
 - class progression data: `src/data/dnd2024/classProgression.ts`
+- unified spellcasting resource consumption: `consumeSpellcastingResource` in `src/store/characterStore.ts`
+- legacy spell slot wrapper: `consumeSpellSlot` in `src/store/characterStore.ts`
+- `AI-LANDMARK: DND_SPELLCASTING_RESOURCE_CONSUMPTION`: `src/store/characterStore.ts`
 
 ## COC Runtime / SAN / Luck
 

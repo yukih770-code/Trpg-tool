@@ -35,6 +35,11 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] DND Gameplay — short rest restores short-rest resources and pact magic slots, then writes a RuntimeLogEntry to RollConsole
 - [ ] DND Gameplay — long rest restores long-rest resources and, by v1 model, also covers short-rest recovery; result writes to RollConsole
 - [ ] DND Gameplay — spell preparation model shows mode, ability, spell slots, pact magic, prepared limit approximation, and deferred hints
+- [ ] DND Gameplay — casting a cantrip writes a structured RuntimeLogEntry without consuming a slot
+- [ ] DND Gameplay — casting a leveled spell consumes exactly one standard spell slot through the unified spellcasting resource path and updates RollConsole Latest Result
+- [ ] DND Gameplay — Warlock / pact caster spellcasting consumes one pact slot through the same spellcasting resource path and logs pact magic metadata
+- [ ] DND Gameplay — attempting to cast without an available standard or pact slot does not consume resources and logs an insufficient-resource RuntimeLogEntry
+- [ ] DND Gameplay — spellcasting does not implement target selection, concentration, damage, or spell effects
 - [ ] DND Sheet — does not own gameplay roll controls; checks/resources are validated in Gameplay
 
 ### Call of Cthulhu

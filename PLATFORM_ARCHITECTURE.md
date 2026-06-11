@@ -86,6 +86,40 @@ This ecosystem must be built on stable schemas, versioning, license metadata, au
 
 Community content support is not a P1 implementation target. It depends on stable Actor / Item / Action / Effect / Scene schemas, content package validation, import safety, and copyright-aware public/private boundaries.
 
+## Platform Shell / Home / Play Workspace Layering
+
+The application should eventually use a platform shell structure. The current main interface is not discarded; it should be preserved as the **Play Workspace**, meaning the active runtime area for ruleset workspaces, character tools, Gameplay, Market, and RollConsole.
+
+The default application entry should eventually become **Platform Home / Dashboard**. Home is not a marketing landing page. It is a workbench for navigation, quick start, current local assets, private import, and visible long-term platform placeholders.
+
+Play Workspace is responsible for active runtime usage. It should preserve the current DND / COC / Cyberpunk RED workflow, including the existing tab-based workspace shape. A Home v1 task must wrap the existing Play Workspace rather than rewriting or splitting it.
+
+Stable v1 decisions:
+
+- Current main interface remains intact as Play Workspace.
+- Home is an outer Platform Shell / Dashboard layer.
+- v1 does not introduce `react-router`.
+- v1 does not implement Campaigns, Community Modules, Content Studio, AI Host, map, multiplayer, account, cloud, marketplace, or multi-character library features.
+- Coming Soon entries must be explicit placeholders and must not look completed.
+- Clicking a placeholder may show a short vision/status explanation, but must not crash or enter an empty fake feature.
+- Shell may read existing store snapshots for navigation context, but must not modify rules logic.
+- Play Workspace internals must not be rewritten for Home v1.
+
+Navigation map:
+
+```text
+Home
+Play
+Campaigns（Coming Soon）
+Community Modules（Coming Soon）
+Private Import
+Content Studio（Coming Soon）
+AI Host（Coming Soon）
+Settings
+```
+
+Home is the default entry. Play enters the preserved current workspace. Future features remain placeholders until their dependency layers are ready.
+
 ## P0-P5 Hard-Core Roadmap
 
 | Phase | Goal | Deliverables | Dependencies | Exit Criteria |
