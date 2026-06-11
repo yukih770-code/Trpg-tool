@@ -16,10 +16,18 @@ import {
 import { rollCocGameplaySanLoss } from './cocGameplay/cocSanUtils';
 
 type PendingLuckSpend = {
+  sourceEntryId: string;
   skillName: string;
   roll: number;
   skillValue: number;
   neededLuck: number;
+};
+
+type PendingPushedRoll = {
+  sourceEntryId: string;
+  skillName: string;
+  skillValue: number;
+  originalRoll: number;
 };
 
 export function CocGameplay() {
@@ -37,6 +45,7 @@ export function CocGameplay() {
     createCocSystemLogEntry('克苏鲁的呼唤游玩面板已就绪。'),
   ]);
   const [pendingLuckSpend, setPendingLuckSpend] = useState<PendingLuckSpend | null>(null);
+  const [pendingPushedRoll, setPendingPushedRoll] = useState<PendingPushedRoll | null>(null);
 
   const runtime = character.runtime;
   const runtimePools = {
@@ -181,7 +190,7 @@ export function CocGameplay() {
     ];
 
     const msg = `${skill.name}: 1d100=${roll} / 目标=${skill.value}，${outcome}`;
-    pushLog(createCocLogEntry({
+    const entry = createCocLogEntry({
       kind: 'check',
       title: `技能检定：${skill.name}`,
       summary: `${roll} / ${skill.value}，${outcome}`,
@@ -204,16 +213,25 @@ export function CocGameplay() {
         isCritical: result.isCritical,
         isFumble: result.isFumble,
       },
-    }));
+    });
+    pushLog(entry);
     if (!result.isSuccess && !result.isFumble && roll > skill.value) {
       setPendingLuckSpend({
+        sourceEntryId: entry.id,
         skillName: skill.name,
         roll,
         skillValue: skill.value,
         neededLuck: roll - skill.value,
       });
+      setPendingPushedRoll({
+        sourceEntryId: entry.id,
+        skillName: skill.name,
+        skillValue: skill.value,
+        originalRoll: roll,
+      });
     } else {
       setPendingLuckSpend(null);
+      setPendingPushedRoll(null);
     }
     toast(result.isSuccess ? '技能检定成功' : '技能检定失败', { description: msg });
   };
@@ -240,6 +258,7 @@ export function CocGameplay() {
       tags: ['luck', 'luck-spending', 'regular'],
       payload: {
         system: 'coc',
+        sourceEntryId: pendingLuckSpend.sourceEntryId,
         skillName: pendingLuckSpend.skillName,
         roll: pendingLuckSpend.roll,
         skillValue: pendingLuckSpend.skillValue,
@@ -252,6 +271,63 @@ export function CocGameplay() {
       description: `消耗 ${pendingLuckSpend.neededLuck} Luck，剩余 ${luckAfter}`,
     });
     setPendingLuckSpend(null);
+    setPendingPushedRoll(null);
+  };
+
+  // AI-LANDMARK: COC_PUSHED_ROLL_RUNTIME_LOG
+  const handlePushedRoll = () => {
+    if (!pendingPushedRoll) return;
+
+    const roll = Math.floor(Math.random() * 100) + 1;
+    const result = evaluateCocD100Check(pendingPushedRoll.skillValue, roll);
+    const half = Math.floor(pendingPushedRoll.skillValue / 2);
+    const fifth = Math.floor(pendingPushedRoll.skillValue / 5);
+    const outcome = COC_SUCCESS_LEVEL_LABELS[result.successLevel] ?? result.successLevel;
+    const consequence = result.isSuccess
+      ? 'Pushed Roll 成功。'
+      : 'Pushed Roll 失败，后果升级 / Keeper 裁定。';
+
+    pushLog(createCocLogEntry({
+      kind: 'check',
+      title: `Pushed Roll：${pendingPushedRoll.skillName}`,
+      summary: `${roll} / ${pendingPushedRoll.skillValue}，${outcome}`,
+      detail: `${consequence} 原始失败 ${pendingPushedRoll.originalRoll} / ${pendingPushedRoll.skillValue} 保留。`,
+      displayValue: roll,
+      calculation: `Pushed 1d100=${roll}；目标值 ${pendingPushedRoll.skillValue}；困难 ${half}；极难 ${fifth}`,
+      outcome: result.isSuccess ? outcome : `${outcome}；后果升级 / Keeper 裁定`,
+      tags: [
+        'skill',
+        'pushed-roll',
+        result.successLevel,
+        result.isSuccess ? 'success' : 'failure',
+        ...(result.isCritical ? ['critical'] : []),
+        ...(result.isFumble ? ['fumble'] : []),
+        ...(!result.isSuccess ? ['keeper-adjudication'] : []),
+      ],
+      payload: {
+        system: 'coc',
+        rollType: 'd100',
+        checkType: 'skill',
+        pushed: true,
+        sourceEntryId: pendingPushedRoll.sourceEntryId,
+        skillName: pendingPushedRoll.skillName,
+        originalRoll: pendingPushedRoll.originalRoll,
+        d100: roll,
+        target: pendingPushedRoll.skillValue,
+        half,
+        fifth,
+        success: result.isSuccess,
+        successLevel: result.successLevel,
+        isCritical: result.isCritical,
+        isFumble: result.isFumble,
+        consequence: result.isSuccess ? 'none' : 'keeper-adjudication',
+      },
+    }));
+    toast(result.isSuccess ? 'Pushed Roll 成功' : 'Pushed Roll 失败', {
+      description: result.isSuccess ? `${pendingPushedRoll.skillName}：${outcome}` : '后果升级 / Keeper 裁定。',
+    });
+    setPendingLuckSpend(null);
+    setPendingPushedRoll(null);
   };
 
   const handleSanCheck = (lossExpression: string) => {
@@ -388,6 +464,9 @@ export function CocGameplay() {
             } : null}
             onSpendLuck={handleSpendLuck}
             onClearLuckSpend={() => setPendingLuckSpend(null)}
+            pendingPushedRoll={pendingPushedRoll}
+            onPushedRoll={handlePushedRoll}
+            onClearPushedRoll={() => setPendingPushedRoll(null)}
           />
         </div>
 

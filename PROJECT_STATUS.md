@@ -86,6 +86,7 @@ DND 2024 Class Resources and Spell Preparation Closure v1 scope:
 | COC Gameplay RollConsole RuntimeLogEntry v1 | ✅ Done |
 | COC Skill Check Wiring v1 | ✅ Done |
 | COC SAN Check + Luck Spending v1 | ✅ Done |
+| COC Pushed Roll v1 | ✅ Done |
 | COC Gameplay Componentization v1 | ✅ Done |
 | COC Creator skill point constraint v1 | ✅ Done |
 | COC Sheet responsibility cleanup v1 | ✅ Done |
@@ -117,6 +118,12 @@ COC SAN Check + Luck Spending v1 scope:
 - CocGameplay has a minimum SAN Check panel with preset/custom SAN loss expressions, applies SAN loss through existing `changeSan`, and writes local `RuntimeLogEntry` results.
 - Eligible failed public skill checks can spend Luck to become ordinary success through existing `changeLuck`, with a follow-up `RuntimeLogEntry`.
 - No full insanity automation, Pushed Roll, growth resolution, Keeper Console, AI Host, multiplayer, store, schema, migration, DND, or CP RED changes.
+
+COC Pushed Roll v1 scope:
+- Eligible failed non-fumble public skill checks can make one local Pushed Roll from CocGameplay.
+- Pushed Roll does not modify the original failed skill check entry; it appends a new local `RuntimeLogEntry` with `pushed-roll`, source entry id, result tags, and Keeper-adjudication note on failure.
+- Luck Spending and Pushed Roll are mutually cleared after either correction path is used; no store/schema/migration changes.
+- No full Keeper Console, full insanity automation, Growth Check, AI Host, map, multiplayer, DND, or CP RED changes.
 
 COC Gameplay Componentization v1 scope:
 - `CocGameplay.tsx` now orchestrates local state, runtime handlers, roll handlers, and panel composition while COC Gameplay UI sections live under `src/pages/cocGameplay/`.

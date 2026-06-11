@@ -5,6 +5,7 @@ type CocChecksPanelProps = {
   skills: CocSkill[];
   onRollSkill: (skill: CocSkill) => void;
   pendingLuckSpend?: {
+    sourceEntryId?: string;
     skillName: string;
     roll: number;
     skillValue: number;
@@ -14,6 +15,14 @@ type CocChecksPanelProps = {
   } | null;
   onSpendLuck?: () => void;
   onClearLuckSpend?: () => void;
+  pendingPushedRoll?: {
+    sourceEntryId: string;
+    skillName: string;
+    skillValue: number;
+    originalRoll: number;
+  } | null;
+  onPushedRoll?: () => void;
+  onClearPushedRoll?: () => void;
 };
 
 export function CocChecksPanel({
@@ -22,6 +31,9 @@ export function CocChecksPanel({
   pendingLuckSpend,
   onSpendLuck,
   onClearLuckSpend,
+  pendingPushedRoll,
+  onPushedRoll,
+  onClearPushedRoll,
 }: CocChecksPanelProps) {
   const sortedSkills = [...skills].sort((a, b) => a.name.localeCompare(b.name));
 
@@ -30,7 +42,7 @@ export function CocChecksPanel({
       <div className="border-b border-[#2f7f68]/30 pb-2 mb-3">
         <h3 className="text-[#8fb7aa] font-bold uppercase">技能检定 <span className="text-[10px] tracking-widest text-[#8fb7aa]/65 ml-2">SKILL CHECKS</span></h3>
         <p className="mt-1 text-xs text-[#8fb7aa]">
-          本轮执行公开技能检定；失败后可进行最小 Luck Spending。Pushed Roll / 成长结算后续实现。
+          本轮执行公开技能检定；失败后可进行最小 Luck Spending 或 Pushed Roll。成长结算后续实现。
         </p>
       </div>
 
@@ -56,6 +68,32 @@ export function CocChecksPanel({
               variant="outline"
               className="h-7 rounded-none border-[#2f7f68]/55 px-3 text-xs text-[#8fb7aa] hover:bg-[#2f7f68] hover:text-[#06100d]"
               onClick={onClearLuckSpend}
+            >
+              取消
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {pendingPushedRoll && (
+        <div className="mb-3 border border-[#2f7f68]/45 bg-[#0d1815] p-3">
+          <div className="text-xs font-bold text-[#8fb7aa]">Pushed Roll</div>
+          <div className="mt-1 text-xs text-[#d4d4d8]">
+            可对 {pendingPushedRoll.skillName} 追加一次 Pushed Roll。原始失败 {pendingPushedRoll.originalRoll} / {pendingPushedRoll.skillValue} 会保留；失败后果由 Keeper 裁定。
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              className="h-7 rounded-none bg-[#2f7f68] px-3 text-xs font-bold text-[#06100d] hover:bg-[#8fb7aa]"
+              onClick={onPushedRoll}
+            >
+              Pushed Roll
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 rounded-none border-[#2f7f68]/55 px-3 text-xs text-[#8fb7aa] hover:bg-[#2f7f68] hover:text-[#06100d]"
+              onClick={onClearPushedRoll}
             >
               取消
             </Button>

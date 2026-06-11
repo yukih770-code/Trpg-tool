@@ -50,6 +50,8 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Luck Spending location: `src/pages/cocGameplay/CocChecksPanel.tsx` or locate via targeted search if refactored.
 - Runtime state panel: `src/pages/cocGameplay/CocRuntimeStatePanel.tsx`
 - COC RollConsole panel: `src/pages/cocGameplay/CocRollConsolePanel.tsx`
+- COC Pushed Roll handler: `src/pages/CocGameplay.tsx`
+- `AI-LANDMARK: COC_PUSHED_ROLL_RUNTIME_LOG`: `src/pages/CocGameplay.tsx`
 
 ## Shared Logs
 
