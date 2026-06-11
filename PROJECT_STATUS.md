@@ -30,6 +30,7 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | Documentation Governance v1 (`AI_WORKFLOW.md`, `docs/ai/*`, `docs/archive/README.md`) | ✅ Added |
 | Documentation Consolidation v1 | ✅ Done |
 | Hardcore Platform Reorientation v1 | ✅ Done |
+| Open-Source Community Ecosystem Goal | ✅ Planned |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -42,6 +43,7 @@ Architecture phase scope:
 - Clarifies the final target as a hardcore multi-system TRPG platform and the current strategy as staged hard-core architecture.
 - Current phase is P1 Rules Runtime Closure; low-barrier UX is a delivery principle, not a feature ceiling.
 - Full map, multiplayer, AI Host, full DND Wild Shape / Active Form, and outer platform layers remain deferred until Actor/Target, condition/effect, permissions, and schema dependencies are ready.
+- Records open-source community content ecosystem as a long-term hard-core platform goal; public ecosystem content must be original or redistributable, private user import remains separate, and implementation is deferred until stable schemas and content package boundaries exist.
 - No `src` changes, package changes, store changes, schema changes, or migration changes.
 - Freeze planning now has a roadmap; resumed code work must follow it one narrow, single-system phase at a time.
 - Current readiness state: DND, COC, and CP RED Player Gameplay pages are componentized and aligned around local `RuntimeLogEntry[]` RollConsole patterns.

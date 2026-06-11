@@ -76,16 +76,26 @@ Dependency constraints:
 
 These are architecture directions, not current implementation tasks.
 
+## Open-Source Community Content Ecosystem
+
+The platform is intended to support an open-source community content ecosystem as a long-term hard-core platform goal.
+
+Users should eventually be able to create, share, import, remix, and maintain original modules, scenarios, NPCs, bosses, minions, monsters, weapons, items, classes, subclasses, occupations, roles, scenes, maps, handouts, clues, and homebrew rules through validated content packages.
+
+This ecosystem must be built on stable schemas, versioning, license metadata, author/source metadata, safe import boundaries, and a clear separation between public redistributable content and private user-imported content.
+
+Community content support is not a P1 implementation target. It depends on stable Actor / Item / Action / Effect / Scene schemas, content package validation, import safety, and copyright-aware public/private boundaries.
+
 ## P0-P5 Hard-Core Roadmap
 
 | Phase | Goal | Deliverables | Dependencies | Exit Criteria |
 |---|---|---|---|---|
 | P0 Engineering governance / documentation / foundation | Stabilize collaboration, owner docs, test discipline, and cross-system boundaries. | Documentation governance, rule coverage docs, task context, RollConsole baseline. | Existing app foundation. | AI/coding tasks can navigate current truth without stale root docs. |
 | P1 Rules Runtime Closure | Finish system-local player runtime loops for DND / COC / CP RED. | Checks, resources, common rule workflows, local RuntimeLogEntry results. | P0 governance and per-system stores. | Core player-facing runtime flows work without Sheet roll regressions. |
-| P2 Cross-System Gameplay Middle Layer | Extract proven shared concepts without rewriting systems. | Thin Resource / RollResult / Item probes, Actor/Target interface design. | P1 rules runtime in at least two systems. | Shared interfaces are justified by working system-local implementations. |
-| P3 Scene / Encounter / Map | Add scene and encounter substrate before map complexity. | Scene model, NPC-lite, encounter notes, map/token v1. | Actor/Target and condition/effect direction. | Map/token can reference stable actors and scene state. |
-| P4 Multiplayer / Shared State / Permissions | Add synchronized state and visibility semantics. | Permission model, shared runtime state, campaign log persistence. | Structured runtime state, visibility, Host Console boundary. | Public/gmOnly/playerOnly/revealed data can be protected. |
-| P5 AI Host / Module / Plugin Ecosystem | Add extensibility and AI-assisted/AI-hosted workflows. | ProposedCommand runtime, module import, homebrew/ruleset extension, AI Host tools. | Permissions, Action Registry, stable schema, campaign logs. | High-risk AI/module actions are validated and reviewable. |
+| P2 Cross-System Gameplay Middle Layer | Extract proven shared concepts without rewriting systems. | Thin Resource / RollResult / Item probes, Actor/Target interface design; Actor / Item / Condition / Action schema prepares future content packages. | P1 rules runtime in at least two systems. | Shared interfaces are justified by working system-local implementations. |
+| P3 Scene / Encounter / Map | Add scene and encounter substrate before map complexity. | Scene model, NPC-lite, encounter notes, Compendium / Scene / Encounter / Module Package Schema v0, map/token v1. | Actor/Target and condition/effect direction. | Map/token and module packages can reference stable actors, items, scenes, and encounter state. |
+| P4 Multiplayer / Shared State / Permissions | Add synchronized state, visibility semantics, and content boundaries. | Permission model, shared runtime state, campaign log persistence, Private Library, public/private content boundary, Host content management. | Structured runtime state, visibility, Host Console boundary, content package schema. | Public/gmOnly/playerOnly/revealed data and public/private content can be protected. |
+| P5 AI Host / Module / Plugin Ecosystem | Add extensibility, open-source community content ecosystem, and AI-assisted/AI-hosted workflows. | ProposedCommand runtime, module registry, homebrew editor, plugin/extension layer, AI-assisted content creation, AI Host tools. | Permissions, Action Registry, stable schema, campaign logs, validated content packages. | High-risk AI/module actions are validated and reviewable; public content is original or redistributable. |
 
 ## 1. 产品定位
 
