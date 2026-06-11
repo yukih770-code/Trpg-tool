@@ -31,7 +31,7 @@ This file helps AI / Codex / Sonnet quickly locate project structure and task bo
 - Progression utils: `src/lib/dnd2024/progression-utils.ts`
 - Resource utils: `src/lib/dnd2024/resource-utils.ts`
 - Spell preparation model: `src/lib/dnd2024/spell-preparation-model.ts`
-- Coverage doc: `DND_RULE_COVERAGE.md`
+- Coverage doc: `docs/rules/DND_RULE_COVERAGE.md`
 
 ## COC
 
@@ -41,7 +41,7 @@ This file helps AI / Codex / Sonnet quickly locate project structure and task bo
 - SAN panel: `src/pages/cocGameplay/CocSanCheckPanel.tsx`
 - SAN local utils: `src/pages/cocGameplay/cocSanUtils.ts`
 - Shared gameplay helpers: `src/pages/cocGameplay/CocGameplayShared.tsx`
-- Coverage / current status docs: `COC_RULE_COVERAGE.md`, `PROJECT_STATUS.md`, `TEST_CHECKLIST.md`
+- Coverage / current status docs: `docs/rules/COC_RULE_COVERAGE.md`, `PROJECT_STATUS.md`, `TEST_CHECKLIST.md`
 
 ## CP RED
 
@@ -53,7 +53,7 @@ This file helps AI / Codex / Sonnet quickly locate project structure and task bo
 - Types: `src/lib/cp-types.ts`
 - Migration: `src/lib/cpMigration.ts`
 - Utils: `src/lib/cp2024/cp-utils.ts`
-- Coverage doc: `CPRED_RULE_COVERAGE.md`
+- Coverage doc: `docs/rules/CPRED_RULE_COVERAGE.md`
 
 ## Docs
 
@@ -64,13 +64,13 @@ This file helps AI / Codex / Sonnet quickly locate project structure and task bo
 - `docs/ai/TASK_ARCHIVE.md` — compressed one-line task history.
 - `docs/archive/README.md` — archive read policy and firewall.
 - `PLATFORM_ARCHITECTURE.md`
-- `CPRED_RULE_COVERAGE.md`
-- `COC_RULE_COVERAGE.md`
-- `DND_RULE_COVERAGE.md`
-- `GAMEPLAY_UI_CONTRACT.md`
-- `RUNTIME_LOG_ARCHITECTURE.md`
-- `SYSTEM_PAGE_RESPONSIBILITY.md`
-- `IMPLEMENTATION_ROADMAP.md`
+- `docs/rules/CPRED_RULE_COVERAGE.md`
+- `docs/rules/COC_RULE_COVERAGE.md`
+- `docs/rules/DND_RULE_COVERAGE.md`
+- Gameplay UI contract, page responsibility, and RuntimeLogEntry architecture facts are consolidated into `PLATFORM_ARCHITECTURE.md`.
+- Implementation discipline is owned by `AI_WORKFLOW.md`.
+- Historical versions of replaced architecture docs are archived under `docs/archive/2026-06-11-*`.
+- Do not read `docs/archive/` unless it is explicitly listed in `docs/ai/ACTIVE_TASK.md`.
 
 AI workflow note:
 
@@ -80,7 +80,7 @@ AI workflow note:
 
 ## Reading Strategy
 
-1. Read `PROJECT_INDEX.md` first.
+1. Read `docs/ai/PROJECT_INDEX.md` first.
 2. Then read the relevant coverage / status document for the current system.
 3. Read only allowed files and relevant files named by the task.
 4. Prefer `rg` / targeted search over full-project file reads.

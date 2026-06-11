@@ -24,9 +24,9 @@ This file is the single owner for AI collaboration workflow and documentation go
 | Long-term roadmap / platform architecture | `PLATFORM_ARCHITECTURE.md` |
 | AI workflow and documentation governance | `AI_WORKFLOW.md` |
 | Test and acceptance criteria | `TEST_CHECKLIST.md` |
-| Rule coverage level | `*_RULE_COVERAGE.md` |
-| Symbol / function / panel location | `docs/ai/SYMBOL_MAP.md` or `SYMBOL_MAP.md` until relocation |
-| AI project structure map | `docs/ai/PROJECT_INDEX.md` or `PROJECT_INDEX.md` until relocation |
+| Rule coverage level | `docs/rules/*_RULE_COVERAGE.md` |
+| Symbol / function / panel location | `docs/ai/SYMBOL_MAP.md` |
+| AI project structure map | `docs/ai/PROJECT_INDEX.md` |
 | Current task scope card | `docs/ai/ACTIVE_TASK.md` |
 | Task history index | `docs/ai/TASK_ARCHIVE.md` |
 | One-off historical artifacts | `docs/archive/` |
@@ -66,6 +66,19 @@ Clarifications:
 4. A new permanent `.md` requires a new long-lived Source of Truth category.
 5. Markdown must not contain fixed line numbers.
 6. Every P0-P6 phase closure should include a light documentation inventory check.
+
+## Implementation Discipline
+
+- Each code implementation round should target only one system's business code.
+- Documentation-only tasks may span systems when explicitly scoped.
+- Shared type tasks must be explicitly allowed as shared-types-only.
+- Every task must define allowed files, forbidden files, and explicit non-goals.
+- Store, schema, and migration changes should be isolated into their own narrowly reviewed rounds.
+- Gameplay UI changes should not be mixed with rule-data or schema changes.
+- Do not expand task scope to adjacent systems, visual polish, Host Console, AI Host, multiplayer, map, or full combat automation unless the prompt explicitly allows it.
+- Code tasks should read `docs/ai/ACTIVE_TASK.md`, `docs/ai/PROJECT_INDEX.md`, `docs/ai/SYMBOL_MAP.md`, `PROJECT_STATUS.md`, and the relevant coverage document before editing.
+- Use targeted search and symbol navigation; do not rely on stale chat context.
+- Completion reports should list files read, files changed, extra files read and why, verification results, and unexpected changes.
 
 ## Git Safety
 

@@ -20,13 +20,15 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | TRPG_SYSTEM_FEATURE_MATRIX.md | ✅ Added |
 | SYSTEM_PAGE_RESPONSIBILITY.md | ✅ Added |
 | AI_HOST_ARCHITECTURE.md | ✅ Added |
-| COC_RULE_COVERAGE.md | ✅ Added |
-| CPRED_RULE_COVERAGE.md | ✅ Added |
+| docs/rules/COC_RULE_COVERAGE.md | ✅ Added |
+| docs/rules/CPRED_RULE_COVERAGE.md | ✅ Added |
+| docs/rules/DND_RULE_COVERAGE.md | ✅ Added |
 | IMPLEMENTATION_ROADMAP.md | ✅ Added |
 | PLATFORM_ARCHITECTURE.md | ✅ Added |
-| AI Context Index v1 (`PROJECT_INDEX.md`, `SYMBOL_MAP.md`, `TASK_CONTEXT_TEMPLATE.md`) | ✅ Added |
+| AI Context Index v1 (`docs/ai/PROJECT_INDEX.md`, `docs/ai/SYMBOL_MAP.md`, `docs/ai/TASK_CONTEXT_TEMPLATE.md`) | ✅ Added |
 | AI Task Lifecycle v1 (`docs/ai/ACTIVE_TASK.md`, `docs/ai/TASK_ARCHIVE.md`) | ✅ Added |
 | Documentation Governance v1 (`AI_WORKFLOW.md`, `docs/ai/*`, `docs/archive/README.md`) | ✅ Added |
+| Documentation Consolidation v1 | ✅ Done |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -35,6 +37,7 @@ Architecture phase scope:
 - Defines the post-freeze implementation roadmap.
 - Establishes ephemeral active-task context and compressed task archive; no `CODE_LANDMARKS.md`, with markdown navigation based on symbols and `rg -n`.
 - Establishes documentation governance owner rules, archive firewall, active task lifecycle, and exact-file git safety.
+- Consolidates A-class rule/index docs into `docs/rules/` and `docs/ai/`, archives one-off historical architecture docs under `docs/archive/`, and removes stale `CURRENT_PROJECT_STATE.md`.
 - No `src` changes, package changes, store changes, schema changes, or migration changes.
 - Freeze planning now has a roadmap; resumed code work must follow it one narrow, single-system phase at a time.
 - Current readiness state: DND, COC, and CP RED Player Gameplay pages are componentized and aligned around local `RuntimeLogEntry[]` RollConsole patterns.

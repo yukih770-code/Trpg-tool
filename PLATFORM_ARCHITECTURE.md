@@ -236,9 +236,10 @@ Last updated: 2026-06-10
 
 当前已有：
 
-- `AI_HOST_ARCHITECTURE.md`
+- Current source of truth: this section.
 - AI Assistant / Co-Host / Host 角色边界
 - ProposedCommand 未来管线
+- Historical reference: `docs/archive/2026-06-11-AI-HOST-ARCHITECTURE.md`; archive files are not current source of truth.
 
 未来演进：
 
@@ -699,3 +700,76 @@ AI / API Output
 - 全系统数据模型重构
 
 平台化应当从已经证明可靠的局部抽象自然生长，而不是通过一次性重构获得。
+
+## 11. 页面职责与结果中心
+
+长期页面职责边界：
+
+- Creator 负责创建期选择、初始属性、初始资源、创建期技能/装备分配。
+- Sheet 负责角色信息展示和幕间维护，不负责检定、投骰、运行时 HP/SAN/弹药/资源变化。
+- Player Gameplay 负责运行时操作、检定、投骰、动作、资源变化和玩家可见结果。
+- RollConsole 是唯一结果中心，负责 Latest Result、计算过程、outcome/tags 和历史日志。
+- Host / Keeper / GM Console 是未来独立表面，不塞进 Player Gameplay。
+
+三系统应保持一致：
+
+- Gameplay roll 不回流到 Sheet。
+- 不保留多个结果区。
+- 没有 DC / DV / target 时，不伪造成功/失败；显示等待 DM/KP/GM 判定。
+- Free roll 和隐藏结果未来属于 Host Console 或高级工具；当前 Player Gameplay 中遗留的 free dice tray 只作为隔离 utility panel，后续再收口。
+
+## 12. RuntimeLogEntry / RollConsole 架构
+
+`RuntimeLogEntry` 是当前第一个已经被 DND / COC / Cyberpunk RED 三系统验证的共享抽象。
+
+当前原则：
+
+- 三系统 Player Gameplay 使用本地 `RuntimeLogEntry[]` 作为结果历史。
+- RollConsole 从最新 entry 派生 Latest Result。
+- RuntimeLogEntry / RollConsole 是玩家结果中心，不写入 Sheet。
+- 默认 visibility 为 `public`。
+- `gmOnly` / `playerOnly` / `revealed` 是长期 visibility 模型，但当前不实现权限、多人生效过滤或 reveal workflow。
+- Host / GM / Keeper Console、持久化 session log、server-authoritative sync 均 deferred。
+
+长期 visibility 边界：
+
+- 隐藏骰不是独立骰子类型，而是结果可见性。
+- Player RollConsole 不显示 `gmOnly`。
+- Future Host Console 可以显示 `public`、`gmOnly`、`playerOnly`、`revealed`。
+- 公开模式可以是 full result、outcome only、narration only 或 hidden。
+
+## 13. Gameplay UI Contract
+
+Gameplay 页面是运行控制台，不是普通长网页。
+
+RollConsole / result UI 原则：
+
+- Latest Result 应比历史日志更醒目。
+- Latest Result 显示大号结果值、类型、计算过程、outcome 和特殊标签。
+- History Log 内部滚动，不撑高整个页面。
+- 小字必须可读，禁止浅色背景上的低对比灰字。
+- 核心操作和结果区不能被固定高度或 overflow 裁切。
+- Player Gameplay 不显示完整 Host Tools。
+
+这些规则是长期原则；具体样式仍由各系统现有主题承载，不在当前阶段做系统性 UI polish。
+
+## 14. AI / Host Boundary
+
+AI 能力长期分层：
+
+- AI Assistant：解释规则、总结日志、生成草稿，不做最终裁定。
+- AI Co-Host：建议 DC/DV、剧情分支、NPC 行动、reveal 方式，由人类确认。
+- AI Host：未来无人类主持时可推进场景和隐藏信息，但状态变化仍必须走命令提案与验证。
+
+AI / API 状态变化必须遵循：
+
+```text
+AI / API Output
+→ ProposedCommand
+→ Validation
+→ User or Host Confirmation
+→ Store Action / Runtime Action
+→ RuntimeLogEntry
+```
+
+默认不实现 AI API、Host Console、ProposedCommand runtime、权限系统、AI memory 或多人同步。高风险结果，例如死亡、疯狂、重伤、永久属性变化、角色删除和重大 reveal，必须保留人工确认边界。

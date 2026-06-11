@@ -198,4 +198,4 @@ Priority guidance:
 
 ## 13. Current Freeze Note
 
-This document records rule coverage only. It does not lift the project freeze. Freeze exit still requires `CPRED_RULE_COVERAGE.md` to exist and both COC/CPRED rule coverage documents to be reviewed, followed by `IMPLEMENTATION_ROADMAP.md` defining the next code phase.
+This document records rule coverage only. It does not lift project governance. Rule coverage owner docs now live under `docs/rules/`; implementation sequencing and active task scope are governed by `PROJECT_STATUS.md`, `AI_WORKFLOW.md`, and `docs/ai/ACTIVE_TASK.md`.

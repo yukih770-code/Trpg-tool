@@ -212,10 +212,10 @@ Humanity boundary: cyberware install/remove does not automatically deduct Humani
 | NPC / enemy management | 0 | Not implemented. | Future GM Console. | P3 |
 | Scene / mission notes | 0 | Not implemented. | Future scene/module layer. | P3 |
 | Random encounter / job generation | 0 | Not implemented. | Future Host/AI tools. | P3 |
-| AI Co-Host suggestions | 1 | Documented in AI architecture. | No implementation. | P3 |
-| AI Host solo mode | 1 | Documented in AI architecture. | No implementation. | P3 |
+| AI Co-Host suggestions | 1 | Documented in `PLATFORM_ARCHITECTURE.md`. | No implementation. | P3 |
+| AI Host solo mode | 1 | Documented in `PLATFORM_ARCHITECTURE.md`. | No implementation. | P3 |
 
-These features are deferred and must not enter Player Gameplay. They should align with `AI_HOST_ARCHITECTURE.md`.
+These features are deferred and must not enter Player Gameplay. AI Host, ProposedCommand, and Host boundary facts are owned by `PLATFORM_ARCHITECTURE.md`; historical reference exists at `docs/archive/2026-06-11-AI-HOST-ARCHITECTURE.md`.
 
 ## 12. RuntimeLogEntry Payload Recommendation
 
@@ -268,6 +268,6 @@ Priority guidance:
 
 ## 14. Current Freeze Note
 
-This document records rule coverage only. It does not lift the project freeze. Freeze exit requires both `COC_RULE_COVERAGE.md` and `CPRED_RULE_COVERAGE.md` to be audited and approved. Document existence alone does not lift the freeze. `IMPLEMENTATION_ROADMAP.md` must still define the next code phase before feature coding resumes.
+This document records rule coverage only. It does not lift project governance. Rule coverage owner docs now live under `docs/rules/`; implementation sequencing, task discipline, and active task scope are governed by `PROJECT_STATUS.md`, `AI_WORKFLOW.md`, and `docs/ai/ACTIVE_TASK.md`.
 
-仅创建文件不代表解除冻结；两份规则覆盖文档都必须审计通过，并且 `IMPLEMENTATION_ROADMAP.md` 必须明确下一阶段代码任务后，才可以恢复功能开发。
+仅创建文件不代表解除冻结；两份规则覆盖文档都必须审计通过，并且下一阶段代码任务必须由 `PROJECT_STATUS.md`、`AI_WORKFLOW.md` 与 `docs/ai/ACTIVE_TASK.md` 明确范围后，才可以恢复功能开发。历史路线图已归档在 `docs/archive/2026-06-11-IMPLEMENTATION-ROADMAP.md`，不是当前 source of truth。

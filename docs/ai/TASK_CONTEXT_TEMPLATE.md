@@ -10,8 +10,8 @@ P0 / P1 / P2 / P3 / P4 / P5 / P6
 
 ## Must Read First
 
-- `PROJECT_INDEX.md`
-- `SYMBOL_MAP.md`
+- `docs/ai/PROJECT_INDEX.md`
+- `docs/ai/SYMBOL_MAP.md`
 - `PROJECT_STATUS.md`
 - relevant coverage doc
 
@@ -59,7 +59,7 @@ Each code task should report:
 - changed symbols
 - added / updated landmarks
 - recommended `rg -n` locate commands
-- suggested `SYMBOL_MAP.md` updates
+- suggested `docs/ai/SYMBOL_MAP.md` updates
 
 ## Git Safety
 
