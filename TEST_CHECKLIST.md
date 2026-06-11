@@ -56,6 +56,7 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] CP Gameplay — opens, skill check and stat check functional
 - [ ] CP Gameplay — check / role / damage / resource results enter RollConsole Latest Result and RuntimeLogEntry history
 - [ ] CP Gameplay — checks without DV show `等待 GM 判定`
+- [ ] CP Gameplay — runtime log producers write structured RuntimeLogEntry objects; no string `addLog` fallback is expected
 - [ ] CP Market — opens without crash
 - [ ] CP Market — item can be added to character inventory
 - [ ] CP Market — buying the same-name item twice creates two distinct inventory entries

@@ -45,11 +45,8 @@ export function CpGameplay() {
     makeCpSystemEntry('系统上线', 'CP RED 运行面板已就绪', ['system', 'ready']),
   ]);
 
-  const addLog = (entry: RuntimeLogEntry | string) => {
-    const nextEntry = typeof entry === 'string'
-      ? makeCpSystemEntry('系统记录', entry)
-      : entry;
-    setLog((prev) => [nextEntry, ...prev].slice(0, 20));
+  const addLog = (entry: RuntimeLogEntry) => {
+    setLog((prev) => [entry, ...prev].slice(0, 20));
   };
 
   const woundPenalty =

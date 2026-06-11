@@ -145,6 +145,7 @@ COC Sheet responsibility cleanup v1 scope:
 | CP RED runtime state foundation v2 | ✅ Done |
 | CP RED Gameplay RollConsole RuntimeLogEntry v1 | ✅ Done |
 | CP RED Skill Check Wiring v1 | ✅ Done |
+| CP RED Log Envelope Purification v1 | ✅ Done |
 | CP RED Gameplay Componentization v1 | ✅ Done |
 | CP RED Equipment / Market Inventory Flow v1 | ✅ Done |
 | CP RED Stable Item Instance ID v1 | ✅ Done |
@@ -161,6 +162,7 @@ CP RED Gameplay RollConsole RuntimeLogEntry v1 scope:
 - CpGameplay local logs now use `RuntimeLogEntry[]` instead of `string[]`.
 - CpGameplay displays a RollConsole-style Latest Result derived from the first runtime log entry, with structured history in the same result center.
 - Existing CP RED skill checks, stat checks, role ability checks, death saves, damage rolls, resource adjustments, injury handling, free dice rolls, and system messages now write local CP RED `RuntimeLogEntry` objects.
+- Log Envelope Purification v1 removes the legacy string `addLog` compatibility path; current CP RED runtime log writes must pass structured `RuntimeLogEntry` objects.
 - No store, schema, migration, CP RED type, cp-utils, Sheet, Creator, DND, or COC changes.
 - No armor ablation, ammo tracking, full combat automation, critical injury pipeline expansion, Netrunning expansion, GM Console, gmOnly/reveal, AI Host, multiplayer, map, or scene work.
 
@@ -168,7 +170,7 @@ CP RED Skill Check Wiring v1 scope:
 - No-DV role ability checks now display `等待 GM 判定` instead of success/failure and include `no-dv` / `gm-adjudication` tags.
 - CpGameplay skill check success handling avoids non-null assertion and keeps the existing DV-based behavior.
 - Netrunner no-roll actions, NET damage prompts, Solo pool reset, and Lawman backup calls now write structured local `RuntimeLogEntry` objects instead of string system logs.
-- The string `addLog` compatibility path remains as a fallback only.
+- The string `addLog` compatibility path has been removed; new writes must use structured local `RuntimeLogEntry` objects.
 - No rule expansion, Netrunning state machine, armor ablation, ammo tracking, full damage pipeline, GM Console, AI Host, store, schema, migration, DND, or COC changes.
 
 CP RED Gameplay Componentization v1 scope:

@@ -82,7 +82,7 @@ CpSheet has received DND/COC-style responsibility cleanup. Sheet is display plus
 | Exploding d10 | 5 | cp-utils foundation is used in Gameplay and displayed through RollConsole. | None for current check scope. | P0 |
 | DV input / no DV waiting GM judgment | 5 | No-DV checks display `等待 GM 判定`. | No target/enemy model. | P0 |
 | RollConsole | 5 | Player RollConsole is wired. | GM Console remains deferred. | P0 |
-| RuntimeLogEntry[] | 5 | CpGameplay uses local RuntimeLogEntry[]. | No store/schema persistence by design. | P0 |
+| RuntimeLogEntry[] | 5 | CpGameplay uses local RuntimeLogEntry[]; legacy string log writing path is removed/confirmed absent. | No store/schema persistence by design. | P0 |
 | Latest Result | 5 | Derived from latest local RuntimeLogEntry. | No visibility filtering. | P0 |
 | History Log | 5 | RuntimeLogEntry history is displayed in RollConsole. | No persistent session log. | P0 |
 | Result visibility | 0 | Documented only. | No filtering/reveal. | P3 |
@@ -96,7 +96,7 @@ CpSheet has received DND/COC-style responsibility cleanup. Sheet is display plus
 | Market / Gear | 5 | CpMarket can add weapons, armor, cyberware, fashion, and gear to character inventory with stable item instance ids. | Dynamic gear economy deferred. | P2 |
 | Vehicles | 0 | Deferred. | Future subsystem. | P3 |
 
-CP Gameplay is unified to local RuntimeLogEntry and RollConsole, with componentized panels. Complex combat, armor, ammo, netrunning, vehicles, GM Console, and visibility filtering are deferred.
+CP Gameplay is unified to local RuntimeLogEntry and RollConsole, with componentized panels. Runtime log producers use structured log envelopes rather than string log fallback paths. Complex combat, armor, ammo, netrunning, vehicles, GM Console, and visibility filtering are deferred.
 
 ## 6. Skill / Stat Check Coverage
 

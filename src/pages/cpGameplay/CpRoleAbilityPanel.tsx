@@ -8,7 +8,7 @@ interface RoleAbilityPanelProps {
   roleLevel: number;
   stats: Record<CpStat, number>;
   skills: Record<string, number>;
-  addLog: (entry: RuntimeLogEntry | string) => void;
+  addLog: (entry: RuntimeLogEntry) => void;
 }
 
 export function CpRoleAbilityPanel({ role, roleLevel, stats, skills, addLog }: RoleAbilityPanelProps) {

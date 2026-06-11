@@ -29,6 +29,7 @@ export function SysHeader({ children, color = 'cyan' }: { children: ReactNode; c
   );
 }
 
+// AI-LANDMARK: CPRED_RUNTIME_LOG_ENVELOPE
 export function makeCpRuntimeLogEntry(entry: Omit<RuntimeLogEntry, 'id' | 'timestamp' | 'system' | 'visibility'>): RuntimeLogEntry {
   return {
     id: `cpred-${Date.now()}-${Math.random().toString(36).slice(2)}`,
