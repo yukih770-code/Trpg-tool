@@ -57,8 +57,12 @@ This file helps AI / Codex / Sonnet quickly locate project structure and task bo
 
 ## Docs
 
+- `AI_WORKFLOW.md` — AI workflow and documentation governance owner.
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
+- `docs/ai/ACTIVE_TASK.md` — current task scope card; overwritten per task.
+- `docs/ai/TASK_ARCHIVE.md` — compressed one-line task history.
+- `docs/archive/README.md` — archive read policy and firewall.
 - `PLATFORM_ARCHITECTURE.md`
 - `CPRED_RULE_COVERAGE.md`
 - `COC_RULE_COVERAGE.md`
@@ -67,6 +71,12 @@ This file helps AI / Codex / Sonnet quickly locate project structure and task bo
 - `RUNTIME_LOG_ARCHITECTURE.md`
 - `SYSTEM_PAGE_RESPONSIBILITY.md`
 - `IMPLEMENTATION_ROADMAP.md`
+
+AI workflow note:
+
+- Do not create `CODE_LANDMARKS.md`.
+- Code landmarks live only in source comments and can be listed with `rg -n "AI-LANDMARK"` when needed.
+- AI should not read `docs/archive/` unless it is explicitly listed in `docs/ai/ACTIVE_TASK.md`.
 
 ## Reading Strategy
 

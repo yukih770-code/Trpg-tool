@@ -4,6 +4,15 @@
 
 This file helps AI quickly locate important types, helper functions, store actions, and UI panels. Use it after `PROJECT_INDEX.md` when a task names a feature, action, or type.
 
+## Navigation Policy
+
+- Do not write fixed line numbers in markdown.
+- Use symbol names, landmarks, and `rg -n` commands.
+- `SYMBOL_MAP.md` answers "where is X?"
+- Code `AI-LANDMARK` comments act as precise semantic anchors.
+- Do not create a separate `CODE_LANDMARKS.md`; generate landmark listings with `rg -n "AI-LANDMARK"` when needed.
+- Task history belongs in `docs/ai/TASK_ARCHIVE.md`.
+
 ## CP RED Inventory / Equipment
 
 - `CpInventory`: `src/lib/cp-types.ts`

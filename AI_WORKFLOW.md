@@ -1,120 +1,75 @@
-# AI Development Workflow
+# AI Workflow
 
-Rules for AI-assisted development on this project.
+## Purpose
 
----
+This file is the single owner for AI collaboration workflow and documentation governance rules in this project. It defines how AI agents should read, write, summarize, archive, and navigate project documentation.
 
 ## Core Principles
 
-### 1. One Small Task Per Round
+- One fact has one owner document.
+- Other documents may link to the owner, but must not duplicate the fact.
+- Root docs contain current truth.
+- AI working docs live under `docs/ai/`.
+- One-off artifacts live under `docs/archive/`.
+- Markdown must not store fixed line numbers.
+- Use symbols, landmarks, and `rg -n` commands for navigation.
+- Do not create `CODE_LANDMARKS.md`.
 
-Each conversation turn addresses exactly one well-defined task.  
-Do not chain tasks. Do not continue to the next step automatically.  
-If a task is too large, split it and do one part at a time.
+## Document Owner Table
 
-### 2. Scan Before Modifying
+| Fact Type | Owner |
+|---|---|
+| Current feature status | `PROJECT_STATUS.md` |
+| Design decisions / permanent constraints | `PROJECT_STATUS.md` scope notes |
+| Long-term roadmap / platform architecture | `PLATFORM_ARCHITECTURE.md` |
+| AI workflow and documentation governance | `AI_WORKFLOW.md` |
+| Test and acceptance criteria | `TEST_CHECKLIST.md` |
+| Rule coverage level | `*_RULE_COVERAGE.md` |
+| Symbol / function / panel location | `docs/ai/SYMBOL_MAP.md` or `SYMBOL_MAP.md` until relocation |
+| AI project structure map | `docs/ai/PROJECT_INDEX.md` or `PROJECT_INDEX.md` until relocation |
+| Current task scope card | `docs/ai/ACTIVE_TASK.md` |
+| Task history index | `docs/ai/TASK_ARCHIVE.md` |
+| One-off historical artifacts | `docs/archive/` |
 
-Before writing any code:
-- Read all files that will be modified.
-- Read all type definitions and utilities that will be used.
-- Confirm the exact lines / functions to change.
+## Documentation Classes
 
-### 3. Explicit Allow / Deny Lists
+- A: Current Source of Truth.
+- B: Ephemeral Current Task.
+- C: Archived Historical Artifact.
+- D: Delete Candidate.
 
-Every task prompt must include:
-- **允许修改 (Allowed):** explicit list of files that may be changed.
-- **禁止修改 (Forbidden):** explicit list of files that must not be touched.
+Clarifications:
 
-Default forbidden (unless explicitly allowed):
-- `src/lib/cp-types.ts`, `src/lib/cpMigration.ts`
-- `src/lib/coc-types.ts`, `src/lib/cocMigration.ts`
-- `src/lib/cp2024/cp-utils.ts`, `src/lib/coc-utils.ts`
-- All DND files when working on COC or CP
-- All COC files when working on DND or CP
-- `package.json`, `package-lock.json`
-- Route files, style files
+- `TASK_ARCHIVE.md` is A-class because it is a maintained long-term history index.
+- `ACTIVE_TASK.md` is B-class and should be overwritten per task.
+- `docs/archive/*` files are C-class and are not default reading material.
 
-### 4. Equivalent Replacements Only
+## Active Task Lifecycle
 
-When wiring utilities into pages / stores:
-- Replace inline logic with pure-function equivalents only.
-- Do not add new gameplay features, UI elements, or state.
-- Do not change visual styling.
+- Write / overwrite `docs/ai/ACTIVE_TASK.md` at the start of each task.
+- Do not use it as a long prompt history.
+- Include only task goal, allow / deny files, key symbols, relevant landmarks, locate commands, completion criteria, and verification.
+- After completion, compress the result into one line in `docs/ai/TASK_ARCHIVE.md`.
+- Then the next task may overwrite `ACTIVE_TASK.md`.
 
-### 5. Stop and Report After Completion
+## Archive Policy
 
-After completing the task:
-1. List every modified file and what changed.
-2. Run `npx tsc --noEmit`.
-3. If tsc passes, run `npm run build`.
-4. Report pass / fail.
-5. **Stop.** Do not proceed to the next step.
+- Archive one-off audits, old prompts, replaced plans, and historical reports only when they have future trace value.
+- If an artifact has no trace value, do not write it to disk.
+- AI should not read `docs/archive/` unless explicitly listed in `docs/ai/ACTIVE_TASK.md`.
 
-### 6. Build Checks
+## Markdown Creation Rules
 
-```bash
-# Always run in project root
-cd D:\Download\dnd
+1. Default: do not create a new `.md`.
+2. Put new facts into their owner document.
+3. One-off artifacts go to `docs/archive/` only if they have trace value.
+4. A new permanent `.md` requires a new long-lived Source of Truth category.
+5. Markdown must not contain fixed line numbers.
+6. Every P0-P6 phase closure should include a light documentation inventory check.
 
-npx tsc --noEmit        # Type-check only, no output files
-npm run build           # Full Vite production build
-```
+## Git Safety
 
-If the AI sandbox (`mcp__workspace__bash`) is unavailable ("Workspace still starting"), the user runs these locally and reports results. The AI should not block the report on sandbox availability.
-
-### 7. Commit After Green Build
-
-Once both tsc and build pass:
-```bash
-git add -A
-git commit -m "<scope>: <short description>"
-```
-
-Suggested commit scope prefixes: `dnd`, `coc`, `cp`, `infra`, `docs`.
-
----
-
-## Task Prompt Template
-
-```
-请执行 [任务名称]。
-
-目标：[一句话说明]
-
-允许修改：
-- src/pages/XxxPage.tsx
-- src/store/xxxStore.ts
-
-禁止修改：
-- 任何其他文件
-- DND / COC / CP 相关文件（按需）
-- package.json / 路由 / 样式
-
-要求：
-1. 只做等价替换，不新增功能。
-2. 不改变 UI。
-3. [其他具体限制]
-
-完成后运行：
-- npx tsc --noEmit
-- npm run build
-
-完成后输出：
-# [任务名称] Report
-## 1. Modified Files
-## 2. Changes
-## 3. Behavior Preservation
-## 4. Test Result
-```
-
----
-
-## Common Pitfalls
-
-| Pitfall | Prevention |
-|---------|-----------|
-| Accessing a field from the wrong type (e.g. `CpD10RollResult` field on `CpSkillCheckResult`) | Always read the type definitions before writing code |
-| Replacing delta-based logic with absolute-value equivalent | Confirm semantics match before replacing |
-| Accidentally touching a forbidden file | Re-read the allow/deny list before each edit |
-| Continuing to the next task automatically | Wait for explicit user instruction |
-| Reporting "done" without listing modified files | Always enumerate every changed file |
+- Never use `git add .`.
+- Never use `git add -A`.
+- Stage exact files only.
+- Do not auto commit.
