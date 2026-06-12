@@ -20,6 +20,15 @@
 - If a DND item exists in the owner-provided source but not in app data, mark it `missing`; do not fabricate implementation details.
 - General web search may only help locate owner-provided source URLs or paths. It must not add or override DND rules data.
 
+## Entry Manifest Source IDs
+
+- `dnd5echm-srd52-primary`: primary DND 2024 / SRD5.2 source from `https://github.com/DND5eChm/SRD5.2Chm`.
+- `dnd5echm-main-5e-crosscheck`: broader DND5eChm cross-check source from `https://github.com/DND5eChm/DND5e_chm`.
+- `dnd5echm-xgte`: XGtE entries under `DND5e_chm/珊娜萨的万事指南`.
+- `dnd5echm-tcoe`: TCoE entries under `DND5e_chm/塔莎的万事坩埚`.
+- Entry-level DND source manifest: `docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md`.
+- Spell effect text is referenced by source path only in the public manifest; future full effect text should be handled through publication-safe structured fields or a private/local import layer.
+
 ## Source: dnd2024-free-rules-github
 
 - System: DND

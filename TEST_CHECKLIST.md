@@ -175,6 +175,9 @@ After modifying one system, verify the other two are unaffected:
 - [ ] Items present in owner-provided sources but absent from app data are marked `missing`
 - [ ] Items present in app data but absent from owner-provided sources are marked `out-of-source` or `needs-human-check`
 - [ ] DND source work records `https://github.com/DND5eChm` as the owner-provided root source without selecting a sole subrepository unless the owner confirms it
+- [ ] DND source work uses `SRD5.2Chm` as the primary DND 2024 / SRD5.2 source and `DND5e_chm` only for confirmed XGtE / TCoE / broader cross-check entries
+- [ ] DND owner source entry manifest records item names and source paths without copying long rule text or spell effect prose
+- [ ] Spell effect entries use source references / structured-field policy / private import policy instead of embedding full text in the public repo
 - [ ] Source-manifest tasks do not modify runtime behavior, Creator, Gameplay, Market, store schema, or migration
 - [ ] New verified runtime/core rule data declares source and trust metadata before promotion
 - [ ] Unknown-source or suspicious data is not used as the basis for new gameplay features

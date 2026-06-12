@@ -34,6 +34,7 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | Platform Shell / Home / Play Workspace Layering | ✅ Added |
 | Rule Data Source / Trust Metadata Foundation | ✅ Added |
 | Project Rule Source Authority Policy | ✅ Added |
+| DND Owner Source Entry Manifest | ✅ Added |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -65,6 +66,9 @@ Architecture phase scope:
 - DND owner-provided root source is recorded as `https://github.com/DND5eChm`; repository-level source selection still requires owner confirmation.
 - Rule data conflicts must resolve in favor of owner-provided sources; source items missing from app data are marked `missing`, and app items absent from owner-provided sources are marked `out-of-source` or `needs-human-check`.
 - Source authority policy work changed documentation only; no rule data, Creator, Gameplay, Market, store schema, or migration behavior was changed.
+- DND Owner Source Entry Manifest v1 added `docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md` from owner-confirmed `SRD5.2Chm` and `DND5e_chm` repositories.
+- The DND owner manifest records classes, subclasses, species/races, backgrounds, feat source files, spell heading IDs, equipment categories, and class-resource/progression source paths without copying rule descriptions or spell effect text.
+- Spell effect text remains source-referenced only in the public manifest; later runtime use should rely on publication-safe structured fields or a private/local import layer.
 - Rule data must declare source and trust metadata before being treated as verified runtime/core data.
 - Unknown-source or suspicious rule data must not be promoted into new gameplay features until it is labeled, quarantined, or verified.
 - Public/free sources may be embedded only within allowed scope; paid-book or official-but-not-public content may be referenced by source metadata but must not copy long rules text.

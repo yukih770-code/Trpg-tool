@@ -60,9 +60,13 @@ This file helps AI quickly locate important types, helper functions, store actio
 
 - Rule source authority manifest: `docs/rule-sources/RULE_SOURCE_MANIFEST.md`
 - DND owner-provided source manifest: `docs/rule-sources/DND_SOURCES.md`
+- DND owner source entry manifest: `docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md`
 - COC owner-provided source manifest: `docs/rule-sources/COC_SOURCES.md`
 - CP RED owner-provided source manifest: `docs/rule-sources/CPRED_SOURCES.md`
 - DND owner-provided root source: `https://github.com/DND5eChm`
+- DND primary sourceId: `dnd5echm-srd52-primary`
+- DND XGtE sourceId: `dnd5echm-xgte`
+- DND TCoE sourceId: `dnd5echm-tcoe`
 - `AI-LANDMARK: RULE_SOURCE_AUTHORITY_POLICY`: `docs/rule-sources/RULE_SOURCE_MANIFEST.md`
 
 ## Platform Shell / Home / Play Workspace
