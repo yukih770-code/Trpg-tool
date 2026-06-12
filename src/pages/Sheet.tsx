@@ -6,6 +6,7 @@ import { ScrollArea } from '../../components/ui/scroll-area';
 import { AttributeName, SkillName } from '../lib/dnd-types';
 import { BACKGROUND_DATA } from '../data/backgrounds';
 import { getAvailableClasses, getAvailableRaces, getAvailableFeats } from '../lib/mod-utils';
+import { DndEquipmentCatalogPanel } from './sheet/DndEquipmentCatalogPanel';
 
 export function Sheet() {
   const {
@@ -484,6 +485,11 @@ export function Sheet() {
             </Dialog>
           </div>
         </div>
+      </div>
+
+      {/* Equipment Catalog — read-only data layer v1 */}
+      <div className="col-span-1 lg:col-span-12">
+        <DndEquipmentCatalogPanel />
       </div>
 
       {/* Detail Text Column */}

@@ -119,14 +119,19 @@ Rest recovery semantics:
 
 | Rule Area | currentCoverageLevel | currentImplementation | missingPieces | nextStep |
 |---|---:|---|---|---|
-| Weapons | 1 | Weapon proficiencies and starting equipment text exist. | No structured weapon items, attack formulas, damage dice, mastery properties. | Structured equipment data. |
-| Armor | 1 | Armor proficiencies/training and manual AC modifier exist. | No structured armor items, equipped armor, shield rules, stealth disadvantage. | Structured equipment and equipped slots. |
+| Weapons | 2 | Structured Equipment Data Layer v1: typed weapon items with damage dice, damage type, properties, and range exist in `src/data/dnd2024/equipment.ts` and display read-only on Sheet. | No attack formulas, proficiency wiring, mastery properties runtime, inventory, or equip state. | Equipped slots and weapon actions after inventory schema is scheduled. |
+| Armor | 2 | Structured Equipment Data Layer v1: typed armor/shield items with base AC, dex modifier mode, strength requirement, and stealth disadvantage flags display read-only on Sheet. | No equipped armor state, AC recalculation, or shield rules runtime. | Equipped slots and AC integration in a later store-focused round. |
 | Backpack | 1 | `inventory: string[]` stores simple text entries. | No item quantity, container, or item metadata. | Inventory item schema. |
 | Consumables | 0 | Not represented as structured consumables. | Quantity, use actions, effects, and deletion/charge tracking missing. | Item action model. |
 | Magic items | 0 | Not represented. | Item rules, charges, rarity, attunement, and actions missing. | Magic item registry later. |
 | Attunement | 0 | Not represented. | Attunement slots and prerequisites missing. | Add after magic item schema. |
 | Weight | 0 | Not represented. | Item weights, carrying capacity, encumbrance missing. | Add after structured inventory. |
 | Item actions | 0 | Not represented. | No use/equip/activate action model. | Future Action Registry. |
+
+Structured Equipment Data Layer v1 note:
+- DND structured equipment data layer v1 added. Includes minimal typed weapon / armor / gear data and read-only display.
+- Inventory, equip/unequip, AC automation, attack rolls, damage rolls, weapon mastery, ammo, and Action Registry integration remain deferred.
+- No CharacterData schema or migration changed.
 
 ## 6.1 Exploration / Travel Coverage
 

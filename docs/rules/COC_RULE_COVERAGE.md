@@ -94,7 +94,7 @@ Runtime state, store actions, player skill checks, basic SAN Check, basic Luck S
 | Failure | 5 | Evaluator returns failure and RollConsole displays the result. | None for current public skill-check scope. | P0 |
 | Fumble | 5 | Evaluator returns fumble and RollConsole displays the result. | None for current public skill-check scope. | P0 |
 | Target value | 5 | Skill value is used as the target for public skill checks. | Opposed/hidden targets remain deferred. | P0 |
-| Bonus / penalty dice | 0 | Not implemented. | Needs COC-specific roll UI and evaluator. | P1 |
+| Bonus / penalty dice | 5 | v1 implemented: skill checks support normal, 1/2 bonus dice, and 1/2 penalty dice via `evaluateCocD100CheckWithDice`; RuntimeLogEntry records final roll and tens dice selection. | Pushed Roll / SAN / Luck / opposed rolls do not use bonus/penalty dice yet. | P1 |
 | Opposed rolls | 0 | Not implemented. | Needs target/opposed result model. | P2 |
 | Pushed roll | 5 | Eligible failed non-fumble public skill checks can push once and log the result. | Failed pushed consequences remain Keeper-adjudicated. | P1 |
 | Luck spending after failure | 5 | Eligible failed public skill checks can spend Luck to become regular success. | Advanced restrictions and Keeper approval deferred. | P1 |
@@ -168,7 +168,7 @@ All Keeper Console and hidden-result features are deferred. They do not belong i
 | Rule Area | Current Level | Current Status | Gaps | Priority |
 |---|---:|---|---|---|
 | Opposed rolls | 0 | Not implemented beyond normal public checks. | Needs opposed result model and target/actor references. | P2 |
-| Bonus / penalty dice | 0 | Not implemented. | Needs COC-specific roll input and evaluator extension. | P1 |
+| Bonus / penalty dice | 5 | v1 implemented for public skill checks (normal / 1–2 bonus / 1–2 penalty). | Other check types (SAN, Luck, opposed, pushed) remain single-die. | P1 |
 | Sanity / madness depth | 1 | Basic SAN Check and manual flags exist. | Full temporary/indefinite insanity workflows, bouts, and Keeper prompts deferred. | P2 |
 | Bouts of Madness | 0 | Not implemented. | Needs tables, timing, narration, and Keeper control. | P3 |
 | Phobias / manias | 0 | Not implemented. | Needs structured symptoms and long-term character effects. | P3 |
@@ -209,9 +209,11 @@ Priority guidance:
 - P1: `luckSpent`, `isPushed`, `sanLoss`, `hpChange`, growth check fields
 - P2/P3: full insanity details and Keeper reveal metadata
 
+Bonus / penalty dice v1 note: COC bonus / penalty dice v1 implemented. Supports normal, 1/2 bonus dice, and 1/2 penalty dice. RuntimeLogEntry records final roll and tens dice selection. Pushed Roll, Sanity, Madness, Opposed Roll, and Keeper tools remain deferred.
+
 ## 12. Recommended Next Steps
 
-1. COC bonus / penalty dice v1
+1. ~~COC bonus / penalty dice v1~~ — Done (skill checks; other check types deferred)
 2. COC opposed rolls v1
 3. COC Keeper clue flow planning
 4. COC insanity flags / prompts v1

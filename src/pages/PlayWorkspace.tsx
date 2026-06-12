@@ -21,6 +21,12 @@ import { CpSheet } from './CpSheet';
 import { CpGameplay } from './CpGameplay';
 import { CpMarket } from './CpMarket';
 import { useCpStore } from '../store/cpStore';
+import {
+  createCharacterExportEnvelope,
+  parseCharacterImportJson,
+  platformSystemToExportSystem,
+  type PlatformRulesetSystem,
+} from '../lib/data-contract/export-envelope';
 
 // ── Decorative SVG Backgrounds ────────────────────────────
 
@@ -404,7 +410,7 @@ const THEMES = {
   },
 } as const;
 
-type System = 'D&D' | 'CoC' | 'CP';
+type System = PlatformRulesetSystem;
 
 const SYSTEM_DISPLAY_LABELS: Record<System, string> = {
   'D&D': 'DND 5e 2024',
@@ -427,38 +433,49 @@ export function PlayWorkspace() {
     : dndChar;
 
   const handleExport = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(activeCharacter, null, 2));
+    const envelope = createCharacterExportEnvelope({ system, character: activeCharacter });
+    const exportSystem = platformSystemToExportSystem(system);
+    const characterName = sanitizeFileName((activeCharacter as any).name || 'unnamed');
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(envelope, null, 2));
     const dlAnchorElem = document.createElement('a');
     dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", `${system.toLowerCase()}-char-${(activeCharacter as any).name || 'unnamed'}.json`);
+    dlAnchorElem.setAttribute("download", `${exportSystem}-character-${characterName}.json`);
     dlAnchorElem.click();
-    toast.success("存档已成功导出到本地文件");
+    toast.success("角色已导出为平台角色 JSON。");
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        try {
-          const parsed = JSON.parse(event.target?.result as string);
-          if (system === 'CoC') {
-            if (parsed && parsed.characteristics) {
-              loadCocChar(parsed);
-              toast.success("这名调查员的笔记已被寻回。");
-            } else toast.error('无效的 CoC 调查员文件');
-          } else if (system === 'CP') {
-            if (parsed && parsed.stats) {
-              loadCpChar(parsed);
-              toast.success("赛博朋克档案已加载。");
-            } else toast.error('无效的赛博朋克红角色文件');
-          } else {
-            if (parsed && parsed.attrs) {
-              loadDndChar(parsed);
-              toast.success("冒险者的档案已被加载。");
-            } else toast.error('无效的 D&D 角色卡文件');
-          }
-        } catch {
-          toast.error('解析失败，请检查文件');
+        const result = parseCharacterImportJson(String(event.target?.result ?? ''));
+
+        if (!result.ok) {
+          toast.error(result.message);
+          return;
+        }
+
+        if (result.platformSystem === 'CoC') {
+          loadCocChar(result.character as any);
+          setSystem('CoC');
+          setTab('sheet');
+          toast.success("这名调查员的笔记已被寻回。", {
+            description: result.message,
+          });
+        } else if (result.platformSystem === 'CP') {
+          loadCpChar(result.character as any);
+          setSystem('CP');
+          setTab('sheet');
+          toast.success("赛博朋克档案已加载。", {
+            description: result.message,
+          });
+        } else {
+          loadDndChar(result.character as any);
+          setSystem('D&D');
+          setTab('sheet');
+          toast.success("冒险者的档案已被加载。", {
+            description: result.message,
+          });
         }
       };
       reader.readAsText(e.target.files[0]);
@@ -473,6 +490,11 @@ export function PlayWorkspace() {
 
   const handleToolbarPlaceholder = (message: string) => {
     toast.info(message);
+  };
+
+  const sanitizeFileName = (name: string) => {
+    const sanitized = name.trim().replace(/[^\w\u4e00-\u9fa5-]+/g, '-').replace(/-+/g, '-');
+    return sanitized || 'unnamed';
   };
 
   const tabLabels: Record<System, string[]> = {

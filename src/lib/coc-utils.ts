@@ -396,6 +396,133 @@ export function evaluateCocD100Check(
   };
 }
 
+// ─── 5.1 Bonus / penalty dice resolution ─────────────────────────────────────
+// AI-LANDMARK: COC_BONUS_PENALTY_DICE_RESOLUTION
+
+/**
+ * CocD100DiceRoll
+ *
+ * A d100 roll produced with COC 7E bonus / penalty dice.
+ *
+ * tensDice values are stored as tens results (0, 10, 20 … 90).
+ * The candidate value for each tens die is `tens + onesDie`, except that
+ * tens=0 with onesDie=0 reads as 100 (standard d% convention).
+ *
+ * Bonus dice pick the LOWEST candidate; penalty dice pick the HIGHEST.
+ * Bonus and penalty dice cancel each other before rolling, so at most one
+ * side is ever active (net 0 → a normal single-tens-die roll).
+ */
+export interface CocD100DiceRoll {
+  finalRoll: number;
+  onesDie: number;
+  tensDice: number[];
+  selectedTens: number;
+  bonusDice: number;
+  penaltyDice: number;
+}
+
+function clampCocDiceCount(value: unknown): number {
+  return Math.max(0, Math.min(2, safeInt(value, 0)));
+}
+
+/**
+ * rollCocD100WithDice
+ *
+ * Rolls 1d100 with 0–2 bonus dice or 0–2 penalty dice.
+ * Bonus and penalty counts are clamped to [0, 2] and cancel out
+ * (e.g. bonus 2 + penalty 1 → net bonus 1).
+ *
+ * @param rng  Injectable random source for testing; defaults to Math.random.
+ */
+export function rollCocD100WithDice(params?: {
+  bonusDice?: number;
+  penaltyDice?: number;
+  rng?: () => number;
+}): CocD100DiceRoll {
+  const rng = params?.rng ?? Math.random;
+  const net = clampCocDiceCount(params?.bonusDice) - clampCocDiceCount(params?.penaltyDice);
+  const bonusDice = Math.max(0, net);
+  const penaltyDice = Math.max(0, -net);
+  const extraTens = bonusDice + penaltyDice; // at most one side is non-zero
+
+  const rollTens = () => Math.floor(rng() * 10) * 10; // 0,10,…,90
+  const onesDie = Math.floor(rng() * 10);             // 0–9
+
+  const tensDice: number[] = [];
+  for (let i = 0; i < 1 + extraTens; i++) tensDice.push(rollTens());
+
+  const candidateFor = (tens: number) =>
+    tens === 0 && onesDie === 0 ? 100 : tens + onesDie;
+
+  let selectedTens = tensDice[0];
+  let finalRoll = candidateFor(selectedTens);
+  for (const tens of tensDice.slice(1)) {
+    const candidate = candidateFor(tens);
+    const better = bonusDice > 0 ? candidate < finalRoll : candidate > finalRoll;
+    if (better) {
+      finalRoll = candidate;
+      selectedTens = tens;
+    }
+  }
+
+  return { finalRoll, onesDie, tensDice, selectedTens, bonusDice, penaltyDice };
+}
+
+/**
+ * CocDiceCheckResult
+ *
+ * Resolved COC 7E d100 check including bonus / penalty dice context.
+ * Success-level evaluation is delegated to `evaluateCocD100Check` so the
+ * critical / fumble / extreme / hard rules have a single source of truth.
+ */
+export interface CocDiceCheckResult {
+  finalRoll: number;
+  onesDie: number;
+  tensDice: number[];
+  selectedTens: number;
+  bonusDice: number;
+  penaltyDice: number;
+  successLevel: CocSuccessLevel;
+  isSuccess: boolean;
+  target: number;
+  hardTarget: number;
+  extremeTarget: number;
+  critical: boolean;
+  fumble: boolean;
+}
+
+/**
+ * evaluateCocD100CheckWithDice
+ *
+ * Rolls a d100 with bonus / penalty dice, then evaluates the final roll
+ * through the existing `evaluateCocD100Check` rules path.
+ */
+export function evaluateCocD100CheckWithDice(params: {
+  skillValue: number;
+  bonusDice?: number;
+  penaltyDice?: number;
+  rng?: () => number;
+}): CocDiceCheckResult {
+  const rolled = rollCocD100WithDice(params);
+  const evaluated = evaluateCocD100Check(params.skillValue, rolled.finalRoll);
+
+  return {
+    finalRoll: rolled.finalRoll,
+    onesDie: rolled.onesDie,
+    tensDice: rolled.tensDice,
+    selectedTens: rolled.selectedTens,
+    bonusDice: rolled.bonusDice,
+    penaltyDice: rolled.penaltyDice,
+    successLevel: evaluated.successLevel,
+    isSuccess: evaluated.isSuccess,
+    target: evaluated.target,
+    hardTarget: evaluated.hardThreshold,
+    extremeTarget: evaluated.extremeThreshold,
+    critical: evaluated.isCritical,
+    fumble: evaluated.isFumble,
+  };
+}
+
 // ─── 6. SAN loss expression helpers ──────────────────────────────────────────
 
 export function parseCocSanLossExpression(expr: string): {

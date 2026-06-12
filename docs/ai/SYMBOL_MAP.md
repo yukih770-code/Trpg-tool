@@ -37,6 +37,15 @@ This file helps AI quickly locate important types, helper functions, store actio
 - `CpMarket`: `src/pages/CpMarket.tsx`
 - `InventoryPanel`: `src/pages/CpSheet.tsx`
 
+## CP RED Critical Injury Manual Tracking
+
+- Critical injury definitions adapter (`CP_CRITICAL_INJURY_DEFINITIONS`, `getCpCriticalInjuryDefinitions`): `src/lib/cp2024/critical-injuries.ts`
+- Original 2d6 tables (`CP_CRIT_INJURIES_BODY` / `CP_CRIT_INJURIES_HEAD`): `src/lib/cp-types.ts`
+- Manual tracking panel: `src/pages/cpGameplay/CpCriticalInjuryPanel.tsx`
+- Manual add/remove handlers + log wiring: `src/pages/CpGameplay.tsx`
+- Runtime container and store actions (`runtime.criticalInjuries`, `addCriticalInjury`, `removeCriticalInjury`): `src/store/cpStore.ts`
+- `AI-LANDMARK: CPRED_CRITICAL_INJURY_MANUAL_TRACKING`: `src/lib/cp2024/critical-injuries.ts`, `src/pages/cpGameplay/CpCriticalInjuryPanel.tsx`, `src/pages/CpGameplay.tsx`
+
 ## Platform Shell / Home / Play Workspace
 
 - Platform shell default entry: `src/App.tsx`
@@ -57,9 +66,24 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Current ruleset state: `useAppStore` in `src/store/appStore.ts`
 - Home character snapshot reads: `useCharacterStore`, `useCocStore`, and `useCpStore`
 
+## Local Data Contract / Character Export
+
+- Character export envelope type: `TrpgCharacterExportEnvelope` in `src/lib/data-contract/export-envelope.ts`
+- Envelope kind constant: `TRPG_CHARACTER_EXPORT_KIND` in `src/lib/data-contract/export-envelope.ts`
+- Export serializer: `createCharacterExportEnvelope` in `src/lib/data-contract/export-envelope.ts`
+- Import parser and compatibility path: `parseCharacterImportJson` in `src/lib/data-contract/export-envelope.ts`
+- Platform/export system mapping: `platformSystemToExportSystem` and `exportSystemToPlatformSystem` in `src/lib/data-contract/export-envelope.ts`
+- PlayWorkspace import/export call sites: `src/pages/PlayWorkspace.tsx`
+- Store load actions still own migration after import: `loadCharacter` in `src/store/characterStore.ts`, `src/store/cocStore.ts`, and `src/store/cpStore.ts`
+- `AI-LANDMARK: LOCAL_DATA_CONTRACT_CHARACTER_ENVELOPE`: `src/lib/data-contract/export-envelope.ts`
+
 ## DND Runtime / Resources
 
 - DND main gameplay: `src/pages/Gameplay.tsx`
+- DND equipment types (read-only data layer v1): `src/lib/dnd2024/equipment-types.ts`
+- DND basic equipment data (`DND_BASIC_WEAPONS` / `DND_BASIC_ARMOR` / `DND_BASIC_GEAR` / `DND_EQUIPMENT_CATALOG`): `src/data/dnd2024/equipment.ts`
+- `AI-LANDMARK: DND_EQUIPMENT_DATA_LAYER`: `src/lib/dnd2024/equipment-types.ts`, `src/data/dnd2024/equipment.ts`
+- DND Sheet read-only equipment catalog panel: `src/pages/sheet/DndEquipmentCatalogPanel.tsx`
 - DND gameplay panels: `src/pages/gameplay/*`
 - DND store: `src/store/characterStore.ts`
 - `restShort`: `src/store/characterStore.ts`
@@ -75,6 +99,9 @@ This file helps AI quickly locate important types, helper functions, store actio
 ## COC Runtime / SAN / Luck
 
 - COC main gameplay: `src/pages/CocGameplay.tsx`
+- COC bonus / penalty dice evaluator: `rollCocD100WithDice`, `evaluateCocD100CheckWithDice` in `src/lib/coc-utils.ts`
+- `AI-LANDMARK: COC_BONUS_PENALTY_DICE_RESOLUTION`: `src/lib/coc-utils.ts`
+- COC dice modifier selector (惩罚 2 / 惩罚 1 / 普通 / 奖励 1 / 奖励 2): `src/pages/cocGameplay/CocChecksPanel.tsx`
 - COC gameplay panels: `src/pages/cocGameplay/*`
 - COC store: `src/store/cocStore.ts`
 - SAN panel: `src/pages/cocGameplay/CocSanCheckPanel.tsx`

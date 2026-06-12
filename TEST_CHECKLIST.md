@@ -69,6 +69,9 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] DND Gameplay — attempting to cast without an available standard or pact slot does not consume resources and logs an insufficient-resource RuntimeLogEntry
 - [ ] DND Gameplay — spellcasting does not implement target selection, concentration, damage, or spell effects
 - [ ] DND Sheet — does not own gameplay roll controls; checks/resources are validated in Gameplay
+- [ ] DND Sheet — Equipment Catalog (装备资料) renders weapons / armor & shield / gear & tools as read-only data
+- [ ] DND Sheet — Equipment Catalog has no equip/unequip buttons and does not change AC, attacks, damage, resources, or character data
+- [ ] DND Sheet — Equipment Catalog viewing writes no RuntimeLogEntry and persists nothing after refresh
 
 ### Call of Cthulhu
 
@@ -76,6 +79,11 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] COC Sheet — opens and displays investigator data; no gameplay roll controls expected on Sheet
 - [ ] COC Gameplay — opens, HP/SAN/MP/Luck runtime buttons functional, dice tray functional
 - [ ] COC Gameplay — public skill checks run from Gameplay and update RollConsole Latest Result
+- [ ] COC Gameplay — dice modifier selector offers 惩罚骰 2 / 惩罚骰 1 / 普通 / 奖励骰 1 / 奖励骰 2 and defaults to 普通
+- [ ] COC Gameplay — bonus and penalty dice are mutually exclusive; selecting one deselects the other
+- [ ] COC Gameplay — bonus dice roll extra tens dice and keep the lowest result; penalty dice keep the highest
+- [ ] COC Gameplay — skill check RuntimeLogEntry payload records finalRoll / onesDie / tensDice / selectedTens / bonusDice / penaltyDice
+- [ ] COC Gameplay — check detail shows tens dice and selected value (e.g. 奖励骰 1：十位骰 [40, 20]，个位 7，取 27)
 - [ ] COC Gameplay — SAN Check preset and custom expressions apply runtime SAN loss and update RollConsole Latest Result
 - [ ] COC Gameplay — SAN quick roll writes a RuntimeLogEntry and does not auto-deduct SAN
 - [ ] COC Gameplay — eligible failed skill check can spend Luck; Luck decreases and a RuntimeLogEntry is appended
@@ -106,6 +114,11 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] CP Sheet — install / uninstall cyberware preserves the item and does not automate Humanity Loss
 - [ ] CP Sheet — install / uninstall one same-name cyberware instance preserves the other instance
 - [ ] CP Sheet — cyberware install / uninstall does not change Humanity, EMP, or cyberPsycho automatically
+- [ ] CP Gameplay — Critical Injury panel can manually add a body or head injury from the existing 2d6 tables
+- [ ] CP Gameplay — Critical Injury panel can remove a tracked injury
+- [ ] CP Gameplay — manual add/remove writes RuntimeLogEntry records with add-critical-injury / remove-critical-injury actions
+- [ ] CP Gameplay — Critical Injury panel is labeled manual tracking and does not roll injuries or apply damage automatically
+- [ ] CP Gameplay — tracked critical injuries persist via existing runtime state after refresh
 - [ ] CP RED — no armor ablation or ammo automation expected
 
 ---
@@ -123,6 +136,12 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] Load a character saved under a previous schema version (if available)
 - [ ] Confirm the character opens without crash or blank fields
 - [ ] Confirm migrateDndCharacter / migrateCocCharacter / migrateCpCharacter ran silently
+- [ ] DND / COC / CP RED exports produce a `trpg-platform.character` envelope
+- [ ] Envelope import restores the correct system character
+- [ ] Legacy naked JSON import still works
+- [ ] Invalid JSON shows a clear error
+- [ ] Unsupported module/community package JSON is rejected with a clear message
+- [ ] No backend/storage adapter was introduced
 
 ---
 

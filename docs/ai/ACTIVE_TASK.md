@@ -6,94 +6,69 @@
 
 ## Task
 
-- ID: Platform Home Shell v1 Product Polish + Settings Language Placement
-- Name: Platform Home Shell v1 Product Polish + Settings Language Placement
-- Goal: turn Home from a developer explanation page into a product dashboard with short labels, keep language switching only under Settings / Language, and keep Coming Soon placeholders clear but concise.
-- Phase: P1 Platform Shell / Home / Play Workspace
-- Status: Completed
+- ID: Build Green + Commit Checkpoint
+- Name: Build Green + Commit Checkpoint
+- Goal: restore TypeScript/build health and provide precise commit grouping without staging or committing.
+- Phase: P1 engineering health checkpoint
+- Status: Completed; `npx tsc --noEmit` and `npm run build` pass
 
 ## Result Summary
 
-- Platform Home Shell v1 product polish completed.
-- Language switching moved under Settings / Language (already placed there; leftover outer-shell language keys removed).
-- Home microcopy was reduced to product-style labels.
-- Coming Soon placeholders use a short badge plus a one-line note ("该功能已列入后续阶段。/ Planned for a later phase.").
-- i18n foundation remains extensible; copy still flows through translation keys.
-- No PlayWorkspace or rules logic was changed.
+- Fixed the DND Equipment Catalog TypeScript error caused by JSX `key` being treated as a component prop.
+- The fix wraps each row component in a keyed native element and leaves row props as `{ item }`.
+- No DND equipment data semantics, Sheet layout intent, store schema, migration, inventory, AC, attack, damage, or rule behavior changed.
+- `npx tsc --noEmit` passes.
+- `npm run build` passes.
+- No `git add` or commit was run.
 
 ## Scope
 
 ### Allowed Files
 
-- `src/App.tsx`
-- `src/pages/Home.tsx`
-- `src/i18n/index.ts` only if exports must be adjusted
-- `src/i18n/locales/zh-CN.ts`
-- `src/i18n/locales/en.ts`
+- `src/pages/sheet/DndEquipmentCatalogPanel.tsx`
 - `PROJECT_STATUS.md`
-- `TEST_CHECKLIST.md`
-- `docs/ai/SYMBOL_MAP.md`
-- `docs/ai/TASK_ARCHIVE.md`
 - `docs/ai/ACTIVE_TASK.md`
 
 ### Forbidden Files
 
-- `src/pages/PlayWorkspace.tsx` internal rules logic
-- DND / COC / CP RED rule code
-- `src/store/*`
-- schema / migration files
-- `RuntimeLogEntry` types
-- `src/lib/*`
-- `src/data/*`
+- DND / COC / CP RED rule behavior
+- Store schema or migration
+- Backend, local backend, storage adapter
+- Campaign, multiplayer, AI Host, P2 features
 - package / Vite / TypeScript config
-- `PLATFORM_ARCHITECTURE.md`
-- `AI_WORKFLOW.md`
-- `docs/archive/**`
 
 ### Do Not Do
 
-- Do not rewrite the i18n foundation.
-- Do not introduce `react-router`.
-- Do not add external dependencies.
-- Do not change DND / COC / CP RED gameplay behavior.
-- Do not change store schema, migration, or RuntimeLogEntry.
-- Do not use `git add .` or `git add -A`.
-- Do not auto commit.
+- Add inventory, equip, attack, damage, AC, or Action Registry behavior
+- Use `git add .` / `git add -A`
+- Commit without explicit user approval
 
 ## Navigation
 
 ### Key Symbols
 
-- `Locale`
-- `setLocalePreference`
-- `trpg-platform-locale`
-- `shell.settings.language`
-- `shell.comingSoon` / `shell.plannedNote`
-- `createTranslator`
-- `Home`
-- `PlayWorkspace`
+- `DndEquipmentCatalogPanel`
+- `DND_EQUIPMENT_DATA_LAYER`
 
 ### Locate Commands
 
 ```powershell
-rg -n "setLocalePreference|shell.settings|comingSoon|plannedNote|trpg-platform-locale" src/App.tsx src/pages/Home.tsx src/i18n
+rg -n "DndEquipmentCatalogPanel|DND_EQUIPMENT_DATA_LAYER" src docs
 ```
 
 ## Completion Criteria
 
-- Language switch is located under Settings / Language only.
-- Home cards use short product labels instead of long developer explanations.
-- Coming Soon states remain visible and not misleading.
-- Locale still persists via `trpg-platform-locale`; default remains `zh-CN`; English remains available.
-- Shell/Home/Settings/Placeholder copy still uses translation keys.
-- PlayWorkspace behavior remains unchanged.
-- No store schema, migration, package, router, or dependency changes.
+- `npx tsc --noEmit` passes.
+- `npm run build` passes.
+- Current dirty files are understood.
+- Commit group suggestions use explicit file paths only.
 
 ## Verification
 
 ```powershell
 cd D:\Download\dnd
 git status --short
+git diff --stat
 npx tsc --noEmit
 npm run build
 ```

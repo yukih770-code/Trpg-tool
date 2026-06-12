@@ -91,7 +91,7 @@ CpSheet has received DND/COC-style responsibility cleanup. Sheet is display plus
 | Damage | 0 | Not automated. | Needs combat model. | P2 |
 | Armor SP / ablation | 0 | Deferred. | Needs armor runtime model. | P2 |
 | Ammo | 0 | Deferred. | Needs weapon runtime model. | P2 |
-| Critical Injuries | 0 | Deferred. | Needs table/workflow. | P2 |
+| Critical Injuries | 5 | Manual Tracking v1: body/head entries from the existing 2d6 tables can be manually added/removed in CpGameplay and are logged as RuntimeLogEntry records. | No automatic damage triggers, treatment workflow, or full injury automation. | P2 |
 | Netrunning | 0 | Deferred. | Large subsystem. | P3 |
 | Market / Gear | 5 | CpMarket can add weapons, armor, cyberware, fashion, and gear to character inventory with stable item instance ids. | Dynamic gear economy deferred. | P2 |
 | Vehicles | 0 | Deferred. | Future subsystem. | P3 |
@@ -127,8 +127,8 @@ CP Gameplay is unified to local RuntimeLogEntry and RollConsole, with componenti
 | Seriously Wounded | 5 | Runtime and Gameplay display exist. | Auto trigger prompt deferred. | P1 |
 | Mortally Wounded | 1 | Needs audit. | Death workflow not complete. | P2 |
 | Death Saves | 5 | Gameplay death save action exists and logs RuntimeLogEntry. | Full mortally wounded workflow deferred. | P1 |
-| Critical Injuries | 0 | Deferred. | Needs tables/manual tracking first. | P2 |
-| Critical Injury tables | 0 | Deferred. | Static data may need extraction. | P2 |
+| Critical Injuries | 5 | Manual Tracking v1: manual add/remove with RuntimeLogEntry logging; persisted via existing `runtime.criticalInjuries`. | Automatic triggers, treatment, surgery, and recovery remain deferred. | P2 |
+| Critical Injury tables | 2 | Existing 2d6 body/head tables in `cp-types.ts` are adapted into id/location-tagged definitions in `src/lib/cp2024/critical-injuries.ts`. | No table rolling UI beyond the pre-existing damage-roll path. | P2 |
 | Stabilization | 0 | Deferred. | Needs medical workflow. | P2 |
 | Healing | 0 | Deferred. | Needs recovery workflow. | P2 |
 | Suppressive fire | 0 | Deferred. | Combat subsystem later. | P3 |
@@ -267,12 +267,17 @@ Priority guidance:
 - P1: `hpChange`, `humanityChange`, `empBefore`, `empAfter`
 - P2/P3: combat context, armor, ammo, and critical injuries
 
+Critical Injury Manual Tracking v1 note:
+- CP RED Critical Injury Manual Tracking v1 added. Supports manually adding/removing body/head critical injuries and logging them.
+- Automatic damage triggers, armor ablation, ammo, treatment, death saves, and full damage pipeline remain deferred.
+- Persistence reuses the existing safe `runtime.criticalInjuries` state; no schema or migration changed.
+
 ## 13. Recommended Next Steps
 
 1. CP RED armor SP / ablation planning
 2. CP RED ammo tracking planning
 3. CP RED damage pipeline architecture
-4. CP RED critical injury manual tracking v1
+4. ~~CP RED critical injury manual tracking v1~~ — Done (automation deferred)
 5. CP RED Humanity / therapy / cyberpsychosis workflow planning
 6. CP RED role ability coverage audit
 7. CP RED Netrunning architecture doc / audit

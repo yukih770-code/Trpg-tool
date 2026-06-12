@@ -1,9 +1,19 @@
 import { Button } from '../../../components/ui/button';
 import type { CocSkill } from '../../lib/coc-types';
 
+const DICE_MODIFIER_OPTIONS: { value: number; label: string }[] = [
+  { value: -2, label: '惩罚骰 2' },
+  { value: -1, label: '惩罚骰 1' },
+  { value: 0, label: '普通' },
+  { value: 1, label: '奖励骰 1' },
+  { value: 2, label: '奖励骰 2' },
+];
+
 type CocChecksPanelProps = {
   skills: CocSkill[];
   onRollSkill: (skill: CocSkill) => void;
+  diceModifier?: number;
+  onSetDiceModifier?: (value: number) => void;
   growthMarks?: Record<string, boolean>;
   pendingGrowthMark?: {
     sourceEntryId: string;
@@ -38,6 +48,8 @@ type CocChecksPanelProps = {
 export function CocChecksPanel({
   skills,
   onRollSkill,
+  diceModifier = 0,
+  onSetDiceModifier,
   growthMarks = {},
   pendingGrowthMark,
   onMarkGrowth,
@@ -61,6 +73,36 @@ export function CocChecksPanel({
         <p className="mt-1 text-xs text-[#8fb7aa]">
           本轮执行公开技能检定；失败后可进行最小 Luck Spending 或 Pushed Roll。成功后可标记成长检查。
         </p>
+      </div>
+
+      <div className="mb-3 border border-[#2f7f68]/30 bg-black/25 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs font-bold text-[#8fb7aa]">奖励骰 / 惩罚骰</div>
+          <div className="text-[10px] text-[#8fb7aa]">
+            当前：{DICE_MODIFIER_OPTIONS.find(option => option.value === diceModifier)?.label ?? '普通'}
+          </div>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1" role="group" aria-label="选择奖励骰或惩罚骰">
+          {DICE_MODIFIER_OPTIONS.map(option => {
+            const isActive = diceModifier === option.value;
+            return (
+              <Button
+                key={option.value}
+                size="sm"
+                variant={isActive ? 'default' : 'outline'}
+                aria-pressed={isActive}
+                className={`h-7 rounded-none px-2.5 text-xs ${
+                  isActive
+                    ? 'bg-[#2f7f68] font-bold text-[#06100d] hover:bg-[#8fb7aa]'
+                    : 'border-[#2f7f68]/55 text-[#8fb7aa] hover:bg-[#2f7f68] hover:text-[#06100d]'
+                }`}
+                onClick={() => onSetDiceModifier?.(option.value)}
+              >
+                {option.label}
+              </Button>
+            );
+          })}
+        </div>
       </div>
 
       {pendingGrowthMark && (

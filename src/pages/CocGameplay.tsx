@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useCocStore } from '../store/cocStore';
-import { evaluateCocD100Check } from '../lib/coc-utils';
+import { evaluateCocD100Check, evaluateCocD100CheckWithDice } from '../lib/coc-utils';
 import type { CocRuntimeState, CocSkill } from '../lib/coc-types';
 import type { RuntimeLogEntry } from '../lib/runtime-log-types';
 import { CocChecksPanel } from './cocGameplay/CocChecksPanel';
@@ -52,6 +52,7 @@ export function CocGameplay() {
   const [combatLog, setCombatLog] = useState<RuntimeLogEntry[]>([
     createCocSystemLogEntry('克苏鲁的呼唤游玩面板已就绪。'),
   ]);
+  const [checkDiceModifier, setCheckDiceModifier] = useState(0);
   const [pendingLuckSpend, setPendingLuckSpend] = useState<PendingLuckSpend | null>(null);
   const [pendingPushedRoll, setPendingPushedRoll] = useState<PendingPushedRoll | null>(null);
   const [pendingGrowthMark, setPendingGrowthMark] = useState<PendingGrowthMark | null>(null);
@@ -185,47 +186,74 @@ export function CocGameplay() {
   };
 
   const handleSkillCheck = (skill: CocSkill) => {
-    const roll = Math.floor(Math.random() * 100) + 1;
-    const result = evaluateCocD100Check(skill.value, roll);
-    const half = Math.floor(skill.value / 2);
-    const fifth = Math.floor(skill.value / 5);
+    const result = evaluateCocD100CheckWithDice({
+      skillValue: skill.value,
+      bonusDice: Math.max(0, checkDiceModifier),
+      penaltyDice: Math.max(0, -checkDiceModifier),
+    });
+    const roll = result.finalRoll;
+    const half = result.hardTarget;
+    const fifth = result.extremeTarget;
     const outcome = COC_SUCCESS_LEVEL_LABELS[result.successLevel] ?? result.successLevel;
+    const hasDiceModifier = result.bonusDice > 0 || result.penaltyDice > 0;
+    const diceModeLabel = result.bonusDice > 0
+      ? `奖励骰 ${result.bonusDice}`
+      : result.penaltyDice > 0
+        ? `惩罚骰 ${result.penaltyDice}`
+        : '普通检定';
+    const diceDetail = hasDiceModifier
+      ? `${diceModeLabel}：十位骰 [${result.tensDice.join(', ')}]，个位 ${result.onesDie}，取 ${roll}`
+      : `普通检定：${roll}`;
     const tags = [
       'skill',
       result.successLevel,
+      ...(result.bonusDice > 0 ? ['bonus-dice'] : []),
+      ...(result.penaltyDice > 0 ? ['penalty-dice'] : []),
       ...(skill.isOccupational ? ['occupation'] : []),
       ...(skill.isPersonal ? ['interest'] : []),
-      ...(result.isCritical ? ['critical'] : []),
-      ...(result.isFumble ? ['fumble'] : []),
+      ...(result.critical ? ['critical'] : []),
+      ...(result.fumble ? ['fumble'] : []),
     ];
 
-    const msg = `${skill.name}: 1d100=${roll} / 目标=${skill.value}，${outcome}`;
+    const msg = `${skill.name}: 1d100=${roll}（${diceModeLabel}）/ 目标=${skill.value}，${outcome}`;
     const entry = createCocLogEntry({
       kind: 'check',
       title: `技能检定：${skill.name}`,
       summary: `${roll} / ${skill.value}，${outcome}`,
-      detail: `普通成功阈值 ${skill.value}，困难 ${half}，极难 ${fifth}`,
+      detail: `${diceDetail}；普通成功阈值 ${skill.value}，困难 ${half}，极难 ${fifth}`,
       displayValue: roll,
-      calculation: `1d100=${roll}；目标值 ${skill.value}；困难 ${half}；极难 ${fifth}`,
+      calculation: hasDiceModifier
+        ? `${diceModeLabel}；十位骰 [${result.tensDice.join(', ')}]，个位 ${result.onesDie}，取 ${roll}；目标值 ${skill.value}；困难 ${half}；极难 ${fifth}`
+        : `1d100=${roll}；目标值 ${skill.value}；困难 ${half}；极难 ${fifth}`,
       outcome,
       tags,
       payload: {
         system: 'coc',
         rollType: 'd100',
         checkType: 'skill',
+        source: 'coc-check',
         skillName: skill.name,
+        skillValue: skill.value,
         d100: roll,
+        finalRoll: roll,
+        onesDie: result.onesDie,
+        tensDice: result.tensDice,
+        selectedTens: result.selectedTens,
+        bonusDice: result.bonusDice,
+        penaltyDice: result.penaltyDice,
         target: skill.value,
         half,
         fifth,
         success: result.isSuccess,
         successLevel: result.successLevel,
-        isCritical: result.isCritical,
-        isFumble: result.isFumble,
+        critical: result.critical,
+        fumble: result.fumble,
+        isCritical: result.critical,
+        isFumble: result.fumble,
       },
     });
     pushLog(entry);
-    if (!result.isSuccess && !result.isFumble && roll > skill.value) {
+    if (!result.isSuccess && !result.fumble && roll > skill.value) {
       setPendingLuckSpend({
         sourceEntryId: entry.id,
         skillName: skill.name,
@@ -583,6 +611,8 @@ export function CocGameplay() {
           <CocChecksPanel
             skills={character.skills}
             onRollSkill={handleSkillCheck}
+            diceModifier={checkDiceModifier}
+            onSetDiceModifier={setCheckDiceModifier}
             growthMarks={skillGrowthMarks}
             pendingGrowthMark={pendingGrowthMark}
             onMarkGrowth={handleMarkSkillGrowth}

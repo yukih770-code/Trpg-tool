@@ -9,8 +9,13 @@ import {
   type CpStat,
 } from '../lib/cp-types';
 import { evaluateCpSkillCheck } from '../lib/cp2024/cp-utils';
+import {
+  findCpCriticalInjuryDefinitionByName,
+  type CpCriticalInjuryDefinition,
+} from '../lib/cp2024/critical-injuries';
 import type { RuntimeLogEntry } from '../lib/runtime-log-types';
 import { CpChecksPanel } from './cpGameplay/CpChecksPanel';
+import { CpCriticalInjuryPanel } from './cpGameplay/CpCriticalInjuryPanel';
 import { CpDamagePanel } from './cpGameplay/CpDamagePanel';
 import { CpDiceTrayPanel } from './cpGameplay/CpDiceTrayPanel';
 import { CpRoleAbilityPanel } from './cpGameplay/CpRoleAbilityPanel';
@@ -32,6 +37,8 @@ export function CpGameplay() {
     changeHumanity,
     addInjury,
     removeInjury,
+    addCriticalInjury,
+    removeCriticalInjury,
   } = useCpStore();
 
   const [selectedSkill, setSelectedSkill] = useState(CP_SKILLS[0]?.name ?? '');
@@ -314,6 +321,54 @@ export function CpGameplay() {
     }));
   };
 
+  const trackedCriticalInjuries =
+    character.runtime?.criticalInjuries ?? character.injuries ?? [];
+
+  // AI-LANDMARK: CPRED_CRITICAL_INJURY_MANUAL_TRACKING
+  const handleAddCriticalInjury = (definition: CpCriticalInjuryDefinition) => {
+    addCriticalInjury(definition.name);
+    addLog(makeCpRuntimeLogEntry({
+      kind: 'action',
+      title: '重伤记录（手动）',
+      summary: `已记录重伤: ${definition.name}`,
+      detail: `${definition.location === 'head' ? '头部' : '躯体'}重伤 · ${definition.effectSummary} · 手动追踪，不自动判定伤害`,
+      displayValue: definition.name,
+      outcome: '已记录',
+      tags: ['injury', 'critical-injury', 'manual', definition.location],
+      payload: {
+        system: 'cpred',
+        source: 'cpred-critical-injury',
+        action: 'add-critical-injury',
+        injuryId: definition.id,
+        injuryName: definition.name,
+        location: definition.location,
+      },
+    }));
+    toast.warning(`已记录重伤: ${definition.name}`);
+  };
+
+  const handleRemoveCriticalInjury = (injuryName: string, index: number) => {
+    removeCriticalInjury(index);
+    const definition = findCpCriticalInjuryDefinitionByName(injuryName);
+    addLog(makeCpRuntimeLogEntry({
+      kind: 'action',
+      title: '重伤移除（手动）',
+      summary: `已移除重伤: ${injuryName}`,
+      displayValue: 'DONE',
+      outcome: '已移除',
+      tags: ['injury', 'critical-injury', 'manual', ...(definition ? [definition.location] : [])],
+      payload: {
+        system: 'cpred',
+        source: 'cpred-critical-injury',
+        action: 'remove-critical-injury',
+        injuryId: definition?.id,
+        injuryName,
+        location: definition?.location,
+      },
+    }));
+    toast.info(`已移除重伤: ${injuryName}`);
+  };
+
   return (
     <div className="space-y-5 text-slate-100">
       <div className="rounded border border-[#b08d2a]/60 bg-black/80 p-5 shadow-[0_0_30px_rgba(176,141,42,0.16)]">
@@ -389,6 +444,12 @@ export function CpGameplay() {
             onDamageRoll={handleDamageRoll}
             onDeathSave={handleDeathSave}
             onRemoveInjury={handleRemoveInjury}
+          />
+
+          <CpCriticalInjuryPanel
+            injuries={trackedCriticalInjuries}
+            onAddInjury={handleAddCriticalInjury}
+            onRemoveInjury={handleRemoveCriticalInjury}
           />
 
           <CpDiceTrayPanel

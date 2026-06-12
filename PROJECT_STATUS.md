@@ -74,6 +74,7 @@ Architecture phase scope:
 | DND Gameplay Componentization v1 | ✅ Done |
 | DND 2024 Class Resources and Spell Preparation Closure v1 | ✅ Done |
 | DND Spellcasting Path Unification v1 | ✅ Done |
+| DND Structured Equipment Data Layer v1 | ✅ Done |
 
 Action Registry v0 scope:
 - Supports only `classResource` and `pactMagic` resource costs.
@@ -105,6 +106,13 @@ DND Spellcasting Path Unification v1 scope:
 - Pact Magic slots take priority over standard spell slots for any spell at or below `pactMagicState.slotLevel`. When pact slots are exhausted, the cast returns `ok: false` without falling back to standard slots. This is correct for pure Warlocks and is a v1 simplification for multiclass characters who hold both slot types.
 - No spell effects, target selection, concentration, saving throws, damage automation, Action Registry spellSlot costs, schema, migration, COC, or CP RED changes.
 
+DND Structured Equipment Data Layer v1 scope:
+- DND structured equipment data layer v1 added. Includes minimal typed weapon / armor / gear data and read-only display.
+- Types live in `src/lib/dnd2024/equipment-types.ts`; sample data (6 weapons, 4 armor/shield, 4 gear/tools, source `dnd2024-basic`) lives in `src/data/dnd2024/equipment.ts` (landmark `DND_EQUIPMENT_DATA_LAYER`).
+- DND Sheet shows a read-only 装备资料 / Equipment Catalog panel (`src/pages/sheet/DndEquipmentCatalogPanel.tsx`); it does not write to the character store and writes no RuntimeLogEntry.
+- Inventory, equip/unequip, AC automation, attack rolls, damage rolls, weapon mastery, ammo, magic items, attunement, and Action Registry integration remain deferred.
+- No CharacterData schema or migration changed.
+
 ### Call of Cthulhu (COC)
 
 | Item | Status |
@@ -121,6 +129,7 @@ DND Spellcasting Path Unification v1 scope:
 | COC SAN Check + Luck Spending v1 | ✅ Done |
 | COC Pushed Roll v1 | ✅ Done |
 | COC Growth Check v1 | ✅ Done |
+| COC Bonus / Penalty Dice v1 | ✅ Done |
 | COC Gameplay Componentization v1 | ✅ Done |
 | COC Creator skill point constraint v1 | ✅ Done |
 | COC Sheet responsibility cleanup v1 | ✅ Done |
@@ -166,6 +175,13 @@ COC Growth Check v1 scope:
 - Growth mark, clear, and resolution events write local `RuntimeLogEntry` records for the CocGameplay RollConsole.
 - No Keeper Console, full campaign advancement, occupation/archetype progression, full insanity automation, map, multiplayer, AI Host, DND, or CP RED changes.
 
+COC Bonus / Penalty Dice v1 scope:
+- COC bonus / penalty dice v1 implemented. Supports normal, 1/2 bonus dice, and 1/2 penalty dice.
+- `rollCocD100WithDice` / `evaluateCocD100CheckWithDice` in `coc-utils` roll extra tens dice and delegate success-level evaluation to the existing `evaluateCocD100Check` path (landmark `COC_BONUS_PENALTY_DICE_RESOLUTION`).
+- Bonus and penalty dice cancel each other before rolling; the CocGameplay checks panel uses a mutually exclusive 惩罚 2 / 惩罚 1 / 普通 / 奖励 1 / 奖励 2 selector defaulting to 普通.
+- Skill check RuntimeLogEntry records final roll and tens dice selection (`finalRoll`, `onesDie`, `tensDice`, `selectedTens`, `bonusDice`, `penaltyDice`, `source: 'coc-check'`).
+- Pushed Roll, Sanity, Madness, Opposed Roll, and Keeper tools remain deferred and unchanged; no store, schema, migration, DND, or CP RED changes.
+
 COC Gameplay Componentization v1 scope:
 - `CocGameplay.tsx` now orchestrates local state, runtime handlers, roll handlers, and panel composition while COC Gameplay UI sections live under `src/pages/cocGameplay/`.
 - Extracted RollConsole, Runtime State, Checks, Dice Tray, and COC Gameplay shared helper modules.
@@ -197,6 +213,7 @@ COC Sheet responsibility cleanup v1 scope:
 | CP RED Gameplay Componentization v1 | ✅ Done |
 | CP RED Equipment / Market Inventory Flow v1 | ✅ Done |
 | CP RED Stable Item Instance ID v1 | ✅ Done |
+| CP RED Critical Injury Manual Tracking v1 | ✅ Done |
 | CpGameplay — uses evaluateCpExplodingD10 / evaluateCpSkillCheck | ✅ Done |
 | cpStore — uses getCpMaxHp / getCpSeriouslyWoundedThreshold / getCpDeathSaveBase / getCpHumanityMax / isCpCyberpsycho | ✅ Done |
 
@@ -237,6 +254,22 @@ CP RED Equipment / Market Inventory Flow v1 scope:
 - Same-name duplicate items can coexist at the inventory/equip flow level; legacy missing `instanceId` values are migrated or handled by safe fallback.
 - Durability, ammo, armor ablation, Humanity Loss automation, and full damage pipeline remain deferred.
 - No armor ablation, ammo tracking, full damage pipeline, Netrunning state machine, GM Console, AI Host, DND, or COC changes.
+
+CP RED Critical Injury Manual Tracking v1 scope:
+- CP RED Critical Injury Manual Tracking v1 added. Supports manually adding/removing body/head critical injuries and logging them.
+- `src/lib/cp2024/critical-injuries.ts` adapts the existing 2d6 tables in `cp-types.ts` into id/location-tagged definitions (landmark `CPRED_CRITICAL_INJURY_MANUAL_TRACKING`); no new injury text was authored.
+- `CpCriticalInjuryPanel` in CpGameplay lets the player pick a body/head entry, add it, and remove tracked entries; add/remove writes structured `RuntimeLogEntry` records with `action: 'add-critical-injury' / 'remove-critical-injury'` and `source: 'cpred-critical-injury'`.
+- Tracking reuses the existing safe `runtime.criticalInjuries` state and `addCriticalInjury` / `removeCriticalInjury` store actions (dual-written with the legacy `injuries` field), so entries persist via the existing runtime state; no schema or migration changed.
+- The pre-existing damage-roll auto-injury path and Damage Panel INJURY TRACKER are unchanged.
+- Automatic damage triggers, armor ablation, ammo, treatment, death saves, and full damage pipeline remain deferred.
+
+Local Data Contract Hardening v1 scope:
+- Local Data Contract Hardening v1 added.
+- Character export now uses a `trpg-platform.character` envelope with `system`, `schemaVersion`, `exportedAt`, and `character`.
+- Legacy naked character JSON import remains supported through centralized compatibility parsing.
+- Envelope and legacy imports restore the detected DND / COC / CP RED system character through the existing store load actions.
+- Module/community package import, storage adapter, backend, cloud sync, campaign/session persistence, and multi-character library remain deferred.
+- No DND / COC / CP RED rule logic, store schema, or migration changed.
 
 ---
 
