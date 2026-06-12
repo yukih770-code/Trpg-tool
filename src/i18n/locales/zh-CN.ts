@@ -27,6 +27,10 @@ export const zhCN = {
     plannedNote: '该功能已列入后续阶段。',
     enterPlay: '进入游玩工作区',
     backHome: '返回首页',
+    sidebar: {
+      collapse: '侧栏折叠',
+      expand: '侧栏展开',
+    },
     settings: {
       title: '设置',
       language: {
@@ -42,7 +46,7 @@ export const zhCN = {
     },
     nav: {
       home: '首页',
-      play: 'Play Workspace',
+      play: '游玩',
       campaigns: '战役管理',
       community: '社区模组',
       privateImport: '私有导入',
@@ -67,6 +71,28 @@ export const zhCN = {
       aiHost: {
         title: 'AI Host（AI 主持）',
       },
+    },
+  },
+  playMenu: {
+    title: '选择规则系统',
+    backToMenu: '返回游玩菜单',
+    status: {
+      available: '可用',
+      dataCorrection: '数据校正中',
+      manualTracking: '手动追踪',
+      sourceAudit: '规则源校对中',
+    },
+    dnd: {
+      desc: '奇幻规则运行时 · Creator / Sheet / Gameplay',
+      enter: '进入 DND 5e 2024',
+    },
+    coc: {
+      desc: '调查员工作区 · Creator / Sheet / Gameplay',
+      enter: '进入克苏鲁的呼唤 7版',
+    },
+    cp: {
+      desc: '夜之城运行时 · Creator / Sheet / Gameplay / Market',
+      enter: '进入 Cyberpunk RED',
     },
   },
   home: {

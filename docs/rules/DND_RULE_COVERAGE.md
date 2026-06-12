@@ -12,6 +12,8 @@ Coverage levels in this document describe implemented mechanics and app wiring, 
 
 Rule data must declare source and trust metadata before being treated as verified runtime/core data. Unknown-source or suspicious data must not be promoted into new gameplay features. Public/free sources may be embedded only within allowed scope; paid-book or official-but-not-public content may be referenced by metadata but must not copy long rules text. Homebrew/demo/placeholder data must be visibly labeled or quarantined.
 
+DND Rule Metadata Application v1 has started the metadata phase of DND data correction. Legacy DND class, species/race, spell, feat, and background data is retained for app continuity but marked `ai-assisted-unverified` with `needs-human-verification` usage policy. DND equipment remains read-only sample data with source-labeled display-only metadata. `classProgression` remains runtime-active but is marked `needs-human-check` until individual values are verified against owner-provided source paths. Content correction is deferred to later DND data correction tasks.
+
 ## 1. Coverage Levels
 
 | Level | Name | Meaning |

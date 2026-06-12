@@ -27,6 +27,10 @@ export const en = {
     plannedNote: 'Planned for a later phase.',
     enterPlay: 'Enter Play',
     backHome: 'Back to Home',
+    sidebar: {
+      collapse: 'Collapse sidebar',
+      expand: 'Expand sidebar',
+    },
     settings: {
       title: 'Settings',
       language: {
@@ -67,6 +71,28 @@ export const en = {
       aiHost: {
         title: 'AI Host',
       },
+    },
+  },
+  playMenu: {
+    title: 'Choose a Ruleset',
+    backToMenu: 'Back to Play Menu',
+    status: {
+      available: 'Available',
+      dataCorrection: 'Data correction in progress',
+      manualTracking: 'Manual tracking',
+      sourceAudit: 'Rule source proofreading',
+    },
+    dnd: {
+      desc: 'Fantasy rules runtime · Creator / Sheet / Gameplay',
+      enter: 'Enter DND 5e 2024',
+    },
+    coc: {
+      desc: 'Investigator workspace · Creator / Sheet / Gameplay',
+      enter: 'Enter Call of Cthulhu 7e',
+    },
+    cp: {
+      desc: 'Night City runtime · Creator / Sheet / Gameplay / Market',
+      enter: 'Enter Cyberpunk RED',
     },
   },
   home: {

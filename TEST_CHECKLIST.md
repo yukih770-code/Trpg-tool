@@ -27,9 +27,15 @@ Open the app in the browser and verify each page loads without crashing.
 ### Platform Shell
 
 - [ ] App opens to Platform Home by default
-- [ ] Home Quick Start / Enter Play opens the preserved PlayWorkspace
-- [ ] Ruleset cards enter PlayWorkspace and select DND / COC / Cyberpunk RED
-- [ ] Sidebar Play opens the preserved PlayWorkspace without a router
+- [ ] Sidebar can collapse and expand; collapsed state shows icons only
+- [ ] Sidebar collapsed state persists after refresh via localStorage (`trpg-platform-sidebar-collapsed`)
+- [ ] Sidebar primary navigation shows Home / Play / Settings; placeholder pages remain reachable from Home cards
+- [ ] Sidebar Play and Home "Enter Play" open the Play Main Menu, not a character sheet
+- [ ] Play Main Menu shows DND 5e 2024 / COC 7e / Cyberpunk RED cards with a short description and a status label
+- [ ] Selecting a ruleset card enters that ruleset's preserved PlayWorkspace
+- [ ] Home ruleset cards still enter the selected ruleset workspace directly
+- [ ] Active ruleset workspace shows a "返回游玩菜单 / Back to Play Menu" button; switching rulesets goes back through the menu
+- [ ] No router was introduced for Play Menu / workspace staging
 - [ ] Campaigns shows a Coming Soon placeholder and does not crash
 - [ ] Community Modules shows a Coming Soon placeholder and does not crash
 - [ ] Private Import explains v1 character JSON import boundary and does not implement module / ZIP import
@@ -178,6 +184,9 @@ After modifying one system, verify the other two are unaffected:
 - [ ] DND source work uses `SRD5.2Chm` as the primary DND 2024 / SRD5.2 source and `DND5e_chm` only for confirmed XGtE / TCoE / broader cross-check entries
 - [ ] DND owner source entry manifest records item names and source paths without copying long rule text or spell effect prose
 - [ ] Spell effect entries use source references / structured-field policy / private import policy instead of embedding full text in the public repo
+- [ ] Legacy DND classes/races/spells/feats/backgrounds export module-level accuracy metadata marked `ai-assisted-unverified`
+- [ ] DND equipment sample exports source-labeled display-only metadata and remains read-only sample data
+- [ ] DND class progression exports `needs-human-check` metadata while runtime values remain unchanged
 - [ ] Source-manifest tasks do not modify runtime behavior, Creator, Gameplay, Market, store schema, or migration
 - [ ] New verified runtime/core rule data declares source and trust metadata before promotion
 - [ ] Unknown-source or suspicious data is not used as the basis for new gameplay features

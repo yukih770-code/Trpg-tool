@@ -35,6 +35,8 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | Rule Data Source / Trust Metadata Foundation | ✅ Added |
 | Project Rule Source Authority Policy | ✅ Added |
 | DND Owner Source Entry Manifest | ✅ Added |
+| Platform Play Menu + Collapsible Sidebar v1 | ✅ Added |
+| DND Rule Metadata Application | ✅ Added |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -55,6 +57,11 @@ Architecture phase scope:
 - Coming Soon placeholders remain visible and not misleading, using a short "即将开放 / Coming Soon" badge and a one-line "该功能已列入后续阶段。/ Planned for a later phase." note.
 - The i18n foundation remains unchanged and extensible; removed copy had its translation keys cleaned up in both locales.
 - No PlayWorkspace or rules logic was changed by the product polish.
+- Platform Play Menu + Collapsible Sidebar v1 added. Play no longer needs to open directly into a character sheet.
+- Ruleset selection is now menu-driven (`src/pages/PlayMenu.tsx`) to improve immersion and avoid unnecessary multi-system loading pressure; the selected ruleset workspace shows a "返回游玩菜单 / Back to Play Menu" button, and switching rulesets goes back through the menu.
+- The sidebar is collapsible (ChatGPT-style); collapsed state persists via `localStorage` key `trpg-platform-sidebar-collapsed`; sidebar primary navigation is reduced to Home / Play / Settings, with placeholder pages still reachable from Home cards.
+- Existing ruleset workspaces are preserved; the PlayWorkspace internal system selector remains as a low-priority compatibility control rather than primary navigation.
+- Landmark: `PLATFORM_PLAY_MENU_COLLAPSIBLE_SIDEBAR`. No rules logic, rule data, schema, or migration changed by this shell round.
 - Only Platform Shell / Home / placeholder text was localized through translation keys; PlayWorkspace internal rules UI is not translated by this shell layer.
 - Play enters the preserved ruleset workspace; DND / COC / Cyberpunk RED creator, sheet, gameplay, and CP RED market tabs remain inside `PlayWorkspace`.
 - Campaigns, Community Modules, Content Studio, Private Import expansion, map, multiplayer, and AI Host remain explicit placeholders/deferred.
@@ -69,6 +76,9 @@ Architecture phase scope:
 - DND Owner Source Entry Manifest v1 added `docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md` from owner-confirmed `SRD5.2Chm` and `DND5e_chm` repositories.
 - The DND owner manifest records classes, subclasses, species/races, backgrounds, feat source files, spell heading IDs, equipment categories, and class-resource/progression source paths without copying rule descriptions or spell effect text.
 - Spell effect text remains source-referenced only in the public manifest; later runtime use should rely on publication-safe structured fields or a private/local import layer.
+- DND Rule Metadata Application v1 started source/trust metadata application before content correction.
+- Legacy DND class, race/species, spell, feat, and background datasets are retained but marked `ai-assisted-unverified` / `needs-human-verification`.
+- DND 2024 equipment sample data is source-labeled as display-only, and `classProgression` remains runtime-active with `needs-human-check` accuracy metadata pending value-level verification.
 - Rule data must declare source and trust metadata before being treated as verified runtime/core data.
 - Unknown-source or suspicious rule data must not be promoted into new gameplay features until it is labeled, quarantined, or verified.
 - Public/free sources may be embedded only within allowed scope; paid-book or official-but-not-public content may be referenced by source metadata but must not copy long rules text.

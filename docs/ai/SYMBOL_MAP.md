@@ -69,12 +69,28 @@ This file helps AI quickly locate important types, helper functions, store actio
 - DND TCoE sourceId: `dnd5echm-tcoe`
 - `AI-LANDMARK: RULE_SOURCE_AUTHORITY_POLICY`: `docs/rule-sources/RULE_SOURCE_MANIFEST.md`
 
+## DND Rule Metadata Application
+
+- DND metadata source/trust types: `src/lib/rules/rule-data-metadata.ts`
+- Legacy DND class metadata: `DND_CLASS_DATA_ACCURACY` in `src/data/classes.ts`
+- Legacy DND race/species metadata: `DND_RACE_DATA_ACCURACY` in `src/data/races.ts`
+- Legacy DND spell metadata: `DND_SPELL_DATA_ACCURACY` in `src/data/spells.ts`
+- Legacy DND feat metadata: `DND_FEAT_DATA_ACCURACY` in `src/data/feats.ts`
+- Legacy DND background metadata: `DND_BACKGROUND_DATA_ACCURACY` in `src/data/backgrounds.ts`
+- DND equipment sample metadata: `DND_EQUIPMENT_DATA_ACCURACY` in `src/data/dnd2024/equipment.ts`
+- DND class progression metadata: `DND_CLASS_PROGRESSION_ACCURACY` in `src/data/dnd2024/classProgression.ts`
+- `AI-LANDMARK: DND_RULE_METADATA_APPLICATION`: `src/data/classes.ts`
+
 ## Platform Shell / Home / Play Workspace
 
 - Platform shell default entry: `src/App.tsx`
 - Platform Home dashboard: `src/pages/Home.tsx`
+- Play main menu (ruleset selection): `src/pages/PlayMenu.tsx`
 - Preserved previous main interface: `src/pages/PlayWorkspace.tsx`
 - `appView: "home" | "play" | "placeholder"` state: `src/App.tsx`
+- `playStage: "menu" | "workspace"` state and back-to-menu button: `src/App.tsx`
+- Collapsible sidebar state and `trpg-platform-sidebar-collapsed` localStorage key: `src/App.tsx`
+- `AI-LANDMARK: PLATFORM_PLAY_MENU_COLLAPSIBLE_SIDEBAR`: `src/App.tsx`, `src/pages/PlayMenu.tsx`
 - Lightweight i18n foundation: `src/i18n/index.ts`
 - Default locale and `trpg-platform-locale` localStorage key: `src/i18n/index.ts`
 - Chinese Platform Shell / Home / Placeholder messages: `src/i18n/locales/zh-CN.ts`

@@ -1,4 +1,14 @@
 import { ClassDef } from '../lib/dnd-types';
+import type { RuleDataMetadata } from '../lib/rules/rule-data-metadata';
+
+// AI-LANDMARK: DND_RULE_METADATA_APPLICATION
+export const DND_CLASS_DATA_ACCURACY: RuleDataMetadata = {
+  source: 'ai-assisted',
+  trustLevel: 'ai-assisted-unverified',
+  usagePolicy: 'needs-human-verification',
+  sourceNote:
+    'Legacy DND class data retained for app continuity. Manifest audit found mixed 2014/2024 data, missing entries, translation issues, and out-of-source entries. Do not treat as verified owner-source data until corrected.',
+};
 
 export const CLASS_DATA: ClassDef[] = [
   {

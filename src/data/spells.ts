@@ -1,4 +1,13 @@
 import { SpellInfo } from '../lib/dnd-types';
+import type { RuleDataMetadata } from '../lib/rules/rule-data-metadata';
+
+export const DND_SPELL_DATA_ACCURACY: RuleDataMetadata = {
+  source: 'ai-assisted',
+  trustLevel: 'ai-assisted-unverified',
+  usagePolicy: 'needs-human-verification',
+  sourceNote:
+    'Legacy DND spell data retained for app continuity. Manifest audit found mixed 2014/2024 data, missing entries, translation issues, and out-of-source entries. Do not treat as verified owner-source data until corrected.',
+};
 
 export const SPELL_DATA: SpellInfo[] = [
   // L0 - Cantrips

@@ -24,6 +24,17 @@ import {
   SpellcastingProgression,
   Dnd2024LevelProgression,
 } from '../../lib/dnd2024/progression-types';
+import type { RuleDataMetadata } from '../../lib/rules/rule-data-metadata';
+
+export const DND_CLASS_PROGRESSION_ACCURACY: RuleDataMetadata = {
+  source: 'dnd5echm-srd52-primary',
+  trustLevel: 'needs-human-check',
+  usagePolicy: 'core-runtime-ok',
+  sourceRef:
+    'docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md#class-resource--progression',
+  sourceNote:
+    'Runtime progression data retained. Manifest source paths exist, but individual values require follow-up verification before being treated as owner-source matched.',
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 工具：生成标准熟练加值

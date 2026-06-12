@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { BrainCircuit, Boxes, Gamepad2, HomeIcon, Import, Map, Settings, Sparkles, Wrench } from 'lucide-react';
+import { ArrowLeft, ChevronsLeft, ChevronsRight, Gamepad2, HomeIcon, Settings, Sparkles } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Toaster } from '../components/ui/sonner';
 import { createTranslator, type Locale, readStoredLocale, writeStoredLocale } from './i18n';
 import { Home } from './pages/Home';
+import { PlayMenu } from './pages/PlayMenu';
 import { PlayWorkspace } from './pages/PlayWorkspace';
 import { useAppStore } from './store/appStore';
 
 type AppView = 'home' | 'play' | 'placeholder';
+type PlayStage = 'menu' | 'workspace';
 type System = 'D&D' | 'CoC' | 'CP';
 
 type PlaceholderKey =
@@ -19,20 +21,29 @@ type PlaceholderKey =
   | 'aiHost'
   | 'settings';
 
+// AI-LANDMARK: PLATFORM_PLAY_MENU_COLLAPSIBLE_SIDEBAR
+// Sidebar is collapsible (persisted via localStorage); Play opens a ruleset
+// menu first, and the selected ruleset workspace is the preserved PlayWorkspace.
+const sidebarStorageKey = 'trpg-platform-sidebar-collapsed';
+
+function readStoredSidebarCollapsed(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.localStorage.getItem(sidebarStorageKey) === '1';
+}
+
+function writeStoredSidebarCollapsed(collapsed: boolean): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(sidebarStorageKey, collapsed ? '1' : '0');
+}
+
 const navItems: {
-  key: AppView | PlaceholderKey;
+  key: 'home' | 'play' | 'settings';
   labelKey: string;
   kind: 'view' | 'placeholder';
   icon: typeof HomeIcon;
-  showSoon?: boolean;
 }[] = [
   { key: 'home', labelKey: 'shell.nav.home', kind: 'view', icon: HomeIcon },
   { key: 'play', labelKey: 'shell.nav.play', kind: 'view', icon: Gamepad2 },
-  { key: 'campaigns', labelKey: 'shell.nav.campaigns', kind: 'placeholder', icon: Map, showSoon: true },
-  { key: 'community', labelKey: 'shell.nav.community', kind: 'placeholder', icon: Boxes, showSoon: true },
-  { key: 'privateImport', labelKey: 'shell.nav.privateImport', kind: 'placeholder', icon: Import, showSoon: true },
-  { key: 'studio', labelKey: 'shell.nav.studio', kind: 'placeholder', icon: Wrench, showSoon: true },
-  { key: 'aiHost', labelKey: 'shell.nav.aiHost', kind: 'placeholder', icon: BrainCircuit, showSoon: true },
   { key: 'settings', labelKey: 'shell.nav.settings', kind: 'placeholder', icon: Settings },
 ];
 
@@ -47,14 +58,29 @@ function normalizeFeatureKey(feature: string): PlaceholderKey {
 
 export default function App() {
   const [appView, setAppView] = useState<AppView>('home');
+  const [playStage, setPlayStage] = useState<PlayStage>('menu');
   const [activePlaceholder, setActivePlaceholder] = useState<PlaceholderKey>('campaigns');
   const [locale, setLocale] = useState<Locale>(readStoredLocale);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(readStoredSidebarCollapsed);
   const setSystem = useAppStore((state) => state.setSystem);
 
   const { t } = createTranslator(locale);
 
+  const toggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      writeStoredSidebarCollapsed(next);
+      return next;
+    });
+  };
+
   const enterPlay = (system?: System) => {
-    if (system) setSystem(system);
+    if (system) {
+      setSystem(system);
+      setPlayStage('workspace');
+    } else {
+      setPlayStage('menu');
+    }
     setAppView('play');
   };
 
@@ -70,20 +96,31 @@ export default function App() {
 
   const placeholderBaseKey = `shell.placeholders.${activePlaceholder}`;
   const isPrivateImportPlaceholder = activePlaceholder === 'privateImport';
+  const sidebarToggleLabel = t(sidebarCollapsed ? 'shell.sidebar.expand' : 'shell.sidebar.collapse');
 
   return (
     <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
       <div className="flex min-h-screen flex-col md:flex-row">
-        <aside className="border-b border-[#2f2a22]/15 bg-[#17130f] text-[#f7f3ea] md:w-64 md:border-b-0 md:border-r">
-          <div className="flex h-full flex-col gap-5 p-4">
-            <div>
-              <div className="flex items-center gap-2 text-sm font-bold">
-                <Sparkles className="h-4 w-4 text-[#f5c518]" />
-                {t('shell.brand')}
+        <aside
+          className={`border-b border-[#2f2a22]/15 bg-[#17130f] text-[#f7f3ea] transition-all md:border-b-0 md:border-r ${
+            sidebarCollapsed ? 'md:w-16' : 'md:w-64'
+          }`}
+        >
+          <div className="flex h-full flex-col gap-4 p-3">
+            <div className={`flex items-center gap-2 ${sidebarCollapsed ? 'md:flex-col md:gap-3' : 'justify-between'}`}>
+              <div className="flex min-w-0 items-center gap-2 text-sm font-bold">
+                <Sparkles className="h-4 w-4 shrink-0 text-[#f5c518]" />
+                {!sidebarCollapsed && <span className="truncate">{t('shell.brand')}</span>}
               </div>
-              <div className="mt-1 text-xs leading-5 text-white/55">
-                {t('shell.subtitle')}
-              </div>
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                aria-label={sidebarToggleLabel}
+                title={sidebarToggleLabel}
+                className="rounded-md p-1.5 text-white/60 transition hover:bg-white/10 hover:text-white"
+              >
+                {sidebarCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+              </button>
             </div>
 
             <nav className="grid gap-1" aria-label={t('shell.navigationLabel')}>
@@ -98,29 +135,26 @@ export default function App() {
                   <button
                     key={item.key}
                     type="button"
+                    title={t(item.labelKey)}
                     onClick={() => {
-                      if (item.kind === 'view') {
-                        setAppView(item.key as AppView);
+                      if (item.key === 'home') {
+                        setAppView('home');
+                      } else if (item.key === 'play') {
+                        enterPlay();
                       } else {
                         openPlaceholder(item.key);
                       }
                     }}
-                    className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition ${
-                      isActive ? 'bg-white text-[#17130f]' : 'text-white/76 hover:bg-white/10 hover:text-white'
-                    }`}
+                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition ${
+                      sidebarCollapsed ? 'md:justify-center md:px-2' : ''
+                    } ${isActive ? 'bg-white text-[#17130f]' : 'text-white/76 hover:bg-white/10 hover:text-white'}`}
                   >
-                    <span className="flex items-center gap-2">
-                      <Icon className="h-4 w-4" />
-                      {t(item.labelKey)}
-                    </span>
-                    {item.showSoon && (
-                      <span className={`text-[10px] ${isActive ? 'text-[#58180d]' : 'text-white/45'}`}>{t('shell.soon')}</span>
-                    )}
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {!sidebarCollapsed && <span className="truncate">{t(item.labelKey)}</span>}
                   </button>
                 );
               })}
             </nav>
-
           </div>
         </aside>
 
@@ -129,7 +163,26 @@ export default function App() {
             <Home locale={locale} onEnterPlay={enterPlay} onOpenPlaceholder={openPlaceholder} />
           )}
 
-          {appView === 'play' && <PlayWorkspace />}
+          {appView === 'play' && playStage === 'menu' && (
+            <PlayMenu locale={locale} onSelectSystem={(system) => enterPlay(system)} />
+          )}
+
+          {appView === 'play' && playStage === 'workspace' && (
+            <div>
+              <div className="border-b border-[#2f2a22]/15 px-4 py-2 md:px-8">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPlayStage('menu')}
+                  className="rounded-md border-[#2f2a22]/20"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  {t('playMenu.backToMenu')}
+                </Button>
+              </div>
+              <PlayWorkspace />
+            </div>
+          )}
 
           {appView === 'placeholder' && activePlaceholder === 'settings' && (
             <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col justify-center px-4 py-8 md:px-8">

@@ -19,6 +19,16 @@ import type {
   DndGearItem,
   DndWeaponItem,
 } from '../../lib/dnd2024/equipment-types';
+import type { RuleDataMetadata } from '../../lib/rules/rule-data-metadata';
+
+export const DND_EQUIPMENT_DATA_ACCURACY: RuleDataMetadata = {
+  source: 'dnd5echm-srd52-primary',
+  trustLevel: 'source-labeled',
+  usagePolicy: 'display-only',
+  sourceRef: 'docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md#equipment',
+  sourceNote:
+    'Read-only sample equipment catalog. Not a complete equipment table; individual equipment rows still require follow-up source verification before runtime promotion.',
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 武器 Weapons
