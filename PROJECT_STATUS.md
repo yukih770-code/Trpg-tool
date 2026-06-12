@@ -37,6 +37,8 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | DND Owner Source Entry Manifest | ✅ Added |
 | Platform Play Menu + Collapsible Sidebar v1 | ✅ Added |
 | DND Rule Metadata Application | ✅ Added |
+| DND Species / Background Display Cleanup | ✅ Added |
+| DND Class / Subclass Correction v1 | ✅ Started |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -79,6 +81,10 @@ Architecture phase scope:
 - DND Rule Metadata Application v1 started source/trust metadata application before content correction.
 - Legacy DND class, race/species, spell, feat, and background datasets are retained but marked `ai-assisted-unverified` / `needs-human-verification`.
 - DND 2024 equipment sample data is source-labeled as display-only, and `classProgression` remains runtime-active with `needs-human-check` accuracy metadata pending value-level verification.
+- DND Species / Background Display Cleanup v1 completed. Sheet no longer relies on 2014 race/subrace string hardcoding such as dwarf/subrace weapon or armor training for species feature display.
+- Legacy saved race/subrace/background values remain compatible in Sheet via quarantined legacy data fallback and explicit needs-human-check messaging; no data correction, schema, migration, Creator, Gameplay, or store behavior changed.
+- DND Class / Subclass Correction v1 started. Existing class/subclass data now carries source/trust metadata, with owner-source-matched entries separated from XGtE/TCoE labels, `needs-human-check` conflicts, and out-of-source quarantine markers.
+- Out-of-source and 2014/2024-conflict subclasses are no longer documented as verified owner-source data. Subclass progression automation, runtime correction, and content correction remain deferred; no schema/migration or gameplay behavior changed.
 - Rule data must declare source and trust metadata before being treated as verified runtime/core data.
 - Unknown-source or suspicious rule data must not be promoted into new gameplay features until it is labeled, quarantined, or verified.
 - Public/free sources may be embedded only within allowed scope; paid-book or official-but-not-public content may be referenced by source metadata but must not copy long rules text.
@@ -102,6 +108,8 @@ Architecture phase scope:
 | DND Spellcasting Path Unification v1 | ✅ Done |
 | DND Structured Equipment Data Layer v1 | ✅ Done |
 | DND Resource Consumption Unification v1 | ✅ Done |
+| DND Background / Species Correction v1 | ✅ Started (entry names source-matched; mechanics pending human check) |
+| DND Class / Subclass Correction v1 | ✅ Started (metadata/source labeling only; mechanics pending human check) |
 
 Action Registry v0 scope:
 - Supports only `classResource` and `pactMagic` resource costs.
@@ -146,6 +154,15 @@ DND Resource Consumption Unification v1 scope:
 - Action Registry v0 resource-backed actions call `consumeClassResource` for class resources and continue routing Pact Magic consumption through `consumeSpellcastingResource`.
 - Spell slot and pact magic consumption continue to route through `consumeSpellcastingResource`, preserving the Pact Magic no-fallback v1 semantics.
 - Action Registry v1, action economy, attacks, damage, targets, equipment combat, schema, and migration remain deferred.
+
+DND Background / Species Correction v1 scope:
+- DND Background / Species Correction v1 started. Legacy 2014 race/subrace/background-feature data is retained but quarantined or marked legacy (`LEGACY_RACE_DATA` / `LEGACY_BACKGROUND_DATA`, usagePolicy `quarantine`).
+- Default DND 2024 species/background data now follows the owner source manifest where possible: 9 SRD5.2 species (人类/矮人/精灵/半身人/侏儒/龙裔/提夫林/兽人/歌利亚, no racial ASI, no subraces) and 4 SRD5.2 backgrounds (侍僧/士兵/智者/罪犯; 贤者 renamed 智者 per owner source).
+- Species traits / size / speed / languages and background skill / origin-feat mappings are NOT fabricated; they carry `needs-human-verification` metadata, and Creator skips empty placeholder values instead of writing them into characters.
+- 半精灵 / 半兽人 / 吉斯洋基人 and 2014 subraces are marked out-of-source / quarantined; TCoE 定制血统 recorded as needs-human-check only. The legacy 艺人 background's Musician / Tough (音乐家 / 健壮) mix-up is fixed.
+- Minimal compatible type extension only: optional `id` / `ruleMeta` fields on `RaceDef` / `BackgroundDef`.
+- No COC / CP RED / Platform changes. No schema / migration changed (race/subrace/background remain plain string fields; racebonus stays an existing numeric field written as 0 for 2024 species).
+- Landmark: `DND_BACKGROUND_SPECIES_CORRECTION`.
 
 ### Call of Cthulhu (COC)
 

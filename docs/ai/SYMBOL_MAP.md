@@ -81,6 +81,23 @@ This file helps AI quickly locate important types, helper functions, store actio
 - DND class progression metadata: `DND_CLASS_PROGRESSION_ACCURACY` in `src/data/dnd2024/classProgression.ts`
 - `AI-LANDMARK: DND_RULE_METADATA_APPLICATION`: `src/data/classes.ts`
 
+## DND Class / Subclass Correction
+
+- DND class/subclass source metadata enrichment: `src/data/classes.ts`
+- DND missing class gap report: `DND_CLASS_SOURCE_GAP_REPORT` in `src/data/classes.ts`
+- Optional class/subclass provenance fields: `ClassDef.ruleMeta` and `SubclassDef.ruleMeta` in `src/lib/dnd-types.ts`
+- Owner source manifest for class/subclass source paths: `docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md`
+- `AI-LANDMARK: DND_CLASS_SUBCLASS_CORRECTION`: `src/data/classes.ts`
+
+## DND Species / Background Display Cleanup
+
+- Sheet species/background display cleanup: `src/pages/Sheet.tsx`
+- Current DND species data: `DND_2024_SPECIES_DATA` / `RACE_DATA` in `src/data/races.ts`
+- Legacy DND race fallback: `LEGACY_RACE_DATA` in `src/data/races.ts`
+- Current DND background data: `DND_2024_BACKGROUND_DATA` / `BACKGROUND_DATA` in `src/data/backgrounds.ts`
+- Legacy DND background fallback: `LEGACY_BACKGROUND_DATA` in `src/data/backgrounds.ts`
+- `AI-LANDMARK: DND_SPECIES_BACKGROUND_DISPLAY_CLEANUP`: `src/pages/Sheet.tsx`
+
 ## Platform Shell / Home / Play Workspace
 
 - Platform shell default entry: `src/App.tsx`
@@ -115,6 +132,16 @@ This file helps AI quickly locate important types, helper functions, store actio
 - PlayWorkspace import/export call sites: `src/pages/PlayWorkspace.tsx`
 - Store load actions still own migration after import: `loadCharacter` in `src/store/characterStore.ts`, `src/store/cocStore.ts`, and `src/store/cpStore.ts`
 - `AI-LANDMARK: LOCAL_DATA_CONTRACT_CHARACTER_ENVELOPE`: `src/lib/data-contract/export-envelope.ts`
+
+## DND Species / Background Correction
+
+- 2024 species default list (`DND_2024_SPECIES_DATA`, `RACE_DATA`): `src/data/races.ts`
+- Quarantined legacy races (`LEGACY_RACE_DATA`, `DND_RACE_DATA_ACCURACY`): `src/data/races.ts`
+- 2024 background default list (`DND_2024_BACKGROUND_DATA`, `BACKGROUND_DATA`): `src/data/backgrounds.ts`
+- Quarantined legacy backgrounds (`LEGACY_BACKGROUND_DATA`, `DND_BACKGROUND_DATA_ACCURACY`): `src/data/backgrounds.ts`
+- Optional `id` / `ruleMeta` fields on `RaceDef` / `BackgroundDef`: `src/lib/dnd-types.ts`
+- Creator placeholder-skip guards for species size/speed/languages: `src/pages/Creator.tsx`
+- `AI-LANDMARK: DND_BACKGROUND_SPECIES_CORRECTION`: `src/data/races.ts`, `src/data/backgrounds.ts`, `src/pages/Creator.tsx`
 
 ## DND Runtime / Resources
 

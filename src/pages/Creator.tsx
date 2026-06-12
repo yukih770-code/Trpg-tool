@@ -190,9 +190,12 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
                     onClick={() => {
                      updateField('race', r.name);
                      updateField('subrace', '');
-                     updateField('size', r.size);
-                     updateField('speed', `${r.speed} 尺`);
-                     updateField('customLanguages', r.baseLanguages.join(', '));
+                     // AI-LANDMARK: DND_BACKGROUND_SPECIES_CORRECTION
+                     // 2024 species entries intentionally leave size/speed/languages
+                     // empty until human-verified; do not overwrite with placeholders.
+                     if (r.size) updateField('size', r.size);
+                     if (r.speed > 0) updateField('speed', `${r.speed} 尺`);
+                     if (r.baseLanguages.length > 0) updateField('customLanguages', r.baseLanguages.join(', '));
                      const newAttrs = { ...character.attrs };
                      attrList.forEach(attr => {
                        newAttrs[attr] = { ...newAttrs[attr], racebonus: r[`${attr.toLowerCase() as Lowercase<AttributeName>}Bonus`] as number };

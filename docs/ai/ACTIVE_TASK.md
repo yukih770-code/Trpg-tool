@@ -6,33 +6,28 @@
 
 ## Task
 
-- ID: DND Rule Metadata Application v1
-- Name: DND Rule Metadata Application v1
-- Goal: apply source/trust metadata to existing DND data before any content correction.
-- Phase: P1 Rules Runtime Closure / data integrity hardening
+- ID: DND Class / Subclass Correction v1
+- Name: DND Class / Subclass Correction v1
+- Goal: apply source/trust metadata to DND class and subclass data without correcting rule content or changing runtime behavior.
+- Phase: P1 Rules Runtime Closure / DND data integrity correction
 - Status: Implemented; verification pending
 
 ## Result Summary
 
-- Extended the shared rule data metadata contract with DND5eChm source IDs, DND trust levels, and usage policy.
-- Added module-level metadata constants for legacy DND classes, races/species, spells, feats, and backgrounds.
-- Added source-labeled display-only metadata for the DND equipment sample.
-- Added `needs-human-check` runtime-active metadata for DND class progression data.
-- No rule content, Creator, Gameplay, Sheet, store schema, migration, backend, or P2 work.
-- Landmark: `AI-LANDMARK: DND_RULE_METADATA_APPLICATION`.
+- `ClassDef` and `SubclassDef` now support optional `id` / `ruleMeta` provenance fields.
+- Existing `CLASS_DATA` entries are retained and enriched with owner-source, XGtE/TCoE, needs-human-check, or out-of-source metadata.
+- `破誓者` is explicitly marked out-of-source / quarantine.
+- XGtE/TCoE subclass source labels were added where the owner manifest supports them; name conflicts remain marked for human confirmation.
+- 2014/2024 conflict areas such as wizard schools, cleric domains, and warlock level-1 subclass timing are marked `needs-human-check`.
+- `classProgression`, Creator, Sheet, Gameplay, Action Registry, store schema, and migration behavior were not changed.
+- Landmark: `AI-LANDMARK: DND_CLASS_SUBCLASS_CORRECTION`.
 
 ## Scope
 
 ### Allowed Files
 
-- `src/lib/rules/rule-data-metadata.ts`
+- `src/lib/dnd-types.ts`
 - `src/data/classes.ts`
-- `src/data/races.ts`
-- `src/data/spells.ts`
-- `src/data/feats.ts`
-- `src/data/backgrounds.ts`
-- `src/data/dnd2024/classProgression.ts`
-- `src/data/dnd2024/equipment.ts`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
 - `docs/rules/DND_RULE_COVERAGE.md`
@@ -42,51 +37,49 @@
 
 ### Forbidden Files
 
+- COC code or data
+- CP RED code or data
+- Platform Shell / Play Menu
+- DND species/background data
+- DND spells, feats, equipment data
+- `src/data/dnd2024/classProgression.ts` values
 - Creator / Gameplay / Sheet behavior
-- DND / COC / CP RED Gameplay rule logic
-- Market behavior
 - Store schema / migration
-- COC and CP RED data
-- Platform Shell
-- package / Vite / TypeScript config
-- Backend, storage adapter, multiplayer, AI Host, P2
+- Backend / P2
 
 ### Do Not Do
 
-- Add new rule content
-- Fill official tables
-- Copy official rules text
-- Delete or quarantine existing data
-- Correct names, translations, rules text, spell effects, class features, background/species/feat mechanics, or progression values
+- Delete class/subclass entries
+- Add full class/subclass mechanics
+- Correct subclass feature text or unlock levels
+- Use model memory, BG3, third-party wiki, or unspecified web sources
 - `git add .` / `git add -A` / auto commit
 
 ## Navigation
 
 ### Key Symbols
 
-- `DND_RULE_METADATA_APPLICATION`
+- `DND_CLASS_SUBCLASS_CORRECTION`
 - `DND_CLASS_DATA_ACCURACY`
-- `DND_RACE_DATA_ACCURACY`
-- `DND_SPELL_DATA_ACCURACY`
-- `DND_FEAT_DATA_ACCURACY`
-- `DND_BACKGROUND_DATA_ACCURACY`
-- `DND_EQUIPMENT_DATA_ACCURACY`
-- `DND_CLASS_PROGRESSION_ACCURACY`
+- `DND_CLASS_SOURCE_GAP_REPORT`
+- `CLASS_METADATA_BY_NAME`
+- `SUBCLASS_METADATA_BY_CLASS`
+- `ClassDef.ruleMeta`
+- `SubclassDef.ruleMeta`
 
 ### Locate Commands
 
 ```powershell
-rg -n "DND_RULE_METADATA_APPLICATION|DND_.*_DATA_ACCURACY|DND_CLASS_PROGRESSION_ACCURACY|RuleDataUsagePolicy" src docs PROJECT_STATUS.md TEST_CHECKLIST.md
+rg -n "DND_CLASS_SUBCLASS_CORRECTION|DND_CLASS_SOURCE_GAP_REPORT|CLASS_METADATA_BY_NAME|SUBCLASS_METADATA_BY_CLASS|ruleMeta" src/data/classes.ts src/lib/dnd-types.ts docs
 ```
 
 ## Completion Criteria
 
-- Shared metadata type supports DND source IDs, DND trust levels, and usage policy.
-- Legacy DND data files export accuracy metadata without changing data content.
-- DND equipment sample and class progression export accuracy metadata.
-- Status/checklist/SYMBOL_MAP/TASK_ARCHIVE are updated.
-- No rule content or data entries are corrected, added, or removed.
-- No gameplay, creator, sheet, market, store schema, or migration behavior changed.
+- Class/subclass data carries source/trust metadata.
+- Legacy/out-of-source subclasses remain retained but are not presented as verified owner-source data.
+- XGtE / TCoE source-labeled subclasses are marked with the correct source family or needs-human-check naming notes.
+- Missing owner-source class gap is recorded without adding runtime behavior.
+- No classProgression values, Creator behavior, Gameplay logic, Action Registry behavior, schema, or migration changed.
 - `npx tsc --noEmit` and `npm run build` pass.
 
 ## Verification

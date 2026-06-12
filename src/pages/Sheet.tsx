@@ -4,7 +4,8 @@ import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { AttributeName, SkillName } from '../lib/dnd-types';
-import { BACKGROUND_DATA } from '../data/backgrounds';
+import { BACKGROUND_DATA, LEGACY_BACKGROUND_DATA } from '../data/backgrounds';
+import { LEGACY_RACE_DATA } from '../data/races';
 import { getAvailableClasses, getAvailableRaces, getAvailableFeats } from '../lib/mod-utils';
 import { DndEquipmentCatalogPanel } from './sheet/DndEquipmentCatalogPanel';
 
@@ -69,12 +70,23 @@ export function Sheet() {
     return <div className="text-center py-20 text-[#58180d]/60 font-bold uppercase tracking-widest text-sm">请先在创建器中完成角色创建。</div>;
   }
 
-  // Base and race features
+  // AI-LANDMARK: DND_SPECIES_BACKGROUND_DISPLAY_CLEANUP
+  // Base and species/background display data.
   const classDef = CLASS_DATA.find(c => c.name === character.jobClass);
-  const raceDef = RACE_DATA.find(r => r.name === character.race);
-  const bgDef = BACKGROUND_DATA.find(b => b.name === character.background);
+  const currentRaceDef = RACE_DATA.find(r => r.name === character.race);
+  const legacyRaceDef = currentRaceDef ? undefined : LEGACY_RACE_DATA.find(r => r.name === character.race);
+  const raceDef = currentRaceDef ?? legacyRaceDef;
+  const isLegacyRaceDisplay = !currentRaceDef && !!legacyRaceDef;
+  const currentBgDef = BACKGROUND_DATA.find(b => b.name === character.background);
+  const legacyBgDef = currentBgDef ? undefined : LEGACY_BACKGROUND_DATA.find(b => b.name === character.background);
+  const bgDef = currentBgDef ?? legacyBgDef;
+  const isLegacyBackgroundDisplay = !currentBgDef && !!legacyBgDef;
+  const legacySubraceDef = isLegacyRaceDisplay
+    ? legacyRaceDef?.subraces?.find(s => s.name === character.subrace)
+    : undefined;
+  const hasRetainedLegacySubrace = !!character.subrace && !legacySubraceDef;
 
-  if (!classDef || !raceDef) {
+  if (!classDef) {
     return <div className="text-center py-20 text-[#58180d]/40">角色数据读取中或未完成创建...</div>;
   }
   
@@ -96,22 +108,8 @@ export function Sheet() {
   const initiative = dexMod;
   const savingThrows = classDef?.savingThrows || [];
 
-  const armorProf = classDef?.armorProficiencies || [];
-  const weaponProf = classDef?.weaponProficiencies || [];
-
-  // If Mountain Dwarf, they get Light and Medium armor
-  if (character.subrace === '山地矮人') {
-    if (!armorProf.includes("轻甲")) armorProf.push("轻甲");
-    if (!armorProf.includes("中甲")) armorProf.push("中甲");
-  }
-  // Dwarf combat training
-  if (character.race === '矮人') {
-    if (!weaponProf.includes("战斧")) weaponProf.push("战斧", "战锤", "手斧", "轻锤");
-  }
-  // Elf weapon training
-  if (character.subrace === '高等精灵') {
-     if (!weaponProf.includes("长剑")) weaponProf.push("长剑", "细剑", "短弓", "长弓");
-  }
+  const armorProf = [...(classDef?.armorProficiencies || [])];
+  const weaponProf = [...(classDef?.weaponProficiencies || [])];
 
   // Deduplicate
   const finalArmorProf = [...new Set(armorProf)];
@@ -248,46 +246,82 @@ export function Sheet() {
             {/* Background Feature */}
             {bgDef?.feature && (
               <div>
-                <p className="font-bold text-[#58180d] text-xs uppercase"><span className="opacity-60">[背景]</span> {bgDef.feature.name}</p>
+                <p className="font-bold text-[#58180d] text-xs uppercase">
+                  <span className="opacity-60">{isLegacyBackgroundDisplay ? '[旧版背景/需核对]' : '[背景/待核对]'}</span> {bgDef.feature.name}
+                </p>
                 <p className="text-xs mt-0.5">{bgDef.feature.desc}</p>
+                {bgDef.ruleMeta?.usagePolicy && (
+                  <p className="mt-1 text-[10px] text-[#58180d]/60">
+                    数据状态：{bgDef.ruleMeta.trustLevel} / {bgDef.ruleMeta.usagePolicy}
+                  </p>
+                )}
+              </div>
+            )}
+            {!bgDef && character.background && (
+              <div className="text-xs text-[#58180d]/70 border border-[#58180d]/20 bg-[#ede1c5]/40 p-2">
+                背景资料未在当前 2024 数据中找到，旧存档值已保留：{character.background}。
               </div>
             )}
 
-            {/* Race Features */}
-            {raceDef?.features.map((f, i) => {
+            {/* Species Features */}
+            {raceDef && (
+              <div className="text-[10px] text-[#58180d]/60 border border-[#58180d]/20 bg-[#ede1c5]/40 p-2">
+                {isLegacyRaceDisplay
+                  ? '旧版种族资料仅为旧角色兼容显示，仍需人工核对；不会作为已验证 2024 物种规则。'
+                  : '2024 物种资料来自当前数据定义；具体特性仍以 metadata 标记的核对状态为准。'}
+                {raceDef.ruleMeta?.usagePolicy && (
+                  <span> 数据状态：{raceDef.ruleMeta.trustLevel} / {raceDef.ruleMeta.usagePolicy}。</span>
+                )}
+              </div>
+            )}
+            {raceDef?.features.length ? raceDef.features.map((f, i) => {
               const matches = f.match(/-\s*(.+?)（(.+?)）：(.+)/);
               if (matches) {
                  return (
                    <div key={`race-f-${i}`}>
-                     <p className="font-bold text-[#58180d] text-xs uppercase"><span className="opacity-60">[种族]</span> {matches[2]}</p>
+                     <p className="font-bold text-[#58180d] text-xs uppercase"><span className="opacity-60">{isLegacyRaceDisplay ? '[旧版种族/需核对]' : '[物种]'}</span> {matches[2]}</p>
                      <p className="text-xs mt-0.5">{matches[3]}</p>
                    </div>
                  )
               }
               return (
                 <div key={`race-f-${i}`}>
-                  <p className="text-xs mt-0.5"><span className="opacity-60">[种族]</span> {f}</p>
+                  <p className="text-xs mt-0.5"><span className="opacity-60">{isLegacyRaceDisplay ? '[旧版种族/需核对]' : '[物种]'}</span> {f}</p>
                 </div>
               )
-            })}
+            }) : (
+              <div className="text-xs text-[#58180d]/70 border border-[#58180d]/20 bg-[#ede1c5]/40 p-2">
+                物种特性待核对。Sheet 不再根据种族名称自动追加旧版特性。
+              </div>
+            )}
+            {!raceDef && character.race && (
+              <div className="text-xs text-[#58180d]/70 border border-[#58180d]/20 bg-[#ede1c5]/40 p-2">
+                物种资料未在当前 2024 数据或 legacy 兼容数据中找到，旧存档值已保留：{character.race}。
+              </div>
+            )}
             
-            {/* Subrace Features */}
-            {raceDef?.subraces?.find(s => s.name === character.subrace)?.features.map((f, i) => {
+            {/* Legacy Subrace Compatibility */}
+            {legacySubraceDef?.features.map((f, i) => {
               const matches = f.match(/-\s*(.+?)（(.+?)）：(.+)/);
               if (matches) {
                  return (
                    <div key={`subrace-f-${i}`}>
-                     <p className="font-bold text-[#58180d] text-xs uppercase"><span className="opacity-60">[{character.subrace}]</span> {matches[2]}</p>
+                     <p className="font-bold text-[#58180d] text-xs uppercase"><span className="opacity-60">[旧版亚种/需核对]</span> {matches[2]}</p>
                      <p className="text-xs mt-0.5">{matches[3]}</p>
                    </div>
                  )
               }
               return (
                 <div key={`subrace-f-${i}`}>
-                  <p className="text-xs mt-0.5"><span className="opacity-60">[{character.subrace}]</span> {f}</p>
+                  <p className="text-xs mt-0.5"><span className="opacity-60">[旧版亚种/需核对]</span> {f}</p>
                 </div>
               )
             })}
+            {hasRetainedLegacySubrace && (
+              <div className="text-xs text-[#58180d]/70 border border-[#58180d]/20 bg-[#ede1c5]/40 p-2">
+                旧版亚种信息已保留在角色数据中：{character.subrace}。当前 2024 species 数据不再根据该名称自动展示或追加 2014 亚种特性。
+              </div>
+            )}
 
             {/* Class Features */}
             {classDef?.features.filter(f => f.unlockLevel <= character.level).map((f, i) => (

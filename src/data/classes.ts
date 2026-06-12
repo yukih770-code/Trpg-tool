@@ -10,7 +10,165 @@ export const DND_CLASS_DATA_ACCURACY: RuleDataMetadata = {
     'Legacy DND class data retained for app continuity. Manifest audit found mixed 2014/2024 data, missing entries, translation issues, and out-of-source entries. Do not treat as verified owner-source data until corrected.',
 };
 
-export const CLASS_DATA: ClassDef[] = [
+const DND_CLASS_MANIFEST_REF =
+  'docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md';
+
+const classSourceMeta = (sourceName?: string): RuleDataMetadata => ({
+  source: 'dnd5echm-srd52-primary',
+  trustLevel: 'source-labeled',
+  usagePolicy: 'needs-human-verification',
+  sourceRef: `${DND_CLASS_MANIFEST_REF}#classes`,
+  sourceNote: sourceName
+    ? `Owner source manifest contains this DND 2024 class path, but existing app values still require field-level verification. Manifest/source naming: ${sourceName}.`
+    : 'Owner source manifest contains this DND 2024 class path, but existing app values still require field-level verification.',
+});
+
+const subclassSourceMeta = (
+  source: RuleDataMetadata['source'],
+  scope: string,
+  sourceName?: string,
+): RuleDataMetadata => ({
+  source,
+  trustLevel: 'source-labeled',
+  usagePolicy: 'needs-human-verification',
+  sourceRef: `${DND_CLASS_MANIFEST_REF}#class--subclass-source-table`,
+  sourceNote: sourceName
+    ? `${scope} source-labeled subclass. Existing app description/features/unlock level are retained and still require verification. Manifest/source naming: ${sourceName}.`
+    : `${scope} source-labeled subclass. Existing app description/features/unlock level are retained and still require verification.`,
+});
+
+const conflictMeta = (note: string): RuleDataMetadata => ({
+  source: 'ai-assisted',
+  trustLevel: 'needs-human-check',
+  usagePolicy: 'needs-human-verification',
+  sourceRef: `${DND_CLASS_MANIFEST_REF}#class--subclass-source-table`,
+  sourceNote: note,
+});
+
+const outOfSourceMeta = (note: string): RuleDataMetadata => ({
+  source: 'unknown',
+  trustLevel: 'out-of-source',
+  usagePolicy: 'quarantine',
+  sourceRef: `${DND_CLASS_MANIFEST_REF}#class--subclass-source-table`,
+  sourceNote: note,
+});
+
+const CLASS_METADATA_BY_NAME: Record<string, RuleDataMetadata> = {
+  野蛮人: classSourceMeta(),
+  吟游诗人: classSourceMeta(),
+  法师: classSourceMeta(),
+  牧师: classSourceMeta(),
+  战士: classSourceMeta(),
+  游荡者: classSourceMeta(),
+  圣武士: classSourceMeta(),
+  游侠: classSourceMeta(),
+  邪术师: classSourceMeta('魔契师；existing app name 邪术师 needs owner-source naming confirmation.'),
+  武僧: classSourceMeta(),
+  德鲁伊: classSourceMeta(),
+  术士: classSourceMeta(),
+};
+
+const SUBCLASS_METADATA_BY_CLASS: Record<string, Record<string, RuleDataMetadata>> = {
+  野蛮人: {
+    狂战士: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2', '狂战士道途'),
+    荒蛮之心: conflictMeta('Existing subclass retained, but owner-source manifest mapping is unresolved for the declared DND 2024 / XGtE / TCoE scope.'),
+    狂野魔法: subclassSourceMeta('dnd5echm-tcoe', 'TCoE', '狂野魔法道途'),
+  },
+  吟游诗人: {
+    逸闻学院: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2'),
+    勇气学院: conflictMeta('Existing subclass retained, but it was not confirmed as verified owner-source data in the current manifest pass.'),
+    剑刃学院: subclassSourceMeta('dnd5echm-xgte', 'XGtE', '剑舞学院；existing app name 剑刃学院 needs naming confirmation.'),
+  },
+  法师: {
+    防护学派: conflictMeta('2014/2024 subclass scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+    咒法学派: conflictMeta('2014/2024 subclass scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+    预言学派: conflictMeta('2014/2024 subclass scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+    附魔学派: conflictMeta('2014/2024 subclass scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+    塑能学派: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2', '塑能师；existing app name 塑能学派 needs naming confirmation.'),
+    死灵学派: conflictMeta('2014/2024 subclass scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+    幻术学派: conflictMeta('2014/2024 subclass scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+    变化学派: conflictMeta('2014/2024 subclass scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+  },
+  牧师: {
+    生命领域: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2'),
+    光明领域: conflictMeta('2014/2024 domain scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+    自然领域: conflictMeta('2014/2024 domain scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+    风暴领域: conflictMeta('2014/2024 domain scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+    诡术领域: conflictMeta('2014/2024 domain scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+    战争领域: conflictMeta('2014/2024 domain scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+    知识领域: conflictMeta('2014/2024 domain scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+  },
+  战士: {
+    冠军武士: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2', '勇士；existing app name 冠军武士 needs naming confirmation.'),
+    战斗大师: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+    奥法骑士: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+  },
+  游荡者: {
+    盗贼: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2'),
+    刺客: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+    奥法诡术师: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+  },
+  圣武士: {
+    奉献之誓: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2'),
+    古贤之誓: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+    复仇之誓: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+    破誓者: outOfSourceMeta('Explicitly quarantined: not found in the declared owner-source scope for this correction pass. Do not treat as verified class/subclass data.'),
+  },
+  游侠: {
+    猎人: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2'),
+    驯兽师: conflictMeta('Existing subclass retained; TCoE companion-related source support may exist, but the subclass entry needs owner-source path confirmation.'),
+    幽域追踪者: subclassSourceMeta('dnd5echm-xgte', 'XGtE'),
+  },
+  邪术师: {
+    邪魔: conflictMeta('Owner source manifest uses 魔契师 / 邪魔宗主 while the app uses 邪术师 / 邪魔 and unlockLevel 1. Naming and 2024 unlock timing need human confirmation.'),
+    旧日支配者: conflictMeta('Owner-source mapping and 2024 unlock timing need human confirmation; retained for continuity only.'),
+    妖精: conflictMeta('Owner-source mapping and 2024 unlock timing need human confirmation; retained for continuity only.'),
+  },
+  武僧: {
+    散打宗: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2', '散打武者；existing app name 散打宗 needs naming confirmation.'),
+    暗影宗: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+    四象宗: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+  },
+  德鲁伊: {
+    大地结社: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2'),
+    月亮结社: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+    孢子结社: subclassSourceMeta('dnd5echm-tcoe', 'TCoE'),
+  },
+  术士: {
+    龙族血脉: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2', '龙族术法；existing app name 龙族血脉 needs naming confirmation.'),
+    狂野魔法: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+    风暴术士: subclassSourceMeta('dnd5echm-xgte', 'XGtE', '风暴术法；existing app name 风暴术士 needs naming confirmation.'),
+  },
+};
+
+export const DND_CLASS_SOURCE_GAP_REPORT = {
+  missingFromRuntimeClassList: [
+    {
+      name: '奇械师',
+      source: 'dnd5echm-tcoe',
+      trustLevel: 'source-labeled',
+      usagePolicy: 'display-only',
+      sourceRef: `${DND_CLASS_MANIFEST_REF}#classes`,
+      status: 'missing-from-runtime-class-list',
+      note: 'Owner source manifest lists 13 classes; existing runtime class list keeps its previous 12-class shape. This task records the gap without adding runtime behavior.',
+    },
+  ],
+};
+
+// AI-LANDMARK: DND_CLASS_SUBCLASS_CORRECTION
+const applyDndClassSubclassMetadata = (classes: ClassDef[]): ClassDef[] =>
+  classes.map((cls) => ({
+    ...cls,
+    ruleMeta: CLASS_METADATA_BY_NAME[cls.name] ?? DND_CLASS_DATA_ACCURACY,
+    subclasses: cls.subclasses.map((subclass) => ({
+      ...subclass,
+      ruleMeta:
+        SUBCLASS_METADATA_BY_CLASS[cls.name]?.[subclass.name] ??
+        conflictMeta('Existing subclass retained, but source ownership and values need human verification.'),
+    })),
+  }));
+
+export const CLASS_DATA: ClassDef[] = applyDndClassSubclassMetadata([
   {
     name: "野蛮人",
     desc: "绝强的战士，他们与多元宇宙原初之力联结，凭借狂暴之力撕裂敌人",
@@ -250,4 +408,4 @@ export const CLASS_DATA: ClassDef[] = [
       { name: "风暴术士", desc: "于天顶惊雷狂风降下落雷神灵。", unlockLevel: 1, features: [{ name: "气旋神速", desc: "释放神力引发风暴时无伤瞬速后退脱出控制领域。", unlockLevel: 1 }] }
     ]
   }
-];
+]);

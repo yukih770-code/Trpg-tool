@@ -61,6 +61,11 @@ Open the app in the browser and verify each page loads without crashing.
 ### D&D
 
 - [ ] DND Creator — opens, fields editable
+- [ ] DND Creator — species list shows the 9 owner-source 2024 species (人类/矮人/精灵/半身人/侏儒/龙裔/提夫林/兽人/歌利亚); no subrace step appears
+- [ ] DND Creator — selecting a 2024 species sets racebonus to 0 for all abilities and does not overwrite size/speed/languages with placeholders
+- [ ] DND Creator — background list shows 侍僧/士兵/智者/罪犯; 半精灵/半兽人/吉斯洋基人 and legacy backgrounds are not offered as defaults
+- [ ] DND Creator — legacy 艺人 data (if surfaced anywhere) grants 音乐家 (Musician), not 健壮 (Tough)
+- [ ] DND Sheet — legacy characters with old race/background strings still render without crashing (pending-verification note may replace legacy trait text)
 - [ ] DND Sheet — opens, displays character data
 - [ ] DND Gameplay — opens, runtime resources / checks / actions panels render
 - [ ] DND Gameplay — checks and action use update RollConsole Latest Result and RuntimeLogEntry history
@@ -187,6 +192,14 @@ After modifying one system, verify the other two are unaffected:
 - [ ] Legacy DND classes/races/spells/feats/backgrounds export module-level accuracy metadata marked `ai-assisted-unverified`
 - [ ] DND equipment sample exports source-labeled display-only metadata and remains read-only sample data
 - [ ] DND class progression exports `needs-human-check` metadata while runtime values remain unchanged
+- [ ] DND class/subclass exported data carries source/trust metadata without changing class descriptions, features, unlock levels, or runtime behavior
+- [ ] DND class/subclass metadata marks 破誓者 as `out-of-source` / quarantine rather than verified owner-source data
+- [ ] DND XGtE / TCoE subclasses such as 幽域追踪者, 剑刃学院, 孢子结社, and 风暴术士 are source-labeled or marked needs-human-check when names conflict
+- [ ] DND 2014/2024-conflict subclass groups such as 法师学派, 牧师领域, and 邪术师 level-1 subclass timing are marked `needs-human-check`
+- [ ] DND Class / Subclass Correction does not modify Creator, Sheet, Gameplay, Action Registry, store schema, or migration behavior
+- [ ] DND Sheet species/background display does not use 2014 race/subrace string hardcoding such as dwarf or mountain-dwarf proficiency additions
+- [ ] DND Sheet displays current 2024 species/background metadata and marks unverified species traits/background features as pending verification
+- [ ] DND Sheet keeps legacy saved race/subrace/background values compatible with legacy/needs-human-check messaging
 - [ ] Source-manifest tasks do not modify runtime behavior, Creator, Gameplay, Market, store schema, or migration
 - [ ] New verified runtime/core rule data declares source and trust metadata before promotion
 - [ ] Unknown-source or suspicious data is not used as the basis for new gameplay features

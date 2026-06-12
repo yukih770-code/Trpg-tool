@@ -43,6 +43,10 @@ export interface ClassFeature {
 }
 
 export interface SubclassDef {
+  /** Stable id for corrected entries, e.g. `subclass.bard.lore` (optional for legacy data). */
+  id?: string;
+  /** Per-entry rule data provenance (optional; legacy entries may rely on module-level metadata). */
+  ruleMeta?: import('./rules/rule-data-metadata').RuleDataMetadata;
   name: string;
   desc: string;
   unlockLevel: number;
@@ -50,6 +54,10 @@ export interface SubclassDef {
 }
 
 export interface ClassDef {
+  /** Stable id for corrected entries, e.g. `class.fighter` (optional for legacy data). */
+  id?: string;
+  /** Per-entry rule data provenance (optional; legacy entries may rely on module-level metadata). */
+  ruleMeta?: import('./rules/rule-data-metadata').RuleDataMetadata;
   name: string;
   desc: string;
   primaryAbility: AttributeName;
@@ -63,6 +71,10 @@ export interface ClassDef {
 }
 
 export interface RaceDef {
+  /** Stable id for corrected entries, e.g. `species.human` (optional for legacy data). */
+  id?: string;
+  /** Per-entry rule data provenance (optional; legacy entries may rely on module-level metadata). */
+  ruleMeta?: import('./rules/rule-data-metadata').RuleDataMetadata;
   name: string;
   desc: string;
   strBonus: number;
@@ -94,6 +106,10 @@ export interface SubraceDef {
 }
 
 export interface BackgroundDef {
+  /** Stable id for corrected entries, e.g. `background.soldier` (optional for legacy data). */
+  id?: string;
+  /** Per-entry rule data provenance (optional; legacy entries may rely on module-level metadata). */
+  ruleMeta?: import('./rules/rule-data-metadata').RuleDataMetadata;
   name: string;
   desc: string;
   skillProficiencies: SkillName[];

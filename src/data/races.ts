@@ -1,15 +1,72 @@
 import { RaceDef } from '../lib/dnd-types';
 import type { RuleDataMetadata } from '../lib/rules/rule-data-metadata';
 
+// AI-LANDMARK: DND_BACKGROUND_SPECIES_CORRECTION
+// DND Background / Species Correction v1:
+// - Default species list now follows the owner source manifest (DND 2024 species
+//   model: no racial ASI, no subraces). Mechanics/size/speed are NOT fabricated;
+//   they remain pending human extraction from the owner source.
+// - Legacy 2014 race/subrace/racial-ASI data is retained below as
+//   LEGACY_RACE_DATA and is quarantined, not deleted.
+
+const SPECIES_MANIFEST_REF =
+  'docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md';
+
+export const DND_SPECIES_2024_DATA_ACCURACY: RuleDataMetadata = {
+  source: 'dnd5echm-srd52-primary',
+  trustLevel: 'owner-source-matched',
+  usagePolicy: 'needs-human-verification',
+  sourceRef: `${SPECIES_MANIFEST_REF}#item-entries`,
+  sourceNote:
+    'Species entry names and source paths are matched to the owner source manifest (玩家手册2024/角色起源/种族). Traits, size, speed, and languages are intentionally NOT filled: they require human-checked extraction from the owner source. Entries carry zero ability bonuses by the DND 2024 species model.',
+};
+
+function makeSpecies2024(id: string, name: string, sourceFile: string): RaceDef {
+  return {
+    id,
+    name,
+    desc: '条目已在 owner source（SRD5.2 玩家手册2024/角色起源/种族）中确认；物种特性待人工核对后提取。',
+    strBonus: 0, dexBonus: 0, conBonus: 0, intBonus: 0, wisBonus: 0, chaBonus: 0,
+    size: '',
+    speed: 0,
+    baseLanguages: [],
+    features: ['物种特性 / 体型 / 速度待从 owner source 核对提取（needs-human-check）'],
+    subraces: [],
+    ruleMeta: {
+      source: 'dnd5echm-srd52-primary',
+      trustLevel: 'owner-source-matched',
+      usagePolicy: 'needs-human-verification',
+      sourceRef: `${SPECIES_MANIFEST_REF}#item-${name}`,
+      sourceNote: `玩家手册2024/角色起源/种族/${sourceFile}`,
+    },
+  };
+}
+
+export const DND_2024_SPECIES_DATA: RaceDef[] = [
+  makeSpecies2024('species.human', '人类', '人类.htm'),
+  makeSpecies2024('species.dwarf', '矮人', '矮人.htm'),
+  makeSpecies2024('species.elf', '精灵', '精灵.htm'),
+  makeSpecies2024('species.halfling', '半身人', '半身人.htm'),
+  makeSpecies2024('species.gnome', '侏儒', '侏儒.htm'),
+  makeSpecies2024('species.dragonborn', '龙裔', '龙裔.htm'),
+  makeSpecies2024('species.tiefling', '提夫林', '提夫林.htm'),
+  makeSpecies2024('species.orc', '兽人', '兽人.htm'),
+  makeSpecies2024('species.goliath', '歌利亚', '歌利亚.htm'),
+];
+
+// TCoE 定制血统 (Custom Lineage) exists in the owner source
+// (塔莎的万事坩埚/玩家选项/定制血统.htm) but is an optional rule, not a species
+// entry; it is intentionally not added to the default list (needs-human-check).
+
 export const DND_RACE_DATA_ACCURACY: RuleDataMetadata = {
   source: 'ai-assisted',
   trustLevel: 'ai-assisted-unverified',
-  usagePolicy: 'needs-human-verification',
+  usagePolicy: 'quarantine',
   sourceNote:
-    'Legacy DND race/species data retained for app continuity. Manifest audit found mixed 2014/2024 data, missing entries, translation issues, and out-of-source entries. Do not treat as verified owner-source data until corrected.',
+    'Legacy 2014-model race/subrace/racial-ASI data retained for app continuity and old character display only. Quarantined by DND Background / Species Correction v1: no longer the default Creator list. Contains out-of-source entries (半精灵 / 半兽人 / 吉斯洋基人) and 2014 subraces; do not treat as verified owner-source data.',
 };
 
-export const RACE_DATA: RaceDef[] = [
+export const LEGACY_RACE_DATA: RaceDef[] = [
   {
     name: "人类",
     desc: "作为最具适应性且最常见的种族，人类在长久的时间里塑造了丰富的历史和文明。",
@@ -168,6 +225,12 @@ export const RACE_DATA: RaceDef[] = [
   },
   {
     name: "半精灵",
+    ruleMeta: {
+      source: 'ai-assisted',
+      trustLevel: 'out-of-source',
+      usagePolicy: 'quarantine',
+      sourceNote: '半精灵不在 DND 2024 玩家手册物种列表中（owner source 玩家手册2024/角色起源/种族 无此条目）；属 2014 模型遗留，隔离保留。',
+    },
     desc: "融合了人类和精灵特点的生物，比精灵更坚韧并且比人类长寿。",
     strBonus: 0, dexBonus: 0, conBonus: 0, intBonus: 0, wisBonus: 0, chaBonus: 2,
     size: "中型", speed: 30, baseLanguages: ["通用语", "精灵语"],
@@ -199,6 +262,12 @@ export const RACE_DATA: RaceDef[] = [
   },
   {
     name: "半兽人",
+    ruleMeta: {
+      source: 'ai-assisted',
+      trustLevel: 'out-of-source',
+      usagePolicy: 'quarantine',
+      sourceNote: '半兽人不在 DND 2024 玩家手册物种列表中（owner source 含独立的 兽人 物种条目）；属 2014 模型遗留，隔离保留。',
+    },
     desc: "半兽人是兽人和人类的后代，体内澎湃的狂怒使得他们往往能够打出极为惊人的致命一击。",
     strBonus: 2, dexBonus: 0, conBonus: 1, intBonus: 0, wisBonus: 0, chaBonus: 0,
     size: "中型", speed: 30, baseLanguages: ["通用语", "兽人语"],
@@ -240,6 +309,12 @@ export const RACE_DATA: RaceDef[] = [
   },
   {
     name: "吉斯洋基人",
+    ruleMeta: {
+      source: 'ai-assisted',
+      trustLevel: 'out-of-source',
+      usagePolicy: 'quarantine',
+      sourceNote: '吉斯洋基人不在项目声明范围（DND 2024 + XGtE + TCoE）的 owner source 物种列表中；needs-human-check，隔离保留。',
+    },
     desc: "自星界远道而来的虚空突击者。吉斯洋基人从小被训练成夺心魔猎手且毫不留情。",
     strBonus: 2, dexBonus: 0, conBonus: 0, intBonus: 1, wisBonus: 0, chaBonus: 0,
     size: "中型", speed: 30, baseLanguages: ["通用语", "吉斯语"],
@@ -251,3 +326,8 @@ export const RACE_DATA: RaceDef[] = [
     subraces: []
   }
 ];
+
+// Default species list consumed by Creator / Sheet via mod-utils.
+// DND Background / Species Correction v1: defaults to the owner-source 2024
+// species model; legacy 2014 data stays available via LEGACY_RACE_DATA.
+export const RACE_DATA: RaceDef[] = DND_2024_SPECIES_DATA;

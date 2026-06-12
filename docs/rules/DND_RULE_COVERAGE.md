@@ -14,6 +14,10 @@ Rule data must declare source and trust metadata before being treated as verifie
 
 DND Rule Metadata Application v1 has started the metadata phase of DND data correction. Legacy DND class, species/race, spell, feat, and background data is retained for app continuity but marked `ai-assisted-unverified` with `needs-human-verification` usage policy. DND equipment remains read-only sample data with source-labeled display-only metadata. `classProgression` remains runtime-active but is marked `needs-human-check` until individual values are verified against owner-provided source paths. Content correction is deferred to later DND data correction tasks.
 
+DND Species / Background Display Cleanup v1 removed 2014 race/subrace string-hardcoded display behavior from Sheet. Sheet now prefers current species/background definitions and metadata, uses quarantined legacy fallback only for old saved values, and labels legacy or unverified content instead of presenting it as verified DND 2024 rules. No species/background data, Creator flow, schema, migration, COC, CP RED, or Platform behavior changed.
+
+DND Class / Subclass Correction v1 started the class/subclass metadata correction phase. Existing class/subclass entries are retained for app continuity but now carry source/trust metadata that separates DND 2024 owner-source entries, XGtE/TCoE source-labeled entries, 2014/2024 conflict entries, and out-of-source quarantine entries such as 破誓者. Subclass progression automation and value/content correction remain deferred. No classProgression values, Creator behavior, Gameplay logic, schema, or migration changed.
+
 ## 1. Coverage Levels
 
 | Level | Name | Meaning |
@@ -156,6 +160,17 @@ Resource Consumption Unification v1 note:
 | Stealth / hiding | 1 | Skill checks can be rolled manually. | No opposed passive perception, cover, lighting, or scene state. | Future Actor/Scene + opposed check model. |
 | Perception / passive checks | 1 | Character values can be displayed/rolled manually. | No passive check automation or hidden DC flow. | Future Host/Scene layer. |
 | Traps / hazards | 0 | Not represented. | Needs hazard data, detection/disarm workflows, damage/effects. | Future Scene/Encounter layer. |
+
+## 6.2 Species / Background Coverage (Correction v1)
+
+DND Background / Species Correction v1 status:
+- Default Creator species list now follows the owner source manifest (SRD5.2 玩家手册2024/角色起源/种族): 人类 / 矮人 / 精灵 / 半身人 / 侏儒 / 龙裔 / 提夫林 / 兽人 / 歌利亚, using the DND 2024 species model (no racial ASI, no subraces). Species traits / size / speed / languages are intentionally NOT filled and remain `needs-human-check`; Creator skips empty placeholder values.
+- Default Creator background list now follows the owner source manifest (SRD5.2 玩家手册2024/角色起源/背景): 侍僧 / 士兵 / 智者 / 罪犯. 贤者 was renamed 智者 to match the owner source. Skill / origin-feat / ability-option mappings remain pre-existing app values pending human verification.
+- Legacy 2014 race/subrace/racial-ASI data and legacy 2014-style backgrounds are retained as `LEGACY_RACE_DATA` / `LEGACY_BACKGROUND_DATA` with quarantine metadata; 半精灵 / 半兽人 are marked `out-of-source` (not 2024 species), 吉斯洋基人 is marked `out-of-source` for the declared scope.
+- TCoE 定制血统 (Custom Lineage) exists in the owner source but is an optional rule, recorded as `needs-human-check` and not added to the default species list.
+- The legacy Musician / Tough (音乐家 / 健壮) mix-up in the 艺人 background was corrected to 音乐家 (Musician).
+- Known display consequence: legacy characters whose race name overlaps a 2024 species (e.g. 矮人) now show the pending-verification species note on Sheet instead of legacy 2014 trait text; legacy subrace feature display is hidden. Stored character values (racebonus, size, speed) are unchanged.
+- No store schema or migration changed.
 
 ## 7. Current Priority Gap List
 
