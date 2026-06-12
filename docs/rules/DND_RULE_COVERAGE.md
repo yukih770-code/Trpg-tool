@@ -1,8 +1,16 @@
 # DND Rule Coverage Matrix
 
-Last updated: 2026-06-11
+Last updated: 2026-06-12
 
 This document tracks how far DND 2024 rules are represented in the current app. For this matrix, "In Data" means structured DND 2024 rule data under `src/data/dnd2024` / `src/lib/dnd2024`, not legacy descriptive text in class definitions.
+
+## Data Integrity Warning
+
+Rules Data Integrity Audit v1 found high-risk unverified/source-light datasets in the broader DND rule data surface.
+
+Coverage levels in this document describe implemented mechanics and app wiring, not verified publication-safe rules data. Source/trust metadata foundation is being introduced before further rules feature expansion.
+
+Rule data must declare source and trust metadata before being treated as verified runtime/core data. Unknown-source or suspicious data must not be promoted into new gameplay features. Public/free sources may be embedded only within allowed scope; paid-book or official-but-not-public content may be referenced by metadata but must not copy long rules text. Homebrew/demo/placeholder data must be visibly labeled or quarantined.
 
 ## 1. Coverage Levels
 
@@ -61,7 +69,7 @@ This document tracks how far DND 2024 rules are represented in the current app. 
 | Damage roll | 1 | Free dice roller can roll damage dice manually. | No damage formulas, resistances, vulnerabilities, or target HP application. | Damage model after equipment. |
 | Saving throw | 4 | Sheet shows saving throw modifiers and rolls checks manually. | No DC targeting or spell/condition-driven saves. | Action Registry with save definitions. |
 | Conditions | 2 | Structured progression type supports `ConditionDefinition`; sample Barbarian/Bard conditions exist. | No runtime condition state or UI tracker. | Add condition state later. |
-| Action Registry v0 | 5 | Minimal `DndActionDefinition` / `ResourceCost` types exist; `actionRegistry.ts` registers resource-backed actions; Gameplay has an Actions v0 panel; classResource and pactMagic costs can be consumed manually. | No `spellSlot` resource cost support, full action economy, attack/damage, enemy target, concentration, or combat log integration. | Action Registry audit, then targeted attack/damage or spellcasting action work. |
+| Action Registry v0 | 5 | Minimal `DndActionDefinition` / `ResourceCost` types exist; `actionRegistry.ts` registers resource-backed actions; Gameplay has an Actions v0 panel; classResource costs consume through `consumeClassResource`; Pact Magic costs consume through `consumeSpellcastingResource`. | No `spellSlot` resource cost support, full action economy, attack/damage, enemy target, concentration, or combat log integration. | Action Registry audit, then targeted attack/damage or spellcasting action work. |
 | Action / Bonus Action / Reaction | 4 | Action definitions can carry `actionType`; Gameplay displays Action v0 entries that match existing runtime resources. | No per-turn action economy, no reaction timing, no enforcement of action limits. | Future action economy state after registry stabilizes. |
 | Reactions / opportunity attacks | 0 | Not represented. | Needs turn state, trigger model, movement/position, and target layer. | Future action economy + encounter layer. |
 | Divine Smite | 0 | Not represented. | This is not a class resource; it is a spell/action damage rider using spell slots. | Future attack rider / spell action integration. |
@@ -92,8 +100,8 @@ Action Registry v0 implemented:
 - Minimal `DndActionDefinition` and `ResourceCost` types.
 - `actionRegistry.ts` with v0 resource-backed action definitions.
 - Gameplay Actions v0 panel.
-- `classResource` consumption through existing runtime resource controls.
-- `pactMagic` consumption through existing pact magic controls.
+- `classResource` consumption through centralized `consumeClassResource`.
+- `pactMagic` consumption through `consumeSpellcastingResource`, preserving Pact Magic no-fallback semantics.
 
 Action Registry v0 explicitly not implemented:
 - `spellSlot` resource costs or spell slot consumption.
@@ -132,6 +140,11 @@ Structured Equipment Data Layer v1 note:
 - DND structured equipment data layer v1 added. Includes minimal typed weapon / armor / gear data and read-only display.
 - Inventory, equip/unequip, AC automation, attack rolls, damage rolls, weapon mastery, ammo, and Action Registry integration remain deferred.
 - No CharacterData schema or migration changed.
+
+Resource Consumption Unification v1 note:
+- DND class resource consumption now uses `consumeClassResource` rather than component-level naked subtraction.
+- Spell slot and Pact Magic consumption continue to route through `consumeSpellcastingResource`.
+- Action Registry v1, target/effect handling, attack/damage automation, and schema/migration changes remain deferred.
 
 ## 6.1 Exploration / Travel Coverage
 

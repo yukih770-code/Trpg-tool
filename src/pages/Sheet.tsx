@@ -13,8 +13,10 @@ export function Sheet() {
     character,
     updateField,
     initializeRuntimeResources,
+    consumeClassResource,
     updateClassResourceCurrent,
     resetClassResource,
+    consumeSpellcastingResource,
     updatePactMagicCurrent,
     resetPactMagic,
   } = useCharacterStore();
@@ -345,7 +347,7 @@ export function Sheet() {
                       variant="outline"
                       className="h-6 px-2 rounded-none border-[#58180d] text-[#58180d] text-[10px]"
                       disabled={resource.current <= 0}
-                      onClick={() => updateClassResourceCurrent(resource.id, resource.current - 1)}
+                      onClick={() => consumeClassResource(resource.id, 1)}
                     >
                       -
                     </Button>
@@ -390,7 +392,7 @@ export function Sheet() {
                     variant="outline"
                     className="h-6 px-2 rounded-none border-[#58180d] text-[#58180d] text-[10px]"
                     disabled={character.pactMagicState.current <= 0}
-                    onClick={() => updatePactMagicCurrent(character.pactMagicState!.current - 1)}
+                    onClick={() => consumeSpellcastingResource(character.pactMagicState!.slotLevel)}
                   >
                     -
                   </Button>

@@ -67,6 +67,9 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] DND Gameplay — casting a leveled spell consumes exactly one standard spell slot through the unified spellcasting resource path and updates RollConsole Latest Result
 - [ ] DND Gameplay — Warlock / pact caster spellcasting consumes one pact slot through the same spellcasting resource path and logs pact magic metadata
 - [ ] DND Gameplay — attempting to cast without an available standard or pact slot does not consume resources and logs an insufficient-resource RuntimeLogEntry
+- [ ] DND Gameplay — Action Registry class resource actions consume through `consumeClassResource`, not component-level `current - amount`
+- [ ] DND Gameplay — Action Registry Pact Magic actions consume through `consumeSpellcastingResource` and do not fallback to standard spell slots
+- [ ] DND Gameplay — missing or insufficient class resources fail cleanly without changing resource state
 - [ ] DND Gameplay — spellcasting does not implement target selection, concentration, damage, or spell effects
 - [ ] DND Sheet — does not own gameplay roll controls; checks/resources are validated in Gameplay
 - [ ] DND Sheet — Equipment Catalog (装备资料) renders weapons / armor & shield / gear & tools as read-only data
@@ -164,7 +167,25 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
-## 7. Pre-Commit Checklist Summary
+## 7. Rule Data Source / Trust Metadata Check
+
+- [ ] Owner-provided GitHub / PDF rule sources are treated as the only authoritative rule data sources
+- [ ] Existing app data, previous AI-generated data, model memory, BG3, third-party wiki pages, and general web search do not override owner-provided sources
+- [ ] Source conflicts resolve in favor of owner-provided sources
+- [ ] Items present in owner-provided sources but absent from app data are marked `missing`
+- [ ] Items present in app data but absent from owner-provided sources are marked `out-of-source` or `needs-human-check`
+- [ ] DND source work records `https://github.com/DND5eChm` as the owner-provided root source without selecting a sole subrepository unless the owner confirms it
+- [ ] Source-manifest tasks do not modify runtime behavior, Creator, Gameplay, Market, store schema, or migration
+- [ ] New verified runtime/core rule data declares source and trust metadata before promotion
+- [ ] Unknown-source or suspicious data is not used as the basis for new gameplay features
+- [ ] Public/free source data is embedded only within allowed scope
+- [ ] Paid-book or official-but-not-public content is referenced by metadata only; long rules text is not copied
+- [ ] Homebrew/demo/placeholder data is visibly labeled or kept quarantined
+- [ ] High-risk legacy datasets remain unchanged unless the task explicitly schedules quarantine or source labeling
+
+---
+
+## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |
 |------|-----------------|-------|

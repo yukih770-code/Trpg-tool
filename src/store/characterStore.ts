@@ -15,10 +15,24 @@ export type DndSpellcastingResourceConsumption = {
   reason?: string;
 };
 
+export type DndClassResourceConsumption = {
+  ok: boolean;
+  resourceId: string;
+  previous?: number;
+  remaining?: number;
+  max?: number;
+  amount: number;
+  reason?: 'missing-resource' | 'insufficient-resource';
+};
+
 const initialStats = { base: 8, pointbuy: 0, racebonus: 0, extrabonus: 0 };
 
 function clampResourceCurrent(value: number, max: number): number {
   return Math.max(0, Math.min(max, value));
+}
+
+function normalizeResourceConsumptionAmount(amount = 1): number {
+  return Number.isFinite(amount) && amount > 0 ? Math.floor(amount) : 1;
 }
 
 function recoversOnShortRest(recoveryType?: string): boolean {
@@ -124,6 +138,7 @@ interface CharacterState {
   updateSpellbook: (known: SpellInfo[], prepared: string[]) => void;
   consumeSpellcastingResource: (spellLevel: number) => DndSpellcastingResourceConsumption;
   consumeSpellSlot: (level: number) => boolean;
+  consumeClassResource: (resourceId: string, amount?: number) => DndClassResourceConsumption;
   initializeRuntimeResources: () => void;
   updateClassResourceCurrent: (id: string, nextCurrent: number) => void;
   resetClassResource: (id: string) => void;
@@ -439,6 +454,58 @@ export const useCharacterStore = create<CharacterState>()(
 
       consumeSpellSlot: (level) => {
         return get().consumeSpellcastingResource(level).ok;
+      },
+
+      // AI-LANDMARK: DND_RESOURCE_CONSUMPTION_UNIFICATION
+      consumeClassResource: (resourceId, amount = 1) => {
+        const consumptionAmount = normalizeResourceConsumptionAmount(amount);
+        const state = get();
+        const resource = state.character.classResources.find((item) => item.id === resourceId);
+
+        if (!resource) {
+          return {
+            ok: false,
+            resourceId,
+            amount: consumptionAmount,
+            reason: 'missing-resource',
+          };
+        }
+
+        if (resource.current < consumptionAmount) {
+          return {
+            ok: false,
+            resourceId,
+            previous: resource.current,
+            remaining: resource.current,
+            max: resource.max,
+            amount: consumptionAmount,
+            reason: 'insufficient-resource',
+          };
+        }
+
+        const remaining = resource.current - consumptionAmount;
+        set({
+          character: {
+            ...state.character,
+            classResources: state.character.classResources.map((item) =>
+              item.id === resourceId
+                ? {
+                    ...item,
+                    current: remaining,
+                  }
+                : item,
+            ),
+          },
+        });
+
+        return {
+          ok: true,
+          resourceId,
+          previous: resource.current,
+          remaining,
+          max: resource.max,
+          amount: consumptionAmount,
+        };
       },
 
       initializeRuntimeResources: () => set((state) => {

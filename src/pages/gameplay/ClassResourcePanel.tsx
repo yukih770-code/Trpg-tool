@@ -1,11 +1,14 @@
 import { Button } from '../../../components/ui/button';
 import type { CharacterData } from '../../lib/dnd-types';
+import type { DndClassResourceConsumption } from '../../store/characterStore';
 
 interface ClassResourcePanelProps {
   character: CharacterData;
   initializeRuntimeResources: () => void;
+  consumeClassResource: (id: string, amount?: number) => DndClassResourceConsumption;
   updateClassResourceCurrent: (id: string, nextCurrent: number) => void;
   resetClassResource: (id: string) => void;
+  consumePactMagicResource: () => void;
   updatePactMagicCurrent: (nextCurrent: number) => void;
   resetPactMagic: () => void;
 }
@@ -13,8 +16,10 @@ interface ClassResourcePanelProps {
 export function ClassResourcePanel({
   character,
   initializeRuntimeResources,
+  consumeClassResource,
   updateClassResourceCurrent,
   resetClassResource,
+  consumePactMagicResource,
   updatePactMagicCurrent,
   resetPactMagic,
 }: ClassResourcePanelProps) {
@@ -46,7 +51,7 @@ export function ClassResourcePanel({
                   variant="outline"
                   className="h-5 px-1.5 text-[9px] rounded-none border-[#58180d]/40 text-[#58180d]/70 bg-transparent"
                   disabled={resource.current <= 0}
-                  onClick={() => updateClassResourceCurrent(resource.id, resource.current - 1)}
+                  onClick={() => consumeClassResource(resource.id, 1)}
                 >
                   -
                 </Button>
@@ -93,7 +98,7 @@ export function ClassResourcePanel({
                 variant="outline"
                 className="h-5 px-1.5 text-[9px] rounded-none border-[#58180d]/40 text-[#58180d]/70 bg-transparent"
                 disabled={character.pactMagicState.current <= 0}
-                onClick={() => updatePactMagicCurrent(character.pactMagicState!.current - 1)}
+                onClick={consumePactMagicResource}
               >
                 -
               </Button>

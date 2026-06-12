@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-06-11
+Last updated: 2026-06-12
 
 ## Project Overview
 
@@ -32,6 +32,8 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | Hardcore Platform Reorientation v1 | ✅ Done |
 | Open-Source Community Ecosystem Goal | ✅ Planned |
 | Platform Shell / Home / Play Workspace Layering | ✅ Added |
+| Rule Data Source / Trust Metadata Foundation | ✅ Added |
+| Project Rule Source Authority Policy | ✅ Added |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -57,6 +59,16 @@ Architecture phase scope:
 - Campaigns, Community Modules, Content Studio, Private Import expansion, map, multiplayer, and AI Host remain explicit placeholders/deferred.
 - No DND / COC / CP RED rule logic was changed.
 - No package changes, store schema changes, schema changes, or migration changes.
+- Rules Data Integrity + Source Verification Audit v1 found high-risk unverified/source-light datasets across DND / COC / CP RED.
+- Rule Data Source / Trust Metadata Foundation v1 added shared rule data provenance types in `src/lib/rules/rule-data-metadata.ts` (landmark `RULE_DATA_SOURCE_TRUST_METADATA`).
+- Project Rule Source Authority Policy v1 added rule-source manifest policy (landmark `RULE_SOURCE_AUTHORITY_POLICY`): owner-provided GitHub / PDF rule sources are authoritative over existing app data, previous AI-generated data, model memory, third-party sources, and general web search.
+- DND owner-provided root source is recorded as `https://github.com/DND5eChm`; repository-level source selection still requires owner confirmation.
+- Rule data conflicts must resolve in favor of owner-provided sources; source items missing from app data are marked `missing`, and app items absent from owner-provided sources are marked `out-of-source` or `needs-human-check`.
+- Source authority policy work changed documentation only; no rule data, Creator, Gameplay, Market, store schema, or migration behavior was changed.
+- Rule data must declare source and trust metadata before being treated as verified runtime/core data.
+- Unknown-source or suspicious rule data must not be promoted into new gameplay features until it is labeled, quarantined, or verified.
+- Public/free sources may be embedded only within allowed scope; paid-book or official-but-not-public content may be referenced by source metadata but must not copy long rules text.
+- Homebrew/demo/placeholder data must be visibly labeled or quarantined before further feature expansion relies on it.
 - Freeze planning now has a roadmap; resumed code work must follow it one narrow, single-system phase at a time.
 - Current readiness state: DND, COC, and CP RED Player Gameplay pages are componentized and aligned around local `RuntimeLogEntry[]` RollConsole patterns.
 
@@ -75,6 +87,7 @@ Architecture phase scope:
 | DND 2024 Class Resources and Spell Preparation Closure v1 | ✅ Done |
 | DND Spellcasting Path Unification v1 | ✅ Done |
 | DND Structured Equipment Data Layer v1 | ✅ Done |
+| DND Resource Consumption Unification v1 | ✅ Done |
 
 Action Registry v0 scope:
 - Supports only `classResource` and `pactMagic` resource costs.
@@ -112,6 +125,13 @@ DND Structured Equipment Data Layer v1 scope:
 - DND Sheet shows a read-only 装备资料 / Equipment Catalog panel (`src/pages/sheet/DndEquipmentCatalogPanel.tsx`); it does not write to the character store and writes no RuntimeLogEntry.
 - Inventory, equip/unequip, AC automation, attack rolls, damage rolls, weapon mastery, ammo, magic items, attunement, and Action Registry integration remain deferred.
 - No CharacterData schema or migration changed.
+
+DND Resource Consumption Unification v1 scope:
+- DND Resource Consumption Unification v1 added.
+- Class resource consumption now uses centralized `consumeClassResource` instead of component-level naked subtraction.
+- Action Registry v0 resource-backed actions call `consumeClassResource` for class resources and continue routing Pact Magic consumption through `consumeSpellcastingResource`.
+- Spell slot and pact magic consumption continue to route through `consumeSpellcastingResource`, preserving the Pact Magic no-fallback v1 semantics.
+- Action Registry v1, action economy, attacks, damage, targets, equipment combat, schema, and migration remain deferred.
 
 ### Call of Cthulhu (COC)
 

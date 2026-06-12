@@ -1,12 +1,20 @@
 # CPRED Rule Coverage Matrix
 
-Last updated: 2026-06-11
+Last updated: 2026-06-12
 
 ## 1. Purpose
 
 This file records Cyberpunk RED rule coverage in the current project: implemented layers, gaps, priorities, and recommended next steps.
 
 It is a planning and freeze document. It does not implement rules, UI, store state, schema, migration, GM Console, or gameplay automation.
+
+## Data Integrity Warning
+
+Rules Data Integrity Audit v1 found high-risk unverified/source-light datasets across the project, including CP RED data that already reaches Creator, Market, Gameplay, and runtime logs.
+
+Coverage levels in this document describe implemented mechanics and app wiring, not verified publication-safe rules data. Source/trust metadata foundation is being introduced before further rules feature expansion.
+
+Rule data must declare source and trust metadata before being treated as verified runtime/core data. Unknown-source or suspicious data must not be promoted into new gameplay features. Public/free sources may be embedded only within allowed scope; paid-book or official-but-not-public content may be referenced by metadata but must not copy long rules text. Homebrew/demo/placeholder data must be visibly labeled or quarantined.
 
 ## 2. Coverage Level Definitions
 

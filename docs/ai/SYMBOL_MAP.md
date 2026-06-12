@@ -46,6 +46,25 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Runtime container and store actions (`runtime.criticalInjuries`, `addCriticalInjury`, `removeCriticalInjury`): `src/store/cpStore.ts`
 - `AI-LANDMARK: CPRED_CRITICAL_INJURY_MANUAL_TRACKING`: `src/lib/cp2024/critical-injuries.ts`, `src/pages/cpGameplay/CpCriticalInjuryPanel.tsx`, `src/pages/CpGameplay.tsx`
 
+## Rule Data Source / Trust Metadata
+
+- Shared rule data source/trust metadata types: `src/lib/rules/rule-data-metadata.ts`
+- `RuleDataSource`: `src/lib/rules/rule-data-metadata.ts`
+- `RuleDataTrustLevel`: `src/lib/rules/rule-data-metadata.ts`
+- `RuleDataPublicScope`: `src/lib/rules/rule-data-metadata.ts`
+- `RuleDataContentPolicy`: `src/lib/rules/rule-data-metadata.ts`
+- `RuleDataMetadata`: `src/lib/rules/rule-data-metadata.ts`
+- `AI-LANDMARK: RULE_DATA_SOURCE_TRUST_METADATA`: `src/lib/rules/rule-data-metadata.ts`
+
+## Rule Source Authority Policy
+
+- Rule source authority manifest: `docs/rule-sources/RULE_SOURCE_MANIFEST.md`
+- DND owner-provided source manifest: `docs/rule-sources/DND_SOURCES.md`
+- COC owner-provided source manifest: `docs/rule-sources/COC_SOURCES.md`
+- CP RED owner-provided source manifest: `docs/rule-sources/CPRED_SOURCES.md`
+- DND owner-provided root source: `https://github.com/DND5eChm`
+- `AI-LANDMARK: RULE_SOURCE_AUTHORITY_POLICY`: `docs/rule-sources/RULE_SOURCE_MANIFEST.md`
+
 ## Platform Shell / Home / Play Workspace
 
 - Platform shell default entry: `src/App.tsx`
@@ -88,6 +107,7 @@ This file helps AI quickly locate important types, helper functions, store actio
 - DND store: `src/store/characterStore.ts`
 - `restShort`: `src/store/characterStore.ts`
 - `restLong`: `src/store/characterStore.ts`
+- centralized class resource consumption: `consumeClassResource` in `src/store/characterStore.ts`
 - class resource utilities: `src/lib/dnd2024/resource-utils.ts`
 - spell preparation model: `src/lib/dnd2024/spell-preparation-model.ts`
 - progression utilities: `src/lib/dnd2024/progression-utils.ts`
@@ -95,6 +115,7 @@ This file helps AI quickly locate important types, helper functions, store actio
 - unified spellcasting resource consumption: `consumeSpellcastingResource` in `src/store/characterStore.ts`
 - legacy spell slot wrapper: `consumeSpellSlot` in `src/store/characterStore.ts`
 - `AI-LANDMARK: DND_SPELLCASTING_RESOURCE_CONSUMPTION`: `src/store/characterStore.ts`
+- `AI-LANDMARK: DND_RESOURCE_CONSUMPTION_UNIFICATION`: `src/store/characterStore.ts`
 
 ## COC Runtime / SAN / Luck
 

@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { useCharacterStore, type DndSpellcastingResourceConsumption } from '../store/characterStore';
+import {
+  useCharacterStore,
+  type DndClassResourceConsumption,
+  type DndSpellcastingResourceConsumption,
+} from '../store/characterStore';
 import { Button } from '../../components/ui/button';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { getAvailableSpells, getAvailableClasses, getAvailableFeats } from '../lib/mod-utils';
@@ -117,6 +121,7 @@ export function Gameplay() {
     modifyHp,
     updateSpellbook,
     consumeSpellcastingResource,
+    consumeClassResource,
     initializeRuntimeResources,
     updateClassResourceCurrent,
     resetClassResource,
@@ -429,34 +434,107 @@ export function Gameplay() {
     Boolean(action.resourceCost?.length) && action.resourceCost!.every(canPayActionCost)
   );
 
+  type RegistryCostConsumption = {
+    ok: boolean;
+    resourceType: ResourceCost['resourceType'];
+    resourceId?: string;
+    label: string;
+    amount: number;
+    previous?: number;
+    remaining?: number;
+    max?: number;
+    reason?: string;
+  };
+
+  const describeClassResourceFailure = (result: DndClassResourceConsumption) => {
+    if (result.reason === 'missing-resource') return '资源不存在';
+    if (result.reason === 'insufficient-resource') return '资源不足';
+    return '资源消耗失败';
+  };
+
+  const consumeRegistryCost = (
+    cost: ResourceCost,
+    preview: ReturnType<typeof getActionCostPreview>,
+  ): RegistryCostConsumption => {
+    if (cost.resourceType === 'classResource') {
+      const result = consumeClassResource(cost.resourceId || '', cost.amount);
+      return {
+        ok: result.ok,
+        resourceType: cost.resourceType,
+        resourceId: cost.resourceId,
+        label: preview.label,
+        amount: result.amount,
+        previous: result.previous,
+        remaining: result.remaining,
+        max: result.max,
+        reason: result.ok ? undefined : describeClassResourceFailure(result),
+      };
+    }
+
+    const pactMagic = useCharacterStore.getState().character.pactMagicState;
+    if (!pactMagic) {
+      return {
+        ok: false,
+        resourceType: cost.resourceType,
+        label: preview.label,
+        amount: cost.amount,
+        reason: '资源不存在',
+      };
+    }
+
+    const previous = pactMagic.current;
+    let remaining = pactMagic.current;
+    let max = pactMagic.max;
+    let failureReason: string | undefined;
+
+    for (let index = 0; index < cost.amount; index += 1) {
+      const result = consumeSpellcastingResource(pactMagic.slotLevel);
+      const latestPactMagic = useCharacterStore.getState().character.pactMagicState;
+      remaining = latestPactMagic?.current ?? result.remainingSlots ?? remaining;
+      max = latestPactMagic?.max ?? result.maxSlots ?? max;
+
+      if (!result.ok) {
+        failureReason = result.reason ?? '法术位不足';
+        break;
+      }
+    }
+
+    return {
+      ok: !failureReason,
+      resourceType: cost.resourceType,
+      label: preview.label,
+      amount: cost.amount,
+      previous,
+      remaining,
+      max,
+      reason: failureReason,
+    };
+  };
+
   const useRegistryAction = (action: DndActionDefinition) => {
     if (!action.resourceCost || !canUseRegistryAction(action)) return;
 
     const previews = action.resourceCost.map(getActionCostPreview);
+    const consumptions = action.resourceCost.map((cost, index) => consumeRegistryCost(cost, previews[index]));
+    const failedConsumption = consumptions.find(result => !result.ok);
 
-    action.resourceCost.forEach(cost => {
-      if (cost.resourceType === 'classResource') {
-        const resource = getClassResource(cost.resourceId);
-        if (resource && cost.resourceId) {
-          updateClassResourceCurrent(cost.resourceId, resource.current - cost.amount);
-        }
-      }
-
-      if (cost.resourceType === 'pactMagic' && character.pactMagicState) {
-        updatePactMagicCurrent(character.pactMagicState.current - cost.amount);
-      }
-    });
+    if (failedConsumption) {
+      toast.error(`资源消耗失败：${action.name}`, {
+        description: failedConsumption.reason ?? '资源不足',
+      });
+      return;
+    }
 
     toast.success(`使用动作：${action.name}`, {
-      description: previews
-        .map(cost => `${cost.label} -${cost.amount}，剩余 ${Math.max(0, cost.current - cost.amount)} / ${cost.max}`)
+      description: consumptions
+        .map(cost => `${cost.label} -${cost.amount}，剩余 ${cost.remaining ?? 0} / ${cost.max ?? 0}`)
         .join('；'),
     });
-    const actionSummary = previews
-      .map(cost => `消耗 ${cost.label} ${cost.amount}，剩余 ${Math.max(0, cost.current - cost.amount)}/${cost.max}`)
+    const actionSummary = consumptions
+      .map(cost => `消耗 ${cost.label} ${cost.amount}，剩余 ${cost.remaining ?? 0}/${cost.max ?? 0}`)
       .join('；');
     const firstCost = action.resourceCost[0];
-    const firstPreview = previews[0];
+    const firstConsumption = consumptions[0];
     const entry = createDndLogEntry({
       kind: 'action',
       title: `动作：${action.name}`,
@@ -468,17 +546,18 @@ export function Gameplay() {
         actionId: action.id,
         actionName: action.name,
         resourceId: firstCost?.resourceId || firstCost?.resourceType,
-        amount: firstCost?.amount,
-        remaining: firstPreview ? Math.max(0, firstPreview.current - firstPreview.amount) : undefined,
-        max: firstPreview?.max,
+        amount: firstConsumption?.amount,
+        remaining: firstConsumption?.remaining,
+        max: firstConsumption?.max,
         costs: action.resourceCost.map((cost, index) => {
-          const preview = previews[index];
+          const consumption = consumptions[index];
           return {
             resourceType: cost.resourceType,
             resourceId: cost.resourceId,
-            amount: cost.amount,
-            remaining: preview ? Math.max(0, preview.current - preview.amount) : undefined,
-            max: preview?.max,
+            amount: consumption?.amount ?? cost.amount,
+            previous: consumption?.previous,
+            remaining: consumption?.remaining,
+            max: consumption?.max,
           };
         }),
       },
@@ -582,8 +661,13 @@ export function Gameplay() {
           <ClassResourcePanel
             character={character}
             initializeRuntimeResources={initializeRuntimeResources}
+            consumeClassResource={consumeClassResource}
             updateClassResourceCurrent={updateClassResourceCurrent}
             resetClassResource={resetClassResource}
+            consumePactMagicResource={() => {
+              const pactMagic = useCharacterStore.getState().character.pactMagicState;
+              if (pactMagic) consumeSpellcastingResource(pactMagic.slotLevel);
+            }}
             updatePactMagicCurrent={updatePactMagicCurrent}
             resetPactMagic={resetPactMagic}
           />
