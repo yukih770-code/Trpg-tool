@@ -2,9 +2,10 @@ import { BackgroundDef, SkillName } from '../lib/dnd-types';
 import type { RuleDataMetadata } from '../lib/rules/rule-data-metadata';
 
 // AI-LANDMARK: DND_BACKGROUND_SPECIES_CORRECTION
+// AI-LANDMARK: DND_BACKGROUND_RUNTIME_COMPLETION
 // DND Background / Species Correction v1:
-// - Default background list now follows the owner source manifest
-//   (SRD5.2 玩家手册2024/角色起源/背景: 侍僧 / 士兵 / 智者 / 罪犯).
+// - Default background list now follows the local CHM primary source baseline
+//   (玩家手册2024/角色起源/背景: 16 standard DND 2024 backgrounds).
 // - 贤者 is renamed 智者 to match the owner source file name (智者.htm).
 // - The Musician / Tough (音乐家 / 健壮) mix-up in the legacy 艺人 entry is fixed.
 // - Other legacy 2014-style backgrounds are retained below as
@@ -12,77 +13,74 @@ import type { RuleDataMetadata } from '../lib/rules/rule-data-metadata';
 // - skill / origin-feat mappings are pre-existing app values pending human
 //   verification against the owner source; they are NOT source-confirmed yet.
 
-const BACKGROUND_MANIFEST_REF =
-  'docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md';
+const LOCAL_CHM_BACKGROUND_ROOT =
+  'C:\\TRPG_CHM_WORK\\extracted\\玩家手册2024\\角色起源\\背景';
+
+const LOCAL_CHM_BACKGROUND_NOTE =
+  'Local CHM confirmed standard DND 2024 background. Detailed skills, origin feat, ability options, equipment, and feature mechanics remain needs-human-check.';
 
 export const DND_BACKGROUND_2024_DATA_ACCURACY: RuleDataMetadata = {
-  source: 'dnd5echm-srd52-primary',
-  trustLevel: 'owner-source-matched',
+  source: 'dnd-local-chm-primary',
+  trustLevel: 'source-labeled',
   usagePolicy: 'needs-human-verification',
-  sourceRef: `${BACKGROUND_MANIFEST_REF}#item-entries`,
+  sourceRef: LOCAL_CHM_BACKGROUND_ROOT,
   sourceNote:
-    'Background entry names and source paths are matched to the owner source manifest (玩家手册2024/角色起源/背景). Skill proficiencies, origin feats, ability options, and feature text are retained pre-existing app values and still require human verification against the owner source.',
+    'Runtime background list follows the local CHM primary source baseline: 16 standard DND 2024 backgrounds under 玩家手册2024/角色起源/背景. Detailed mechanics remain needs-human-check.',
 };
 
 function background2024Meta(name: string, sourceFile: string): RuleDataMetadata {
   return {
-    source: 'dnd5echm-srd52-primary',
-    trustLevel: 'owner-source-matched',
+    source: 'dnd-local-chm-primary',
+    trustLevel: 'source-labeled',
     usagePolicy: 'needs-human-verification',
-    sourceRef: `${BACKGROUND_MANIFEST_REF}#item-${name}`,
-    sourceNote: `玩家手册2024/角色起源/背景/${sourceFile}；技能/出身专长/属性选项映射待人工核对（needs-human-check）。`,
+    sourceRef: `${LOCAL_CHM_BACKGROUND_ROOT}\\${sourceFile}`,
+    sourceNote: `${LOCAL_CHM_BACKGROUND_NOTE} Source entry: ${name}.`,
+  };
+}
+
+const PENDING_BACKGROUND_FEATURE = {
+  name: "背景特性待核对",
+  desc: "该背景已由本地 CHM 主源确认为 DND 2024 标准背景，具体规则字段待进一步核对。"
+};
+
+function makeChmBackground(
+  id: string,
+  nameCn: string,
+  nameEn: string,
+  sourceFile: string,
+  desc: string,
+  skillProficiencies: SkillName[] = [],
+  originFeat?: string,
+): BackgroundDef {
+  return {
+    id,
+    name: `${nameCn} (${nameEn})`,
+    nameCn,
+    ruleMeta: background2024Meta(nameCn, sourceFile),
+    desc,
+    skillProficiencies,
+    originFeat,
+    feature: PENDING_BACKGROUND_FEATURE,
   };
 }
 
 export const DND_2024_BACKGROUND_DATA: BackgroundDef[] = [
-  {
-    id: 'background.acolyte',
-    name: "侍僧 (Acolyte)",
-    ruleMeta: background2024Meta('侍僧', '侍僧.htm'),
-    desc: "你奉献于神明或哲学，获得神圣的洞察力。",
-    skillProficiencies: ["洞察", "宗教"] as SkillName[],
-    originFeat: "魔法学徒 (Magic Initiate)",
-    feature: {
-      name: "出身专长",
-      desc: "你获得 魔法学徒 (牧师) 专长。（2024 背景模型；具体属性选项待人工核对）"
-    }
-  },
-  {
-    id: 'background.soldier',
-    name: "士兵 (Soldier)",
-    ruleMeta: background2024Meta('士兵', '士兵.htm'),
-    desc: "你在军队中服役并接受过严苛的战斗训练。",
-    skillProficiencies: ["运动", "威吓"] as SkillName[],
-    originFeat: "野蛮打击者 (Savage Attacker)",
-    feature: {
-      name: "出身专长",
-      desc: "你获得 野蛮打击者 专长。（2024 背景模型；具体属性选项待人工核对）"
-    }
-  },
-  {
-    id: 'background.sage',
-    name: "智者 (Sage)",
-    ruleMeta: background2024Meta('智者', '智者.htm'),
-    desc: "你将生命花费在研究古籍与奥秘知识上。",
-    skillProficiencies: ["奥秘", "历史"] as SkillName[],
-    originFeat: "魔法学徒 (Magic Initiate)",
-    feature: {
-      name: "出身专长",
-      desc: "你获得 魔法学徒 (法师) 专长。（2024 背景模型；具体属性选项待人工核对）"
-    }
-  },
-  {
-    id: 'background.criminal',
-    name: "罪犯 (Criminal)",
-    ruleMeta: background2024Meta('罪犯', '罪犯.htm'),
-    desc: "你在法律之外谋生，习得了各种街头生存技巧。",
-    skillProficiencies: ["欺瞒", "隐匿"] as SkillName[],
-    originFeat: "警觉 (Alert)",
-    feature: {
-      name: "出身专长",
-      desc: "你获得 警觉 专长。（2024 背景模型；具体属性选项待人工核对）"
-    }
-  }
+  makeChmBackground('background.acolyte', '侍僧', 'Acolyte', '侍僧.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。', ["洞察", "宗教"] as SkillName[], "魔法学徒 (Magic Initiate)"),
+  makeChmBackground('background.artisan', '工匠', 'Artisan', '工匠.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
+  makeChmBackground('background.charlatan', '骗子', 'Charlatan', '骗子.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
+  makeChmBackground('background.criminal', '罪犯', 'Criminal', '罪犯.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。', ["欺瞒", "隐匿"] as SkillName[], "警觉 (Alert)"),
+  makeChmBackground('background.entertainer', '艺人', 'Entertainer', '艺人.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
+  makeChmBackground('background.farmer', '农民', 'Farmer', '农民.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
+  makeChmBackground('background.guard', '警卫', 'Guard', '警卫.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
+  makeChmBackground('background.guide', '向导', 'Guide', '向导.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
+  makeChmBackground('background.hermit', '隐士', 'Hermit', '隐士.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
+  makeChmBackground('background.merchant', '商人', 'Merchant', '商人.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
+  makeChmBackground('background.noble', '贵族', 'Noble', '贵族.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
+  makeChmBackground('background.sage', '智者', 'Sage', '智者.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。', ["奥秘", "历史"] as SkillName[], "魔法学徒 (Magic Initiate)"),
+  makeChmBackground('background.sailor', '水手', 'Sailor', '水手.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
+  makeChmBackground('background.scribe', '抄写员', 'Scribe', '抄写员.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
+  makeChmBackground('background.soldier', '士兵', 'Soldier', '士兵.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。', ["运动", "威吓"] as SkillName[], "野蛮打击者 (Savage Attacker)"),
+  makeChmBackground('background.wayfarer', '流浪者', 'Wayfarer', '流浪者.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
 ];
 
 export const DND_BACKGROUND_DATA_ACCURACY: RuleDataMetadata = {
@@ -137,6 +135,6 @@ export const LEGACY_BACKGROUND_DATA: BackgroundDef[] = [
 ];
 
 // Default background list consumed by Creator / Sheet.
-// DND Background / Species Correction v1: defaults to the owner-source-confirmed
-// SRD5.2 background subset; legacy entries stay available via LEGACY_BACKGROUND_DATA.
+// DND Background Runtime Completion v1: defaults to the local-CHM-confirmed
+// 16 DND 2024 standard backgrounds; legacy entries stay available via LEGACY_BACKGROUND_DATA.
 export const BACKGROUND_DATA: BackgroundDef[] = DND_2024_BACKGROUND_DATA;

@@ -114,6 +114,8 @@ export interface SubraceDef {
 export interface BackgroundDef {
   /** Stable id for corrected entries, e.g. `background.soldier` (optional for legacy data). */
   id?: string;
+  /** Canonical Chinese name when source-verified; legacy `name` remains the UI/storage key. */
+  nameCn?: string;
   /** Per-entry rule data provenance (optional; legacy entries may rely on module-level metadata). */
   ruleMeta?: import('./rules/rule-data-metadata').RuleDataMetadata;
   name: string;

@@ -24,6 +24,10 @@ DND Spell Manifest Correction v1 completed the first spell identity/source pass.
 
 DND Artificer Source Completion v1 completed the class-gap source indexing pass. `奇械师 / Artificer` is source-indexed from TCoE with related spell-list, infusion, and subclass source paths, but remains runtime-deferred. It is not added to `CLASS_DATA` or Creator because progression, spellcasting, infusions, and subclass automation still require source-level verification.
 
+DND Background Runtime Completion v1 completed the local-CHM runtime baseline pass. `BACKGROUND_DATA` now follows the local CHM primary source baseline with all 16 standard DND 2024 backgrounds. Detailed background mechanics, skill mappings, origin feats, equipment, and ability options remain `needs-human-check`; no schema, migration, Creator, Sheet, Gameplay, COC, CP RED, or Platform behavior changed.
+
+DND Character Builder Responsive Workbench Phase 1 completed as a UI/layout pass only. The original Creator selection and completion logic is preserved but presented through a responsive workbench with section navigation, an editor area, and a live summary/todo panel. Spell and equipment builder sections are placeholders/boundary notes only; no rule data, schema, migration, spell automation, equipment system, Sheet logic, or Gameplay logic changed.
+
 <!-- AI-LANDMARK: DND_LOCAL_CHM_FULL_COVERAGE_AUDIT -->
 ## DND Local CHM Full Coverage Audit v1
 
@@ -39,7 +43,7 @@ Local CHM audit summary:
 | Area | Current Runtime Count | Current Source Index Count | Local CHM Source Count | Status | Primary Gap / Next Task |
 |---|---:|---:|---:|---|---|
 | Species | 9 | 9 | 10 | incomplete | Add/check `阿斯莫 / Aasimar`; task: `DND CHM Species Runtime Source Correction v1` |
-| Backgrounds | 4 | 5 index rows (4 standard + XGtE life tool) | 16 standard backgrounds | incomplete | Add 12 missing standard backgrounds; task: `DND 2024 Background Runtime Source Correction v1` |
+| Backgrounds | 16 | 5 legacy sparse index rows (runtime now local-CHM complete) | 16 standard backgrounds | runtime-ready / needs-human-check | Verify detailed mechanics, skill mappings, origin feats, equipment, and ability options |
 | Origin Feats | 8 runtime-like origin entries | category file only | 10 PHB origin feats | incomplete | Extract 10 origin feat identities from `起源专长.htm` |
 | General / Fighting / Epic Feats | 9 general runtime-like entries | category file only | 43 general + 10 fighting style + 12 epic boon PHB headings | incomplete | Build CHM feat manifest; TCoE/XGtE extension feats require de-dup/scope review |
 | Classes | 12 | Artificer source-indexed only | 13 (12 PHB + TCoE Artificer) | source-indexed / runtime-deferred | Promote Artificer only after progression/spellcasting/infusions are verified |
@@ -216,7 +220,7 @@ Resource Consumption Unification v1 note:
 
 DND Background / Species Correction v1 status:
 - Default Creator species list currently follows the earlier sparse owner source manifest: 人类 / 矮人 / 精灵 / 半身人 / 侏儒 / 龙裔 / 提夫林 / 兽人 / 歌利亚. Local CHM audit now shows `阿斯莫` also exists under `玩家手册2024/角色起源/种族`, so the runtime list is incomplete. Species traits / size / speed / languages remain `needs-human-check`; Creator skips empty placeholder values.
-- Default Creator background list currently has 4 entries from the earlier sparse manifest: 侍僧 / 士兵 / 智者 / 罪犯. Local CHM audit supersedes that completeness baseline and confirms 16 standard backgrounds under `玩家手册2024/角色起源/背景`; runtime is incomplete. Skill / origin-feat / ability-option mappings remain pending human verification.
+- Default Creator background list now follows the local CHM baseline with 16 standard backgrounds under `玩家手册2024/角色起源/背景`. Detailed skill / origin-feat / equipment / ability-option mappings remain pending human verification; newly completed entries use short placeholder feature text rather than copied rules prose.
 - Legacy 2014 race/subrace/racial-ASI data and legacy 2014-style backgrounds are retained as `LEGACY_RACE_DATA` / `LEGACY_BACKGROUND_DATA` with quarantine metadata; 半精灵 / 半兽人 are marked `out-of-source` (not 2024 species), 吉斯洋基人 is marked `out-of-source` for the declared scope.
 - TCoE 定制血统 (Custom Lineage) exists in the owner source but is an optional rule, recorded as `needs-human-check` and not added to the default species list.
 - The legacy Musician / Tough (音乐家 / 健壮) mix-up in the 艺人 background was corrected to 音乐家 (Musician).
@@ -226,7 +230,7 @@ DND Background / Species Correction v1 status:
 ## 6.3 Character Options Source Index (Completion v1)
 
 DND Character Options Source Completion v1 status:
-- Display-only source indexes now exist, separated from runtime data: spells 507/507 indexed (`src/data/dnd2024/spellIndex.ts`: SRD 391 / TCoE 21 / XGtE 95; name/level/scope only), backgrounds 5 legacy sparse index entries, feat sources 7 (category-file level), equipment categories 13 (`src/data/dnd2024/characterOptionsIndex.ts`). Local CHM audit shows the background index must be rebuilt to 16 standard backgrounds.
+- Display-only source indexes now exist, separated from runtime data: spells 507/507 indexed (`src/data/dnd2024/spellIndex.ts`: SRD 391 / TCoE 21 / XGtE 95; name/level/scope only), backgrounds 5 legacy sparse index entries, feat sources 7 (category-file level), equipment categories 13 (`src/data/dnd2024/characterOptionsIndex.ts`). Runtime `BACKGROUND_DATA` has been completed to the 16 local-CHM standard backgrounds; the separate display-only background index can be rebuilt later.
 - Runtime gaps recorded in `DND_CHARACTER_OPTIONS_COMPLETION_REPORT`: classes runtime 12/13 (奇械师 TCoE source-indexed / runtime-deferred), subclasses 46/73, runtime spells 20/507, feat rows and equipment rows pending later extraction passes.
 - Indexes carry `source-labeled` / `display-only` metadata and must not be promoted into Creator / spellbook / Gameplay runtime until individually verified.
 - No spell effects, feat effects, equipment rules, or subclass features were implemented or copied.
@@ -235,6 +239,7 @@ DND Character Options Source Completion v1 status:
 
 - DND now enters through a workspace dashboard (`DndWorkspaceShell`): rule scope, source status, completion cards, and module entries are visible before character workflows.
 - The shell is display-only UI layering: no rules data, runtime logic, source filtering, or schema changed; Creator / Sheet / Gameplay render unchanged inside the "play" view.
+- DND Builder Workbench Phase 1 modernizes the Creator presentation inside the preserved play view: identity / sources / species / background / class / abilities / feats / spells / equipment / review sections can be switched non-linearly, with responsive mobile-safe layout and a live summary panel. Existing creation logic remains unchanged.
 
 ## 7. Current Priority Gap List
 

@@ -2,6 +2,7 @@
 // Shared metadata contract for rule data provenance and publication-safety review.
 
 export type RuleDataSource =
+  | 'dnd-local-chm-primary'
   | 'dnd5echm-srd52-primary'
   | 'dnd5echm-main-5e-crosscheck'
   | 'dnd5echm-xgte'

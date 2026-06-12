@@ -68,6 +68,13 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] DND Compendium — shows spell/feat/equipment/class index entry counts without rendering all 507 spells
 - [ ] DND Workspace — COC / CP RED entry is unaffected (no DND shell around other systems)
 - [ ] DND Creator — opens, fields editable
+- [ ] DND Creator — opens as a responsive Builder Workbench with section navigation, editor area, and character summary
+- [ ] DND Creator — desktop layout uses Builder nav / editor / summary columns without nested oversized cards
+- [ ] DND Creator — mobile layout does not horizontally overflow; builder section navigation scrolls horizontally
+- [ ] DND Creator — builder sections can be switched non-linearly: identity / sources / species / background / class / abilities / feats / spells / equipment / review
+- [ ] DND Creator — spell and equipment builder sections are placeholders only and do not implement spell/equipment automation
+- [ ] DND Creator — More Actions lowers reset/import-export style utility prominence; DND import/export remains available from the workspace top actions
+- [ ] DND Creator — existing completion validation and character creation behavior remain unchanged
 - [ ] DND index layer — spell/feat/background/equipment indexes compile but are not imported by Creator / Sheet / Gameplay
 - [ ] DND index layer — runtime SPELL_DATA still has exactly its pre-index entries; spellbook/spellcasting behavior unchanged
 - [ ] DND index layer — DND_2024_SPELL_INDEX_DATA totals 507 (SRD 391 / TCoE 21 / XGtE 95) with unique scope-prefixed ids
@@ -76,7 +83,8 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] DND Artificer source completion does not modify `classProgression`, store schema, Creator, Sheet, Gameplay, or rules automation
 - [ ] DND Creator — species list shows the 9 owner-source 2024 species (人类/矮人/精灵/半身人/侏儒/龙裔/提夫林/兽人/歌利亚); no subrace step appears
 - [ ] DND Creator — selecting a 2024 species sets racebonus to 0 for all abilities and does not overwrite size/speed/languages with placeholders
-- [ ] DND Creator — background list shows 侍僧/士兵/智者/罪犯; 半精灵/半兽人/吉斯洋基人 and legacy backgrounds are not offered as defaults
+- [ ] DND Creator — background list shows the 16 local-CHM-confirmed DND 2024 standard backgrounds: 侍僧 / 工匠 / 骗子 / 罪犯 / 艺人 / 农民 / 警卫 / 向导 / 隐士 / 商人 / 贵族 / 智者 / 水手 / 抄写员 / 士兵 / 流浪者
+- [ ] DND Creator — newly completed background entries use short pending-verification text and do not fabricate skills, origin feats, equipment, or ability options
 - [ ] DND Creator — legacy 艺人 data (if surfaced anywhere) grants 音乐家 (Musician), not 健壮 (Tough)
 - [ ] DND Sheet — legacy characters with old race/background strings still render without crashing (pending-verification note may replace legacy trait text)
 - [ ] DND Sheet — opens, displays character data
@@ -198,6 +206,7 @@ After modifying one system, verify the other two are unaffected:
 - [ ] DND GitHub DND5eChm / SRD5.2Chm sources are treated only as secondary cross-check sources
 - [ ] Official DND references are optional supplements and do not override the local CHM source by default
 - [ ] DND local CHM audit baseline records 16 standard DND 2024 backgrounds, not the previous 4-entry sparse baseline
+- [ ] DND runtime BACKGROUND_DATA follows the 16-background local CHM baseline while detailed mechanics remain needs-human-check
 - [ ] DND local CHM audit baseline records 10 PHB 2024 species including `阿斯莫`
 - [ ] DND local CHM audit does not modify runtime data, Creator, Sheet, Gameplay, store schema, or migration behavior
 - [ ] Existing app data, previous AI-generated data, model memory, BG3, third-party wiki pages, and general web search do not override owner-provided sources

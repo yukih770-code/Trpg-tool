@@ -43,6 +43,8 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | DND Spell Manifest Correction v1 | ✅ Completed |
 | DND Artificer Source Completion v1 | ✅ Done (source-indexed; runtime deferred) |
 | DND Local CHM Source Authority + Full Coverage Audit v1 | ✅ Done (docs audit; runtime unchanged) |
+| DND Background Runtime Completion v1 | ✅ Done (16 local-CHM backgrounds; mechanics pending check) |
+| DND Character Builder Responsive Workbench Phase 1 | ✅ Done (UI layout only; logic unchanged) |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -98,6 +100,10 @@ Architecture phase scope:
 - DND Local CHM Source Authority + Full Coverage Audit v1 completed as a documentation/source-policy audit only. Local CHM extracted source at `C:\TRPG_CHM_WORK\extracted` is now the primary authoritative DND source (`dnd-local-chm-primary`); GitHub DND5eChm / SRD5.2Chm are secondary cross-check sources, and official references are optional supplements.
 - Local CHM full coverage audit corrected the previous sparse baseline: DND 2024 standard backgrounds are 16, not 4; PHB 2024 species are 10 including `阿斯莫`; spells remain 507 source headings across PHB/TCoE/XGtE; equipment, feats, subclasses, class progression, class resources, spell lists, and magic items require dedicated extraction/verification tasks before runtime promotion.
 - No DND runtime data, `src/data/*`, Creator, Sheet, Gameplay, store schema, migration, COC, CP RED, or Platform behavior changed by the CHM audit.
+- DND Background Runtime Completion v1 completed. Runtime `BACKGROUND_DATA` now follows the local CHM primary source baseline with 16 standard DND 2024 backgrounds. Detailed background mechanics remain `needs-human-check`, and newly completed entries use short placeholder text rather than copied rules prose.
+- No store schema, migration, Creator, Sheet, Gameplay, COC, CP RED, or Platform behavior changed by the background runtime completion.
+- DND Character Builder Responsive Workbench Phase 1 completed. The existing Creator logic is now presented through a BG3-like builder workbench with section navigation, current editor area, and live character summary / todo panel.
+- Builder sections cover identity, source status, species, background, class, abilities, feats, spells, equipment, and review. Spell/equipment sections are boundary placeholders only; no spell automation, equipment system, inventory, schema, migration, or rules data changes were introduced.
 - Rule data must declare source and trust metadata before being treated as verified runtime/core data.
 - Unknown-source or suspicious rule data must not be promoted into new gameplay features until it is labeled, quarantined, or verified.
 - Public/free sources may be embedded only within allowed scope; paid-book or official-but-not-public content may be referenced by source metadata but must not copy long rules text.
@@ -127,6 +133,8 @@ Architecture phase scope:
 | DND Feat / Background Link Correction v1 | ✅ Done (origin feat link + metadata only; effects automation deferred) |
 | DND Spell Manifest Correction v1 | ✅ Done (runtime spell list retained; 507-entry index deferred) |
 | DND Artificer Source Completion v1 | ✅ Done (source-indexed; runtime deferred) |
+| DND Background Runtime Completion v1 | ✅ Done (BACKGROUND_DATA 16/16 local-CHM standard backgrounds) |
+| DND Character Builder Responsive Workbench Phase 1 | ✅ Done (responsive builder layout; original logic preserved) |
 
 Action Registry v0 scope:
 - Supports only `classResource` and `pactMagic` resource costs.
@@ -174,8 +182,8 @@ DND Resource Consumption Unification v1 scope:
 
 DND Background / Species Correction v1 scope:
 - DND Background / Species Correction v1 started. Legacy 2014 race/subrace/background-feature data is retained but quarantined or marked legacy (`LEGACY_RACE_DATA` / `LEGACY_BACKGROUND_DATA`, usagePolicy `quarantine`).
-- Default DND 2024 species/background data now follows the owner source manifest where possible: 9 SRD5.2 species (人类/矮人/精灵/半身人/侏儒/龙裔/提夫林/兽人/歌利亚, no racial ASI, no subraces) and 4 SRD5.2 backgrounds (侍僧/士兵/智者/罪犯; 贤者 renamed 智者 per owner source).
-- Species traits / size / speed / languages and background skill / origin-feat mappings are NOT fabricated; they carry `needs-human-verification` metadata, and Creator skips empty placeholder values instead of writing them into characters.
+- Default DND 2024 species data still follows the earlier source-matched 9-species baseline pending CHM species correction. Default background data now follows the local CHM primary source baseline with 16 standard DND 2024 backgrounds.
+- Species traits / size / speed / languages and background skill / origin-feat / equipment / ability-option mappings are NOT fabricated; they carry `needs-human-verification` metadata, and Creator skips empty species placeholder values instead of writing them into characters.
 - 半精灵 / 半兽人 / 吉斯洋基人 and 2014 subraces are marked out-of-source / quarantined; TCoE 定制血统 recorded as needs-human-check only. The legacy 艺人 background's Musician / Tough (音乐家 / 健壮) mix-up is fixed.
 - Minimal compatible type extension only: optional `id` / `ruleMeta` fields on `RaceDef` / `BackgroundDef`.
 - No COC / CP RED / Platform changes. No schema / migration changed (race/subrace/background remain plain string fields; racebonus stays an existing numeric field written as 0 for 2024 species).
@@ -196,7 +204,7 @@ DND 2024 Completion Checklist:
 | Area | Status |
 |---|---|
 | Species | 9/9 SRD 来源条目入默认列表；特性提取 needs-human-check；TCoE 定制血统未计入 |
-| Backgrounds | 4/4 SRD 来源条目即 runtime 默认；技能/出身专长映射待人工核对 |
+| Backgrounds | 16/16 local CHM 标准背景已进入 runtime 默认；详细机制、技能、出身专长、装备、属性选项待人工核对 |
 | Origin Feats | runtime 7 条 ai-assisted；来源仅类别文件级，单条提取待后续轮 |
 | General Feats | runtime 9 条 ai-assisted；来源仅类别文件级 |
 | Classes | runtime 12/13；奇械师 TCoE 已 source-indexed / runtime-deferred |

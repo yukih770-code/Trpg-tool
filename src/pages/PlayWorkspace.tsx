@@ -9,7 +9,6 @@ import { Save, Upload } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { toast } from 'sonner';
 
-import { ModManager } from '../components/ModManager';
 import { DndWorkspaceShell, type DndWorkspaceView } from './dndWorkspace/DndWorkspaceShell';
 
 import { CocCreator } from './CocCreator';
@@ -516,6 +515,36 @@ export function PlayWorkspace() {
   const tabVals = tabValues[system];
   const currentPageLabel = labels[tabVals.indexOf(tab)] ?? labels[0];
 
+  const dndPlayBody = (
+    <div className={`min-h-screen p-3 font-serif transition-colors duration-500 md:p-6 ${THEMES['D&D'].bg} ${THEMES['D&D'].text} ${THEMES['D&D'].selection}`}>
+      <div className="mx-auto w-full max-w-[1500px]">
+        <div className={`${THEMES['D&D'].panelBg} relative min-h-[70vh] overflow-hidden rounded-lg p-3 md:p-5`}>
+          <DndBackground />
+          <div className="relative z-10">
+            {tab === 'creator' && <Creator onComplete={() => setTab('sheet')} />}
+            {tab === 'sheet' && <Sheet />}
+            {tab === 'gameplay' && <Gameplay />}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (system === 'D&D') {
+    return (
+      <DndWorkspaceShell
+        view={dndWorkspaceView}
+        onViewChange={setDndWorkspaceView}
+        onOpenPlayTab={(playTab) => {
+          setTab(playTab);
+          setDndWorkspaceView('play');
+        }}
+      >
+        {dndPlayBody}
+      </DndWorkspaceShell>
+    );
+  }
+
   const playBody = (
     <div className={`min-h-screen font-serif p-4 md:p-8 transition-colors duration-500
       ${theme.bg} ${theme.text} ${theme.selection}`}>
@@ -525,22 +554,6 @@ export function PlayWorkspace() {
         <div className={`flex flex-col gap-4 mb-8 pb-4 ${theme.headerBorder}`}>
 
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-            {/* D&D title — Cinzel Decorative, parchment fantasy */}
-            {system === 'D&D' && (
-              <div className="flex flex-col gap-1">
-                <h1 className="font-dnd-title text-3xl md:text-4xl text-[#58180d] leading-tight">
-                  D&amp;D 2024
-                </h1>
-                <div className="flex items-center gap-2">
-                  <span className="text-[#58180d]/40 select-none">✦</span>
-                  <span className="font-dnd-body text-sm tracking-[0.22em] text-[#58180d]/75 uppercase">
-                    冒险者指南
-                  </span>
-                  <span className="text-[#58180d]/40 select-none">✦</span>
-                </div>
-              </div>
-            )}
-
             {/* CoC title — Special Elite typewriter */}
             {system === 'CoC' && (
               <div className="flex flex-col gap-1">
@@ -605,7 +618,6 @@ export function PlayWorkspace() {
                 <div className={`pointer-events-none absolute right-2 top-2.5 text-xs ${theme.primary}`}>▼</div>
               </div>
 
-              {system === 'D&D' && <ModManager />}
             </div>
 
             <div className="flex gap-2 flex-wrap items-center">
@@ -658,19 +670,11 @@ export function PlayWorkspace() {
           <div className={`${theme.panelBg} p-6 min-h-[70vh] relative overflow-hidden
             ${system === 'CP' ? 'cp-scanlines shadow-[inset_0_0_44px_rgba(245,197,24,0.045),0_0_0_1px_rgba(245,197,24,0.045)]' : ''}`}>
             {/* System-specific decorative background */}
-            {system === 'D&D' && <DndBackground />}
             {system === 'CoC' && <CocBackground />}
             {system === 'CP'  && <CpBackground />}
 
             {/* Content layer above the background */}
             <div className="relative z-10">
-              {system === 'D&D' && (
-                <>
-                  <TabsContent value="creator"><Creator onComplete={() => setTab('sheet')} /></TabsContent>
-                  <TabsContent value="sheet"><Sheet /></TabsContent>
-                  <TabsContent value="gameplay"><Gameplay /></TabsContent>
-                </>
-              )}
               {system === 'CoC' && (
                 <>
                   <TabsContent value="creator"><CocCreator onComplete={() => setTab('sheet')} /></TabsContent>
@@ -692,21 +696,6 @@ export function PlayWorkspace() {
       </div>
     </div>
   );
-
-  if (system === 'D&D') {
-    return (
-      <DndWorkspaceShell
-        view={dndWorkspaceView}
-        onViewChange={setDndWorkspaceView}
-        onOpenPlayTab={(playTab) => {
-          setTab(playTab);
-          setDndWorkspaceView('play');
-        }}
-      >
-        {playBody}
-      </DndWorkspaceShell>
-    );
-  }
 
   return playBody;
 }

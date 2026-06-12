@@ -6,31 +6,32 @@
 
 ## Task
 
-- ID: DND Local CHM Source Authority + Full Coverage Audit v1
-- Name: DND Local CHM Source Authority + Full Coverage Audit v1
-- Goal: register the local CHM extraction as primary DND source authority and document the new full coverage baseline without changing runtime data.
-- Phase: P1 DND source integrity / coverage baseline
+- ID: DND Character Builder Responsive Workbench Phase 1
+- Name: DND Character Builder Responsive Workbench Phase 1
+- Goal: present the existing DND Creator as a responsive platform workbench with builder section navigation, editor area, and live summary while preserving creation logic and data contracts.
+- Phase: P1 DND platform UX / builder workbench
 - Status: Implemented; verification commands pending local run
 
 ## Result Summary
 
-- Local CHM extracted source at `C:\TRPG_CHM_WORK\extracted` is now documented as the primary authoritative DND source (`dnd-local-chm-primary`).
-- GitHub DND5eChm / SRD5.2Chm sources are secondary cross-check; official references are optional supplements only.
-- Full coverage audit baseline added to `docs/rules/DND_RULE_COVERAGE.md`.
-- Corrected source baselines:
-  - Species: 10 PHB 2024 entries, including `阿斯莫`.
-  - Backgrounds: 16 standard PHB 2024 backgrounds; previous 4-entry sparse baseline is superseded.
-  - Spells: 507 CHM headings across PHB 2024 / TCoE / XGtE.
-- No runtime data, `src/data/*`, Creator, Sheet, Gameplay, store schema, migration, COC, CP RED, or Platform behavior changed.
-- Landmarks: `DND_LOCAL_CHM_PRIMARY_SOURCE_AUTHORITY`, `DND_LOCAL_CHM_FULL_COVERAGE_AUDIT`.
+- DND Creator is now rendered as a responsive Builder Workbench.
+- Builder sections: identity, sources, species, background, class, abilities, feats, spells, equipment, review.
+- Desktop uses nav / editor / summary columns; mobile uses single-column flow with horizontal section tabs.
+- Right summary shows current character status and todos.
+- DND top utility actions are reduced into a secondary More Actions menu in the DND play view.
+- Existing Creator selection, validation, completion, and store writes remain intact.
+- Spell/equipment sections are placeholders only; no automation was added.
+- No rule data, schema, migration, Sheet logic, Gameplay logic, COC, or CP RED changed.
+- Landmark: `DND_CHARACTER_BUILDER_RESPONSIVE_WORKBENCH_PHASE_1`.
 
 ## Scope
 
 ### Allowed Files
 
-- `docs/rule-sources/RULE_SOURCE_MANIFEST.md`
-- `docs/rule-sources/DND_SOURCES.md`
-- `docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md`
+- `src/pages/Creator.tsx`
+- `src/pages/PlayWorkspace.tsx`
+- `src/i18n/locales/zh-CN.ts`
+- `src/i18n/locales/en.ts`
 - `docs/rules/DND_RULE_COVERAGE.md`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
@@ -41,14 +42,18 @@
 ### Forbidden Files
 
 - `src/data/*`
-- DND Creator / Sheet / Gameplay
+- DND Sheet / Gameplay logic
+- DND Creator business logic beyond UI layout wrappers
 - Store schema / migration
 - COC / CP RED code and data
 - Platform Shell
 
 ### Do Not Do
 
-- Import CHM entries into runtime data
+- Modify DND rule data content
+- Rewrite creation logic
+- Modify store schema / migration
+- Implement spell/equipment automation
 - Copy long rule text
 - Use BG3, third-party wiki, model memory, or unspecified web sources
 - `git add .` / `git add -A` / auto commit
@@ -57,21 +62,22 @@
 
 ### Key Symbols
 
-- `DND_LOCAL_CHM_PRIMARY_SOURCE_AUTHORITY`
-- `DND_LOCAL_CHM_FULL_COVERAGE_AUDIT`
-- `dnd-local-chm-primary`
+- `DND_CHARACTER_BUILDER_RESPONSIVE_WORKBENCH_PHASE_1`
+- `dndBuilder.*`
 
 ### Locate Commands
 
 ```powershell
-rg -n "DND_LOCAL_CHM_PRIMARY_SOURCE_AUTHORITY|DND_LOCAL_CHM_FULL_COVERAGE_AUDIT|dnd-local-chm-primary" docs
+rg -n "DND_CHARACTER_BUILDER_RESPONSIVE_WORKBENCH_PHASE_1|dndBuilder|BuilderSection" src docs
 ```
 
 ## Completion Criteria
 
-- Source policy clearly makes local CHM the DND primary authority.
-- Full coverage audit baseline records corrected species/background/spell/equipment/class gaps.
-- Runtime files and app behavior remain untouched.
+- DND Creator renders responsive builder workbench sections.
+- Existing creation logic and completion behavior remain intact.
+- Mobile layout avoids horizontal overflow.
+- Spell/equipment sections remain placeholders only.
+- Schema, migration, rule data, Sheet, Gameplay, COC, and CP RED remain untouched.
 - `npx tsc --noEmit` and `npm run build` pass.
 
 ## Verification

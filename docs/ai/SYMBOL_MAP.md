@@ -129,6 +129,24 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Legacy DND background fallback: `LEGACY_BACKGROUND_DATA` in `src/data/backgrounds.ts`
 - `AI-LANDMARK: DND_SPECIES_BACKGROUND_DISPLAY_CLEANUP`: `src/pages/Sheet.tsx`
 
+## DND Background Runtime Completion
+
+- DND 2024 runtime background list: `DND_2024_BACKGROUND_DATA` / `BACKGROUND_DATA` in `src/data/backgrounds.ts`
+- Local CHM background source root: `C:\TRPG_CHM_WORK\extracted\玩家手册2024\角色起源\背景`
+- Background display name support: optional `BackgroundDef.nameCn` in `src/lib/dnd-types.ts`
+- Local CHM source id support: `dnd-local-chm-primary` in `src/lib/rules/rule-data-metadata.ts`
+- Legacy DND background fallback remains: `LEGACY_BACKGROUND_DATA` in `src/data/backgrounds.ts`
+- `AI-LANDMARK: DND_BACKGROUND_RUNTIME_COMPLETION`: `src/data/backgrounds.ts`
+
+## DND Character Builder Responsive Workbench
+
+- Responsive DND Builder Workbench UI: `src/pages/Creator.tsx`
+- Builder section ids: `BuilderSection` in `src/pages/Creator.tsx`
+- Builder summary / todo helpers: `SummaryRows`, `TodoList`, `InfoRow` in `src/pages/Creator.tsx`
+- DND-only reduced utility actions menu: `src/pages/PlayWorkspace.tsx`
+- Builder i18n keys: `dndBuilder.*` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`
+- `AI-LANDMARK: DND_CHARACTER_BUILDER_RESPONSIVE_WORKBENCH_PHASE_1`: `src/pages/Creator.tsx`
+
 ## Platform Shell / Home / Play Workspace
 
 - Platform shell default entry: `src/App.tsx`

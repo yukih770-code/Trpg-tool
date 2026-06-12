@@ -1,63 +1,96 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { useCharacterStore } from '../store/characterStore';
-import { getAvailableRaces, getAvailableClasses, getAvailableFeats } from '../lib/mod-utils';
+import { getAvailableRaces, getAvailableClasses, getAvailableFeats, getAvailableSpells } from '../lib/mod-utils';
 import { BACKGROUND_DATA } from '../data/backgrounds';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { AttributeName } from '../lib/dnd-types';
+import { createTranslator, readStoredLocale } from '../i18n';
 import { toast } from 'sonner';
 
+type BuilderSection =
+  | 'identity'
+  | 'sources'
+  | 'species'
+  | 'background'
+  | 'class'
+  | 'abilities'
+  | 'feats'
+  | 'spells'
+  | 'equipment'
+  | 'review';
+
+const ATTR_LIST: AttributeName[] = ['Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha'];
+const ATTR_LABELS: Record<AttributeName, string> = {
+  Str: '力量',
+  Dex: '敏捷',
+  Con: '体质',
+  Int: '智力',
+  Wis: '感知',
+  Cha: '魅力',
+};
+
+/**
+ * AI-LANDMARK: DND_CHARACTER_BUILDER_RESPONSIVE_WORKBENCH_PHASE_1
+ *
+ * Phase 1 keeps the original creator state writes and completion logic intact,
+ * but presents them through a responsive Builder Workbench: section navigation,
+ * current editor, and live summary. Placeholder sections are display-only.
+ */
 export function Creator({ onComplete }: { onComplete: () => void }) {
-  const [step, setStep] = useState(1);
+  const { t } = createTranslator(readStoredLocale());
+  const [section, setSection] = useState<BuilderSection>('identity');
   const { character, updateField, updateAttrPointBuy, resetCreator } = useCharacterStore();
 
   const RACE_DATA = getAvailableRaces(character);
   const CLASS_DATA = getAvailableClasses(character);
+  const FEAT_DATA = getAvailableFeats(character);
+  const SPELL_DATA = getAvailableSpells(character);
+
+  const goToValidationSection = (target: BuilderSection) => setSection(target);
 
   const handleComplete = () => {
-    // Validate everything
     if (!character.name) {
-      setStep(1); return toast("请填写角色名字");
+      goToValidationSection('identity'); return toast('请填写角色名字');
     }
     if (!character.race) {
-      setStep(2); return toast("请选择种族");
+      goToValidationSection('species'); return toast('请选择种族');
     }
     const race = RACE_DATA.find(r => r.name === character.race);
     if (race?.subraces.length && !character.subrace) {
-      setStep(2); return toast("请选择子种族");
+      goToValidationSection('species'); return toast('请选择子种族');
     }
     if (!character.jobClass) {
-      setStep(3); return toast("请选择职业");
+      goToValidationSection('class'); return toast('请选择职业');
     }
     const cls = CLASS_DATA.find(c => c.name === character.jobClass);
     if (cls?.subclasses.some(s => s.unlockLevel === 1) && !character.subclass) {
-      setStep(3); return toast("请选择子职业");
+      goToValidationSection('class'); return toast('请选择子职业');
     }
     if (!character.background) {
-      setStep(4); return toast("请选择背景");
+      goToValidationSection('background'); return toast('请选择背景');
     }
     if (!character.feats || character.feats.length === 0) {
-      setStep(4); return toast("请选择一个玩家/出身专长");
+      goToValidationSection('feats'); return toast('请选择一个玩家/出身专长');
     }
     if (character.remainingPoints > 0) {
-       setStep(5); return toast("属性未分配完毕", { description: "请分配剩余的属性点。" });
+      goToValidationSection('abilities'); return toast('属性未分配完毕', { description: '请分配剩余的属性点。' });
     }
-    
-    // Complete logic calculation
+
     const conVal = character.attrs.Con.base + character.attrs.Con.pointbuy + character.attrs.Con.racebonus;
     const conMod = Math.floor((conVal - 10) / 2);
     const hitDiceSizes: Record<string, number> = { '野蛮人': 12, '战士': 10, '圣武士': 10, '游侠': 10, '法师': 6, '术士': 6, '护法': 10, '武僧': 8, '吟游诗人': 8, '牧师': 8, '德鲁伊': 8, '邪术师': 8, '游荡者': 8 };
     const hd = hitDiceSizes[character.jobClass] || 8;
     const initialHp = hd + conMod;
     const isCaster = ['法师', '吟游诗人', '牧师', '术士', '邪术师', '德鲁伊'].includes(character.jobClass);
-    
+
     const spellbook = { ...character.spellbook };
     if (isCaster) {
-       spellbook.slots = { 1: { max: 2, current: 2 } };
+      spellbook.slots = { 1: { max: 2, current: 2 } };
     } else {
-       spellbook.slots = {};
+      spellbook.slots = {};
     }
 
     if (cls) {
@@ -79,365 +112,575 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
     onComplete();
   };
 
-  const attrList: AttributeName[] = ['Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha'];
-  const attrLabels: Record<AttributeName, string> = { Str: "力量", Dex: "敏捷", Con: "体质", Int: "智力", Wis: "感知", Cha: "魅力" };
+  const selectedRace = RACE_DATA.find(r => r.name === character.race);
+  const selectedClass = CLASS_DATA.find(c => c.name === character.jobClass);
+  const selectedBackground = BACKGROUND_DATA.find(b => b.name === character.background);
+  const selectedFeatNames = character.feats ?? [];
+  const unselected = t('dndBuilder.common.unselected');
 
-  const tabs = [
-    { id: 1, label: "基础信息 / Origin" },
-    { id: 2, label: "种族 / Race" },
-    { id: 3, label: "职业 / Class" },
-    { id: 4, label: "背景 / Background" },
-    { id: 5, label: "属性 / Abilities" }
+  const finalAttrValue = (attr: AttributeName) => {
+    const stat = character.attrs[attr];
+    return stat.base + stat.pointbuy + stat.racebonus;
+  };
+
+  const todoItems = [
+    { key: 'name', done: !!character.name, label: t('dndBuilder.todos.name') },
+    { key: 'species', done: !!character.race, label: t('dndBuilder.todos.species') },
+    { key: 'background', done: !!character.background, label: t('dndBuilder.todos.background') },
+    { key: 'class', done: !!character.jobClass, label: t('dndBuilder.todos.class') },
+    { key: 'feat', done: selectedFeatNames.length > 0, label: t('dndBuilder.todos.feat') },
+    { key: 'abilities', done: character.remainingPoints === 0, label: t('dndBuilder.todos.abilities') },
   ];
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      {/* Sidebar Navigation */}
-      <div className="col-span-1 flex flex-col gap-3">
-        <div className="bg-[#58180d] p-4 text-white shadow-[2px_2px_0px_rgba(0,0,0,0.5)]">
-          <h2 className="text-xl font-bold uppercase tracking-tighter">角色创建器</h2>
-          <p className="text-xs opacity-70 italic mt-1">定制你的命运</p>
+  const builderSections: {
+    id: BuilderSection;
+    label: string;
+    hint: string;
+    done?: boolean;
+  }[] = [
+    { id: 'identity', label: t('dndBuilder.sections.identity'), hint: t('dndBuilder.sectionHints.identity'), done: !!character.name },
+    { id: 'sources', label: t('dndBuilder.sections.sources'), hint: t('dndBuilder.sectionHints.sources'), done: true },
+    { id: 'species', label: t('dndBuilder.sections.species'), hint: t('dndBuilder.sectionHints.species'), done: !!character.race },
+    { id: 'background', label: t('dndBuilder.sections.background'), hint: t('dndBuilder.sectionHints.background'), done: !!character.background },
+    { id: 'class', label: t('dndBuilder.sections.class'), hint: t('dndBuilder.sectionHints.class'), done: !!character.jobClass },
+    { id: 'abilities', label: t('dndBuilder.sections.abilities'), hint: t('dndBuilder.sectionHints.abilities'), done: character.remainingPoints === 0 },
+    { id: 'feats', label: t('dndBuilder.sections.feats'), hint: t('dndBuilder.sectionHints.feats'), done: selectedFeatNames.length > 0 },
+    { id: 'spells', label: t('dndBuilder.sections.spells'), hint: t('dndBuilder.sectionHints.spells') },
+    { id: 'equipment', label: t('dndBuilder.sections.equipment'), hint: t('dndBuilder.sectionHints.equipment') },
+    { id: 'review', label: t('dndBuilder.sections.review'), hint: t('dndBuilder.sectionHints.review') },
+  ];
+
+  const panelClass = 'rounded-lg border border-[#58180d]/25 bg-[#fff8e6]/82 p-4 md:p-5 shadow-sm';
+  const subPanelClass = 'rounded-md border border-[#58180d]/18 bg-white/55 p-3';
+  const selectedClassName = 'border-[#58180d] bg-[#58180d] text-white';
+  const optionClassName = 'border-[#58180d]/25 bg-white/70 text-[#2c1810] hover:border-[#58180d] hover:bg-[#f7ebcf]';
+
+  const renderSectionHeader = (title: string, description: string) => (
+    <div className="mb-4 border-b border-[#58180d]/15 pb-3">
+      <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#58180d]/60">
+        {t('dndBuilder.common.currentSection')}
+      </div>
+      <h2 className="mt-1 text-xl font-bold text-[#58180d] md:text-2xl">{title}</h2>
+      <p className="mt-1 text-sm text-[#58180d]/70">{description}</p>
+    </div>
+  );
+
+  const renderIdentity = () => (
+    <section className={panelClass}>
+      {renderSectionHeader(t('dndBuilder.sections.identity'), t('dndBuilder.descriptions.identity'))}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <label className="space-y-2 md:col-span-2">
+          <span className="text-xs font-bold uppercase text-[#58180d]">{t('dndBuilder.fields.characterName')} *</span>
+          <Input className="w-full rounded-md border-[#58180d]/45 bg-white" value={character.name} onChange={e => updateField('name', e.target.value)} />
+        </label>
+        <label className="space-y-2">
+          <span className="text-xs font-bold uppercase text-[#58180d]">{t('dndBuilder.fields.age')}</span>
+          <Input className="w-full rounded-md border-[#58180d]/45 bg-white" value={character.age} onChange={e => updateField('age', e.target.value)} />
+        </label>
+        <div className="space-y-2">
+          <span className="text-xs font-bold uppercase text-[#58180d]">{t('dndBuilder.fields.gender')}</span>
+          <div className="flex flex-wrap gap-2">
+            {['男性', '女性', '非二元', '其他/隐藏'].map((gender) => (
+              <button
+                key={gender}
+                type="button"
+                onClick={() => updateField('gender', gender)}
+                className={`min-w-0 flex-1 rounded-md border px-3 py-2 text-xs font-bold transition ${
+                  character.gender === gender ? selectedClassName : optionClassName
+                }`}
+              >
+                {gender}
+              </button>
+            ))}
+          </div>
         </div>
-        
-        <div className="flex flex-col gap-1">
-          {tabs.map(t => (
-            <button key={t.id}
-              onClick={() => setStep(t.id)}
-              className={`text-left px-4 py-3 font-bold uppercase text-sm border-l-4 transition-all ${
-                step === t.id 
-                  ? 'border-[#58180d] bg-white text-[#58180d] shadow-[2px_2px_0px_#58180d]' 
-                  : 'border-transparent text-[#58180d]/60 hover:text-[#58180d] hover:bg-[#58180d]/5'
-              }`}
+        <label className="space-y-2 md:col-span-2">
+          <span className="text-xs font-bold uppercase text-[#58180d]">{t('dndBuilder.fields.languages')}</span>
+          <Input className="w-full rounded-md border-[#58180d]/45 bg-white" value={character.customLanguages} onChange={e => updateField('customLanguages', e.target.value)} />
+        </label>
+        <label className="space-y-2 md:col-span-2">
+          <span className="text-xs font-bold uppercase text-[#58180d]">{t('dndBuilder.fields.details')}</span>
+          <textarea
+            className="min-h-[120px] w-full rounded-md border border-[#58180d]/45 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#58180d]/45"
+            value={character.description}
+            onChange={e => updateField('description', e.target.value)}
+          />
+        </label>
+      </div>
+    </section>
+  );
+
+  const renderSources = () => (
+    <section className={panelClass}>
+      {renderSectionHeader(t('dndBuilder.sections.sources'), t('dndBuilder.descriptions.sources'))}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {[
+          { title: 'Local CHM', sourceId: 'dnd-local-chm-primary', status: t('dndBuilder.sources.primary') },
+          { title: 'DND5eChm / SRD5.2', sourceId: 'dnd5echm-srd52-primary', status: t('dndBuilder.sources.secondary') },
+          { title: 'XGtE / TCoE', sourceId: 'dnd5echm-xgte / dnd5echm-tcoe', status: t('dndBuilder.sources.indexed') },
+        ].map((source) => (
+          <div key={source.sourceId} className={subPanelClass}>
+            <div className="text-sm font-bold text-[#58180d]">{source.title}</div>
+            <div className="mt-1 font-mono text-[11px] text-[#2c1810]/70">{source.sourceId}</div>
+            <div className="mt-2 inline-flex rounded-full border border-[#58180d]/20 bg-[#58180d]/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#58180d]">
+              {source.status}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 rounded-md border border-dashed border-[#58180d]/25 bg-white/45 p-3 text-xs text-[#58180d]/70">
+        {t('dndBuilder.sources.note')}
+      </p>
+    </section>
+  );
+
+  const renderSpecies = () => (
+    <section className={panelClass}>
+      {renderSectionHeader(t('dndBuilder.sections.species'), t('dndBuilder.descriptions.species'))}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)]">
+        <ScrollArea className="max-h-[420px] rounded-md border border-[#58180d]/20 bg-white/45 p-3 md:max-h-[560px]">
+          {RACE_DATA.map(race => (
+            <button
+              key={race.name}
+              type="button"
+              className={`mb-3 block w-full rounded-md border p-3 text-left transition ${character.race === race.name ? selectedClassName : optionClassName}`}
+              onClick={() => {
+                updateField('race', race.name);
+                updateField('subrace', '');
+                if (race.size) updateField('size', race.size);
+                if (race.speed > 0) updateField('speed', `${race.speed} 尺`);
+                if (race.baseLanguages.length > 0) updateField('customLanguages', race.baseLanguages.join(', '));
+                const newAttrs = { ...character.attrs };
+                ATTR_LIST.forEach(attr => {
+                  newAttrs[attr] = { ...newAttrs[attr], racebonus: race[`${attr.toLowerCase() as Lowercase<AttributeName>}Bonus`] as number };
+                });
+                updateField('attrs', newAttrs);
+              }}
             >
-              {t.label}
-              {/* Optional Validation Hint Dots */}
-              {t.id === 1 && character.name && <span className="float-right text-green-600">●</span>}
-              {t.id === 2 && character.race && <span className="float-right text-green-600">●</span>}
-              {t.id === 3 && character.jobClass && <span className="float-right text-green-600">●</span>}
-              {t.id === 4 && character.background && <span className="float-right text-green-600">●</span>}
-              {t.id === 5 && character.remainingPoints === 0 && <span className="float-right text-green-600">●</span>}
+              <div className="font-bold">{race.name}</div>
+              <p className={`mt-1 text-xs leading-relaxed ${character.race === race.name ? 'text-white/78' : 'text-[#58180d]/70'}`}>{race.desc}</p>
             </button>
           ))}
-        </div>
-
-        <div className="mt-4 flex flex-col gap-2">
-          <Button variant="ghost" onClick={() => { resetCreator(); setStep(1); }} className="text-[#58180d] hover:bg-[#58180d]/10 uppercase text-xs font-bold rounded-none border border-transparent hover:border-[#58180d]">重置所有</Button>
-          <Button className="rounded-none bg-[#58180d] text-[#fdf6e3] hover:opacity-90 uppercase font-bold tracking-tight text-lg py-6 shadow-[2px_2px_0px_rgba(0,0,0,0.5)]" onClick={handleComplete}>
-            启程 Venture Forth
-          </Button>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="col-span-1 lg:col-span-3 space-y-6">
-        {step === 1 && (
-          <Card className="bg-[#f4ecd8] border border-[#58180d] text-[#2c1810] rounded-none shadow-[2px_2px_0px_#58180d]">
-            <CardHeader className="border-b border-[#58180d]/30">
-              <CardTitle className="uppercase font-bold tracking-tight">命运的织卷：基础信息</CardTitle>
-              <CardDescription className="text-[#58180d]/70 italic">在众神的书简中，留下你的名讳，宣告你的生平。每一个字迹，都将化为费伦大陆上的实体脚印。</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <label className="text-xs uppercase font-bold text-[#58180d]">角色名称 *</label>
-                <Input className="bg-white border-[#58180d] rounded-none focus-visible:ring-[#58180d]" value={character.name} onChange={e => updateField('name', e.target.value)} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs uppercase font-bold text-[#58180d]">年龄</label>
-                  <Input className="bg-white border-[#58180d] rounded-none focus-visible:ring-[#58180d]" value={character.age} onChange={e => updateField('age', e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs uppercase font-bold text-[#58180d]">性别</label>
-                  <div className="flex flex-wrap gap-2">
-                    {['男性', '女性', '非二元', '其他/隐藏'].map((g) => (
+        </ScrollArea>
+        <div className={subPanelClass}>
+          <h3 className="text-sm font-bold text-[#58180d]">{character.race || unselected}</h3>
+          {!selectedRace && <p className="mt-2 text-xs text-[#58180d]/65">{t('dndBuilder.empty.species')}</p>}
+          {selectedRace && (
+            <div className="mt-3 space-y-3 text-sm">
+              {selectedRace.features.length > 0 ? selectedRace.features.map((feature, index) => (
+                <p key={index} className="text-[#2c1810]/82">{feature}</p>
+              )) : (
+                <p className="rounded-md border border-[#58180d]/20 bg-[#f7ebcf]/60 p-2 text-xs text-[#58180d]/70">
+                  {t('dndBuilder.pending.speciesTraits')}
+                </p>
+              )}
+              {(selectedRace.subraces?.length || 0) > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase text-[#58180d]">{t('dndBuilder.fields.subspecies')}</h4>
+                  <div className="space-y-2">
+                    {selectedRace.subraces.map(subrace => (
                       <button
-                        key={g}
-                        onClick={() => updateField('gender', g)}
-                        className={`flex-1 min-w-[60px] py-2 text-xs font-bold border transition-colors ${
-                          character.gender === g
-                            ? 'bg-[#58180d] text-white border-[#58180d]'
-                            : 'bg-white text-[#58180d] border-[#58180d] hover:bg-[#58180d]/10'
-                        }`}
+                        key={subrace.name}
+                        type="button"
+                        className={`w-full rounded-md border p-2 text-left text-xs transition ${character.subrace === subrace.name ? selectedClassName : optionClassName}`}
+                        onClick={() => {
+                          updateField('subrace', subrace.name);
+                          if (subrace.size) updateField('size', subrace.size);
+                          if (subrace.speed) updateField('speed', `${subrace.speed} 尺`);
+                          if (subrace.baseLanguages) updateField('customLanguages', subrace.baseLanguages.join(', '));
+                          const newAttrs = { ...character.attrs };
+                          ATTR_LIST.forEach(attr => {
+                            newAttrs[attr] = {
+                              ...newAttrs[attr],
+                              racebonus: (selectedRace[`${attr.toLowerCase() as Lowercase<AttributeName>}Bonus`] as number) + (subrace[`${attr.toLowerCase() as Lowercase<AttributeName>}Bonus`] as number),
+                            };
+                          });
+                          updateField('attrs', newAttrs);
+                        }}
                       >
-                        {g}
+                        <div className="font-bold">{subrace.name}</div>
+                        <p className="mt-1 opacity-80">{subrace.desc}</p>
                       </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs uppercase font-bold text-[#58180d]">掌握语言 (自由描写)</label>
-                <Input className="bg-white border-[#58180d] rounded-none focus-visible:ring-[#58180d]" value={character.customLanguages} onChange={e => updateField('customLanguages', e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs uppercase font-bold text-[#58180d]">人物生平与细节</label>
-                <textarea 
-                  className="w-full flex min-h-[120px] rounded-none border border-[#58180d] bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#58180d]"
-                  value={character.description} 
-                  onChange={e => updateField('description', e.target.value)} 
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {step === 2 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ScrollArea className="h-[600px] border border-[#58180d] bg-white/50 p-4 shadow-[2px_2px_0px_#58180d]">
-              {RACE_DATA.map(r => (
-                <div key={r.name} 
-                   className={`p-3 mb-3 border cursor-pointer transition-colors ${character.race === r.name ? 'border-[#58180d] bg-[#58180d] text-white' : 'border-[#58180d]/30 bg-[#ede1c5] hover:border-[#58180d]'}`}
-                    onClick={() => {
-                     updateField('race', r.name);
-                     updateField('subrace', '');
-                     // AI-LANDMARK: DND_BACKGROUND_SPECIES_CORRECTION
-                     // 2024 species entries intentionally leave size/speed/languages
-                     // empty until human-verified; do not overwrite with placeholders.
-                     if (r.size) updateField('size', r.size);
-                     if (r.speed > 0) updateField('speed', `${r.speed} 尺`);
-                     if (r.baseLanguages.length > 0) updateField('customLanguages', r.baseLanguages.join(', '));
-                     const newAttrs = { ...character.attrs };
-                     attrList.forEach(attr => {
-                       newAttrs[attr] = { ...newAttrs[attr], racebonus: r[`${attr.toLowerCase() as Lowercase<AttributeName>}Bonus`] as number };
-                     });
-                     updateField('attrs', newAttrs);
-                   }}>
-                  <h3 className="font-bold uppercase tracking-tight">{r.name}</h3>
-                  <p className={`text-xs mt-1 leading-tight ${character.race === r.name ? 'text-white/80' : 'text-[#58180d]/70'}`}>{r.desc}</p>
-                </div>
-              ))}
-            </ScrollArea>
-            
-            {character.race && (
-              <Card className="bg-[#f4ecd8] border border-[#58180d] text-[#2c1810] rounded-none shadow-[2px_2px_0px_#58180d] h-fit">
-                <CardHeader className="border-b border-[#58180d]/30">
-                  <CardTitle className="uppercase font-bold">{character.race} 详情</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-4">
-                  {(() => {
-                    const race = RACE_DATA.find(x => x.name === character.race);
-                    if (!race) return <p className="text-sm italic opacity-60">请先选择一个种族。</p>;
-                    return (
-                      <>
-                        {race.features.map((f, i) => (
-                          <p key={i} className="text-sm font-sans tracking-tight">{f}</p>
-                        ))}
-                        
-                        {(race.subraces?.length || 0) > 0 && (
-                          <div className="mt-6">
-                            <h4 className="text-xs font-bold uppercase border-b border-[#58180d]/30 mb-2 pb-1">选择子种族：</h4>
-                            <div className="space-y-2 font-sans">
-                              {race.subraces.map(sr => (
-                                <div key={sr.name} 
-                                   className={`p-2 cursor-pointer border ${character.subrace === sr.name ? 'border-[#58180d] bg-[#58180d] text-white' : 'border-[#58180d]/30 bg-white hover:border-[#58180d]'}`}
-                                   onClick={() => {
-                                     updateField('subrace', sr.name);
-                                     if (sr.size) updateField('size', sr.size);
-                                     if (sr.speed) updateField('speed', `${sr.speed} 尺`);
-                                     if (sr.baseLanguages) updateField('customLanguages', sr.baseLanguages.join(', '));
-                                     
-                                     const newAttrs = { ...character.attrs };
-                                     attrList.forEach(attr => {
-                                       newAttrs[attr] = { 
-                                         ...newAttrs[attr], 
-                                         racebonus: (race[`${attr.toLowerCase() as Lowercase<AttributeName>}Bonus`] as number) + (sr[`${attr.toLowerCase() as Lowercase<AttributeName>}Bonus`] as number) 
-                                       };
-                                     });
-                                     updateField('attrs', newAttrs);
-                                   }}>
-                                  <div className="font-bold">{sr.name}</div>
-                                  <p className="text-xs mt-1 leading-tight">{sr.desc}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
-
-        {step === 3 && (
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           <ScrollArea className="h-[600px] border border-[#58180d] bg-white/50 p-4 shadow-[2px_2px_0px_#58180d]">
-             {CLASS_DATA.map(c => (
-               <div key={c.name} 
-                  className={`p-3 mb-3 border cursor-pointer transition-colors ${character.jobClass === c.name ? 'border-[#58180d] bg-[#58180d] text-white' : 'border-[#58180d]/30 bg-[#ede1c5] hover:border-[#58180d]'}`}
-                  onClick={() => {
-                    updateField('jobClass', c.name);
-                    updateField('hitDiceCurrent', 1);
-                    updateField('subclass', '');
-                  }}>
-                 <h3 className="font-bold uppercase tracking-tight">{c.name}</h3>
-                 <p className={`text-xs mt-1 leading-tight ${character.jobClass === c.name ? 'text-white/80' : 'text-[#58180d]/70'}`}>{c.desc}</p>
-               </div>
-             ))}
-           </ScrollArea>
-           
-           {character.jobClass && (
-             <Card className="bg-[#f4ecd8] border border-[#58180d] text-[#2c1810] rounded-none shadow-[2px_2px_0px_#58180d] h-fit">
-               <CardHeader className="border-b border-[#58180d]/30">
-                 <CardTitle className="uppercase font-bold">{character.jobClass} 详情</CardTitle>
-               </CardHeader>
-               <CardContent className="space-y-4 pt-4">
-                 {(() => {
-                   const cls = CLASS_DATA.find(c => c.name === character.jobClass)!;
-                   const lvl1Subclasses = cls.subclasses.filter(sc => sc.unlockLevel === 1);
-                   return (
-                     <>
-                      {lvl1Subclasses.length > 0 && (
-                        <div className="mb-4">
-                          <h4 className="text-xs font-bold uppercase border-b border-[#58180d]/30 mb-2 pb-1">选择子职业（1级）：</h4>
-                          <div className="space-y-2 font-sans">
-                            {lvl1Subclasses.map(sc => (
-                              <div key={sc.name} 
-                                 className={`p-2 cursor-pointer border ${character.subclass === sc.name ? 'border-[#58180d] bg-[#58180d] text-white' : 'border-[#58180d]/30 bg-white hover:border-[#58180d]'}`}
-                                 onClick={() => updateField('subclass', sc.name)}>
-                                <div className="font-bold">{sc.name}</div>
-                                <p className="text-xs mt-1 leading-tight">{sc.desc}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      <div className="text-sm border border-[#58180d]/30 p-2 bg-white">
-                        <span className="text-xs uppercase font-bold text-[#58180d]">生命骰:</span> <span className="font-mono font-bold">{cls.hitDice}</span><br />
-                        <span className="text-xs uppercase font-bold text-[#58180d]">主属性:</span> {attrLabels[cls.primaryAbility as AttributeName]}<br />
-                        <span className="text-xs uppercase font-bold text-[#58180d]">豁免熟练:</span> {cls.savingThrows.map(s => attrLabels[s as AttributeName] || s).join(', ')}<br />
-                        <span className="text-xs uppercase font-bold text-[#58180d]">防具与武器:</span> {[...cls.armorProficiencies, ...cls.weaponProficiencies].join(', ')}
-                      </div>
-                      <h4 className="text-xs font-bold uppercase border-b border-[#58180d]/30 mt-4 mb-2 pb-1">1级特性：</h4>
-                      <ul className="list-disc pl-4 space-y-1 text-sm font-sans">
-                        {cls.features.filter(f => f.unlockLevel === 1).map((f, i) => (
-                          <li key={i}><span className="font-bold text-[#58180d]">{f.name}：</span>{f.desc}</li>
-                        ))}
-                      </ul>
-                     </>
-                   )
-                 })()}
-               </CardContent>
-             </Card>
-           )}
-         </div>
-        )}
-
-        {step === 4 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold uppercase text-[#58180d] mb-2 px-1">选择出身背景 (Background)</h3>
-              <ScrollArea className="h-[400px] border border-[#58180d] bg-white/50 p-4 shadow-[2px_2px_0px_#58180d]">
-                {BACKGROUND_DATA.map(bg => (
-                  <div key={bg.name} 
-                      className={`p-3 mb-3 border cursor-pointer transition-colors ${character.background === bg.name ? 'border-[#58180d] bg-[#58180d] text-white' : 'border-[#58180d]/30 bg-[#ede1c5] hover:border-[#58180d]'}`}
-                      onClick={() => {
-                        updateField('background', bg.name);
-                        // Auto-assign the origin feat from background if not already selected
-                        if (bg.originFeat) {
-                          updateField('feats', [bg.originFeat]);
-                        }
-                      }}>
-                    <h3 className="font-bold uppercase tracking-tight">{bg.name}</h3>
-                    <p className={`text-xs mt-1 leading-tight ${character.background === bg.name ? 'text-white/80' : 'text-[#58180d]/70'}`}>{bg.desc}</p>
-                  </div>
-                ))}
-              </ScrollArea>
-
-              {character.background && (
-                <div className="mt-4">
-                  <h3 className="text-xs font-bold uppercase text-[#58180d] mb-2 px-1">确认 1 级玩家/出身专长 (Origin Feat)</h3>
-                  <div className="grid grid-cols-1 gap-2">
-                    {getAvailableFeats(character).filter(f => f.category === 'Origin').map(feat => (
-                      <div key={feat.name}
-                        onClick={() => updateField('feats', [feat.name])}
-                        className={`p-2 border text-xs cursor-pointer transition-colors ${
-                          character.feats?.includes(feat.name)
-                            ? 'border-[#58180d] bg-[#58180d] text-white'
-                            : 'border-[#58180d]/30 bg-white hover:border-[#58180d]'
-                        }`}
-                      >
-                        <div className="font-bold uppercase tracking-tighter">{feat.name}</div>
-                        <p className={`text-[10px] ${character.feats?.includes(feat.name) ? 'text-white/70' : 'text-[#58180d]/60'}`}>{feat.desc}</p>
-                      </div>
                     ))}
                   </div>
                 </div>
               )}
             </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
 
-            {character.background && (
-              <Card className="bg-[#f4ecd8] border border-[#58180d] text-[#2c1810] rounded-none shadow-[2px_2px_0px_#58180d] h-fit sticky top-0">
-                <CardHeader className="border-b border-[#58180d]/30">
-                  <CardTitle className="uppercase font-bold">{character.background}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-4">
-                  {(() => {
-                    const bg = BACKGROUND_DATA.find(b => b.name === character.background);
-                    if (!bg) return <p className="text-xs italic text-[#58180d]/60">请选择一个背景来看详细信息。</p>;
-                    const selectedFeat = getAvailableFeats(character).find(f => character.feats?.includes(f.name));
-                    return (
-                      <div className="text-sm space-y-3 font-sans">
-                        <p><strong className="text-xs uppercase font-bold text-[#58180d] block">技能熟练</strong>{bg.skillProficiencies.join(', ')}</p>
-                        {selectedFeat && (
-                          <div className="p-2 border border-[#58180d]/30 bg-[#58180d]/5">
-                            <strong className="text-xs uppercase font-bold text-[#58180d] block mb-1">当前的出身专长</strong>
-                            <span className="font-bold">{selectedFeat.name}</span>
-                            <p className="text-xs mt-1 text-[#58180d]/80">{selectedFeat.desc}</p>
-                          </div>
-                        )}
-                        {bg.toolProficiencies && <p><strong className="text-xs uppercase font-bold text-[#58180d] block">工具熟练</strong>{bg.toolProficiencies.join(', ')}</p>}
-                        <div className="mt-4 pt-4 border-t border-[#58180d]/30">
-                          <strong className="text-xs uppercase font-bold text-[#58180d]">背景特性: {bg.feature.name}</strong>
-                          <p className="mt-1">{bg.feature.desc}</p>
-                        </div>
-                      </div>
-                    )
-                  })()}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
+  const renderBackground = () => (
+    <section className={panelClass}>
+      {renderSectionHeader(t('dndBuilder.sections.background'), t('dndBuilder.descriptions.background'))}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)]">
+        <ScrollArea className="max-h-[420px] rounded-md border border-[#58180d]/20 bg-white/45 p-3 md:max-h-[560px]">
+          {BACKGROUND_DATA.map(bg => (
+            <button
+              key={bg.name}
+              type="button"
+              className={`mb-3 block w-full rounded-md border p-3 text-left transition ${character.background === bg.name ? selectedClassName : optionClassName}`}
+              onClick={() => {
+                updateField('background', bg.name);
+                if (bg.originFeat) {
+                  updateField('feats', [bg.originFeat]);
+                }
+              }}
+            >
+              <div className="font-bold">{bg.name}</div>
+              <p className={`mt-1 text-xs leading-relaxed ${character.background === bg.name ? 'text-white/78' : 'text-[#58180d]/70'}`}>{bg.desc}</p>
+            </button>
+          ))}
+        </ScrollArea>
+        <div className={subPanelClass}>
+          <h3 className="text-sm font-bold text-[#58180d]">{character.background || unselected}</h3>
+          {!selectedBackground && <p className="mt-2 text-xs text-[#58180d]/65">{t('dndBuilder.empty.background')}</p>}
+          {selectedBackground && (
+            <div className="mt-3 space-y-3 text-sm">
+              <InfoRow label={t('dndBuilder.fields.skills')} value={selectedBackground.skillProficiencies.length ? selectedBackground.skillProficiencies.join(', ') : t('dndBuilder.pending.needsCheck')} />
+              <InfoRow label={t('dndBuilder.fields.originFeat')} value={selectedBackground.originFeat || t('dndBuilder.pending.needsCheck')} />
+              <div className="rounded-md border border-[#58180d]/20 bg-[#f7ebcf]/60 p-3">
+                <div className="text-xs font-bold uppercase text-[#58180d]">{selectedBackground.feature.name}</div>
+                <p className="mt-1 text-xs text-[#2c1810]/78">{selectedBackground.feature.desc}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
 
-        {step === 5 && (
-          <Card className="bg-[#f4ecd8] border border-[#58180d] text-[#2c1810] rounded-none shadow-[2px_2px_0px_#58180d]">
-            <CardHeader className="flex flex-row justify-between items-center border-b border-[#58180d]/30 pb-4">
+  const renderClass = () => (
+    <section className={panelClass}>
+      {renderSectionHeader(t('dndBuilder.sections.class'), t('dndBuilder.descriptions.class'))}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)]">
+        <ScrollArea className="max-h-[420px] rounded-md border border-[#58180d]/20 bg-white/45 p-3 md:max-h-[560px]">
+          {CLASS_DATA.map(cls => (
+            <button
+              key={cls.name}
+              type="button"
+              className={`mb-3 block w-full rounded-md border p-3 text-left transition ${character.jobClass === cls.name ? selectedClassName : optionClassName}`}
+              onClick={() => {
+                updateField('jobClass', cls.name);
+                updateField('hitDiceCurrent', 1);
+                updateField('subclass', '');
+              }}
+            >
+              <div className="font-bold">{cls.name}</div>
+              <p className={`mt-1 text-xs leading-relaxed ${character.jobClass === cls.name ? 'text-white/78' : 'text-[#58180d]/70'}`}>{cls.desc}</p>
+            </button>
+          ))}
+        </ScrollArea>
+        <div className={subPanelClass}>
+          <h3 className="text-sm font-bold text-[#58180d]">{character.jobClass || unselected}</h3>
+          {!selectedClass && <p className="mt-2 text-xs text-[#58180d]/65">{t('dndBuilder.empty.class')}</p>}
+          {selectedClass && (
+            <div className="mt-3 space-y-4 text-sm">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <InfoRow label={t('dndBuilder.fields.hitDice')} value={selectedClass.hitDice} />
+                <InfoRow label={t('dndBuilder.fields.primaryAbility')} value={ATTR_LABELS[selectedClass.primaryAbility]} />
+                <InfoRow label={t('dndBuilder.fields.saves')} value={selectedClass.savingThrows.map(s => ATTR_LABELS[s as AttributeName] || s).join(', ')} />
+                <InfoRow label={t('dndBuilder.fields.proficiencies')} value={[...selectedClass.armorProficiencies, ...selectedClass.weaponProficiencies].join(', ')} />
+              </div>
+              {selectedClass.subclasses.filter(sc => sc.unlockLevel === 1).length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-xs font-bold uppercase text-[#58180d]">{t('dndBuilder.fields.subclass')}</h4>
+                  <div className="space-y-2">
+                    {selectedClass.subclasses.filter(sc => sc.unlockLevel === 1).map(subclass => (
+                      <button
+                        key={subclass.name}
+                        type="button"
+                        className={`w-full rounded-md border p-2 text-left text-xs transition ${character.subclass === subclass.name ? selectedClassName : optionClassName}`}
+                        onClick={() => updateField('subclass', subclass.name)}
+                      >
+                        <div className="font-bold">{subclass.name}</div>
+                        <p className="mt-1 opacity-80">{subclass.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div>
-                <CardTitle className="uppercase font-bold">属性加点</CardTitle>
-                <CardDescription className="text-xs text-[#58180d] mt-1">27点买点系统 (Point Buy)</CardDescription>
+                <h4 className="mb-2 text-xs font-bold uppercase text-[#58180d]">{t('dndBuilder.fields.levelOneFeatures')}</h4>
+                <ul className="space-y-2">
+                  {selectedClass.features.filter(feature => feature.unlockLevel === 1).map((feature) => (
+                    <li key={feature.name} className="rounded-md border border-[#58180d]/16 bg-white/45 p-2 text-xs">
+                      <span className="font-bold text-[#58180d]">{feature.name}: </span>{feature.desc}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <div className="bg-[#ede1c5] border border-[#58180d] px-4 py-2 shadow-inner text-center">
-                <span className="text-[10px] uppercase font-bold text-[#58180d] block mb-1">剩余点数</span>
-                <span className="text-3xl font-black">{character.remainingPoints}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderAbilities = () => (
+    <section className={panelClass}>
+      {renderSectionHeader(t('dndBuilder.sections.abilities'), t('dndBuilder.descriptions.abilities'))}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-[#58180d]/20 bg-white/45 p-3">
+        <span className="text-xs font-bold uppercase tracking-wider text-[#58180d]">{t('dndBuilder.fields.remainingPoints')}</span>
+        <span className="text-3xl font-black text-[#58180d]">{character.remainingPoints}</span>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {ATTR_LIST.map(attr => {
+          const stat = character.attrs[attr];
+          const finalVal = finalAttrValue(attr);
+          return (
+            <div key={attr} className="rounded-lg border border-[#58180d]/24 bg-white/68 p-3">
+              <div className="mb-3 flex items-center justify-between gap-2 border-b border-[#58180d]/15 pb-2">
+                <div className="font-bold text-[#58180d]">{ATTR_LABELS[attr]} <span className="text-xs opacity-60">({attr})</span></div>
+                <div className="rounded-full bg-[#58180d]/8 px-2 py-0.5 text-[10px] font-bold text-[#58180d]">
+                  {t('dndBuilder.fields.speciesBonus')}: +{stat.racebonus}
+                </div>
               </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {attrList.map(attr => {
-                  const stat = character.attrs[attr];
-                  const finalVal = stat.base + stat.pointbuy + stat.racebonus;
-                  return (
-                    <div key={attr} className="bg-white border border-[#58180d] p-3 flex flex-col gap-2 shadow-[2px_2px_0px_#58180d]">
-                      <div className="flex justify-between items-center border-b border-[#58180d]/30 pb-2">
-                        <div className="font-bold uppercase tracking-tight">{attrLabels[attr]} <span className="text-[#58180d]/60 text-xs ml-1">({attr})</span></div>
-                        <div className="text-[10px] bg-[#58180d]/10 text-[#58180d] px-2 py-0.5 uppercase font-bold">种族加成: +{stat.racebonus}</div>
-                      </div>
-                      <div className="flex items-center justify-between mt-2 px-2">
-                        <Button variant="outline" size="sm" onClick={() => updateAttrPointBuy(attr, stat.pointbuy - 1)} disabled={stat.pointbuy <= 0} className="h-10 w-10 p-0 rounded-none border-[#58180d] text-[#58180d] text-lg font-bold hover:bg-[#58180d] hover:text-white">-</Button>
-                        <div className="text-4xl font-black w-14 text-center">{finalVal}</div>
-                        <Button variant="outline" size="sm" onClick={() => updateAttrPointBuy(attr, stat.pointbuy + 1)} disabled={stat.pointbuy >= 7 || character.remainingPoints <= 0} className="h-10 w-10 p-0 rounded-none border-[#58180d] text-[#58180d] text-lg font-bold hover:bg-[#58180d] hover:text-white">+</Button>
-                      </div>
-                    </div>
-                  )
-                })}
+              <div className="flex items-center justify-between gap-3">
+                <Button variant="outline" size="sm" onClick={() => updateAttrPointBuy(attr, stat.pointbuy - 1)} disabled={stat.pointbuy <= 0} className="h-10 w-10 rounded-md border-[#58180d]/50 text-[#58180d]">-</Button>
+                <div className="min-w-16 text-center text-4xl font-black">{finalVal}</div>
+                <Button variant="outline" size="sm" onClick={() => updateAttrPointBuy(attr, stat.pointbuy + 1)} disabled={stat.pointbuy >= 7 || character.remainingPoints <= 0} className="h-10 w-10 rounded-md border-[#58180d]/50 text-[#58180d]">+</Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+
+  const renderFeats = () => (
+    <section className={panelClass}>
+      {renderSectionHeader(t('dndBuilder.sections.feats'), t('dndBuilder.descriptions.feats'))}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {FEAT_DATA.filter(feat => feat.category === 'Origin').map(feat => (
+          <button
+            key={feat.name}
+            type="button"
+            onClick={() => updateField('feats', [feat.name])}
+            className={`rounded-md border p-3 text-left transition ${selectedFeatNames.includes(feat.name) ? selectedClassName : optionClassName}`}
+          >
+            <div className="font-bold">{feat.name}</div>
+            <p className={`mt-1 text-xs leading-relaxed ${selectedFeatNames.includes(feat.name) ? 'text-white/78' : 'text-[#58180d]/70'}`}>{feat.desc}</p>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+
+  const renderSpells = () => (
+    <section className={panelClass}>
+      {renderSectionHeader(t('dndBuilder.sections.spells'), t('dndBuilder.descriptions.spells'))}
+      <div className="rounded-md border border-dashed border-[#58180d]/28 bg-white/45 p-4 text-sm text-[#58180d]/75">
+        <p>{t('dndBuilder.placeholders.spells')}</p>
+        <p className="mt-2 font-mono text-xs">{SPELL_DATA.length} runtime spell entries available; spell preparation stays in Gameplay.</p>
+      </div>
+    </section>
+  );
+
+  const renderEquipment = () => (
+    <section className={panelClass}>
+      {renderSectionHeader(t('dndBuilder.sections.equipment'), t('dndBuilder.descriptions.equipment'))}
+      <div className="rounded-md border border-dashed border-[#58180d]/28 bg-white/45 p-4 text-sm text-[#58180d]/75">
+        <p>{t('dndBuilder.placeholders.equipment')}</p>
+        <p className="mt-2 text-xs">{t('dndBuilder.placeholders.equipmentBoundary')}</p>
+      </div>
+    </section>
+  );
+
+  const renderReview = () => (
+    <section className={panelClass}>
+      {renderSectionHeader(t('dndBuilder.sections.review'), t('dndBuilder.descriptions.review'))}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className={subPanelClass}>
+          <h3 className="mb-3 text-sm font-bold text-[#58180d]">{t('dndBuilder.summary.title')}</h3>
+          <SummaryRows
+            rows={[
+              [t('dndBuilder.summary.name'), character.name || unselected],
+              [t('dndBuilder.summary.level'), `${character.level || 1}`],
+              [t('dndBuilder.summary.species'), character.race || unselected],
+              [t('dndBuilder.summary.background'), character.background || unselected],
+              [t('dndBuilder.summary.class'), character.jobClass || unselected],
+              [t('dndBuilder.summary.subclass'), character.subclass || unselected],
+              [t('dndBuilder.summary.hpAc'), `${character.hpMax || '-'} / ${10 + character.acMod}`],
+            ]}
+          />
+        </div>
+        <div className={subPanelClass}>
+          <h3 className="mb-3 text-sm font-bold text-[#58180d]">{t('dndBuilder.todos.title')}</h3>
+          <TodoList items={todoItems} />
+          <Button className="mt-4 w-full rounded-md bg-[#58180d] py-5 font-bold text-[#fdf6e3] hover:bg-[#2c1810]" onClick={handleComplete}>
+            {t('dndBuilder.actions.complete')}
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+
+  const sectionRenderer: Record<BuilderSection, () => ReactNode> = {
+    identity: renderIdentity,
+    sources: renderSources,
+    species: renderSpecies,
+    background: renderBackground,
+    class: renderClass,
+    abilities: renderAbilities,
+    feats: renderFeats,
+    spells: renderSpells,
+    equipment: renderEquipment,
+    review: renderReview,
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-[1440px] overflow-x-hidden">
+      <div className="mb-3 rounded-lg border border-[#58180d]/20 bg-[#fff8e6]/72 p-4">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#58180d]/60">
+            {t('dndBuilder.header.eyebrow')}
+          </div>
+          <h1 className="mt-1 text-2xl font-bold text-[#58180d] md:text-3xl">{t('dndBuilder.header.title')}</h1>
+          <p className="mt-1 text-sm text-[#58180d]/70">{t('dndBuilder.header.subtitle')}</p>
+        </div>
+      </div>
+
+      <details className="mb-3 rounded-lg border border-[#58180d]/20 bg-[#fff8e6]/82 p-3 lg:hidden">
+        <summary className="cursor-pointer list-none text-sm font-bold text-[#58180d]">
+          {t('dndBuilder.summary.title')} · {character.name || unselected}
+        </summary>
+        <div className="mt-3">
+          <BuilderSummaryContent
+            t={t}
+            rows={[
+              [t('dndBuilder.summary.name'), character.name || unselected],
+              [t('dndBuilder.summary.level'), `${character.level || 1}`],
+              [t('dndBuilder.summary.species'), character.race || unselected],
+              [t('dndBuilder.summary.background'), character.background || unselected],
+              [t('dndBuilder.summary.class'), character.jobClass || unselected],
+              [t('dndBuilder.summary.subclass'), character.subclass || unselected],
+              [t('dndBuilder.summary.attrs'), ATTR_LIST.map(attr => `${attr} ${finalAttrValue(attr)}`).join(' / ')],
+              [t('dndBuilder.summary.dataStatus'), t('dndBuilder.summary.needsCheck')],
+            ]}
+            todoItems={todoItems}
+          />
+        </div>
+      </details>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)_300px]">
+        <aside className="lg:sticky lg:top-4 lg:self-start">
+          <div className="rounded-lg border border-[#58180d]/20 bg-[#fff8e6]/72 p-3">
+            <div className="mb-2 hidden text-[10px] font-bold uppercase tracking-[0.22em] text-[#58180d]/55 md:block">
+              {t('dndBuilder.nav.title')}
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 md:flex-col md:overflow-visible md:pb-0">
+              {builderSections.map(item => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSection(item.id)}
+                  className={`min-w-[112px] rounded-md border px-3 py-2 text-left transition md:min-w-0 ${
+                    section === item.id
+                      ? 'border-[#58180d] bg-[#58180d] text-[#fdf6e3]'
+                      : 'border-[#58180d]/18 bg-white/55 text-[#58180d] hover:border-[#58180d]/60'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold">{item.label}</span>
+                    {item.done && <span className="text-[10px]">●</span>}
+                  </div>
+                  <div className={`mt-1 hidden text-[10px] leading-tight md:block ${section === item.id ? 'text-white/72' : 'text-[#58180d]/55'}`}>
+                    {item.hint}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <main className="min-w-0">
+          {sectionRenderer[section]()}
+        </main>
+
+        <aside className="hidden lg:sticky lg:top-4 lg:block lg:self-start">
+          <div className="rounded-lg border border-[#58180d]/20 bg-[#fff8e6]/82 p-4">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-[#58180d]">{t('dndBuilder.summary.title')}</h2>
+            <BuilderSummaryContent
+              t={t}
+              rows={[
+                [t('dndBuilder.summary.name'), character.name || unselected],
+                [t('dndBuilder.summary.level'), `${character.level || 1}`],
+                [t('dndBuilder.summary.species'), character.race || unselected],
+                [t('dndBuilder.summary.background'), character.background || unselected],
+                [t('dndBuilder.summary.class'), character.jobClass || unselected],
+                [t('dndBuilder.summary.subclass'), character.subclass || unselected],
+                [t('dndBuilder.summary.attrs'), ATTR_LIST.map(attr => `${attr} ${finalAttrValue(attr)}`).join(' / ')],
+                [t('dndBuilder.summary.dataStatus'), t('dndBuilder.summary.needsCheck')],
+              ]}
+              todoItems={todoItems}
+            />
+            <Button className="mt-4 w-full rounded-md bg-[#58180d] py-5 font-bold text-[#fdf6e3] hover:bg-[#2c1810]" onClick={handleComplete}>
+              {t('dndBuilder.actions.complete')}
+            </Button>
+            <Button variant="ghost" onClick={() => { resetCreator(); setSection('identity'); }} className="mt-2 w-full justify-center rounded-md text-xs font-bold text-[#58180d] hover:bg-[#58180d]/10">
+              {t('dndBuilder.actions.reset')}
+            </Button>
+          </div>
+        </aside>
       </div>
     </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-[#58180d]/16 bg-white/45 p-2">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/65">{label}</div>
+      <div className="mt-1 text-xs text-[#2c1810]/82">{value}</div>
+    </div>
+  );
+}
+
+function SummaryRows({ rows }: { rows: [string, string][] }) {
+  return (
+    <dl className="mt-3 space-y-2">
+      {rows.map(([label, value]) => (
+        <div key={label} className="flex items-start justify-between gap-3 text-sm">
+          <dt className="shrink-0 text-xs font-bold uppercase tracking-wider text-[#58180d]/60">{label}</dt>
+          <dd className="min-w-0 text-right font-semibold text-[#2c1810]">{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function TodoList({ items }: { items: { key: string; done: boolean; label: string }[] }) {
+  return (
+    <ul className="space-y-1.5">
+      {items.map(item => (
+        <li key={item.key} className="flex items-center gap-2 text-xs text-[#2c1810]/82">
+          <span className={`h-2 w-2 rounded-full ${item.done ? 'bg-[#2f7f68]' : 'bg-[#c89b3c]'}`} />
+          <span className={item.done ? 'line-through opacity-70' : ''}>{item.label}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function BuilderSummaryContent({
+  rows,
+  todoItems,
+  t,
+}: {
+  rows: [string, string][];
+  todoItems: { key: string; done: boolean; label: string }[];
+  t: (key: string) => string;
+}) {
+  return (
+    <>
+      <SummaryRows rows={rows} />
+      <div className="mt-4 border-t border-[#58180d]/15 pt-4">
+        <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-[#58180d]">{t('dndBuilder.todos.title')}</h3>
+        <TodoList items={todoItems} />
+      </div>
+    </>
   );
 }
