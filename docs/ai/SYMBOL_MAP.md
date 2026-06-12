@@ -81,6 +81,15 @@ This file helps AI quickly locate important types, helper functions, store actio
 - DND class progression metadata: `DND_CLASS_PROGRESSION_ACCURACY` in `src/data/dnd2024/classProgression.ts`
 - `AI-LANDMARK: DND_RULE_METADATA_APPLICATION`: `src/data/classes.ts`
 
+## DND Spell Manifest Correction
+
+- DND spell runtime data: `SPELL_DATA` in `src/data/spells.ts`
+- DND spell manifest gap report: `DND_SPELL_MANIFEST_GAP_REPORT` in `src/data/spells.ts`
+- DND spell translation anomaly report: `DND_SPELL_TRANSLATION_ANOMALY_REPORT` in `src/data/spells.ts`
+- Optional spell provenance fields: `SpellInfo.id`, `SpellInfo.nameCn`, and `SpellInfo.ruleMeta` in `src/lib/dnd-types.ts`
+- Owner source spell manifest entries: `docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md`
+- `AI-LANDMARK: DND_SPELL_MANIFEST_CORRECTION`: `src/data/spells.ts`
+
 ## DND Class / Subclass Correction
 
 - DND class/subclass source metadata enrichment: `src/data/classes.ts`
@@ -88,6 +97,15 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Optional class/subclass provenance fields: `ClassDef.ruleMeta` and `SubclassDef.ruleMeta` in `src/lib/dnd-types.ts`
 - Owner source manifest for class/subclass source paths: `docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md`
 - `AI-LANDMARK: DND_CLASS_SUBCLASS_CORRECTION`: `src/data/classes.ts`
+
+## DND Feat / Background Link Correction
+
+- DND feat data and origin feat placeholder: `src/data/feats.ts`
+- Background origin feat link report: `DND_BACKGROUND_ORIGIN_FEAT_LINK_REPORT` in `src/data/feats.ts`
+- Optional feat provenance fields: `FeatDef.id`, `FeatDef.nameCn`, and `FeatDef.ruleMeta` in `src/lib/dnd-types.ts`
+- Current DND background `originFeat` strings: `src/data/backgrounds.ts`
+- Owner source manifest feat category entries: `docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md`
+- `AI-LANDMARK: DND_FEAT_BACKGROUND_LINK_CORRECTION`: `src/data/feats.ts`
 
 ## DND Species / Background Display Cleanup
 
@@ -142,6 +160,23 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Optional `id` / `ruleMeta` fields on `RaceDef` / `BackgroundDef`: `src/lib/dnd-types.ts`
 - Creator placeholder-skip guards for species size/speed/languages: `src/pages/Creator.tsx`
 - `AI-LANDMARK: DND_BACKGROUND_SPECIES_CORRECTION`: `src/data/races.ts`, `src/data/backgrounds.ts`, `src/pages/Creator.tsx`
+
+## DND Product Shell
+
+- DND workspace shell + dashboard + source overview + compendium placeholder: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- `DndWorkspaceView` state and D&D-only delegation: `src/pages/PlayWorkspace.tsx`
+- Completion cards data source: `DND_CHARACTER_OPTIONS_COMPLETION_REPORT`, `DND_SPELL_INDEX_COUNTS`, index exports
+- `dndWorkspace.*` i18n keys: `src/i18n/locales/zh-CN.ts`, `src/i18n/locales/en.ts`
+- `AI-LANDMARK: DND_PRODUCT_SHELL_PHASE_1`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`, `src/pages/PlayWorkspace.tsx`
+
+## DND Character Options Source Index
+
+- Spell source index (507 entries: `DND_2024_SPELL_INDEX_DATA`, `DND_SPELL_INDEX_COUNTS`): `src/data/dnd2024/spellIndex.ts`
+- Class / background / feat / equipment indexes (`DND_2024_CLASS_INDEX_DATA`, `DND_2024_ARTIFICER_SUPPORT_INDEX_DATA`, `DND_2024_BACKGROUND_INDEX_DATA`, `DND_2024_FEAT_INDEX_DATA`, `DND_2024_EQUIPMENT_INDEX_DATA`): `src/data/dnd2024/characterOptionsIndex.ts`
+- Completion gap report (`DND_CHARACTER_OPTIONS_COMPLETION_REPORT`): `src/data/dnd2024/characterOptionsIndex.ts`
+- `AI-LANDMARK: DND_CHARACTER_OPTIONS_SOURCE_COMPLETION`: `src/data/dnd2024/spellIndex.ts`, `src/data/dnd2024/characterOptionsIndex.ts`
+- `AI-LANDMARK: DND_ARTIFICER_SOURCE_COMPLETION`: `src/data/dnd2024/characterOptionsIndex.ts`
+- Indexes are display-only and not imported by Creator / Sheet / Gameplay.
 
 ## DND Runtime / Resources
 

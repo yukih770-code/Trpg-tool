@@ -9,7 +9,75 @@ export const DND_SPELL_DATA_ACCURACY: RuleDataMetadata = {
     'Legacy DND spell data retained for app continuity. Manifest audit found mixed 2014/2024 data, missing entries, translation issues, and out-of-source entries. Do not treat as verified owner-source data until corrected.',
 };
 
-export const SPELL_DATA: SpellInfo[] = [
+const DND_SPELL_MANIFEST_REF =
+  'docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md';
+
+const toSpellId = (nameEn: string) =>
+  `spell.srd52.${nameEn.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+
+const spellManifestMeta = (nameEn: string, note?: string): RuleDataMetadata => ({
+  source: 'dnd5echm-srd52-primary',
+  trustLevel: 'source-labeled',
+  usagePolicy: 'needs-human-verification',
+  sourceRef: `${DND_SPELL_MANIFEST_REF}#item-${nameEn.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+  sourceNote:
+    note ??
+    'Spell identity and level are present in the owner source manifest. Existing Chinese name, school, class list, and effect summary remain pending checked extraction.',
+});
+
+const spellTranslationNeedsCheckMeta = (nameEn: string, note: string): RuleDataMetadata => ({
+  source: 'dnd5echm-srd52-primary',
+  trustLevel: 'needs-human-check',
+  usagePolicy: 'needs-human-verification',
+  sourceRef: `${DND_SPELL_MANIFEST_REF}#item-${nameEn.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+  sourceNote: note,
+});
+
+const SPELL_METADATA_BY_EN: Record<string, RuleDataMetadata> = {
+  'True Strike': spellTranslationNeedsCheckMeta(
+    'True Strike',
+    'Owner manifest confirms True Strike as a DND 2024 cantrip, but Chinese name is recorded as needs-human-check. Existing app name_cn is retained only for saved-character compatibility and is not verified.',
+  ),
+  'Hold Person': spellTranslationNeedsCheckMeta(
+    'Hold Person',
+    'Owner manifest confirms Hold Person as a level 2 DND 2024 spell, but Chinese name is recorded as needs-human-check. Existing app name_cn is retained only for saved-character compatibility and is not verified.',
+  ),
+  Revivify: spellTranslationNeedsCheckMeta(
+    'Revivify',
+    'Owner manifest confirms Revivify as a level 3 DND 2024 spell, but Chinese name is recorded as needs-human-check. Existing app name_cn 苍白复原感 is treated as an unverified translation anomaly and retained only for saved-character compatibility.',
+  ),
+};
+
+export const DND_SPELL_MANIFEST_GAP_REPORT = {
+  ownerManifestSpellEntries: 507,
+  currentRuntimeSpellEntries: 20,
+  strategy: 'route-b-current-runtime-list-only',
+  missingRuntimeEntries: 487,
+  note:
+    'This correction pass keeps the current runtime spell list stable and adds source/trust metadata. A full 507-entry spell index is deferred until level/school/class-list extraction can be automated from owner sources without guessing.',
+};
+
+export const DND_SPELL_TRANSLATION_ANOMALY_REPORT = {
+  checked: ['Revivify', 'True Strike', 'Hold Person'],
+  resolvedBy: 'needs-human-check metadata; no memory-based renaming',
+  note:
+    'Owner manifest confirms spell identity and level but leaves Chinese names as needs-human-check. Existing UI names remain compatibility labels, not verified translations.',
+};
+
+// AI-LANDMARK: DND_SPELL_MANIFEST_CORRECTION
+const applyDndSpellMetadata = (spells: SpellInfo[]): SpellInfo[] =>
+  spells.map((spell) => ({
+    ...spell,
+    id: spell.id ?? toSpellId(spell.name_en),
+    ruleMeta:
+      SPELL_METADATA_BY_EN[spell.name_en] ??
+      spellManifestMeta(
+        spell.name_en,
+        'Spell identity and level are present in the owner source manifest or retained from the current runtime list. Existing Chinese name, school, class list, and effect summary remain pending checked extraction.',
+      ),
+  }));
+
+export const SPELL_DATA: SpellInfo[] = applyDndSpellMetadata([
   // L0 - Cantrips
   {
     name_cn: '火焰箭', name_en: 'Fire Bolt', level: 0, school: '塑能', is_ritual: false, classes: ['法师', '术士'],
@@ -114,4 +182,4 @@ export const SPELL_DATA: SpellInfo[] = [
     cast_time: '动作', range: '触碰', component: { v: true, s: true, m: true, comp_m: '300gp钻石' }, duration: '立即',
     desc: '复活死于 1 分钟内的生物。'
   }
-];
+]);

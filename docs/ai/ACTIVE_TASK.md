@@ -6,28 +6,29 @@
 
 ## Task
 
-- ID: DND Class / Subclass Correction v1
-- Name: DND Class / Subclass Correction v1
-- Goal: apply source/trust metadata to DND class and subclass data without correcting rule content or changing runtime behavior.
-- Phase: P1 Rules Runtime Closure / DND data integrity correction
-- Status: Implemented; verification pending
+- ID: DND Product Shell Phase 1 - Workspace Dashboard
+- Name: DND Product Shell Phase 1 - Workspace Dashboard
+- Goal: give DND a product-grade workspace shell (dashboard / character vault entry / compendium placeholder / source status / play) so entering DND no longer feels like a small utility panel.
+- Phase: P1 DND system completion / product shell
+- Status: Implemented; verification commands pending local run
 
 ## Result Summary
 
-- `ClassDef` and `SubclassDef` now support optional `id` / `ruleMeta` provenance fields.
-- Existing `CLASS_DATA` entries are retained and enriched with owner-source, XGtE/TCoE, needs-human-check, or out-of-source metadata.
-- `破誓者` is explicitly marked out-of-source / quarantine.
-- XGtE/TCoE subclass source labels were added where the owner manifest supports them; name conflicts remain marked for human confirmation.
-- 2014/2024 conflict areas such as wizard schools, cleric domains, and warlock level-1 subclass timing are marked `needs-human-check`.
-- `classProgression`, Creator, Sheet, Gameplay, Action Registry, store schema, and migration behavior were not changed.
-- Landmark: `AI-LANDMARK: DND_CLASS_SUBCLASS_CORRECTION`.
+- DND Product Shell Phase 1 added. DND now enters through a workspace dashboard instead of a character sheet.
+- `src/pages/dndWorkspace/DndWorkspaceShell.tsx`: full-screen shell with secondary nav (工作台总览 / 角色库 / 规则库 / 规则源状态 / 进入游玩), dashboard (scope DND 2024 / SRD5.2 + XGtE + TCoE, status, completion cards, module launcher), source overview (sourceId + runtime-ready / source-indexed / needs-human-check, display-only), compendium placeholder (counts only; no 507-spell grid), character vault placeholder.
+- Completion cards are driven by `DND_CHARACTER_OPTIONS_COMPLETION_REPORT`, `DND_SPELL_INDEX_COUNTS`, and index exports — no scattered hardcoding.
+- `PlayWorkspace` delegates to the shell only when system === 'D&D'; the preserved tab workspace renders unchanged as the play view; COC / CP RED untouched.
+- zh/en copy added under `dndWorkspace.*`; no rules data, schema, migration, or runtime logic changed.
+- Landmark: `AI-LANDMARK: DND_PRODUCT_SHELL_PHASE_1`.
 
 ## Scope
 
 ### Allowed Files
 
-- `src/lib/dnd-types.ts`
-- `src/data/classes.ts`
+- `src/pages/dndWorkspace/DndWorkspaceShell.tsx` (new)
+- `src/pages/PlayWorkspace.tsx` (delegation wrap only)
+- `src/i18n/locales/zh-CN.ts`
+- `src/i18n/locales/en.ts`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
 - `docs/rules/DND_RULE_COVERAGE.md`
@@ -37,49 +38,41 @@
 
 ### Forbidden Files
 
-- COC code or data
-- CP RED code or data
-- Platform Shell / Play Menu
-- DND species/background data
-- DND spells, feats, equipment data
-- `src/data/dnd2024/classProgression.ts` values
-- Creator / Gameplay / Sheet behavior
+- COC / CP RED code and data
+- DND rules data content
+- Creator / Sheet / Gameplay internals
 - Store schema / migration
-- Backend / P2
+- Platform Shell / Play Menu
+- package / Vite / TypeScript config
 
 ### Do Not Do
 
-- Delete class/subclass entries
-- Add full class/subclass mechanics
-- Correct subclass feature text or unlock levels
-- Use model memory, BG3, third-party wiki, or unspecified web sources
+- Real source toggle runtime filtering
+- Compendium data grids / 507-spell dump
+- Builder / Sheet / Gameplay rewrite, Campaign / GM tools, Marketplace
 - `git add .` / `git add -A` / auto commit
 
 ## Navigation
 
 ### Key Symbols
 
-- `DND_CLASS_SUBCLASS_CORRECTION`
-- `DND_CLASS_DATA_ACCURACY`
-- `DND_CLASS_SOURCE_GAP_REPORT`
-- `CLASS_METADATA_BY_NAME`
-- `SUBCLASS_METADATA_BY_CLASS`
-- `ClassDef.ruleMeta`
-- `SubclassDef.ruleMeta`
+- `DndWorkspaceShell` / `DndWorkspaceView` / `DndPlayTab`
+- `dndWorkspaceView` (PlayWorkspace state)
+- `dndWorkspace.*` i18n keys
+- `DND_PRODUCT_SHELL_PHASE_1`
 
 ### Locate Commands
 
 ```powershell
-rg -n "DND_CLASS_SUBCLASS_CORRECTION|DND_CLASS_SOURCE_GAP_REPORT|CLASS_METADATA_BY_NAME|SUBCLASS_METADATA_BY_CLASS|ruleMeta" src/data/classes.ts src/lib/dnd-types.ts docs
+rg -n "DND_PRODUCT_SHELL_PHASE_1|DndWorkspaceShell|dndWorkspaceView|dndWorkspace\." src docs
 ```
 
 ## Completion Criteria
 
-- Class/subclass data carries source/trust metadata.
-- Legacy/out-of-source subclasses remain retained but are not presented as verified owner-source data.
-- XGtE / TCoE source-labeled subclasses are marked with the correct source family or needs-human-check naming notes.
-- Missing owner-source class gap is recorded without adding runtime behavior.
-- No classProgression values, Creator behavior, Gameplay logic, Action Registry behavior, schema, or migration changed.
+- Entering DND shows the dashboard first; module cards open the preserved Creator / Sheet / Gameplay.
+- Source overview shows core + expansions with status labels, display-only.
+- Compendium shows index counts only.
+- COC / CP RED paths unchanged; no rules data / schema / migration / runtime changes.
 - `npx tsc --noEmit` and `npm run build` pass.
 
 ## Verification

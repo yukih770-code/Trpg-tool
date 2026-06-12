@@ -1,6 +1,6 @@
 # DND Rule Coverage Matrix
 
-Last updated: 2026-06-12
+Last updated: 2026-06-13
 
 This document tracks how far DND 2024 rules are represented in the current app. For this matrix, "In Data" means structured DND 2024 rule data under `src/data/dnd2024` / `src/lib/dnd2024`, not legacy descriptive text in class definitions.
 
@@ -17,6 +17,12 @@ DND Rule Metadata Application v1 has started the metadata phase of DND data corr
 DND Species / Background Display Cleanup v1 removed 2014 race/subrace string-hardcoded display behavior from Sheet. Sheet now prefers current species/background definitions and metadata, uses quarantined legacy fallback only for old saved values, and labels legacy or unverified content instead of presenting it as verified DND 2024 rules. No species/background data, Creator flow, schema, migration, COC, CP RED, or Platform behavior changed.
 
 DND Class / Subclass Correction v1 started the class/subclass metadata correction phase. Existing class/subclass entries are retained for app continuity but now carry source/trust metadata that separates DND 2024 owner-source entries, XGtE/TCoE source-labeled entries, 2014/2024 conflict entries, and out-of-source quarantine entries such as 破誓者. Subclass progression automation and value/content correction remain deferred. No classProgression values, Creator behavior, Gameplay logic, schema, or migration changed.
+
+DND Feat / Background Link Correction v1 completed the first origin-feat link pass. Background `originFeat` values are checked against `FEATS_DATA`; `魔法学徒 (Magic Initiate)` was added as a minimal source-linked placeholder so the 2024 Acolyte/Sage background links resolve. Existing feat effect text remains unverified unless later corrected from owner sources. Feat effect automation, Magic Initiate spell selection, prerequisite redesign, Action Registry integration, schema, and migration changes remain deferred.
+
+DND Spell Manifest Correction v1 completed the first spell identity/source pass. The current 20 runtime spell entries are retained for compatibility and now carry source/trust metadata; the owner manifest's 507 spell entries are recorded as a deferred full-index gap rather than imported into Gameplay. Known translation anomalies (`Revivify`, `True Strike`, `Hold Person`) are marked `needs-human-check` because the owner manifest confirms identity/level but leaves Chinese names, schools, class lists, and effect text for later checked extraction. No spell effects automation, concentration, damage, target, schema, migration, or gameplay behavior changed.
+
+DND Artificer Source Completion v1 completed the class-gap source indexing pass. `奇械师 / Artificer` is source-indexed from TCoE with related spell-list, infusion, and subclass source paths, but remains runtime-deferred. It is not added to `CLASS_DATA` or Creator because progression, spellcasting, infusions, and subclass automation still require source-level verification.
 
 ## 1. Coverage Levels
 
@@ -171,6 +177,19 @@ DND Background / Species Correction v1 status:
 - The legacy Musician / Tough (音乐家 / 健壮) mix-up in the 艺人 background was corrected to 音乐家 (Musician).
 - Known display consequence: legacy characters whose race name overlaps a 2024 species (e.g. 矮人) now show the pending-verification species note on Sheet instead of legacy 2014 trait text; legacy subrace feature display is hidden. Stored character values (racebonus, size, speed) are unchanged.
 - No store schema or migration changed.
+
+## 6.3 Character Options Source Index (Completion v1)
+
+DND Character Options Source Completion v1 status:
+- Display-only source indexes now exist, separated from runtime data: spells 507/507 indexed (`src/data/dnd2024/spellIndex.ts`: SRD 391 / TCoE 21 / XGtE 95; name/level/scope only), backgrounds 5 index entries, feat sources 7 (category-file level), equipment categories 13 (`src/data/dnd2024/characterOptionsIndex.ts`).
+- Runtime gaps recorded in `DND_CHARACTER_OPTIONS_COMPLETION_REPORT`: classes runtime 12/13 (奇械师 TCoE source-indexed / runtime-deferred), subclasses 46/73, runtime spells 20/507, feat rows and equipment rows pending later extraction passes.
+- Indexes carry `source-labeled` / `display-only` metadata and must not be promoted into Creator / spellbook / Gameplay runtime until individually verified.
+- No spell effects, feat effects, equipment rules, or subclass features were implemented or copied.
+
+## 6.4 DND Product Shell (Phase 1)
+
+- DND now enters through a workspace dashboard (`DndWorkspaceShell`): rule scope, source status, completion cards, and module entries are visible before character workflows.
+- The shell is display-only UI layering: no rules data, runtime logic, source filtering, or schema changed; Creator / Sheet / Gameplay render unchanged inside the "play" view.
 
 ## 7. Current Priority Gap List
 

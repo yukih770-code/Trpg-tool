@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/button';
 import { toast } from 'sonner';
 
 import { ModManager } from '../components/ModManager';
+import { DndWorkspaceShell, type DndWorkspaceView } from './dndWorkspace/DndWorkspaceShell';
 
 import { CocCreator } from './CocCreator';
 import { CocSheet } from './CocSheet';
@@ -420,6 +421,10 @@ const SYSTEM_DISPLAY_LABELS: Record<System, string> = {
 
 export function PlayWorkspace() {
   const [tab, setTab] = useState('creator');
+  // AI-LANDMARK: DND_PRODUCT_SHELL_PHASE_1
+  // DND enters through the workspace dashboard first; 'play' renders the
+  // preserved tab workspace below unchanged.
+  const [dndWorkspaceView, setDndWorkspaceView] = useState<DndWorkspaceView>('dashboard');
   const { system, setSystem } = useAppStore();
   const theme = THEMES[system];
 
@@ -511,7 +516,7 @@ export function PlayWorkspace() {
   const tabVals = tabValues[system];
   const currentPageLabel = labels[tabVals.indexOf(tab)] ?? labels[0];
 
-  return (
+  const playBody = (
     <div className={`min-h-screen font-serif p-4 md:p-8 transition-colors duration-500
       ${theme.bg} ${theme.text} ${theme.selection}`}>
       <div className="max-w-6xl mx-auto">
@@ -687,4 +692,21 @@ export function PlayWorkspace() {
       </div>
     </div>
   );
+
+  if (system === 'D&D') {
+    return (
+      <DndWorkspaceShell
+        view={dndWorkspaceView}
+        onViewChange={setDndWorkspaceView}
+        onOpenPlayTab={(playTab) => {
+          setTab(playTab);
+          setDndWorkspaceView('play');
+        }}
+      >
+        {playBody}
+      </DndWorkspaceShell>
+    );
+  }
+
+  return playBody;
 }

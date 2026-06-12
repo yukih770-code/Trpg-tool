@@ -21,6 +21,12 @@ export type SkillName = '运动' | '特技' | '巧手' | '隐匿' | '奥秘' | '
 export type HitDiceType = 'D4' | 'D6' | 'D8' | 'D10' | 'D12';
 
 export interface SpellInfo {
+  /** Stable id for corrected entries, e.g. `spell.srd52.fire-bolt` (optional for legacy data). */
+  id?: string;
+  /** Canonical Chinese name when source-verified; legacy `name_cn` remains the UI/storage key. */
+  nameCn?: string;
+  /** Per-entry rule data provenance (optional; legacy entries may rely on module-level metadata). */
+  ruleMeta?: import('./rules/rule-data-metadata').RuleDataMetadata;
   name_cn: string;
   name_en: string;
   level: number;
@@ -235,6 +241,12 @@ export interface CharacterData {
 }
 
 export interface FeatDef {
+  /** Stable id for corrected entries, e.g. `feat.origin.alert` (optional for legacy data). */
+  id?: string;
+  /** Chinese display name without parenthetical English when known. */
+  nameCn?: string;
+  /** Per-entry rule data provenance (optional; legacy entries may rely on module-level metadata). */
+  ruleMeta?: import('./rules/rule-data-metadata').RuleDataMetadata;
   name: string;
   desc: string;
   prerequisiteDesc: string;

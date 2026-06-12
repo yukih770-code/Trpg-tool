@@ -60,7 +60,20 @@ Open the app in the browser and verify each page loads without crashing.
 
 ### D&D
 
+- [ ] DND Workspace — entering DND shows the Dashboard first, not a character sheet
+- [ ] DND Workspace — secondary nav switches 工作台总览 / 角色库 / 规则库 / 规则源状态 / 进入游玩
+- [ ] DND Dashboard — shows rule scope (DND 2024 / SRD5.2 + XGtE + TCoE), status, and data completion cards
+- [ ] DND Dashboard — module cards open Creator / Sheet / Gameplay in the preserved play view
+- [ ] DND Source Status — shows core + expansion sources with sourceId and status labels (display-only, no toggle)
+- [ ] DND Compendium — shows spell/feat/equipment/class index entry counts without rendering all 507 spells
+- [ ] DND Workspace — COC / CP RED entry is unaffected (no DND shell around other systems)
 - [ ] DND Creator — opens, fields editable
+- [ ] DND index layer — spell/feat/background/equipment indexes compile but are not imported by Creator / Sheet / Gameplay
+- [ ] DND index layer — runtime SPELL_DATA still has exactly its pre-index entries; spellbook/spellcasting behavior unchanged
+- [ ] DND index layer — DND_2024_SPELL_INDEX_DATA totals 507 (SRD 391 / TCoE 21 / XGtE 95) with unique scope-prefixed ids
+- [ ] DND index layer — Artificer / 奇械师 is source-indexed from TCoE in `characterOptionsIndex.ts`
+- [ ] DND index layer — Artificer is not added to `CLASS_DATA` / Creator until progression, spellcasting, infusions, and subclasses are verified
+- [ ] DND Artificer source completion does not modify `classProgression`, store schema, Creator, Sheet, Gameplay, or rules automation
 - [ ] DND Creator — species list shows the 9 owner-source 2024 species (人类/矮人/精灵/半身人/侏儒/龙裔/提夫林/兽人/歌利亚); no subrace step appears
 - [ ] DND Creator — selecting a 2024 species sets racebonus to 0 for all abilities and does not overwrite size/speed/languages with placeholders
 - [ ] DND Creator — background list shows 侍僧/士兵/智者/罪犯; 半精灵/半兽人/吉斯洋基人 and legacy backgrounds are not offered as defaults
@@ -197,6 +210,16 @@ After modifying one system, verify the other two are unaffected:
 - [ ] DND XGtE / TCoE subclasses such as 幽域追踪者, 剑刃学院, 孢子结社, and 风暴术士 are source-labeled or marked needs-human-check when names conflict
 - [ ] DND 2014/2024-conflict subclass groups such as 法师学派, 牧师领域, and 邪术师 level-1 subclass timing are marked `needs-human-check`
 - [ ] DND Class / Subclass Correction does not modify Creator, Sheet, Gameplay, Action Registry, store schema, or migration behavior
+- [ ] DND background `originFeat` strings resolve to entries in `FEATS_DATA`
+- [ ] DND `魔法学徒 (Magic Initiate)` exists only as a minimal source-linked placeholder until effect details and spell selection are verified
+- [ ] DND Musician / Tough remain separate entries and background links do not mix 音乐家 with 健壮
+- [ ] DND feat metadata distinguishes source-labeled origin/general feat categories from unverified effect text
+- [ ] DND Feat / Background Link Correction does not add feat automation, Magic Initiate spell choice UI, Action Registry integration, schema changes, or migration changes
+- [ ] DND spell data carries source/trust metadata while retaining the existing runtime spell list
+- [ ] DND spell manifest gap report records 507 owner manifest spell entries versus the current runtime list without importing unverified placeholder spells into Gameplay
+- [ ] DND spell translation anomalies such as Revivify / True Strike / Hold Person are marked `needs-human-check`
+- [ ] DND spell correction does not copy long rules text, automate spell effects, or guess class lists from model memory
+- [ ] DND spell correction does not change spell preparation, spellcasting resource consumption, Action Registry, RuntimeLogEntry, schema, or migration behavior
 - [ ] DND Sheet species/background display does not use 2014 race/subrace string hardcoding such as dwarf or mountain-dwarf proficiency additions
 - [ ] DND Sheet displays current 2024 species/background metadata and marks unverified species traits/background features as pending verification
 - [ ] DND Sheet keeps legacy saved race/subrace/background values compatible with legacy/needs-human-check messaging

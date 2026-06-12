@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-06-12
+Last updated: 2026-06-13
 
 ## Project Overview
 
@@ -39,6 +39,9 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | DND Rule Metadata Application | ✅ Added |
 | DND Species / Background Display Cleanup | ✅ Added |
 | DND Class / Subclass Correction v1 | ✅ Started |
+| DND Feat / Background Link Correction v1 | ✅ Completed |
+| DND Spell Manifest Correction v1 | ✅ Completed |
+| DND Artificer Source Completion v1 | ✅ Done (source-indexed; runtime deferred) |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -85,6 +88,12 @@ Architecture phase scope:
 - Legacy saved race/subrace/background values remain compatible in Sheet via quarantined legacy data fallback and explicit needs-human-check messaging; no data correction, schema, migration, Creator, Gameplay, or store behavior changed.
 - DND Class / Subclass Correction v1 started. Existing class/subclass data now carries source/trust metadata, with owner-source-matched entries separated from XGtE/TCoE labels, `needs-human-check` conflicts, and out-of-source quarantine markers.
 - Out-of-source and 2014/2024-conflict subclasses are no longer documented as verified owner-source data. Subclass progression automation, runtime correction, and content correction remain deferred; no schema/migration or gameplay behavior changed.
+- DND Feat / Background Link Correction v1 completed. Background `originFeat` strings are now checked against `FEATS_DATA`; `魔法学徒 (Magic Initiate)` was added as a source-linked minimal placeholder to repair the 2024 background link.
+- Existing feat effects remain unverified unless separately corrected. Feat effect automation, prerequisites beyond existing checks, choice UI, Magic Initiate spell selection, and Action Registry integration remain deferred; no schema/migration or gameplay behavior changed.
+- DND Spell Manifest Correction v1 completed using the safe route-B strategy: the current 20 runtime spell entries are retained, source/trust metadata was added, and the 507-entry owner manifest gap is recorded without importing placeholder spells into Gameplay.
+- Known translation anomalies (`Revivify`, `True Strike`, `Hold Person`) are no longer treated as verified translations; owner manifest confirms identity/level, while Chinese names, schools, class lists, and effect summaries remain pending checked extraction. Full spell automation remains deferred.
+- DND Artificer Source Completion v1 completed. `奇械师 / Artificer` is now source-indexed from TCoE (`塔莎的万事坩埚/玩家选项/职业/奇械师.html`) with related spell-list, infusion, and subclass source paths, so it is no longer an untracked class gap.
+- Artificer runtime support remains deferred: it was not added to `CLASS_DATA` or Creator because `classProgression`, spellcasting, infusions, and subclass runtime behavior still require source-level verification.
 - Rule data must declare source and trust metadata before being treated as verified runtime/core data.
 - Unknown-source or suspicious rule data must not be promoted into new gameplay features until it is labeled, quarantined, or verified.
 - Public/free sources may be embedded only within allowed scope; paid-book or official-but-not-public content may be referenced by source metadata but must not copy long rules text.
@@ -106,10 +115,14 @@ Architecture phase scope:
 | DND Gameplay Componentization v1 | ✅ Done |
 | DND 2024 Class Resources and Spell Preparation Closure v1 | ✅ Done |
 | DND Spellcasting Path Unification v1 | ✅ Done |
+| DND Character Options Source Completion v1 | ✅ Done (index layer; runtime promotion deferred) |
 | DND Structured Equipment Data Layer v1 | ✅ Done |
 | DND Resource Consumption Unification v1 | ✅ Done |
 | DND Background / Species Correction v1 | ✅ Started (entry names source-matched; mechanics pending human check) |
 | DND Class / Subclass Correction v1 | ✅ Started (metadata/source labeling only; mechanics pending human check) |
+| DND Feat / Background Link Correction v1 | ✅ Done (origin feat link + metadata only; effects automation deferred) |
+| DND Spell Manifest Correction v1 | ✅ Done (runtime spell list retained; 507-entry index deferred) |
+| DND Artificer Source Completion v1 | ✅ Done (source-indexed; runtime deferred) |
 
 Action Registry v0 scope:
 - Supports only `classResource` and `pactMagic` resource costs.
@@ -163,6 +176,42 @@ DND Background / Species Correction v1 scope:
 - Minimal compatible type extension only: optional `id` / `ruleMeta` fields on `RaceDef` / `BackgroundDef`.
 - No COC / CP RED / Platform changes. No schema / migration changed (race/subrace/background remain plain string fields; racebonus stays an existing numeric field written as 0 for 2024 species).
 - Landmark: `DND_BACKGROUND_SPECIES_CORRECTION`.
+
+DND Character Options Source Completion v1 scope:
+- DND is now prioritized as the first fully finished system before moving deeply into COC / CP RED.
+- Character option index completion is separated from runtime automation: source-labeled indexes may exist without being treated as fully automated gameplay rules.
+- `src/data/dnd2024/spellIndex.ts` adds a display-only spell index of all 507 owner-manifest spell entries (SRD5.2 391 / TCoE 21 / XGtE 95) with English name, level, and scope; Chinese names, schools, class lists, and effects remain needs-human-check. Runtime `SPELL_DATA` stays at 20 entries and is unchanged.
+- `src/data/dnd2024/characterOptionsIndex.ts` adds display-only indexes: classes (奇械师 / Artificer source-indexed from TCoE), backgrounds (4 SRD + 1 XGtE partial), feat source files (7, category-file level only), equipment categories (13), plus `DND_CHARACTER_OPTIONS_COMPLETION_REPORT` recording runtime-vs-manifest gaps (classes runtime 12/13 — 奇械师 source-indexed / runtime-deferred; subclasses 46/73).
+- No index is wired into Creator / Sheet / Gameplay runtime; Creator behavior unchanged (runtime BACKGROUND_DATA already equals the 4 owner-source-confirmed backgrounds).
+- No long rules text copied; no model-memory completion; feat/equipment individual rows deliberately NOT fabricated (manifest only confirms category files).
+- No schema / migration, COC, CP RED, or Platform changes.
+- Landmark: `DND_CHARACTER_OPTIONS_SOURCE_COMPLETION`.
+
+DND 2024 Completion Checklist:
+
+| Area | Status |
+|---|---|
+| Species | 9/9 SRD 来源条目入默认列表；特性提取 needs-human-check；TCoE 定制血统未计入 |
+| Backgrounds | 4/4 SRD 来源条目即 runtime 默认；技能/出身专长映射待人工核对 |
+| Origin Feats | runtime 7 条 ai-assisted；来源仅类别文件级，单条提取待后续轮 |
+| General Feats | runtime 9 条 ai-assisted；来源仅类别文件级 |
+| Classes | runtime 12/13；奇械师 TCoE 已 source-indexed / runtime-deferred |
+| Subclasses | 46/73（差额归 Class/Subclass Correction 系列） |
+| Spells | runtime 20 / index 507（507 全量 display-only 索引完成） |
+| Equipment | runtime 样例 14 件 / 类别索引 13/13；单件行待表格提取 |
+| Runtime Automation | 法术效果 / 专长效果 / 装备规则 / 子职业特性自动化均未做（按计划 deferred） |
+| Creator Safety | 未接入任何 index；默认列表行为不变 |
+| Sheet Safety | 未新增 Sheet 接线；既有只读展示不变 |
+| Gameplay Safety | 施法 runtime / RollConsole / RuntimeLogEntry 未变 |
+
+DND Product Shell Phase 1 scope:
+- DND Product Shell Phase 1 added. DND now enters through a workspace dashboard instead of feeling like a small utility panel.
+- `src/pages/dndWorkspace/DndWorkspaceShell.tsx` wraps the preserved DND workspace with secondary navigation (工作台总览 / 角色库 / 规则库 / 规则源状态 / 进入游玩); PlayWorkspace delegates to it only when the active system is D&D.
+- Ruleset source/expansion status (DND 2024 / SRD5.2 core; XGtE / TCoE expansions with sourceId and runtime-ready / source-indexed / needs-human-check labels) is visible before character workflows; display-only, no real source toggle filtering.
+- The dashboard shows data completion cards driven by `DND_CHARACTER_OPTIONS_COMPLETION_REPORT` / index exports (no scattered hardcoding) and module entry cards into Creator / Sheet / Gameplay / compendium placeholders.
+- Existing Creator / Sheet / Gameplay are preserved unchanged as the workspace "play" view; COC / CP RED rendering paths are untouched.
+- No rules data, schema, migration, or runtime logic changed. New zh/en copy added under `dndWorkspace.*` translation keys.
+- Landmark: `DND_PRODUCT_SHELL_PHASE_1`.
 
 ### Call of Cthulhu (COC)
 
