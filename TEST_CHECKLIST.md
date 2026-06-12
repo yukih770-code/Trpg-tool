@@ -37,7 +37,12 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] AI Host shows a Coming Soon placeholder and does not crash
 - [ ] Settings shows a placeholder if no real settings surface exists
 - [ ] Platform Home defaults to Chinese
-- [ ] Language toggle switches between 中文 and English
+- [ ] Language switch is located under Settings / Language
+- [ ] Home no longer presents language switching as a primary action
+- [ ] Home cards use short product labels instead of long developer explanations
+- [ ] Coming Soon states remain visible and not misleading
+- [ ] Switching language in Settings updates Shell/Home/Placeholder text immediately
+- [ ] Language toggle in Settings switches between 中文 and English
 - [ ] Locale persists after refresh via localStorage
 - [ ] Platform Shell / Home / Placeholder copy is read through `src/i18n` translation keys
 - [ ] New locale support can be added by adding a locale file and registering it in `src/i18n/index.ts`

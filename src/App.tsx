@@ -24,14 +24,15 @@ const navItems: {
   labelKey: string;
   kind: 'view' | 'placeholder';
   icon: typeof HomeIcon;
+  showSoon?: boolean;
 }[] = [
   { key: 'home', labelKey: 'shell.nav.home', kind: 'view', icon: HomeIcon },
   { key: 'play', labelKey: 'shell.nav.play', kind: 'view', icon: Gamepad2 },
-  { key: 'campaigns', labelKey: 'shell.nav.campaigns', kind: 'placeholder', icon: Map },
-  { key: 'community', labelKey: 'shell.nav.community', kind: 'placeholder', icon: Boxes },
-  { key: 'privateImport', labelKey: 'shell.nav.privateImport', kind: 'placeholder', icon: Import },
-  { key: 'studio', labelKey: 'shell.nav.studio', kind: 'placeholder', icon: Wrench },
-  { key: 'aiHost', labelKey: 'shell.nav.aiHost', kind: 'placeholder', icon: BrainCircuit },
+  { key: 'campaigns', labelKey: 'shell.nav.campaigns', kind: 'placeholder', icon: Map, showSoon: true },
+  { key: 'community', labelKey: 'shell.nav.community', kind: 'placeholder', icon: Boxes, showSoon: true },
+  { key: 'privateImport', labelKey: 'shell.nav.privateImport', kind: 'placeholder', icon: Import, showSoon: true },
+  { key: 'studio', labelKey: 'shell.nav.studio', kind: 'placeholder', icon: Wrench, showSoon: true },
+  { key: 'aiHost', labelKey: 'shell.nav.aiHost', kind: 'placeholder', icon: BrainCircuit, showSoon: true },
   { key: 'settings', labelKey: 'shell.nav.settings', kind: 'placeholder', icon: Settings },
 ];
 
@@ -44,17 +45,13 @@ function normalizeFeatureKey(feature: string): PlaceholderKey {
   return isPlaceholderKey(normalized) ? normalized : 'campaigns';
 }
 
-function getNextLocale(locale: Locale): Locale {
-  return locale === 'zh-CN' ? 'en' : 'zh-CN';
-}
-
 export default function App() {
   const [appView, setAppView] = useState<AppView>('home');
   const [activePlaceholder, setActivePlaceholder] = useState<PlaceholderKey>('campaigns');
   const [locale, setLocale] = useState<Locale>(readStoredLocale);
   const setSystem = useAppStore((state) => state.setSystem);
 
-  const { t, tList } = createTranslator(locale);
+  const { t } = createTranslator(locale);
 
   const enterPlay = (system?: System) => {
     if (system) setSystem(system);
@@ -66,14 +63,13 @@ export default function App() {
     setAppView('placeholder');
   };
 
-  const toggleLocale = () => {
-    const nextLocale = getNextLocale(locale);
+  const setLocalePreference = (nextLocale: Locale) => {
     setLocale(nextLocale);
     writeStoredLocale(nextLocale);
   };
 
   const placeholderBaseKey = `shell.placeholders.${activePlaceholder}`;
-  const placeholderDetails = tList(`${placeholderBaseKey}.details`);
+  const isPrivateImportPlaceholder = activePlaceholder === 'privateImport';
 
   return (
     <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
@@ -117,7 +113,7 @@ export default function App() {
                       <Icon className="h-4 w-4" />
                       {t(item.labelKey)}
                     </span>
-                    {item.kind === 'placeholder' && (
+                    {item.showSoon && (
                       <span className={`text-[10px] ${isActive ? 'text-[#58180d]' : 'text-white/45'}`}>{t('shell.soon')}</span>
                     )}
                   </button>
@@ -125,24 +121,6 @@ export default function App() {
               })}
             </nav>
 
-            <div className="mt-auto grid gap-3">
-              <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-xs leading-5 text-white/58">
-                {t('shell.sidebarNote')}
-              </div>
-              <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-                <div className="text-xs text-white/58">{t('shell.language.current')}</div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={toggleLocale}
-                  aria-label={t('shell.language.aria')}
-                  className="mt-2 w-full rounded-md border-white/20 bg-white/8 text-white hover:bg-white hover:text-[#17130f]"
-                >
-                  {t('shell.language.switch')}
-                </Button>
-              </div>
-            </div>
           </div>
         </aside>
 
@@ -153,24 +131,64 @@ export default function App() {
 
           {appView === 'play' && <PlayWorkspace />}
 
-          {appView === 'placeholder' && (
+          {appView === 'placeholder' && activePlaceholder === 'settings' && (
             <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col justify-center px-4 py-8 md:px-8">
               <div className="rounded-lg border border-[#2f2a22]/15 bg-white p-6 shadow-sm">
-                <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="rounded-md border-[#58180d]/35 text-[#58180d]">
-                    {t(`${placeholderBaseKey}.phase`)}
-                  </Badge>
-                  <Badge variant="secondary" className="rounded-md">{t('shell.placeholderBadge')}</Badge>
+                <h1 className="text-2xl font-bold">{t('shell.settings.title')}</h1>
+
+                <section className="mt-6 rounded-lg border border-[#2f2a22]/12 bg-[#faf8f2] p-4">
+                  <h2 className="text-base font-bold">{t('shell.settings.language.title')}</h2>
+                  <div className="mt-4 flex flex-wrap gap-3" role="group" aria-label={t('shell.settings.language.aria')}>
+                    <Button
+                      type="button"
+                      variant={locale === 'zh-CN' ? 'default' : 'outline'}
+                      onClick={() => setLocalePreference('zh-CN')}
+                      className="rounded-md"
+                    >
+                      {t('shell.settings.language.zhCN')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={locale === 'en' ? 'default' : 'outline'}
+                      onClick={() => setLocalePreference('en')}
+                      className="rounded-md"
+                    >
+                      {t('shell.settings.language.en')}
+                    </Button>
+                  </div>
+                </section>
+
+                <section className="mt-4 rounded-lg border border-[#2f2a22]/12 bg-white p-4">
+                  <h2 className="text-base font-bold">{t('shell.settings.deferred.title')}</h2>
+                  <p className="mt-2 text-sm text-[#51483d]">{t('shell.settings.deferred.body')}</p>
+                </section>
+
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Button onClick={() => enterPlay()} className="rounded-md">
+                    {t('shell.enterPlay')}
+                  </Button>
+                  <Button variant="outline" onClick={() => setAppView('home')} className="rounded-md border-[#2f2a22]/20">
+                    {t('shell.backHome')}
+                  </Button>
                 </div>
+              </div>
+            </main>
+          )}
+
+          {appView === 'placeholder' && activePlaceholder !== 'settings' && (
+            <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col justify-center px-4 py-8 md:px-8">
+              <div className="rounded-lg border border-[#2f2a22]/15 bg-white p-6 shadow-sm">
+                {!isPrivateImportPlaceholder && (
+                  <div className="mb-4">
+                    <Badge variant="outline" className="rounded-md border-[#58180d]/35 text-[#58180d]">
+                      {t('shell.comingSoon')}
+                    </Badge>
+                  </div>
+                )}
                 <h1 className="text-2xl font-bold">{t(`${placeholderBaseKey}.title`)}</h1>
-                <p className="mt-3 text-sm leading-6 text-[#51483d]">{t(`${placeholderBaseKey}.summary`)}</p>
-                <div className="mt-5 grid gap-3">
-                  {placeholderDetails.map((detail) => (
-                    <div key={detail} className="rounded-md border border-[#2f2a22]/12 bg-[#faf8f2] p-3 text-sm leading-6 text-[#51483d]">
-                      {detail}
-                    </div>
-                  ))}
-                </div>
+                <p className="mt-3 text-sm text-[#51483d]">
+                  {isPrivateImportPlaceholder ? t(`${placeholderBaseKey}.note`) : t('shell.plannedNote')}
+                </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Button onClick={() => enterPlay()} className="rounded-md">
                     {t('shell.enterPlay')}

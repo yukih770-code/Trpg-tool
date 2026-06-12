@@ -6,10 +6,20 @@
 
 ## Task
 
-- ID: Platform Home Shell v1 i18n Polish
-- Name: Platform Home Shell v1 i18n Polish
-- Goal: move Platform Shell, Home, and placeholder copy into a lightweight translation-key i18n foundation while preserving the PlayWorkspace and all rules runtime behavior.
+- ID: Platform Home Shell v1 Product Polish + Settings Language Placement
+- Name: Platform Home Shell v1 Product Polish + Settings Language Placement
+- Goal: turn Home from a developer explanation page into a product dashboard with short labels, keep language switching only under Settings / Language, and keep Coming Soon placeholders clear but concise.
 - Phase: P1 Platform Shell / Home / Play Workspace
+- Status: Completed
+
+## Result Summary
+
+- Platform Home Shell v1 product polish completed.
+- Language switching moved under Settings / Language (already placed there; leftover outer-shell language keys removed).
+- Home microcopy was reduced to product-style labels.
+- Coming Soon placeholders use a short badge plus a one-line note ("该功能已列入后续阶段。/ Planned for a later phase.").
+- i18n foundation remains extensible; copy still flows through translation keys.
+- No PlayWorkspace or rules logic was changed.
 
 ## Scope
 
@@ -17,10 +27,9 @@
 
 - `src/App.tsx`
 - `src/pages/Home.tsx`
-- `src/i18n/index.ts`
+- `src/i18n/index.ts` only if exports must be adjusted
 - `src/i18n/locales/zh-CN.ts`
 - `src/i18n/locales/en.ts`
-- `src/pages/PlayWorkspace.tsx` only if wrapper/import changes are necessary
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
 - `docs/ai/SYMBOL_MAP.md`
@@ -29,8 +38,9 @@
 
 ### Forbidden Files
 
-- DND / COC / CP RED Gameplay internal rule logic
-- `src/store/*` state structure or actions
+- `src/pages/PlayWorkspace.tsx` internal rules logic
+- DND / COC / CP RED rule code
+- `src/store/*`
 - schema / migration files
 - `RuntimeLogEntry` types
 - `src/lib/*`
@@ -42,9 +52,9 @@
 
 ### Do Not Do
 
+- Do not rewrite the i18n foundation.
 - Do not introduce `react-router`.
-- Do not add external dependencies or an external i18n framework.
-- Do not implement Campaigns, Community Modules, Private Import expansion, Content Studio, map, multiplayer, AI Host, account, cloud, marketplace, or real Campaign features.
+- Do not add external dependencies.
 - Do not change DND / COC / CP RED gameplay behavior.
 - Do not change store schema, migration, or RuntimeLogEntry.
 - Do not use `git add .` or `git add -A`.
@@ -55,34 +65,29 @@
 ### Key Symbols
 
 - `Locale`
-- `defaultLocale`
+- `setLocalePreference`
 - `trpg-platform-locale`
-- `messages`
+- `shell.settings.language`
+- `shell.comingSoon` / `shell.plannedNote`
 - `createTranslator`
-- `t`
-- `tList`
 - `Home`
 - `PlayWorkspace`
 
 ### Locate Commands
 
 ```powershell
-rg -n "Locale|defaultLocale|trpg-platform-locale|messages|createTranslator|tList|glossary" src/App.tsx src/pages/Home.tsx src/i18n
-rg -n "Platform Home Shell v1|language toggle|localStorage|localized" PROJECT_STATUS.md TEST_CHECKLIST.md docs/ai
+rg -n "setLocalePreference|shell.settings|comingSoon|plannedNote|trpg-platform-locale" src/App.tsx src/pages/Home.tsx src/i18n
 ```
 
 ## Completion Criteria
 
-- Platform Home defaults to `zh-CN`.
-- Language toggle switches between Chinese and English immediately.
-- Locale persists after refresh via `localStorage`.
-- English UI remains available.
-- Home / Shell / Placeholder text, helper text, empty states, and Coming Soon text are read through translation keys such as `t('home.hero.title')`.
-- Common acronyms and system names live under glossary keys and remain readable.
-- Future locale support only needs adding a locale file and registering it in `src/i18n/index.ts`, without restructuring Home.
-- No DND / COC / CP RED rule logic changed.
+- Language switch is located under Settings / Language only.
+- Home cards use short product labels instead of long developer explanations.
+- Coming Soon states remain visible and not misleading.
+- Locale still persists via `trpg-platform-locale`; default remains `zh-CN`; English remains available.
+- Shell/Home/Settings/Placeholder copy still uses translation keys.
+- PlayWorkspace behavior remains unchanged.
 - No store schema, migration, package, router, or dependency changes.
-- Owner docs updated.
 
 ## Verification
 
@@ -92,17 +97,3 @@ git status --short
 npx tsc --noEmit
 npm run build
 ```
-
-## Report Requirements
-
-- Files changed
-- Language toggle location
-- Default locale status
-- English availability
-- `localStorage` persistence status
-- Localization coverage
-- Preserved terms
-- Rule logic and store schema status
-- Dependency and router status
-- Verification results
-- Unexpected changes

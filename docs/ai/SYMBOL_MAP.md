@@ -49,6 +49,8 @@ This file helps AI quickly locate important types, helper functions, store actio
 - English Platform Shell / Home / Placeholder messages: `src/i18n/locales/en.ts`
 - Translation helpers: `createTranslator`, `t`, and `tList` in `src/i18n/index.ts`
 - Shell locale state: `src/App.tsx`
+- Settings / Language panel and locale setter UI: `src/App.tsx` (language switching lives only under Settings / Language)
+- Coming Soon placeholder page (short badge + one-line note): `src/App.tsx`
 - Home, Shell, and Placeholder translation key usage: `src/App.tsx`, `src/pages/Home.tsx`
 - Shell placeholder definitions: `src/App.tsx`
 - Existing system selector and creator / sheet / gameplay / market tabs: `src/pages/PlayWorkspace.tsx`

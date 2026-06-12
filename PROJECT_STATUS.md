@@ -47,6 +47,11 @@ Architecture phase scope:
 - Records open-source community content ecosystem as a long-term hard-core platform goal; public ecosystem content must be original or redistributable, private user import remains separate, and implementation is deferred until stable schemas and content package boundaries exist.
 - Platform Home Shell v1 added: default entry is now Platform Home, and the previous complete main interface is preserved as `PlayWorkspace`.
 - Platform Home Shell v1 now includes a lightweight i18n foundation in `src/i18n/`; default locale is `zh-CN`, English UI remains available, and locale persists via `localStorage` key `trpg-platform-locale`.
+- Language switching was moved under Settings / Language; Home no longer presents language switching as a primary platform action.
+- Platform Home Shell v1 product polish completed: Home microcopy was reduced to product-style labels; long developer explanations were removed from Home, the sidebar, Settings, and placeholder pages.
+- Coming Soon placeholders remain visible and not misleading, using a short "即将开放 / Coming Soon" badge and a one-line "该功能已列入后续阶段。/ Planned for a later phase." note.
+- The i18n foundation remains unchanged and extensible; removed copy had its translation keys cleaned up in both locales.
+- No PlayWorkspace or rules logic was changed by the product polish.
 - Only Platform Shell / Home / placeholder text was localized through translation keys; PlayWorkspace internal rules UI is not translated by this shell layer.
 - Play enters the preserved ruleset workspace; DND / COC / Cyberpunk RED creator, sheet, gameplay, and CP RED market tabs remain inside `PlayWorkspace`.
 - Campaigns, Community Modules, Content Studio, Private Import expansion, map, multiplayer, and AI Host remain explicit placeholders/deferred.
