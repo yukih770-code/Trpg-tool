@@ -24,6 +24,51 @@ DND Spell Manifest Correction v1 completed the first spell identity/source pass.
 
 DND Artificer Source Completion v1 completed the class-gap source indexing pass. `奇械师 / Artificer` is source-indexed from TCoE with related spell-list, infusion, and subclass source paths, but remains runtime-deferred. It is not added to `CLASS_DATA` or Creator because progression, spellcasting, infusions, and subclass automation still require source-level verification.
 
+<!-- AI-LANDMARK: DND_LOCAL_CHM_FULL_COVERAGE_AUDIT -->
+## DND Local CHM Full Coverage Audit v1
+
+Source policy update:
+
+- `dnd-local-chm-primary` at `C:\TRPG_CHM_WORK\extracted` is now the primary authoritative DND source.
+- GitHub DND5eChm / SRD5.2Chm sources remain secondary cross-check sources.
+- Official references are optional supplements only and do not override the local CHM source.
+- Current app data is an audit target and must be checked against local CHM before being treated as complete.
+
+Local CHM audit summary:
+
+| Area | Current Runtime Count | Current Source Index Count | Local CHM Source Count | Status | Primary Gap / Next Task |
+|---|---:|---:|---:|---|---|
+| Species | 9 | 9 | 10 | incomplete | Add/check `阿斯莫 / Aasimar`; task: `DND CHM Species Runtime Source Correction v1` |
+| Backgrounds | 4 | 5 index rows (4 standard + XGtE life tool) | 16 standard backgrounds | incomplete | Add 12 missing standard backgrounds; task: `DND 2024 Background Runtime Source Correction v1` |
+| Origin Feats | 8 runtime-like origin entries | category file only | 10 PHB origin feats | incomplete | Extract 10 origin feat identities from `起源专长.htm` |
+| General / Fighting / Epic Feats | 9 general runtime-like entries | category file only | 43 general + 10 fighting style + 12 epic boon PHB headings | incomplete | Build CHM feat manifest; TCoE/XGtE extension feats require de-dup/scope review |
+| Classes | 12 | Artificer source-indexed only | 13 (12 PHB + TCoE Artificer) | source-indexed / runtime-deferred | Promote Artificer only after progression/spellcasting/infusions are verified |
+| Subclasses | 46 | partial metadata/index only | 48 PHB core subclass pages + XGtE/TCoE subclass-related pages | incomplete / needs-human-check | Dedicated subclass de-dup/source classification audit; raw extension pages include non-subclass support pages |
+| Spells | 20 | 507 | 507 (`391` PHB + `21` TCoE + `95` XGtE headings) | source-indexed / runtime-deferred | Extract checked Chinese names/schools/classes/effect fields without copying long prose |
+| Equipment | 14 sample items | 13 category rows | 13 PHB equipment files with many table rows | incomplete | Extract structured weapons/armor/tools/gear rows from CHM tables |
+| Tools | 1 sample tool-ish item | category rows | PHB tool files present (`工具`, `工匠工具`, `其他工具`) | incomplete | Dedicated tool row/parser task |
+| Weapons | 6 sample weapons | category row | `武器.htm` table has 43 `<TR>` rows including headers | incomplete | Extract row data; do not wire attacks yet |
+| Armor | 4 sample armor/shield items | category row | `护甲.htm` table has 16 `<TR>` rows including headers | incomplete | Extract row data; do not wire AC automation yet |
+| Magic Items | 0 | category row only | DMG 2024 treasure / magic item categories present | source-located / runtime-deferred | Separate DMG magic item manifest; not current runtime |
+| Class Progression | 4 complete-ish samples + placeholders | source paths only | PHB class pages + TCoE Artificer page present | incomplete / needs-human-check | Value-level progression extraction and verification |
+| Class Resources | partial runtime resources | source paths only | PHB/TCoE class feature/support pages present | incomplete / needs-human-check | Resource extraction one class at a time |
+| Spell Lists | partial runtime lists | source paths/index | PHB class spell-list pages + Artificer spell-list page present | incomplete / needs-human-check | Extract class spell list membership from CHM |
+
+Backgrounds correction from local CHM:
+
+- Local CHM confirms 16 DND 2024 standard backgrounds under `玩家手册2024/角色起源/背景`.
+- The previous sparse GitHub-derived 4-background baseline is superseded for completeness decisions.
+- Standard backgrounds: 侍僧 / Acolyte, 工匠 / Artisan, 骗子 / Charlatan, 罪犯 / Criminal, 艺人 / Entertainer, 农民 / Farmer, 警卫 / Guard, 向导 / Guide, 隐士 / Hermit, 商人 / Merchant, 贵族 / Noble, 智者 / Sage, 水手 / Sailor, 抄写员 / Scribe, 士兵 / Soldier, 流浪者 / Wayfarer.
+- `珊娜萨的万事指南/角色选项/构建角色生平.html` remains an XGtE life-event tool, not a standard background.
+- `背景详述.htm`, `起源的构成部分.htm`, `第二步：确定起源.htm`, and `第四章：角色起源.htm` are overview/build-rule/workflow pages, not individual standard background entries.
+
+Runtime safety baseline:
+
+- Creator Safety: unchanged; do not add CHM-backed entries to Creator until they carry source/trust metadata and field-level verification.
+- Sheet Safety: unchanged; Sheet should continue to label unverified/legacy content rather than presenting it as verified.
+- Gameplay Safety: unchanged; no spell effects, feat effects, equipment automation, class progression, or subclass automation is implied by this audit.
+- Runtime Automation: deferred for all newly found CHM coverage gaps.
+
 ## 1. Coverage Levels
 
 | Level | Name | Meaning |
@@ -170,8 +215,8 @@ Resource Consumption Unification v1 note:
 ## 6.2 Species / Background Coverage (Correction v1)
 
 DND Background / Species Correction v1 status:
-- Default Creator species list now follows the owner source manifest (SRD5.2 玩家手册2024/角色起源/种族): 人类 / 矮人 / 精灵 / 半身人 / 侏儒 / 龙裔 / 提夫林 / 兽人 / 歌利亚, using the DND 2024 species model (no racial ASI, no subraces). Species traits / size / speed / languages are intentionally NOT filled and remain `needs-human-check`; Creator skips empty placeholder values.
-- Default Creator background list now follows the owner source manifest (SRD5.2 玩家手册2024/角色起源/背景): 侍僧 / 士兵 / 智者 / 罪犯. 贤者 was renamed 智者 to match the owner source. Skill / origin-feat / ability-option mappings remain pre-existing app values pending human verification.
+- Default Creator species list currently follows the earlier sparse owner source manifest: 人类 / 矮人 / 精灵 / 半身人 / 侏儒 / 龙裔 / 提夫林 / 兽人 / 歌利亚. Local CHM audit now shows `阿斯莫` also exists under `玩家手册2024/角色起源/种族`, so the runtime list is incomplete. Species traits / size / speed / languages remain `needs-human-check`; Creator skips empty placeholder values.
+- Default Creator background list currently has 4 entries from the earlier sparse manifest: 侍僧 / 士兵 / 智者 / 罪犯. Local CHM audit supersedes that completeness baseline and confirms 16 standard backgrounds under `玩家手册2024/角色起源/背景`; runtime is incomplete. Skill / origin-feat / ability-option mappings remain pending human verification.
 - Legacy 2014 race/subrace/racial-ASI data and legacy 2014-style backgrounds are retained as `LEGACY_RACE_DATA` / `LEGACY_BACKGROUND_DATA` with quarantine metadata; 半精灵 / 半兽人 are marked `out-of-source` (not 2024 species), 吉斯洋基人 is marked `out-of-source` for the declared scope.
 - TCoE 定制血统 (Custom Lineage) exists in the owner source but is an optional rule, recorded as `needs-human-check` and not added to the default species list.
 - The legacy Musician / Tough (音乐家 / 健壮) mix-up in the 艺人 background was corrected to 音乐家 (Musician).
@@ -181,7 +226,7 @@ DND Background / Species Correction v1 status:
 ## 6.3 Character Options Source Index (Completion v1)
 
 DND Character Options Source Completion v1 status:
-- Display-only source indexes now exist, separated from runtime data: spells 507/507 indexed (`src/data/dnd2024/spellIndex.ts`: SRD 391 / TCoE 21 / XGtE 95; name/level/scope only), backgrounds 5 index entries, feat sources 7 (category-file level), equipment categories 13 (`src/data/dnd2024/characterOptionsIndex.ts`).
+- Display-only source indexes now exist, separated from runtime data: spells 507/507 indexed (`src/data/dnd2024/spellIndex.ts`: SRD 391 / TCoE 21 / XGtE 95; name/level/scope only), backgrounds 5 legacy sparse index entries, feat sources 7 (category-file level), equipment categories 13 (`src/data/dnd2024/characterOptionsIndex.ts`). Local CHM audit shows the background index must be rebuilt to 16 standard backgrounds.
 - Runtime gaps recorded in `DND_CHARACTER_OPTIONS_COMPLETION_REPORT`: classes runtime 12/13 (奇械师 TCoE source-indexed / runtime-deferred), subclasses 46/73, runtime spells 20/507, feat rows and equipment rows pending later extraction passes.
 - Indexes carry `source-labeled` / `display-only` metadata and must not be promoted into Creator / spellbook / Gameplay runtime until individually verified.
 - No spell effects, feat effects, equipment rules, or subclass features were implemented or copied.

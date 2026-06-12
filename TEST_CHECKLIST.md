@@ -193,7 +193,13 @@ After modifying one system, verify the other two are unaffected:
 
 ## 7. Rule Data Source / Trust Metadata Check
 
-- [ ] Owner-provided GitHub / PDF rule sources are treated as the only authoritative rule data sources
+- [ ] Owner-provided local / GitHub / PDF rule sources are treated as the only authoritative rule data sources
+- [ ] DND local CHM extracted source at `C:\TRPG_CHM_WORK\extracted` is treated as the primary authoritative DND source
+- [ ] DND GitHub DND5eChm / SRD5.2Chm sources are treated only as secondary cross-check sources
+- [ ] Official DND references are optional supplements and do not override the local CHM source by default
+- [ ] DND local CHM audit baseline records 16 standard DND 2024 backgrounds, not the previous 4-entry sparse baseline
+- [ ] DND local CHM audit baseline records 10 PHB 2024 species including `阿斯莫`
+- [ ] DND local CHM audit does not modify runtime data, Creator, Sheet, Gameplay, store schema, or migration behavior
 - [ ] Existing app data, previous AI-generated data, model memory, BG3, third-party wiki pages, and general web search do not override owner-provided sources
 - [ ] Source conflicts resolve in favor of owner-provided sources
 - [ ] Items present in owner-provided sources but absent from app data are marked `missing`

@@ -6,73 +6,72 @@
 
 ## Task
 
-- ID: DND Product Shell Phase 1 - Workspace Dashboard
-- Name: DND Product Shell Phase 1 - Workspace Dashboard
-- Goal: give DND a product-grade workspace shell (dashboard / character vault entry / compendium placeholder / source status / play) so entering DND no longer feels like a small utility panel.
-- Phase: P1 DND system completion / product shell
+- ID: DND Local CHM Source Authority + Full Coverage Audit v1
+- Name: DND Local CHM Source Authority + Full Coverage Audit v1
+- Goal: register the local CHM extraction as primary DND source authority and document the new full coverage baseline without changing runtime data.
+- Phase: P1 DND source integrity / coverage baseline
 - Status: Implemented; verification commands pending local run
 
 ## Result Summary
 
-- DND Product Shell Phase 1 added. DND now enters through a workspace dashboard instead of a character sheet.
-- `src/pages/dndWorkspace/DndWorkspaceShell.tsx`: full-screen shell with secondary nav (工作台总览 / 角色库 / 规则库 / 规则源状态 / 进入游玩), dashboard (scope DND 2024 / SRD5.2 + XGtE + TCoE, status, completion cards, module launcher), source overview (sourceId + runtime-ready / source-indexed / needs-human-check, display-only), compendium placeholder (counts only; no 507-spell grid), character vault placeholder.
-- Completion cards are driven by `DND_CHARACTER_OPTIONS_COMPLETION_REPORT`, `DND_SPELL_INDEX_COUNTS`, and index exports — no scattered hardcoding.
-- `PlayWorkspace` delegates to the shell only when system === 'D&D'; the preserved tab workspace renders unchanged as the play view; COC / CP RED untouched.
-- zh/en copy added under `dndWorkspace.*`; no rules data, schema, migration, or runtime logic changed.
-- Landmark: `AI-LANDMARK: DND_PRODUCT_SHELL_PHASE_1`.
+- Local CHM extracted source at `C:\TRPG_CHM_WORK\extracted` is now documented as the primary authoritative DND source (`dnd-local-chm-primary`).
+- GitHub DND5eChm / SRD5.2Chm sources are secondary cross-check; official references are optional supplements only.
+- Full coverage audit baseline added to `docs/rules/DND_RULE_COVERAGE.md`.
+- Corrected source baselines:
+  - Species: 10 PHB 2024 entries, including `阿斯莫`.
+  - Backgrounds: 16 standard PHB 2024 backgrounds; previous 4-entry sparse baseline is superseded.
+  - Spells: 507 CHM headings across PHB 2024 / TCoE / XGtE.
+- No runtime data, `src/data/*`, Creator, Sheet, Gameplay, store schema, migration, COC, CP RED, or Platform behavior changed.
+- Landmarks: `DND_LOCAL_CHM_PRIMARY_SOURCE_AUTHORITY`, `DND_LOCAL_CHM_FULL_COVERAGE_AUDIT`.
 
 ## Scope
 
 ### Allowed Files
 
-- `src/pages/dndWorkspace/DndWorkspaceShell.tsx` (new)
-- `src/pages/PlayWorkspace.tsx` (delegation wrap only)
-- `src/i18n/locales/zh-CN.ts`
-- `src/i18n/locales/en.ts`
+- `docs/rule-sources/RULE_SOURCE_MANIFEST.md`
+- `docs/rule-sources/DND_SOURCES.md`
+- `docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md`
+- `docs/rules/DND_RULE_COVERAGE.md`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
-- `docs/rules/DND_RULE_COVERAGE.md`
 - `docs/ai/SYMBOL_MAP.md`
 - `docs/ai/TASK_ARCHIVE.md`
 - `docs/ai/ACTIVE_TASK.md`
 
 ### Forbidden Files
 
-- COC / CP RED code and data
-- DND rules data content
-- Creator / Sheet / Gameplay internals
+- `src/data/*`
+- DND Creator / Sheet / Gameplay
 - Store schema / migration
-- Platform Shell / Play Menu
-- package / Vite / TypeScript config
+- COC / CP RED code and data
+- Platform Shell
 
 ### Do Not Do
 
-- Real source toggle runtime filtering
-- Compendium data grids / 507-spell dump
-- Builder / Sheet / Gameplay rewrite, Campaign / GM tools, Marketplace
+- Import CHM entries into runtime data
+- Copy long rule text
+- Use BG3, third-party wiki, model memory, or unspecified web sources
 - `git add .` / `git add -A` / auto commit
 
 ## Navigation
 
 ### Key Symbols
 
-- `DndWorkspaceShell` / `DndWorkspaceView` / `DndPlayTab`
-- `dndWorkspaceView` (PlayWorkspace state)
-- `dndWorkspace.*` i18n keys
-- `DND_PRODUCT_SHELL_PHASE_1`
+- `DND_LOCAL_CHM_PRIMARY_SOURCE_AUTHORITY`
+- `DND_LOCAL_CHM_FULL_COVERAGE_AUDIT`
+- `dnd-local-chm-primary`
 
 ### Locate Commands
 
 ```powershell
-rg -n "DND_PRODUCT_SHELL_PHASE_1|DndWorkspaceShell|dndWorkspaceView|dndWorkspace\." src docs
+rg -n "DND_LOCAL_CHM_PRIMARY_SOURCE_AUTHORITY|DND_LOCAL_CHM_FULL_COVERAGE_AUDIT|dnd-local-chm-primary" docs
 ```
 
 ## Completion Criteria
 
-- Entering DND shows the dashboard first; module cards open the preserved Creator / Sheet / Gameplay.
-- Source overview shows core + expansions with status labels, display-only.
-- Compendium shows index counts only.
-- COC / CP RED paths unchanged; no rules data / schema / migration / runtime changes.
+- Source policy clearly makes local CHM the DND primary authority.
+- Full coverage audit baseline records corrected species/background/spell/equipment/class gaps.
+- Runtime files and app behavior remain untouched.
 - `npx tsc --noEmit` and `npm run build` pass.
 
 ## Verification

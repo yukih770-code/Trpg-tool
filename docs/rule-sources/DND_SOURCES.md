@@ -8,26 +8,46 @@
 ## Source Authority
 
 - Authority: owner-provided source.
-- Current owner-provided root source: https://github.com/DND5eChm
-- Repository-level source selection requires owner confirmation.
-- The repository entries below are recorded project source references; they do not make any single subrepository the sole canonical DND source unless the owner explicitly confirms that later.
+- Primary authoritative source: local CHM extracted source at `C:\TRPG_CHM_WORK\extracted`.
+- Primary sourceId: `dnd-local-chm-primary`.
+- GitHub DND5eChm / SRD5.2Chm sources are secondary cross-check sources.
+- Official references are optional supplements only and do not override the local CHM source.
+- Current app data must be audited against the local CHM source before being treated as complete.
+- Previous owner-provided GitHub root source retained for cross-check: https://github.com/DND5eChm
 
 ## Conflict Policy
 
-- If app data conflicts with the DND5eChm owner-provided source, the DND5eChm source wins.
-- If AI-generated or model-memory data conflicts with the DND5eChm owner-provided source, the DND5eChm source wins.
-- If app data contains DND entries not found in the DND5eChm source, mark them `needs-human-check` or `out-of-source`.
-- If a DND item exists in the owner-provided source but not in app data, mark it `missing`; do not fabricate implementation details.
+- If app data conflicts with the local CHM owner-provided source, the local CHM source wins.
+- If GitHub source data conflicts with the local CHM source, mark `conflict-needs-human-check`; do not override the local CHM by default.
+- If official reference data conflicts with the local CHM source, treat it as optional supplement and mark `needs-human-check`; do not override the local CHM by default.
+- If AI-generated or model-memory data conflicts with the local CHM source, the local CHM source wins.
+- If app data contains DND entries not found in the local CHM source, mark them `needs-human-check` or `out-of-source`.
+- If a DND item exists in the local CHM source but not in app data, mark it `missing`; do not fabricate implementation details.
 - General web search may only help locate owner-provided source URLs or paths. It must not add or override DND rules data.
 
 ## Entry Manifest Source IDs
 
+- `dnd-local-chm-primary`: primary DND local CHM extracted source at `C:\TRPG_CHM_WORK\extracted`.
 - `dnd5echm-srd52-primary`: primary DND 2024 / SRD5.2 source from `https://github.com/DND5eChm/SRD5.2Chm`.
 - `dnd5echm-main-5e-crosscheck`: broader DND5eChm cross-check source from `https://github.com/DND5eChm/DND5e_chm`.
 - `dnd5echm-xgte`: XGtE entries under `DND5e_chm/珊娜萨的万事指南`.
 - `dnd5echm-tcoe`: TCoE entries under `DND5e_chm/塔莎的万事坩埚`.
 - Entry-level DND source manifest: `docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md`.
 - Spell effect text is referenced by source path only in the public manifest; future full effect text should be handled through publication-safe structured fields or a private/local import layer.
+
+## Source: dnd-local-chm-primary
+
+- System: DND
+- Type: local-chm-extracted
+- Local Path: `C:\TRPG_CHM_WORK\extracted`
+- Version: owner-provided local CHM extraction
+- Scope: DND 5e 2024 + Xanathar's Guide to Everything + Tasha's Cauldron of Everything, with visible adjacent reference directories such as DMG 2024 / Monster Manual 2025 / DNDBeyond retained for optional later audit.
+- Allowed Use: primary source verification / coverage audit / manifest building / data correction planning
+- Notes:
+  - This is the primary authoritative source for DND coverage and correction.
+  - GitHub DND5eChm / SRD5.2Chm entries are secondary cross-check only.
+  - Official references are optional supplement only.
+  - Do not use model memory, BG3, third-party wiki pages, or unspecified web sources to fill missing DND data.
 
 ## Source: dnd2024-free-rules-github
 

@@ -6,6 +6,11 @@ This manifest records item names, source repositories, source paths, and extract
 
 ## Source Authority
 
+<!-- AI-LANDMARK: DND_LOCAL_CHM_PRIMARY_SOURCE_AUTHORITY -->
+- Superseding source policy as of `DND Local CHM Source Authority + Full Coverage Audit v1`: local CHM extracted source at `C:\TRPG_CHM_WORK\extracted` is the primary authoritative DND source.
+- This earlier GitHub-derived manifest remains useful as a secondary cross-check, but sparse repository extraction is no longer sufficient for completeness decisions.
+- Known correction from local CHM audit: DND 2024 standard backgrounds are 16 entries under `玩家手册2024/角色起源/背景`, not the 4-entry sparse set recorded by earlier extraction.
+
 - Primary DND 2024 / SRD5.2 source: `dnd5echm-srd52-primary` -> `https://github.com/DND5eChm/SRD5.2Chm`
 - Secondary XGtE / TCoE / broader 5e cross-check source: `https://github.com/DND5eChm/DND5e_chm`
 - XGtE sourceId used here: `dnd5echm-xgte`

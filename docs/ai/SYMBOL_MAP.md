@@ -61,6 +61,8 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Rule source authority manifest: `docs/rule-sources/RULE_SOURCE_MANIFEST.md`
 - DND owner-provided source manifest: `docs/rule-sources/DND_SOURCES.md`
 - DND owner source entry manifest: `docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md`
+- DND local CHM primary source path: `C:\TRPG_CHM_WORK\extracted`
+- DND local CHM primary sourceId: `dnd-local-chm-primary`
 - COC owner-provided source manifest: `docs/rule-sources/COC_SOURCES.md`
 - CP RED owner-provided source manifest: `docs/rule-sources/CPRED_SOURCES.md`
 - DND owner-provided root source: `https://github.com/DND5eChm`
@@ -68,6 +70,17 @@ This file helps AI quickly locate important types, helper functions, store actio
 - DND XGtE sourceId: `dnd5echm-xgte`
 - DND TCoE sourceId: `dnd5echm-tcoe`
 - `AI-LANDMARK: RULE_SOURCE_AUTHORITY_POLICY`: `docs/rule-sources/RULE_SOURCE_MANIFEST.md`
+- `AI-LANDMARK: DND_LOCAL_CHM_PRIMARY_SOURCE_AUTHORITY`: `docs/rule-sources/RULE_SOURCE_MANIFEST.md`, `docs/rule-sources/DND_SOURCES.md`, `docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md`
+
+## DND Local CHM Full Coverage Audit
+
+- CHM full coverage baseline: `docs/rules/DND_RULE_COVERAGE.md`
+- Local CHM primary source root: `C:\TRPG_CHM_WORK\extracted`
+- Key audited directories: `玩家手册2024`, `塔莎的万事坩埚`, `珊娜萨的万事指南`, optional `城主指南2024`, optional `DNDBeyond`
+- Corrected background baseline: 16 standard DND 2024 backgrounds under `玩家手册2024/角色起源/背景`
+- Corrected species baseline: 10 PHB 2024 species under `玩家手册2024/角色起源/种族`
+- Spell heading baseline: 507 total (`391` PHB 2024 + `21` TCoE + `95` XGtE)
+- `AI-LANDMARK: DND_LOCAL_CHM_FULL_COVERAGE_AUDIT`: `docs/rules/DND_RULE_COVERAGE.md`
 
 ## DND Rule Metadata Application
 
