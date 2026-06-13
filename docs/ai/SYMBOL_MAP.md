@@ -332,6 +332,26 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Current ruleset state: `useAppStore` in `src/store/appStore.ts`
 - Home character snapshot reads: `useCharacterStore`, `useCocStore`, and `useCpStore`
 
+## COC Workspace Contract Alignment v1
+
+- `AI-LANDMARK: COC_WORKSPACE_CONTRACT_ALIGNMENT_V1`: `src/pages/cocWorkspace/CocWorkspaceShell.tsx`
+- `navItems` (4-item top nav): `src/pages/cocWorkspace/CocWorkspaceShell.tsx` — dashboard / vault / compendium / sources only; createMethod / sheet / play (runtime) removed from top nav
+- `isActiveNav` (simplified): `view === item.key` — actor-context views never produce active highlight
+- `handleNavClick` (simplified): `(nextView) => onViewChange(nextView)` — no more isPlayAction branch
+- `actorFlowNote` note: displayed at bottom of `createMethod` view section in `CocWorkspaceShell.tsx`
+- `cocWorkspace.creation.actorFlowNote` i18n key: `src/i18n/locales/zh-CN.ts`, `src/i18n/locales/en.ts`
+- `createMethod` / `sheet` / `play` views: still present and reachable via Actor/Creation context CTAs (renderInvestigatorCard buttons + overview empty-state CTA)
+
+## CP RED Workspace Contract Alignment v1
+
+- `AI-LANDMARK: CPRED_WORKSPACE_CONTRACT_ALIGNMENT_V1`: `src/pages/cpWorkspace/CpWorkspaceShell.tsx`
+- `navItems` (4-item top nav): `src/pages/cpWorkspace/CpWorkspaceShell.tsx` — dashboard / vault / compendium / sources only; createMethod / sheet / gameplay(mission) removed from top nav; navItems type simplified (no more `kind`/`view?`/`tab?`)
+- `isActiveNav` (simplified): `view === item.key` — actor-context views never produce active highlight
+- `handleNavClick` (simplified): `(nextView) => onViewChange(nextView)` — no more playTab branch
+- `actorFlowNote` note: displayed at bottom of `createMethod` view section in `CpWorkspaceShell.tsx`
+- `cpWorkspace.creation.actorFlowNote` i18n key: `src/i18n/locales/zh-CN.ts`, `src/i18n/locales/en.ts`
+- `createMethod` / `play` views: still present and reachable via Actor/Creation context CTAs (renderEdgerunnerCard buttons + overview empty-state CTA)
+
 ## DND Workspace Contract Alignment v1
 
 - `AI-LANDMARK: DND_WORKSPACE_CONTRACT_ALIGNMENT_V1`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`

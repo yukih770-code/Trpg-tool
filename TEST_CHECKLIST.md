@@ -523,6 +523,64 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 6g. CP RED Workspace Contract Alignment v1 Check
+
+- [ ] CP RED workspace top nav shows exactly **4 items**: 工作台总览 / Edgerunner 库 / CP RED 规则库 / 规则源状态
+- [ ] No '创建 Edgerunner' item in the top nav bar
+- [ ] No 'Edgerunner 卡' item in the top nav bar
+- [ ] No '任务面板' item in the top nav bar
+- [ ] CP RED workspace opens to overview (dashboard) with system title and Edgerunner context
+- [ ] '创建 Edgerunner' entry accessible via: overview empty-state CTA + vault header CTA
+- [ ] 'Edgerunner 卡' accessible via: renderEdgerunnerCard "查看角色卡" button (overview & vault)
+- [ ] '任务面板' (runtime) accessible via: renderEdgerunnerCard "开始任务" button
+- [ ] CP RED Creator accessible via: createMethod → 标准创建
+- [ ] `createMethod` view shows 4 creation cards (标准/快速/本地导入/Workshop); planned cards show planned badge
+- [ ] `actorFlowNote` text appears at the bottom of the createMethod view
+- [ ] Vault (Edgerunner 库) shows Edgerunner card with 3 action buttons + 2 planned slots
+- [ ] CP RED 规则库 shows compendium category shells (all planned)
+- [ ] 规则源状态 shows CP RED core source row
+- [ ] `CPRED_WORKSPACE_CONTRACT_ALIGNMENT_V1` landmark present in `src/pages/cpWorkspace/CpWorkspaceShell.tsx`
+- [ ] `cpWorkspace.creation.actorFlowNote` key present in both `zh-CN.ts` and `en.ts`
+- [ ] navItems type no longer has `kind`/`view?`/`tab?` fields
+- [ ] Overview shows Edgerunner card (or empty state) — no tool matrices, no coverage tables
+- [ ] Back button still returns via history stack
+- [ ] Up from vault → overview; Up from overview → Play Menu
+- [ ] DND workspace **unchanged** — not touched by this task
+- [ ] COC workspace **unchanged** — not touched by this task
+- [ ] No store schema, migration, save format, CP RED runtime rule logic, dice algorithm, or rule data changed
+- [ ] No React Router / URL routing / browser History API introduced
+
+---
+
+## 6f. COC Workspace Contract Alignment v1 Check
+
+- [ ] COC workspace top nav shows exactly **4 items**: 工作台总览 / 调查员库 / COC 规则库 / 规则源状态
+- [ ] No '创建调查员' item in the top nav bar
+- [ ] No '调查员卡' item in the top nav bar
+- [ ] No '调查面板' item in the top nav bar
+- [ ] COC workspace opens to overview (dashboard) with system title and investigator context
+- [ ] '创建调查员' entry accessible via: overview empty-state CTA + vault header CTA
+- [ ] '调查员卡' accessible via: renderInvestigatorCard "查看调查员卡" button (overview & vault)
+- [ ] '调查面板' (runtime) accessible via: renderInvestigatorCard "开始调查" button
+- [ ] COC Builder (Creator tab) accessible via: createMethod → 标准创建
+- [ ] `createMethod` view shows 4 creation cards (标准/快速/本地导入/Workshop); planned cards show planned badge
+- [ ] `actorFlowNote` text appears at the bottom of the createMethod view
+- [ ] Vault (调查员库) shows investigator card with 3 action buttons + 2 planned slots
+- [ ] COC 规则库 shows 6 compendium category shells (all planned)
+- [ ] 规则源状态 shows COC 7e core source row
+- [ ] `COC_WORKSPACE_CONTRACT_ALIGNMENT_V1` landmark present in `src/pages/cocWorkspace/CocWorkspaceShell.tsx`
+- [ ] `cocWorkspace.creation.actorFlowNote` key present in both `zh-CN.ts` and `en.ts`
+- [ ] `Activity` and `FileText` icon imports removed from `CocWorkspaceShell.tsx`
+- [ ] Overview shows investigator card (or empty state) — no tool matrices, no coverage tables
+- [ ] Back button still returns via history stack
+- [ ] Up from vault → overview; Up from overview → Play Menu
+- [ ] DND workspace **unchanged** — not touched by this task
+- [ ] CP RED workspace **unchanged** — not touched by this task
+- [ ] No store schema, migration, save format, COC runtime rule logic, dice algorithm, or rule data changed
+- [ ] No React Router / URL routing / browser History API introduced
+
+---
+
 ## 6e. DND Workspace Contract Alignment v1 Check
 
 - [ ] DND workspace top nav shows exactly **4 items**: 工作台总览 / 角色库 / 规则库 / 规则源状态

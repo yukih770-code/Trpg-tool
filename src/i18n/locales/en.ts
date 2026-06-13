@@ -431,6 +431,7 @@ export const en = {
     },
     creation: {
       builderBoundary: 'Creator: build only',
+      actorFlowNote: 'Builder belongs to the creation flow; Investigator Sheet and Investigation Panel are Investigator context (enter via Vault CTA), not top navigation.',
     },
     sheet: {
       resources: 'Current Status',
@@ -483,6 +484,7 @@ export const en = {
     },
     creation: {
       builderBoundary: 'Creator: build only',
+      actorFlowNote: 'Creator belongs to the creation flow; Edgerunner Sheet and Mission Panel are Edgerunner context (enter via Vault CTA), not top navigation.',
     },
     sheet: {
       eyebrow: 'Edgerunner Sheet',

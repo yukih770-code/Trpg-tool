@@ -7,9 +7,12 @@ import { useCpStore } from '../../store/cpStore';
  * CpWorkspaceShell
  *
  * AI-LANDMARK: COC_CPRED_DND_ALIGNED_WORKSPACE_RECONSTRUCTION
+ * AI-LANDMARK: CPRED_WORKSPACE_CONTRACT_ALIGNMENT_V1
  *
  * CP RED Game System Workspace Shell — aligned with DndWorkspaceShell structure.
- * Provides DND-identical IA: overview / vault / create / compendium / sources / play.
+ * Top nav = 4 system-level Sections only (Contract §5 / PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT_V1):
+ *   dashboard (systemOverview) / vault (actorVault) / compendium (rulesCompendium) / sources (sourceStatus)
+ * createMethod / sheet / mission (runtime) are Actor/Creation context — accessible via CTA only.
  * Existing CP RED runtime (CpCreator / CpSheet / CpGameplay / CpMarket) is preserved
  * as children and rendered under the 'play' view. No store schema, runtime rule logic,
  * or dice algorithm is modified.
@@ -509,42 +512,21 @@ export function CpWorkspaceShell({
   const displayName = cpChar.lifePath?.handle?.trim() || cpChar.name?.trim();
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
 
-  // AI-LANDMARK: CPRED_WORKSPACE_CLEANUP_V1
-  // CP RED top nav is the only system navigation; body sections do not repeat it as a tool grid.
-  const navItems: {
-    key: string;
-    labelKey: string;
-    icon: typeof LayoutDashboard;
-    kind: 'view' | 'playTab';
-    view?: CpWorkspaceView;
-    tab?: string;
-  }[] = [
-    { key: 'dashboard',    labelKey: 'cpWorkspace.nav.overview',   icon: LayoutDashboard, kind: 'view', view: 'dashboard' },
-    { key: 'vault',        labelKey: 'cpWorkspace.nav.vault',      icon: Users,           kind: 'view', view: 'vault' },
-    { key: 'createMethod', labelKey: 'cpWorkspace.nav.create',     icon: BookOpen,        kind: 'view', view: 'createMethod' },
-    { key: 'sheet',        labelKey: 'cpWorkspace.nav.sheet',      icon: Users,           kind: 'playTab', tab: 'sheet' },
-    { key: 'gameplay',     labelKey: 'cpWorkspace.nav.mission',    icon: LayoutDashboard, kind: 'playTab', tab: 'gameplay' },
-    { key: 'compendium',   labelKey: 'cpWorkspace.nav.compendium', icon: Library,         kind: 'view', view: 'compendium' },
-    { key: 'sources',      labelKey: 'cpWorkspace.nav.sources',    icon: ScrollText,      kind: 'view', view: 'sources' },
+  // AI-LANDMARK: CPRED_WORKSPACE_CONTRACT_ALIGNMENT_V1
+  // Top nav = system-level Sections only (Contract §5 / PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT_V1).
+  // createMethod / sheet / runtime (play/mission) are Actor/Creation context — accessible via CTA only.
+  const navItems: { key: CpWorkspaceView; labelKey: string; icon: typeof LayoutDashboard }[] = [
+    { key: 'dashboard',  labelKey: 'cpWorkspace.nav.overview',   icon: LayoutDashboard },
+    { key: 'vault',      labelKey: 'cpWorkspace.nav.vault',      icon: Users },
+    { key: 'compendium', labelKey: 'cpWorkspace.nav.compendium', icon: Library },
+    { key: 'sources',    labelKey: 'cpWorkspace.nav.sources',    icon: ScrollText },
   ];
 
-  const isActiveNav = (item: (typeof navItems)[number]) => {
-    if (item.kind === 'playTab') {
-      return view === 'play' && currentPlayTab === item.tab;
-    }
-    if (view === 'planned' || view === 'play') return false;
-    return view === item.view;
-  };
+  const isActiveNav = (item: (typeof navItems)[number]) => view === item.key;
 
-  const handleNavClick = (item: (typeof navItems)[number]) => {
+  const handleNavClick = (nextView: CpWorkspaceView) => {
     setPlannedSlotLabelKey(null);
-    if (item.kind === 'playTab' && item.tab) {
-      onOpenPlayTab(item.tab);
-      return;
-    }
-    if (item.view) {
-      onViewChange(item.view);
-    }
+    onViewChange(nextView);
   };
 
   const handleBack = () => {
@@ -626,7 +608,7 @@ export function CpWorkspaceShell({
                 <button
                   key={item.key}
                   type="button"
-                  onClick={() => handleNavClick(item)}
+                  onClick={() => handleNavClick(item.key)}
                   className={`flex items-center gap-1.5 border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${
                     active ? gold.navActive : gold.navInactive
                   }`}
@@ -860,6 +842,9 @@ export function CpWorkspaceShell({
                   <p className="mt-2 text-sm opacity-75">{t('multiWorkspace.planned.message')}</p>
                 </div>
               )}
+              <p className={`mt-4 border-t border-white/10 pt-3 text-[10px] opacity-50`}>
+                {t('cpWorkspace.creation.actorFlowNote')}
+              </p>
             </section>
           )}
 

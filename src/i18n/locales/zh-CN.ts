@@ -431,6 +431,7 @@ export const zhCN = {
     },
     creation: {
       builderBoundary: 'Creator 只做建卡',
+      actorFlowNote: '创建器属于创建流程；调查员卡与调查面板属于调查员上下文（从调查员库 CTA 进入），不在顶部导航。',
     },
     sheet: {
       resources: '当前状态',
@@ -483,6 +484,7 @@ export const zhCN = {
     },
     creation: {
       builderBoundary: 'Creator 只做建卡',
+      actorFlowNote: 'Creator 属于创建流程；Edgerunner 卡与任务面板属于 Edgerunner 上下文（从 Edgerunner 库 CTA 进入），不在顶部导航。',
     },
     sheet: {
       eyebrow: 'Edgerunner 卡',

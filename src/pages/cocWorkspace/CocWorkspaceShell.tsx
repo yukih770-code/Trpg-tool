@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Activity, BookOpen, FileText, LayoutDashboard, Library, ScrollText, Users } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Library, ScrollText, Users } from 'lucide-react';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useCocStore } from '../../store/cocStore';
 
@@ -7,12 +7,19 @@ import { useCocStore } from '../../store/cocStore';
  * CocWorkspaceShell
  *
  * AI-LANDMARK: COC_CPRED_DND_ALIGNED_WORKSPACE_RECONSTRUCTION
+ * AI-LANDMARK: COC_WORKSPACE_CLEANUP_V1  (sheet view shell added)
+ * AI-LANDMARK: COC_WORKSPACE_CONTRACT_ALIGNMENT_V1
  *
  * COC Game System Workspace Shell — aligned with DndWorkspaceShell structure.
  * Provides DND-identical IA: overview / vault / create / compendium / sources / play.
  * Existing COC runtime (CocCreator / CocSheet / CocGameplay) is preserved as children
  * and rendered under the 'play' view. No store schema, runtime rule logic, or dice
  * algorithm is modified.
+ *
+ * Contract Alignment v1: top nav limited to system-level Sections only
+ * (overview / actorVault / rulesCompendium / sourceStatus). creationMethod,
+ * sheet, and runtime are Actor/Creation context — accessible via CTAs only.
+ * builder / sheet / runtime must NOT appear as peer top-nav items.
  */
 
 // Must stay compatible with NonDndWorkspaceView in PlayWorkspace.tsx
@@ -361,32 +368,24 @@ export function CocWorkspaceShell({
   const displayName = cocChar.name?.trim();
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
 
-  const navItems: { key: CocWorkspaceView; labelKey: string; icon: typeof LayoutDashboard; isPlayAction?: boolean }[] = [
-    { key: 'dashboard',    labelKey: 'cocWorkspace.nav.overview',   icon: LayoutDashboard },
-    { key: 'vault',        labelKey: 'cocWorkspace.nav.vault',      icon: Users },
-    { key: 'createMethod', labelKey: 'cocWorkspace.nav.create',     icon: BookOpen },
-    { key: 'sheet',        labelKey: 'cocWorkspace.nav.sheet',      icon: FileText },
-    { key: 'play',         labelKey: 'cocWorkspace.nav.runtime',    icon: Activity, isPlayAction: true },
-    { key: 'compendium',   labelKey: 'cocWorkspace.nav.compendium', icon: Library },
-    { key: 'sources',      labelKey: 'cocWorkspace.nav.sources',    icon: ScrollText },
+  // AI-LANDMARK: COC_WORKSPACE_CONTRACT_ALIGNMENT_V1
+  // Top nav = system-level Sections only (Contract §5 / PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT_V1).
+  // createMethod / sheet / runtime (play) are Actor/Creation context — accessible via CTA only.
+  // builder / sheet / runtime must NOT appear here; they depend on an Actor context.
+  const navItems: { key: CocWorkspaceView; labelKey: string; icon: typeof LayoutDashboard }[] = [
+    { key: 'dashboard',  labelKey: 'cocWorkspace.nav.overview',   icon: LayoutDashboard },
+    { key: 'vault',      labelKey: 'cocWorkspace.nav.vault',      icon: Users },
+    { key: 'compendium', labelKey: 'cocWorkspace.nav.compendium', icon: Library },
+    { key: 'sources',    labelKey: 'cocWorkspace.nav.sources',    icon: ScrollText },
   ];
 
-  const isActiveNav = (item: (typeof navItems)[number]) => {
-    if (view === 'planned') return false;
-    if (item.isPlayAction) return view === 'play' && currentPlayTab === 'gameplay';
-    if (item.key === 'createMethod') return view === 'createMethod' || (view === 'play' && currentPlayTab === 'creator');
-    if (item.key === 'sheet') return view === 'sheet' || (view === 'play' && currentPlayTab === 'sheet');
-    if (view === 'play') return false;
-    return view === item.key;
-  };
+  // Actor-context views (createMethod / sheet / play / planned) are not in the nav,
+  // so they never produce an active highlight — the simplified check is safe.
+  const isActiveNav = (item: (typeof navItems)[number]) => view === item.key;
 
-  const handleNavClick = (item: { key: CocWorkspaceView; isPlayAction?: boolean }) => {
+  const handleNavClick = (nextView: CocWorkspaceView) => {
     setPlannedSlotLabelKey(null);
-    if (item.isPlayAction) {
-      onOpenPlayTab('gameplay');
-    } else {
-      onViewChange(item.key);
-    }
+    onViewChange(nextView);
   };
 
   const handleBack = () => {
@@ -490,7 +489,7 @@ export function CocWorkspaceShell({
                 <button
                   key={item.key}
                   type="button"
-                  onClick={() => handleNavClick(item)}
+                  onClick={() => handleNavClick(item.key)}
                   className={`flex items-center gap-1.5 border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${
                     active ? teal.navActive : teal.navInactive
                   }`}
@@ -718,6 +717,9 @@ export function CocWorkspaceShell({
                   <p className="mt-2 text-sm opacity-75">{t('multiWorkspace.planned.message')}</p>
                 </div>
               )}
+              <p className={`mt-4 border-t border-white/10 pt-3 text-[10px] opacity-50`}>
+                {t('cocWorkspace.creation.actorFlowNote')}
+              </p>
             </section>
           )}
 
