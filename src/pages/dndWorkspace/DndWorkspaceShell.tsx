@@ -336,6 +336,10 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                     <div className="mt-4 border border-dashed border-[#58180d]/30 bg-white/40 p-3 text-xs text-[#58180d]/65">
                       {t('dndWorkspace.characters.vaultBoundary')}
                     </div>
+                    {/* AI-LANDMARK: PLATFORM_ACTOR_ENTRY_PATTERN_ALIGNMENT — Actor abstraction note */}
+                    <p className="mt-2 text-[10px] leading-relaxed text-[#58180d]/45">
+                      {t('dndWorkspace.characters.actorNote')}
+                    </p>
                   </div>
                   <div className="flex flex-col gap-2 lg:w-44">
                     <button type="button" onClick={() => onOpenPlayTab('sheet')} className="border border-[#58180d]/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#58180d] hover:bg-[#58180d]/10">

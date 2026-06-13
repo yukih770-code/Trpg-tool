@@ -6,28 +6,27 @@
 
 ## Task
 
-- ID: System Home Navigation Deduplication v1
-- Name: System Home Navigation Deduplication v1
-- Goal: remove duplicated homepage navigation and architecture-heavy first-screen content from DND / COC / CP RED Game System Home pages.
-- Phase: P1 platform IA / system home polish
+- ID: DND Sheet Layout Compact v1
+- Name: DND Sheet Layout Compact v1
+- Goal: make the DND character sheet denser and easier to scan without changing rules, data, schema, or runtime behavior.
+- Phase: P1 platform IA / DND sheet UI compacting
 - Status: Implemented; verification commands pending final local run
 
 ## Result Summary
 
-- DND Home now focuses on current character context and Open Sheet / Start Playing, or Create First Character when empty.
-- COC Home now focuses on current investigator context and Open Sheet / Start Investigation, or Create Investigator when empty.
-- CP RED Home now focuses on current Edgerunner context and Open Sheet / Start Mission, or Create Edgerunner when empty.
-- Rules compendium, source status, data completion, index categories, and architecture boundary details are not repeated as homepage cards.
-- Platform guidance is collapsed / secondary and uses player-facing copy.
-- No store schema, CharacterData, runtime logic, dice algorithm, rule data, map, inventory, session, Workshop, backend, or plugin implementation changed.
-- Landmark: `SYSTEM_HOME_NAVIGATION_DEDUPLICATION`.
+- DND Sheet now uses a compact identity header, condensed HP / AC / Initiative / Speed / PB stat row, and a three-zone desktop layout.
+- Six ability scores render as a compact grid instead of a long vertical column.
+- Skills and saving throws use denser rows with proficiency markers and passive perception surfaced near skills.
+- Attacks/equipment, spell summary, class resources, feats, and character details are presented as summary zones.
+- Start Playing / Enter Combat Panel remains a visible actor-context action.
+- No CharacterData schema, store schema, rule data, runtime logic, dice algorithm, spell preparation logic, class resource logic, inventory contract, import/export, workshop, map, session, or routing behavior changed.
+- Landmark: `DND_SHEET_LAYOUT_COMPACT_V1`.
 
 ## Scope
 
 ### Allowed Files
 
-- `src/pages/PlayWorkspace.tsx`
-- `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- `src/pages/Sheet.tsx`
 - `src/i18n/locales/zh-CN.ts`
 - `src/i18n/locales/en.ts`
 - `PROJECT_STATUS.md`
@@ -39,38 +38,42 @@
 ### Forbidden Changes
 
 - Store schema / migration
-- CharacterData / Investigator / CP RED save structure
+- CharacterData save structure
+- DND rule data
 - Runtime rule logic
 - Dice algorithms
-- Rule data
-- True multi-character systems
-- Rules Compendium engine
-- Source Manager engine
+- Spell preparation logic
+- Class resource logic
+- Inventory / item data contract
+- Import / export logic
 - Workshop / Plugin / backend implementation
-- Map / backpack / item / token / session data contracts
+- Map / token / session implementation
+- React Router / URL routing
 
 ## Navigation
 
 ### Key Symbols
 
-- `SYSTEM_HOME_NAVIGATION_DEDUPLICATION`
-- `renderNonDndWorkspaceDashboard`
-- `navigation.rulesAndDataInTopNav`
-- `navigation.platformGuidance`
-- `dndWorkspace.home.createFirstCharacter`
+- `DND_SHEET_LAYOUT_COMPACT_V1`
+- `Sheet`
+- `dndSheet.compact.*`
+- `attrList`
+- `allSkills`
+- `passivePerception`
 
 ### Locate Commands
 
 ```powershell
-rg -n "SYSTEM_HOME_NAVIGATION_DEDUPLICATION|rulesAndDataInTopNav|platformGuidance|createFirstCharacter" src docs
+rg -n "DND_SHEET_LAYOUT_COMPACT_V1|dndSheet\\.compact|passivePerception|attacksEquipment|spellSummary" src docs
 ```
 
 ## Completion Criteria
 
-- Homepage body does not repeat top nav entries.
-- Homepage body shows current asset context plus one or two immediate actions.
-- Empty state routes to creation.
-- Technical architecture guidance is collapsed / secondary.
+- HP / AC / Initiative / Speed / PB are compact and high visibility.
+- Ability scores use a compact grid.
+- Skills and saves are denser and scannable.
+- Attack/equipment, spell, and class resource areas are summary zones only.
+- Start Playing remains visible and routes to Gameplay.
 - `npx tsc --noEmit` and `npm run build` pass.
 
 ## Verification

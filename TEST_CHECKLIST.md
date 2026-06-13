@@ -34,7 +34,11 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] Play Main Menu shows DND 5e 2024 / COC 7e / Cyberpunk RED cards with a short description and a status label
 - [ ] Selecting a ruleset card enters that ruleset's preserved PlayWorkspace
 - [ ] Home ruleset cards still enter the selected ruleset workspace directly
-- [ ] Active ruleset workspace shows a "返回游玩菜单 / Back to Play Menu" button; switching rulesets goes back through the menu
+- [ ] Active ruleset workspace shows contextual "返回上一层 / Back One Level" when a previous internal state exists
+- [ ] If no previous internal state exists, workspace back falls back to "返回系统选择 / Back to System Selection"
+- [ ] Home → Play → ruleset workspace → Vault / Sheet / Runtime navigation can return one app-level state at a time
+- [ ] Navigation stack restores UI location only and does not copy or mutate character data
+- [ ] Browser URL routing and React Router remain unintroduced
 - [ ] No router was introduced for Play Menu / workspace staging
 - [ ] Campaigns shows a Coming Soon placeholder and does not crash
 - [ ] Community Modules shows a Coming Soon placeholder and does not crash
@@ -76,6 +80,12 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] DND Creation Method — Quick Creation / Local Import / Workshop Import show planned placeholders only
 - [ ] DND Creation Method — Workshop copy is future-facing only and does not implement subscriptions, downloads, accounts, backend, dependencies, or community content
 - [ ] DND Workspace — top navigation no longer presents Enter Play / Combat as the primary route; Start Playing is a character-context action
+- [ ] DND Sheet — HP / AC / Initiative / Speed / PB use a compact status row and do not dominate the first screen
+- [ ] DND Sheet — six ability scores render as a compact 2x3 / 3x2 grid rather than a long vertical column
+- [ ] DND Sheet — skills and saving throws use dense rows with clear proficiency markers
+- [ ] DND Sheet — attacks/equipment, spell summary, and class resources are summarized without implementing a real inventory/item contract
+- [ ] DND Sheet — Start Playing / Enter Combat Panel remains visible and routes to Gameplay
+- [ ] DND Sheet — desktop layout is denser and mobile layout remains single-column without horizontal overflow
 - [ ] DND Dashboard — shows rule scope (DND 2024 / SRD5.2 + XGtE + TCoE), status, and data completion cards
 - [ ] DND Dashboard — module cards open Creator / Sheet / Gameplay in the preserved play view
 - [ ] DND Source Status — shows core + expansion sources with sourceId and status labels (display-only, no toggle)
@@ -131,9 +141,11 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] COC Workspace — opens to a dashboard of module cards before entering the preserved COC pages
 - [ ] COC Workspace — Create Investigator / Investigator Sheet / Skill Checks / Pushed Rolls / Growth Checks open existing Creator / Sheet / Gameplay views
 - [ ] COC Workspace — module grid does NOT show Clues / Handouts, Investigator Notes, or Locations / Map cards (removed from module grid in follow-up IA correction)
-- [ ] COC Workspace — COC 规则库/技能索引, 数据完成度, and Source Status are visible as planned cards (System Workspace level)
+- [ ] COC Workspace — COC 规则库/技能索引 and Source Status are visible as planned cards (System Workspace level)
 - [ ] COC Workspace — workspace-tier guidance section (工作台层级) shows Actor Workspace (角色卡/当前状态/资源/背包/装备/开始游玩/个人日志) and Session / Campaign Workspace (地图/Board/Token/Handout/线索/Encounter/Session Log/GM工具/玩家列表) as informational text, not clickable module cards
 - [ ] COC Workspace — workspace-tier guidance shows a note clarifying these modules belong to their respective workspace, not the system dashboard
+- [ ] COC System Home — when investigator exists, shows 3 action buttons: 查看调查员卡 / 继续编辑调查员 / 开始调查 (continue editing was added in Actor Entry alignment)
+- [ ] COC System Home — Platform Guidance (collapsed) includes Actor / Player Asset abstraction note and multi-campaign note
 - [ ] COC Creator — opens, fields editable
 - [ ] COC Sheet — opens and displays investigator data; no gameplay roll controls expected on Sheet
 - [ ] COC Gameplay — opens, HP/SAN/MP/Luck runtime buttons functional, dice tray functional
@@ -225,6 +237,21 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] CP RED Workspace — 规则源状态 card note mentions System Health and owner source registration
 - [ ] All three system homes answer the core questions: which Game System is this, which Actor can I select/create, can I access Rules Compendium, can I check Source Status / System Health
 - [ ] No store, schema, runtime, or rule data changed by this simplification
+
+---
+
+## 5a. Platform Actor Entry Pattern Alignment Check
+
+- [ ] COC System Home — when investigator exists, shows exactly 3 action buttons: 查看调查员卡 / 继续编辑调查员 / 开始调查
+- [ ] CP RED System Home — when Edgerunner exists, shows exactly 3 action buttons: 查看角色卡 / 继续编辑角色 / 开始任务
+- [ ] COC System Home — Platform Guidance (collapsed `<details>`) includes `actorAbstractionNote` (Character/Investigator/Edgerunner are system display names; platform abstraction is Actor/Player Asset)
+- [ ] COC System Home — Platform Guidance includes `actorMultiCampaignNote` (Actor can join multiple campaigns; current version manages local character only)
+- [ ] CP RED System Home — same Platform Guidance notes as COC
+- [ ] DND Characters view — shows a small Actor abstraction note below the vaultBoundary note (`dndWorkspace.characters.actorNote`)
+- [ ] `multiWorkspace.planned.message` mentions Player Asset Vault / Workshop / Source Manager (not a generic placeholder)
+- [ ] Landmark `PLATFORM_ACTOR_ENTRY_PATTERN_ALIGNMENT` is present in `src/pages/PlayWorkspace.tsx` and `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- [ ] No store, schema, runtime, or rule data changed by this alignment
+- [ ] No React Router or browser URL routing introduced
 
 ---
 

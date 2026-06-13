@@ -46,11 +46,14 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | DND Background Runtime Completion v1 | ✅ Done (16 local-CHM backgrounds; mechanics pending check) |
 | DND Character Builder Responsive Workbench Phase 1 | ✅ Done (UI layout only; logic unchanged) |
 | DND Gameplay Entry Preservation v1 | ✅ Done (Gameplay / dice area remains reachable after Builder cleanup) |
+| DND Sheet Layout Compact v1 | ✅ Done (player-facing compact sheet layout; logic unchanged) |
 | Multi-System Workspace Shell Planned Slots v1 | ✅ Done (module entries + planned placeholders only) |
 | DND Character Vault & Creation Method Entry v1 | ✅ Done (Vault shell + creation method entry; runtime unchanged) |
 | Platform Core Concepts / Game System Registry Baseline v1 | ✅ Done (docs/architecture only; no code change) |
 | System Actor Session Workspace IA Correction Follow-up v1 | ✅ Done (removed 9 Actor/Session cards from module grids; workspace-tier guidance is informational only) |
 | System Home Simplification v1 | ✅ Done (DND/COC/CP RED home pages simplified to core entry points; index cards and data grids removed from home) |
+| Platform Actor Entry Pattern Alignment v1 | ✅ Done (COC/CP dashboard gets "continue editing" button; Actor/Player Asset abstraction note added to all three systems; planned.message updated) |
+| Platform Navigation History Stack v1 | ✅ Done (lightweight app-level back stack; no router / URL routing) |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -117,6 +120,8 @@ Architecture phase scope:
 - Builder sections cover identity, source status, species, background, class, abilities, feats, spells, equipment, and review. Spell/equipment sections are boundary placeholders only; no spell automation, equipment system, inventory, schema, migration, or rules data changes were introduced.
 - DND Gameplay Entry Preservation v1 completed. The DND Workspace "进入游玩 / 战斗" entry now routes directly to the preserved Gameplay view after Builder hierarchy cleanup.
 - Existing DND Gameplay / RollConsole remains reachable. Full dice/action/item/map interaction redesign remains deferred to later Action / Inventory / Map runtime work; no dice algorithm, runtime rule logic, store schema, migration, or rule data changed.
+- DND Sheet Layout Compact v1 completed. The DND character sheet now uses a more compact player-facing layout with condensed core stats, a compact ability grid, denser skill/save presentation, and clearer summary zones for attacks, equipment, spells, and class resources.
+- This remains UI v0 / IA validation, not final visual redesign. No CharacterData schema, rule data, runtime logic, dice algorithm, inventory contract, spell preparation logic, class resource logic, workshop, map, or session implementation changed.
 - Multi-System Workspace Shell Planned Slots v1 completed. DND / COC / CP RED now expose system-level module cards and planned slots from their workspaces.
 - Planned slots are entry-only placeholders: DND Backpack / Items, Map / Tactical Board, Quests / Notes / Logs; COC Investigator Vault, Clues / Handouts, Investigation Notes / Session Log, Locations / Map, Source Status; CP RED Edgerunner Vault, Enemies / Encounter, Map / Tactical Position, Session Log, Source Status.
 - No inventory data contract, map/token data contract, item system, encounter state, community/backend logic, multiplayer sync, rule data, store schema, migration, Sheet runtime, or Gameplay runtime changed.
@@ -154,6 +159,7 @@ Architecture phase scope:
 | DND Background Runtime Completion v1 | ✅ Done (BACKGROUND_DATA 16/16 local-CHM standard backgrounds) |
 | DND Character Builder Responsive Workbench Phase 1 | ✅ Done (responsive builder layout; original logic preserved) |
 | DND Gameplay Entry Preservation v1 | ✅ Done (Workspace Play / Combat opens Gameplay; RollConsole reachable) |
+| DND Sheet Layout Compact v1 | ✅ Done (compact status / ability / skill / summary layout; logic unchanged) |
 | Multi-System Workspace Shell Planned Slots v1 | ✅ Done (DND/COC/CP RED module cards; planned slots only) |
 | DND Character Vault & Creation Method Entry v1 | ✅ Done (current-character Vault shell; Standard Creation opens existing Builder) |
 
@@ -420,6 +426,10 @@ Platform Character Entry Pattern Alignment v1 scope:
 - Home bodies now focus on current asset context and recommended next actions: current character / investigator / Edgerunner summary, open sheet, start play/investigation/mission, or create the first asset when empty.
 - Data coverage, index categories, and architecture boundary details are routed to their proper secondary pages or collapsed guidance.
 - Landmark: `SYSTEM_HOME_NAVIGATION_DEDUPLICATION`. No store schema, runtime logic, rule data, map, inventory, session, workshop, backend, or plugin implementation changed.
+- Platform Navigation History Stack v1 completed. The platform now supports a lightweight app-level back stack for internal navigation across Home, Play, Game System Workspace, Actor context, Sheet, Builder, and Runtime entry points.
+- Fixed "return to system select" behavior is replaced with contextual "back one level" behavior where prior navigation state exists; if no prior app state exists, workspace back falls back to system selection and dead-end shell pages fall back to Home.
+- The navigation stack stores UI location only: app view, play stage, active placeholder, selected system, and PlayWorkspace tab/view state. It does not store character data or alter persisted stores.
+- Landmark: `PLATFORM_NAVIGATION_HISTORY_STACK`. No store schema, runtime logic, dice algorithm, rule data, React Router, browser URL routing overhaul, map, inventory, session, workshop, backend, or plugin implementation changed.
 - System Actor Session Workspace IA Correction v1 completed. DND / COC / CP RED workspace dashboards now declare System / Actor / Session workspace tier boundaries via planned-module notes and concept cards.
 - DND planned modules corrected: `inventory` → Actor Workspace; `map` → Session / Campaign Workspace; `journal` → Actor Workspace. New IA concept section added to DND dashboard.
 - COC planned modules corrected: `handouts` / `locations` → Session / Campaign Workspace; `notes` → Actor Workspace (renamed to '调查员笔记'). New planned cards for COC 规则库/技能索引 and 数据完成度. New IA concept section added to COC dashboard.

@@ -6,7 +6,11 @@ import { Toaster } from '../components/ui/sonner';
 import { createTranslator, type Locale, readStoredLocale, writeStoredLocale } from './i18n';
 import { Home } from './pages/Home';
 import { PlayMenu } from './pages/PlayMenu';
-import { PlayWorkspace } from './pages/PlayWorkspace';
+import {
+  PlayWorkspace,
+  defaultPlayWorkspaceNavigationState,
+  type PlayWorkspaceNavigationState,
+} from './pages/PlayWorkspace';
 import { useAppStore } from './store/appStore';
 
 type AppView = 'home' | 'play' | 'placeholder';
@@ -20,6 +24,27 @@ type PlaceholderKey =
   | 'studio'
   | 'aiHost'
   | 'settings';
+
+type NavigationState = {
+  appView: AppView;
+  playStage: PlayStage;
+  activePlaceholder: PlaceholderKey;
+  system: System;
+  playWorkspace: PlayWorkspaceNavigationState;
+};
+
+function areNavigationStatesEqual(left: NavigationState, right: NavigationState): boolean {
+  return (
+    left.appView === right.appView &&
+    left.playStage === right.playStage &&
+    left.activePlaceholder === right.activePlaceholder &&
+    left.system === right.system &&
+    left.playWorkspace.tab === right.playWorkspace.tab &&
+    left.playWorkspace.dndWorkspaceView === right.playWorkspace.dndWorkspaceView &&
+    left.playWorkspace.systemWorkspaceView === right.playWorkspace.systemWorkspaceView &&
+    left.playWorkspace.plannedSlotTitleKey === right.playWorkspace.plannedSlotTitleKey
+  );
+}
 
 // AI-LANDMARK: PLATFORM_PLAY_MENU_COLLAPSIBLE_SIDEBAR
 // Sidebar is collapsible (persisted via localStorage); Play opens a ruleset
@@ -62,6 +87,11 @@ export default function App() {
   const [activePlaceholder, setActivePlaceholder] = useState<PlaceholderKey>('campaigns');
   const [locale, setLocale] = useState<Locale>(readStoredLocale);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(readStoredSidebarCollapsed);
+  const [playWorkspaceNavigation, setPlayWorkspaceNavigation] = useState<PlayWorkspaceNavigationState>(
+    defaultPlayWorkspaceNavigationState,
+  );
+  const [navigationStack, setNavigationStack] = useState<NavigationState[]>([]);
+  const system = useAppStore((state) => state.system as System);
   const setSystem = useAppStore((state) => state.setSystem);
 
   const { t } = createTranslator(locale);
@@ -74,9 +104,68 @@ export default function App() {
     });
   };
 
+  // AI-LANDMARK: PLATFORM_NAVIGATION_HISTORY_STACK
+  // Lightweight app-level navigation stack. It stores UI location only:
+  // app view, play stage, selected system, and workspace tab/mode. Character
+  // data remains in system stores and is never copied into navigation history.
+  const createNavigationSnapshot = (): NavigationState => ({
+    appView,
+    playStage,
+    activePlaceholder,
+    system,
+    playWorkspace: playWorkspaceNavigation,
+  });
+
+  const pushNavigation = () => {
+    const snapshot = createNavigationSnapshot();
+    setNavigationStack((prev) => {
+      const last = prev[prev.length - 1];
+      return last && areNavigationStatesEqual(last, snapshot) ? prev : [...prev, snapshot];
+    });
+  };
+
+  const restoreNavigation = (previous: NavigationState) => {
+    setSystem(previous.system);
+    setPlayWorkspaceNavigation(previous.playWorkspace);
+    setActivePlaceholder(previous.activePlaceholder);
+    setPlayStage(previous.playStage);
+    setAppView(previous.appView);
+  };
+
+  const fallbackNavigation = () => {
+    if (appView === 'play' && playStage === 'workspace') {
+      setPlayStage('menu');
+      setAppView('play');
+      return;
+    }
+
+    setAppView('home');
+  };
+
+  const goBack = () => {
+    const previous = navigationStack[navigationStack.length - 1];
+
+    if (!previous) {
+      fallbackNavigation();
+      return;
+    }
+
+    restoreNavigation(previous);
+    setNavigationStack((prev) => prev.slice(0, -1));
+  };
+
+  const navigateHome = () => {
+    if (appView !== 'home') {
+      pushNavigation();
+    }
+    setAppView('home');
+  };
+
   const enterPlay = (system?: System) => {
+    pushNavigation();
     if (system) {
       setSystem(system);
+      setPlayWorkspaceNavigation(defaultPlayWorkspaceNavigationState);
       setPlayStage('workspace');
     } else {
       setPlayStage('menu');
@@ -85,6 +174,7 @@ export default function App() {
   };
 
   const openPlaceholder = (feature: string) => {
+    pushNavigation();
     setActivePlaceholder(normalizeFeatureKey(feature));
     setAppView('placeholder');
   };
@@ -97,6 +187,7 @@ export default function App() {
   const placeholderBaseKey = `shell.placeholders.${activePlaceholder}`;
   const isPrivateImportPlaceholder = activePlaceholder === 'privateImport';
   const sidebarToggleLabel = t(sidebarCollapsed ? 'shell.sidebar.expand' : 'shell.sidebar.collapse');
+  const systemLabel = system === 'D&D' ? 'DND 5e 2024' : system === 'CoC' ? 'COC 7e' : 'Cyberpunk RED';
 
   return (
     <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
@@ -138,7 +229,7 @@ export default function App() {
                     title={t(item.labelKey)}
                     onClick={() => {
                       if (item.key === 'home') {
-                        setAppView('home');
+                        navigateHome();
                       } else if (item.key === 'play') {
                         enterPlay();
                       } else {
@@ -170,17 +261,30 @@ export default function App() {
           {appView === 'play' && playStage === 'workspace' && (
             <div>
               <div className="border-b border-[#2f2a22]/15 px-4 py-2 md:px-8">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPlayStage('menu')}
-                  className="rounded-md border-[#2f2a22]/20"
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  {t('playMenu.backToMenu')}
-                </Button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={navigationStack.length > 0 ? goBack : fallbackNavigation}
+                    title={navigationStack.length > 0 ? t('navigation.backOneLevel') : t('navigation.noPreviousBackToSystemSelect')}
+                    className="rounded-md border-[#2f2a22]/20"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    {t(navigationStack.length > 0 ? 'navigation.backOneLevel' : 'navigation.backToSystemSelect')}
+                  </Button>
+                  <div className="text-xs text-[#51483d]">
+                    <span className="font-bold">{t('navigation.currentLocation')}：</span>
+                    {t('navigation.breadcrumb.platform')} / {t('navigation.breadcrumb.play')} / {systemLabel}
+                  </div>
+                </div>
               </div>
-              <PlayWorkspace />
+              <PlayWorkspace
+                navigationState={playWorkspaceNavigation}
+                onNavigationChange={setPlayWorkspaceNavigation}
+                onBeforeNavigate={pushNavigation}
+                onBack={goBack}
+                canGoBack={navigationStack.length > 0}
+              />
             </div>
           )}
 
@@ -220,7 +324,7 @@ export default function App() {
                   <Button onClick={() => enterPlay()} className="rounded-md">
                     {t('shell.enterPlay')}
                   </Button>
-                  <Button variant="outline" onClick={() => setAppView('home')} className="rounded-md border-[#2f2a22]/20">
+                  <Button variant="outline" onClick={navigateHome} className="rounded-md border-[#2f2a22]/20">
                     {t('shell.backHome')}
                   </Button>
                 </div>
@@ -246,7 +350,7 @@ export default function App() {
                   <Button onClick={() => enterPlay()} className="rounded-md">
                     {t('shell.enterPlay')}
                   </Button>
-                  <Button variant="outline" onClick={() => setAppView('home')} className="rounded-md border-[#2f2a22]/20">
+                  <Button variant="outline" onClick={navigateHome} className="rounded-md border-[#2f2a22]/20">
                     {t('shell.backHome')}
                   </Button>
                 </div>

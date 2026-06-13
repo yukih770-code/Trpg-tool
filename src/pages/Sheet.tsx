@@ -120,147 +120,143 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
   // Deduplicate
   const finalArmorProf = [...new Set(armorProf)];
   const finalWeaponProf = [...new Set(weaponProf)];
+  const formatMod = (value: number) => `${value >= 0 ? '+' : ''}${value}`;
+  const passivePerception = 10 + getAttrData('Wis').mod + (activeSkills.includes('察觉') ? profBonus : 0);
+  const preparedSpells = character.spellbook.prepared || [];
+  const spellSlotEntries = Object.entries(character.spellbook.slots || {})
+    .sort(([a], [b]) => Number(a) - Number(b));
+  const inventoryItems = character.inventory || [];
+  const hasClassResources = character.classResources.length > 0 || Boolean(character.pactMagicState);
+  const compactPanelClass = 'border border-[#58180d]/35 bg-white/45 p-3';
+  const compactTitleClass = 'mb-2 border-b border-[#58180d]/25 pb-1 text-[11px] font-black uppercase tracking-[0.16em] text-[#58180d]';
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-      {/* Header Info - Using the Bento style */}
-      <div className="col-span-1 lg:col-span-12 flex flex-col md:flex-row items-start border-b-2 border-[#58180d] pb-4 mb-2 gap-6">
-        
-        <div className="flex flex-col flex-1 justify-between h-full py-2">
-          <h2 className="text-4xl md:text-5xl font-bold uppercase tracking-tighter text-[#2c1810] mb-4">
-            {character.name || 'Unnamed'} 
-          </h2>
-          <div className="flex flex-wrap gap-6">
-            <div className="flex flex-col border-l border-[#58180d]/30 pl-4">
-              <span className="text-xs uppercase text-[#58180d] font-bold">职业与等级 / 背景</span>
-              <span className="text-md font-sans">{character.jobClass} {character.subclass} {character.level}级 / {character.background}</span>
+    <div className="space-y-4 text-[#2c1810]">
+      {/* AI-LANDMARK: DND_SHEET_LAYOUT_COMPACT_V1 */}
+      <header className="border-b-2 border-[#58180d]/70 pb-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#58180d]/70">
+              DND 5e 2024 · {t('dndSheet.compact.characterSheet')}
             </div>
-            <div className="flex flex-col border-l border-[#58180d]/30 pl-4">
-              <span className="text-xs uppercase text-[#58180d] font-bold">种族 / 阵营</span>
-              <span className="text-md font-sans">{character.race} {character.subrace} / 守序中立</span>
-            </div>
-            <div className="flex flex-col border-l border-[#58180d]/30 pl-4">
-              <span className="text-xs uppercase text-[#58180d] font-bold">性别 / 年龄</span>
-              <span className="text-md font-sans">{character.gender || '-'} / {character.age || '-'}</span>
+            <h2 className="mt-1 break-words text-3xl font-black uppercase tracking-tight text-[#2c1810] md:text-4xl">
+              {character.name || 'Unnamed'}
+            </h2>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-sans text-[#2c1810]/75">
+              <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.class')}:</strong> {character.jobClass} {character.subclass || ''} · L{character.level}</span>
+              <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.species')}:</strong> {character.race || '-'} {character.subrace || ''}</span>
+              <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.background')}:</strong> {character.background || '-'}</span>
+              <span><strong className="text-[#58180d]">{t('dndSheet.compact.genderAge')}:</strong> {character.gender || '-'} / {character.age || '-'}</span>
             </div>
           </div>
-        </div>
-        {onStartPlaying && (
-          // AI-LANDMARK: DND_CHARACTER_VAULT_CREATION_METHOD_ENTRY
-          // Start Playing is a character-context action from Sheet into the preserved Gameplay surface.
-          <div className="w-full md:w-auto md:self-stretch">
+          {onStartPlaying && (
             <button
               type="button"
               onClick={onStartPlaying}
-              className="flex h-full min-h-20 w-full flex-col items-center justify-center border-2 border-[#58180d] bg-[#58180d] px-5 py-3 text-center text-[#fdf6e3] transition hover:bg-[#2c1810] md:w-56"
+              className="w-full border-2 border-[#58180d] bg-[#58180d] px-4 py-2 text-center text-[#fdf6e3] transition hover:bg-[#2c1810] lg:w-56"
             >
-              <span className="text-xs font-bold uppercase tracking-[0.18em] opacity-80">{t('dndWorkspace.actions.startPlaying')}</span>
-              <span className="mt-1 text-lg font-black uppercase tracking-wider">{t('dndWorkspace.actions.enterCombatPanel')}</span>
+              <span className="block text-[11px] font-bold uppercase tracking-[0.18em] opacity-80">{t('dndSheet.compact.startPlaying')}</span>
+              <span className="block text-sm font-black uppercase tracking-wider">{t('dndSheet.compact.enterCombatPanel')}</span>
             </button>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </header>
 
-      {/* Attributes Column */}
-      <div className="col-span-1 lg:col-span-2 flex flex-col gap-3">
-        {attrList.map(a => {
-          const { score, mod } = getAttrData(a.key);
-          return (
-            <div key={a.key} 
-                className="bg-[#ede1c5] p-3 border border-[#58180d] flex flex-col items-center">
-              <span className="text-xs uppercase font-bold text-[#58180d]">{a.label} {a.key}</span>
-              <span className="text-3xl font-black">{score}</span>
-              <span className="bg-[#58180d] text-white text-xs px-2 py-0.5 rounded-full">{mod >= 0 ? '+' : ''}{mod}</span>
+      <section className="grid grid-cols-2 gap-2 md:grid-cols-5">
+        {[
+          { label: 'HP', sub: t('dndSheet.compact.hitPoints'), value: `${character.hpCurrent} / ${character.hpMax}` },
+          { label: 'AC', sub: t('dndSheet.compact.armorClass'), value: acTotal },
+          { label: 'INIT', sub: t('dndSheet.compact.initiative'), value: formatMod(initiative) },
+          { label: 'SPD', sub: t('dndSheet.compact.speed'), value: `${character.speed}ft` },
+          { label: 'PB', sub: t('dndSheet.compact.profBonus'), value: `+${profBonus}` },
+        ].map((stat) => (
+          <div key={stat.label} className="border-2 border-[#58180d]/60 bg-white/70 px-3 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#58180d]">{stat.label}</span>
+              <span className="text-[10px] text-[#58180d]/55">{stat.sub}</span>
             </div>
-          )
-        })}
-      </div>
+            <div className="mt-1 text-2xl font-black leading-none">{stat.value}</div>
+          </div>
+        ))}
+      </section>
 
-      {/* Skills and Saves Column */}
-      <div className="col-span-1 lg:col-span-3 flex flex-col gap-4 overflow-hidden">
-        <div className="border border-[#58180d] p-3 bg-white/50 h-[300px] flex flex-col">
-          <h3 className="text-xs font-bold uppercase border-b border-[#58180d] mb-2 pb-1">技能检定 Skills</h3>
-          <div className="flex-1 overflow-y-auto space-y-1 text-sm font-sans custom-scrollbar pr-2">
-            {allSkills.map(skill => {
-              const isProf = activeSkills.includes(skill.name);
-              const mod = getAttrData(skill.attr).mod + (isProf ? profBonus : 0);
-              return (
-                <div key={skill.name}
-                    className={`flex justify-between items-center p-1 ${!isProf ? 'opacity-70' : ''}`}>
-                  <span className="flex gap-2">
-                    {isProf ? <span className="text-[#58180d] font-bold">●</span> : <span>○</span>} 
-                    {skill.name}
-                  </span>
-                  <span className={isProf ? "font-bold" : ""}>{mod >= 0 ? '+' : ''}{mod}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-        <div className="border border-[#58180d] p-3 bg-white/50 flex flex-col">
-          <h3 className="text-xs font-bold uppercase border-b border-[#58180d] mb-2 pb-1">豁免检定 Saving Throws</h3>
-          <div className="space-y-1 text-sm font-sans">
-            {/* Simple display, driven by class saves */}
-            {attrList.map(a => {
-              const { mod } = getAttrData(a.key);
-              const isProf = savingThrows.includes(a.key); 
-              const totalMod = mod + (isProf ? profBonus : 0);
-              return (
-                 <div key={`save-${a.key}`} className={`flex justify-between p-1 ${!isProf ? 'opacity-70' : ''}`}>
-                   <span className="flex gap-2">
-                     {isProf ? <span className="text-[#58180d] font-bold">●</span> : <span>○</span>}
-                     {a.label} {a.key}
-                   </span>
-                   <span className={isProf ? "font-bold" : ""}>{totalMod >= 0 ? '+' : ''}{totalMod}</span>
-                 </div>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Combat Stats Column */}
-      <div className="col-span-1 lg:col-span-4 flex flex-col gap-4">
-        <div className="grid grid-cols-3 gap-2 h-24">
-          <div className="border-2 border-[#58180d] bg-white flex flex-col items-center justify-center">
-            <span className="text-[10px] font-bold uppercase">护甲等级 AC</span>
-            <span className="text-3xl font-bold">{acTotal}</span>
-          </div>
-          <div className="border-2 border-[#58180d] bg-white flex flex-col items-center justify-center">
-            <span className="text-[10px] font-bold uppercase">先攻 Init</span>
-            <span className="text-3xl font-bold">{initiative >= 0 ? '+' : ''}{initiative}</span>
-          </div>
-          <div className="border-2 border-[#58180d] bg-white flex flex-col items-center justify-center">
-            <span className="text-[10px] font-bold uppercase">速度 Spd</span>
-            <span className="text-3xl font-bold">{character.speed}ft</span>
-          </div>
-        </div>
-        
-        <div className="border-2 border-[#58180d] bg-white p-4 flex-1 flex flex-col gap-3 relative min-h-[200px]">
-          <div className="absolute top-0 right-0 bg-[#58180d] text-white px-2 py-1 text-[10px] uppercase font-bold">当前生命 HP</div>
-          <div className="flex items-center justify-center flex-1 border-b border-[#58180d]/30 pb-2">
-            <span className="text-6xl font-black">{character.hpCurrent}</span>
-            <span className="text-xl text-[#58180d]/50 ml-2">/ {character.hpMax}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="border border-[#58180d]/30 p-2 text-center">
-              <span className="block text-[10px] uppercase">生命骰数 Hit Dice</span>
-              <span className="text-lg font-bold">{character.hitDiceCurrent}d{character.jobClass === '野蛮人' ? '12' : character.jobClass === '护法' ? '10' : character.jobClass === '吟游诗人' ? '8' : '8'}</span>
-            </div>
-            <div className="border border-[#58180d]/30 p-2 text-center">
-              <span className="block text-[10px] uppercase">熟练加值 Prof</span>
-              <span className="text-lg font-bold">+{profBonus}</span>
+      <main className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(16rem,0.85fr)_minmax(22rem,1.1fr)_minmax(20rem,1fr)]">
+        <section className="space-y-3">
+          <div className={compactPanelClass}>
+            <h3 className={compactTitleClass}>{t('dndSheet.compact.abilities')}</h3>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-2">
+              {attrList.map(a => {
+                const { score, mod } = getAttrData(a.key);
+                return (
+                  <div key={a.key} className="border border-[#58180d]/35 bg-[#ede1c5]/70 px-2 py-2 text-center">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-[#58180d]">{a.key}</div>
+                    <div className="text-xs font-bold text-[#58180d]/70">{a.label}</div>
+                    <div className="mt-1 flex items-end justify-center gap-2">
+                      <span className="text-2xl font-black leading-none">{score}</span>
+                      <span className="rounded-full bg-[#58180d] px-2 py-0.5 text-[11px] font-bold text-white">{formatMod(mod)}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Info Column */}
-      <div className="col-span-1 lg:col-span-3 flex flex-col gap-4">
-        <div className="border border-[#58180d] p-3 bg-white/30 flex-1 flex flex-col min-h-[200px]">
-          <h3 className="text-xs font-bold uppercase border-b border-[#58180d] mb-2 pb-1">特质与背景 Features</h3>
-          <div className="flex-1 overflow-y-auto text-sm font-sans custom-scrollbar leading-relaxed space-y-3">
+          <div className={compactPanelClass}>
+            <h3 className={compactTitleClass}>{t('dndSheet.compact.saves')}</h3>
+            <div className="grid grid-cols-1 gap-x-3 gap-y-1 text-xs font-sans sm:grid-cols-2 xl:grid-cols-1">
+              {attrList.map(a => {
+                const { mod } = getAttrData(a.key);
+                const isProf = savingThrows.includes(a.key);
+                const totalMod = mod + (isProf ? profBonus : 0);
+                return (
+                  <div key={`save-${a.key}`} className={`flex items-center justify-between gap-2 border-b border-[#58180d]/10 py-1 ${!isProf ? 'opacity-70' : ''}`}>
+                    <span className="min-w-0 truncate">
+                      <span className="mr-1 text-[#58180d]">{isProf ? '●' : '○'}</span>
+                      {a.label} <span className="text-[10px] uppercase opacity-65">{a.key}</span>
+                    </span>
+                    <span className="font-black">{formatMod(totalMod)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className={compactPanelClass}>
+            <h3 className={compactTitleClass}>{t('dndSheet.compact.proficiencies')}</h3>
+            <div className="space-y-2 text-xs font-sans">
+              <p><strong className="text-[#58180d]">{t('dndSheet.compact.armorTraining')}:</strong> {finalArmorProf.length > 0 ? finalArmorProf.join(', ') : '无'}</p>
+              <p><strong className="text-[#58180d]">{t('dndSheet.compact.weaponTraining')}:</strong> {finalWeaponProf.length > 0 ? finalWeaponProf.join(', ') : '无'}</p>
+              <p><strong className="text-[#58180d]">{t('dndSheet.compact.languages')}:</strong> {character.customLanguages || '-'}</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <div className={compactPanelClass}>
+            <div className="mb-2 flex items-center justify-between border-b border-[#58180d]/25 pb-1">
+              <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-[#58180d]">{t('dndSheet.compact.skills')}</h3>
+              <span className="text-[11px] font-bold text-[#58180d]/70">{t('dndSheet.compact.passivePerception')}: {passivePerception}</span>
+            </div>
+            <div className="grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs font-sans md:grid-cols-2">
+              {allSkills.map(skill => {
+                const isProf = activeSkills.includes(skill.name);
+                const mod = getAttrData(skill.attr).mod + (isProf ? profBonus : 0);
+                return (
+                  <div key={skill.name} className={`flex items-center justify-between gap-2 border-b border-[#58180d]/10 py-1 ${!isProf ? 'opacity-70' : ''}`}>
+                    <span className="min-w-0 truncate">
+                      <span className="mr-1 text-[#58180d]">{isProf ? '●' : '○'}</span>
+                      {skill.name} <span className="text-[10px] uppercase opacity-55">{skill.attr}</span>
+                    </span>
+                    <span className={isProf ? 'font-black' : 'font-bold'}>{formatMod(mod)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className={compactPanelClass}>
+            <h3 className={compactTitleClass}>{t('dndSheet.compact.features')}</h3>
+            <div className="space-y-3 text-sm font-sans leading-relaxed">
             <p className="italic opacity-80 border-b border-[#58180d]/10 pb-2">{character.description || '无详细描述。'}</p>
             
             {/* Background Feature */}
@@ -358,29 +354,64 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
                  <p className="text-xs mt-0.5">{f.desc}</p>
                </div>
             ))}
+            </div>
           </div>
-        </div>
-        <div className="border border-[#58180d] p-3 bg-white/30 flex-1 flex flex-col min-h-[150px]">
-          <h3 className="text-xs font-bold uppercase border-b border-[#58180d] mb-2 pb-1">熟练项 Proficiencies</h3>
-          <div className="text-xs font-sans space-y-2">
-            <p><strong className="block text-[10px] text-[#58180d] uppercase">防具培训</strong> {finalArmorProf.length > 0 ? finalArmorProf.join(', ') : '无'}</p>
-            <p><strong className="block text-[10px] text-[#58180d] uppercase">武器熟练</strong> {finalWeaponProf.length > 0 ? finalWeaponProf.join(', ') : '无'}</p>
-            <p><strong className="block text-[10px] text-[#58180d] uppercase">语言</strong> {character.customLanguages}</p>
-          </div>
-        </div>
+        </section>
 
-        <div className="border border-[#58180d] p-3 bg-white/30 flex flex-col min-h-[150px]">
-          <div className="flex items-center justify-between gap-2 border-b border-[#58180d] mb-2 pb-1">
-            <h3 className="text-xs font-bold uppercase">职业资源 Class Resources</h3>
+        <aside className="space-y-3">
+          <div className={compactPanelClass}>
+            <h3 className={compactTitleClass}>{t('dndSheet.compact.attacksEquipment')}</h3>
+            <div className="space-y-2 text-xs font-sans">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="border border-[#58180d]/20 bg-[#ede1c5]/40 p-2">
+                  <div className="text-[10px] font-bold uppercase text-[#58180d]/70">{t('dndSheet.compact.hitDice')}</div>
+                  <div className="font-black">{character.hitDiceCurrent}d{character.jobClass === '野蛮人' ? '12' : character.jobClass === '护法' ? '10' : character.jobClass === '吟游诗人' ? '8' : '8'}</div>
+                </div>
+                <div className="border border-[#58180d]/20 bg-[#ede1c5]/40 p-2">
+                  <div className="text-[10px] font-bold uppercase text-[#58180d]/70">{t('dndSheet.compact.coin')}</div>
+                  <div className="font-black">{character.coin || 0} gp</div>
+                </div>
+              </div>
+              <p><strong className="text-[#58180d]">{t('dndSheet.compact.inventorySummary')}:</strong> {inventoryItems.length > 0 ? inventoryItems.slice(0, 3).join(' / ') : t('dndSheet.compact.none')}</p>
+              {inventoryItems.length > 3 && <p className="text-[11px] text-[#58180d]/65">+{inventoryItems.length - 3} more</p>}
+              <p className="border border-dashed border-[#58180d]/25 bg-[#ede1c5]/30 p-2 text-[11px] text-[#58180d]/70">{t('dndSheet.compact.equipmentDeferred')}</p>
+            </div>
+          </div>
+
+          <div className={compactPanelClass}>
+            <h3 className={compactTitleClass}>{t('dndSheet.compact.spellSummary')}</h3>
+            <div className="space-y-2 text-xs font-sans">
+              {preparedSpells.length > 0 ? (
+                <p><strong className="text-[#58180d]">{t('dndSheet.compact.preparedSpells')}:</strong> {preparedSpells.slice(0, 5).join(', ')}{preparedSpells.length > 5 ? ` +${preparedSpells.length - 5}` : ''}</p>
+              ) : (
+                <p className="italic text-[#58180d]/65">{t('dndSheet.compact.noPreparedSpells')}</p>
+              )}
+              {spellSlotEntries.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {spellSlotEntries.map(([level, slot]) => (
+                    <span key={level} className="border border-[#58180d]/30 bg-white/50 px-2 py-1 text-[11px] font-bold">
+                      L{level}: {slot.current}/{slot.max}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-[#58180d]/65">{t('dndSheet.compact.noSpellSlots')}</p>
+              )}
+            </div>
+          </div>
+
+          <div className={compactPanelClass}>
+          <div className="mb-2 flex items-center justify-between gap-2 border-b border-[#58180d]/25 pb-1">
+            <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-[#58180d]">{t('dndSheet.compact.classResources')}</h3>
             <Button
               size="sm"
               className="h-6 rounded-none bg-[#58180d] hover:bg-[#2c1810] text-[10px] px-2"
               onClick={initializeRuntimeResources}
             >
-              初始化职业资源
+              {t('dndSheet.compact.initializeClassResources')}
             </Button>
           </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar text-xs font-sans space-y-2">
+          <div className="text-xs font-sans space-y-2">
             {character.classResources.length > 0 ? (
               character.classResources.map((resource) => (
                 <div key={resource.id} className="border border-[#58180d]/20 bg-white/40 p-2">
@@ -420,14 +451,14 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
                       className="h-6 px-2 rounded-none border-[#58180d] text-[#58180d] text-[10px]"
                       onClick={() => resetClassResource(resource.id)}
                     >
-                      重置
+                      {t('dndSheet.compact.reset')}
                     </Button>
                   </div>
                   {resource.notes && <p className="mt-1 text-[10px] leading-relaxed text-[#2c1810]/70">{resource.notes}</p>}
                 </div>
               ))
             ) : (
-              <div className="text-xs italic text-gray-500">暂无职业资源</div>
+              <div className="text-xs italic text-[#58180d]/65">{t('dndSheet.compact.classResourcesDeferred')}</div>
             )}
 
             {character.pactMagicState && (
@@ -465,7 +496,7 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
                     className="h-6 px-2 rounded-none border-[#58180d] text-[#58180d] text-[10px]"
                     onClick={resetPactMagic}
                   >
-                    重置
+                    {t('dndSheet.compact.reset')}
                   </Button>
                 </div>
                 {character.pactMagicState.notes && <p className="mt-1 text-[10px] leading-relaxed text-[#2c1810]/70">{character.pactMagicState.notes}</p>}
@@ -474,9 +505,9 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
           </div>
         </div>
 
-        <div className="border border-[#58180d] p-3 bg-white/30 flex flex-col min-h-[150px]">
-          <h3 className="text-xs font-bold uppercase border-b border-[#58180d] mb-2 pb-1">个人专长 Feats</h3>
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className={compactPanelClass}>
+          <h3 className={compactTitleClass}>{t('dndSheet.compact.feats')}</h3>
+          <div>
             <ul className="space-y-1 mb-2 text-sm font-sans">
               {(character.feats || []).length > 0 ? (
                 character.feats.map((feat, i) => (
@@ -491,7 +522,7 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
                   </li>
                 ))
               ) : (
-                <li className="text-xs italic text-gray-500">暂无专长</li>
+                <li className="text-xs italic text-[#58180d]/65">{t('dndSheet.compact.noFeats')}</li>
               )}
             </ul>
           </div>
@@ -541,16 +572,17 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
             </Dialog>
           </div>
         </div>
-      </div>
+        </aside>
+      </main>
 
       {/* Equipment Catalog — read-only data layer v1 */}
-      <div className="col-span-1 lg:col-span-12">
+      <section>
         <DndEquipmentCatalogPanel />
-      </div>
+      </section>
 
       {/* Detail Text Column */}
-      <div className="col-span-1 lg:col-span-12 border-t-2 border-[#58180d] pt-4 mt-2">
-        <h3 className="text-sm font-bold uppercase text-[#58180d] mb-3">人物详情 Character Details</h3>
+      <section className="border-t-2 border-[#58180d]/60 pt-4">
+        <h3 className="text-sm font-bold uppercase text-[#58180d] mb-3">{t('dndSheet.compact.characterDetails')}</h3>
         <div className="bg-[#1a0f0a] border border-[#58180d] p-4 text-[#d5c4a1] font-serif flex flex-col md:flex-row gap-6">
           <div className="flex-1 space-y-2">
             <h4 className="text-xs uppercase tracking-widest text-[#a68a56] border-b border-[#58180d]/50 pb-1 mb-2">生平与描述</h4>
@@ -567,8 +599,7 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
             </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
-  </div>
   );
 }

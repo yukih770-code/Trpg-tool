@@ -129,6 +129,16 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Legacy DND background fallback: `LEGACY_BACKGROUND_DATA` in `src/data/backgrounds.ts`
 - `AI-LANDMARK: DND_SPECIES_BACKGROUND_DISPLAY_CLEANUP`: `src/pages/Sheet.tsx`
 
+## DND Sheet Layout Compact
+
+- Compact player-facing DND sheet layout: `src/pages/Sheet.tsx`
+- Core status compact row: HP / AC / Initiative / Speed / PB in `Sheet`
+- Compact ability grid: `attrList.map` rendering in `Sheet`
+- Dense skills and saving throws: `allSkills` and `savingThrows` rendering in `Sheet`
+- Summary zones: attacks/equipment, spell summary, class resources, feats, and details in `Sheet`
+- Sheet layout i18n keys: `dndSheet.compact.*` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`
+- `AI-LANDMARK: DND_SHEET_LAYOUT_COMPACT_V1`: `src/pages/Sheet.tsx`
+
 ## DND Background Runtime Completion
 
 - DND 2024 runtime background list: `DND_2024_BACKGROUND_DATA` / `BACKGROUND_DATA` in `src/data/backgrounds.ts`
@@ -204,6 +214,17 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Updated COC/CP notes: `multiWorkspace.coc.notes.compendium`, `multiWorkspace.coc.notes.sources`, `multiWorkspace.cp.notes.compendium`, `multiWorkspace.cp.notes.sources`
 - No store, schema, runtime, or rule data changed
 
+## Platform Actor Entry Pattern Alignment
+
+- `AI-LANDMARK: PLATFORM_ACTOR_ENTRY_PATTERN_ALIGNMENT`: `src/pages/PlayWorkspace.tsx`, `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- **COC/CP dashboard**: `renderNonDndWorkspaceDashboard` now shows 3 action buttons: view sheet / continue editing / start runtime (was 2; edit was missing from dashboard). `editActionKey` added alongside `sheetActionKey` and `startActionKey`.
+- **DND characters view**: `actorNote` paragraph added below `vaultBoundary` note
+- **Platform guidance section**: `actorAbstractionNote` and `actorMultiCampaignNote` added to the collapsible `<details>` in `renderNonDndWorkspaceDashboard`
+- **`multiWorkspace.planned.message`** updated to mention Player Asset Vault / Workshop / Source Manager (was generic "later version" language)
+- New i18n keys: `navigation.actorAbstractionNote`, `navigation.actorMultiCampaignNote`, `dndWorkspace.characters.actorNote`
+- Actor / Player Asset is the platform abstraction; Character / Investigator / Edgerunner are system display names
+- No store, schema, runtime, or rule data changed
+
 ## Platform Character Entry Pattern
 
 - COC / CP RED lightweight Vault shell rendering: `renderCharacterVault` in `src/pages/PlayWorkspace.tsx`
@@ -271,6 +292,16 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Existing system selector and creator / sheet / gameplay / market tabs: `src/pages/PlayWorkspace.tsx`
 - Current ruleset state: `useAppStore` in `src/store/appStore.ts`
 - Home character snapshot reads: `useCharacterStore`, `useCocStore`, and `useCpStore`
+
+## Platform Navigation History Stack
+
+- App-level navigation state: `NavigationState` in `src/App.tsx`
+- Navigation stack state and helpers: `navigationStack`, `pushNavigation`, `goBack`, `restoreNavigation`, `fallbackNavigation` in `src/App.tsx`
+- Workspace navigation snapshot: `PlayWorkspaceNavigationState` and `defaultPlayWorkspaceNavigationState` in `src/pages/PlayWorkspace.tsx`
+- PlayWorkspace navigation callbacks: `onNavigationChange`, `onBeforeNavigate`, `onBack`, `canGoBack` in `src/pages/PlayWorkspace.tsx`
+- Workspace back behavior: outer workspace back button in `src/App.tsx`; non-DND workspace back buttons through `navigateBackOrDashboard` in `src/pages/PlayWorkspace.tsx`
+- Current-location breadcrumb copy: `navigation.currentLocation`, `navigation.breadcrumb.*` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`
+- `AI-LANDMARK: PLATFORM_NAVIGATION_HISTORY_STACK`: `src/App.tsx`
 
 ## Local Data Contract / Character Export
 
