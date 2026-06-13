@@ -102,7 +102,7 @@ export const en = {
       characters: 'Character Vault',
       compendium: 'Compendium',
       sources: 'Source Status',
-      play: 'Enter Play',
+      play: 'Enter Play / Combat',
     },
     dashboard: {
       scopeLabel: 'Current rule scope',
@@ -115,7 +115,7 @@ export const en = {
     modules: {
       create: 'Create Character',
       sheet: 'Open Character Sheet',
-      play: 'Enter Play',
+      play: 'Enter Play / Combat',
       compendium: 'Compendium',
       spellIndex: 'Spell Index',
       featIndex: 'Feat Index',

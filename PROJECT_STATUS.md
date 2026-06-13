@@ -45,6 +45,7 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | DND Local CHM Source Authority + Full Coverage Audit v1 | ✅ Done (docs audit; runtime unchanged) |
 | DND Background Runtime Completion v1 | ✅ Done (16 local-CHM backgrounds; mechanics pending check) |
 | DND Character Builder Responsive Workbench Phase 1 | ✅ Done (UI layout only; logic unchanged) |
+| DND Gameplay Entry Preservation v1 | ✅ Done (Gameplay / dice area remains reachable after Builder cleanup) |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -104,6 +105,8 @@ Architecture phase scope:
 - No store schema, migration, Creator, Sheet, Gameplay, COC, CP RED, or Platform behavior changed by the background runtime completion.
 - DND Character Builder Responsive Workbench Phase 1 completed. The existing Creator logic is now presented through a BG3-like builder workbench with section navigation, current editor area, and live character summary / todo panel.
 - Builder sections cover identity, source status, species, background, class, abilities, feats, spells, equipment, and review. Spell/equipment sections are boundary placeholders only; no spell automation, equipment system, inventory, schema, migration, or rules data changes were introduced.
+- DND Gameplay Entry Preservation v1 completed. The DND Workspace "进入游玩 / 战斗" entry now routes directly to the preserved Gameplay view after Builder hierarchy cleanup.
+- Existing DND Gameplay / RollConsole remains reachable. Full dice/action/item/map interaction redesign remains deferred to later Action / Inventory / Map runtime work; no dice algorithm, runtime rule logic, store schema, migration, or rule data changed.
 - Rule data must declare source and trust metadata before being treated as verified runtime/core data.
 - Unknown-source or suspicious rule data must not be promoted into new gameplay features until it is labeled, quarantined, or verified.
 - Public/free sources may be embedded only within allowed scope; paid-book or official-but-not-public content may be referenced by source metadata but must not copy long rules text.
@@ -135,6 +138,7 @@ Architecture phase scope:
 | DND Artificer Source Completion v1 | ✅ Done (source-indexed; runtime deferred) |
 | DND Background Runtime Completion v1 | ✅ Done (BACKGROUND_DATA 16/16 local-CHM standard backgrounds) |
 | DND Character Builder Responsive Workbench Phase 1 | ✅ Done (responsive builder layout; original logic preserved) |
+| DND Gameplay Entry Preservation v1 | ✅ Done (Workspace Play / Combat opens Gameplay; RollConsole reachable) |
 
 Action Registry v0 scope:
 - Supports only `classResource` and `pactMagic` resource costs.

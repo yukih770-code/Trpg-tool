@@ -6,33 +6,27 @@
 
 ## Task
 
-- ID: DND Character Builder Responsive Workbench Phase 1
-- Name: DND Character Builder Responsive Workbench Phase 1
-- Goal: present the existing DND Creator as a responsive platform workbench with builder section navigation, editor area, and live summary while preserving creation logic and data contracts.
-- Phase: P1 DND platform UX / builder workbench
+- ID: DND Gameplay Entry Preservation v1
+- Name: DND Gameplay Entry Preservation v1
+- Goal: keep DND Gameplay / dice access visible after the Builder hierarchy cleanup without restoring old Builder tabs or changing runtime logic.
+- Phase: P1 DND platform UX / runtime entry preservation
 - Status: Implemented; verification commands pending local run
 
 ## Result Summary
 
-- DND Creator is now rendered as a responsive Builder Workbench.
-- Builder sections: identity, sources, species, background, class, abilities, feats, spells, equipment, review.
-- Desktop uses nav / editor / summary columns; mobile uses single-column flow with horizontal section tabs.
-- Right summary shows current character status and todos.
-- DND top utility actions are reduced into a secondary More Actions menu in the DND play view.
-- Existing Creator selection, validation, completion, and store writes remain intact.
-- Spell/equipment sections are placeholders only; no automation was added.
-- No rule data, schema, migration, Sheet logic, Gameplay logic, COC, or CP RED changed.
-- Landmark: `DND_CHARACTER_BUILDER_RESPONSIVE_WORKBENCH_PHASE_1`.
+- DND Workspace Play / Combat navigation now opens the preserved Gameplay view directly.
+- Existing DND Gameplay and RollConsole remain reachable through the current `Gameplay` component.
+- Old Builder-internal 创建器 / 角色卡 / 游玩战斗 tabs were not restored.
+- No dice algorithm, Gameplay runtime logic, DND rule data, CharacterData, store schema, migration, COC, CP RED, or Platform Shell behavior changed.
+- Landmark: `DND_GAMEPLAY_ENTRY_PRESERVATION`.
 
 ## Scope
 
 ### Allowed Files
 
-- `src/pages/Creator.tsx`
-- `src/pages/PlayWorkspace.tsx`
+- `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
 - `src/i18n/locales/zh-CN.ts`
 - `src/i18n/locales/en.ts`
-- `docs/rules/DND_RULE_COVERAGE.md`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
 - `docs/ai/SYMBOL_MAP.md`
@@ -41,43 +35,45 @@
 
 ### Forbidden Files
 
-- `src/data/*`
-- DND Sheet / Gameplay logic
-- DND Creator business logic beyond UI layout wrappers
+- DND rule data
+- `src/pages/Gameplay.tsx` runtime logic
+- `src/pages/gameplay/*` dice / RollConsole logic
+- `src/store/*`
 - Store schema / migration
+- CharacterData / save format
 - COC / CP RED code and data
-- Platform Shell
+- Platform Shell navigation outside DND Workspace
 
 ### Do Not Do
 
-- Modify DND rule data content
-- Rewrite creation logic
-- Modify store schema / migration
-- Implement spell/equipment automation
-- Copy long rule text
-- Use BG3, third-party wiki, model memory, or unspecified web sources
+- Restore old Builder tabs
+- Restore old top utility toolbar inside Builder
+- Rewrite dice logic
+- Rewrite Gameplay runtime
+- Implement Action Registry, map, inventory, backpack, or item systems
 - `git add .` / `git add -A` / auto commit
 
 ## Navigation
 
 ### Key Symbols
 
-- `DND_CHARACTER_BUILDER_RESPONSIVE_WORKBENCH_PHASE_1`
-- `dndBuilder.*`
+- `DND_GAMEPLAY_ENTRY_PRESERVATION`
+- `dndWorkspace.nav.play`
+- `dndWorkspace.modules.play`
 
 ### Locate Commands
 
 ```powershell
-rg -n "DND_CHARACTER_BUILDER_RESPONSIVE_WORKBENCH_PHASE_1|dndBuilder|BuilderSection" src docs
+rg -n "DND_GAMEPLAY_ENTRY_PRESERVATION|dndWorkspace\\.nav\\.play|dndWorkspace\\.modules\\.play|RollConsolePanel" src docs
 ```
 
 ## Completion Criteria
 
-- DND Creator renders responsive builder workbench sections.
-- Existing creation logic and completion behavior remain intact.
-- Mobile layout avoids horizontal overflow.
-- Spell/equipment sections remain placeholders only.
-- Schema, migration, rule data, Sheet, Gameplay, COC, and CP RED remain untouched.
+- DND Workspace has a clear Play / Combat entry.
+- Clicking Play / Combat opens DND Gameplay, not the Builder.
+- Existing DND RollConsole / dice area remains reachable when Gameplay renders.
+- Old Builder tabs and utility toolbar are not restored.
+- No schema, migration, rule data, dice algorithm, or runtime rule logic changes.
 - `npx tsc --noEmit` and `npm run build` pass.
 
 ## Verification

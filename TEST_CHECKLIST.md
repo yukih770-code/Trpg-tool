@@ -62,6 +62,7 @@ Open the app in the browser and verify each page loads without crashing.
 
 - [ ] DND Workspace — entering DND shows the Dashboard first, not a character sheet
 - [ ] DND Workspace — secondary nav switches 工作台总览 / 角色库 / 规则库 / 规则源状态 / 进入游玩
+- [ ] DND Workspace — 进入游玩 / 战斗 opens the Gameplay view rather than staying in Builder
 - [ ] DND Dashboard — shows rule scope (DND 2024 / SRD5.2 + XGtE + TCoE), status, and data completion cards
 - [ ] DND Dashboard — module cards open Creator / Sheet / Gameplay in the preserved play view
 - [ ] DND Source Status — shows core + expansion sources with sourceId and status labels (display-only, no toggle)
@@ -74,6 +75,7 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] DND Creator — builder sections can be switched non-linearly: identity / sources / species / background / class / abilities / feats / spells / equipment / review
 - [ ] DND Creator — spell and equipment builder sections are placeholders only and do not implement spell/equipment automation
 - [ ] DND Creator — More Actions lowers reset/import-export style utility prominence; DND import/export remains available from the workspace top actions
+- [ ] DND Creator — old 创建器 / 角色卡 / 游玩战斗 tabs are not restored inside the Builder
 - [ ] DND Creator — existing completion validation and character creation behavior remain unchanged
 - [ ] DND index layer — spell/feat/background/equipment indexes compile but are not imported by Creator / Sheet / Gameplay
 - [ ] DND index layer — runtime SPELL_DATA still has exactly its pre-index entries; spellbook/spellcasting behavior unchanged
@@ -89,6 +91,8 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] DND Sheet — legacy characters with old race/background strings still render without crashing (pending-verification note may replace legacy trait text)
 - [ ] DND Sheet — opens, displays character data
 - [ ] DND Gameplay — opens, runtime resources / checks / actions panels render
+- [ ] DND Gameplay — remains reachable from the DND Workspace Play / Combat entry after Builder hierarchy cleanup
+- [ ] DND Gameplay — existing RollConsole / dice area remains visible when the character is completed
 - [ ] DND Gameplay — checks and action use update RollConsole Latest Result and RuntimeLogEntry history
 - [ ] DND Gameplay — old or newly loaded characters do not crash when classResources / pactMagicState are missing or initialized
 - [ ] DND Gameplay — class resources initialize with current/max and manual +/- or reset controls update current values

@@ -102,7 +102,7 @@ export const zhCN = {
       characters: '角色库',
       compendium: '规则库',
       sources: '规则源状态',
-      play: '进入游玩',
+      play: '进入游玩 / 战斗',
     },
     dashboard: {
       scopeLabel: '当前规则范围',
@@ -115,7 +115,7 @@ export const zhCN = {
     modules: {
       create: '创建角色',
       sheet: '打开角色卡',
-      play: '进入游玩',
+      play: '进入游玩 / 战斗',
       compendium: '规则库',
       spellIndex: '法术索引',
       featIndex: '专长索引',

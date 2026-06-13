@@ -147,6 +147,15 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Builder i18n keys: `dndBuilder.*` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`
 - `AI-LANDMARK: DND_CHARACTER_BUILDER_RESPONSIVE_WORKBENCH_PHASE_1`: `src/pages/Creator.tsx`
 
+## DND Gameplay Entry Preservation
+
+- DND Workspace Play / Combat navigation route: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- DND play view delegation: `src/pages/PlayWorkspace.tsx`
+- Preserved DND Gameplay runtime: `src/pages/Gameplay.tsx`
+- Preserved DND RollConsole panel: `src/pages/gameplay/RollConsolePanel.tsx`
+- Workspace Play / Combat i18n keys: `dndWorkspace.nav.play`, `dndWorkspace.modules.play` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`
+- `AI-LANDMARK: DND_GAMEPLAY_ENTRY_PRESERVATION`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+
 ## Platform Shell / Home / Play Workspace
 
 - Platform shell default entry: `src/App.tsx`
