@@ -271,6 +271,18 @@ After modifying one system, verify the other two are unaffected:
 - [ ] Vault and creation method cards are responsive: desktop multi-column, mobile single-column, no horizontal overflow.
 - [ ] No true multi-character store, Workshop/backend logic, import/export rewrite, rule data, store schema, migration, or runtime logic changed.
 
+### Game System Home Density
+
+- [ ] Outer Play menu return label says Back to System Selection / 返回系统选择, not a vague play-menu return.
+- [ ] DND Game System Home does not repeat the top navigation as a full body module grid.
+- [ ] DND Home body shows current character summary plus Open Sheet / Start Playing, or Create First Character when empty.
+- [ ] COC Home body shows current investigator summary plus Open Sheet / Start Investigation, or Create Investigator when empty.
+- [ ] CP RED Home body shows current Edgerunner summary plus Open Sheet / Start Mission, or Create Edgerunner when empty.
+- [ ] Rules Compendium, Source Status, data completion, spell/feat/equipment/class indexes, and architecture notes are not repeated as homepage cards.
+- [ ] Platform guidance is collapsed / secondary and uses player-facing copy rather than large Actor Workspace / Session Workspace blocks.
+- [ ] Desktop home body keeps only current asset context and 1-2 primary actions; mobile stacks into one column without horizontal overflow.
+- [ ] Home density polish does not change store schema, rule data, runtime logic, dice algorithms, map, inventory, session, Workshop, backend, or plugin behavior.
+
 ---
 
 ## 7. Rule Data Source / Trust Metadata Check

@@ -411,6 +411,15 @@ Platform Character Entry Pattern Alignment v1 scope:
 - CP RED now has a lightweight Edgerunner Vault, current-character context actions, and a creation method screen before the existing CP RED Creator.
 - Standard Creation opens the existing system creator. Quick Creation, Local Import, and Workshop Import are planned placeholders only.
 - Sheet / Gameplay / RollConsole assets remain reachable through character-context actions; no runtime logic, dice algorithm, import/export logic, store schema, migration, or rule data changed.
+- System Navigation & Home Density Polish v1 completed. Game System Home pages now reduce duplicate navigation, use top navigation for system sections, and use the home body for overview and recommended next actions.
+- DND Home no longer repeats the full top-nav module list in the body; it keeps current character / vault, create character, and compendium as primary CTAs plus a compact system status entry.
+- COC and CP RED Home pages now follow the same overview + recommended-next-action pattern instead of rendering a dense module grid.
+- Back / breadcrumb labeling is clarified: the outer Play menu returns to system selection, while system workspace pages return to the current system home/workspace.
+- Landmark: `SYSTEM_NAVIGATION_HOME_DENSITY_POLISH`. No store schema, runtime logic, rule data, map, inventory, session, workshop, backend, or plugin implementation changed.
+- System Home Navigation Deduplication v1 completed. Game System Home pages now avoid duplicated navigation between top system tabs and body cards.
+- Home bodies now focus on current asset context and recommended next actions: current character / investigator / Edgerunner summary, open sheet, start play/investigation/mission, or create the first asset when empty.
+- Data coverage, index categories, and architecture boundary details are routed to their proper secondary pages or collapsed guidance.
+- Landmark: `SYSTEM_HOME_NAVIGATION_DEDUPLICATION`. No store schema, runtime logic, rule data, map, inventory, session, workshop, backend, or plugin implementation changed.
 - System Actor Session Workspace IA Correction v1 completed. DND / COC / CP RED workspace dashboards now declare System / Actor / Session workspace tier boundaries via planned-module notes and concept cards.
 - DND planned modules corrected: `inventory` → Actor Workspace; `map` → Session / Campaign Workspace; `journal` → Actor Workspace. New IA concept section added to DND dashboard.
 - COC planned modules corrected: `handouts` / `locations` → Session / Campaign Workspace; `notes` → Actor Workspace (renamed to '调查员笔记'). New planned cards for COC 规则库/技能索引 and 数据完成度. New IA concept section added to COC dashboard.

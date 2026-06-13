@@ -215,6 +215,23 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Shared entry i18n keys: `multiWorkspace.entryPattern.*`, `multiWorkspace.creation.*`, `multiWorkspace.coc.entry.*`, `multiWorkspace.coc.creation.*`, `multiWorkspace.cp.entry.*`, `multiWorkspace.cp.creation.*`
 - `AI-LANDMARK: PLATFORM_CHARACTER_ENTRY_PATTERN_ALIGNMENT`: `src/pages/PlayWorkspace.tsx`
 
+## System Navigation / Home Density Polish
+
+- DND Game System Home overview and recommended-next actions: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- COC / CP RED Game System Home overview and recommended-next actions: `renderNonDndWorkspaceDashboard` in `src/pages/PlayWorkspace.tsx`
+- Breadcrumb / system-home navigation copy: `navigation.*` keys in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`
+- DND home copy: `dndWorkspace.home.*`
+- COC / CP RED home copy: `multiWorkspace.coc.home.*`, `multiWorkspace.cp.home.*`
+- `AI-LANDMARK: SYSTEM_NAVIGATION_HOME_DENSITY_POLISH`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`, `src/pages/PlayWorkspace.tsx`
+
+## System Home Navigation Deduplication
+
+- DND current-character home context and CTAs: dashboard branch in `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- COC / CP RED current-asset home context and CTAs: `renderNonDndWorkspaceDashboard` in `src/pages/PlayWorkspace.tsx`
+- Homepage collapsed guidance: `navigation.platformGuidance`, `navigation.selectedActorGuidance`, `navigation.campaignGuidance`
+- Rules/source/data placement hint: `navigation.rulesAndDataInTopNav`
+- `AI-LANDMARK: SYSTEM_HOME_NAVIGATION_DEDUPLICATION`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`, `src/pages/PlayWorkspace.tsx`
+
 ## Platform Core Concepts / Game System Registry Baseline
 
 - Full concept definitions: `docs/architecture/PLATFORM_CORE_CONCEPTS.md`

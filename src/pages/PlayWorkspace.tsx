@@ -602,25 +602,45 @@ export function PlayWorkspace() {
     };
   };
 
-  const renderNonDndWorkspaceDashboard = (cards: WorkspaceModuleCard[]) => {
-    const isCoc = system === 'CoC';
+  // AI-LANDMARK: SYSTEM_HOME_NAVIGATION_DEDUPLICATION
+  // Non-DND System Home does not repeat navigation; it shows current actor context and next actions.
+  const renderNonDndWorkspaceDashboard = (_cards: WorkspaceModuleCard[]) => {
+    const { isCoc, shellTone, panelTone, cardTone, accent, badgeTone, primaryButtonTone } = getNonDndWorkspaceTone();
     const titleKey = isCoc ? 'multiWorkspace.coc.title' : 'multiWorkspace.cp.title';
     const subtitleKey = isCoc ? 'multiWorkspace.coc.subtitle' : 'multiWorkspace.cp.subtitle';
-    const shellTone = isCoc
-      ? 'bg-[#151a18] text-[#d4d4d8] selection:bg-[#2f7f68] selection:text-white'
-      : 'bg-[#0d0d0d] text-[#d4d4d8] selection:bg-[#f5c518] selection:text-[#0d0d0d]';
-    const panelTone = isCoc
-      ? 'border-[#2f7f68]/65 bg-[#0f1413]/90 shadow-[0_10px_30px_rgba(0,0,0,0.38)]'
-      : 'border-[#8a6f25]/70 bg-[#0b0b12]/90 shadow-[0_10px_30px_rgba(0,0,0,0.48)]';
-    const accent = isCoc ? 'text-[#8fb7aa]' : 'text-[#f5c518]';
-    const badgeTone = isCoc
-      ? 'border-[#2f7f68]/60 text-[#8fb7aa]'
-      : 'border-[#8a6f25]/70 text-[#d8b954]';
+    const hasCurrentCharacter = isCoc
+      ? Boolean(cocChar.name?.trim() || cocChar.occupation?.trim())
+      : Boolean(cpChar.name?.trim() || cpChar.lifePath?.handle?.trim());
+    const displayName = isCoc
+      ? cocChar.name?.trim()
+      : cpChar.name?.trim() || cpChar.lifePath?.handle?.trim();
+    const currentKey = isCoc ? 'multiWorkspace.coc.entry.current' : 'multiWorkspace.cp.entry.current';
+    const unnamedKey = isCoc ? 'multiWorkspace.coc.entry.unnamed' : 'multiWorkspace.cp.entry.unnamed';
+    const createActionKey = isCoc ? 'multiWorkspace.actions.createInvestigator' : 'multiWorkspace.actions.createEdgerunner';
+    const startActionKey = isCoc ? 'multiWorkspace.actions.startInvestigation' : 'multiWorkspace.actions.startMission';
+    const sheetActionKey = isCoc ? 'multiWorkspace.actions.viewInvestigatorSheet' : 'multiWorkspace.actions.viewCharacterSheet';
+    const emptyNoteKey = isCoc ? 'multiWorkspace.coc.home.noActorNote' : 'multiWorkspace.cp.home.noActorNote';
+    const rows = isCoc
+      ? [
+          { labelKey: 'multiWorkspace.coc.entry.name', value: cocChar.name || t(unnamedKey) },
+          { labelKey: 'multiWorkspace.coc.entry.occupation', value: cocChar.occupation || t('dndBuilder.common.unselected') },
+          { labelKey: 'multiWorkspace.coc.entry.age', value: String(cocChar.age || t('dndBuilder.common.unselected')) },
+          { labelKey: 'multiWorkspace.coc.entry.residence', value: cocChar.residence || t('dndBuilder.common.unselected') },
+        ]
+      : [
+          { labelKey: 'multiWorkspace.cp.entry.name', value: cpChar.name || t(unnamedKey) },
+          { labelKey: 'multiWorkspace.cp.entry.handle', value: cpChar.lifePath?.handle || t('dndBuilder.common.unselected') },
+          { labelKey: 'multiWorkspace.cp.entry.role', value: cpChar.role || t('dndBuilder.common.unselected') },
+          { labelKey: 'multiWorkspace.cp.entry.roleLevel', value: String(cpChar.roleLevel || t('dndBuilder.common.unselected')) },
+        ];
 
     return (
       <div className={`min-h-screen p-4 md:p-8 ${shellTone}`}>
         <main className="mx-auto w-full max-w-6xl">
           <section className={`mb-5 rounded-lg border p-5 ${panelTone}`}>
+            <div className={`mb-4 text-[11px] font-bold uppercase tracking-wider ${accent} opacity-65`}>
+              {t('navigation.breadcrumb.platform')} / {t('navigation.breadcrumb.play')} / {t(isCoc ? 'glossary.coc7e' : 'glossary.cyberpunkRed')} / {t('navigation.gameSystemHome')}
+            </div>
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <div className={`text-xs font-bold uppercase tracking-[0.2em] ${accent}`}>
@@ -638,72 +658,50 @@ export function PlayWorkspace() {
           </section>
 
           <section className={`rounded-lg border p-5 ${panelTone}`}>
-            <h2 className={`mb-4 text-sm font-bold uppercase tracking-wider ${accent}`}>
-              {t('multiWorkspace.modulesTitle')}
-            </h2>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {cards.map((card) => (
-                <button
-                  key={card.labelKey}
-                  type="button"
-                  onClick={() => {
-                    if (card.status === 'planned') {
-                      openPlannedSlot(card.labelKey);
-                      return;
-                    }
-                    if (card.view) {
-                      openWorkspaceView(card.view);
-                      return;
-                    }
-                    if (card.tab) {
-                      openWorkspaceTab(card.tab);
-                    }
-                  }}
-                  className={`min-h-28 rounded-lg border p-4 text-left transition hover:-translate-y-0.5 ${
-                    isCoc
-                      ? 'border-[#2f7f68]/35 bg-[#101816]/85 hover:border-[#2f7f68]'
-                      : 'border-[#8a6f25]/40 bg-[#111018]/85 hover:border-[#f5c518]/80'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="font-bold">{t(card.labelKey)}</div>
-                    <span className={`shrink-0 border px-2 py-0.5 text-[10px] uppercase tracking-wider ${badgeTone}`}>
-                      {t(card.status === 'planned' ? 'multiWorkspace.status.planned' : 'multiWorkspace.status.available')}
-                    </span>
+            {hasCurrentCharacter ? (
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]">
+                <div className={`rounded-lg border p-5 ${cardTone}`}>
+                  <div className={`text-xs font-bold uppercase tracking-wider ${accent}`}>{t(currentKey)}</div>
+                  <h2 className="mt-2 text-2xl font-bold">{displayName || t(unnamedKey)}</h2>
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {rows.map((row) => (
+                      <div key={row.labelKey} className="border border-white/10 bg-black/10 p-3">
+                        <div className={`text-[10px] font-bold uppercase tracking-wider ${accent}`}>{t(row.labelKey)}</div>
+                        <div className="mt-1 break-words text-sm font-bold">{row.value}</div>
+                      </div>
+                    ))}
                   </div>
-                  <p className="mt-3 text-xs leading-relaxed opacity-70">{t(card.noteKey)}</p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <button type="button" onClick={() => openWorkspaceTab('sheet')} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${badgeTone} hover:opacity-80`}>
+                    {t(sheetActionKey)}
+                  </button>
+                  <button type="button" onClick={() => openWorkspaceTab('gameplay')} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${primaryButtonTone}`}>
+                    {t(startActionKey)}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center">
+                <h2 className={`text-2xl font-bold ${accent}`}>{t(isCoc ? 'multiWorkspace.coc.entry.empty' : 'multiWorkspace.cp.entry.empty')}</h2>
+                <p className="mx-auto mt-2 max-w-xl text-sm opacity-75">{t(emptyNoteKey)}</p>
+                <button
+                  type="button"
+                  onClick={() => openWorkspaceView('createMethod')}
+                  className={`mt-5 border px-5 py-2 text-xs font-bold uppercase tracking-wider ${primaryButtonTone}`}
+                >
+                  {t(createActionKey)}
                 </button>
-              ))}
-            </div>
-          </section>
-
-          {/* AI-LANDMARK: SYSTEM_ACTOR_SESSION_WORKSPACE_IA_CORRECTION — COC/CP workspace tier concept cards */}
-          <section className={`mt-5 rounded-lg border p-5 ${panelTone}`}>
-            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className={`text-sm font-bold uppercase tracking-wider ${accent}`}>
-                {t('multiWorkspace.ia.title')}
-              </h2>
-              <span className="text-[10px] opacity-45">{t('multiWorkspace.ia.note')}</span>
-            </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div className={`rounded-lg border p-4 ${
-                isCoc
-                  ? 'border-[#2f7f68]/25 bg-[#101816]/60'
-                  : 'border-[#8a6f25]/30 bg-[#111018]/60'
-              }`}>
-                <div className={`text-xs font-bold uppercase tracking-wider ${accent}`}>{t('multiWorkspace.ia.actorWorkspaceTitle')}</div>
-                <p className="mt-2 text-xs leading-relaxed opacity-65">{t('multiWorkspace.ia.actorWorkspaceNote')}</p>
-                <p className="mt-2 text-[10px] opacity-45">{t('multiWorkspace.ia.multiCampaign')}</p>
               </div>
-              <div className={`rounded-lg border p-4 ${
-                isCoc
-                  ? 'border-[#2f7f68]/25 bg-[#101816]/60'
-                  : 'border-[#8a6f25]/30 bg-[#111018]/60'
-              }`}>
-                <div className={`text-xs font-bold uppercase tracking-wider ${accent}`}>{t('multiWorkspace.ia.sessionWorkspaceTitle')}</div>
-                <p className="mt-2 text-xs leading-relaxed opacity-65">{t('multiWorkspace.ia.sessionWorkspaceNote')}</p>
+            )}
+            <p className="mt-4 border-t border-white/10 pt-3 text-xs opacity-55">{t('navigation.rulesAndDataInTopNav')}</p>
+            <details className="mt-3 text-xs opacity-55">
+              <summary className={`cursor-pointer font-bold ${accent}`}>{t('navigation.platformGuidance')}</summary>
+              <div className="mt-2 space-y-1">
+                <p>{t('navigation.selectedActorGuidance')}</p>
+                <p>{t('navigation.campaignGuidance')}</p>
               </div>
-            </div>
+            </details>
           </section>
         </main>
       </div>

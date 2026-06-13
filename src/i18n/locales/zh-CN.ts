@@ -75,7 +75,7 @@ export const zhCN = {
   },
   playMenu: {
     title: '选择规则系统',
-    backToMenu: '返回游玩菜单',
+    backToMenu: '返回系统选择',
     status: {
       available: '可用',
       dataCorrection: '数据校正中',
@@ -95,6 +95,23 @@ export const zhCN = {
       enter: '进入 Cyberpunk RED',
     },
   },
+  navigation: {
+    backOneLevel: '返回上一层',
+    backToSystemSelect: '返回系统选择',
+    gameSystemHome: 'Game System Home',
+    recommendedNext: '推荐下一步',
+    openCurrentCharacter: '打开当前角色',
+    enterCompendium: '进入规则库',
+    viewSystemStatus: '查看系统状态',
+    rulesAndDataInTopNav: '规则库与数据状态可通过顶部导航查看。',
+    platformGuidance: '平台功能说明',
+    selectedActorGuidance: '选中角色后，可查看状态、资源、背包与开始游玩。',
+    campaignGuidance: '进入战役后，可使用地图、线索、日志与 GM 工具。',
+    breadcrumb: {
+      platform: '平台',
+      play: '游玩',
+    },
+  },
   dndWorkspace: {
     title: 'DND 工作台',
     nav: {
@@ -112,7 +129,15 @@ export const zhCN = {
       status: 'DND 优先完成中',
       completionTitle: '数据完成度',
       completionFootnote: '法术、专长、装备、职业与子职业索引已接入；数据完成度详情见规则源状态。',
-      modulesTitle: '模块入口',
+      modulesTitle: '推荐下一步',
+    },
+    home: {
+      openCurrentCharacter: '打开当前角色 / 角色库',
+      openCurrentCharacterNote: '从当前角色上下文进入角色卡、继续编辑或开始游玩。',
+      enterCompendium: '进入规则库',
+      createFirstCharacter: '创建第一个角色',
+      noCharacterNote: '先创建一个角色，然后从这里打开角色卡或开始游玩。',
+      boundarySummary: 'Game System Home 只负责系统概览与下一步入口。角色资产、背包、地图、会话日志和 Workshop 均在对应平台层级后续接入。',
     },
     modules: {
       characters: '角色库',
@@ -220,6 +245,7 @@ export const zhCN = {
       sessionWorkspaceTitle: 'Session / Campaign Workspace（会话 / 战役工作台）',
       sessionWorkspaceNote: '地图 / Board / Scene、Token、Handout / 线索、Encounter / Enemy、Session Log、GM 工具、玩家列表属于 Session / Campaign Workspace。需要数据契约后接入。',
       multiCampaign: '一个角色可以加入多个战役 / 模组 / 会话。',
+      compactBoundary: 'Game System Home 只保留概览与下一步入口；角色资产、背包、地图、会话日志和 Workshop 会在对应数据契约完成后接入。',
     },
     status: {
       available: '可用',
@@ -255,6 +281,12 @@ export const zhCN = {
     coc: {
       title: 'COC 调查员工作台',
       subtitle: '调查员创建、角色卡、技能检定与成长流程保留；线索、笔记、地点与规则源状态先作为平台 planned slots。',
+      home: {
+        openCurrentActor: '打开当前调查员',
+        startRuntime: '开始调查',
+        noActorNote: '先创建一个调查员，然后从这里打开调查员卡或开始调查。',
+        systemHealth: '技能检定、推动检定与成长检定入口保留在现有 Gameplay；线索、地点、Session Log 和规则源状态仍是 planned。',
+      },
       modules: {
         vault: '调查员库',
         create: '创建调查员',
@@ -308,6 +340,12 @@ export const zhCN = {
     cp: {
       title: 'Cyberpunk RED 工作台',
       subtitle: '角色创建、角色卡、技能检定、战斗、黑市与既有义体/Netrunning 入口保留；Encounter、地图与 Session Log 先占位。',
+      home: {
+        openCurrentActor: '打开当前 Edgerunner',
+        startRuntime: '开始任务',
+        noActorNote: '先创建一个 Edgerunner，然后从这里打开角色卡或开始任务。',
+        systemHealth: '技能检定、战斗、黑市、义体与既有 Netrunning 入口保留；Encounter、地图与 Session Log 仍是 planned。',
+      },
       modules: {
         vault: 'Edgerunner 库',
         create: '创建角色',

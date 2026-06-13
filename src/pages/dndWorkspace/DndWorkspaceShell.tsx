@@ -74,19 +74,8 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   // System Home only shows core Game System entry points.
   // spellIndex / featIndex / equipmentIndex / classIndex are accessible inside the Compendium view;
   // they are NOT listed as top-level home cards. Data coverage detail is linked from Source Status.
-  const moduleCards: { labelKey: string; noteKey?: string; planned?: boolean; onClick: () => void }[] = [
-    { labelKey: 'dndWorkspace.modules.characters', onClick: () => onViewChange('characters') },
-    { labelKey: 'dndWorkspace.modules.create', onClick: () => onViewChange('create') },
-    { labelKey: 'dndWorkspace.modules.sheet', onClick: () => onOpenPlayTab('sheet') },
-    { labelKey: 'dndWorkspace.modules.compendium', noteKey: 'dndWorkspace.modules.compendiumNote', onClick: () => onViewChange('compendium') },
-    { labelKey: 'dndWorkspace.modules.sources', noteKey: 'dndWorkspace.modules.sourcesNote', onClick: () => onViewChange('sources') },
-    // spellIndex / featIndex / equipmentIndex / classIndex removed from System Home grid.
-    // Accessible inside the Compendium view. System Home only shows core entry points.
-    // Actor Workspace and Session / Campaign Workspace modules (inventory, map, journal) also
-    // removed from the system dashboard module grid.
-    // They are described in the workspace-tier guidance section below, not listed as entry points here.
-    // AI-LANDMARK: SYSTEM_ACTOR_SESSION_WORKSPACE_IA_CORRECTION (follow-up: removed Actor/Session cards from grid)
-  ];
+  // AI-LANDMARK: SYSTEM_HOME_NAVIGATION_DEDUPLICATION
+  // System Home does not repeat top navigation; it shows current character context and next actions.
 
   const sourceRows: {
     groupKey: 'dndWorkspace.sources.core' | 'dndWorkspace.sources.expansions';
@@ -186,6 +175,9 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
           {view === 'dashboard' && (
             <div className="flex flex-col gap-6">
               <section className={panelClass}>
+                <div className="mb-4 text-[11px] font-bold uppercase tracking-wider text-[#58180d]/55">
+                  {t('navigation.breadcrumb.platform')} / {t('navigation.breadcrumb.play')} / DND 5e 2024 / {t('navigation.gameSystemHome')}
+                </div>
                 <div className="flex flex-wrap items-end justify-between gap-4">
                   <div>
                     <h1 className="font-dnd-title text-3xl text-[#58180d]">DND 5e 2024</h1>
@@ -200,71 +192,61 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                 </div>
               </section>
 
-              {/* Data coverage detail is in Source Status view; System Home shows only a summary footnote */}
-              <section className={`${panelClass} flex flex-wrap items-center justify-between gap-3`}>
-                <span className="text-[11px] text-[#58180d]/55">{t('dndWorkspace.dashboard.completionFootnote')}</span>
-                <button
-                  type="button"
-                  onClick={() => onViewChange('sources')}
-                  className="border border-[#58180d]/30 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#58180d]/65 hover:border-[#58180d] hover:text-[#58180d]"
-                >
-                  {t('dndWorkspace.nav.sources')} →
-                </button>
-              </section>
-
               <section className={panelClass}>
-                <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-[#58180d]">
-                  {t('dndWorkspace.dashboard.modulesTitle')}
-                </h2>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {moduleCards.map((card) => (
-                    <button
-                      key={card.labelKey}
-                      type="button"
-                      onClick={card.onClick}
-                      className="border border-[#58180d]/30 bg-white/60 p-4 text-left font-bold text-[#58180d] transition hover:-translate-y-0.5 hover:border-[#58180d] hover:shadow-md"
-                    >
-                      <span className="flex items-start justify-between gap-3">
-                        <span>{t(card.labelKey)}</span>
-                        {card.planned && (
-                          <span className="shrink-0 border border-[#58180d]/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#58180d]/70">
-                            {t('multiWorkspace.status.planned')}
-                          </span>
-                        )}
-                      </span>
-                      {card.noteKey && <span className="mt-2 block text-xs font-normal leading-relaxed text-[#58180d]/65">{t(card.noteKey)}</span>}
-                    </button>
-                  ))}
-                </div>
-                {plannedSlotLabelKey && (
-                  <div className="mt-4 border border-dashed border-[#58180d]/40 bg-white/40 p-4">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]/70">
-                      {t('multiWorkspace.status.planned')}
+                {hasCurrentCharacter ? (
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]/65">{t('dndWorkspace.characters.current')}</div>
+                      <h2 className="mt-2 text-2xl font-bold text-[#2c1810]">{characterName || t('dndWorkspace.characters.unnamed')}</h2>
+                      <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.level')}</div>
+                          <div className="font-bold">{dndChar.level || 1}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.species')}</div>
+                          <div className="font-bold">{dndChar.race || t('dndBuilder.common.unselected')}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.background')}</div>
+                          <div className="font-bold">{dndChar.background || t('dndBuilder.common.unselected')}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.class')}</div>
+                          <div className="font-bold">{dndChar.jobClass || t('dndBuilder.common.unselected')}</div>
+                        </div>
+                      </div>
                     </div>
-                    <h3 className="mt-2 font-bold text-[#58180d]">{t(plannedSlotLabelKey)}</h3>
-                    <p className="mt-2 text-sm text-[#58180d]/75">{t('multiWorkspace.planned.message')}</p>
+                    <div className="flex flex-col gap-2 lg:w-44">
+                      <button type="button" onClick={() => onOpenPlayTab('sheet')} className="border border-[#58180d]/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#58180d] hover:bg-[#58180d]/10">
+                        {t('dndWorkspace.actions.viewSheet')}
+                      </button>
+                      <button type="button" onClick={() => onOpenPlayTab('gameplay')} className="border border-[#58180d] bg-[#58180d] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#fdf6e3] hover:bg-[#2c1810]">
+                        {t('dndWorkspace.actions.startPlaying')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-[#58180d]">{t('dndWorkspace.characters.empty')}</h2>
+                    <p className="mx-auto mt-2 max-w-xl text-sm text-[#58180d]/70">{t('dndWorkspace.home.noCharacterNote')}</p>
+                    <button
+                      type="button"
+                      onClick={() => onViewChange('create')}
+                      className="mt-5 border border-[#58180d] bg-[#58180d] px-5 py-2 text-xs font-bold uppercase tracking-wider text-[#fdf6e3] hover:bg-[#2c1810]"
+                    >
+                      {t('dndWorkspace.home.createFirstCharacter')}
+                    </button>
                   </div>
                 )}
-              </section>
-
-              {/* AI-LANDMARK: SYSTEM_ACTOR_SESSION_WORKSPACE_IA_CORRECTION — DND workspace tier concept cards */}
-              <section className={panelClass}>
-                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-[#58180d]">
-                    {t('dndWorkspace.ia.title')}
-                  </h2>
-                  <span className="text-[10px] text-[#58180d]/45">{t('dndWorkspace.ia.note')}</span>
-                </div>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  <div className="border border-[#58180d]/20 bg-white/45 p-4">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]">{t('dndWorkspace.ia.actorWorkspaceTitle')}</div>
-                    <p className="mt-2 text-xs leading-relaxed text-[#58180d]/65">{t('dndWorkspace.ia.actorWorkspaceNote')}</p>
+                <p className="mt-4 border-t border-[#58180d]/15 pt-3 text-xs text-[#58180d]/55">{t('navigation.rulesAndDataInTopNav')}</p>
+                <details className="mt-3 text-xs text-[#58180d]/55">
+                  <summary className="cursor-pointer font-bold text-[#58180d]/70">{t('navigation.platformGuidance')}</summary>
+                  <div className="mt-2 space-y-1">
+                    <p>{t('navigation.selectedActorGuidance')}</p>
+                    <p>{t('navigation.campaignGuidance')}</p>
                   </div>
-                  <div className="border border-[#58180d]/20 bg-white/45 p-4">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]">{t('dndWorkspace.ia.sessionWorkspaceTitle')}</div>
-                    <p className="mt-2 text-xs leading-relaxed text-[#58180d]/65">{t('dndWorkspace.ia.sessionWorkspaceNote')}</p>
-                  </div>
-                </div>
+                </details>
               </section>
             </div>
           )}

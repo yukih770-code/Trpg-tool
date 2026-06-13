@@ -75,7 +75,7 @@ export const en = {
   },
   playMenu: {
     title: 'Choose a Ruleset',
-    backToMenu: 'Back to Play Menu',
+    backToMenu: 'Back to System Selection',
     status: {
       available: 'Available',
       dataCorrection: 'Data correction in progress',
@@ -95,6 +95,23 @@ export const en = {
       enter: 'Enter Cyberpunk RED',
     },
   },
+  navigation: {
+    backOneLevel: 'Back One Level',
+    backToSystemSelect: 'Back to System Selection',
+    gameSystemHome: 'Game System Home',
+    recommendedNext: 'Recommended Next',
+    openCurrentCharacter: 'Open Current Character',
+    enterCompendium: 'Enter Compendium',
+    viewSystemStatus: 'View System Status',
+    rulesAndDataInTopNav: 'Rules compendium and data status are available through the top navigation.',
+    platformGuidance: 'Platform Guidance',
+    selectedActorGuidance: 'After selecting a character, you can view status, resources, backpack, and start playing.',
+    campaignGuidance: 'After entering a campaign, maps, clues, logs, and GM tools will be available there.',
+    breadcrumb: {
+      platform: 'Platform',
+      play: 'Play',
+    },
+  },
   dndWorkspace: {
     title: 'DND Workspace',
     nav: {
@@ -112,7 +129,15 @@ export const en = {
       status: 'DND completion in progress',
       completionTitle: 'Data Completion',
       completionFootnote: 'Spell, feat, equipment, class, and subclass indexes are indexed. See Source Status for full data coverage detail.',
-      modulesTitle: 'Modules',
+      modulesTitle: 'Recommended Next',
+    },
+    home: {
+      openCurrentCharacter: 'Open Current Character / Vault',
+      openCurrentCharacterNote: 'Enter character-context actions: sheet, continue editing, or start playing.',
+      enterCompendium: 'Enter Compendium',
+      createFirstCharacter: 'Create First Character',
+      noCharacterNote: 'Create a character first, then open the sheet or start playing from here.',
+      boundarySummary: 'Game System Home is only for system overview and next actions. Character assets, backpack, map, session log, and Workshop belong to later platform layers.',
     },
     modules: {
       characters: 'Character Vault',
@@ -220,6 +245,7 @@ export const en = {
       sessionWorkspaceTitle: 'Session / Campaign Workspace',
       sessionWorkspaceNote: 'Map / Board / Scene, tokens, Handout / Clue, Encounter / Enemy, Session Log, GM tools, and player list belong to Session / Campaign Workspace. Requires a data contract to unlock.',
       multiCampaign: 'One character can join multiple campaigns / modules / sessions.',
+      compactBoundary: 'Game System Home keeps only overview and next actions. Character assets, backpack, map, session log, and Workshop will connect after their data contracts are ready.',
     },
     status: {
       available: 'Available',
@@ -255,6 +281,12 @@ export const en = {
     coc: {
       title: 'COC Investigator Workspace',
       subtitle: 'Investigator creation, sheet, skill checks, pushed rolls, and growth checks remain available. Clues, notes, locations, and source status are platform planned slots.',
+      home: {
+        openCurrentActor: 'Open Current Investigator',
+        startRuntime: 'Start Investigation',
+        noActorNote: 'Create an investigator first, then open the sheet or start investigation from here.',
+        systemHealth: 'Skill checks, pushed rolls, and growth checks remain in the existing Gameplay surface. Clues, locations, Session Log, and source status remain planned.',
+      },
       modules: {
         vault: 'Investigator Vault',
         create: 'Create Investigator',
@@ -308,6 +340,12 @@ export const en = {
     cp: {
       title: 'Cyberpunk RED Workspace',
       subtitle: 'Character creation, sheet, skill checks, combat, market, and existing cyberware/Netrunning entries remain available. Encounter, map, and Session Log slots are placeholders.',
+      home: {
+        openCurrentActor: 'Open Current Edgerunner',
+        startRuntime: 'Start Mission',
+        noActorNote: 'Create an Edgerunner first, then open the sheet or start the mission from here.',
+        systemHealth: 'Skill checks, combat, market, cyberware, and the existing Netrunning entry remain available. Encounter, map, and Session Log remain planned.',
+      },
       modules: {
         vault: 'Edgerunner Vault',
         create: 'Create Character',

@@ -6,56 +6,28 @@
 
 ## Task
 
-- ID: System Home Simplification v1
-- Name: System Home Simplification v1
-- Goal: Simplify DND / COC / CP RED system dashboard home pages to function as Game System Home pages — core entry points only, no data index cards on home.
-- Phase: P1 UI / IA simplification
-- Status: Implemented; awaiting manual build verification
+- ID: System Home Navigation Deduplication v1
+- Name: System Home Navigation Deduplication v1
+- Goal: remove duplicated homepage navigation and architecture-heavy first-screen content from DND / COC / CP RED Game System Home pages.
+- Phase: P1 platform IA / system home polish
+- Status: Implemented; verification commands pending final local run
 
 ## Result Summary
 
-### src/ changes
-
-- **`src/pages/dndWorkspace/DndWorkspaceShell.tsx`**
-  - Removed `spellIndex`, `featIndex`, `equipmentIndex`, `classIndex` from `moduleCards`
-  - Added `noteKey` to `compendium` card (`dndWorkspace.modules.compendiumNote`)
-  - Renamed `sources` card label to `dndWorkspace.modules.sources` (now "规则源状态 / System Health") with `noteKey`
-  - Replaced `completionRows` full grid section on dashboard with a compact footnote + link to Sources view
-  - Added landmark: `SYSTEM_HOME_SIMPLIFICATION`
-
-- **`src/pages/PlayWorkspace.tsx`**
-  - Removed `completion` planned card from `cocModuleCards`
-  - Removed `completion` planned card from `cpModuleCards`
-  - Added landmark comments: `SYSTEM_HOME_SIMPLIFICATION` on both COC and CP removal lines
-
-- **`src/i18n/locales/zh-CN.ts`**
-  - Added `dndWorkspace.modules.compendiumNote`
-  - Added `dndWorkspace.modules.sourcesNote`
-  - Updated `dndWorkspace.modules.sources` label to '规则源状态 / System Health'
-  - Added `dndWorkspace.dashboard.completionFootnote`
-  - Updated `multiWorkspace.coc.notes.compendium` (describes Rules Compendium content)
-  - Updated `multiWorkspace.coc.notes.sources` (adds System Health context)
-  - Updated `multiWorkspace.cp.notes.compendium`
-  - Updated `multiWorkspace.cp.notes.sources`
-
-- **`src/i18n/locales/en.ts`**
-  - Same keys as zh-CN.ts in English
-  - `dndWorkspace.modules.compendium` label changed to 'Rules Compendium'
-  - `dndWorkspace.modules.sources` label changed to 'Source Status / System Health'
-
-### No changes
-
-- Store schema / migration — untouched
-- CharacterData / Investigator / CP RED save structures — untouched
-- Runtime rule logic / dice algorithms — untouched
-- DND / COC / CP RED rule data — untouched
+- DND Home now focuses on current character context and Open Sheet / Start Playing, or Create First Character when empty.
+- COC Home now focuses on current investigator context and Open Sheet / Start Investigation, or Create Investigator when empty.
+- CP RED Home now focuses on current Edgerunner context and Open Sheet / Start Mission, or Create Edgerunner when empty.
+- Rules compendium, source status, data completion, index categories, and architecture boundary details are not repeated as homepage cards.
+- Platform guidance is collapsed / secondary and uses player-facing copy.
+- No store schema, CharacterData, runtime logic, dice algorithm, rule data, map, inventory, session, Workshop, backend, or plugin implementation changed.
+- Landmark: `SYSTEM_HOME_NAVIGATION_DEDUPLICATION`.
 
 ## Scope
 
 ### Allowed Files
 
-- `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
 - `src/pages/PlayWorkspace.tsx`
+- `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
 - `src/i18n/locales/zh-CN.ts`
 - `src/i18n/locales/en.ts`
 - `PROJECT_STATUS.md`
@@ -67,41 +39,45 @@
 ### Forbidden Changes
 
 - Store schema / migration
-- CharacterData / Investigator / CP RED save structures
-- Runtime rule logic / dice algorithms
-- DND / COC / CP RED rule data
-- Any other src/ file
-- git add / commit
+- CharacterData / Investigator / CP RED save structure
+- Runtime rule logic
+- Dice algorithms
+- Rule data
+- True multi-character systems
+- Rules Compendium engine
+- Source Manager engine
+- Workshop / Plugin / backend implementation
+- Map / backpack / item / token / session data contracts
 
 ## Navigation
 
 ### Key Symbols
 
-- `SYSTEM_HOME_SIMPLIFICATION`
-- `SYSTEM_ACTOR_SESSION_WORKSPACE_IA_CORRECTION`
+- `SYSTEM_HOME_NAVIGATION_DEDUPLICATION`
+- `renderNonDndWorkspaceDashboard`
+- `navigation.rulesAndDataInTopNav`
+- `navigation.platformGuidance`
+- `dndWorkspace.home.createFirstCharacter`
 
 ### Locate Commands
 
 ```powershell
-rg -n "SYSTEM_HOME_SIMPLIFICATION" src docs
-rg -n "compendiumNote\|sourcesNote\|completionFootnote" src
+rg -n "SYSTEM_HOME_NAVIGATION_DEDUPLICATION|rulesAndDataInTopNav|platformGuidance|createFirstCharacter" src docs
 ```
 
 ## Completion Criteria
 
-- `moduleCards` in DndWorkspaceShell no longer contains spellIndex / featIndex / equipmentIndex / classIndex
-- `completionRows` grid no longer appears on the dashboard home; replaced with footnote
-- `cocModuleCards` and `cpModuleCards` no longer contain a `completion` card
-- New i18n keys exist and resolve in both zh-CN and en
-- `SYSTEM_HOME_SIMPLIFICATION` landmark present in src files and SYMBOL_MAP.md
-- Documentation updated
+- Homepage body does not repeat top nav entries.
+- Homepage body shows current asset context plus one or two immediate actions.
+- Empty state routes to creation.
+- Technical architecture guidance is collapsed / secondary.
+- `npx tsc --noEmit` and `npm run build` pass.
 
 ## Verification
 
 ```powershell
 cd D:\Download\dnd
+git status --short
 npx tsc --noEmit
 npm run build
-rg -n "SYSTEM_HOME_SIMPLIFICATION" src docs
-rg -n "compendiumNote" src/i18n
 ```
