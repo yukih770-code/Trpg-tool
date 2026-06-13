@@ -257,7 +257,7 @@ Open the app in the browser and verify each page loads without crashing.
 
 ## 5b. COC / CP RED DND-aligned Workspace Reconstruction Check
 
-- [ ] COC workspace nav bar shows 5 buttons: Overview / Investigator Vault / Create Investigator / COC Compendium / Source Status (no Play button in nav)
+- [ ] COC workspace nav bar shows 5 buttons: Overview / Investigator Vault / Create Investigator / COC Compendium / Source Status (no Play button in nav)  *(superseded by 5c — nav now has 7 items)*
 - [ ] CP RED workspace nav bar shows 5 buttons: Overview / Edgerunner Vault / Create Edgerunner / CP RED Compendium / Source Status
 - [ ] COC overview (`dashboard` view) — shows breadcrumb, system title, current investigator card OR empty state with create button
 - [ ] CP RED overview — same pattern with Edgerunner data (name / handle / role / roleLevel)
@@ -277,6 +277,29 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] `cocWorkspace.*` and `cpWorkspace.*` keys exist in both `zh-CN.ts` and `en.ts`
 - [ ] Landmark `COC_CPRED_DND_ALIGNED_WORKSPACE_RECONSTRUCTION` is present in shells and `PlayWorkspace.tsx`
 - [ ] No store, schema, runtime rule logic, dice algorithm, or CharacterData changed
+
+---
+
+## 5c. COC Workspace Cleanup v1 Check
+
+- [ ] COC workspace nav bar shows **7** items: 工作台总览 / 调查员库 / 创建调查员 / 调查员卡 / 调查面板 / COC 规则库 / 规则源状态
+- [ ] Only one nav bar visible throughout all COC views (no duplicate navigation)
+- [ ] COC overview (dashboard) — shows system title, current investigator card/empty state, "rules in top nav" note, collapsible guidance; no tool matrix
+- [ ] COC 调查员库 — Actor Vault shell with current investigator card and 3 action buttons; planned slot cards
+- [ ] COC 创建调查员 — Creation Method shell with 4 cards (standard active, quick/import/workshop Planned)
+- [ ] COC 调查员卡 (sheet view) — shows HP/MP/SAN/Luck row, characteristics grid, top skills summary, "开始调查" + "继续编辑" CTAs; no runtime tool content
+- [ ] COC 调查面板 nav item — clicking it launches investigation runtime (CocGameplay embedded, no legacy title bar); nav 'play' item shown as active
+- [ ] COC 调查面板 — only shows CocGameplay content; no old import/export/settings/data tabs; no second back button
+- [ ] COC 规则库 — 6 shell entry cards (all Planned badge); no real rule data
+- [ ] COC 规则源状态 — source status shell; no real Source Manager engine
+- [ ] Navigation: overview → 调查员卡 → 继续编辑 → correct; overview → 调查面板 → nav back → correct
+- [ ] `NonDndWorkspaceView` includes `'sheet'` in `PlayWorkspace.tsx`
+- [ ] `CocWorkspaceView` includes `'sheet'` in `CocWorkspaceShell.tsx`
+- [ ] `cocWorkspace.nav.sheet` / `cocWorkspace.nav.runtime` / `cocWorkspace.sheet.*` keys in both locale files
+- [ ] Landmark `COC_WORKSPACE_CLEANUP_V1` present in `CocWorkspaceShell.tsx`
+- [ ] DND workspace untouched
+- [ ] CP RED workspace untouched
+- [ ] No store schema, Investigator save format, COC rule data, runtime logic, or dice algorithm changed
 
 ---
 
@@ -334,6 +357,19 @@ After modifying one system, verify the other two are unaffected:
 - [ ] Platform guidance is collapsed / secondary and uses player-facing copy rather than large Actor Workspace / Session Workspace blocks.
 - [ ] Desktop home body keeps only current asset context and 1-2 primary actions; mobile stacks into one column without horizontal overflow.
 - [ ] Home density polish does not change store schema, rule data, runtime logic, dice algorithms, map, inventory, session, Workshop, backend, or plugin behavior.
+
+### CP RED Workspace Cleanup v1
+
+- [ ] CP RED Workspace shows only one top system navigation.
+- [ ] CP RED overview does not show the old tool matrix or duplicated module cards.
+- [ ] Edgerunner Vault shows the current Edgerunner card, context actions, and planned multi-Edgerunner placeholder without implementing a real multi-character store.
+- [ ] Create Edgerunner shows Standard Creation, Quick Creation, Local Import, and Workshop Import; only Standard Creation enters the existing creator.
+- [ ] Edgerunner Sheet shows a platform sheet summary shell with HP, Humanity, Armor, MOVE, REF, skills summary, equipment / black market / cyberware summary, Start Mission, and Continue Editing.
+- [ ] Mission Panel renders `CpGameplay embedded` and does not show old CP RED title chrome, system selector, import/export, data/settings/help buttons, internal Creation / Sheet / Gameplay / Market tabs, or a second back button.
+- [ ] CP RED Compendium remains a shell-only category entry surface; no real rules engine is implemented.
+- [ ] CP RED Source Status remains a shell-only Source Status / System Health surface; no Source Manager engine is implemented.
+- [ ] Navigation history works for overview → vault/create/sheet/runtime/compendium/sources → back one level.
+- [ ] Cleanup does not modify DND, COC, store schema, CP RED save format, CP RED rule data, runtime logic, dice algorithm, import/export logic, inventory/map/session/workshop/plugin behavior.
 
 ---
 

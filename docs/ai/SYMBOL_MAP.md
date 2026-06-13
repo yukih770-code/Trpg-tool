@@ -341,6 +341,16 @@ This file helps AI quickly locate important types, helper functions, store actio
 - `cocWorkspace.*` i18n keys: `src/i18n/locales/zh-CN.ts`, `src/i18n/locales/en.ts`
 - `cpWorkspace.*` i18n keys: `src/i18n/locales/zh-CN.ts`, `src/i18n/locales/en.ts`
 
+## COC Workspace Cleanup v1
+
+- `AI-LANDMARK: COC_WORKSPACE_CLEANUP_V1`: `src/pages/cocWorkspace/CocWorkspaceShell.tsx` (view='sheet' section)
+- `CocWorkspaceView` (extended): now includes `'sheet'` — dedicated Investigator Sheet summary shell
+- `NonDndWorkspaceView` (extended): `src/pages/PlayWorkspace.tsx` — added `'sheet'`
+- Nav: 7 items — dashboard / vault / createMethod / **sheet** / **play** (isPlayAction→gameplay) / compendium / sources
+- `cocWorkspace.nav.sheet`, `cocWorkspace.nav.runtime`, `cocWorkspace.sheet.*` i18n keys: `src/i18n/locales/zh-CN.ts`, `src/i18n/locales/en.ts`
+- Sheet view reads: `cocChar.runtime?.hp ?? cocChar.hp`, `characteristics`, `skills` from `useCocStore`
+- "调查面板" nav item has `isPlayAction: true` — calls `onOpenPlayTab('gameplay')` instead of `onViewChange`
+
 ## Legacy Runtime Embedded Mode
 
 - `AI-LANDMARK: LEGACY_RUNTIME_EMBEDDED_MODE`: `src/pages/CocGameplay.tsx`, `src/pages/CpGameplay.tsx`, `src/pages/PlayWorkspace.tsx`, `src/pages/cocWorkspace/CocWorkspaceShell.tsx`, `src/pages/cpWorkspace/CpWorkspaceShell.tsx`
@@ -348,6 +358,16 @@ This file helps AI quickly locate important types, helper functions, store actio
 - `CpGameplay({ embedded })`: `src/pages/CpGameplay.tsx` — optional embedded mode hides the legacy combat runtime hero strip while preserving RollConsole and runtime panels.
 - `embeddedPlayBody`: `src/pages/PlayWorkspace.tsx` — COC / CP RED play view renderer that omits old toolbars, system selector, import/export buttons, settings/help buttons, and internal tabs.
 - COC / CP RED workspace shells own system navigation chrome: `src/pages/cocWorkspace/CocWorkspaceShell.tsx`, `src/pages/cpWorkspace/CpWorkspaceShell.tsx`
+
+## CP RED Workspace Cleanup
+
+- `AI-LANDMARK: CPRED_WORKSPACE_CLEANUP_V1`: `src/pages/cpWorkspace/CpWorkspaceShell.tsx`
+- `CpWorkspaceShell`: `src/pages/cpWorkspace/CpWorkspaceShell.tsx` — CP RED-only platform shell with overview, Edgerunner Vault, creation method, Edgerunner Sheet, Mission Panel, CP RED Compendium, and Source Status top navigation.
+- `CpEdgerunnerSheetShell`: `src/pages/cpWorkspace/CpWorkspaceShell.tsx` — platform sheet summary shell for current Edgerunner; shows HP, Humanity, Armor, MOVE, REF, skill summary, equipment / black market / cyberware summary, Start Mission, and Continue Editing.
+- `currentPlayTab`: `src/pages/cpWorkspace/CpWorkspaceShell.tsx` prop used to highlight CP RED Sheet / Mission Panel while `PlayWorkspace` owns the selected tab state.
+- CP RED sheet branch in `embeddedPlayBody`: `src/pages/PlayWorkspace.tsx` renders `CpEdgerunnerSheetShell` instead of the old detailed `CpSheet` page.
+- CP RED mission branch in `embeddedPlayBody`: `src/pages/PlayWorkspace.tsx` renders `<CpGameplay embedded />`.
+- CP RED cleanup i18n keys: `cpWorkspace.nav.sheet`, `cpWorkspace.nav.mission`, `cpWorkspace.vault.*`, `cpWorkspace.sheet.*`, `cpWorkspace.sources.runtimeReady`, `cpWorkspace.sources.indexedOnly`, `cpWorkspace.sources.plannedOnly`
 
 ## DND Character Options Source Index
 

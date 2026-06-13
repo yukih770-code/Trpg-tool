@@ -15,6 +15,14 @@ YYYY-MM-DD | Phase | Task | Commit | Files | Landmarks | Result | Deferred
 <!-- New entries go here. -->
 
 ```text
+2026-06-13 | P1 platform IA | COC Workspace Cleanup v1 | pending | src/pages/cocWorkspace/CocWorkspaceShell.tsx, src/pages/PlayWorkspace.tsx, src/i18n/locales/zh-CN.ts, src/i18n/locales/en.ts, PROJECT_STATUS.md, TEST_CHECKLIST.md, docs/ai/SYMBOL_MAP.md, docs/ai/ACTIVE_TASK.md, docs/ai/TASK_ARCHIVE.md | COC_WORKSPACE_CLEANUP_V1 | COC workspace cleaned into 7-nav platform shell: overview, Investigator Vault, Creation Method, Investigator Sheet summary shell (HP/MP/SAN/Luck+chars+skills), Investigation Panel (CocGameplay embedded via isPlayAction nav), Compendium shell, Source Status shell; NonDndWorkspaceView extended with 'sheet'; top nav is the only system nav; no DND/CP RED/store/schema/save-format/rule-data/runtime/dice changes | real multi-investigator store, Rules Compendium engine, Source Manager engine, Workshop/backend/plugin, inventory/map/session data contracts
+```
+
+```text
+2026-06-13 | P1 platform IA | CP RED Workspace Cleanup v1 | pending | src/pages/cpWorkspace/CpWorkspaceShell.tsx, src/pages/PlayWorkspace.tsx, src/i18n/locales/zh-CN.ts, src/i18n/locales/en.ts, PROJECT_STATUS.md, TEST_CHECKLIST.md, docs/ai/SYMBOL_MAP.md, docs/ai/ACTIVE_TASK.md, docs/ai/TASK_ARCHIVE.md | CPRED_WORKSPACE_CLEANUP_V1 | CP RED workspace cleaned into platform shell sections: overview, Edgerunner Vault, creation method, Edgerunner Sheet summary shell, Mission Panel using CpGameplay embedded, Compendium shell, Source Status shell; top nav is the only system nav; no DND/COC/store/schema/save-format/rule-data/runtime/dice changes | real multi-Edgerunner store, Rules Compendium engine, Source Manager engine, import/export rewrite, Workshop/backend/plugin, inventory/map/session data contracts
+```
+
+```text
 2026-06-13 | P1 platform IA | COC / CP RED DND-aligned Workspace Reconstruction v1 | pending | src/pages/cocWorkspace/CocWorkspaceShell.tsx (new), src/pages/cpWorkspace/CpWorkspaceShell.tsx (new), PlayWorkspace.tsx, src/i18n/locales/zh-CN.ts, src/i18n/locales/en.ts, PROJECT_STATUS.md, TEST_CHECKLIST.md, docs/ai/SYMBOL_MAP.md, docs/ai/ACTIVE_TASK.md, docs/ai/TASK_ARCHIVE.md | COC_CPRED_DND_ALIGNED_WORKSPACE_RECONSTRUCTION | Created CocWorkspaceShell and CpWorkspaceShell; both aligned to DndWorkspaceShell IA (overview/vault/createMethod/compendium/sources/play); shells wired into PlayWorkspace.tsx replacing old inline render functions; NonDndWorkspaceView extended with 'compendium' | 'sources'; old render functions removed; cocWorkspace.* / cpWorkspace.* i18n keys added (zh-CN + en); no store/schema/runtime/rule-data/dice-algorithm change | real Rules Compendium engine, Source Manager engine, multi-actor store, Workshop/backend, map/inventory/session
 ```
 

@@ -55,6 +55,7 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | Platform Actor Entry Pattern Alignment v1 | ✅ Done (COC/CP dashboard gets "continue editing" button; Actor/Player Asset abstraction note added to all three systems; planned.message updated) |
 | Platform Navigation History Stack v1 | ✅ Done (lightweight app-level back stack; no router / URL routing) |
 | COC / CP RED DND-aligned Workspace Reconstruction v1 | ✅ Done (CocWorkspaceShell + CpWorkspaceShell created; PlayWorkspace wired; NonDndWorkspaceView extended; cocWorkspace.* / cpWorkspace.* i18n added) |
+| COC Workspace Cleanup v1 | ✅ Done (7-item nav; 'sheet' view with HP/MP/SAN/Luck+characteristics+skills summary; 'play' nav item calls onOpenPlayTab('gameplay'); NonDndWorkspaceView extended with 'sheet'; cocWorkspace.nav.sheet/runtime + cocWorkspace.sheet.* i18n; landmark COC_WORKSPACE_CLEANUP_V1) |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -436,6 +437,11 @@ Platform Character Entry Pattern Alignment v1 scope:
 - COC planned modules corrected: `handouts` / `locations` → Session / Campaign Workspace; `notes` → Actor Workspace (renamed to '调查员笔记'). New planned cards for COC 规则库/技能索引 and 数据完成度. New IA concept section added to COC dashboard.
 - CP RED planned modules corrected: `encounter` / `map` / `sessionLog` → Session / Campaign Workspace. New planned cards for CP RED 规则库/装备索引 and 数据完成度. New IA concept section added to CP RED dashboard.
 - Landmark: `SYSTEM_ACTOR_SESSION_WORKSPACE_IA_CORRECTION` placed in `DndWorkspaceShell.tsx` and `PlayWorkspace.tsx`. No runtime logic, dice algorithm, store schema, migration, or rule data changed.
+- CP RED Workspace Cleanup v1 completed. The CP RED workspace now exposes a clean DND-aligned platform shell with overview, Edgerunner Vault, creation method, Edgerunner sheet, mission runtime, rules compendium, and source status sections.
+- Legacy CP RED runtime code remains preserved and embedded only as the mission panel content via `CpGameplay embedded`.
+- The CP RED Edgerunner sheet route now uses a platform-style summary shell with Start Mission / Continue Editing context actions instead of rendering the old detailed tool page as the workspace-level sheet.
+- No store schema, CP RED save format, CP RED rule data, runtime logic, dice algorithm, real multi-Edgerunner store, rules engine, source manager, map, inventory, session, workshop, or plugin implementation changed.
+- Landmark: `CPRED_WORKSPACE_CLEANUP_V1`.
 
 System Actor Session Workspace IA Correction v1 scope:
 - Three-tier workspace IA defined: System Workspace (rule scope, character library, creation, compendium, source status, completion); Actor Workspace (character card, current status, resources, inventory, start playing, personal journal); Session / Campaign Workspace (map, token, handout, session log, encounter, GM tools).

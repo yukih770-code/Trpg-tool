@@ -1,0 +1,635 @@
+import { useState, type ReactNode } from 'react';
+import { Activity, BookOpen, FileText, LayoutDashboard, Library, ScrollText, Users } from 'lucide-react';
+import { createTranslator, readStoredLocale } from '../../i18n';
+import { useCocStore } from '../../store/cocStore';
+
+/**
+ * CocWorkspaceShell
+ *
+ * AI-LANDMARK: COC_CPRED_DND_ALIGNED_WORKSPACE_RECONSTRUCTION
+ *
+ * COC Game System Workspace Shell — aligned with DndWorkspaceShell structure.
+ * Provides DND-identical IA: overview / vault / create / compendium / sources / play.
+ * Existing COC runtime (CocCreator / CocSheet / CocGameplay) is preserved as children
+ * and rendered under the 'play' view. No store schema, runtime rule logic, or dice
+ * algorithm is modified.
+ */
+
+// Must stay compatible with NonDndWorkspaceView in PlayWorkspace.tsx
+type CocWorkspaceView =
+  | 'dashboard'
+  | 'vault'
+  | 'createMethod'
+  | 'sheet'
+  | 'compendium'
+  | 'sources'
+  | 'play'
+  | 'planned';
+
+type CocWorkspaceShellProps = {
+  view: CocWorkspaceView;
+  onViewChange: (view: CocWorkspaceView) => void;
+  onOpenPlayTab: (tab: string) => void;
+  onBack?: () => void;
+  canGoBack?: boolean;
+  children: ReactNode;
+};
+
+// COC dark-teal theme constants
+const teal = {
+  navBar: 'border-b-2 border-[#2f7f68]/70 bg-[#0d1211]/95',
+  navBrand: 'text-[#5aa58f]',
+  navActive: 'border-[#2f7f68] bg-[#2f7f68] text-[#06100d]',
+  navInactive: 'border-[#2f7f68]/30 text-[#8fb7aa] hover:border-[#2f7f68] hover:bg-[#2f7f68]/10',
+  body: 'bg-[#151a18] text-[#d4d4d8]',
+  panel: 'rounded-lg border border-[#2f7f68]/65 bg-[#0f1413]/90 p-5 shadow-[0_10px_30px_rgba(0,0,0,0.38)]',
+  card: 'rounded-lg border border-[#2f7f68]/35 bg-[#101816]/85',
+  cardHover: 'hover:border-[#2f7f68]',
+  accent: 'text-[#8fb7aa]',
+  accentStrong: 'text-[#5aa58f]',
+  badge: 'border-[#2f7f68]/60 text-[#8fb7aa]',
+  badgePlanned: 'border-[#2f7f68]/40 text-[#8fb7aa]/70',
+  statusGreen: 'border-[#2f7f68]/50 bg-[#2f7f68]/10 text-[#2f7f68]',
+  primary: 'border-[#2f7f68] bg-[#2f7f68] text-[#06100d] hover:bg-[#8fb7aa]',
+  secondary: 'border-[#2f7f68]/60 text-[#8fb7aa] hover:border-[#2f7f68] hover:bg-[#2f7f68]/10',
+  planned: 'border-dashed border-[#2f7f68]/40 bg-black/10',
+};
+
+export function CocWorkspaceShell({
+  view,
+  onViewChange,
+  onOpenPlayTab,
+  onBack,
+  canGoBack = false,
+  children,
+}: CocWorkspaceShellProps) {
+  const { t } = createTranslator(readStoredLocale());
+  const cocChar = useCocStore((state) => state.character);
+  const hasCurrentCharacter = Boolean(cocChar.name?.trim() || cocChar.occupation?.trim());
+  const displayName = cocChar.name?.trim();
+  const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
+
+  const navItems: { key: CocWorkspaceView; labelKey: string; icon: typeof LayoutDashboard; isPlayAction?: boolean }[] = [
+    { key: 'dashboard',    labelKey: 'cocWorkspace.nav.overview',   icon: LayoutDashboard },
+    { key: 'vault',        labelKey: 'cocWorkspace.nav.vault',      icon: Users },
+    { key: 'createMethod', labelKey: 'cocWorkspace.nav.create',     icon: BookOpen },
+    { key: 'sheet',        labelKey: 'cocWorkspace.nav.sheet',      icon: FileText },
+    { key: 'play',         labelKey: 'cocWorkspace.nav.runtime',    icon: Activity, isPlayAction: true },
+    { key: 'compendium',   labelKey: 'cocWorkspace.nav.compendium', icon: Library },
+    { key: 'sources',      labelKey: 'cocWorkspace.nav.sources',    icon: ScrollText },
+  ];
+
+  const isActiveNav = (key: CocWorkspaceView) => {
+    if (view === 'planned') return false;
+    return view === key;
+  };
+
+  const handleNavClick = (item: { key: CocWorkspaceView; isPlayAction?: boolean }) => {
+    setPlannedSlotLabelKey(null);
+    if (item.isPlayAction) {
+      onOpenPlayTab('gameplay');
+    } else {
+      onViewChange(item.key);
+    }
+  };
+
+  const handleBack = () => {
+    if (canGoBack && onBack) {
+      onBack();
+    } else {
+      onViewChange('dashboard');
+    }
+  };
+
+  // Investigator data rows for cards
+  const investigatorRows = [
+    { lk: 'multiWorkspace.coc.entry.name',      v: cocChar.name       || t('multiWorkspace.coc.entry.unnamed') },
+    { lk: 'multiWorkspace.coc.entry.occupation', v: cocChar.occupation || t('dndBuilder.common.unselected') },
+    { lk: 'multiWorkspace.coc.entry.age',        v: String(cocChar.age || t('dndBuilder.common.unselected')) },
+    { lk: 'multiWorkspace.coc.entry.residence',  v: cocChar.residence  || t('dndBuilder.common.unselected') },
+  ];
+
+  // Sheet view: runtime pool values (prefer runtime if initialized)
+  const sheetRp = {
+    hp:   cocChar.runtime?.hp   ?? cocChar.hp,
+    mp:   cocChar.runtime?.mp   ?? cocChar.mp,
+    san:  cocChar.runtime?.san  ?? { current: cocChar.sanity.current, max: cocChar.sanity.max },
+    luck: cocChar.runtime?.luck ?? { current: cocChar.luck.current },
+  };
+  const sheetChars = [
+    ['STR', cocChar.characteristics.STR],
+    ['CON', cocChar.characteristics.CON],
+    ['SIZ', cocChar.characteristics.SIZ],
+    ['DEX', cocChar.characteristics.DEX],
+    ['APP', cocChar.characteristics.APP],
+    ['INT', cocChar.characteristics.INT],
+    ['POW', cocChar.characteristics.POW],
+    ['EDU', cocChar.characteristics.EDU],
+  ] as [string, number][];
+  const sheetTopSkills = cocChar.skills
+    .filter(s => s.isOccupational || s.isPersonal || s.value > s.baseValue)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 8);
+
+  const panelClass = teal.panel;
+
+  // ── Shared: investigator card with 3 action buttons ──────
+  const renderInvestigatorCard = () => (
+    <div className={`grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]`}>
+      <div className={`${teal.card} p-5`}>
+        <div className={`text-xs font-bold uppercase tracking-wider ${teal.accent}`}>
+          {t('multiWorkspace.coc.entry.current')}
+        </div>
+        <h3 className="mt-2 text-2xl font-bold">{displayName || t('multiWorkspace.coc.entry.unnamed')}</h3>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {investigatorRows.map((row) => (
+            <div key={row.lk} className="border border-white/10 bg-black/10 p-3">
+              <div className={`text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>{t(row.lk)}</div>
+              <div className="mt-1 break-words text-sm font-bold">{row.v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={() => onViewChange('sheet')}
+          className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.secondary}`}
+        >
+          {t('multiWorkspace.actions.viewInvestigatorSheet')}
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpenPlayTab('creator')}
+          className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.secondary}`}
+        >
+          {t('multiWorkspace.actions.continueInvestigatorEditing')}
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpenPlayTab('gameplay')}
+          className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.primary}`}
+        >
+          {t('multiWorkspace.actions.startInvestigation')}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className={`min-h-screen font-serif ${teal.body}`}>
+
+      {/* ── COC workspace secondary navigation ── */}
+      <div className={teal.navBar}>
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-3 md:px-8">
+          <div className="flex items-center gap-2">
+            <BookOpen className={`h-5 w-5 ${teal.navBrand}`} />
+            <span className={`font-elite text-lg ${teal.navBrand}`}>{t('cocWorkspace.title')}</span>
+          </div>
+          <nav className="flex flex-wrap gap-1" aria-label={t('cocWorkspace.title')}>
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const active = isActiveNav(item.key);
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => handleNavClick(item)}
+                  className={`flex items-center gap-1.5 border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${
+                    active ? teal.navActive : teal.navInactive
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {t(item.labelKey)}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      </div>
+
+      {/* ── Play view: preserved COC runtime ──
+          AI-LANDMARK: LEGACY_RUNTIME_EMBEDDED_MODE
+          Children are embedded legacy content; this shell owns navigation chrome. */}
+      {view === 'play' && children}
+
+      {/* ── Non-play views ── */}
+      {view !== 'play' && (
+        <main className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8">
+
+          {/* Overview / Game System Home */}
+          {view === 'dashboard' && (
+            <div className="flex flex-col gap-6">
+              <section className={panelClass}>
+                <div className={`mb-4 text-[11px] font-bold uppercase tracking-wider ${teal.accent} opacity-55`}>
+                  {t('navigation.breadcrumb.platform')} / {t('navigation.breadcrumb.play')} / {t('glossary.coc7e')} / {t('navigation.gameSystemHome')}
+                </div>
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                  <div>
+                    <div className={`text-xs font-bold uppercase tracking-[0.2em] ${teal.accent}`}>
+                      {t('multiWorkspace.eyebrow')}
+                    </div>
+                    <h1 className={`mt-2 font-coc-title text-3xl ${teal.accentStrong}`}>
+                      {t('multiWorkspace.coc.title')}
+                    </h1>
+                    <p className="mt-2 max-w-3xl text-sm opacity-75">{t('multiWorkspace.coc.subtitle')}</p>
+                  </div>
+                  <div className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${teal.badge}`}>
+                    {t('multiWorkspace.status.entryOnly')}
+                  </div>
+                </div>
+              </section>
+
+              <section className={panelClass}>
+                {hasCurrentCharacter ? (
+                  renderInvestigatorCard()
+                ) : (
+                  <div className="text-center">
+                    <h2 className={`text-2xl font-bold ${teal.accentStrong}`}>
+                      {t('multiWorkspace.coc.entry.empty')}
+                    </h2>
+                    <p className="mx-auto mt-2 max-w-xl text-sm opacity-75">
+                      {t('multiWorkspace.coc.home.noActorNote')}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => onViewChange('createMethod')}
+                      className={`mt-5 border px-5 py-2 text-xs font-bold uppercase tracking-wider ${teal.primary}`}
+                    >
+                      {t('multiWorkspace.actions.createInvestigator')}
+                    </button>
+                  </div>
+                )}
+                <p className={`mt-4 border-t border-white/10 pt-3 text-xs opacity-55`}>
+                  {t('navigation.rulesAndDataInTopNav')}
+                </p>
+                <details className="mt-3 text-xs opacity-55">
+                  <summary className={`cursor-pointer font-bold ${teal.accent}`}>
+                    {t('navigation.platformGuidance')}
+                  </summary>
+                  <div className="mt-2 space-y-1">
+                    <p>{t('navigation.actorAbstractionNote')}</p>
+                    <p>{t('navigation.actorMultiCampaignNote')}</p>
+                    <p>{t('navigation.selectedActorGuidance')}</p>
+                    <p>{t('navigation.campaignGuidance')}</p>
+                  </div>
+                </details>
+              </section>
+            </div>
+          )}
+
+          {/* Investigator Vault */}
+          {view === 'vault' && (
+            <section className={panelClass}>
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <div className={`text-xs font-bold uppercase tracking-[0.2em] ${teal.accent}`}>
+                    {t('multiWorkspace.entryPattern.eyebrow')}
+                  </div>
+                  <h2 className={`mt-1 text-xl font-bold ${teal.accentStrong}`}>
+                    {t('multiWorkspace.coc.entry.vaultTitle')}
+                  </h2>
+                  <p className="mt-1 text-sm opacity-75">{t('multiWorkspace.coc.entry.vaultHint')}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onViewChange('createMethod')}
+                  className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.primary}`}
+                >
+                  {t('multiWorkspace.actions.createInvestigator')}
+                </button>
+              </div>
+
+              {hasCurrentCharacter ? (
+                <>
+                  {renderInvestigatorCard()}
+                  <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div className={`border ${teal.planned} p-4`}>
+                      <div className={`text-xs font-bold uppercase tracking-wider ${teal.accent}`}>
+                        {t('multiWorkspace.creation.localImportInvestigator')}
+                      </div>
+                      <p className={`mt-2 text-xs leading-relaxed opacity-65`}>
+                        {t('multiWorkspace.coc.creation.localImportNote')}
+                      </p>
+                      <span className={`mt-3 inline-block border px-2 py-0.5 text-[10px] uppercase tracking-wider ${teal.badgePlanned}`}>
+                        {t('multiWorkspace.status.planned')}
+                      </span>
+                    </div>
+                    <div className={`border ${teal.planned} p-4`}>
+                      <div className={`text-xs font-bold uppercase tracking-wider ${teal.accent}`}>
+                        {t('multiWorkspace.coc.entry.vaultBoundary')}
+                      </div>
+                      <p className="mt-2 text-xs leading-relaxed opacity-65">
+                        {t('navigation.actorAbstractionNote')}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className={`rounded-lg border ${teal.planned} p-8 text-center`}>
+                  <h3 className={`text-xl font-bold ${teal.accentStrong}`}>
+                    {t('multiWorkspace.coc.entry.empty')}
+                  </h3>
+                  <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed opacity-75">
+                    {t('multiWorkspace.coc.entry.emptyNote')}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onViewChange('createMethod')}
+                    className={`mt-5 border px-5 py-2 text-xs font-bold uppercase tracking-wider ${teal.primary}`}
+                  >
+                    {t('multiWorkspace.actions.createInvestigator')}
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Creation Method */}
+          {view === 'createMethod' && (
+            <section className={panelClass}>
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <div className={`text-xs font-bold uppercase tracking-[0.2em] ${teal.accent}`}>
+                    {t('multiWorkspace.creation.eyebrow')}
+                  </div>
+                  <h2 className={`mt-1 text-xl font-bold ${teal.accentStrong}`}>
+                    {t('multiWorkspace.coc.creation.title')}
+                  </h2>
+                  <p className="mt-1 text-sm opacity-75">{t('multiWorkspace.coc.creation.subtitle')}</p>
+                </div>
+                <span className={`border px-2 py-0.5 text-[10px] uppercase tracking-wider ${teal.badgePlanned}`}>
+                  {t('cocWorkspace.creation.builderBoundary')}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {[
+                  {
+                    labelKey: 'multiWorkspace.creation.standard',
+                    noteKey:  'multiWorkspace.coc.creation.standardNote',
+                    planned:  false,
+                    onClick:  () => onOpenPlayTab('creator'),
+                  },
+                  {
+                    labelKey: 'multiWorkspace.creation.quick',
+                    noteKey:  'multiWorkspace.coc.creation.quickNote',
+                    planned:  true,
+                    onClick:  () => setPlannedSlotLabelKey('multiWorkspace.creation.quick'),
+                  },
+                  {
+                    labelKey: 'multiWorkspace.creation.localImportInvestigator',
+                    noteKey:  'multiWorkspace.coc.creation.localImportNote',
+                    planned:  true,
+                    onClick:  () => setPlannedSlotLabelKey('multiWorkspace.creation.localImportInvestigator'),
+                  },
+                  {
+                    labelKey: 'multiWorkspace.creation.workshop',
+                    noteKey:  'multiWorkspace.coc.creation.workshopNote',
+                    planned:  true,
+                    onClick:  () => setPlannedSlotLabelKey('multiWorkspace.creation.workshop'),
+                  },
+                ].map((card) => (
+                  <button
+                    key={card.labelKey}
+                    type="button"
+                    onClick={card.onClick}
+                    className={`min-h-32 rounded-lg border p-4 text-left transition hover:-translate-y-0.5 ${
+                      card.planned
+                        ? `border-[#2f7f68]/35 bg-[#101816]/85 ${teal.cardHover}`
+                        : 'border-[#2f7f68] bg-[#2f7f68]/10 hover:bg-[#2f7f68]/20'
+                    }`}
+                  >
+                    <span className="flex items-start justify-between gap-3">
+                      <span className={`font-bold ${teal.accentStrong}`}>{t(card.labelKey)}</span>
+                      {card.planned && (
+                        <span className={`shrink-0 border px-2 py-0.5 text-[10px] uppercase tracking-wider ${teal.badgePlanned}`}>
+                          {t('multiWorkspace.status.planned')}
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-3 block text-xs leading-relaxed opacity-75">{t(card.noteKey)}</span>
+                  </button>
+                ))}
+              </div>
+
+              {plannedSlotLabelKey && (
+                <div className={`mt-4 border ${teal.planned} p-4`}>
+                  <div className={`text-xs font-bold uppercase tracking-wider ${teal.accent} opacity-70`}>
+                    {t('multiWorkspace.status.planned')}
+                  </div>
+                  <h3 className={`mt-2 font-bold ${teal.accentStrong}`}>{t(plannedSlotLabelKey)}</h3>
+                  <p className="mt-2 text-sm opacity-75">{t('multiWorkspace.planned.message')}</p>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* AI-LANDMARK: COC_WORKSPACE_CLEANUP_V1
+              Investigator Sheet shell — summary view, not the full CocSheet runtime.
+              Reads from store directly; no rule logic, no save-format change. */}
+          {view === 'sheet' && (
+            <section className={panelClass}>
+              <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <div className={`text-xs font-bold uppercase tracking-[0.2em] ${teal.accent}`}>
+                    {t('cocWorkspace.nav.sheet')}
+                  </div>
+                  <h2 className={`mt-1 text-xl font-bold ${teal.accentStrong}`}>
+                    {displayName || t('multiWorkspace.coc.entry.unnamed')}
+                  </h2>
+                  {cocChar.occupation && (
+                    <p className="mt-0.5 text-sm opacity-65">{cocChar.occupation}</p>
+                  )}
+                </div>
+                {hasCurrentCharacter && (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onOpenPlayTab('creator')}
+                      className={`border px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${teal.secondary}`}
+                    >
+                      {t('multiWorkspace.actions.continueInvestigatorEditing')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onOpenPlayTab('gameplay')}
+                      className={`border px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${teal.primary}`}
+                    >
+                      {t('multiWorkspace.actions.startInvestigation')}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {hasCurrentCharacter ? (
+                <div className="space-y-4">
+                  {/* HP / MP / SAN / Luck */}
+                  <div className={`${teal.card} p-4`}>
+                    <div className={`mb-3 text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>
+                      {t('cocWorkspace.sheet.resources')}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      {([
+                        { label: 'HP',   cur: sheetRp.hp.current,   max: sheetRp.hp.max },
+                        { label: 'MP',   cur: sheetRp.mp.current,   max: sheetRp.mp.max },
+                        { label: 'SAN',  cur: sheetRp.san.current,  max: sheetRp.san.max },
+                        { label: 'Luck', cur: sheetRp.luck.current, max: undefined },
+                      ] as { label: string; cur: number; max: number | undefined }[]).map(r => (
+                        <div key={r.label} className="border border-white/10 bg-black/10 p-2 text-center">
+                          <div className={`text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>{r.label}</div>
+                          <div className="mt-1 text-lg font-bold leading-none">
+                            {r.cur}
+                            {r.max !== undefined && (
+                              <span className="ml-0.5 text-xs opacity-45">/{r.max}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Characteristics */}
+                  <div className={`${teal.card} p-4`}>
+                    <div className={`mb-3 text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>
+                      {t('cocWorkspace.sheet.characteristics')}
+                    </div>
+                    <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+                      {sheetChars.map(([label, val]) => (
+                        <div key={label} className="border border-white/10 bg-black/10 p-2 text-center">
+                          <div className={`text-[10px] font-bold ${teal.accent}`}>{label}</div>
+                          <div className="mt-0.5 text-base font-bold">{val}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Skills summary */}
+                  {sheetTopSkills.length > 0 && (
+                    <div className={`${teal.card} p-4`}>
+                      <div className={`mb-3 text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>
+                        {t('cocWorkspace.sheet.skills')}
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                        {sheetTopSkills.map(sk => (
+                          <div key={sk.name} className="flex items-center justify-between border border-white/10 bg-black/10 px-2 py-1.5">
+                            <span className="truncate text-xs">{sk.name}</span>
+                            <span className={`ml-2 shrink-0 text-xs font-bold ${teal.accentStrong}`}>{sk.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-[10px] opacity-40">{t('cocWorkspace.sheet.skillsNote')}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className={`rounded-lg border ${teal.planned} p-8 text-center`}>
+                  <p className="text-sm opacity-75">{t('multiWorkspace.coc.entry.empty')}</p>
+                  <button
+                    type="button"
+                    onClick={() => onViewChange('createMethod')}
+                    className={`mt-4 border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.primary}`}
+                  >
+                    {t('multiWorkspace.actions.createInvestigator')}
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Rules Compendium (shell) */}
+          {view === 'compendium' && (
+            <section className={panelClass}>
+              <h2 className={`mb-2 text-sm font-bold uppercase tracking-wider ${teal.accent}`}>
+                {t('cocWorkspace.compendium.title')}
+              </h2>
+              <p className="mb-4 text-xs opacity-70">{t('cocWorkspace.compendium.note')}</p>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {[
+                  { lk: 'cocWorkspace.compendium.skills',             nk: 'cocWorkspace.compendium.skillsNote' },
+                  { lk: 'cocWorkspace.compendium.occupations',        nk: 'cocWorkspace.compendium.occupationsNote' },
+                  { lk: 'cocWorkspace.compendium.sanity',             nk: 'cocWorkspace.compendium.sanityNote' },
+                  { lk: 'cocWorkspace.compendium.damage',             nk: 'cocWorkspace.compendium.damageNote' },
+                  { lk: 'cocWorkspace.compendium.investigationRules', nk: 'cocWorkspace.compendium.investigationRulesNote' },
+                  { lk: 'cocWorkspace.compendium.clueRules',          nk: 'cocWorkspace.compendium.clueRulesNote' },
+                ].map((card) => (
+                  <div key={card.lk} className="border border-[#2f7f68]/25 bg-[#101816]/60 p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className={`font-bold ${teal.accent}`}>{t(card.lk)}</div>
+                      <span className={`shrink-0 border px-2 py-0.5 text-[10px] uppercase tracking-wider ${teal.badgePlanned}`}>
+                        {t('multiWorkspace.status.planned')}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed opacity-65">{t(card.nk)}</p>
+                  </div>
+                ))}
+              </div>
+              <div className={`mt-4 border ${teal.planned} p-3 text-xs opacity-60`}>
+                {t('cocWorkspace.compendium.planned')}
+              </div>
+            </section>
+          )}
+
+          {/* Source Status / System Health (shell) */}
+          {view === 'sources' && (
+            <section className={panelClass}>
+              <h2 className={`mb-4 text-sm font-bold uppercase tracking-wider ${teal.accent}`}>
+                {t('cocWorkspace.sources.title')}
+              </h2>
+              <p className="mb-4 text-xs opacity-70">{t('cocWorkspace.sources.note')}</p>
+              <div className="space-y-3">
+                <div className="border border-[#2f7f68]/25 bg-[#101816]/60 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className={`mr-2 border px-1.5 py-0.5 text-[10px] uppercase tracking-wider ${teal.badgePlanned}`}>
+                        {t('cocWorkspace.sources.core')}
+                      </span>
+                      <span className={`font-bold ${teal.accent}`}>{t('cocWorkspace.sources.coreSource')}</span>
+                    </div>
+                    <span className={`border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${teal.statusGreen}`}>
+                      {t('cocWorkspace.sources.coreStatus')}
+                    </span>
+                  </div>
+                  <div className="mt-2 font-mono text-[11px] opacity-60">
+                    sourceId: {t('cocWorkspace.sources.coreSourceId')}
+                  </div>
+                  <p className="mt-1 text-xs opacity-75">{t('cocWorkspace.sources.coreNote')}</p>
+                </div>
+              </div>
+              <div className={`mt-4 border ${teal.planned} p-3 text-xs opacity-60`}>
+                {t('cocWorkspace.sources.planned')}
+              </div>
+            </section>
+          )}
+
+          {/* Planned slot */}
+          {view === 'planned' && (
+            <div className="flex min-h-[60vh] items-center justify-center">
+              <section className={`w-full max-w-2xl ${panelClass}`}>
+                <div className={`text-xs font-bold uppercase tracking-[0.2em] ${teal.accent}`}>
+                  {t('multiWorkspace.status.planned')}
+                </div>
+                <h1 className={`mt-3 text-2xl font-bold ${teal.accentStrong}`}>
+                  {t('multiWorkspace.planned.title')}
+                </h1>
+                <p className="mt-3 text-sm leading-relaxed opacity-75">
+                  {t('multiWorkspace.planned.message')}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className={`mt-5 border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.secondary}`}
+                >
+                  {canGoBack && onBack
+                    ? t('navigation.backOneLevel')
+                    : t('multiWorkspace.actions.backToWorkspace')}
+                </button>
+              </section>
+            </div>
+          )}
+
+        </main>
+      )}
+    </div>
+  );
+}
