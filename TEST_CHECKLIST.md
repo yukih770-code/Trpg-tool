@@ -67,6 +67,13 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] DND Workspace — 进入游玩 / 战斗 opens the Gameplay view rather than staying in Builder
 - [ ] DND Workspace — planned Backpack / Items, Map / Tactical Board, and Quests / Notes / Logs cards show placeholder text only
 - [ ] DND Workspace — planned cards do not add inventory state, item instances, map tokens, quest persistence, or runtime automation
+- [ ] DND Character Vault — shows the current local character card with name, level, species, background, and class when present
+- [ ] DND Character Vault — empty state shows a Create Character action and does not imply a real multi-character store
+- [ ] DND Character Vault — View Sheet / Continue Editing / Start Playing route to existing Sheet / Builder / Gameplay views
+- [ ] DND Creation Method — Standard Creation opens the existing BG3-like Builder
+- [ ] DND Creation Method — Quick Creation / Local Import / Workshop Import show planned placeholders only
+- [ ] DND Creation Method — Workshop copy is future-facing only and does not implement subscriptions, downloads, accounts, backend, dependencies, or community content
+- [ ] DND Workspace — top navigation no longer presents Enter Play / Combat as the primary route; Start Playing is a character-context action
 - [ ] DND Dashboard — shows rule scope (DND 2024 / SRD5.2 + XGtE + TCoE), status, and data completion cards
 - [ ] DND Dashboard — module cards open Creator / Sheet / Gameplay in the preserved play view
 - [ ] DND Source Status — shows core + expansion sources with sourceId and status labels (display-only, no toggle)
@@ -94,6 +101,7 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] DND Creator — legacy 艺人 data (if surfaced anywhere) grants 音乐家 (Musician), not 健壮 (Tough)
 - [ ] DND Sheet — legacy characters with old race/background strings still render without crashing (pending-verification note may replace legacy trait text)
 - [ ] DND Sheet — opens, displays character data
+- [ ] DND Sheet — visible Start Playing / Enter Combat Panel CTA opens the preserved Gameplay view
 - [ ] DND Gameplay — opens, runtime resources / checks / actions panels render
 - [ ] DND Gameplay — remains reachable from the DND Workspace Play / Combat entry after Builder hierarchy cleanup
 - [ ] DND Gameplay — existing RollConsole / dice area remains visible when the character is completed

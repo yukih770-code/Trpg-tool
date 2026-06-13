@@ -167,6 +167,16 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Planned slot message: `multiWorkspace.planned.message`
 - `AI-LANDMARK: MULTI_SYSTEM_WORKSPACE_PLANNED_SLOTS`: `src/pages/PlayWorkspace.tsx`, `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
 
+## DND Character Vault / Creation Method Entry
+
+- DND Character Vault shell: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- DND creation method selection: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- Standard Creation route to existing Builder: `onOpenPlayTab('creator')` in `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- Sheet Start Playing CTA: `src/pages/Sheet.tsx`
+- DND play view Sheet wiring: `src/pages/PlayWorkspace.tsx`
+- Vault / creation / Start Playing i18n keys: `dndWorkspace.characters.*`, `dndWorkspace.creation.*`, `dndWorkspace.actions.*` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`
+- `AI-LANDMARK: DND_CHARACTER_VAULT_CREATION_METHOD_ENTRY`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`, `src/pages/Sheet.tsx`
+
 ## Platform Shell / Home / Play Workspace
 
 - Platform shell default entry: `src/App.tsx`

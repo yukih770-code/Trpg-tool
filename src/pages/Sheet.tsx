@@ -8,8 +8,14 @@ import { BACKGROUND_DATA, LEGACY_BACKGROUND_DATA } from '../data/backgrounds';
 import { LEGACY_RACE_DATA } from '../data/races';
 import { getAvailableClasses, getAvailableRaces, getAvailableFeats } from '../lib/mod-utils';
 import { DndEquipmentCatalogPanel } from './sheet/DndEquipmentCatalogPanel';
+import { createTranslator, readStoredLocale } from '../i18n';
 
-export function Sheet() {
+type SheetProps = {
+  onStartPlaying?: () => void;
+};
+
+export function Sheet({ onStartPlaying }: SheetProps = {}) {
+  const { t } = createTranslator(readStoredLocale());
   const {
     character,
     updateField,
@@ -140,6 +146,20 @@ export function Sheet() {
             </div>
           </div>
         </div>
+        {onStartPlaying && (
+          // AI-LANDMARK: DND_CHARACTER_VAULT_CREATION_METHOD_ENTRY
+          // Start Playing is a character-context action from Sheet into the preserved Gameplay surface.
+          <div className="w-full md:w-auto md:self-stretch">
+            <button
+              type="button"
+              onClick={onStartPlaying}
+              className="flex h-full min-h-20 w-full flex-col items-center justify-center border-2 border-[#58180d] bg-[#58180d] px-5 py-3 text-center text-[#fdf6e3] transition hover:bg-[#2c1810] md:w-56"
+            >
+              <span className="text-xs font-bold uppercase tracking-[0.18em] opacity-80">{t('dndWorkspace.actions.startPlaying')}</span>
+              <span className="mt-1 text-lg font-black uppercase tracking-wider">{t('dndWorkspace.actions.enterCombatPanel')}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Attributes Column */}

@@ -683,7 +683,7 @@ export function PlayWorkspace() {
           <DndBackground />
           <div className="relative z-10">
             {tab === 'creator' && <Creator onComplete={() => setTab('sheet')} />}
-            {tab === 'sheet' && <Sheet />}
+            {tab === 'sheet' && <Sheet onStartPlaying={() => setTab('gameplay')} />}
             {tab === 'gameplay' && <Gameplay />}
           </div>
         </div>

@@ -47,6 +47,7 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | DND Character Builder Responsive Workbench Phase 1 | ✅ Done (UI layout only; logic unchanged) |
 | DND Gameplay Entry Preservation v1 | ✅ Done (Gameplay / dice area remains reachable after Builder cleanup) |
 | Multi-System Workspace Shell Planned Slots v1 | ✅ Done (module entries + planned placeholders only) |
+| DND Character Vault & Creation Method Entry v1 | ✅ Done (Vault shell + creation method entry; runtime unchanged) |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -111,6 +112,8 @@ Architecture phase scope:
 - Multi-System Workspace Shell Planned Slots v1 completed. DND / COC / CP RED now expose system-level module cards and planned slots from their workspaces.
 - Planned slots are entry-only placeholders: DND Backpack / Items, Map / Tactical Board, Quests / Notes / Logs; COC Investigator Vault, Clues / Handouts, Investigation Notes / Session Log, Locations / Map, Source Status; CP RED Edgerunner Vault, Enemies / Encounter, Map / Tactical Position, Session Log, Source Status.
 - No inventory data contract, map/token data contract, item system, encounter state, community/backend logic, multiplayer sync, rule data, store schema, migration, Sheet runtime, or Gameplay runtime changed.
+- DND Character Vault & Creation Method Entry v1 completed. DND now routes character creation through a lightweight Character Vault and creation method selection screen before opening the existing Builder.
+- Sheet now exposes a visible Start Playing / Enter Combat Panel action that opens the preserved Gameplay surface. Gameplay / RollConsole assets are preserved as future Runtime Surface assets; no dice algorithm, store schema, rule data, import/export logic, or runtime logic changed.
 - Rule data must declare source and trust metadata before being treated as verified runtime/core data.
 - Unknown-source or suspicious rule data must not be promoted into new gameplay features until it is labeled, quarantined, or verified.
 - Public/free sources may be embedded only within allowed scope; paid-book or official-but-not-public content may be referenced by source metadata but must not copy long rules text.
@@ -144,6 +147,7 @@ Architecture phase scope:
 | DND Character Builder Responsive Workbench Phase 1 | ✅ Done (responsive builder layout; original logic preserved) |
 | DND Gameplay Entry Preservation v1 | ✅ Done (Workspace Play / Combat opens Gameplay; RollConsole reachable) |
 | Multi-System Workspace Shell Planned Slots v1 | ✅ Done (DND/COC/CP RED module cards; planned slots only) |
+| DND Character Vault & Creation Method Entry v1 | ✅ Done (current-character Vault shell; Standard Creation opens existing Builder) |
 
 Action Registry v0 scope:
 - Supports only `classResource` and `pactMagic` resource costs.

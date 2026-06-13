@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { BookOpen, Gamepad2, LayoutDashboard, Library, ScrollText, Users } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Library, ScrollText, Users } from 'lucide-react';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import {
   DND_2024_BACKGROUND_INDEX_DATA,
@@ -24,7 +24,7 @@ import { useCharacterStore } from '../../store/characterStore';
  * real source enable/disable filtering in this phase.
  */
 
-export type DndWorkspaceView = 'dashboard' | 'characters' | 'compendium' | 'sources' | 'play';
+export type DndWorkspaceView = 'dashboard' | 'characters' | 'create' | 'compendium' | 'sources' | 'play';
 export type DndPlayTab = 'creator' | 'sheet' | 'gameplay';
 
 type DndWorkspaceShellProps = {
@@ -40,14 +40,21 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   const { t } = createTranslator(readStoredLocale());
   const dndChar = useCharacterStore((state) => state.character);
   const characterName = (dndChar as { name?: string }).name?.trim();
+  const hasCurrentCharacter = Boolean(
+    characterName ||
+    dndChar.race ||
+    dndChar.background ||
+    dndChar.jobClass ||
+    dndChar.isCompleted,
+  );
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
 
   const navItems: { key: DndWorkspaceView; labelKey: string; icon: typeof LayoutDashboard }[] = [
     { key: 'dashboard', labelKey: 'dndWorkspace.nav.dashboard', icon: LayoutDashboard },
     { key: 'characters', labelKey: 'dndWorkspace.nav.characters', icon: Users },
+    { key: 'create', labelKey: 'dndWorkspace.nav.create', icon: BookOpen },
     { key: 'compendium', labelKey: 'dndWorkspace.nav.compendium', icon: Library },
     { key: 'sources', labelKey: 'dndWorkspace.nav.sources', icon: ScrollText },
-    { key: 'play', labelKey: 'dndWorkspace.nav.play', icon: Gamepad2 },
   ];
 
   const completionRows: { labelKey: string; value: string }[] = [
@@ -63,9 +70,9 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   // AI-LANDMARK: MULTI_SYSTEM_WORKSPACE_PLANNED_SLOTS
   // DND planned modules are platform entry points only, not inventory/map/journal implementations.
   const moduleCards: { labelKey: string; noteKey?: string; planned?: boolean; onClick: () => void }[] = [
-    { labelKey: 'dndWorkspace.modules.create', onClick: () => onOpenPlayTab('creator') },
+    { labelKey: 'dndWorkspace.modules.characters', onClick: () => onViewChange('characters') },
+    { labelKey: 'dndWorkspace.modules.create', onClick: () => onViewChange('create') },
     { labelKey: 'dndWorkspace.modules.sheet', onClick: () => onOpenPlayTab('sheet') },
-    { labelKey: 'dndWorkspace.modules.play', onClick: () => onOpenPlayTab('gameplay') },
     { labelKey: 'dndWorkspace.modules.compendium', onClick: () => onViewChange('compendium') },
     { labelKey: 'dndWorkspace.modules.spellIndex', onClick: () => onViewChange('compendium') },
     { labelKey: 'dndWorkspace.modules.featIndex', onClick: () => onViewChange('compendium') },
@@ -125,6 +132,14 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
 
     onViewChange(nextView);
   };
+  // AI-LANDMARK: DND_CHARACTER_VAULT_CREATION_METHOD_ENTRY
+  // Creation now enters through a method picker; only Standard Creation opens the existing Builder.
+  const creationMethodCards: { labelKey: string; noteKey: string; planned?: boolean; onClick: () => void }[] = [
+    { labelKey: 'dndWorkspace.creation.standard', noteKey: 'dndWorkspace.creation.standardNote', onClick: () => onOpenPlayTab('creator') },
+    { labelKey: 'dndWorkspace.creation.quick', noteKey: 'dndWorkspace.creation.quickNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.quick') },
+    { labelKey: 'dndWorkspace.creation.localImport', noteKey: 'dndWorkspace.creation.localImportNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.localImport') },
+    { labelKey: 'dndWorkspace.creation.workshop', noteKey: 'dndWorkspace.creation.workshopNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.workshop') },
+  ];
 
   return (
     <div className="min-h-screen bg-[#fdf6e3] text-[#2c1810] font-serif">
@@ -232,32 +247,134 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
             </div>
           )}
 
+          {view === 'create' && (
+            <section className={panelClass}>
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-bold text-[#58180d]">{t('dndWorkspace.creation.title')}</h2>
+                  <p className="mt-1 text-sm text-[#58180d]/70">{t('dndWorkspace.creation.subtitle')}</p>
+                </div>
+                <span className="border border-[#58180d]/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#58180d]/70">
+                  {t('dndWorkspace.creation.builderBoundary')}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {creationMethodCards.map((card) => (
+                  <button
+                    key={card.labelKey}
+                    type="button"
+                    onClick={card.onClick}
+                    className="min-h-32 border border-[#58180d]/30 bg-white/60 p-4 text-left transition hover:-translate-y-0.5 hover:border-[#58180d] hover:shadow-md"
+                  >
+                    <span className="flex items-start justify-between gap-3">
+                      <span className="font-bold text-[#58180d]">{t(card.labelKey)}</span>
+                      {card.planned && (
+                        <span className="shrink-0 border border-[#58180d]/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#58180d]/70">
+                          {t('multiWorkspace.status.planned')}
+                        </span>
+                      )}
+                    </span>
+                    <span className="mt-3 block text-xs font-normal leading-relaxed text-[#58180d]/65">{t(card.noteKey)}</span>
+                  </button>
+                ))}
+              </div>
+              {plannedSlotLabelKey && (
+                <div className="mt-4 border border-dashed border-[#58180d]/40 bg-white/40 p-4">
+                  <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]/70">
+                    {t('multiWorkspace.status.planned')}
+                  </div>
+                  <h3 className="mt-2 font-bold text-[#58180d]">{t(plannedSlotLabelKey)}</h3>
+                  <p className="mt-2 text-sm text-[#58180d]/75">{t('dndWorkspace.creation.plannedMessage')}</p>
+                </div>
+              )}
+            </section>
+          )}
+
           {view === 'characters' && (
             <section className={panelClass}>
-              <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-[#58180d]">
-                {t('dndWorkspace.characters.title')}
-              </h2>
-              <div className="border border-[#58180d]/20 bg-white/50 p-4">
-                <div className="text-xs uppercase tracking-wider text-[#58180d]/70">{t('dndWorkspace.characters.current')}</div>
-                <div className="mt-1 text-lg font-bold">{characterName || t('dndWorkspace.characters.empty')}</div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-3">
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-bold text-[#58180d]">{t('dndWorkspace.characters.title')}</h2>
+                  <p className="mt-1 text-sm text-[#58180d]/70">{t('dndWorkspace.characters.hint')}</p>
+                </div>
                 <button
                   type="button"
-                  onClick={() => onOpenPlayTab('creator')}
+                  onClick={() => onViewChange('create')}
                   className="border border-[#58180d] bg-[#58180d] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#fdf6e3] hover:bg-[#2c1810]"
                 >
-                  {t('dndWorkspace.modules.create')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onOpenPlayTab('sheet')}
-                  className="border border-[#58180d]/50 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#58180d] hover:bg-[#58180d]/10"
-                >
-                  {t('dndWorkspace.modules.sheet')}
+                  {t('dndWorkspace.actions.createCharacter')}
                 </button>
               </div>
-              <p className="mt-4 text-xs text-[#58180d]/60">{t('dndWorkspace.characters.hint')}</p>
+
+              {hasCurrentCharacter ? (
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+                  <div className="border border-[#58180d]/20 bg-white/55 p-5">
+                    <div className="text-xs uppercase tracking-wider text-[#58180d]/70">{t('dndWorkspace.characters.current')}</div>
+                    <h3 className="mt-2 text-2xl font-bold text-[#2c1810]">{characterName || t('dndWorkspace.characters.unnamed')}</h3>
+                    <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.level')}</div>
+                        <div className="font-bold">{dndChar.level || 1}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.species')}</div>
+                        <div className="font-bold">{dndChar.race || t('dndBuilder.common.unselected')}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.background')}</div>
+                        <div className="font-bold">{dndChar.background || t('dndBuilder.common.unselected')}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.class')}</div>
+                        <div className="font-bold">{dndChar.jobClass || t('dndBuilder.common.unselected')}</div>
+                      </div>
+                    </div>
+                    <div className="mt-4 border border-dashed border-[#58180d]/30 bg-white/40 p-3 text-xs text-[#58180d]/65">
+                      {t('dndWorkspace.characters.vaultBoundary')}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 lg:w-44">
+                    <button type="button" onClick={() => onOpenPlayTab('sheet')} className="border border-[#58180d]/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#58180d] hover:bg-[#58180d]/10">
+                      {t('dndWorkspace.actions.viewSheet')}
+                    </button>
+                    <button type="button" onClick={() => onOpenPlayTab('creator')} className="border border-[#58180d]/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#58180d] hover:bg-[#58180d]/10">
+                      {t('dndWorkspace.actions.continueEditing')}
+                    </button>
+                    <button type="button" onClick={() => onOpenPlayTab('gameplay')} className="border border-[#58180d] bg-[#58180d] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#fdf6e3] hover:bg-[#2c1810]">
+                      {t('dndWorkspace.actions.startPlaying')}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-dashed border-[#58180d]/30 bg-white/45 p-8 text-center">
+                  <h3 className="text-xl font-bold text-[#58180d]">{t('dndWorkspace.characters.empty')}</h3>
+                  <p className="mx-auto mt-2 max-w-xl text-sm text-[#58180d]/70">{t('dndWorkspace.characters.emptyNote')}</p>
+                  <button
+                    type="button"
+                    onClick={() => onViewChange('create')}
+                    className="mt-5 border border-[#58180d] bg-[#58180d] px-5 py-2 text-xs font-bold uppercase tracking-wider text-[#fdf6e3] hover:bg-[#2c1810]"
+                  >
+                    {t('dndWorkspace.actions.createCharacter')}
+                  </button>
+                </div>
+              )}
+
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="border border-[#58180d]/20 bg-white/45 p-4">
+                  <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]">{t('dndWorkspace.creation.localImport')}</div>
+                  <p className="mt-2 text-xs leading-relaxed text-[#58180d]/65">{t('dndWorkspace.creation.localImportNote')}</p>
+                  <span className="mt-3 inline-block border border-[#58180d]/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#58180d]/70">
+                    {t('multiWorkspace.status.planned')}
+                  </span>
+                </div>
+                <div className="border border-[#58180d]/20 bg-white/45 p-4">
+                  <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]">{t('dndWorkspace.characters.exportImport')}</div>
+                  <p className="mt-2 text-xs leading-relaxed text-[#58180d]/65">{t('dndWorkspace.characters.exportImportNote')}</p>
+                  <span className="mt-3 inline-block border border-[#58180d]/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#58180d]/70">
+                    {t('multiWorkspace.status.planned')}
+                  </span>
+                </div>
+              </div>
             </section>
           )}
 

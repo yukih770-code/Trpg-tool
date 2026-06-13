@@ -30,6 +30,8 @@ DND Character Builder Responsive Workbench Phase 1 completed as a UI/layout pass
 
 Multi-System Workspace Shell Planned Slots v1 added DND workspace module slots for Backpack / Items, Map / Tactical Board, and Quests / Notes / Logs. These are entry-only placeholders with a data-contract warning; no item instance model, inventory store, map/token model, quest log persistence, schema, migration, or runtime automation was added.
 
+DND Character Vault & Creation Method Entry v1 completed as an information-architecture pass. The DND Character Vault is a current-character shell only; it does not implement a real multi-character store, archive, duplicate, campaign assignment, or import/export rewrite. Character creation now enters through a creation method selection screen, where Standard Creation opens the existing Builder and Quick Creation / Local Import / Workshop Import remain planned placeholders. Sheet exposes a visible Start Playing action into the preserved Gameplay view; no Sheet calculations, Gameplay runtime, dice algorithm, rule data, schema, or migration changed.
+
 <!-- AI-LANDMARK: DND_LOCAL_CHM_FULL_COVERAGE_AUDIT -->
 ## DND Local CHM Full Coverage Audit v1
 
