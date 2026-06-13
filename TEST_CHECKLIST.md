@@ -355,6 +355,57 @@ Open the app in the browser and verify each page loads without crashing.
 
 ---
 
+## 6d. Navigation Up + Breadcrumb Minimal Implementation v1 Check
+
+- [ ] Workspace toolbar shows **three distinct** controls: Back (返回) / Up (上一级) / Breadcrumb (当前位置)
+- [ ] Back button label says "返回上一层" when history exists; "返回系统选择" when stack is empty — unchanged from before
+- [ ] Up button label says "上一级" — distinct from Back
+- [ ] Breadcrumb displays full path: e.g. `平台 / 游玩 / DND 5e 2024 / 角色库`
+- [ ] Back, Up, Breadcrumb labels do not share text — no label reuse
+- [ ] **DND**: 角色库 → Up → Game System Home (dashboard)
+- [ ] **DND**: 角色卡 (play/sheet) → Up → 角色库 (characters)
+- [ ] **DND**: Runtime/Gameplay → Up → 角色卡 (play/sheet)
+- [ ] **DND**: Game System Home → Up → exits workspace to Play Menu
+- [ ] **COC**: 调查员卡 (sheet view) → Up → 调查员库 (vault)
+- [ ] **COC**: 调查面板 (runtime) → Up → 调查员卡 (sheet)
+- [ ] **COC**: 调查员库 → Up → Game System Home
+- [ ] **CP RED**: Edgerunner Sheet (play/sheet) → Up → Edgerunner 库 (vault)
+- [ ] **CP RED**: 任务面板 (runtime) → Up → Edgerunner Sheet
+- [ ] **CP RED**: Edgerunner 库 → Up → Game System Home
+- [ ] Up does NOT read the history stack — clicking Up from the same location always yields the same parent regardless of how you arrived
+- [ ] Back still restores previous UI state from history stack — unchanged
+- [ ] Breadcrumb displays view-level label (e.g. "角色库", "创建角色", "角色卡", "规则库", "规则源状态", "游玩", "创建向导", "Game System Home")
+- [ ] `navigation.upOneLevel` i18n key present in both locales
+- [ ] `navigation.breadcrumb.{actorVault,creationMethod,actorSheet,rulesCompendium,sourceStatus,runtime,builder,systemOverview}` keys present in both locales
+- [ ] Landmark `NAVIGATION_UP_BREADCRUMB_MINIMAL_IMPLEMENTATION_V1` present in `src/App.tsx`
+- [ ] No React Router introduced
+- [ ] No URL routing introduced
+- [ ] No `window.history.back()` call introduced
+- [ ] No store schema, migration, save format, runtime rule logic, dice algorithm, or rule data changed
+
+---
+
+## 6c. Navigation Back / Up / Breadcrumb Model Check (Docs Only)
+
+- [ ] `docs/architecture/NAVIGATION_BACK_UP_BREADCRUMB_MODEL.md` exists and is readable
+- [ ] Back, Up, and Breadcrumb are each defined with responsibility / non-responsibility
+- [ ] Document states Back = history stack, Up = parent resolver, Breadcrumb = ancestor chain, and that Up/Breadcrumb are not derived from history
+- [ ] `LocationNode` model defined (id / type / labelKey / parentId / systemId / actorId / sessionId / params) with NavigationNodeType list
+- [ ] Deterministic parent resolver defined (does not read history; uses LocationNode / Section Contract / registry; fallback to Play Home / Platform Home; new systems only declare parents) with examples
+- [ ] Breadcrumb derivation rule defined (walk parentId chain; V1 text-only, V2 clickable ancestors as deterministic navigation; i18n + system/Actor display names) with examples
+- [ ] Back stack rules defined (push timing, do-not-push cases, goBack pop, empty-stack fallback, UI-location-only, no character data, not mixed with browser history)
+- [ ] Workspace Section default parents defined for all 9 sections and compatible with DND/COC/CP RED/no-Sheet/no-Runtime/roster/map-heavy/narrative systems
+- [ ] V1 minimal implementation recommendation present (LocationNode type, derive current node, Back via app stack, Up via resolver, Breadcrumb text)
+- [ ] V1 not-do list present (no URL routing, React Router, deep links, browser back binding, route guards, large App.tsx refactor)
+- [ ] Navigation UI spec present (distinct Back/Up labels, fallback/disabled rules, mobile breadcrumb collapse)
+- [ ] Example scenarios cover DND / COC / CP RED / future wargame (Unit / Roster / Board)
+- [ ] High-risk boundary list present
+- [ ] Navigation pre-implementation acceptance template present
+- [ ] Landmark `NAVIGATION_BACK_UP_BREADCRUMB_MODEL_V1` present in the document
+- [ ] No `src/`, store, schema, runtime, rule data, React Router, URL routing, browser History API, map, inventory, session, workshop, or plugin implementation changed
+
+---
+
 ## 6. Console Check
 
 - [ ] Open browser DevTools → Console
@@ -469,6 +520,30 @@ After modifying one system, verify the other two are unaffected:
 - [ ] Paid-book or official-but-not-public content is referenced by metadata only; long rules text is not copied
 - [ ] Homebrew/demo/placeholder data is visibly labeled or kept quarantined
 - [ ] High-risk legacy datasets remain unchanged unless the task explicitly schedules quarantine or source labeling
+
+---
+
+## 6e. DND Workspace Contract Alignment v1 Check
+
+- [ ] DND workspace top nav shows exactly **4 items**: 工作台总览 / 角色库 / 规则库 / 规则源状态
+- [ ] No '创建角色' item in the top nav bar
+- [ ] Navigating to DND workspace shows the 4-item nav with no creation tab
+- [ ] '创建角色' view is reachable via the "创建第一个角色" CTA in overview (empty state)
+- [ ] '创建角色' view is reachable via the "创建角色" button in 角色库 header
+- [ ] Creation method cards (标准/快速/本地导入/Workshop) still appear correctly in the create view
+- [ ] Clicking 标准创建 opens DND Creator (Builder Workbench)
+- [ ] Planned method cards show planned badge and planned slot message
+- [ ] `actorFlowNote` text appears at the bottom of the create view
+- [ ] `DND_WORKSPACE_CONTRACT_ALIGNMENT_V1` landmark present in `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- [ ] `dndWorkspace.creation.actorFlowNote` key present in both `zh-CN.ts` and `en.ts`
+- [ ] Overview (dashboard) still shows character context / empty state correctly
+- [ ] 角色库 (characters) view still shows Vault entry, 3 action buttons, 2 planned slots
+- [ ] 规则库 (compendium) view still shows 4 index cards
+- [ ] 规则源状态 (sources) view still shows 3 source rows
+- [ ] COC workspace top nav **unchanged** — not touched by this task
+- [ ] CP RED workspace top nav **unchanged** — not touched by this task
+- [ ] No store schema, migration, save format, runtime rule logic, dice algorithm, or rule data changed
+- [ ] No React Router / URL routing / browser History API introduced
 
 ---
 

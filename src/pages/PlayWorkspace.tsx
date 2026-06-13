@@ -5,14 +5,12 @@ import { Gameplay } from './Gameplay';
 import { useAppStore } from '../store/appStore';
 
 import { DndWorkspaceShell, type DndWorkspaceView } from './dndWorkspace/DndWorkspaceShell';
-import { CocWorkspaceShell } from './cocWorkspace/CocWorkspaceShell';
-import { CpEdgerunnerSheetShell, CpWorkspaceShell } from './cpWorkspace/CpWorkspaceShell';
+import { CocInvestigatorBuilderShell, CocWorkspaceShell } from './cocWorkspace/CocWorkspaceShell';
+import { CpEdgerunnerBuilderShell, CpEdgerunnerSheetShell, CpWorkspaceShell } from './cpWorkspace/CpWorkspaceShell';
 
-import { CocCreator } from './CocCreator';
 import { CocSheet } from './CocSheet';
 import { CocGameplay } from './CocGameplay';
 
-import { CpCreator } from './CpCreator';
 import { CpGameplay } from './CpGameplay';
 import { CpMarket } from './CpMarket';
 import type { PlatformRulesetSystem } from '../lib/data-contract/export-envelope';
@@ -552,13 +550,19 @@ export function PlayWorkspace({
 
           <div className="relative z-10">
             {system === 'CoC' && tab === 'creator' && (
-              <CocCreator onComplete={() => openWorkspaceTab('sheet')} />
+              <CocInvestigatorBuilderShell
+                onOpenSheet={() => openWorkspaceView('sheet')}
+                onStartInvestigation={() => openWorkspaceTab('gameplay')}
+              />
             )}
             {system === 'CoC' && tab === 'sheet' && <CocSheet />}
             {system === 'CoC' && tab === 'gameplay' && <CocGameplay embedded />}
 
             {system === 'CP' && tab === 'creator' && (
-              <CpCreator onComplete={() => openWorkspaceTab('sheet')} />
+              <CpEdgerunnerBuilderShell
+                onOpenSheet={() => openWorkspaceTab('sheet')}
+                onStartMission={() => openWorkspaceTab('gameplay')}
+              />
             )}
             {system === 'CP' && tab === 'sheet' && (
               <CpEdgerunnerSheetShell
@@ -578,6 +582,7 @@ export function PlayWorkspace({
     return (
       <CocWorkspaceShell
         view={systemWorkspaceView}
+        currentPlayTab={tab}
         onViewChange={openWorkspaceView}
         onOpenPlayTab={openWorkspaceTab}
         onBack={navigateBackOrDashboard}

@@ -35,6 +35,21 @@ type CpWorkspaceShellProps = {
   children: ReactNode;
 };
 
+type CpBuilderStep =
+  | 'identity'
+  | 'lifepath'
+  | 'role'
+  | 'stats'
+  | 'skills'
+  | 'equipment'
+  | 'cyberware'
+  | 'review';
+
+type CpEdgerunnerBuilderShellProps = {
+  onOpenSheet: () => void;
+  onStartMission: () => void;
+};
+
 // CP RED dark-gold theme constants
 const gold = {
   navBar: 'border-b-2 border-[#d8b954]/70 bg-[#0a0a0a]/95',
@@ -182,6 +197,300 @@ export function CpEdgerunnerSheetShell({
         </div>
       </div>
     </section>
+  );
+}
+
+// AI-LANDMARK: CPRED_BUILDER_BG3_LIKE_SHELL_V1
+// Shell-only BG3-like CP RED builder. Reads the current Edgerunner for preview;
+// it does not write store fields, recalculate rules, alter dice, or change save format.
+export function CpEdgerunnerBuilderShell({
+  onOpenSheet,
+  onStartMission,
+}: CpEdgerunnerBuilderShellProps) {
+  const { t } = createTranslator(readStoredLocale());
+  const character = useCpStore((state) => state.character);
+  const [step, setStep] = useState<CpBuilderStep>('identity');
+  const unselected = t('dndBuilder.common.unselected');
+  const displayName = character.lifePath?.handle?.trim() || character.name?.trim() || t('multiWorkspace.cp.entry.unnamed');
+  const armorSummary = [
+    character.armorHead ? `${t('cpWorkspace.sheet.armorHead')} SP ${character.armorHead.sp}` : null,
+    character.armorBody ? `${t('cpWorkspace.sheet.armorBody')} SP ${character.armorBody.sp}` : null,
+  ].filter(Boolean).join(' / ') || unselected;
+  const topSkills = Object.entries(character.skills)
+    .filter(([, value]) => value > 0)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 6);
+
+  const steps: {
+    id: CpBuilderStep;
+    labelKey: string;
+    hintKey: string;
+    status: 'complete' | 'planned' | 'pending';
+  }[] = [
+    { id: 'identity',  labelKey: 'cpBuilder.steps.identity',  hintKey: 'cpBuilder.hints.identity',  status: character.name || character.lifePath?.handle ? 'complete' : 'pending' },
+    { id: 'lifepath',  labelKey: 'cpBuilder.steps.lifepath',  hintKey: 'cpBuilder.hints.lifepath',  status: character.lifePath?.motivation || character.lifePath?.hometown ? 'complete' : 'planned' },
+    { id: 'role',      labelKey: 'cpBuilder.steps.role',      hintKey: 'cpBuilder.hints.role',      status: character.role ? 'complete' : 'pending' },
+    { id: 'stats',     labelKey: 'cpBuilder.steps.stats',     hintKey: 'cpBuilder.hints.stats',     status: Object.values(character.stats).some(Boolean) ? 'complete' : 'pending' },
+    { id: 'skills',    labelKey: 'cpBuilder.steps.skills',    hintKey: 'cpBuilder.hints.skills',    status: topSkills.length > 0 ? 'complete' : 'planned' },
+    { id: 'equipment', labelKey: 'cpBuilder.steps.equipment', hintKey: 'cpBuilder.hints.equipment', status: character.weapons.length || character.armorBody || character.armorHead ? 'complete' : 'planned' },
+    { id: 'cyberware', labelKey: 'cpBuilder.steps.cyberware', hintKey: 'cpBuilder.hints.cyberware', status: character.cyberware.length ? 'complete' : 'planned' },
+    { id: 'review',    labelKey: 'cpBuilder.steps.review',    hintKey: 'cpBuilder.hints.review',    status: character.name ? 'complete' : 'pending' },
+  ];
+
+  const statusLabel = (status: (typeof steps)[number]['status']) => {
+    if (status === 'complete') return t('cpBuilder.status.complete');
+    if (status === 'planned') return t('multiWorkspace.status.planned');
+    return t('cpBuilder.status.pending');
+  };
+
+  const renderField = (labelKey: string, value: string | number | undefined) => (
+    <div className="rounded border border-[#d8b954]/25 bg-black/20 p-3">
+      <div className={`text-[10px] font-bold uppercase tracking-wider ${gold.accent}`}>{t(labelKey)}</div>
+      <div className="mt-1 break-words text-sm font-bold">{value || unselected}</div>
+    </div>
+  );
+
+  const sectionHeader = (titleKey: string, noteKey: string) => (
+    <div className="mb-4 border-b border-[#d8b954]/20 pb-3">
+      <div className={`text-[10px] font-bold uppercase tracking-[0.22em] ${gold.accent}`}>
+        {t('cpBuilder.currentStep')}
+      </div>
+      <h2 className={`mt-1 text-2xl font-black tracking-widest ${gold.accentStrong}`}>{t(titleKey)}</h2>
+      <p className="mt-1 text-sm leading-relaxed opacity-70">{t(noteKey)}</p>
+    </div>
+  );
+
+  const renderPlaceholder = (titleKey: string, noteKey: string) => (
+    <div className="mt-4 rounded border border-dashed border-[#d8b954]/35 bg-black/20 p-4">
+      <div className={`text-xs font-bold uppercase tracking-wider ${gold.accent}`}>{t(titleKey)}</div>
+      <p className="mt-2 text-sm leading-relaxed opacity-70">{t(noteKey)}</p>
+    </div>
+  );
+
+  const renderStep = () => {
+    if (step === 'identity') {
+      return (
+        <section className={gold.panel}>
+          {sectionHeader('cpBuilder.steps.identity', 'cpBuilder.descriptions.identity')}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {renderField('multiWorkspace.cp.entry.handle', character.lifePath?.handle)}
+            {renderField('multiWorkspace.cp.entry.name', character.name)}
+            {renderField('cpBuilder.fields.player', character.player)}
+            {renderField('cpBuilder.fields.ageGender', `${character.age || '--'} / ${character.gender || unselected}`)}
+            {renderField('cpBuilder.fields.style', character.lifePath?.clothingStyle)}
+            {renderField('cpBuilder.fields.culturalOrigin', character.lifePath?.hometown)}
+          </div>
+          <p className="mt-4 rounded border border-dashed border-[#d8b954]/30 bg-black/20 p-3 text-xs opacity-65">
+            {t('cpBuilder.shellOnlyNote')}
+          </p>
+        </section>
+      );
+    }
+
+    if (step === 'lifepath') {
+      return (
+        <section className={gold.panel}>
+          {sectionHeader('cpBuilder.steps.lifepath', 'cpBuilder.descriptions.lifepath')}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {renderField('cpBuilder.fields.hometown', character.lifePath?.hometown)}
+            {renderField('cpBuilder.fields.motivation', character.lifePath?.motivation)}
+            {renderField('cpBuilder.fields.personality', character.lifePath?.personality)}
+            {renderField('cpBuilder.fields.familyOrigin', character.lifePath?.originsFamily)}
+            {renderField('cpBuilder.fields.childhoodHero', character.lifePath?.childhoodHero)}
+            {renderField('cpBuilder.fields.careerPath', character.lifePath?.careerPath)}
+          </div>
+          {renderPlaceholder('cpBuilder.placeholders.lifepathTitle', 'cpBuilder.placeholders.lifepathNote')}
+        </section>
+      );
+    }
+
+    if (step === 'role') {
+      return (
+        <section className={gold.panel}>
+          {sectionHeader('cpBuilder.steps.role', 'cpBuilder.descriptions.role')}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {renderField('multiWorkspace.cp.entry.role', character.role)}
+            {renderField('multiWorkspace.cp.entry.roleLevel', character.roleLevel)}
+            {renderField('cpBuilder.fields.housing', character.housing)}
+            {renderField('cpBuilder.fields.eurobucks', `${character.eb} eb`)}
+          </div>
+          {renderPlaceholder('cpBuilder.placeholders.roleTitle', 'cpBuilder.placeholders.roleNote')}
+        </section>
+      );
+    }
+
+    if (step === 'stats') {
+      return (
+        <section className={gold.panel}>
+          {sectionHeader('cpBuilder.steps.stats', 'cpBuilder.descriptions.stats')}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            {Object.entries(character.stats).map(([key, value]) => (
+              <div key={key} className="rounded border border-[#d8b954]/25 bg-black/20 p-3 text-center">
+                <div className={`text-xs font-bold ${gold.accent}`}>{key}</div>
+                <div className={`mt-1 text-2xl font-black ${gold.accentStrong}`}>{value || '--'}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {renderField('cpWorkspace.sheet.hp', `${character.hp.current}/${character.hp.max}`)}
+            {renderField('cpWorkspace.sheet.humanity', `${character.humanity.current}/${character.humanity.max}`)}
+            {renderField('cpWorkspace.sheet.move', character.stats.MOVE)}
+            {renderField('cpWorkspace.sheet.ref', character.stats.REF)}
+          </div>
+        </section>
+      );
+    }
+
+    if (step === 'skills') {
+      return (
+        <section className={gold.panel}>
+          {sectionHeader('cpBuilder.steps.skills', 'cpBuilder.descriptions.skills')}
+          {topSkills.length > 0 ? (
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              {topSkills.map(([skillName, value]) => (
+                <div key={skillName} className="flex items-center justify-between rounded border border-[#d8b954]/25 bg-black/20 px-3 py-2 text-xs">
+                  <span className="truncate">{skillName}</span>
+                  <span className={`ml-3 font-bold ${gold.accentStrong}`}>{value}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            renderPlaceholder('cpBuilder.placeholders.skillsTitle', 'cpBuilder.placeholders.skillsNote')
+          )}
+        </section>
+      );
+    }
+
+    if (step === 'equipment') {
+      return (
+        <section className={gold.panel}>
+          {sectionHeader('cpBuilder.steps.equipment', 'cpBuilder.descriptions.equipment')}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {renderField('cpBuilder.fields.weapons', character.weapons.map(w => w.name).join(', '))}
+            {renderField('cpWorkspace.sheet.armor', armorSummary)}
+            {renderField('cpBuilder.fields.gear', character.inventory?.gear?.map(item => item.name).join(', '))}
+          </div>
+          {renderPlaceholder('cpBuilder.placeholders.equipmentTitle', 'cpBuilder.placeholders.equipmentNote')}
+        </section>
+      );
+    }
+
+    if (step === 'cyberware') {
+      return (
+        <section className={gold.panel}>
+          {sectionHeader('cpBuilder.steps.cyberware', 'cpBuilder.descriptions.cyberware')}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {renderField('cpWorkspace.compendium.cyberware', character.cyberware.map(cw => cw.name).join(', '))}
+            {renderField('cpWorkspace.sheet.humanity', `${character.humanity.current}/${character.humanity.max}`)}
+          </div>
+          {renderPlaceholder('cpBuilder.placeholders.cyberwareTitle', 'cpBuilder.placeholders.cyberwareNote')}
+        </section>
+      );
+    }
+
+    return (
+      <section className={gold.panel}>
+        {sectionHeader('cpBuilder.steps.review', 'cpBuilder.descriptions.review')}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {renderField('multiWorkspace.cp.entry.handle', character.lifePath?.handle)}
+          {renderField('multiWorkspace.cp.entry.name', character.name)}
+          {renderField('multiWorkspace.cp.entry.role', character.role)}
+          {renderField('cpBuilder.fields.resources', `HP ${character.hp.current}/${character.hp.max} · Humanity ${character.humanity.current}/${character.humanity.max} · ${character.eb} eb`)}
+          {renderField('cpBuilder.fields.dataStatus', t('cpBuilder.status.shell'))}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" onClick={onOpenSheet} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${gold.secondary}`}>
+            {t('multiWorkspace.actions.viewCharacterSheet')}
+          </button>
+          <button type="button" onClick={onStartMission} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${gold.primary}`}>
+            {t('multiWorkspace.actions.startMission')}
+          </button>
+        </div>
+      </section>
+    );
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-[1440px] overflow-x-hidden">
+      <section className={`${gold.panel} mb-4`}>
+        <div className={`text-xs font-bold uppercase tracking-[0.22em] ${gold.accent}`}>
+          {t('cpBuilder.header.eyebrow')}
+        </div>
+        <h1 className={`mt-2 text-3xl font-black tracking-widest ${gold.accentStrong}`}>{t('cpBuilder.header.title')}</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed opacity-75">{t('cpBuilder.header.subtitle')}</p>
+      </section>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)_300px]">
+        <aside className="lg:sticky lg:top-4 lg:self-start">
+          <div className={`${gold.card} p-3`}>
+            <div className={`mb-2 hidden text-[10px] font-bold uppercase tracking-[0.22em] ${gold.accent} md:block`}>
+              {t('cpBuilder.nav.title')}
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 md:flex-col md:overflow-visible md:pb-0">
+              {steps.map(item => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setStep(item.id)}
+                  className={`min-w-[116px] rounded border px-3 py-2 text-left transition md:min-w-0 ${
+                    step === item.id
+                      ? gold.navActive
+                      : `${gold.navInactive} bg-black/20`
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold">{t(item.labelKey)}</span>
+                    <span className="text-[9px] opacity-70">{statusLabel(item.status)}</span>
+                  </div>
+                  <div className={`mt-1 hidden text-[10px] leading-tight md:block ${step === item.id ? 'text-[#0d0d0d]/70' : 'text-[#d8b954]/60'}`}>
+                    {t(item.hintKey)}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <main className="min-w-0">{renderStep()}</main>
+
+        <aside className="lg:sticky lg:top-4 lg:self-start">
+          <div className={`${gold.card} p-4`}>
+            <h2 className={`text-sm font-bold uppercase tracking-wider ${gold.accent}`}>
+              {t('cpBuilder.summary.title')}
+            </h2>
+            <div className="mt-3 space-y-2">
+              {[
+                [t('multiWorkspace.cp.entry.handle'), displayName],
+                [t('multiWorkspace.cp.entry.role'), character.role || unselected],
+                ['HP / Humanity', `${character.hp.current}/${character.hp.max} · ${character.humanity.current}/${character.humanity.max}`],
+                ['Armor', armorSummary],
+                ['MOVE / REF', `${character.stats.MOVE} / ${character.stats.REF}`],
+                [t('cpBuilder.fields.keyStats'), `INT ${character.stats.INT} / COOL ${character.stats.COOL} / EMP ${character.stats.EMP}`],
+                [t('cpBuilder.fields.skillSummary'), topSkills.length ? topSkills.map(([name, value]) => `${name} ${value}`).join(' / ') : t('cpBuilder.placeholders.skillSummary')],
+                [t('cpBuilder.fields.equipmentCyberware'), `${character.weapons.length} / ${character.cyberware.length}`],
+              ].map(([label, value]) => (
+                <div key={label} className="flex items-start justify-between gap-3 border-b border-white/10 pb-2 text-xs last:border-0">
+                  <span className={`shrink-0 font-bold uppercase tracking-wider ${gold.accent}`}>{label}</span>
+                  <span className="min-w-0 text-right font-semibold">{value}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 rounded border border-dashed border-[#d8b954]/30 bg-black/20 p-3 text-xs leading-relaxed opacity-70">
+              <div className={`font-bold ${gold.accent}`}>{t('cpBuilder.nextStep')}</div>
+              <p className="mt-1">{t('cpBuilder.nextStepNote')}</p>
+            </div>
+            <div className="mt-4 flex flex-col gap-2">
+              <button type="button" onClick={onOpenSheet} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${gold.secondary}`}>
+                {t('multiWorkspace.actions.viewCharacterSheet')}
+              </button>
+              <button type="button" onClick={onStartMission} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${gold.primary}`}>
+                {t('multiWorkspace.actions.startMission')}
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
   );
 }
 

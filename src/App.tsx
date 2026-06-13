@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ChevronsLeft, ChevronsRight, Gamepad2, HomeIcon, Settings, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronUp, ChevronsLeft, ChevronsRight, Gamepad2, HomeIcon, Settings, Sparkles } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Toaster } from '../components/ui/sonner';
@@ -154,6 +154,141 @@ export default function App() {
     setNavigationStack((prev) => prev.slice(0, -1));
   };
 
+  // AI-LANDMARK: NAVIGATION_UP_BREADCRUMB_MINIMAL_IMPLEMENTATION_V1
+  //
+  // Workspace-level node types for deterministic Up navigation.
+  // Maps to the LocationNode model in docs/architecture/NAVIGATION_BACK_UP_BREADCRUMB_MODEL.md.
+  // Up = parent resolver (deterministic); Back = history stack (unchanged).
+  //
+  // Parent chain: runtime/builder/actorSheet → actorVault/creationMethod/… → systemOverview → playMenu
+  type WorkspaceNodeType =
+    | 'systemOverview'
+    | 'actorVault'
+    | 'creationMethod'
+    | 'actorSheet'
+    | 'rulesCompendium'
+    | 'sourceStatus'
+    | 'runtime'
+    | 'builder';
+
+  const deriveNodeType = (
+    sys: System,
+    dndView: string,
+    sysView: string,
+    tab: string,
+  ): WorkspaceNodeType => {
+    if (sys === 'D&D') {
+      if (dndView === 'play') {
+        if (tab === 'gameplay') return 'runtime';
+        if (tab === 'sheet')    return 'actorSheet';
+        return 'builder'; // 'creator'
+      }
+      if (dndView === 'characters') return 'actorVault';
+      if (dndView === 'create')     return 'creationMethod';
+      if (dndView === 'compendium') return 'rulesCompendium';
+      if (dndView === 'sources')    return 'sourceStatus';
+      return 'systemOverview'; // 'dashboard'
+    }
+    // CoC / CP RED
+    if (sysView === 'play') {
+      if (tab === 'gameplay') return 'runtime';
+      if (tab === 'sheet')    return 'actorSheet';
+      return 'builder'; // 'creator'
+    }
+    if (sysView === 'vault')        return 'actorVault';
+    if (sysView === 'createMethod') return 'creationMethod';
+    if (sysView === 'sheet')        return 'actorSheet'; // CoC shell summary view
+    if (sysView === 'compendium')   return 'rulesCompendium';
+    if (sysView === 'sources')      return 'sourceStatus';
+    return 'systemOverview'; // 'dashboard' or 'planned'
+  };
+
+  const getParentNodeType = (nodeType: WorkspaceNodeType): WorkspaceNodeType | 'playMenu' => {
+    switch (nodeType) {
+      case 'runtime':         return 'actorSheet';
+      case 'builder':         return 'creationMethod';
+      case 'actorSheet':      return 'actorVault';
+      case 'actorVault':      return 'systemOverview';
+      case 'creationMethod':  return 'systemOverview';
+      case 'rulesCompendium': return 'systemOverview';
+      case 'sourceStatus':    return 'systemOverview';
+      case 'systemOverview':  return 'playMenu';
+    }
+  };
+
+  const getBreadcrumbViewLabelKey = (nodeType: WorkspaceNodeType): string => {
+    switch (nodeType) {
+      case 'systemOverview':  return 'navigation.breadcrumb.systemOverview';
+      case 'actorVault':      return 'navigation.breadcrumb.actorVault';
+      case 'creationMethod':  return 'navigation.breadcrumb.creationMethod';
+      case 'actorSheet':      return 'navigation.breadcrumb.actorSheet';
+      case 'rulesCompendium': return 'navigation.breadcrumb.rulesCompendium';
+      case 'sourceStatus':    return 'navigation.breadcrumb.sourceStatus';
+      case 'runtime':         return 'navigation.breadcrumb.runtime';
+      case 'builder':         return 'navigation.breadcrumb.builder';
+    }
+  };
+
+  const goUp = () => {
+    const nodeType = deriveNodeType(
+      system,
+      playWorkspaceNavigation.dndWorkspaceView,
+      playWorkspaceNavigation.systemWorkspaceView,
+      playWorkspaceNavigation.tab,
+    );
+    const parentType = getParentNodeType(nodeType);
+
+    pushNavigation(); // snapshot current state so Back can return here
+
+    if (parentType === 'playMenu') {
+      setPlayStage('menu');
+      return;
+    }
+
+    // Translate parent node type back to PlayWorkspaceNavigationState
+    const next: PlayWorkspaceNavigationState = { ...playWorkspaceNavigation };
+
+    if (system === 'D&D') {
+      switch (parentType) {
+        case 'actorSheet':
+          next.dndWorkspaceView = 'play';
+          next.tab = 'sheet';
+          break;
+        case 'actorVault':
+          next.dndWorkspaceView = 'characters';
+          break;
+        case 'creationMethod':
+          next.dndWorkspaceView = 'create';
+          break;
+        default: // systemOverview + any unhandled
+          next.dndWorkspaceView = 'dashboard';
+      }
+    } else {
+      // CoC / CP RED
+      switch (parentType) {
+        case 'actorSheet':
+          if (system === 'CoC') {
+            next.systemWorkspaceView = 'sheet';
+          } else {
+            // CP: embedded sheet tab
+            next.systemWorkspaceView = 'play';
+            next.tab = 'sheet';
+          }
+          break;
+        case 'actorVault':
+          next.systemWorkspaceView = 'vault';
+          break;
+        case 'creationMethod':
+          next.systemWorkspaceView = 'createMethod';
+          break;
+        default: // systemOverview + any unhandled
+          next.systemWorkspaceView = 'dashboard';
+      }
+    }
+
+    setPlayWorkspaceNavigation(next);
+  };
+
   const navigateHome = () => {
     if (appView !== 'home') {
       pushNavigation();
@@ -272,9 +407,28 @@ export default function App() {
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     {t(navigationStack.length > 0 ? 'navigation.backOneLevel' : 'navigation.backToSystemSelect')}
                   </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={goUp}
+                    title={t('navigation.upOneLevel')}
+                    className="rounded-md border-[#2f2a22]/20"
+                  >
+                    <ChevronUp className="mr-2 h-4 w-4" />
+                    {t('navigation.upOneLevel')}
+                  </Button>
                   <div className="text-xs text-[#51483d]">
                     <span className="font-bold">{t('navigation.currentLocation')}：</span>
-                    {t('navigation.breadcrumb.platform')} / {t('navigation.breadcrumb.play')} / {systemLabel}
+                    {(() => {
+                      const nodeType = deriveNodeType(
+                        system,
+                        playWorkspaceNavigation.dndWorkspaceView,
+                        playWorkspaceNavigation.systemWorkspaceView,
+                        playWorkspaceNavigation.tab,
+                      );
+                      const viewLabel = t(getBreadcrumbViewLabelKey(nodeType));
+                      return `${t('navigation.breadcrumb.platform')} / ${t('navigation.breadcrumb.play')} / ${systemLabel} / ${viewLabel}`;
+                    })()}
                   </div>
                 </div>
               </div>

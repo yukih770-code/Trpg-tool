@@ -59,6 +59,9 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | COC Builder BG3-like Shell v1 | ✅ Done (COC Standard Creation now opens a three-column Investigator Builder shell; preview/read-only UI only; no store/save/rule/runtime/dice changes) |
 | CP RED Builder BG3-like Shell v1 | ✅ Done (CP RED Standard Creation now opens a three-column Edgerunner Builder shell; preview/read-only UI only; no store/save/rule/runtime/dice changes) |
 | Platform Pattern + Workspace Section Contract v1 | ✅ Done (docs/architecture only; 9 platform patterns + workspace section contract; no code change) |
+| Navigation Back / Up / Breadcrumb Model v1 | ✅ Done (docs/architecture only; Back=history, Up=parent resolver, Breadcrumb=ancestor chain; no code change) |
+| Navigation Up + Breadcrumb Minimal Implementation v1 | ✅ Done (App.tsx: deriveNodeType/getParentNodeType/goUp helpers; Up button added to workspace toolbar; breadcrumb extended to workspace-view level; 9 i18n keys per locale; landmark NAVIGATION_UP_BREADCRUMB_MINIMAL_IMPLEMENTATION_V1) |
+| DND Workspace Contract Alignment v1 | ✅ Done (DndWorkspaceShell top nav reduced to 4 system-level Sections: overview/actorVault/rulesCompendium/sourceStatus; 'create' removed from navItems, accessible via CTA only; actorFlowNote i18n key added; landmark DND_WORKSPACE_CONTRACT_ALIGNMENT_V1) |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -455,6 +458,10 @@ Platform Character Entry Pattern Alignment v1 scope:
 - New document: `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md` — 9 platform patterns, the 9-entry Workspace Section Contract with implemented/planned/absent three-state semantics, top-navigation rules, Builder/Sheet/Runtime pattern detail, Rules Compendium vs Source Status boundary, Navigation Back/Up/Breadcrumb concept (impl deferred to a later round), future-extension coverage, high-risk boundary list, and a Codex/CC pre-implementation acceptance template.
 - This document complements `docs/architecture/PLATFORM_CORE_CONCEPTS.md`: Core Concepts owns vocabulary + Game System Registry field spec; Patterns + Contract owns how a Game System surfaces those objects in UI/IA.
 - Landmark: `PLATFORM_PATTERNS_WORKSPACE_CONTRACT_V1` in `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`.
+- Navigation Back / Up / Breadcrumb Model v1 completed. The platform now formally distinguishes historical Back, deterministic parent Up, and Breadcrumb path navigation. Back remains history-stack based, Up is resolved from LocationNode parent relationships, and Breadcrumb is derived from the current LocationNode ancestor chain. This is a documentation-only architecture baseline; no src code, store schema, runtime logic, rule data, URL routing, React Router, browser History API, map, inventory, session, workshop, or plugin implementation changed.
+- New document: `docs/architecture/NAVIGATION_BACK_UP_BREADCRUMB_MODEL.md` — three navigation semantics, the `LocationNode` model, deterministic parent resolver, breadcrumb derivation, back-stack push/skip rules, per-Section default parents, V1 minimal/not-do guidance, navigation UI spec, DND/COC/CP RED/wargame example scenarios, high-risk boundary list, and a navigation-task acceptance template.
+- Up and Breadcrumb are never derived from the history stack; Up uses the parent resolver, Breadcrumb walks the `parentId` chain. V1 adds no React Router, no URL routing, and no browser History API rewrite.
+- Landmark: `NAVIGATION_BACK_UP_BREADCRUMB_MODEL_V1` in `docs/architecture/NAVIGATION_BACK_UP_BREADCRUMB_MODEL.md`.
 
 System Actor Session Workspace IA Correction v1 scope:
 - Three-tier workspace IA defined: System Workspace (rule scope, character library, creation, compendium, source status, completion); Actor Workspace (character card, current status, resources, inventory, start playing, personal journal); Session / Campaign Workspace (map, token, handout, session log, encounter, GM tools).

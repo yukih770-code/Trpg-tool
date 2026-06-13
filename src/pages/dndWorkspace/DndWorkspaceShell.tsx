@@ -14,6 +14,7 @@ import { useCharacterStore } from '../../store/characterStore';
  * DndWorkspaceShell
  *
  * AI-LANDMARK: DND_PRODUCT_SHELL_PHASE_1
+ * AI-LANDMARK: DND_WORKSPACE_CONTRACT_ALIGNMENT_V1
  *
  * DND product shell phase 1: entering DND opens a workspace dashboard
  * (rule scope, source status, data completion, module launcher) instead of
@@ -22,6 +23,11 @@ import { useCharacterStore } from '../../store/characterStore';
  *
  * Display-only shell: no rules data changes, no runtime automation, and no
  * real source enable/disable filtering in this phase.
+ *
+ * Contract Alignment v1: top nav limited to system-level Sections only
+ * (overview / actorVault / rulesCompendium / sourceStatus). creationMethod
+ * ('create' view) is accessible via CTAs from overview and actorVault.
+ * builder / sheet / runtime are Actor-context flows — not top-nav peers.
  */
 
 export type DndWorkspaceView = 'dashboard' | 'characters' | 'create' | 'compendium' | 'sources' | 'play';
@@ -49,12 +55,15 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   );
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
 
+  // AI-LANDMARK: DND_WORKSPACE_CONTRACT_ALIGNMENT_V1
+  // Top nav = system-level Sections only (Contract §5 / PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT_V1).
+  // 'create' (creationMethod) is Actor/Creation context — accessible via CTA from overview & vault.
+  // builder / sheet / runtime must NOT appear here; they depend on an Actor context.
   const navItems: { key: DndWorkspaceView; labelKey: string; icon: typeof LayoutDashboard }[] = [
-    { key: 'dashboard', labelKey: 'dndWorkspace.nav.dashboard', icon: LayoutDashboard },
+    { key: 'dashboard',  labelKey: 'dndWorkspace.nav.dashboard',  icon: LayoutDashboard },
     { key: 'characters', labelKey: 'dndWorkspace.nav.characters', icon: Users },
-    { key: 'create', labelKey: 'dndWorkspace.nav.create', icon: BookOpen },
     { key: 'compendium', labelKey: 'dndWorkspace.nav.compendium', icon: Library },
-    { key: 'sources', labelKey: 'dndWorkspace.nav.sources', icon: ScrollText },
+    { key: 'sources',    labelKey: 'dndWorkspace.nav.sources',    icon: ScrollText },
   ];
 
   const completionRows: { labelKey: string; value: string }[] = [
@@ -291,6 +300,9 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                   <p className="mt-2 text-sm text-[#58180d]/75">{t('dndWorkspace.creation.plannedMessage')}</p>
                 </div>
               )}
+              <p className="mt-4 border-t border-[#58180d]/15 pt-3 text-[10px] text-[#58180d]/50">
+                {t('dndWorkspace.creation.actorFlowNote')}
+              </p>
             </section>
           )}
 

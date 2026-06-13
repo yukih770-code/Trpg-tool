@@ -269,6 +269,25 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Future Game System categories (Japanese TRPG, Wargame, Custom, Narrative): Section 5 of `PLATFORM_CORE_CONCEPTS.md`
 - No store, schema, runtime, or rule data changed by this baseline
 
+## Navigation Back / Up / Breadcrumb Model
+
+- Full navigation model: `docs/architecture/NAVIGATION_BACK_UP_BREADCRUMB_MODEL.md`
+- `AI-LANDMARK: NAVIGATION_BACK_UP_BREADCRUMB_MODEL_V1`: `docs/architecture/NAVIGATION_BACK_UP_BREADCRUMB_MODEL.md`
+- Three navigation semantics (Back = history stack / Up = parent resolver / Breadcrumb = ancestor chain): Section 2
+- `LocationNode` model + `NavigationNodeType` list: Section 3
+- Deterministic parent resolver (`getParentNode`) with per-node examples: Section 4
+- Breadcrumb derivation (`getBreadcrumb` walks parentId chain): Section 5
+- Back stack push/skip/fallback rules: Section 6
+- Per-Section default parents (overview…sessionCampaign) + future-system compatibility: Section 7
+- V1 minimal implementation + V1 not-do: Section 8
+- Navigation UI spec (distinct Back/Up labels, mobile breadcrumb collapse): Section 9
+- DND / COC / CP RED / wargame example scenarios: Section 10
+- High-risk boundaries: Section 11
+- Navigation pre-implementation acceptance template: Section 12
+- Existing Back implementation it builds on: `AI-LANDMARK: PLATFORM_NAVIGATION_HISTORY_STACK` in `src/App.tsx`
+- Companion docs: `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md` (Navigation Pattern §2.9, §10), `docs/architecture/PLATFORM_CORE_CONCEPTS.md`
+- No store, schema, runtime, or rule data changed by this baseline
+
 ## Platform Patterns & Workspace Section Contract
 
 - Full pattern + section contract definitions: `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`
@@ -312,6 +331,31 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Existing system selector and creator / sheet / gameplay / market tabs: `src/pages/PlayWorkspace.tsx`
 - Current ruleset state: `useAppStore` in `src/store/appStore.ts`
 - Home character snapshot reads: `useCharacterStore`, `useCocStore`, and `useCpStore`
+
+## DND Workspace Contract Alignment v1
+
+- `AI-LANDMARK: DND_WORKSPACE_CONTRACT_ALIGNMENT_V1`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- `navItems` (4-item top nav): `src/pages/dndWorkspace/DndWorkspaceShell.tsx` — dashboard / characters / compendium / sources only; 'create' removed from top nav
+- `actorFlowNote` note: displayed at bottom of `create` view section in `DndWorkspaceShell.tsx`
+- `dndWorkspace.creation.actorFlowNote` i18n key: `src/i18n/locales/zh-CN.ts`, `src/i18n/locales/en.ts`
+- `create` view (`DndWorkspaceView='create'`): still present and reachable via CTA from overview (empty state) and actorVault (header button)
+
+## Navigation Up + Breadcrumb Minimal Implementation
+
+- `AI-LANDMARK: NAVIGATION_UP_BREADCRUMB_MINIMAL_IMPLEMENTATION_V1`: `src/App.tsx`
+- Workspace node type alias: `WorkspaceNodeType` (inline type in `App.tsx`) — values: `systemOverview | actorVault | creationMethod | actorSheet | rulesCompendium | sourceStatus | runtime | builder`
+- Current location derivation: `deriveNodeType(sys, dndView, sysView, tab)` in `src/App.tsx` — maps `system + dndWorkspaceView/systemWorkspaceView + tab` → `WorkspaceNodeType`
+- Deterministic parent resolver: `getParentNodeType(nodeType)` in `src/App.tsx` — returns `WorkspaceNodeType | 'playMenu'`; never reads history stack
+- Breadcrumb view label key lookup: `getBreadcrumbViewLabelKey(nodeType)` in `src/App.tsx` — returns `navigation.breadcrumb.*` i18n key
+- Up navigation action: `goUp()` in `src/App.tsx` — calls `pushNavigation()` then translates parent node type to `PlayWorkspaceNavigationState` or `setPlayStage('menu')`
+- Up button: `ChevronUp` icon in workspace toolbar, `src/App.tsx` (added to lucide-react import)
+- Breadcrumb text: `Platform / Play / {systemLabel} / {viewLabel}` displayed in workspace toolbar, `src/App.tsx`
+- Parent chain: `runtime→actorSheet`, `builder→creationMethod`, `actorSheet→actorVault`, `actorVault/creationMethod/rulesCompendium/sourceStatus→systemOverview`, `systemOverview→playMenu`
+- DND Up translation: `actorSheet→dndView='play'+tab='sheet'`, `actorVault→dndView='characters'`, `creationMethod→dndView='create'`, `systemOverview→dndView='dashboard'`, `playMenu→setPlayStage('menu')`
+- COC Up translation: `actorSheet→sysView='sheet'`, `actorVault→sysView='vault'`, `creationMethod→sysView='createMethod'`, `systemOverview→sysView='dashboard'`
+- CP RED Up translation: `actorSheet→sysView='play'+tab='sheet'`, same vault/createMethod/dashboard as COC
+- Breadcrumb view i18n keys: `navigation.breadcrumb.{systemOverview,actorVault,creationMethod,actorSheet,rulesCompendium,sourceStatus,runtime,builder}` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`
+- Up label i18n key: `navigation.upOneLevel` in both locales
 
 ## Platform Navigation History Stack
 

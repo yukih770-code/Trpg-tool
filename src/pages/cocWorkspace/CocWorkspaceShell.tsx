@@ -28,6 +28,7 @@ type CocWorkspaceView =
 
 type CocWorkspaceShellProps = {
   view: CocWorkspaceView;
+  currentPlayTab?: string;
   onViewChange: (view: CocWorkspaceView) => void;
   onOpenPlayTab: (tab: string) => void;
   onBack?: () => void;
@@ -55,8 +56,299 @@ const teal = {
   planned: 'border-dashed border-[#2f7f68]/40 bg-black/10',
 };
 
+type CocBuilderStep =
+  | 'identity'
+  | 'characteristics'
+  | 'occupation'
+  | 'skills'
+  | 'backstory'
+  | 'equipment'
+  | 'review';
+
+type CocInvestigatorBuilderShellProps = {
+  onOpenSheet: () => void;
+  onStartInvestigation: () => void;
+};
+
+// AI-LANDMARK: COC_BUILDER_BG3_LIKE_SHELL_V1
+// Shell-only BG3-like COC builder. Reads current investigator data for preview;
+// does not write store fields, recalculate rules, or change save format.
+export function CocInvestigatorBuilderShell({
+  onOpenSheet,
+  onStartInvestigation,
+}: CocInvestigatorBuilderShellProps) {
+  const { t } = createTranslator(readStoredLocale());
+  const character = useCocStore((state) => state.character);
+  const [step, setStep] = useState<CocBuilderStep>('identity');
+  const unselected = t('dndBuilder.common.unselected');
+  const displayName = character.name?.trim() || t('multiWorkspace.coc.entry.unnamed');
+  const runtimePools = {
+    hp: character.runtime?.hp ?? character.hp,
+    mp: character.runtime?.mp ?? character.mp,
+    san: character.runtime?.san ?? { current: character.sanity.current, max: character.sanity.max },
+    luck: character.runtime?.luck ?? { current: character.luck.current },
+  };
+
+  const steps: {
+    id: CocBuilderStep;
+    labelKey: string;
+    hintKey: string;
+    status: 'complete' | 'planned' | 'pending';
+  }[] = [
+    { id: 'identity',        labelKey: 'cocBuilder.steps.identity',        hintKey: 'cocBuilder.hints.identity',        status: character.name ? 'complete' : 'pending' },
+    { id: 'characteristics', labelKey: 'cocBuilder.steps.characteristics', hintKey: 'cocBuilder.hints.characteristics', status: Object.values(character.characteristics).some(Boolean) ? 'complete' : 'pending' },
+    { id: 'occupation',      labelKey: 'cocBuilder.steps.occupation',      hintKey: 'cocBuilder.hints.occupation',      status: character.occupation ? 'complete' : 'planned' },
+    { id: 'skills',          labelKey: 'cocBuilder.steps.skills',          hintKey: 'cocBuilder.hints.skills',          status: 'planned' },
+    { id: 'backstory',       labelKey: 'cocBuilder.steps.backstory',       hintKey: 'cocBuilder.hints.backstory',       status: 'planned' },
+    { id: 'equipment',       labelKey: 'cocBuilder.steps.equipment',       hintKey: 'cocBuilder.hints.equipment',       status: 'planned' },
+    { id: 'review',          labelKey: 'cocBuilder.steps.review',          hintKey: 'cocBuilder.hints.review',          status: character.name ? 'complete' : 'pending' },
+  ];
+
+  const characteristicRows = Object.entries(character.characteristics);
+  const topSkills = character.skills
+    .filter(skill => skill.isOccupational || skill.isPersonal || skill.value > skill.baseValue)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6);
+
+  const statusLabel = (status: (typeof steps)[number]['status']) => {
+    if (status === 'complete') return t('cocBuilder.status.complete');
+    if (status === 'planned') return t('multiWorkspace.status.planned');
+    return t('cocBuilder.status.pending');
+  };
+
+  const renderField = (labelKey: string, value: string | number | undefined) => (
+    <div className="rounded border border-[#2f7f68]/25 bg-black/10 p-3">
+      <div className={`text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>{t(labelKey)}</div>
+      <div className="mt-1 break-words text-sm font-bold">{value || unselected}</div>
+    </div>
+  );
+
+  const sectionHeader = (titleKey: string, noteKey: string) => (
+    <div className="mb-4 border-b border-[#2f7f68]/20 pb-3">
+      <div className={`text-[10px] font-bold uppercase tracking-[0.22em] ${teal.accent}`}>
+        {t('cocBuilder.currentStep')}
+      </div>
+      <h2 className={`mt-1 text-2xl font-bold ${teal.accentStrong}`}>{t(titleKey)}</h2>
+      <p className="mt-1 text-sm leading-relaxed opacity-70">{t(noteKey)}</p>
+    </div>
+  );
+
+  const renderStep = () => {
+    if (step === 'identity') {
+      return (
+        <section className={teal.panel}>
+          {sectionHeader('cocBuilder.steps.identity', 'cocBuilder.descriptions.identity')}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {renderField('multiWorkspace.coc.entry.name', character.name)}
+            {renderField('cocBuilder.fields.player', character.player)}
+            {renderField('multiWorkspace.coc.entry.age', character.age)}
+            {renderField('cocBuilder.fields.era', t('cocBuilder.placeholders.era'))}
+            {renderField('multiWorkspace.coc.entry.occupation', character.occupation)}
+            {renderField('cocBuilder.fields.residence', character.residence)}
+          </div>
+          <p className="mt-4 rounded border border-dashed border-[#2f7f68]/30 bg-black/10 p-3 text-xs opacity-65">
+            {t('cocBuilder.shellOnlyNote')}
+          </p>
+        </section>
+      );
+    }
+
+    if (step === 'characteristics') {
+      return (
+        <section className={teal.panel}>
+          {sectionHeader('cocBuilder.steps.characteristics', 'cocBuilder.descriptions.characteristics')}
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
+            {characteristicRows.map(([key, value]) => (
+              <div key={key} className="rounded border border-[#2f7f68]/25 bg-black/10 p-3 text-center">
+                <div className={`text-xs font-bold ${teal.accent}`}>{key}</div>
+                <div className={`mt-1 text-2xl font-black ${teal.accentStrong}`}>{value || '--'}</div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs opacity-60">{t('cocBuilder.descriptions.characteristicsReadOnly')}</p>
+        </section>
+      );
+    }
+
+    if (step === 'occupation') {
+      return (
+        <section className={teal.panel}>
+          {sectionHeader('cocBuilder.steps.occupation', 'cocBuilder.descriptions.occupation')}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {renderField('multiWorkspace.coc.entry.occupation', character.occupation)}
+            {renderField('cocBuilder.fields.occupationStyle', t('cocBuilder.placeholders.occupationStyle'))}
+          </div>
+          <PlaceholderBox titleKey="cocBuilder.placeholders.fullOccupationRulesTitle" noteKey="cocBuilder.placeholders.fullOccupationRulesNote" />
+        </section>
+      );
+    }
+
+    if (step === 'skills') {
+      return (
+        <section className={teal.panel}>
+          {sectionHeader('cocBuilder.steps.skills', 'cocBuilder.descriptions.skills')}
+          {topSkills.length > 0 ? (
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+              {topSkills.map(skill => (
+                <div key={skill.name} className="flex items-center justify-between rounded border border-[#2f7f68]/25 bg-black/10 px-3 py-2 text-xs">
+                  <span className="truncate">{skill.name}</span>
+                  <span className={`ml-3 font-bold ${teal.accentStrong}`}>{skill.value}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <PlaceholderBox titleKey="cocBuilder.placeholders.skillAllocationTitle" noteKey="cocBuilder.placeholders.skillAllocationNote" />
+          )}
+        </section>
+      );
+    }
+
+    if (step === 'backstory') {
+      return (
+        <section className={teal.panel}>
+          {sectionHeader('cocBuilder.steps.backstory', 'cocBuilder.descriptions.backstory')}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {renderField('cocBuilder.fields.personalDescription', character.backstory.personalDescription)}
+            {renderField('cocBuilder.fields.ideologyBeliefs', character.backstory.ideologyBeliefs)}
+            {renderField('cocBuilder.fields.significantPeople', character.backstory.significantPeople)}
+            {renderField('cocBuilder.fields.meaningfulLocations', character.backstory.meaningfulLocations)}
+          </div>
+          <PlaceholderBox titleKey="cocBuilder.placeholders.backstoryTitle" noteKey="cocBuilder.placeholders.backstoryNote" />
+        </section>
+      );
+    }
+
+    if (step === 'equipment') {
+      return (
+        <section className={teal.panel}>
+          {sectionHeader('cocBuilder.steps.equipment', 'cocBuilder.descriptions.equipment')}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {renderField('cocBuilder.fields.inventory', character.inventory.join(', '))}
+            {renderField('cocBuilder.fields.cash', character.finances.cash)}
+            {renderField('cocBuilder.fields.weapons', character.weapons.map(w => w.name).join(', '))}
+          </div>
+          <PlaceholderBox titleKey="cocBuilder.placeholders.equipmentTitle" noteKey="cocBuilder.placeholders.equipmentNote" />
+        </section>
+      );
+    }
+
+    return (
+      <section className={teal.panel}>
+        {sectionHeader('cocBuilder.steps.review', 'cocBuilder.descriptions.review')}
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {renderField('multiWorkspace.coc.entry.name', character.name)}
+          {renderField('multiWorkspace.coc.entry.occupation', character.occupation)}
+          {renderField('cocBuilder.fields.resources', `HP ${runtimePools.hp.current}/${runtimePools.hp.max} · MP ${runtimePools.mp.current}/${runtimePools.mp.max} · SAN ${runtimePools.san.current}/${runtimePools.san.max}`)}
+          {renderField('cocBuilder.fields.dataStatus', t('cocBuilder.status.shell'))}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" onClick={onOpenSheet} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.secondary}`}>
+            {t('multiWorkspace.actions.viewInvestigatorSheet')}
+          </button>
+          <button type="button" onClick={onStartInvestigation} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.primary}`}>
+            {t('multiWorkspace.actions.startInvestigation')}
+          </button>
+        </div>
+      </section>
+    );
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-[1440px] overflow-x-hidden">
+      <section className={`${teal.panel} mb-4`}>
+        <div className={`text-xs font-bold uppercase tracking-[0.22em] ${teal.accent}`}>
+          {t('cocBuilder.header.eyebrow')}
+        </div>
+        <h1 className={`mt-2 text-3xl font-bold ${teal.accentStrong}`}>{t('cocBuilder.header.title')}</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed opacity-75">{t('cocBuilder.header.subtitle')}</p>
+      </section>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_minmax(0,1fr)_300px]">
+        <aside className="lg:sticky lg:top-4 lg:self-start">
+          <div className={`${teal.card} p-3`}>
+            <div className={`mb-2 hidden text-[10px] font-bold uppercase tracking-[0.22em] ${teal.accent} md:block`}>
+              {t('cocBuilder.nav.title')}
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 md:flex-col md:overflow-visible md:pb-0">
+              {steps.map(item => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setStep(item.id)}
+                  className={`min-w-[116px] rounded border px-3 py-2 text-left transition md:min-w-0 ${
+                    step === item.id
+                      ? `${teal.navActive}`
+                      : `${teal.navInactive} bg-black/10`
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-bold">{t(item.labelKey)}</span>
+                    <span className="text-[9px] opacity-70">{statusLabel(item.status)}</span>
+                  </div>
+                  <div className={`mt-1 hidden text-[10px] leading-tight md:block ${step === item.id ? 'text-[#06100d]/70' : 'text-[#8fb7aa]/60'}`}>
+                    {t(item.hintKey)}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <main className="min-w-0">{renderStep()}</main>
+
+        <aside className="lg:sticky lg:top-4 lg:self-start">
+          <div className={`${teal.card} p-4`}>
+            <h2 className={`text-sm font-bold uppercase tracking-wider ${teal.accent}`}>
+              {t('cocBuilder.summary.title')}
+            </h2>
+            <div className="mt-3 space-y-2">
+              {[
+                [t('multiWorkspace.coc.entry.name'), displayName],
+                [t('multiWorkspace.coc.entry.occupation'), character.occupation || unselected],
+                [t('cocBuilder.fields.era'), t('cocBuilder.placeholders.era')],
+                ['HP / MP', `${runtimePools.hp.current}/${runtimePools.hp.max} · ${runtimePools.mp.current}/${runtimePools.mp.max}`],
+                ['SAN / Luck', `${runtimePools.san.current}/${runtimePools.san.max} · ${runtimePools.luck.current}`],
+                [t('cocBuilder.fields.keyCharacteristics'), `INT ${character.characteristics.INT || '--'} / POW ${character.characteristics.POW || '--'} / EDU ${character.characteristics.EDU || '--'}`],
+                [t('cocBuilder.fields.skillSummary'), topSkills.length ? topSkills.map(s => `${s.name} ${s.value}`).join(' / ') : t('cocBuilder.placeholders.skillSummary')],
+              ].map(([label, value]) => (
+                <div key={label} className="flex items-start justify-between gap-3 border-b border-white/10 pb-2 text-xs last:border-0">
+                  <span className={`shrink-0 font-bold uppercase tracking-wider ${teal.accent}`}>{label}</span>
+                  <span className="min-w-0 text-right font-semibold">{value}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 rounded border border-dashed border-[#2f7f68]/30 bg-black/10 p-3 text-xs leading-relaxed opacity-70">
+              <div className={`font-bold ${teal.accent}`}>{t('cocBuilder.nextStep')}</div>
+              <p className="mt-1">{t('cocBuilder.nextStepNote')}</p>
+            </div>
+            <div className="mt-4 flex flex-col gap-2">
+              <button type="button" onClick={onOpenSheet} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.secondary}`}>
+                {t('multiWorkspace.actions.viewInvestigatorSheet')}
+              </button>
+              <button type="button" onClick={onStartInvestigation} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.primary}`}>
+                {t('multiWorkspace.actions.startInvestigation')}
+              </button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function PlaceholderBox({ titleKey, noteKey }: { titleKey: string; noteKey: string }) {
+  const { t } = createTranslator(readStoredLocale());
+  return (
+    <div className="mt-4 rounded border border-dashed border-[#2f7f68]/35 bg-black/10 p-4">
+      <div className="text-xs font-bold uppercase tracking-wider text-[#8fb7aa]">{t(titleKey)}</div>
+      <p className="mt-2 text-sm leading-relaxed opacity-70">{t(noteKey)}</p>
+    </div>
+  );
+}
+
 export function CocWorkspaceShell({
   view,
+  currentPlayTab = '',
   onViewChange,
   onOpenPlayTab,
   onBack,
@@ -79,9 +371,13 @@ export function CocWorkspaceShell({
     { key: 'sources',      labelKey: 'cocWorkspace.nav.sources',    icon: ScrollText },
   ];
 
-  const isActiveNav = (key: CocWorkspaceView) => {
+  const isActiveNav = (item: (typeof navItems)[number]) => {
     if (view === 'planned') return false;
-    return view === key;
+    if (item.isPlayAction) return view === 'play' && currentPlayTab === 'gameplay';
+    if (item.key === 'createMethod') return view === 'createMethod' || (view === 'play' && currentPlayTab === 'creator');
+    if (item.key === 'sheet') return view === 'sheet' || (view === 'play' && currentPlayTab === 'sheet');
+    if (view === 'play') return false;
+    return view === item.key;
   };
 
   const handleNavClick = (item: { key: CocWorkspaceView; isPlayAction?: boolean }) => {
@@ -189,7 +485,7 @@ export function CocWorkspaceShell({
           <nav className="flex flex-wrap gap-1" aria-label={t('cocWorkspace.title')}>
             {navItems.map((item) => {
               const Icon = item.icon;
-              const active = isActiveNav(item.key);
+              const active = isActiveNav(item);
               return (
                 <button
                   key={item.key}

@@ -6,24 +6,28 @@
 
 ## Task
 
-- ID: Platform Pattern + Workspace Section Contract v1
-- Name: Platform Pattern + Workspace Section Contract v1
-- Goal: Establish the platform-level Pattern and Workspace Section Contract baseline so DND / COC / CP RED / future systems implement platform patterns instead of copying one another. Docs only.
+- ID: DND Workspace Contract Alignment v1
+- Name: DND Workspace Contract Alignment v1
+- Goal: Align DND workspace top navigation to Platform Workspace Section Contract: only system-level Sections in top nav (overview / actorVault / rulesCompendium / sourceStatus). Remove 'create' (creationMethod) from top nav; keep it accessible via CTAs from overview and actorVault. Add actor flow note clarifying builder/sheet/runtime are Actor-context flows. Add landmark.
 - Phase: P1 platform architecture
-- Status: Done (docs only; no src change)
+- Status: Done
 
 ## Result Summary
 
-- New document `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md` defines 9 platform patterns, the 9-entry Workspace Section Contract with implemented/planned/absent three-state semantics, top-navigation rules, Builder/Sheet/Runtime pattern detail, Rules Compendium vs Source Status boundary, Navigation Back/Up/Breadcrumb concept (implementation deferred), future-extension coverage, high-risk boundary list, and a Codex/CC pre-implementation acceptance template.
-- Complements `docs/architecture/PLATFORM_CORE_CONCEPTS.md` (vocabulary/registry) with the pattern + contract layer (how systems surface objects in UI/IA).
-- Landmark: `PLATFORM_PATTERNS_WORKSPACE_CONTRACT_V1`.
-- No `src/`, store schema, migration, runtime logic, dice algorithm, rule data, import/export, routing, workshop, map, inventory, or session implementation changed.
+- `src/pages/dndWorkspace/DndWorkspaceShell.tsx`: Added `DND_WORKSPACE_CONTRACT_ALIGNMENT_V1` landmark. Removed `create` entry from `navItems` (now 4 items: dashboard / characters / compendium / sources). Added contract alignment comment above `navItems`. Added `actorFlowNote` paragraph at the bottom of the `create` view section.
+- `src/i18n/locales/zh-CN.ts`: Added `dndWorkspace.creation.actorFlowNote`.
+- `src/i18n/locales/en.ts`: Added `dndWorkspace.creation.actorFlowNote`.
+- `create` view (`dndWorkspaceView='create'`) remains reachable via CTAs in dashboard (empty state) and characters (header button). `DndWorkspaceView` type unchanged. `deriveNodeType` mapping unchanged.
+- No COC / CP RED files changed. No store schema, save format, runtime logic, dice algorithm, rule data, React Router, URL routing, or browser History API changed.
+- Landmark: `DND_WORKSPACE_CONTRACT_ALIGNMENT_V1` in `src/pages/dndWorkspace/DndWorkspaceShell.tsx`.
 
 ## Scope
 
 ### Allowed Files
 
-- `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md` (new)
+- `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- `src/i18n/locales/zh-CN.ts`
+- `src/i18n/locales/en.ts`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
 - `docs/ai/SYMBOL_MAP.md`
@@ -32,46 +36,28 @@
 
 ### Forbidden Changes
 
-- `src/` (any UI component, store, type, data, i18n)
-- store schema / migration / save format
-- runtime rule logic / dice algorithm
-- rule data
+- COC / CP RED related pages
+- store schema / migration / CharacterData save structures
+- DND rule data / runtime rule logic / dice algorithm / spell preparation logic / class resource logic
 - import / export
-- React Router / URL routing
-- Workshop / Plugin / map / token / session / inventory / item
+- Workshop / Plugin / map / token / session / inventory / item data contract
+- React Router / URL routing / browser History API
 - git add / commit
-
-### Do Not Do
-
-- Implement any pattern in code this round (docs only).
-- Resume or commit the paused CP RED / COC Builder BG3-like shells as final pattern implementations.
-- `git add .` / `git add -A` / auto commit.
 
 ## Navigation
 
 ### Key Symbols
 
-- `PLATFORM_PATTERNS_WORKSPACE_CONTRACT_V1` — landmark in `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`
+- `DND_WORKSPACE_CONTRACT_ALIGNMENT_V1` — landmark in `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- `DND_PRODUCT_SHELL_PHASE_1` — original DND workspace shell landmark (same file)
+- `DND_GAMEPLAY_ENTRY_PRESERVATION` — gameplay entry guard (same file)
+- `DND_CHARACTER_VAULT_CREATION_METHOD_ENTRY` — creation method entry via CTA (same file)
+- `navItems` — 4-item top nav array in `DndWorkspaceShell.tsx`
 
 ### Locate Commands
 
 ```powershell
-rg -n "PLATFORM_PATTERNS_WORKSPACE_CONTRACT_V1" docs
+rg -n "DND_WORKSPACE_CONTRACT_ALIGNMENT_V1" src
+rg -n "navItems" src/pages/dndWorkspace/DndWorkspaceShell.tsx
+rg -n "actorFlowNote" src/i18n
 ```
-
-## Completion Criteria
-
-- New doc exists and defines 9 patterns + 9-section contract + three-state + nav concept + high-risk + acceptance template.
-- DND is described as a reference implementation, not a hard template.
-- Future-system extension is covered.
-- Owner docs updated.
-- No `src/` change.
-
-## Verification
-
-```powershell
-cd D:\Download\dnd
-git status --short
-```
-
-Expected: only documentation files changed (no `src/`). `tsc` / `build` not required this round (no code change).
