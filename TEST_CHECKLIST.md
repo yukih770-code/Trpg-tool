@@ -303,6 +303,21 @@ Open the app in the browser and verify each page loads without crashing.
 
 ---
 
+## 5d. COC Builder BG3-like Shell v1 Check
+
+- [ ] COC Workspace → 创建调查员 → 标准创建 opens the new Investigator Builder shell.
+- [ ] Desktop Builder layout uses three columns: left step navigation, center current section, right investigator summary.
+- [ ] Builder steps are visible: 身份 / 属性 / 职业 / 技能 / 背景 / 装备 / 检查.
+- [ ] Mobile Builder layout stacks into one column and the step navigation can scroll without horizontal page overflow.
+- [ ] Builder summary shows current investigator name, occupation, HP/MP, SAN/Luck, key characteristics, and skill summary.
+- [ ] Builder shell does not show old import/export/data/settings/help toolbar chrome.
+- [ ] Builder shell does not show old Creation / Sheet / Gameplay tabs.
+- [ ] View Investigator Sheet and Start Investigation actions route through existing COC workspace context.
+- [ ] Builder shell reads current investigator data only and does not change store fields by itself.
+- [ ] No COC rule data, runtime logic, dice algorithm, Investigator save format, import/export behavior, or true multi-investigator store changed.
+
+---
+
 ## 6. Platform Core Concepts Baseline Check (Docs Only)
 
 - [ ] `docs/architecture/PLATFORM_CORE_CONCEPTS.md` exists and is readable
@@ -316,6 +331,27 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] Workspace IA three-tier model summary present
 - [ ] Landmark `PLATFORM_CORE_CONCEPTS_GAME_SYSTEM_REGISTRY_BASELINE` present in the document
 - [ ] No store, schema, runtime, rule data, plugin execution, workshop subscription, or map/inventory/session implementation was changed
+
+---
+
+## 6b. Platform Patterns & Workspace Section Contract Check (Docs Only)
+
+- [ ] `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md` exists and is readable
+- [ ] Document defines all 9 platform patterns (Game System Workspace, Actor Entry, Builder, Sheet, Runtime, Rules Compendium, Source Status, Session/Campaign, Navigation)
+- [ ] Each pattern lists responsibility / non-responsibility / platform-unified / system-customized / V1 minimum / V1 not-do / high-risk boundary
+- [ ] Workspace Section Contract defines the 9 sections (overview, actorVault, creationMethod, builder, sheet, runtime, rulesCompendium, sourceStatus, sessionCampaign)
+- [ ] implemented / planned / absent three-state semantics are defined, with planned display rules (no fake buttons / no error-on-click CTA)
+- [ ] Top navigation rules present (overview/actorVault/rulesCompendium/sourceStatus in top nav; builder/sheet/runtime via Actor context)
+- [ ] Builder Pattern present (three-column; Creation Method precedes Builder; preview is summary not Sheet copy) with DND/COC/CP RED builder step examples
+- [ ] Sheet Pattern present (identity/coreStats/attributes/skills/resources/equipmentSummary/systemSpecific/runtimeCTA)
+- [ ] Runtime embedded-mode rules present (no system shell; no system switch / import-export / tabs / second back button)
+- [ ] Rules Compendium vs Source Status boundary present; System Home shows neither coverage tables nor dense index grid
+- [ ] Navigation Back / Up / Breadcrumb is concept-only with implementation deferred to a later round (no React Router / URL routing)
+- [ ] Future extension coverage present (non-Character Actor, Asset Collection, no-Sheet, no-Runtime, map-heavy, narrative, community/custom)
+- [ ] High-risk boundary list present
+- [ ] Codex / CC pre-implementation acceptance template present
+- [ ] Landmark `PLATFORM_PATTERNS_WORKSPACE_CONTRACT_V1` present in the document
+- [ ] No `src/`, store, schema, runtime, rule data, routing, workshop, map, inventory, or session implementation changed
 
 ---
 
@@ -370,6 +406,20 @@ After modifying one system, verify the other two are unaffected:
 - [ ] CP RED Source Status remains a shell-only Source Status / System Health surface; no Source Manager engine is implemented.
 - [ ] Navigation history works for overview → vault/create/sheet/runtime/compendium/sources → back one level.
 - [ ] Cleanup does not modify DND, COC, store schema, CP RED save format, CP RED rule data, runtime logic, dice algorithm, import/export logic, inventory/map/session/workshop/plugin behavior.
+
+### CP RED Builder BG3-like Shell v1
+
+- [ ] CP RED Workspace → 创建 Edgerunner → 标准创建 opens the new Edgerunner Builder shell.
+- [ ] Desktop Builder layout uses three columns: left step navigation, center current section, right Edgerunner summary.
+- [ ] Builder steps are visible: 身份 / 人生经历 / 角色职业 / 属性 / 技能 / 装备 / 义体 / 完成.
+- [ ] Mobile Builder layout stacks into one column and the step navigation can scroll without horizontal page overflow.
+- [ ] Builder summary shows current Handle/name, role, HP/Humanity, armor, MOVE/REF, key stats, skill summary, and equipment/cyberware summary.
+- [ ] Builder shell does not show old import/export/data/settings/help toolbar chrome.
+- [ ] Builder shell does not show old Creation / Sheet / Gameplay / Market tabs.
+- [ ] View Edgerunner Sheet and Start Mission actions route through existing CP RED workspace context.
+- [ ] Quick Creation / Local Import / Workshop Import remain planned only.
+- [ ] Builder shell reads current Edgerunner data only and does not change store fields by itself.
+- [ ] No DND, COC, CP RED rule data, runtime logic, dice algorithm, CP RED save format, import/export behavior, true multi-Edgerunner store, Workshop, map, inventory, or session implementation changed.
 
 ---
 

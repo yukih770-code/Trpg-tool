@@ -269,6 +269,26 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Future Game System categories (Japanese TRPG, Wargame, Custom, Narrative): Section 5 of `PLATFORM_CORE_CONCEPTS.md`
 - No store, schema, runtime, or rule data changed by this baseline
 
+## Platform Patterns & Workspace Section Contract
+
+- Full pattern + section contract definitions: `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`
+- `AI-LANDMARK: PLATFORM_PATTERNS_WORKSPACE_CONTRACT_V1`: `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`
+- Nine platform patterns: Game System Workspace, Actor / Player Asset Entry, Builder, Sheet, Runtime / Gameplay, Rules Compendium, Source Status / System Health, Session / Campaign, Navigation — Section 2
+- Workspace Section Contract (9 sections: overview / actorVault / creationMethod / builder / sheet / runtime / rulesCompendium / sourceStatus / sessionCampaign): Section 3
+- implemented / planned / absent three-state semantics: Section 4
+- Top navigation rules: Section 5
+- Builder Pattern three-column detail + DND/COC/CP RED builder steps: Section 6
+- Sheet Pattern regions: Section 7
+- Runtime embedded-mode rules: Section 8
+- Rules Compendium vs Source Status boundary: Section 9
+- Navigation Back / Up / Breadcrumb concept (implementation deferred to Navigation Back/Up/Breadcrumb Model v1): Section 10
+- Future extension coverage: Section 11
+- High-risk boundaries: Section 12
+- Codex / CC pre-implementation acceptance template: Section 13
+- Companion vocabulary/registry doc: `docs/architecture/PLATFORM_CORE_CONCEPTS.md`
+- Reference implementations of the patterns: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`, `src/pages/cocWorkspace/CocWorkspaceShell.tsx`, `src/pages/cpWorkspace/CpWorkspaceShell.tsx`, `src/pages/PlayWorkspace.tsx`
+- No store, schema, runtime, or rule data changed by this baseline
+
 ## Platform Shell / Home / Play Workspace
 
 - Platform shell default entry: `src/App.tsx`
@@ -351,6 +371,15 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Sheet view reads: `cocChar.runtime?.hp ?? cocChar.hp`, `characteristics`, `skills` from `useCocStore`
 - "调查面板" nav item has `isPlayAction: true` — calls `onOpenPlayTab('gameplay')` instead of `onViewChange`
 
+## COC Builder BG3-like Shell
+
+- `AI-LANDMARK: COC_BUILDER_BG3_LIKE_SHELL_V1`: `src/pages/cocWorkspace/CocWorkspaceShell.tsx`
+- `CocInvestigatorBuilderShell`: `src/pages/cocWorkspace/CocWorkspaceShell.tsx` — read-only/preview Builder shell with left step navigation, center section content, and right investigator summary.
+- COC Standard Creation route: `src/pages/PlayWorkspace.tsx` renders `CocInvestigatorBuilderShell` when `system === 'CoC' && tab === 'creator'`.
+- `currentPlayTab`: `src/pages/cocWorkspace/CocWorkspaceShell.tsx` prop used to highlight embedded creator/sheet/runtime states without restoring old tabs.
+- Builder i18n keys: `cocBuilder.*` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`.
+- No COC store schema, Investigator save format, rule data, runtime logic, dice algorithm, import/export behavior, or true multi-investigator store is changed by the shell.
+
 ## Legacy Runtime Embedded Mode
 
 - `AI-LANDMARK: LEGACY_RUNTIME_EMBEDDED_MODE`: `src/pages/CocGameplay.tsx`, `src/pages/CpGameplay.tsx`, `src/pages/PlayWorkspace.tsx`, `src/pages/cocWorkspace/CocWorkspaceShell.tsx`, `src/pages/cpWorkspace/CpWorkspaceShell.tsx`
@@ -368,6 +397,15 @@ This file helps AI quickly locate important types, helper functions, store actio
 - CP RED sheet branch in `embeddedPlayBody`: `src/pages/PlayWorkspace.tsx` renders `CpEdgerunnerSheetShell` instead of the old detailed `CpSheet` page.
 - CP RED mission branch in `embeddedPlayBody`: `src/pages/PlayWorkspace.tsx` renders `<CpGameplay embedded />`.
 - CP RED cleanup i18n keys: `cpWorkspace.nav.sheet`, `cpWorkspace.nav.mission`, `cpWorkspace.vault.*`, `cpWorkspace.sheet.*`, `cpWorkspace.sources.runtimeReady`, `cpWorkspace.sources.indexedOnly`, `cpWorkspace.sources.plannedOnly`
+
+## CP RED Builder BG3-like Shell
+
+- `AI-LANDMARK: CPRED_BUILDER_BG3_LIKE_SHELL_V1`: `src/pages/cpWorkspace/CpWorkspaceShell.tsx`
+- `CpEdgerunnerBuilderShell`: `src/pages/cpWorkspace/CpWorkspaceShell.tsx` — read-only/preview Builder shell with left step navigation, center section content, and right Edgerunner summary.
+- CP RED Standard Creation route: `src/pages/PlayWorkspace.tsx` renders `CpEdgerunnerBuilderShell` when `system === 'CP' && tab === 'creator'`.
+- Builder steps: identity / lifepath / role / stats / skills / equipment / cyberware / review.
+- Builder i18n keys: `cpBuilder.*` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`.
+- No CP RED store schema, save format, rule data, runtime logic, dice algorithm, import/export behavior, true multi-Edgerunner store, Workshop, map, inventory, or session implementation is changed by the shell.
 
 ## DND Character Options Source Index
 

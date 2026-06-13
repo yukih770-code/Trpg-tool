@@ -56,6 +56,9 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | Platform Navigation History Stack v1 | ✅ Done (lightweight app-level back stack; no router / URL routing) |
 | COC / CP RED DND-aligned Workspace Reconstruction v1 | ✅ Done (CocWorkspaceShell + CpWorkspaceShell created; PlayWorkspace wired; NonDndWorkspaceView extended; cocWorkspace.* / cpWorkspace.* i18n added) |
 | COC Workspace Cleanup v1 | ✅ Done (7-item nav; 'sheet' view with HP/MP/SAN/Luck+characteristics+skills summary; 'play' nav item calls onOpenPlayTab('gameplay'); NonDndWorkspaceView extended with 'sheet'; cocWorkspace.nav.sheet/runtime + cocWorkspace.sheet.* i18n; landmark COC_WORKSPACE_CLEANUP_V1) |
+| COC Builder BG3-like Shell v1 | ✅ Done (COC Standard Creation now opens a three-column Investigator Builder shell; preview/read-only UI only; no store/save/rule/runtime/dice changes) |
+| CP RED Builder BG3-like Shell v1 | ✅ Done (CP RED Standard Creation now opens a three-column Edgerunner Builder shell; preview/read-only UI only; no store/save/rule/runtime/dice changes) |
+| Platform Pattern + Workspace Section Contract v1 | ✅ Done (docs/architecture only; 9 platform patterns + workspace section contract; no code change) |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -442,6 +445,16 @@ Platform Character Entry Pattern Alignment v1 scope:
 - The CP RED Edgerunner sheet route now uses a platform-style summary shell with Start Mission / Continue Editing context actions instead of rendering the old detailed tool page as the workspace-level sheet.
 - No store schema, CP RED save format, CP RED rule data, runtime logic, dice algorithm, real multi-Edgerunner store, rules engine, source manager, map, inventory, session, workshop, or plugin implementation changed.
 - Landmark: `CPRED_WORKSPACE_CLEANUP_V1`.
+- COC Builder BG3-like Shell v1 completed. COC Standard Creation now enters a platform Builder shell with left creation steps, center section content, and right investigator summary / preview.
+- The COC Builder shell is read-only/preview-oriented in this phase; it does not change COC store schema, Investigator save format, rule data, runtime logic, dice algorithm, import/export behavior, or true multi-investigator storage.
+- Landmark: `COC_BUILDER_BG3_LIKE_SHELL_V1`.
+- CP RED Builder BG3-like Shell v1 completed. The CP RED Edgerunner creation flow now uses a DND-aligned BG3-like builder shell with left step navigation, center step content, and right Edgerunner summary.
+- Standard creation enters the new builder shell, while quick creation, local import, and Workshop import remain planned. No store schema, CP RED save format, CP RED rule data, runtime logic, dice algorithm, real multi-Edgerunner store, import/export logic, rules engine, source manager, workshop, map, inventory, or session implementation changed.
+- Landmark: `CPRED_BUILDER_BG3_LIKE_SHELL_V1`.
+- Platform Pattern + Workspace Section Contract v1 completed. The project now defines platform-level patterns for Game System Workspace, Actor Entry, Builder, Sheet, Runtime, Rules Compendium, Source Status, Session/Campaign, and Navigation. DND, COC, CP RED, and future systems are treated as implementations of platform patterns rather than copies of one another. No src code, store schema, runtime logic, rule data, routing, workshop, map, inventory, or session implementation changed.
+- New document: `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md` — 9 platform patterns, the 9-entry Workspace Section Contract with implemented/planned/absent three-state semantics, top-navigation rules, Builder/Sheet/Runtime pattern detail, Rules Compendium vs Source Status boundary, Navigation Back/Up/Breadcrumb concept (impl deferred to a later round), future-extension coverage, high-risk boundary list, and a Codex/CC pre-implementation acceptance template.
+- This document complements `docs/architecture/PLATFORM_CORE_CONCEPTS.md`: Core Concepts owns vocabulary + Game System Registry field spec; Patterns + Contract owns how a Game System surfaces those objects in UI/IA.
+- Landmark: `PLATFORM_PATTERNS_WORKSPACE_CONTRACT_V1` in `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`.
 
 System Actor Session Workspace IA Correction v1 scope:
 - Three-tier workspace IA defined: System Workspace (rule scope, character library, creation, compendium, source status, completion); Actor Workspace (character card, current status, resources, inventory, start playing, personal journal); Session / Campaign Workspace (map, token, handout, session log, encounter, GM tools).

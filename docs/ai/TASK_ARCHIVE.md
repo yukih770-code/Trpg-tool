@@ -15,6 +15,18 @@ YYYY-MM-DD | Phase | Task | Commit | Files | Landmarks | Result | Deferred
 <!-- New entries go here. -->
 
 ```text
+2026-06-13 | P1 platform architecture | Platform Pattern + Workspace Section Contract v1 | pending | docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md (new), PROJECT_STATUS.md, TEST_CHECKLIST.md, docs/ai/SYMBOL_MAP.md, docs/ai/ACTIVE_TASK.md, docs/ai/TASK_ARCHIVE.md | PLATFORM_PATTERNS_WORKSPACE_CONTRACT_V1 | defined 9 platform patterns (Game System Workspace / Actor Entry / Builder / Sheet / Runtime / Rules Compendium / Source Status / Session-Campaign / Navigation), 9-entry Workspace Section Contract with implemented/planned/absent three-state, top-nav rules, Builder/Sheet/Runtime detail, Compendium vs Source Status boundary, Navigation Back/Up/Breadcrumb concept (impl deferred), future-extension coverage, high-risk boundary list, Codex acceptance template; DND/COC/CP RED treated as pattern implementations not hard templates; docs only, no src/store/schema/runtime/rule-data/routing change | Navigation Up/Breadcrumb implementation, registry-driven dispatch, generic Sheet/Builder templates, multi-actor store, session/campaign, map/token, workshop/plugin, Compendium/Source Manager engines
+```
+
+```text
+2026-06-13 | P1 platform IA | CP RED Builder BG3-like Shell v1 | pending | src/pages/cpWorkspace/CpWorkspaceShell.tsx, src/pages/PlayWorkspace.tsx, src/i18n/locales/zh-CN.ts, src/i18n/locales/en.ts, PROJECT_STATUS.md, TEST_CHECKLIST.md, docs/ai/SYMBOL_MAP.md, docs/ai/ACTIVE_TASK.md, docs/ai/TASK_ARCHIVE.md | CPRED_BUILDER_BG3_LIKE_SHELL_V1 | CP RED Standard Creation now opens a BG3-like Edgerunner Builder shell with left steps, center current section, and right summary/preview; shell reads current Edgerunner data only and does not change store/save/rules/runtime/dice/import-export | full editable CP RED Builder migration, lifepath tables, role package UI, skill allocation UI, equipment/cyberware automation, true multi-Edgerunner store, Workshop/backend, map/inventory/session
+```
+
+```text
+2026-06-13 | P1 platform IA | COC Builder BG3-like Shell v1 | pending | src/pages/cocWorkspace/CocWorkspaceShell.tsx, src/pages/PlayWorkspace.tsx, src/i18n/locales/zh-CN.ts, src/i18n/locales/en.ts, PROJECT_STATUS.md, TEST_CHECKLIST.md, docs/ai/SYMBOL_MAP.md, docs/ai/ACTIVE_TASK.md, docs/ai/TASK_ARCHIVE.md | COC_BUILDER_BG3_LIKE_SHELL_V1 | COC Standard Creation now opens a BG3-like Investigator Builder shell with left steps, center current section, and right summary/preview; shell reads current investigator data only and does not change store/save/rules/runtime/dice/import-export | full editable COC Builder migration, occupation package UI, skill allocation UI, true multi-investigator store, import/export rewrite, Workshop/backend, map/inventory/session
+```
+
+```text
 2026-06-13 | P1 platform IA | COC Workspace Cleanup v1 | pending | src/pages/cocWorkspace/CocWorkspaceShell.tsx, src/pages/PlayWorkspace.tsx, src/i18n/locales/zh-CN.ts, src/i18n/locales/en.ts, PROJECT_STATUS.md, TEST_CHECKLIST.md, docs/ai/SYMBOL_MAP.md, docs/ai/ACTIVE_TASK.md, docs/ai/TASK_ARCHIVE.md | COC_WORKSPACE_CLEANUP_V1 | COC workspace cleaned into 7-nav platform shell: overview, Investigator Vault, Creation Method, Investigator Sheet summary shell (HP/MP/SAN/Luck+chars+skills), Investigation Panel (CocGameplay embedded via isPlayAction nav), Compendium shell, Source Status shell; NonDndWorkspaceView extended with 'sheet'; top nav is the only system nav; no DND/CP RED/store/schema/save-format/rule-data/runtime/dice changes | real multi-investigator store, Rules Compendium engine, Source Manager engine, Workshop/backend/plugin, inventory/map/session data contracts
 ```
 

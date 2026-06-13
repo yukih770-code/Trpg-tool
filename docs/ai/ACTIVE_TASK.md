@@ -6,32 +6,24 @@
 
 ## Task
 
-- ID: COC Workspace Cleanup v1
-- Name: COC Workspace Cleanup v1
-- Goal: Clean up COC Workspace so all sections look like platform shell pages. Add Investigator Sheet summary shell and Investigation Panel (runtime) as dedicated nav views. UI/shell change only — no store, schema, COC rule data, runtime logic, or dice algorithm changes.
-- Phase: P1 platform IA / workspace shell cleanup
-- Status: Implemented; verification pending
+- ID: Platform Pattern + Workspace Section Contract v1
+- Name: Platform Pattern + Workspace Section Contract v1
+- Goal: Establish the platform-level Pattern and Workspace Section Contract baseline so DND / COC / CP RED / future systems implement platform patterns instead of copying one another. Docs only.
+- Phase: P1 platform architecture
+- Status: Done (docs only; no src change)
 
 ## Result Summary
 
-- Extended `CocWorkspaceView` and `NonDndWorkspaceView` with `'sheet'`.
-- Added 2 new nav items: `sheet` (调查员卡) and `play` with isPlayAction (调查面板 — calls `onOpenPlayTab('gameplay')`).
-- New `sheet` view renders HP/MP/SAN/Luck, characteristics, and top skills from store; CTAs for "开始调查" and "继续编辑".
-- "查看调查员卡" in `renderInvestigatorCard` now navigates to view='sheet' instead of embedded CocSheet.
-- `isActiveNav` updated so 'play' nav item is active when view='play'.
-- Added `cocWorkspace.nav.sheet`, `cocWorkspace.nav.runtime`, `cocWorkspace.sheet.*` i18n keys (zh-CN + en).
-- CocGameplay already has `embedded` prop from prior task (LEGACY_RUNTIME_EMBEDDED_MODE).
-- No store schema, Investigator save format, COC rule data, runtime logic, or dice algorithm changed.
-- Landmark: `COC_WORKSPACE_CLEANUP_V1`.
+- New document `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md` defines 9 platform patterns, the 9-entry Workspace Section Contract with implemented/planned/absent three-state semantics, top-navigation rules, Builder/Sheet/Runtime pattern detail, Rules Compendium vs Source Status boundary, Navigation Back/Up/Breadcrumb concept (implementation deferred), future-extension coverage, high-risk boundary list, and a Codex/CC pre-implementation acceptance template.
+- Complements `docs/architecture/PLATFORM_CORE_CONCEPTS.md` (vocabulary/registry) with the pattern + contract layer (how systems surface objects in UI/IA).
+- Landmark: `PLATFORM_PATTERNS_WORKSPACE_CONTRACT_V1`.
+- No `src/`, store schema, migration, runtime logic, dice algorithm, rule data, import/export, routing, workshop, map, inventory, or session implementation changed.
 
 ## Scope
 
 ### Allowed Files
 
-- `src/pages/cocWorkspace/CocWorkspaceShell.tsx`
-- `src/pages/PlayWorkspace.tsx` (NonDndWorkspaceView type extension only)
-- `src/i18n/locales/zh-CN.ts`
-- `src/i18n/locales/en.ts`
+- `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md` (new)
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
 - `docs/ai/SYMBOL_MAP.md`
@@ -40,47 +32,46 @@
 
 ### Forbidden Changes
 
-- Store schema / migration
-- Investigator / CP RED save structures
-- COC / DND rule data
-- Runtime rule logic / dice algorithms
-- CocGameplay / CpGameplay internal rule logic
-- True multi-investigator store / Actor data contract
-- True Rules Compendium engine / Source Manager engine
-- Workshop / Plugin / map / session / items data contracts
-- CP RED Workspace / CpGameplay / DND pages
-- Browser URL routing / React Router / git add / commit
+- `src/` (any UI component, store, type, data, i18n)
+- store schema / migration / save format
+- runtime rule logic / dice algorithm
+- rule data
+- import / export
+- React Router / URL routing
+- Workshop / Plugin / map / token / session / inventory / item
+- git add / commit
+
+### Do Not Do
+
+- Implement any pattern in code this round (docs only).
+- Resume or commit the paused CP RED / COC Builder BG3-like shells as final pattern implementations.
+- `git add .` / `git add -A` / auto commit.
 
 ## Navigation
 
 ### Key Symbols
 
-- `COC_WORKSPACE_CLEANUP_V1` — landmark in CocWorkspaceShell view='sheet' section
-- `CocWorkspaceView` — `src/pages/cocWorkspace/CocWorkspaceShell.tsx` (now includes 'sheet')
-- `NonDndWorkspaceView` — `src/pages/PlayWorkspace.tsx` (now includes 'sheet')
-- `cocWorkspace.sheet.*` — `src/i18n/locales/`
+- `PLATFORM_PATTERNS_WORKSPACE_CONTRACT_V1` — landmark in `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`
 
 ### Locate Commands
 
 ```powershell
-rg -n "COC_WORKSPACE_CLEANUP_V1" src docs
-rg -n "'sheet'" src/pages/cocWorkspace/CocWorkspaceShell.tsx
-rg -n "NonDndWorkspaceView" src/pages/PlayWorkspace.tsx
+rg -n "PLATFORM_PATTERNS_WORKSPACE_CONTRACT_V1" docs
 ```
 
 ## Completion Criteria
 
-- COC Workspace nav shows 7 items.
-- "调查员卡" nav shows sheet summary shell (HP/MP/SAN/Luck, characteristics, skills).
-- "调查面板" nav launches investigation runtime with CocGameplay embedded.
-- Only one top nav visible throughout COC Workspace.
-- `npx tsc --noEmit` and `npm run build` pass.
+- New doc exists and defines 9 patterns + 9-section contract + three-state + nav concept + high-risk + acceptance template.
+- DND is described as a reference implementation, not a hard template.
+- Future-system extension is covered.
+- Owner docs updated.
+- No `src/` change.
 
 ## Verification
 
 ```powershell
 cd D:\Download\dnd
 git status --short
-npx tsc --noEmit
-npm run build
 ```
+
+Expected: only documentation files changed (no `src/`). `tsc` / `build` not required this round (no code change).
