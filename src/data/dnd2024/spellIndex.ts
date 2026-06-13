@@ -1,0 +1,195 @@
+/**
+ * DND 2024 / XGtE / TCoE Spell Source Index (display-only)
+ *
+ * AI-LANDMARK: DND_CHARACTER_OPTIONS_SOURCE_COMPLETION
+ *
+ * Source-labeled spell INDEX transcribed 1:1 from
+ * `docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md`
+ * (owner sources: DND5eChm/SRD5.2Chm primary; DND5eChm/DND5e_chm XGtE/TCoE).
+ *
+ * Index contract:
+ * - This file lists entry EXISTENCE only: English name (from source HTML
+ *   anchors), spell level (环), and scope. Chinese names, schools, class
+ *   lists, and ALL rule effects remain needs-human-check and are NOT here.
+ * - This index is SEPARATE from runtime `SPELL_DATA` (src/data/spells.ts)
+ *   and must not be wired into Gameplay/spellbook runtime until entries
+ *   are individually verified and promoted.
+ * - No long rules text is copied. No model-memory completion.
+ */
+
+import type { RuleDataMetadata } from '../../lib/rules/rule-data-metadata';
+
+export type DndSpellIndexScope = 'dnd2024' | 'xgte' | 'tcoe';
+
+export interface DndSpellIndexEntry {
+  id: string;
+  nameEn: string;
+  nameCn: 'needs-human-check';
+  level: number;
+  school: 'needs-human-check';
+  scope: DndSpellIndexScope;
+  desc: string;
+}
+
+export const DND_SPELL_INDEX_ACCURACY: RuleDataMetadata = {
+  source: 'dnd5echm-srd52-primary',
+  trustLevel: 'source-labeled',
+  usagePolicy: 'display-only',
+  sourceRef: 'docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md#item-entries',
+  sourceNote:
+    'Spell index entries (name/level/scope) transcribed from the owner source entry manifest. XGtE/TCoE rows use sourceId dnd5echm-xgte / dnd5echm-tcoe respectively. Chinese names, schools, class lists, and effects are needs-human-check; not runtime data.',
+};
+
+const INDEX_DESC = '该法术条目已定位来源，具体规则效果待核对。';
+
+function slugify(nameEn: string): string {
+  return nameEn
+    .toLowerCase()
+    .replace(/'/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+function spellRow(nameEn: string, level: number, scope: DndSpellIndexScope): DndSpellIndexEntry {
+  return {
+    id: `spell-index.${scope}.${slugify(nameEn)}`,
+    nameEn,
+    nameCn: 'needs-human-check',
+    level,
+    school: 'needs-human-check',
+    scope,
+    desc: INDEX_DESC,
+  };
+}
+
+type Row = [nameEn: string, level: number];
+
+// ── SRD5.2 玩家手册2024/法术详述 (sourceId: dnd5echm-srd52-primary) ──────────
+const SRD52_SPELL_ROWS: Row[] = [
+  ['Acid Splash', 0], ['Aid', 2], ['Alarm', 1], ['Alter Self', 2], ['Animal Friendship', 1],
+  ['Animal Messenger', 2], ['Animal Shapes', 8], ['Animate Dead', 3], ['Animate Objects', 5], ['Antilife Shell', 5],
+  ['Antimagic Field', 8], ['AntipathySympathy', 8], ['Arcane Eye', 4], ['Arcane Gate', 6], ['Arcane Lock', 2],
+  ['Arcane Vigor', 2], ['Armor of Agathys', 1], ['Arms of Hadar', 1], ['Astral Projection', 9], ['Augury', 2],
+  ['Aura of Life', 4], ['Aura of Purity', 4], ['Aura of Vitality', 3], ['Awaken', 5], ['Bane', 1],
+  ['Banishing Smite', 5], ['Banishment', 4], ['Barkskin', 2], ['Beacon of Hope', 3], ['Beast Sense', 2],
+  ['Befuddlement', 8], ['Bestow Curse', 3], ["Bigby's Hand", 5], ['Blade Barrier', 6], ['Blade Ward', 0],
+  ['Bless', 1], ['Blight', 4], ['Blinding Smite', 3], ['BlindnessDeafness', 2], ['Blink', 3],
+  ['Blur', 2], ['Burning Hands', 1], ['Call Lightning', 3], ['Calm Emotions', 2], ['Chain Lightning', 6],
+  ['Charm Monster', 4], ['Charm Person', 1], ['Chill Touch', 0], ['Chromatic Orb', 1], ['Circle of Death', 6],
+  ['Circle of Power', 5], ['Clairvoyance', 3], ['Clone', 8], ['Cloud of Daggers', 2], ['Cloudkill', 5],
+  ['Color Spray', 1], ['Command', 1], ['Commune', 5], ['Commune with Nature', 5], ['Compelled Duel', 1],
+  ['Comprehend Languages', 1], ['Compulsion', 4], ['Cone of Cold', 5], ['Confusion', 4], ['Conjure Animals', 3],
+  ['Conjure Barrage', 3], ['Conjure Celestial', 7], ['Conjure Elemental', 5], ['Conjure Fey', 6], ['Conjure Minor Elementals', 4],
+  ['Conjure Volley', 5], ['Conjure Woodland Beings', 4], ['Contact Other Plane', 5], ['Contagion', 5], ['Contingency', 6],
+  ['Continual Flame', 2], ['Control Water', 4], ['Control Weather', 8], ['Cordon of Arrows', 2], ['Counterspell', 3],
+  ['Create Food and Water', 3], ['Create or Destroy Water', 1], ['Create Undead', 6], ['Creation', 5], ['Crown of Madness', 2],
+  ["Crusader's Mantle", 3], ['Cure Wounds', 1], ['Dancing Lights', 0], ['Darkness', 2], ['Darkvision', 2],
+  ['Daylight', 3], ['Death Ward', 4], ['Delayed Blast Fireball', 7], ['Demiplane', 8], ['Destructive Wave', 5],
+  ['Detect Evil and Good', 1], ['Detect Magic', 1], ['Detect Poison and Disease', 1], ['Detect Thoughts', 2], ['Dimension Door', 4],
+  ['Disguise Self', 1], ['Disintegrate', 6], ['Dispel Evil and Good', 5], ['Dispel Magic', 3], ['Dissonant Whispers', 1],
+  ['Divination', 4], ['Divine Favor', 1], ['Divine Smite', 1], ['Divine Word', 7], ['Dominate Beast', 4],
+  ['Dominate Monster', 8], ['Dominate Person', 5], ["Dragon's Breath", 2], ["Drawmij's Instant Summons", 6], ['Dream', 5],
+  ['Druidcraft', 0], ['Earthquake', 8], ['Eldritch Blast', 0], ['Elemental Weapon', 3], ['Elementalism', 0],
+  ['Enhance Ability', 2], ['Enlarge Reduce', 2], ['Ensnaring Strike', 1], ['Entangle', 1], ['Enthrall', 2],
+  ['Etherealness', 7], ["Evard's Black Tentacles", 4], ['Expeditious Retreat', 1], ['Eyebite', 6], ['Fabricate', 4],
+  ['Faerie Fire', 1], ['False Life', 1], ['Fear', 3], ['Feather Fall', 1], ['Feign Death', 3],
+  ['Find Familiar', 1], ['Find Steed', 2], ['Find the Path', 6], ['Find Traps', 2], ['Finger of Death', 7],
+  ['Fire Bolt', 0], ['Fire Shield', 4], ['Fire Storm', 7], ['Fireball', 3], ['Flame Blade', 2],
+  ['Flame Strike', 5], ['Flaming Sphere', 2], ['Flesh to Stone', 6], ['Fly', 3], ['Fog Cloud', 1],
+  ['Forbiddance', 6], ['Forcecage', 7], ['Foresight', 9], ['Fount of Moonlight', 4], ['Freedom of Movement', 4],
+  ['Friends', 0], ['Gaseous Form', 3], ['Gate', 9], ['Geas', 5], ['Gentle Repose', 2],
+  ['Giant Insect', 4], ['Glibness', 8], ['Globe of Invulnerability', 6], ['Glyph of Warding', 3], ['Goodberry', 1],
+  ['Grasping Vine', 4], ['Grease', 1], ['Greater Invisibility', 4], ['Greater Restoration', 5], ['Guardian of Faith', 4],
+  ['Guards and Wards', 6], ['Guidance', 0], ['Guiding Bolt', 1], ['Gust of Wind', 2], ['Hail of Thorns', 1],
+  ['Hallow', 5], ['Hallucinatory Terrain', 4], ['Harm', 6], ['Haste', 3], ['Heal', 6],
+  ['Healing Word', 1], ['Heat Metal', 2], ['Hellish Rebuke', 1], ["Heroes' Feast", 6], ['Heroism', 1],
+  ['Hex', 1], ['Hold Monster', 5], ['Hold Person', 2], ['Holy Aura', 8], ['Hunger of Hadar', 3],
+  ["Hunter's Mark", 1], ['Hypnotic Pattern', 3], ['Ice Knife', 1], ['Ice Storm', 4], ['Identify', 1],
+  ['Illusory Script', 1], ['Imprisonment', 9], ['Incendiary Cloud', 8], ['Inflict Wounds', 1], ['Insect Plague', 5],
+  ['Invisibility', 2], ["Jailarzi's Storm of Radiance", 5], ['Jump', 1], ['Knock', 2], ['Legend Lore', 5],
+  ["Leomund's Secret Chest", 4], ["Leomund's Tiny Hut", 3], ['Lesser Restoration', 2], ['Levitate', 2], ['Light', 0],
+  ['Lightning Arrows', 3], ['Lightning Bolt', 3], ['Locate Animals or Plants', 2], ['Locate Creature', 4], ['Locate Object', 2],
+  ['Longstrider', 1], ['Mage Armor', 1], ['Mage Hand', 0], ['Magic Circle', 3], ['Magic Jar', 6],
+  ['Magic Missile', 1], ['Magic Mouth', 2], ['Magic Weapon', 2], ['Major Image', 3], ['Mass Cure Wounds', 5],
+  ['Mass Heal', 9], ['Mass Healing Word', 3], ['Mass Suggestion', 6], ['Maze', 8], ['Meld Into Stone', 3],
+  ["Melf's Acid Arrow", 2], ['Mending', 0], ['Message', 0], ['Meteor Swarm', 9], ['Mind Blank', 8],
+  ['Mind Sliver', 0], ['Mind Spike', 2], ['Minor Illusion', 0], ['Mirage Arcane', 7], ['Mirror Image', 2],
+  ['Mislead', 5], ['Misty Step', 2], ['Modify Memory', 5], ['Moonbeam', 2], ["Mordenkainen's Faithful Hound", 4],
+  ["Mordenkainen's Magnificent Mansion", 7], ["Mordenkainen's Private Sanctum", 4], ["Mordenkainen's Sword", 7], ['Move Earth', 6], ['Nondetection', 3],
+  ["Nystul's Magic Aura", 2], ["Otiluke's Freezing Sphere", 6], ["Otiluke's Resilient Sphere", 4], ["Otto's Irresistible Dance", 6], ['Pass without Trace', 2],
+  ['Passwall', 5], ['Phantasmal Force', 2], ['Phantasmal Killer', 4], ['Phantom Steed', 3], ['Planar Ally', 6],
+  ['Planar Binding', 5], ['Plane Shift', 7], ['Plant Growth', 3], ['Poison Spray', 0], ['Polymorph', 4],
+  ['Power Word Fortify', 7], ['Power Word Heal', 9], ['Power Word Kill', 9], ['Power Word Stun', 8], ['Prayer of Healing', 2],
+  ['Prestidigitation', 0], ['Prismatic Spray', 7], ['Prismatic Wall', 9], ['Produce Flame', 0], ['Programmed Illusion', 6],
+  ['Project Image', 7], ['Protection from Energy', 3], ['Protection from Evil and Good', 1], ['Protection from Poison', 2], ['Purify Food and Drink', 1],
+  ['Raise Dead', 5], ["Rary's Telepathic Bond", 5], ['Ray of Enfeeblement', 2], ['Ray of Frost', 0], ['Ray of Sickness', 1],
+  ['Regenerate', 7], ['Reincarnate', 5], ['Remove Curse', 3], ['Resistance', 0], ['Resurrection', 7],
+  ['Reverse Gravity', 7], ['Revivify', 3], ['Rope Trick', 2], ['Sacred Flame', 0], ['Sanctuary', 1],
+  ['Scorching Ray', 2], ['Scrying', 5], ['Searing Smite', 1], ['See Invisibility', 2], ['Seeming', 5],
+  ['Sending', 3], ['Sequester', 7], ['Shapechange', 9], ['Shatter', 2], ['Shield', 1],
+  ['Shield of Faith', 1], ['Shillelagh', 0], ['Shining Smite', 2], ['Shocking Grasp', 0], ['Silence', 2],
+  ['Silent Image', 1], ['Simulacrum', 7], ['Sleep', 1], ['Sleet Storm', 3], ['Slow', 3],
+  ['Sorcerous Burst', 0], ['Spare the Dying', 0], ['Speak with Animals', 1], ['Speak with Dead', 3], ['Speak with Plants', 3],
+  ['Spider Climb', 2], ['Spike Growth', 2], ['Spirit Guardians', 3], ['Spiritual Weapon', 2], ['Staggering Smite', 4],
+  ['Starry Wisp', 0], ['Steel Wind Strike', 5], ['Stinking Cloud', 3], ['Stone Shape', 4], ['Stoneskin', 4],
+  ['Storm of Vengeance', 9], ['Suggestion', 2], ['Summon Aberration', 4], ['Summon Beast', 2], ['Summon Celestial', 5],
+  ['Summon Construct', 4], ['Summon Dragon', 5], ['Summon Elemental', 4], ['Summon Fey', 3], ['Summon Fiend', 6],
+  ['Summon Undead', 3], ['Sunbeam', 6], ['Sunburst', 8], ['Swift Quiver', 5], ['Symbol', 7],
+  ['Synaptic Static', 5], ["Tasha's Bubbling Cauldron", 6], ["Tasha's Hideous Laughter", 1], ['Telekinesis', 5], ['Telepathy', 8],
+  ['Teleport', 7], ['Teleportation Circle', 5], ["Tenser's Floating Disk", 1], ['Thaumaturgy', 0], ['Thorn Whip', 0],
+  ['Thunderclap', 0], ['Thunderous Smite', 1], ['Thunderwave', 1], ['Time Stop', 9], ['Toll the Dead', 0],
+  ['Tongues', 3], ['Transport via Plants', 6], ['Tree Stride', 5], ['True Polymorph', 9], ['True Resurrection', 9],
+  ['True Seeing', 6], ['True Strike', 0], ['Tsunami', 8], ['Unseen Servant', 1], ['Vampiric Touch', 3],
+  ['Vicious Mockery', 0], ['Vitriolic Sphere', 4], ['Wall of Fire', 4], ['Wall of Force', 5], ['Wall of Ice', 6],
+  ['Wall of Stone', 5], ['Wall of Thorns', 6], ['Warding Bond', 2], ['Water Breathing', 3], ['Water Walk', 3],
+  ['Web', 2], ['Weird', 9], ['Wind Walk', 6], ['Wind Wall', 3], ['Wish', 9],
+  ['Witch Bolt', 1], ['Word of Radiance', 0], ['Word of Recall', 6], ['Wrathful Smite', 1], ["Yolande's Regal Presence", 5],
+  ['Zone of Truth', 2],
+];
+
+// ── TCoE 塔莎的万事坩埚/法术 (sourceId: dnd5echm-tcoe) ───────────────────────
+const TCOE_SPELL_ROWS: Row[] = [
+  ['Blade of Disaster', 9], ['Booming Blade', 0], ['Dream of the Blue Veil', 7], ['Green-Flame Blade', 0], ['Intellect Fortress', 3],
+  ['Lightning Lure', 0], ['Mind Sliver', 0], ['Spirit Shroud', 3], ['Summon Aberration', 4], ['Summon Beast', 2],
+  ['Summon Celestial', 5], ['Summon Construct', 4], ['Summon Elemental', 4], ['Summon Fey', 3], ['Summon Fiend', 6],
+  ['Summon Shadowspawn', 3], ['Summon Undead', 3], ['Sword Burst', 0], ["Tasha's Caustic Brew", 1], ["Tasha's Mind Whip", 2],
+  ["Tasha's Otherworldly Guise", 6],
+];
+
+// ── XGtE 珊娜萨的万事指南/法术 (sourceId: dnd5echm-xgte) ─────────────────────
+const XGTE_SPELL_ROWS: Row[] = [
+  ["Abi-Dalzim's Horrid Wilting", 8], ['Absorb Elements', 1], ["Aganazzar's Scorcher", 2], ['Beast Bond', 1], ['Bones of the Earth', 6],
+  ['Catapult', 1], ['Catnap', 3], ['Cause Fear', 1], ['Ceremony', 1], ['Chaos Bolt', 1],
+  ['Charm Monster', 4], ['Control Flames', 0], ['Control Wind', 5], ['Create Bonfire', 0], ['Create Homunculus', 6],
+  ['Crown of Stars', 7], ['Danse Macabre', 5], ['Dawn', 5], ["Dragon's Breath", 2], ['Druid Grove', 6],
+  ['Dust Devil', 2], ['Earth Tremor', 1], ['Earthbind', 2], ['Elemental Bane', 4], ['Enemies Abound', 3],
+  ['Enervation', 5], ['Erupting Earth', 3], ['Far Step', 5], ['Find Greater Steed', 4], ['Flame Arrows', 3],
+  ['Frostbite', 0], ['Guardian of Nature', 4], ['Gust', 0], ['Healing Spirit', 2], ['Holy Weapon', 5],
+  ['Ice Knife', 1], ['Illusory Dragon', 8], ['Immolation', 5], ['Infernal Calling', 5], ['Infestation', 0],
+  ['Investiture of Flame', 6], ['Investiture of Ice', 6], ['Investiture of Stone', 6], ['Investiture of Wind', 6], ['Invulnerability', 9],
+  ['Life Transference', 3], ['Maddening Darkness', 8], ['Maelstrom', 5], ['Magic Stone', 0], ['Mass Polymorph', 9],
+  ["Maximilian's Earthen Grasp", 2], ["Melf's Minute Meteors", 3], ['Mental Prison', 6], ['Mighty Fortress', 8], ['Mind Spike', 2],
+  ['Mold Earth', 0], ['Negative Energy Flood', 5], ['Power Word Pain', 7], ['Primal Savagery', 0], ['Primordial Ward', 6],
+  ['Psychic Scream', 9], ['Pyrotechnics', 2], ['Scatter', 6], ['Shadow Blade', 2], ['Shadow of Moil', 4],
+  ['Shape Water', 0], ['Sickening Radiance', 4], ['Skill Empowerment', 5], ['Skywrite', 2], ['Snare', 1],
+  ["Snilloc's Snowball Swarm", 2], ['Soul Cage', 6], ['Steel Wind Strike', 5], ['Storm Sphere', 4], ['Summon Greater Demon', 4],
+  ['Summon Lesser Demon', 3], ['Synaptic Static', 5], ['Temple of the Gods', 7], ["Tenser's Transformation", 6], ['Thunder Step', 3],
+  ['Thunderclap', 0], ['Tidal Wave', 3], ['Tiny Servant', 3], ['Toll the Dead', 0], ['Transmute Rock', 5],
+  ['Vitriolic Sphere', 4], ['Wall of Light', 5], ['Wall of Sand', 3], ['Wall of Water', 3], ['Warding Wind', 2],
+  ['Watery Sphere', 4], ['Whirlwind', 7], ['Word of Radiance', 0], ['Wrath of Nature', 5], ['Zephyr Strike', 1],
+];
+
+export const DND_2024_SPELL_INDEX_DATA: DndSpellIndexEntry[] = [
+  ...SRD52_SPELL_ROWS.map(([name, level]) => spellRow(name, level, 'dnd2024')),
+  ...TCOE_SPELL_ROWS.map(([name, level]) => spellRow(name, level, 'tcoe')),
+  ...XGTE_SPELL_ROWS.map(([name, level]) => spellRow(name, level, 'xgte')),
+];
+
+export const DND_SPELL_INDEX_COUNTS = {
+  srd52: SRD52_SPELL_ROWS.length,
+  tcoe: TCOE_SPELL_ROWS.length,
+  xgte: XGTE_SPELL_ROWS.length,
+  total: 0, // recomputed below
+};
+DND_SPELL_INDEX_COUNTS.total =
+  DND_SPELL_INDEX_COUNTS.srd52 + DND_SPELL_INDEX_COUNTS.tcoe + DND_SPELL_INDEX_COUNTS.xgte;

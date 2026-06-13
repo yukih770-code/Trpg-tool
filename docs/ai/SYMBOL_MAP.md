@@ -156,6 +156,17 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Workspace Play / Combat i18n keys: `dndWorkspace.nav.play`, `dndWorkspace.modules.play` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`
 - `AI-LANDMARK: DND_GAMEPLAY_ENTRY_PRESERVATION`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
 
+## Multi-System Workspace Planned Slots
+
+- COC / CP RED workspace dashboard and planned placeholder routing: `src/pages/PlayWorkspace.tsx`
+- DND planned module cards: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- Shared workspace i18n keys: `multiWorkspace.*` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`
+- DND planned slot keys: `dndWorkspace.modules.inventory`, `dndWorkspace.modules.map`, `dndWorkspace.modules.journal`
+- COC module keys: `multiWorkspace.coc.modules.*`
+- CP RED module keys: `multiWorkspace.cp.modules.*`
+- Planned slot message: `multiWorkspace.planned.message`
+- `AI-LANDMARK: MULTI_SYSTEM_WORKSPACE_PLANNED_SLOTS`: `src/pages/PlayWorkspace.tsx`, `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+
 ## Platform Shell / Home / Play Workspace
 
 - Platform shell default entry: `src/App.tsx`

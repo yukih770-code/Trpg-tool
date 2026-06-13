@@ -16,6 +16,12 @@ Coverage levels in this document describe implemented mechanics and app wiring, 
 
 Rule data must declare source and trust metadata before being treated as verified runtime/core data. Unknown-source or suspicious data must not be promoted into new gameplay features. Public/free sources may be embedded only within allowed scope; paid-book or official-but-not-public content may be referenced by metadata but must not copy long rules text. Homebrew/demo/placeholder data must be visibly labeled or quarantined.
 
+## Workspace Shell Planned Slots
+
+Multi-System Workspace Shell Planned Slots v1 added a lightweight COC workspace dashboard. Existing Creator, Sheet, Skill Checks, Pushed Rolls, and Growth Checks remain reachable through module cards, while Investigator Vault, Clues / Handouts, Investigation Notes / Session Log, Locations / Map, and Source Status are entry-only planned slots.
+
+These slots do not implement clue data, handout storage, map/location models, session log persistence, Keeper tools, backend, multiplayer, schema, migration, or store changes.
+
 ## 2. Coverage Level Definitions
 
 | Level | Meaning |

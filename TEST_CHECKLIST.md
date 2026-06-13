@@ -57,12 +57,16 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] PlayWorkspace behavior remains unchanged
 - [ ] PlayWorkspace still exposes DND / COC / Cyberpunk RED system selector
 - [ ] PlayWorkspace still exposes creator / sheet / gameplay tabs, and CP RED market tab
+- [ ] Multi-system workspace dashboards expose module cards without implementing real map / inventory / item / community / backend features
+- [ ] Planned module cards show a clear placeholder: data-contract work is required before real functionality
 
 ### D&D
 
 - [ ] DND Workspace — entering DND shows the Dashboard first, not a character sheet
 - [ ] DND Workspace — secondary nav switches 工作台总览 / 角色库 / 规则库 / 规则源状态 / 进入游玩
 - [ ] DND Workspace — 进入游玩 / 战斗 opens the Gameplay view rather than staying in Builder
+- [ ] DND Workspace — planned Backpack / Items, Map / Tactical Board, and Quests / Notes / Logs cards show placeholder text only
+- [ ] DND Workspace — planned cards do not add inventory state, item instances, map tokens, quest persistence, or runtime automation
 - [ ] DND Dashboard — shows rule scope (DND 2024 / SRD5.2 + XGtE + TCoE), status, and data completion cards
 - [ ] DND Dashboard — module cards open Creator / Sheet / Gameplay in the preserved play view
 - [ ] DND Source Status — shows core + expansion sources with sourceId and status labels (display-only, no toggle)
@@ -114,6 +118,9 @@ Open the app in the browser and verify each page loads without crashing.
 
 ### Call of Cthulhu
 
+- [ ] COC Workspace — opens to a dashboard of module cards before entering the preserved COC pages
+- [ ] COC Workspace — Create Investigator / Investigator Sheet / Skill Checks / Pushed Rolls / Growth Checks open existing Creator / Sheet / Gameplay views
+- [ ] COC Workspace — Investigator Vault, Clues / Handouts, Investigation Notes / Session Log, Locations / Map, and Source Status show planned placeholders only
 - [ ] COC Creator — opens, fields editable
 - [ ] COC Sheet — opens and displays investigator data; no gameplay roll controls expected on Sheet
 - [ ] COC Gameplay — opens, HP/SAN/MP/Luck runtime buttons functional, dice tray functional
@@ -136,6 +143,9 @@ Open the app in the browser and verify each page loads without crashing.
 
 ### Cyberpunk RED
 
+- [ ] CP RED Workspace — opens to a dashboard of module cards before entering the preserved CP RED pages
+- [ ] CP RED Workspace — Create Character / Character Sheet / Skill Checks / Combat / Equipment / Black Market / Cyberware / Netrunning open existing views
+- [ ] CP RED Workspace — Edgerunner Vault, Enemies / Encounter, Map / Tactical Position, Session Log, and Source Status show planned placeholders only
 - [ ] CP Creator — opens, fields editable
 - [ ] CP Sheet — opens and displays character data; no gameplay roll controls expected on Sheet
 - [ ] CP Gameplay — opens, skill check and stat check functional

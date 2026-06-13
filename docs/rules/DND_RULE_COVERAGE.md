@@ -28,6 +28,8 @@ DND Background Runtime Completion v1 completed the local-CHM runtime baseline pa
 
 DND Character Builder Responsive Workbench Phase 1 completed as a UI/layout pass only. The original Creator selection and completion logic is preserved but presented through a responsive workbench with section navigation, an editor area, and a live summary/todo panel. Spell and equipment builder sections are placeholders/boundary notes only; no rule data, schema, migration, spell automation, equipment system, Sheet logic, or Gameplay logic changed.
 
+Multi-System Workspace Shell Planned Slots v1 added DND workspace module slots for Backpack / Items, Map / Tactical Board, and Quests / Notes / Logs. These are entry-only placeholders with a data-contract warning; no item instance model, inventory store, map/token model, quest log persistence, schema, migration, or runtime automation was added.
+
 <!-- AI-LANDMARK: DND_LOCAL_CHM_FULL_COVERAGE_AUDIT -->
 ## DND Local CHM Full Coverage Audit v1
 

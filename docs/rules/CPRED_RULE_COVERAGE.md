@@ -16,6 +16,12 @@ Coverage levels in this document describe implemented mechanics and app wiring, 
 
 Rule data must declare source and trust metadata before being treated as verified runtime/core data. Unknown-source or suspicious data must not be promoted into new gameplay features. Public/free sources may be embedded only within allowed scope; paid-book or official-but-not-public content may be referenced by metadata but must not copy long rules text. Homebrew/demo/placeholder data must be visibly labeled or quarantined.
 
+## Workspace Shell Planned Slots
+
+Multi-System Workspace Shell Planned Slots v1 added a lightweight Cyberpunk RED workspace dashboard. Existing Creator, Sheet, Skill Checks, Combat, Equipment / Black Market, Cyberware, and Netrunning entry points remain reachable through module cards, while Edgerunner Vault, Enemies / Encounter, Map / Tactical Position, Session Log, and Source Status are entry-only planned slots.
+
+These slots do not implement encounter state, enemy HP, map/token models, session log persistence, community/backend logic, multiplayer sync, schema, migration, or store changes.
+
 ## 2. Coverage Level Definitions
 
 | Level | Meaning |

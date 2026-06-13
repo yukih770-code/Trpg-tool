@@ -6,74 +6,81 @@
 
 ## Task
 
-- ID: DND Gameplay Entry Preservation v1
-- Name: DND Gameplay Entry Preservation v1
-- Goal: keep DND Gameplay / dice access visible after the Builder hierarchy cleanup without restoring old Builder tabs or changing runtime logic.
-- Phase: P1 DND platform UX / runtime entry preservation
+- ID: Multi-System Workspace Shell Planned Slots v1
+- Name: Multi-System Workspace Shell Planned Slots v1
+- Goal: expose platform-level workspace module entries and planned slots for DND / COC / CP RED without implementing real inventory, map, item, community, backend, or multiplayer functionality.
+- Phase: P1 platform IA / workspace shell
 - Status: Implemented; verification commands pending local run
 
 ## Result Summary
 
-- DND Workspace Play / Combat navigation now opens the preserved Gameplay view directly.
-- Existing DND Gameplay and RollConsole remain reachable through the current `Gameplay` component.
-- Old Builder-internal 创建器 / 角色卡 / 游玩战斗 tabs were not restored.
-- No dice algorithm, Gameplay runtime logic, DND rule data, CharacterData, store schema, migration, COC, CP RED, or Platform Shell behavior changed.
-- Landmark: `DND_GAMEPLAY_ENTRY_PRESERVATION`.
+- DND Workspace gained planned Backpack / Items, Map / Tactical Board, and Quests / Notes / Logs slots.
+- COC gained a lightweight workspace dashboard with entries for Investigator Vault, Creator, Sheet, Skill Checks, Pushed Rolls, Growth Checks, Clues / Handouts, Investigation Notes / Session Log, Locations / Map, and Source Status.
+- CP RED gained a lightweight workspace dashboard with entries for Edgerunner Vault, Creator, Sheet, Skill Checks, Combat, Equipment / Black Market, Cyberware, Netrunning, Enemies / Encounter, Map / Tactical Position, Session Log, and Source Status.
+- Planned modules show placeholder copy only: real functionality waits for data contracts.
+- No rule data, store, schema, migration, CharacterData, Sheet runtime, Gameplay runtime, inventory contract, map/token contract, community/backend logic, or multiplayer sync changed.
+- Landmark: `MULTI_SYSTEM_WORKSPACE_PLANNED_SLOTS`.
 
 ## Scope
 
 ### Allowed Files
 
+- `src/pages/PlayWorkspace.tsx`
 - `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
 - `src/i18n/locales/zh-CN.ts`
 - `src/i18n/locales/en.ts`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
+- `docs/rules/DND_RULE_COVERAGE.md`
+- `docs/rules/COC_RULE_COVERAGE.md`
+- `docs/rules/CPRED_RULE_COVERAGE.md`
 - `docs/ai/SYMBOL_MAP.md`
 - `docs/ai/TASK_ARCHIVE.md`
 - `docs/ai/ACTIVE_TASK.md`
 
 ### Forbidden Files
 
-- DND rule data
-- `src/pages/Gameplay.tsx` runtime logic
-- `src/pages/gameplay/*` dice / RollConsole logic
+- Rule data files
 - `src/store/*`
 - Store schema / migration
 - CharacterData / save format
-- COC / CP RED code and data
-- Platform Shell navigation outside DND Workspace
+- Creator business logic
+- Sheet runtime logic
+- Gameplay runtime logic
+- Inventory / map / token / encounter data contracts
+- Community / backend / multiplayer code
 
 ### Do Not Do
 
-- Restore old Builder tabs
-- Restore old top utility toolbar inside Builder
-- Rewrite dice logic
-- Rewrite Gameplay runtime
-- Implement Action Registry, map, inventory, backpack, or item systems
+- Implement real inventory, backpack, item, map, token, enemy, encounter, session log, community, subscription, backend, or multiplayer functionality
+- Rewrite DND Builder
+- Rewrite Sheet / Gameplay runtime
+- Modify rules data
 - `git add .` / `git add -A` / auto commit
 
 ## Navigation
 
 ### Key Symbols
 
-- `DND_GAMEPLAY_ENTRY_PRESERVATION`
-- `dndWorkspace.nav.play`
-- `dndWorkspace.modules.play`
+- `MULTI_SYSTEM_WORKSPACE_PLANNED_SLOTS`
+- `multiWorkspace.*`
+- `dndWorkspace.modules.inventory`
+- `dndWorkspace.modules.map`
+- `dndWorkspace.modules.journal`
 
 ### Locate Commands
 
 ```powershell
-rg -n "DND_GAMEPLAY_ENTRY_PRESERVATION|dndWorkspace\\.nav\\.play|dndWorkspace\\.modules\\.play|RollConsolePanel" src docs
+rg -n "MULTI_SYSTEM_WORKSPACE_PLANNED_SLOTS|multiWorkspace|dndWorkspace\\.modules\\.(inventory|map|journal)" src docs
 ```
 
 ## Completion Criteria
 
-- DND Workspace has a clear Play / Combat entry.
-- Clicking Play / Combat opens DND Gameplay, not the Builder.
-- Existing DND RollConsole / dice area remains reachable when Gameplay renders.
-- Old Builder tabs and utility toolbar are not restored.
-- No schema, migration, rule data, dice algorithm, or runtime rule logic changes.
+- DND planned slots appear and only show placeholder copy.
+- COC dashboard module entries route to existing Creator / Sheet / Gameplay or placeholder.
+- CP RED dashboard module entries route to existing Creator / Sheet / Gameplay / Market or placeholder.
+- Module card grids are responsive and do not horizontally overflow.
+- No schema, migration, store, rule data, Sheet runtime, or Gameplay runtime changes.
 - `npx tsc --noEmit` and `npm run build` pass.
 
 ## Verification
