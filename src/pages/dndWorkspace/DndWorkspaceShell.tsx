@@ -79,9 +79,10 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     { labelKey: 'dndWorkspace.modules.equipmentIndex', onClick: () => onViewChange('compendium') },
     { labelKey: 'dndWorkspace.modules.classIndex', onClick: () => onViewChange('compendium') },
     { labelKey: 'dndWorkspace.modules.sources', onClick: () => onViewChange('sources') },
-    { labelKey: 'dndWorkspace.modules.inventory', noteKey: 'dndWorkspace.planned.inventory', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.modules.inventory') },
-    { labelKey: 'dndWorkspace.modules.map', noteKey: 'dndWorkspace.planned.map', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.modules.map') },
-    { labelKey: 'dndWorkspace.modules.journal', noteKey: 'dndWorkspace.planned.journal', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.modules.journal') },
+    // Actor Workspace and Session / Campaign Workspace modules (inventory, map, journal) have been
+    // removed from the system dashboard module grid.
+    // They are described in the workspace-tier guidance section below, not listed as entry points here.
+    // AI-LANDMARK: SYSTEM_ACTOR_SESSION_WORKSPACE_IA_CORRECTION (follow-up: removed Actor/Session cards from grid)
   ];
 
   const sourceRows: {
@@ -243,6 +244,26 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                     <p className="mt-2 text-sm text-[#58180d]/75">{t('multiWorkspace.planned.message')}</p>
                   </div>
                 )}
+              </section>
+
+              {/* AI-LANDMARK: SYSTEM_ACTOR_SESSION_WORKSPACE_IA_CORRECTION — DND workspace tier concept cards */}
+              <section className={panelClass}>
+                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-[#58180d]">
+                    {t('dndWorkspace.ia.title')}
+                  </h2>
+                  <span className="text-[10px] text-[#58180d]/45">{t('dndWorkspace.ia.note')}</span>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="border border-[#58180d]/20 bg-white/45 p-4">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]">{t('dndWorkspace.ia.actorWorkspaceTitle')}</div>
+                    <p className="mt-2 text-xs leading-relaxed text-[#58180d]/65">{t('dndWorkspace.ia.actorWorkspaceNote')}</p>
+                  </div>
+                  <div className="border border-[#58180d]/20 bg-white/45 p-4">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]">{t('dndWorkspace.ia.sessionWorkspaceTitle')}</div>
+                    <p className="mt-2 text-xs leading-relaxed text-[#58180d]/65">{t('dndWorkspace.ia.sessionWorkspaceNote')}</p>
+                  </div>
+                </div>
               </section>
             </div>
           )}

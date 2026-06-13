@@ -177,6 +177,49 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Vault / creation / Start Playing i18n keys: `dndWorkspace.characters.*`, `dndWorkspace.creation.*`, `dndWorkspace.actions.*` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`
 - `AI-LANDMARK: DND_CHARACTER_VAULT_CREATION_METHOD_ENTRY`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`, `src/pages/Sheet.tsx`
 
+## System / Actor / Session Workspace IA Correction
+
+- Three-tier IA definition: System Workspace (rule scope, compendium, sources, completion); Actor Workspace (character card, status, resources, inventory, journal); Session / Campaign Workspace (map, token, handout, session log, encounter, GM tools)
+- DND IA concept card section: `src/pages/dndWorkspace/DndWorkspaceShell.tsx` (dashboard view, after modules section)
+- COC / CP RED IA concept card section: `renderNonDndWorkspaceDashboard` in `src/pages/PlayWorkspace.tsx`
+- DND planned IA notes: `dndWorkspace.planned.inventory` (Actor), `dndWorkspace.planned.map` (Session), `dndWorkspace.planned.journal` (Actor)
+- COC planned IA notes: `multiWorkspace.coc.notes.handouts` (Session), `multiWorkspace.coc.notes.notes` (Actor), `multiWorkspace.coc.notes.locations` (Session)
+- CP RED planned IA notes: `multiWorkspace.cp.notes.encounter` (Session), `multiWorkspace.cp.notes.map` (Session), `multiWorkspace.cp.notes.sessionLog` (Session)
+- New COC System Workspace planned cards: `multiWorkspace.coc.modules.compendium`, `multiWorkspace.coc.modules.completion`
+- New CP RED System Workspace planned cards: `multiWorkspace.cp.modules.compendium`, `multiWorkspace.cp.modules.completion`
+- IA i18n keys: `dndWorkspace.ia.*` and `multiWorkspace.ia.*` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`
+- `AI-LANDMARK: SYSTEM_ACTOR_SESSION_WORKSPACE_IA_CORRECTION`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`, `src/pages/PlayWorkspace.tsx`
+- **Follow-up (IA Correction Follow-up v1)**: DND `inventory`/`map`/`journal`, COC `handouts`/`notes`/`locations`, CP RED `encounter`/`map`/`sessionLog` removed from `moduleCards`/`cocModuleCards`/`cpModuleCards` arrays. These 9 cards no longer appear as `<button>` entries in the module grid. They are described only in the workspace-tier `<section>` (informational `<div>`, not entry points).
+- New i18n keys (follow-up): `dndWorkspace.ia.note`, `multiWorkspace.ia.note`
+- Updated i18n keys (follow-up): `dndWorkspace.ia.actorWorkspaceNote`, `dndWorkspace.ia.sessionWorkspaceNote`, `multiWorkspace.ia.actorWorkspaceNote`, `multiWorkspace.ia.sessionWorkspaceNote`
+
+## Platform Character Entry Pattern
+
+- COC / CP RED lightweight Vault shell rendering: `renderCharacterVault` in `src/pages/PlayWorkspace.tsx`
+- COC / CP RED creation method picker: `renderCreationMethod` in `src/pages/PlayWorkspace.tsx`
+- COC module routing to Investigator Vault / creation method: `cocModuleCards` in `src/pages/PlayWorkspace.tsx`
+- CP RED module routing to Edgerunner Vault / creation method: `cpModuleCards` in `src/pages/PlayWorkspace.tsx`
+- Existing system creators remain the Standard Creation targets: `CocCreator` and `CpCreator` through `openWorkspaceTab('creator')`
+- Existing sheets and runtimes remain context-action targets: `CocSheet`, `CpSheet`, `CocGameplay`, `CpGameplay`
+- Shared entry i18n keys: `multiWorkspace.entryPattern.*`, `multiWorkspace.creation.*`, `multiWorkspace.coc.entry.*`, `multiWorkspace.coc.creation.*`, `multiWorkspace.cp.entry.*`, `multiWorkspace.cp.creation.*`
+- `AI-LANDMARK: PLATFORM_CHARACTER_ENTRY_PATTERN_ALIGNMENT`: `src/pages/PlayWorkspace.tsx`
+
+## Platform Core Concepts / Game System Registry Baseline
+
+- Full concept definitions: `docs/architecture/PLATFORM_CORE_CONCEPTS.md`
+- `AI-LANDMARK: PLATFORM_CORE_CONCEPTS_GAME_SYSTEM_REGISTRY_BASELINE`: `docs/architecture/PLATFORM_CORE_CONCEPTS.md`
+- Platform vocabulary: Game System, Actor / Player Asset, Asset Collection, Sheet Template, Builder Template, Dice Profile, Rules Compendium, Source Package, Content Package, Workshop Item, Board/Scene/Token, Session/Campaign, Plugin/Mod, UI Theme / Layout Pack
+- Game System Registry V1 field spec: Section 3 of `PLATFORM_CORE_CONCEPTS.md`
+- Built-in Game System entries: `dnd5e2024`, `coc7e`, `cpred` — Section 4 of `PLATFORM_CORE_CONCEPTS.md`
+- Terminology alignment table (Character→Actor, Vault→Actor Vault, etc.): Section 6 of `PLATFORM_CORE_CONCEPTS.md`
+- Atmospheric Minimalism / 氛围化简约 artistic direction: Section 7 of `PLATFORM_CORE_CONCEPTS.md`
+- Workshop / Plugin safety model and content layer classification: Section 8 of `PLATFORM_CORE_CONCEPTS.md`
+- Three-tier workspace IA model summary: Section 9 of `PLATFORM_CORE_CONCEPTS.md`
+- Dice Profile vocabulary: `d20-standard` (DND), `d100-bonus-penalty` (COC), `exploding-d10` (CP RED) — Section 2.6
+- Board Capability Levels L0–L4: Section 2.11 of `PLATFORM_CORE_CONCEPTS.md`
+- Future Game System categories (Japanese TRPG, Wargame, Custom, Narrative): Section 5 of `PLATFORM_CORE_CONCEPTS.md`
+- No store, schema, runtime, or rule data changed by this baseline
+
 ## Platform Shell / Home / Play Workspace
 
 - Platform shell default entry: `src/App.tsx`

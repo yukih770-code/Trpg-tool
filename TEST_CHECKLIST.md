@@ -65,8 +65,10 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] DND Workspace — entering DND shows the Dashboard first, not a character sheet
 - [ ] DND Workspace — secondary nav switches 工作台总览 / 角色库 / 规则库 / 规则源状态 / 进入游玩
 - [ ] DND Workspace — 进入游玩 / 战斗 opens the Gameplay view rather than staying in Builder
-- [ ] DND Workspace — planned Backpack / Items, Map / Tactical Board, and Quests / Notes / Logs cards show placeholder text only
-- [ ] DND Workspace — planned cards do not add inventory state, item instances, map tokens, quest persistence, or runtime automation
+- [ ] DND Workspace — module grid does NOT show Backpack / Items, Map / Tactical Board, or Quests / Notes / Logs cards (removed from module grid in follow-up IA correction)
+- [ ] DND Workspace — workspace-tier guidance section (工作台层级) shows Actor Workspace (背包/装备/状态/资源/开始游玩/个人日志) and Session / Campaign Workspace (地图/Board/Token/Handout/Encounter/Session Log/GM工具/玩家列表) as informational text, not clickable module cards
+- [ ] DND Workspace — workspace-tier guidance shows a note clarifying these modules belong to their respective workspace, not the system dashboard
+- [ ] DND Workspace — no module grid cards implement inventory state, item instances, map tokens, quest persistence, or runtime automation
 - [ ] DND Character Vault — shows the current local character card with name, level, species, background, and class when present
 - [ ] DND Character Vault — empty state shows a Create Character action and does not imply a real multi-character store
 - [ ] DND Character Vault — View Sheet / Continue Editing / Start Playing route to existing Sheet / Builder / Gameplay views
@@ -128,7 +130,10 @@ Open the app in the browser and verify each page loads without crashing.
 
 - [ ] COC Workspace — opens to a dashboard of module cards before entering the preserved COC pages
 - [ ] COC Workspace — Create Investigator / Investigator Sheet / Skill Checks / Pushed Rolls / Growth Checks open existing Creator / Sheet / Gameplay views
-- [ ] COC Workspace — Investigator Vault, Clues / Handouts, Investigation Notes / Session Log, Locations / Map, and Source Status show planned placeholders only
+- [ ] COC Workspace — module grid does NOT show Clues / Handouts, Investigator Notes, or Locations / Map cards (removed from module grid in follow-up IA correction)
+- [ ] COC Workspace — COC 规则库/技能索引, 数据完成度, and Source Status are visible as planned cards (System Workspace level)
+- [ ] COC Workspace — workspace-tier guidance section (工作台层级) shows Actor Workspace (角色卡/当前状态/资源/背包/装备/开始游玩/个人日志) and Session / Campaign Workspace (地图/Board/Token/Handout/线索/Encounter/Session Log/GM工具/玩家列表) as informational text, not clickable module cards
+- [ ] COC Workspace — workspace-tier guidance shows a note clarifying these modules belong to their respective workspace, not the system dashboard
 - [ ] COC Creator — opens, fields editable
 - [ ] COC Sheet — opens and displays investigator data; no gameplay roll controls expected on Sheet
 - [ ] COC Gameplay — opens, HP/SAN/MP/Luck runtime buttons functional, dice tray functional
@@ -153,7 +158,10 @@ Open the app in the browser and verify each page loads without crashing.
 
 - [ ] CP RED Workspace — opens to a dashboard of module cards before entering the preserved CP RED pages
 - [ ] CP RED Workspace — Create Character / Character Sheet / Skill Checks / Combat / Equipment / Black Market / Cyberware / Netrunning open existing views
-- [ ] CP RED Workspace — Edgerunner Vault, Enemies / Encounter, Map / Tactical Position, Session Log, and Source Status show planned placeholders only
+- [ ] CP RED Workspace — module grid does NOT show Enemies / Encounter, Map / Tactical Position, or Session Log cards (removed from module grid in follow-up IA correction)
+- [ ] CP RED Workspace — CP RED 规则库/装备索引, 数据完成度, and Source Status are visible as planned cards (System Workspace level)
+- [ ] CP RED Workspace — workspace-tier guidance section (工作台层级) shows Actor Workspace (角色卡/当前状态/资源/背包/装备/开始游玩/个人日志) and Session / Campaign Workspace (地图/Board/Token/Handout/线索/Encounter/Session Log/GM工具/玩家列表) as informational text, not clickable module cards
+- [ ] CP RED Workspace — workspace-tier guidance shows a note clarifying these modules belong to their respective workspace, not the system dashboard
 - [ ] CP Creator — opens, fields editable
 - [ ] CP Sheet — opens and displays character data; no gameplay roll controls expected on Sheet
 - [ ] CP Gameplay — opens, skill check and stat check functional
@@ -202,7 +210,23 @@ Open the app in the browser and verify each page loads without crashing.
 
 ---
 
-## 5. Console Check
+## 5. Platform Core Concepts Baseline Check (Docs Only)
+
+- [ ] `docs/architecture/PLATFORM_CORE_CONCEPTS.md` exists and is readable
+- [ ] Document defines all 14 platform concepts (Game System through UI Theme / Layout Pack)
+- [ ] Game System Registry V1 field spec present with V1 required / optional / future classification
+- [ ] DND, COC, CP RED are recorded as built-in Game System entries with systemId / displayName / diceProfile / etc.
+- [ ] Future system categories (Japanese TRPG, Wargame, Custom Boardgame, Narrative) are documented
+- [ ] Terminology alignment table present (Character/Investigator/Edgerunner → Actor display labels)
+- [ ] Atmospheric Minimalism / 氛围化简约 artistic direction documented with layer rules
+- [ ] Workshop / Plugin safety model and content layer classification documented
+- [ ] Workspace IA three-tier model summary present
+- [ ] Landmark `PLATFORM_CORE_CONCEPTS_GAME_SYSTEM_REGISTRY_BASELINE` present in the document
+- [ ] No store, schema, runtime, rule data, plugin execution, workshop subscription, or map/inventory/session implementation was changed
+
+---
+
+## 6. Console Check
 
 - [ ] Open browser DevTools → Console
 - [ ] No red errors on page load
@@ -218,6 +242,16 @@ After modifying one system, verify the other two are unaffected:
 - [ ] DND pages still load after COC or CP changes
 - [ ] COC pages still load after DND or CP changes
 - [ ] CP pages still load after DND or COC changes
+
+### Platform Character Entry Pattern
+
+- [ ] DND keeps the existing Character Vault and creation method entry flow.
+- [ ] COC Workspace exposes Investigator Vault before Creator / Sheet / Gameplay context actions.
+- [ ] COC Standard Creation opens the existing COC Creator; Quick Creation, Local Import, and Workshop Import are planned only.
+- [ ] CP RED Workspace exposes Edgerunner Vault before Creator / Sheet / Gameplay context actions.
+- [ ] CP RED Standard Creation opens the existing CP RED Creator; Quick Creation, Local Import, and Workshop Import are planned only.
+- [ ] Vault and creation method cards are responsive: desktop multi-column, mobile single-column, no horizontal overflow.
+- [ ] No true multi-character store, Workshop/backend logic, import/export rewrite, rule data, store schema, migration, or runtime logic changed.
 
 ---
 

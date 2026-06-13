@@ -48,6 +48,7 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | DND Gameplay Entry Preservation v1 | ✅ Done (Gameplay / dice area remains reachable after Builder cleanup) |
 | Multi-System Workspace Shell Planned Slots v1 | ✅ Done (module entries + planned placeholders only) |
 | DND Character Vault & Creation Method Entry v1 | ✅ Done (Vault shell + creation method entry; runtime unchanged) |
+| Platform Core Concepts / Game System Registry Baseline v1 | ✅ Done (docs/architecture only; no code change) |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -78,6 +79,11 @@ Architecture phase scope:
 - Campaigns, Community Modules, Content Studio, Private Import expansion, map, multiplayer, and AI Host remain explicit placeholders/deferred.
 - No DND / COC / CP RED rule logic was changed.
 - No package changes, store schema changes, schema changes, or migration changes.
+- Platform Core Concepts / Game System Registry Baseline v1 completed. The project now defines Game System, Actor / Player Asset, Asset Collection, Dice Profile, Sheet/Builder Template, Board Capability, Source Package, Workshop Item, Theme, and Plugin concepts as platform-level architecture terms. DND, COC, and CP RED are documented as built-in Game System registry entries rather than platform boundaries. No store schema, runtime logic, rule data, workshop subscription, plugin execution, map, inventory, or session implementation changed.
+- New document: `docs/architecture/PLATFORM_CORE_CONCEPTS.md` — full concept definitions, Game System Registry V1 field spec, three built-in system entries, terminology alignment, Atmospheric Minimalism artistic direction, Workshop/Plugin safety model, and workspace IA summary.
+- Platform is re-positioned as: Chinese-first, extensible, multi-ruleset TRPG / tabletop game tool platform. DND / COC / CP RED are built-in samples, not the platform boundary.
+- Key invariants established: Character / Investigator / Edgerunner are system display labels; Actor / Player Asset is the platform abstraction; one Actor can join multiple Campaigns / Modules / Sessions; Asset Collection covers Party / Crew / Army / Roster.
+- Landmark: `PLATFORM_CORE_CONCEPTS_GAME_SYSTEM_REGISTRY_BASELINE` in `docs/architecture/PLATFORM_CORE_CONCEPTS.md`.
 - Rules Data Integrity + Source Verification Audit v1 found high-risk unverified/source-light datasets across DND / COC / CP RED.
 - Rule Data Source / Trust Metadata Foundation v1 added shared rule data provenance types in `src/lib/rules/rule-data-metadata.ts` (landmark `RULE_DATA_SOURCE_TRUST_METADATA`).
 - Project Rule Source Authority Policy v1 added rule-source manifest policy (landmark `RULE_SOURCE_AUTHORITY_POLICY`): owner-provided GitHub / PDF rule sources are authoritative over existing app data, previous AI-generated data, model memory, third-party sources, and general web search.
@@ -395,6 +401,43 @@ Local Data Contract Hardening v1 scope:
 - Envelope and legacy imports restore the detected DND / COC / CP RED system character through the existing store load actions.
 - Module/community package import, storage adapter, backend, cloud sync, campaign/session persistence, and multi-character library remain deferred.
 - No DND / COC / CP RED rule logic, store schema, or migration changed.
+
+Platform Character Entry Pattern Alignment v1 scope:
+- Platform Character Entry Pattern Alignment v1 completed.
+- DND keeps the existing lightweight Character Vault and creation method entry pattern.
+- COC now has a lightweight Investigator Vault, current-investigator context actions, and a creation method screen before the existing COC Creator.
+- CP RED now has a lightweight Edgerunner Vault, current-character context actions, and a creation method screen before the existing CP RED Creator.
+- Standard Creation opens the existing system creator. Quick Creation, Local Import, and Workshop Import are planned placeholders only.
+- Sheet / Gameplay / RollConsole assets remain reachable through character-context actions; no runtime logic, dice algorithm, import/export logic, store schema, migration, or rule data changed.
+- System Actor Session Workspace IA Correction v1 completed. DND / COC / CP RED workspace dashboards now declare System / Actor / Session workspace tier boundaries via planned-module notes and concept cards.
+- DND planned modules corrected: `inventory` → Actor Workspace; `map` → Session / Campaign Workspace; `journal` → Actor Workspace. New IA concept section added to DND dashboard.
+- COC planned modules corrected: `handouts` / `locations` → Session / Campaign Workspace; `notes` → Actor Workspace (renamed to '调查员笔记'). New planned cards for COC 规则库/技能索引 and 数据完成度. New IA concept section added to COC dashboard.
+- CP RED planned modules corrected: `encounter` / `map` / `sessionLog` → Session / Campaign Workspace. New planned cards for CP RED 规则库/装备索引 and 数据完成度. New IA concept section added to CP RED dashboard.
+- Landmark: `SYSTEM_ACTOR_SESSION_WORKSPACE_IA_CORRECTION` placed in `DndWorkspaceShell.tsx` and `PlayWorkspace.tsx`. No runtime logic, dice algorithm, store schema, migration, or rule data changed.
+
+System Actor Session Workspace IA Correction v1 scope:
+- Three-tier workspace IA defined: System Workspace (rule scope, character library, creation, compendium, source status, completion); Actor Workspace (character card, current status, resources, inventory, start playing, personal journal); Session / Campaign Workspace (map, token, handout, session log, encounter, GM tools).
+- DND planned module notes updated: `dndWorkspace.planned.inventory` → Actor Workspace; `dndWorkspace.planned.map` → Session / Campaign Workspace; `dndWorkspace.planned.journal` → Actor Workspace.
+- COC planned module notes updated: `multiWorkspace.coc.notes.handouts` / `.locations` → Session / Campaign Workspace; `.notes` → Actor Workspace. Label for `notes` module renamed to '调查员笔记 / Investigator Notes'. New planned module cards `compendium` and `completion` added to cocModuleCards array (System Workspace level).
+- CP RED planned module notes updated: `multiWorkspace.cp.notes.encounter` / `.map` / `.sessionLog` → Session / Campaign Workspace. New planned module cards `compendium` and `completion` added to cpModuleCards array (System Workspace level).
+- New `dndWorkspace.ia` i18n section added (zh-CN + en) with Actor/Session concept card text.
+- New `multiWorkspace.ia` i18n section added (zh-CN + en) with Actor/Session concept card text and multiCampaign note.
+- IA concept card sections (UI only, no state) added to DND workspace dashboard and COC/CP workspace dashboards.
+- No runtime logic, dice algorithm, store schema, migration, COC/CP/DND rule data, or import/export logic changed.
+- Landmark: `SYSTEM_ACTOR_SESSION_WORKSPACE_IA_CORRECTION`.
+- System Actor Session Workspace IA Correction Follow-up v1 completed. Actor-level and session-level modules were removed from all three system dashboard module grids and are now represented only in the workspace-tier guidance section.
+- DND: `inventory`, `map`, `journal` cards removed from `moduleCards` array. System dashboard now shows only system-level entries (characters, create, sheet, compendium, spell/feat/equipment/class index, sources).
+- COC: `handouts`, `notes`, `locations` cards removed from `cocModuleCards` array. System dashboard now shows only system-level entries (vault, create, sheet, skill checks, pushed rolls, growth checks, compendium, completion, sources).
+- CP RED: `encounter`, `map`, `sessionLog` cards removed from `cpModuleCards` array. System dashboard now shows only system-level entries (vault, create, sheet, skill checks, combat, market, cyberware, netrunning, compendium, completion, sources).
+- Workspace-tier guidance section strengthened: `dndWorkspace.ia.note`, `multiWorkspace.ia.note` keys added; Actor/Session notes expanded to include all specified modules (角色卡/调查员卡/Edgerunner卡, 背包/装备, 状态, 资源, 开始游玩, 个人日志 for Actor; 地图/Board/Scene, Token, Handout/线索, Encounter/Enemy, Session Log, GM工具, 玩家列表 for Session).
+- No runtime logic, dice algorithm, store schema, migration, COC/CP/DND rule data, or import/export logic changed.
+
+System Actor Session Workspace IA Correction Follow-up v1 scope:
+- Removed 9 non-system-level planned module cards total: DND (inventory, map, journal), COC (handouts, notes, locations), CP RED (encounter, map, sessionLog).
+- These modules are still referenced in workspace-tier guidance `<div>` sections (informational, non-clickable), not in the `<button>` module grid.
+- New i18n keys: `dndWorkspace.ia.note` and `multiWorkspace.ia.note` (both zh-CN and en).
+- Updated i18n keys: `dndWorkspace.ia.actorWorkspaceNote`, `dndWorkspace.ia.sessionWorkspaceNote`, `multiWorkspace.ia.actorWorkspaceNote`, `multiWorkspace.ia.sessionWorkspaceNote`.
+- No new module card keys. No store, schema, migration, or rule data changes.
 
 ---
 

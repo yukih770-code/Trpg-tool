@@ -225,6 +225,15 @@ Priority guidance:
 
 Bonus / penalty dice v1 note: COC bonus / penalty dice v1 implemented. Supports normal, 1/2 bonus dice, and 1/2 penalty dice. RuntimeLogEntry records final roll and tens dice selection. Pushed Roll, Sanity, Madness, Opposed Roll, and Keeper tools remain deferred.
 
+## 12.1 Platform Entry / Workspace IA
+
+Platform Character Entry Pattern Alignment v1 note:
+
+- COC now has a lightweight Investigator Vault shell at the workspace level.
+- The Vault shows the current local investigator or an empty state, with context actions for viewing the sheet, continuing editing, and starting investigation.
+- Investigator creation now goes through a creation method screen. Standard Creation opens the existing COC Creator; Quick Creation, Local Import, and Workshop Import are planned placeholders only.
+- This is information architecture only: no multi-investigator store, import/export rewrite, rule data, store schema, migration, dice algorithm, Sheet behavior, or Gameplay runtime changed.
+
 ## 12. Recommended Next Steps
 
 1. ~~COC bonus / penalty dice v1~~ — Done (skill checks; other check types deferred)

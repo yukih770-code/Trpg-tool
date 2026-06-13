@@ -244,6 +244,7 @@ DND Character Options Source Completion v1 status:
 - DND now enters through a workspace dashboard (`DndWorkspaceShell`): rule scope, source status, completion cards, and module entries are visible before character workflows.
 - The shell is display-only UI layering: no rules data, runtime logic, source filtering, or schema changed; Creator / Sheet / Gameplay render unchanged inside the "play" view.
 - DND Builder Workbench Phase 1 modernizes the Creator presentation inside the preserved play view: identity / sources / species / background / class / abilities / feats / spells / equipment / review sections can be switched non-linearly, with responsive mobile-safe layout and a live summary panel. Existing creation logic remains unchanged.
+- Platform Character Entry Pattern Alignment v1 keeps DND as the reference pattern: Character Vault / creation method selection / Sheet context action / Gameplay entry remain preserved without DND rule data, schema, store, Sheet, or Gameplay runtime changes.
 
 ## 7. Current Priority Gap List
 

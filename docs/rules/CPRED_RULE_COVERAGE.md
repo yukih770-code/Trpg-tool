@@ -286,6 +286,15 @@ Critical Injury Manual Tracking v1 note:
 - Automatic damage triggers, armor ablation, ammo, treatment, death saves, and full damage pipeline remain deferred.
 - Persistence reuses the existing safe `runtime.criticalInjuries` state; no schema or migration changed.
 
+## 12.1 Platform Entry / Workspace IA
+
+Platform Character Entry Pattern Alignment v1 note:
+
+- CP RED now has a lightweight Edgerunner Vault shell at the workspace level.
+- The Vault shows the current local Edgerunner or an empty state, with context actions for viewing the sheet, continuing editing, and starting the mission/runtime area.
+- Edgerunner creation now goes through a creation method screen. Standard Creation opens the existing CP RED Creator; Quick Creation, Local Import, and Workshop Import are planned placeholders only.
+- This is information architecture only: no multi-character store, import/export rewrite, Workshop/backend logic, rule data, store schema, migration, dice algorithm, Sheet behavior, Market behavior, or Gameplay runtime changed.
+
 ## 13. Recommended Next Steps
 
 1. CP RED armor SP / ablation planning

@@ -6,88 +6,73 @@
 
 ## Task
 
-- ID: DND Character Vault & Creation Method Entry v1
-- Name: DND Character Vault & Creation Method Entry v1
-- Goal: move DND character entry into a lightweight Character Vault and creation method selection flow while preserving the existing Builder, Sheet, Gameplay, and RollConsole assets.
-- Phase: P1 DND platform IA / character entry
-- Status: Implemented; verification commands pending local run
+- ID: Platform Core Concepts / Game System Registry Baseline v1
+- Name: Platform Core Concepts / Game System Registry Baseline v1
+- Goal: Establish platform-level architectural vocabulary and Game System Registry baseline. Documentation and metadata only — no code, store schema, runtime, or rule data changes.
+- Phase: P1 platform architecture
+- Status: Implemented; docs only, no tsc/build impact expected
 
 ## Result Summary
 
-- DND Character Vault now shows the current local character, empty state, and character-context actions.
-- Character creation now enters through a creation method selection screen.
-- Standard Creation opens the existing BG3-like Builder.
-- Quick Creation, Local Import, and Workshop Import are planned placeholders only.
-- Sheet exposes a visible Start Playing / Enter Combat Panel action into the preserved Gameplay view.
-- Workspace top navigation no longer presents Enter Play / Combat as a primary route.
-- No true multi-character store, Workshop, import rewrite, map, backpack, item system, rule data, store schema, migration, dice algorithm, Sheet runtime, or Gameplay runtime changed.
-- Landmark: `DND_CHARACTER_VAULT_CREATION_METHOD_ENTRY`.
+- New file: `docs/architecture/PLATFORM_CORE_CONCEPTS.md`
+  - 14 core concept definitions (Game System through UI Theme / Layout Pack)
+  - Game System Registry V1 field spec (V1 required / optional / future)
+  - Built-in system entries: `dnd5e2024`, `coc7e`, `cpred`
+  - Future system categories (Japanese TRPG, Wargame, Custom Boardgame, Narrative)
+  - Terminology alignment table
+  - Atmospheric Minimalism / 氛围化简约 artistic direction
+  - Workshop / Plugin safety model and content layer classification
+  - Three-tier workspace IA summary
+  - Board Capability Levels L0–L4
+  - Dice Profile vocabulary
+  - Landmark: `PLATFORM_CORE_CONCEPTS_GAME_SYSTEM_REGISTRY_BASELINE`
+- Updated: `PROJECT_STATUS.md`, `TEST_CHECKLIST.md`, `docs/ai/SYMBOL_MAP.md`, `docs/ai/TASK_ARCHIVE.md`
+- No src/ files modified. No store, schema, migration, runtime, or rule data changed.
 
 ## Scope
 
 ### Allowed Files
 
-- `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
-- `src/pages/PlayWorkspace.tsx`
-- `src/pages/Sheet.tsx`
-- `src/i18n/locales/zh-CN.ts`
-- `src/i18n/locales/en.ts`
+- `docs/architecture/PLATFORM_CORE_CONCEPTS.md` (new)
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
-- `docs/rules/DND_RULE_COVERAGE.md`
 - `docs/ai/SYMBOL_MAP.md`
 - `docs/ai/TASK_ARCHIVE.md`
 - `docs/ai/ACTIVE_TASK.md`
 
-### Forbidden Files
+### Forbidden Changes
 
-- DND rule data
-- COC / CP RED code and data
-- `src/store/*`
 - Store schema / migration
-- CharacterData / save format
-- Creator business logic
-- Sheet rule calculation logic
-- Gameplay runtime logic
-- Dice algorithm
-- Workshop / backend / subscription / community implementation
-- Inventory / map / item systems
-
-### Do Not Do
-
-- Implement a real multi-character library
-- Implement archive / duplicate / campaign ownership
-- Implement real Quick Creation
-- Implement real Workshop import, subscriptions, downloads, accounts, backend, dependencies, or community content
-- Restore old Builder tabs or utility toolbar
-- `git add .` / `git add -A` / auto commit
+- CharacterData / Investigator / CP RED save structures
+- Runtime rule logic / dice algorithms
+- DND / COC / CP RED rule data
+- Any src/ file
+- Game System engine implementation
+- Plugin execution
+- Workshop subscription
+- git add / commit
 
 ## Navigation
 
 ### Key Symbols
 
-- `DND_CHARACTER_VAULT_CREATION_METHOD_ENTRY`
-- `dndWorkspace.characters.*`
-- `dndWorkspace.creation.*`
-- `dndWorkspace.actions.startPlaying`
+- `PLATFORM_CORE_CONCEPTS_GAME_SYSTEM_REGISTRY_BASELINE`
+- Full doc: `docs/architecture/PLATFORM_CORE_CONCEPTS.md`
 
 ### Locate Commands
 
 ```powershell
-rg -n "DND_CHARACTER_VAULT_CREATION_METHOD_ENTRY|dndWorkspace\\.characters|dndWorkspace\\.creation|startPlaying" src docs
+rg -n "PLATFORM_CORE_CONCEPTS_GAME_SYSTEM_REGISTRY_BASELINE" docs
 ```
 
 ## Completion Criteria
 
-- Character Vault shows current-character card or empty state.
-- Vault actions route to Sheet / Builder / Gameplay.
-- Creation method page appears before Builder.
-- Standard Creation enters existing Builder.
-- Planned creation methods are placeholders only.
-- Sheet has a visible Start Playing action.
-- Top Workspace nav no longer makes Play / Combat the primary route.
-- No schema, migration, store, rule data, dice algorithm, Sheet runtime, or Gameplay runtime changes.
-- `npx tsc --noEmit` and `npm run build` pass.
+- `docs/architecture/PLATFORM_CORE_CONCEPTS.md` exists with all 14 concepts, registry field spec, three system entries, terminology alignment, artistic direction, safety model, and landmark comment.
+- `docs/ai/SYMBOL_MAP.md` references the new doc and landmark.
+- `PROJECT_STATUS.md` records the task as completed.
+- `TEST_CHECKLIST.md` has a Platform Core Concepts Baseline Check section.
+- No src/ file was modified.
+- `npx tsc --noEmit` and `npm run build` still pass (no src/ changes).
 
 ## Verification
 
