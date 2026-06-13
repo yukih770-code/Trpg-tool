@@ -6,28 +6,28 @@
 
 ## Task
 
-- ID: CP RED Workspace Contract Alignment v1
-- Name: CPRED_WORKSPACE_CONTRACT_ALIGNMENT_V1
-- Goal: Align CP RED workspace top navigation to Platform Workspace Section Contract. Top nav limited to 4 system-level Sections: overview / actorVault / rulesCompendium / sourceStatus. Remove createMethod / sheet / runtime (play/mission) from top nav; keep accessible via Actor/Creation context CTAs. Add actorFlowNote in createMethod view. No CP RED rule logic, dice, Edgerunner save format, or runtime changed.
-- Phase: P1 platform architecture
+- ID: CP RED stable item instance id / equipment disappearing fix v1
+- Name: CPRED_STABLE_ITEM_INSTANCE_ID_EQUIPMENT_FIX_V1
+- Goal: Fix CP RED item disappearance around inventory/equipped movement by preserving stable item instance identity across equip, unequip, install, remove, carry, and wear flows. Keep legacy no-id data compatible through lazy id assignment. Do not change CP RED rule data, dice, combat formula, save schema, migration, DND, or COC.
+- Phase: P1 platform/runtime stability
 - Status: Done
 
 ## Result Summary
 
-- `src/pages/cpWorkspace/CpWorkspaceShell.tsx`: Added `CPRED_WORKSPACE_CONTRACT_ALIGNMENT_V1` landmark (doc-block + inline comment). Removed `createMethod`, `sheet`, `gameplay(mission)` from `navItems` → now 4 items: dashboard / vault / compendium / sources. Simplified navItems type (removed `kind`/`view?`/`tab?` fields). Simplified `isActiveNav` to `view === item.key`. Simplified `handleNavClick(nextView)` — no more playTab branch. Updated nav button `onClick` to `handleNavClick(item.key)`. Added `actorFlowNote` paragraph at bottom of createMethod view section.
-- `src/i18n/locales/zh-CN.ts`: Added `cpWorkspace.creation.actorFlowNote`.
-- `src/i18n/locales/en.ts`: Added `cpWorkspace.creation.actorFlowNote`.
-- createMethod/play views and their CTAs unchanged — accessible via renderEdgerunnerCard and overview empty state.
-- No DND / COC files changed. No store schema, Edgerunner save format, CP RED rule data, runtime logic, dice algorithm, React Router, URL routing, or browser History API changed.
-- Landmark: `CPRED_WORKSPACE_CONTRACT_ALIGNMENT_V1` in `src/pages/cpWorkspace/CpWorkspaceShell.tsx`.
+- `src/store/cpStore.ts`: Added `ensureCpItemInstanceId` and applied it at CP RED inventory/equipment movement boundaries. Actions now remove items by their original inventory key, assign a stable instance id before moving into equipped state, and preserve the moved item payload when returning it to inventory.
+- `src/pages/CpGameplay.tsx`: Damage weapon lookup now prefers `instanceId`, with legacy name fallback for old selected values.
+- `src/pages/cpGameplay/CpDamagePanel.tsx`: Damage weapon select option values now use `instanceId ?? name`, so duplicate same-name carried weapons remain distinguishable.
+- `PROJECT_STATUS.md`, `TEST_CHECKLIST.md`, `docs/ai/SYMBOL_MAP.md`, `docs/ai/TASK_ARCHIVE.md`: Updated task status, acceptance checks, and landmark navigation.
+- No DND / COC files changed. No CP RED rule data, dice algorithm, combat formula, store schema, migration, save format, React Router, URL routing, browser History API, map, session, workshop, or plugin logic changed.
+- Landmark: `CPRED_STABLE_ITEM_INSTANCE_ID_EQUIPMENT_FIX_V1` in `src/store/cpStore.ts`.
 
 ## Scope
 
 ### Allowed Files
 
-- `src/pages/cpWorkspace/CpWorkspaceShell.tsx`
-- `src/i18n/locales/zh-CN.ts`
-- `src/i18n/locales/en.ts`
+- `src/store/cpStore.ts`
+- `src/pages/CpGameplay.tsx`
+- `src/pages/cpGameplay/CpDamagePanel.tsx`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
 - `docs/ai/SYMBOL_MAP.md`
@@ -36,27 +36,25 @@
 
 ### Forbidden Changes
 
-- DND / COC related pages
-- store schema / migration / Edgerunner save structures / CP RED rule data
-- CP RED runtime rule logic / dice algorithm / import / export
-- Workshop / Plugin / map / token / session / inventory / item data contract
-- React Router / URL routing / browser History API
+- DND / COC code
+- CP RED rule data / dice algorithm / combat formula / netrunning rules / market prices
+- store schema / migration / save format
+- true inventory data contract / item system rewrite
+- map / session / workshop / plugin / router
 - git add / commit
 
 ## Navigation
 
 ### Key Symbols
 
-- `CPRED_WORKSPACE_CONTRACT_ALIGNMENT_V1` — landmark in `src/pages/cpWorkspace/CpWorkspaceShell.tsx`
-- `CPRED_WORKSPACE_CLEANUP_V1` — earlier nav cleanup landmark (same file)
-- `COC_CPRED_DND_ALIGNED_WORKSPACE_RECONSTRUCTION` — original CP RED workspace landmark (same file)
-- `navItems` — 4-item top nav array in `CpWorkspaceShell.tsx`
-- `cpWorkspace.creation.actorFlowNote` — new i18n key in both locales
+- `CPRED_STABLE_ITEM_INSTANCE_ID_EQUIPMENT_FIX_V1` — landmark in `src/store/cpStore.ts`
+- `ensureCpItemInstanceId` — lazy stable id helper in `src/store/cpStore.ts`
+- `installCyberware`, `removeCyberware`, `equipArmor`, `unequipArmor`, `carryWeapon`, `removeWeapon`, `wearFashion`, `removeClothing` — stable movement boundaries in `src/store/cpStore.ts`
+- `weaponOptionKey` — damage panel option key/value helper in `src/pages/cpGameplay/CpDamagePanel.tsx`
 
 ### Locate Commands
 
 ```powershell
-rg -n "CPRED_WORKSPACE_CONTRACT_ALIGNMENT_V1" src
-rg -n "navItems" src/pages/cpWorkspace/CpWorkspaceShell.tsx
-rg -n "actorFlowNote" src/i18n
+rg -n "CPRED_STABLE_ITEM_INSTANCE_ID_EQUIPMENT_FIX_V1|ensureCpItemInstanceId|weaponOptionKey" src docs
+rg -n "installCyberware|removeCyberware|equipArmor|unequipArmor|carryWeapon|removeWeapon|wearFashion|removeClothing" src/store/cpStore.ts
 ```

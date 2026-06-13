@@ -50,7 +50,9 @@ export function CpGameplay({ embedded = false }: CpGameplayProps = {}) {
   const [selectedSkill, setSelectedSkill] = useState(CP_SKILLS[0]?.name ?? '');
   const [selectedDV, setSelectedDV] = useState(15);
   const [modifier, setModifier] = useState(0);
-  const [selectedWeapon, setSelectedWeapon] = useState(character.weapons[0]?.name ?? '');
+  const [selectedWeapon, setSelectedWeapon] = useState(
+    character.weapons[0]?.instanceId ?? character.weapons[0]?.name ?? '',
+  );
   const [aimAtHead, setAimAtHead] = useState(false);
   const [diceTray, setDiceTray] = useState<Record<string, number>>({});
 
@@ -131,7 +133,10 @@ export function CpGameplay({ embedded = false }: CpGameplayProps = {}) {
   };
 
   const handleDamageRoll = () => {
-    const weapon = character.weapons.find((item) => item.name === selectedWeapon);
+    const weapon =
+      character.weapons.find((item) => item.instanceId === selectedWeapon)
+      ?? character.weapons.find((item) => item.name === selectedWeapon)
+      ?? character.weapons[0];
     if (!weapon) return;
 
     const damage = rollDamage(weapon.damage);

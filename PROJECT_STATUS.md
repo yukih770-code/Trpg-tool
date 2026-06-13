@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-06-13
+Last updated: 2026-06-14
 
 ## Project Overview
 
@@ -64,6 +64,7 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | DND Workspace Contract Alignment v1 | ✅ Done (DndWorkspaceShell top nav reduced to 4 system-level Sections: overview/actorVault/rulesCompendium/sourceStatus; 'create' removed from navItems, accessible via CTA only; actorFlowNote i18n key added; landmark DND_WORKSPACE_CONTRACT_ALIGNMENT_V1) |
 | COC Workspace Contract Alignment v1 | ✅ Done (CocWorkspaceShell top nav reduced to 4 system-level Sections: overview/actorVault/rulesCompendium/sourceStatus; createMethod/sheet/play removed from navItems, accessible via Actor context CTA; Activity+FileText imports removed; isActiveNav+handleNavClick simplified; actorFlowNote i18n key added; landmark COC_WORKSPACE_CONTRACT_ALIGNMENT_V1) |
 | CP RED Workspace Contract Alignment v1 | ✅ Done (CpWorkspaceShell top nav reduced to 4 system-level Sections: overview/actorVault/rulesCompendium/sourceStatus; createMethod/sheet/gameplay(mission) removed from navItems, accessible via Actor context CTA; navItems type simplified (kind/view?/tab? removed); isActiveNav+handleNavClick simplified; actorFlowNote i18n key added; landmark CPRED_WORKSPACE_CONTRACT_ALIGNMENT_V1) |
+| CP RED stable item instance id / equipment disappearing fix v1 | ✅ Done (CP RED inventory/equipment movement now preserves stable item instance identity across equip/unequip/install/remove flows; duplicate same-name items remain distinguishable; legacy no-id items are normalized lazily; no CP RED rule data, dice, combat formula, schema, migration, DND, or COC change) |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.
@@ -94,6 +95,7 @@ Architecture phase scope:
 - Campaigns, Community Modules, Content Studio, Private Import expansion, map, multiplayer, and AI Host remain explicit placeholders/deferred.
 - No DND / COC / CP RED rule logic was changed.
 - No package changes, store schema changes, schema changes, or migration changes.
+- CP RED stable item instance id / equipment disappearing fix v1 completed. CP RED inventory and equipment flows now preserve stable item instance identity across equip and unequip actions, preventing items from disappearing when moved between inventory and equipped state. Existing data without item instance ids remains compatible through lazy id assignment at movement boundaries. No CP RED rule data, dice algorithm, combat formula, DND, COC, map, session, workshop, plugin, React Router, URL routing, or browser History API implementation changed.
 - Platform Core Concepts / Game System Registry Baseline v1 completed. The project now defines Game System, Actor / Player Asset, Asset Collection, Dice Profile, Sheet/Builder Template, Board Capability, Source Package, Workshop Item, Theme, and Plugin concepts as platform-level architecture terms. DND, COC, and CP RED are documented as built-in Game System registry entries rather than platform boundaries. No store schema, runtime logic, rule data, workshop subscription, plugin execution, map, inventory, or session implementation changed.
 - New document: `docs/architecture/PLATFORM_CORE_CONCEPTS.md` — full concept definitions, Game System Registry V1 field spec, three built-in system entries, terminology alignment, Atmospheric Minimalism artistic direction, Workshop/Plugin safety model, and workspace IA summary.
 - Platform is re-positioned as: Chinese-first, extensible, multi-ruleset TRPG / tabletop game tool platform. DND / COC / CP RED are built-in samples, not the platform boundary.

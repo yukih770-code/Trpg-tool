@@ -183,6 +183,7 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] CP Market — opens without crash
 - [ ] CP Market — item can be added to character inventory
 - [ ] CP Market — buying the same-name item twice creates two distinct inventory entries
+- [ ] CP RED — legacy inventory/equipment entries without `instanceId` do not crash and receive stable ids when moved between inventory and equipped state
 - [ ] CP Sheet — inventory and equipment state are visible
 - [ ] CP Sheet — equip / unequip weapon does not lose the item
 - [ ] CP Sheet — equip / unequip one same-name weapon instance does not remove the other instance
@@ -190,8 +191,10 @@ Open the app in the browser and verify each page loads without crashing.
 - [ ] CP Sheet — equip / unequip one same-name armor instance preserves the other instance
 - [ ] CP Sheet — install / uninstall cyberware preserves the item and does not automate Humanity Loss
 - [ ] CP Sheet — install / uninstall one same-name cyberware instance preserves the other instance
+- [ ] CP Sheet — wear / remove fashion preserves the item payload and does not collapse duplicate same-name fashion entries
 - [ ] CP Sheet — cyberware install / uninstall does not change Humanity, EMP, or cyberPsycho automatically
 - [ ] CP Gameplay — Critical Injury panel can manually add a body or head injury from the existing 2d6 tables
+- [ ] CP Gameplay — damage weapon selector uses item instance identity so duplicate same-name carried weapons remain distinguishable
 - [ ] CP Gameplay — Critical Injury panel can remove a tracked injury
 - [ ] CP Gameplay — manual add/remove writes RuntimeLogEntry records with add-critical-injury / remove-critical-injury actions
 - [ ] CP Gameplay — Critical Injury panel is labeled manual tracking and does not roll injuries or apply damage automatically

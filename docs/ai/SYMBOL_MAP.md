@@ -36,6 +36,10 @@ This file helps AI quickly locate important types, helper functions, store actio
 - `addGearToInventory`: `src/store/cpStore.ts`
 - `CpMarket`: `src/pages/CpMarket.tsx`
 - `InventoryPanel`: `src/pages/CpSheet.tsx`
+- `ensureCpItemInstanceId`: `src/store/cpStore.ts`
+- CP RED stable item movement boundaries (`installCyberware`, `removeCyberware`, `equipArmor`, `unequipArmor`, `carryWeapon`, `removeWeapon`, `wearFashion`, `removeClothing`): `src/store/cpStore.ts`
+- CP RED damage weapon instance selection: `src/pages/CpGameplay.tsx`, `src/pages/cpGameplay/CpDamagePanel.tsx`
+- `AI-LANDMARK: CPRED_STABLE_ITEM_INSTANCE_ID_EQUIPMENT_FIX_V1`: `src/store/cpStore.ts`
 
 ## CP RED Critical Injury Manual Tracking
 

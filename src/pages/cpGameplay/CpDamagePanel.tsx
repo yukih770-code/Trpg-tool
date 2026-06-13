@@ -23,6 +23,8 @@ export function CpDamagePanel({
   onDeathSave,
   onRemoveInjury,
 }: CpDamagePanelProps) {
+  const weaponOptionKey = (weapon: CpCharacter['weapons'][number]) => weapon.instanceId ?? weapon.name;
+
   return (
     <div className="space-y-4">
       <button onClick={onDeathSave}
@@ -37,7 +39,7 @@ export function CpDamagePanel({
           <div className="flex gap-2 mb-2">
             <select value={selectedWeapon} onChange={e => setSelectedWeapon(e.target.value)}
               className="flex-1 bg-[#080810] border border-[#00e5ff]/20 text-[#9ab0c8] text-xs p-2 font-mono outline-none focus:border-[#00e5ff]">
-              {character.weapons.map(w => <option key={w.name} value={w.name}>{w.name} ({w.damage})</option>)}
+              {character.weapons.map(w => <option key={weaponOptionKey(w)} value={weaponOptionKey(w)}>{w.name} ({w.damage})</option>)}
             </select>
             <button onClick={onDamageRoll}
               className="px-3 bg-[#f5c518] text-[#080810] font-bold uppercase font-mono text-xs hover:bg-[#f5c518]/80 transition-colors"

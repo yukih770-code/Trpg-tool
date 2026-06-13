@@ -47,9 +47,17 @@ function safeInv(char: CpCharacter): CpInventory {
 
 type CpInstanceItem = { instanceId?: string; name: string };
 
+// AI-LANDMARK: CPRED_STABLE_ITEM_INSTANCE_ID_EQUIPMENT_FIX_V1
+// CP RED inventory/equipment moves must preserve item instance identity. New
+// purchases get a fresh instanceId; legacy in-memory items without one receive
+// a lazy id when they cross an equip/unequip boundary.
 function makeCpItemInstanceId(prefix: string): string {
   const rand = Math.random().toString(36).slice(2, 9);
   return `${prefix}-${Date.now()}-${rand}`;
+}
+
+function ensureCpItemInstanceId<T extends CpInstanceItem>(item: T, prefix: string): T {
+  return item.instanceId ? item : { ...item, instanceId: makeCpItemInstanceId(prefix) };
 }
 
 function withNewInstanceId<T extends { instanceId?: string }>(item: T, prefix: string): T {
@@ -307,14 +315,17 @@ export const useCpStore = create<CpState>()(
         const inv = safeInv(state.character);
         const key = itemKey(cw);
         const inventoryItem = findByInstanceOrName(inv.cyberware, key);
-        const item = inventoryItem ?? (cw.instanceId ? cw : withNewInstanceId(cw, 'cp-cyberware'));
+        const item = inventoryItem
+          ? ensureCpItemInstanceId(inventoryItem, 'cp-cyberware')
+          : (cw.instanceId ? ensureCpItemInstanceId(cw, 'cp-cyberware') : withNewInstanceId(cw, 'cp-cyberware'));
+        const removeKey = inventoryItem ? itemKey(inventoryItem) : itemKey(item);
         if (hasSameInstance(state.character.cyberware, item)) return state;
 
         const nextCharacter: CpCharacter = {
           ...state.character,
           cyberware: [...state.character.cyberware, item],
           // Remove from inventory if it was there (it should be, but handle gracefully)
-          inventory: { ...inv, cyberware: removeOneByInstanceOrName(inv.cyberware, itemKey(item)) },
+          inventory: { ...inv, cyberware: removeOneByInstanceOrName(inv.cyberware, removeKey) },
         };
 
         return {
@@ -328,10 +339,11 @@ export const useCpStore = create<CpState>()(
 
         const inv = safeInv(state.character);
         const newInstalled = removeOneByInstanceOrName(state.character.cyberware, itemKey(cw));
+        const item = ensureCpItemInstanceId(cw, 'cp-cyberware');
 
         // Return to inventory if this exact instance is not already there.
-        const alreadyInInv = hasSameInstance(inv.cyberware, cw);
-        const newInvCyberware = alreadyInInv ? inv.cyberware : [...inv.cyberware, cw];
+        const alreadyInInv = hasSameInstance(inv.cyberware, item);
+        const newInvCyberware = alreadyInInv ? inv.cyberware : [...inv.cyberware, item];
 
         const nextCharacter: CpCharacter = {
           ...state.character,
@@ -372,13 +384,17 @@ export const useCpStore = create<CpState>()(
         const inv = safeInv(state.character);
         const armorKey = itemKey(armor);
         const inventoryItem = findByInstanceOrName(inv.armor, armorKey);
-        const item = inventoryItem ?? (armor.instanceId ? armor : withNewInstanceId(armor, 'cp-armor'));
+        const item = inventoryItem
+          ? ensureCpItemInstanceId(inventoryItem, 'cp-armor')
+          : (armor.instanceId ? ensureCpItemInstanceId(armor, 'cp-armor') : withNewInstanceId(armor, 'cp-armor'));
+        const removeKey = inventoryItem ? itemKey(inventoryItem) : itemKey(item);
 
         // Return currently equipped armor to inventory if different
         const currentlyEquipped = state.character[key];
-        let newInvArmor = removeOneByInstanceOrName(inv.armor, itemKey(item)); // remove the new one from inv
-        if (currentlyEquipped && itemKey(currentlyEquipped) !== itemKey(item) && !hasSameInstance(newInvArmor, currentlyEquipped)) {
-          newInvArmor = [...newInvArmor, currentlyEquipped];
+        let newInvArmor = removeOneByInstanceOrName(inv.armor, removeKey); // remove the new one from inv
+        const equippedToReturn = currentlyEquipped ? ensureCpItemInstanceId(currentlyEquipped, 'cp-armor') : null;
+        if (equippedToReturn && itemKey(equippedToReturn) !== itemKey(item) && !hasSameInstance(newInvArmor, equippedToReturn)) {
+          newInvArmor = [...newInvArmor, equippedToReturn];
         }
 
         const nextCharacter: CpCharacter = {
@@ -398,13 +414,14 @@ export const useCpStore = create<CpState>()(
         if (!armor) return state;
 
         const inv = safeInv(state.character);
-        const alreadyInInv = hasSameInstance(inv.armor, armor);
+        const item = ensureCpItemInstanceId(armor, 'cp-armor');
+        const alreadyInInv = hasSameInstance(inv.armor, item);
         const nextCharacter: CpCharacter = {
           ...state.character,
           [key]: null,
           inventory: {
             ...inv,
-            armor: alreadyInInv ? inv.armor : [...inv.armor, armor]
+            armor: alreadyInInv ? inv.armor : [...inv.armor, item]
           }
         };
 
@@ -438,14 +455,15 @@ export const useCpStore = create<CpState>()(
 
       carryWeapon: (idOrName) => set(state => {
         const inv = safeInv(state.character);
-        const weapon = findByInstanceOrName(inv.weapons, idOrName);
-        if (!weapon) return state;
+        const inventoryWeapon = findByInstanceOrName(inv.weapons, idOrName);
+        if (!inventoryWeapon) return state;
+        const weapon = ensureCpItemInstanceId(inventoryWeapon, 'cp-weapon');
         if (hasSameInstance(state.character.weapons, weapon)) return state;
         return {
           character: {
             ...state.character,
             weapons: [...state.character.weapons, weapon],
-            inventory: { ...inv, weapons: removeOneByInstanceOrName(inv.weapons, itemKey(weapon)) }
+            inventory: { ...inv, weapons: removeOneByInstanceOrName(inv.weapons, itemKey(inventoryWeapon)) }
           }
         };
       }),
@@ -454,14 +472,15 @@ export const useCpStore = create<CpState>()(
         const weapon = findByInstanceOrName(state.character.weapons, idOrName);
         if (!weapon) return state;
         const inv = safeInv(state.character);
-        const alreadyInInv = hasSameInstance(inv.weapons, weapon);
+        const item = ensureCpItemInstanceId(weapon, 'cp-weapon');
+        const alreadyInInv = hasSameInstance(inv.weapons, item);
         return {
           character: {
             ...state.character,
             weapons: removeOneByInstanceOrName(state.character.weapons, itemKey(weapon)),
             inventory: {
               ...inv,
-              weapons: alreadyInInv ? inv.weapons : [...inv.weapons, weapon]
+              weapons: alreadyInInv ? inv.weapons : [...inv.weapons, item]
             }
           }
         };
@@ -497,13 +516,14 @@ export const useCpStore = create<CpState>()(
 
       wearFashion: (idOrName) => set(state => {
         const inv = safeInv(state.character);
-        const cloth = findByInstanceOrName(inv.fashion, idOrName);
-        if (!cloth) return state;
+        const inventoryCloth = findByInstanceOrName(inv.fashion, idOrName);
+        if (!inventoryCloth) return state;
+        const cloth = ensureCpItemInstanceId(inventoryCloth, 'cp-fashion');
         return {
           character: {
             ...state.character,
             clothing: [...(state.character.clothing ?? []), cloth],
-            inventory: { ...inv, fashion: removeOneByInstanceOrName(inv.fashion, itemKey(cloth)) }
+            inventory: { ...inv, fashion: removeOneByInstanceOrName(inv.fashion, itemKey(inventoryCloth)) }
           }
         };
       }),
@@ -512,14 +532,15 @@ export const useCpStore = create<CpState>()(
         const cloth = findByInstanceOrName(state.character.clothing ?? [], idOrName);
         if (!cloth) return state;
         const inv = safeInv(state.character);
-        const alreadyInInv = hasSameInstance(inv.fashion, cloth);
+        const item = ensureCpItemInstanceId(cloth, 'cp-fashion');
+        const alreadyInInv = hasSameInstance(inv.fashion, item);
         return {
           character: {
             ...state.character,
             clothing: removeOneByInstanceOrName(state.character.clothing ?? [], itemKey(cloth)),
             inventory: {
               ...inv,
-              fashion: alreadyInInv ? inv.fashion : [...inv.fashion, cloth]
+              fashion: alreadyInInv ? inv.fashion : [...inv.fashion, item]
             }
           }
         };
