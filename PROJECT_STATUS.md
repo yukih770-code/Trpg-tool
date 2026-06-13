@@ -54,6 +54,7 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | System Home Simplification v1 | ✅ Done (DND/COC/CP RED home pages simplified to core entry points; index cards and data grids removed from home) |
 | Platform Actor Entry Pattern Alignment v1 | ✅ Done (COC/CP dashboard gets "continue editing" button; Actor/Player Asset abstraction note added to all three systems; planned.message updated) |
 | Platform Navigation History Stack v1 | ✅ Done (lightweight app-level back stack; no router / URL routing) |
+| COC / CP RED DND-aligned Workspace Reconstruction v1 | ✅ Done (CocWorkspaceShell + CpWorkspaceShell created; PlayWorkspace wired; NonDndWorkspaceView extended; cocWorkspace.* / cpWorkspace.* i18n added) |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.

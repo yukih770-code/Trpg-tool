@@ -332,6 +332,23 @@ This file helps AI quickly locate important types, helper functions, store actio
 - `dndWorkspace.*` i18n keys: `src/i18n/locales/zh-CN.ts`, `src/i18n/locales/en.ts`
 - `AI-LANDMARK: DND_PRODUCT_SHELL_PHASE_1`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`, `src/pages/PlayWorkspace.tsx`
 
+## COC / CP RED DND-aligned Workspace Reconstruction
+
+- `AI-LANDMARK: COC_CPRED_DND_ALIGNED_WORKSPACE_RECONSTRUCTION`: `src/pages/cocWorkspace/CocWorkspaceShell.tsx`, `src/pages/cpWorkspace/CpWorkspaceShell.tsx`, `src/pages/PlayWorkspace.tsx`
+- `CocWorkspaceShell`: `src/pages/cocWorkspace/CocWorkspaceShell.tsx` — DND-aligned shell for COC 7e; views: dashboard / vault / createMethod / compendium / sources / play / planned
+- `CpWorkspaceShell`: `src/pages/cpWorkspace/CpWorkspaceShell.tsx` — DND-aligned shell for CP RED; same view set with gold theme
+- `NonDndWorkspaceView` (extended): `src/pages/PlayWorkspace.tsx` — added `'compendium' | 'sources'`
+- `cocWorkspace.*` i18n keys: `src/i18n/locales/zh-CN.ts`, `src/i18n/locales/en.ts`
+- `cpWorkspace.*` i18n keys: `src/i18n/locales/zh-CN.ts`, `src/i18n/locales/en.ts`
+
+## Legacy Runtime Embedded Mode
+
+- `AI-LANDMARK: LEGACY_RUNTIME_EMBEDDED_MODE`: `src/pages/CocGameplay.tsx`, `src/pages/CpGameplay.tsx`, `src/pages/PlayWorkspace.tsx`, `src/pages/cocWorkspace/CocWorkspaceShell.tsx`, `src/pages/cpWorkspace/CpWorkspaceShell.tsx`
+- `CocGameplay({ embedded })`: `src/pages/CocGameplay.tsx` — optional embedded mode hides the legacy gameplay title strip while preserving runtime panels and RollConsole.
+- `CpGameplay({ embedded })`: `src/pages/CpGameplay.tsx` — optional embedded mode hides the legacy combat runtime hero strip while preserving RollConsole and runtime panels.
+- `embeddedPlayBody`: `src/pages/PlayWorkspace.tsx` — COC / CP RED play view renderer that omits old toolbars, system selector, import/export buttons, settings/help buttons, and internal tabs.
+- COC / CP RED workspace shells own system navigation chrome: `src/pages/cocWorkspace/CocWorkspaceShell.tsx`, `src/pages/cpWorkspace/CpWorkspaceShell.tsx`
+
 ## DND Character Options Source Index
 
 - Spell source index (507 entries: `DND_2024_SPELL_INDEX_DATA`, `DND_SPELL_INDEX_COUNTS`): `src/data/dnd2024/spellIndex.ts`

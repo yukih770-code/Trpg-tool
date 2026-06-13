@@ -1,33 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Creator } from './Creator';
 import { Sheet } from './Sheet';
 import { Gameplay } from './Gameplay';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { useCharacterStore } from '../store/characterStore';
 import { useAppStore } from '../store/appStore';
-import { Save, Upload } from 'lucide-react';
-import { Button } from '../../components/ui/button';
-import { toast } from 'sonner';
-import { createTranslator, readStoredLocale } from '../i18n';
 
 import { DndWorkspaceShell, type DndWorkspaceView } from './dndWorkspace/DndWorkspaceShell';
+import { CocWorkspaceShell } from './cocWorkspace/CocWorkspaceShell';
+import { CpWorkspaceShell } from './cpWorkspace/CpWorkspaceShell';
 
 import { CocCreator } from './CocCreator';
 import { CocSheet } from './CocSheet';
 import { CocGameplay } from './CocGameplay';
-import { useCocStore } from '../store/cocStore';
 
 import { CpCreator } from './CpCreator';
 import { CpSheet } from './CpSheet';
 import { CpGameplay } from './CpGameplay';
 import { CpMarket } from './CpMarket';
-import { useCpStore } from '../store/cpStore';
-import {
-  createCharacterExportEnvelope,
-  parseCharacterImportJson,
-  platformSystemToExportSystem,
-  type PlatformRulesetSystem,
-} from '../lib/data-contract/export-envelope';
+import type { PlatformRulesetSystem } from '../lib/data-contract/export-envelope';
 
 // ── Decorative SVG Backgrounds ────────────────────────────
 
@@ -412,14 +401,7 @@ const THEMES = {
 } as const;
 
 type System = PlatformRulesetSystem;
-export type NonDndWorkspaceView = 'dashboard' | 'vault' | 'createMethod' | 'play' | 'planned';
-type WorkspaceModuleCard = {
-  labelKey: string;
-  noteKey: string;
-  status: 'available' | 'planned';
-  tab?: string;
-  view?: NonDndWorkspaceView;
-};
+export type NonDndWorkspaceView = 'dashboard' | 'vault' | 'createMethod' | 'compendium' | 'sources' | 'play' | 'planned';
 
 export type PlayWorkspaceNavigationState = {
   tab: string;
@@ -434,12 +416,6 @@ type PlayWorkspaceProps = {
   onBeforeNavigate?: () => void;
   onBack?: () => void;
   canGoBack?: boolean;
-};
-
-const SYSTEM_DISPLAY_LABELS: Record<System, string> = {
-  'D&D': 'DND 5e 2024',
-  CoC: 'COC 7e',
-  CP: 'Cyberpunk RED',
 };
 
 export const defaultPlayWorkspaceNavigationState: PlayWorkspaceNavigationState = {
@@ -471,18 +447,8 @@ export function PlayWorkspace({
   const [plannedSlotTitleKey, setPlannedSlotTitleKey] = useState<string>(
     navigationState?.plannedSlotTitleKey ?? defaultPlayWorkspaceNavigationState.plannedSlotTitleKey,
   );
-  const { t } = createTranslator(readStoredLocale());
-  const { system, setSystem } = useAppStore();
+  const { system } = useAppStore();
   const theme = THEMES[system];
-
-  const { character: dndChar, loadCharacter: loadDndChar } = useCharacterStore();
-  const { character: cocChar, loadCharacter: loadCocChar } = useCocStore();
-  const { character: cpChar, loadCharacter: loadCpChar } = useCpStore();
-
-  const activeCharacter =
-    system === 'CoC' ? cocChar
-    : system === 'CP' ? cpChar
-    : dndChar;
 
   useEffect(() => {
     if (!navigationState) return;
@@ -518,100 +484,6 @@ export function PlayWorkspace({
     emitNavigationState({ systemWorkspaceView: 'dashboard' });
   };
 
-  const handleExport = () => {
-    const envelope = createCharacterExportEnvelope({ system, character: activeCharacter });
-    const exportSystem = platformSystemToExportSystem(system);
-    const characterName = sanitizeFileName((activeCharacter as any).name || 'unnamed');
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(envelope, null, 2));
-    const dlAnchorElem = document.createElement('a');
-    dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", `${exportSystem}-character-${characterName}.json`);
-    dlAnchorElem.click();
-    toast.success("角色已导出为平台角色 JSON。");
-  };
-
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const result = parseCharacterImportJson(String(event.target?.result ?? ''));
-
-        if (!result.ok) {
-          toast.error(result.message);
-          return;
-        }
-
-        if (result.platformSystem === 'CoC') {
-          onBeforeNavigate?.();
-          loadCocChar(result.character as any);
-          setSystem('CoC');
-          setTab('sheet');
-          setSystemWorkspaceView('play');
-          emitNavigationState({ tab: 'sheet', systemWorkspaceView: 'play' });
-          toast.success("这名调查员的笔记已被寻回。", {
-            description: result.message,
-          });
-        } else if (result.platformSystem === 'CP') {
-          onBeforeNavigate?.();
-          loadCpChar(result.character as any);
-          setSystem('CP');
-          setTab('sheet');
-          setSystemWorkspaceView('play');
-          emitNavigationState({ tab: 'sheet', systemWorkspaceView: 'play' });
-          toast.success("赛博朋克档案已加载。", {
-            description: result.message,
-          });
-        } else {
-          onBeforeNavigate?.();
-          loadDndChar(result.character as any);
-          setSystem('D&D');
-          setTab('sheet');
-          setDndWorkspaceView('play');
-          emitNavigationState({ tab: 'sheet', dndWorkspaceView: 'play' });
-          toast.success("冒险者的档案已被加载。", {
-            description: result.message,
-          });
-        }
-      };
-      reader.readAsText(e.target.files[0]);
-    }
-    e.target.value = '';
-  };
-
-  const handleSwitchSystem = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    navigatePlayWorkspace(
-      { tab: 'creator', systemWorkspaceView: 'dashboard', dndWorkspaceView: 'dashboard' },
-      () => {
-        setSystem(e.target.value as System);
-        setTab('creator');
-        setSystemWorkspaceView('dashboard');
-        setDndWorkspaceView('dashboard');
-      },
-    );
-  };
-
-  const handleToolbarPlaceholder = (message: string) => {
-    toast.info(message);
-  };
-
-  const sanitizeFileName = (name: string) => {
-    const sanitized = name.trim().replace(/[^\w\u4e00-\u9fa5-]+/g, '-').replace(/-+/g, '-');
-    return sanitized || 'unnamed';
-  };
-
-  const tabLabels: Record<System, string[]> = {
-    'D&D': ['创建器', '角色卡', '游玩 / 战斗'],
-    'CoC': ['建卡 (Creation)', '调查员卡 (Sheet)', '掷骰 & 日志 (Gameplay)'],
-    'CP':  ['建卡 (Creation)', '角色卡 (Sheet)', '游玩 & 掷骰 (Gameplay)', '黑市 Market'],
-  };
-  const tabValues: Record<System, string[]> = {
-    'D&D': ['creator', 'sheet', 'gameplay'],
-    'CoC': ['creator', 'sheet', 'gameplay'],
-    'CP':  ['creator', 'sheet', 'gameplay', 'market'],
-  };
-  const labels = tabLabels[system];
-  const tabVals = tabValues[system];
-  const currentPageLabel = labels[tabVals.indexOf(tab)] ?? labels[0];
   const openWorkspaceTab = (nextTab: string) => {
     navigatePlayWorkspace({ tab: nextTab, systemWorkspaceView: 'play' }, () => {
       setTab(nextTab);
@@ -629,407 +501,10 @@ export function PlayWorkspace({
       setSystemWorkspaceView(nextView);
     });
   };
-  const openPlannedSlot = (titleKey: string) => {
-    navigatePlayWorkspace({ plannedSlotTitleKey: titleKey, systemWorkspaceView: 'planned' }, () => {
-      setPlannedSlotTitleKey(titleKey);
-      setSystemWorkspaceView('planned');
-    });
-  };
-
-  const cocModuleCards: WorkspaceModuleCard[] = [
-    { labelKey: 'multiWorkspace.coc.modules.vault', noteKey: 'multiWorkspace.coc.notes.vault', status: 'available', view: 'vault' },
-    { labelKey: 'multiWorkspace.coc.modules.create', noteKey: 'multiWorkspace.coc.notes.create', status: 'available', view: 'createMethod' },
-    { labelKey: 'multiWorkspace.coc.modules.sheet', noteKey: 'multiWorkspace.coc.notes.sheet', status: 'available', tab: 'sheet' },
-    { labelKey: 'multiWorkspace.coc.modules.skillChecks', noteKey: 'multiWorkspace.coc.notes.skillChecks', status: 'available', tab: 'gameplay' },
-    { labelKey: 'multiWorkspace.coc.modules.pushedRolls', noteKey: 'multiWorkspace.coc.notes.pushedRolls', status: 'available', tab: 'gameplay' },
-    { labelKey: 'multiWorkspace.coc.modules.growth', noteKey: 'multiWorkspace.coc.notes.growth', status: 'available', tab: 'gameplay' },
-    // handouts / notes / locations removed from system dashboard module grid (follow-up IA correction).
-    // handouts → Session / Campaign Workspace; notes → Actor Workspace; locations → Session / Campaign Workspace.
-    // They are described in the workspace-tier guidance section, not listed as entry points here.
-    { labelKey: 'multiWorkspace.coc.modules.compendium', noteKey: 'multiWorkspace.coc.notes.compendium', status: 'planned' },
-    { labelKey: 'multiWorkspace.coc.modules.sources', noteKey: 'multiWorkspace.coc.notes.sources', status: 'planned' },
-    // completion consolidated into sources / compendium entries. System Home does not show a separate data-coverage card.
-    // AI-LANDMARK: SYSTEM_HOME_SIMPLIFICATION (COC: completion card removed from home grid)
-  ];
-
-  const cpModuleCards: WorkspaceModuleCard[] = [
-    { labelKey: 'multiWorkspace.cp.modules.vault', noteKey: 'multiWorkspace.cp.notes.vault', status: 'available', view: 'vault' },
-    { labelKey: 'multiWorkspace.cp.modules.create', noteKey: 'multiWorkspace.cp.notes.create', status: 'available', view: 'createMethod' },
-    { labelKey: 'multiWorkspace.cp.modules.sheet', noteKey: 'multiWorkspace.cp.notes.sheet', status: 'available', tab: 'sheet' },
-    { labelKey: 'multiWorkspace.cp.modules.skillChecks', noteKey: 'multiWorkspace.cp.notes.skillChecks', status: 'available', tab: 'gameplay' },
-    { labelKey: 'multiWorkspace.cp.modules.combat', noteKey: 'multiWorkspace.cp.notes.combat', status: 'available', tab: 'gameplay' },
-    { labelKey: 'multiWorkspace.cp.modules.market', noteKey: 'multiWorkspace.cp.notes.market', status: 'available', tab: 'market' },
-    { labelKey: 'multiWorkspace.cp.modules.cyberware', noteKey: 'multiWorkspace.cp.notes.cyberware', status: 'available', tab: 'sheet' },
-    { labelKey: 'multiWorkspace.cp.modules.netrunning', noteKey: 'multiWorkspace.cp.notes.netrunning', status: 'available', tab: 'gameplay' },
-    // encounter / map / sessionLog removed from system dashboard module grid (follow-up IA correction).
-    // All three → Session / Campaign Workspace.
-    // They are described in the workspace-tier guidance section, not listed as entry points here.
-    { labelKey: 'multiWorkspace.cp.modules.compendium', noteKey: 'multiWorkspace.cp.notes.compendium', status: 'planned' },
-    { labelKey: 'multiWorkspace.cp.modules.sources', noteKey: 'multiWorkspace.cp.notes.sources', status: 'planned' },
-    // completion consolidated into sources / compendium entries. System Home does not show a separate data-coverage card.
-    // AI-LANDMARK: SYSTEM_HOME_SIMPLIFICATION (CP RED: completion card removed from home grid)
-  ];
-
-  const getNonDndWorkspaceTone = () => {
-    const isCoc = system === 'CoC';
-    return {
-      isCoc,
-      shellTone: isCoc
-        ? 'bg-[#151a18] text-[#d4d4d8] selection:bg-[#2f7f68] selection:text-white'
-        : 'bg-[#0d0d0d] text-[#d4d4d8] selection:bg-[#f5c518] selection:text-[#0d0d0d]',
-      panelTone: isCoc
-        ? 'border-[#2f7f68]/65 bg-[#0f1413]/90 shadow-[0_10px_30px_rgba(0,0,0,0.38)]'
-        : 'border-[#8a6f25]/70 bg-[#0b0b12]/90 shadow-[0_10px_30px_rgba(0,0,0,0.48)]',
-      cardTone: isCoc
-        ? 'border-[#2f7f68]/35 bg-[#101816]/85 hover:border-[#2f7f68]'
-        : 'border-[#8a6f25]/40 bg-[#111018]/85 hover:border-[#f5c518]/80',
-      accent: isCoc ? 'text-[#8fb7aa]' : 'text-[#f5c518]',
-      badgeTone: isCoc
-        ? 'border-[#2f7f68]/60 text-[#8fb7aa]'
-        : 'border-[#8a6f25]/70 text-[#d8b954]',
-      primaryButtonTone: isCoc
-        ? 'border-[#2f7f68] bg-[#2f7f68] text-[#06100d] hover:bg-[#8fb7aa]'
-        : 'border-[#f5c518] bg-[#f5c518] text-[#0d0d0d] hover:bg-[#d8b954]',
-    };
-  };
-
-  // AI-LANDMARK: SYSTEM_HOME_NAVIGATION_DEDUPLICATION
-  // Non-DND System Home does not repeat navigation; it shows current actor context and next actions.
-  //
-  // AI-LANDMARK: PLATFORM_ACTOR_ENTRY_PATTERN_ALIGNMENT
-  // COC and CP RED System Home mirrors the DND character entry pattern at the platform shell level:
-  // current Actor context, sheet / continue editing / start runtime actions, creation method entry.
-  // Character / Investigator / Edgerunner are system display names; Actor / Player Asset is the platform abstraction.
-  const renderNonDndWorkspaceDashboard = (_cards: WorkspaceModuleCard[]) => {
-    const { isCoc, shellTone, panelTone, cardTone, accent, badgeTone, primaryButtonTone } = getNonDndWorkspaceTone();
-    const titleKey = isCoc ? 'multiWorkspace.coc.title' : 'multiWorkspace.cp.title';
-    const subtitleKey = isCoc ? 'multiWorkspace.coc.subtitle' : 'multiWorkspace.cp.subtitle';
-    const hasCurrentCharacter = isCoc
-      ? Boolean(cocChar.name?.trim() || cocChar.occupation?.trim())
-      : Boolean(cpChar.name?.trim() || cpChar.lifePath?.handle?.trim());
-    const displayName = isCoc
-      ? cocChar.name?.trim()
-      : cpChar.name?.trim() || cpChar.lifePath?.handle?.trim();
-    const currentKey = isCoc ? 'multiWorkspace.coc.entry.current' : 'multiWorkspace.cp.entry.current';
-    const unnamedKey = isCoc ? 'multiWorkspace.coc.entry.unnamed' : 'multiWorkspace.cp.entry.unnamed';
-    const createActionKey = isCoc ? 'multiWorkspace.actions.createInvestigator' : 'multiWorkspace.actions.createEdgerunner';
-    const startActionKey = isCoc ? 'multiWorkspace.actions.startInvestigation' : 'multiWorkspace.actions.startMission';
-    const sheetActionKey = isCoc ? 'multiWorkspace.actions.viewInvestigatorSheet' : 'multiWorkspace.actions.viewCharacterSheet';
-    const editActionKey = isCoc ? 'multiWorkspace.actions.continueInvestigatorEditing' : 'multiWorkspace.actions.continueEditing';
-    const emptyNoteKey = isCoc ? 'multiWorkspace.coc.home.noActorNote' : 'multiWorkspace.cp.home.noActorNote';
-    const rows = isCoc
-      ? [
-          { labelKey: 'multiWorkspace.coc.entry.name', value: cocChar.name || t(unnamedKey) },
-          { labelKey: 'multiWorkspace.coc.entry.occupation', value: cocChar.occupation || t('dndBuilder.common.unselected') },
-          { labelKey: 'multiWorkspace.coc.entry.age', value: String(cocChar.age || t('dndBuilder.common.unselected')) },
-          { labelKey: 'multiWorkspace.coc.entry.residence', value: cocChar.residence || t('dndBuilder.common.unselected') },
-        ]
-      : [
-          { labelKey: 'multiWorkspace.cp.entry.name', value: cpChar.name || t(unnamedKey) },
-          { labelKey: 'multiWorkspace.cp.entry.handle', value: cpChar.lifePath?.handle || t('dndBuilder.common.unselected') },
-          { labelKey: 'multiWorkspace.cp.entry.role', value: cpChar.role || t('dndBuilder.common.unselected') },
-          { labelKey: 'multiWorkspace.cp.entry.roleLevel', value: String(cpChar.roleLevel || t('dndBuilder.common.unselected')) },
-        ];
-
-    return (
-      <div className={`min-h-screen p-4 md:p-8 ${shellTone}`}>
-        <main className="mx-auto w-full max-w-6xl">
-          <section className={`mb-5 rounded-lg border p-5 ${panelTone}`}>
-            <div className={`mb-4 text-[11px] font-bold uppercase tracking-wider ${accent} opacity-65`}>
-              {t('navigation.breadcrumb.platform')} / {t('navigation.breadcrumb.play')} / {t(isCoc ? 'glossary.coc7e' : 'glossary.cyberpunkRed')} / {t('navigation.gameSystemHome')}
-            </div>
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <div className={`text-xs font-bold uppercase tracking-[0.2em] ${accent}`}>
-                  {t('multiWorkspace.eyebrow')}
-                </div>
-                <h1 className={`mt-2 text-3xl font-bold ${system === 'CP' ? 'font-cp-title' : 'font-elite'}`}>
-                  {t(titleKey)}
-                </h1>
-                <p className="mt-2 max-w-3xl text-sm opacity-75">{t(subtitleKey)}</p>
-              </div>
-              <div className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${badgeTone}`}>
-                {t('multiWorkspace.status.entryOnly')}
-              </div>
-            </div>
-          </section>
-
-          <section className={`rounded-lg border p-5 ${panelTone}`}>
-            {hasCurrentCharacter ? (
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]">
-                <div className={`rounded-lg border p-5 ${cardTone}`}>
-                  <div className={`text-xs font-bold uppercase tracking-wider ${accent}`}>{t(currentKey)}</div>
-                  <h2 className="mt-2 text-2xl font-bold">{displayName || t(unnamedKey)}</h2>
-                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {rows.map((row) => (
-                      <div key={row.labelKey} className="border border-white/10 bg-black/10 p-3">
-                        <div className={`text-[10px] font-bold uppercase tracking-wider ${accent}`}>{t(row.labelKey)}</div>
-                        <div className="mt-1 break-words text-sm font-bold">{row.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <button type="button" onClick={() => openWorkspaceTab('sheet')} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${badgeTone} hover:opacity-80`}>
-                    {t(sheetActionKey)}
-                  </button>
-                  <button type="button" onClick={() => openWorkspaceTab('creator')} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${badgeTone} hover:opacity-80`}>
-                    {t(editActionKey)}
-                  </button>
-                  <button type="button" onClick={() => openWorkspaceTab('gameplay')} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${primaryButtonTone}`}>
-                    {t(startActionKey)}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="text-center">
-                <h2 className={`text-2xl font-bold ${accent}`}>{t(isCoc ? 'multiWorkspace.coc.entry.empty' : 'multiWorkspace.cp.entry.empty')}</h2>
-                <p className="mx-auto mt-2 max-w-xl text-sm opacity-75">{t(emptyNoteKey)}</p>
-                <button
-                  type="button"
-                  onClick={() => openWorkspaceView('createMethod')}
-                  className={`mt-5 border px-5 py-2 text-xs font-bold uppercase tracking-wider ${primaryButtonTone}`}
-                >
-                  {t(createActionKey)}
-                </button>
-              </div>
-            )}
-            <p className="mt-4 border-t border-white/10 pt-3 text-xs opacity-55">{t('navigation.rulesAndDataInTopNav')}</p>
-            <details className="mt-3 text-xs opacity-55">
-              <summary className={`cursor-pointer font-bold ${accent}`}>{t('navigation.platformGuidance')}</summary>
-              <div className="mt-2 space-y-1">
-                <p>{t('navigation.actorAbstractionNote')}</p>
-                <p>{t('navigation.actorMultiCampaignNote')}</p>
-                <p>{t('navigation.selectedActorGuidance')}</p>
-                <p>{t('navigation.campaignGuidance')}</p>
-              </div>
-            </details>
-          </section>
-        </main>
-      </div>
-    );
-  };
-
-  // AI-LANDMARK: PLATFORM_CHARACTER_ENTRY_PATTERN_ALIGNMENT
-  // COC and CP RED now mirror the DND character entry pattern at the platform shell level:
-  // current-character Vault, creation method selection, sheet/context actions, then runtime entry.
-  const renderCharacterVault = () => {
-    const { isCoc, shellTone, panelTone, cardTone, accent, badgeTone, primaryButtonTone } = getNonDndWorkspaceTone();
-    const hasCurrentCharacter = isCoc
-      ? Boolean(cocChar.name?.trim() || cocChar.occupation?.trim())
-      : Boolean(cpChar.name?.trim() || cpChar.lifePath?.handle?.trim());
-    const titleKey = isCoc ? 'multiWorkspace.coc.entry.vaultTitle' : 'multiWorkspace.cp.entry.vaultTitle';
-    const hintKey = isCoc ? 'multiWorkspace.coc.entry.vaultHint' : 'multiWorkspace.cp.entry.vaultHint';
-    const currentKey = isCoc ? 'multiWorkspace.coc.entry.current' : 'multiWorkspace.cp.entry.current';
-    const emptyKey = isCoc ? 'multiWorkspace.coc.entry.empty' : 'multiWorkspace.cp.entry.empty';
-    const emptyNoteKey = isCoc ? 'multiWorkspace.coc.entry.emptyNote' : 'multiWorkspace.cp.entry.emptyNote';
-    const unnamedKey = isCoc ? 'multiWorkspace.coc.entry.unnamed' : 'multiWorkspace.cp.entry.unnamed';
-    const createActionKey = isCoc ? 'multiWorkspace.actions.createInvestigator' : 'multiWorkspace.actions.createEdgerunner';
-    const startActionKey = isCoc ? 'multiWorkspace.actions.startInvestigation' : 'multiWorkspace.actions.startMission';
-    const sheetActionKey = isCoc ? 'multiWorkspace.actions.viewInvestigatorSheet' : 'multiWorkspace.actions.viewCharacterSheet';
-    const editActionKey = isCoc ? 'multiWorkspace.actions.continueInvestigatorEditing' : 'multiWorkspace.actions.continueEditing';
-    const displayName = isCoc
-      ? cocChar.name?.trim()
-      : cpChar.name?.trim() || cpChar.lifePath?.handle?.trim();
-    const rows = isCoc
-      ? [
-          { labelKey: 'multiWorkspace.coc.entry.name', value: cocChar.name || t(unnamedKey) },
-          { labelKey: 'multiWorkspace.coc.entry.occupation', value: cocChar.occupation || t('dndBuilder.common.unselected') },
-          { labelKey: 'multiWorkspace.coc.entry.age', value: String(cocChar.age || t('dndBuilder.common.unselected')) },
-          { labelKey: 'multiWorkspace.coc.entry.residence', value: cocChar.residence || t('dndBuilder.common.unselected') },
-        ]
-      : [
-          { labelKey: 'multiWorkspace.cp.entry.name', value: cpChar.name || t(unnamedKey) },
-          { labelKey: 'multiWorkspace.cp.entry.handle', value: cpChar.lifePath?.handle || t('dndBuilder.common.unselected') },
-          { labelKey: 'multiWorkspace.cp.entry.role', value: cpChar.role || t('dndBuilder.common.unselected') },
-          { labelKey: 'multiWorkspace.cp.entry.roleLevel', value: String(cpChar.roleLevel || t('dndBuilder.common.unselected')) },
-        ];
-
-    return (
-      <div className={`min-h-screen p-4 md:p-8 ${shellTone}`}>
-        <main className="mx-auto w-full max-w-6xl">
-          <section className={`mb-5 rounded-lg border p-5 ${panelTone}`}>
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <div className={`text-xs font-bold uppercase tracking-[0.2em] ${accent}`}>
-                  {t('multiWorkspace.entryPattern.eyebrow')}
-                </div>
-                <h1 className={`mt-2 text-3xl font-bold ${system === 'CP' ? 'font-cp-title' : 'font-elite'}`}>
-                  {t(titleKey)}
-                </h1>
-                <p className="mt-2 max-w-3xl text-sm opacity-75">{t(hintKey)}</p>
-              </div>
-              <button
-                type="button"
-                onClick={navigateBackOrDashboard}
-                className={`border px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${badgeTone} hover:opacity-80`}
-              >
-                {t(canGoBack ? 'navigation.backOneLevel' : 'multiWorkspace.actions.backToWorkspace')}
-              </button>
-            </div>
-          </section>
-
-          <section className={`rounded-lg border p-5 ${panelTone}`}>
-            {hasCurrentCharacter ? (
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]">
-                <div className={`rounded-lg border p-5 ${cardTone}`}>
-                  <div className={`text-xs font-bold uppercase tracking-wider ${accent}`}>{t(currentKey)}</div>
-                  <h2 className="mt-2 text-2xl font-bold">{displayName || t(unnamedKey)}</h2>
-                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {rows.map((row) => (
-                      <div key={row.labelKey} className="border border-white/10 bg-black/10 p-3">
-                        <div className={`text-[10px] font-bold uppercase tracking-wider ${accent}`}>{t(row.labelKey)}</div>
-                        <div className="mt-1 break-words text-sm font-bold">{row.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-4 border border-dashed border-white/15 bg-black/10 p-3 text-xs leading-relaxed opacity-70">
-                    {t(isCoc ? 'multiWorkspace.coc.entry.vaultBoundary' : 'multiWorkspace.cp.entry.vaultBoundary')}
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <button type="button" onClick={() => openWorkspaceTab('sheet')} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${badgeTone} hover:opacity-80`}>
-                    {t(sheetActionKey)}
-                  </button>
-                  <button type="button" onClick={() => openWorkspaceTab('creator')} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${badgeTone} hover:opacity-80`}>
-                    {t(editActionKey)}
-                  </button>
-                  <button type="button" onClick={() => openWorkspaceTab('gameplay')} className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${primaryButtonTone}`}>
-                    {t(startActionKey)}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className={`rounded-lg border border-dashed p-8 text-center ${cardTone}`}>
-                <h2 className="text-2xl font-bold">{t(emptyKey)}</h2>
-                <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed opacity-75">{t(emptyNoteKey)}</p>
-                <button
-                  type="button"
-                  onClick={() => openWorkspaceView('createMethod')}
-                  className={`mt-5 border px-5 py-2 text-xs font-bold uppercase tracking-wider ${primaryButtonTone}`}
-                >
-                  {t(createActionKey)}
-                </button>
-              </div>
-            )}
-          </section>
-        </main>
-      </div>
-    );
-  };
-
-  const renderCreationMethod = () => {
-    const { isCoc, shellTone, panelTone, cardTone, accent, badgeTone, primaryButtonTone } = getNonDndWorkspaceTone();
-    const titleKey = isCoc ? 'multiWorkspace.coc.creation.title' : 'multiWorkspace.cp.creation.title';
-    const subtitleKey = isCoc ? 'multiWorkspace.coc.creation.subtitle' : 'multiWorkspace.cp.creation.subtitle';
-    const methodCards: { labelKey: string; noteKey: string; planned?: boolean; onClick: () => void }[] = [
-      {
-        labelKey: 'multiWorkspace.creation.standard',
-        noteKey: isCoc ? 'multiWorkspace.coc.creation.standardNote' : 'multiWorkspace.cp.creation.standardNote',
-        onClick: () => openWorkspaceTab('creator'),
-      },
-      {
-        labelKey: 'multiWorkspace.creation.quick',
-        noteKey: isCoc ? 'multiWorkspace.coc.creation.quickNote' : 'multiWorkspace.cp.creation.quickNote',
-        planned: true,
-        onClick: () => openPlannedSlot('multiWorkspace.creation.quick'),
-      },
-      {
-        labelKey: isCoc ? 'multiWorkspace.creation.localImportInvestigator' : 'multiWorkspace.creation.localImportCharacter',
-        noteKey: isCoc ? 'multiWorkspace.coc.creation.localImportNote' : 'multiWorkspace.cp.creation.localImportNote',
-        planned: true,
-        onClick: () => openPlannedSlot(isCoc ? 'multiWorkspace.creation.localImportInvestigator' : 'multiWorkspace.creation.localImportCharacter'),
-      },
-      {
-        labelKey: 'multiWorkspace.creation.workshop',
-        noteKey: isCoc ? 'multiWorkspace.coc.creation.workshopNote' : 'multiWorkspace.cp.creation.workshopNote',
-        planned: true,
-        onClick: () => openPlannedSlot('multiWorkspace.creation.workshop'),
-      },
-    ];
-
-    return (
-      <div className={`min-h-screen p-4 md:p-8 ${shellTone}`}>
-        <main className="mx-auto w-full max-w-6xl">
-          <section className={`mb-5 rounded-lg border p-5 ${panelTone}`}>
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <div className={`text-xs font-bold uppercase tracking-[0.2em] ${accent}`}>
-                  {t('multiWorkspace.creation.eyebrow')}
-                </div>
-                <h1 className={`mt-2 text-3xl font-bold ${system === 'CP' ? 'font-cp-title' : 'font-elite'}`}>
-                  {t(titleKey)}
-                </h1>
-                <p className="mt-2 max-w-3xl text-sm opacity-75">{t(subtitleKey)}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => openWorkspaceView('vault')}
-                className={`border px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${badgeTone} hover:opacity-80`}
-              >
-                {t(isCoc ? 'multiWorkspace.coc.modules.vault' : 'multiWorkspace.cp.modules.vault')}
-              </button>
-            </div>
-          </section>
-
-          <section className={`rounded-lg border p-5 ${panelTone}`}>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {methodCards.map((card) => (
-                <button
-                  key={card.labelKey}
-                  type="button"
-                  onClick={card.onClick}
-                  className={`min-h-32 rounded-lg border p-4 text-left transition hover:-translate-y-0.5 ${card.planned ? cardTone : `${cardTone} ${primaryButtonTone}`}`}
-                >
-                  <span className="flex items-start justify-between gap-3">
-                    <span className="font-bold">{t(card.labelKey)}</span>
-                    {card.planned && (
-                      <span className={`shrink-0 border px-2 py-0.5 text-[10px] uppercase tracking-wider ${badgeTone}`}>
-                        {t('multiWorkspace.status.planned')}
-                      </span>
-                    )}
-                  </span>
-                  <span className="mt-3 block text-xs leading-relaxed opacity-75">{t(card.noteKey)}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-        </main>
-      </div>
-    );
-  };
-
-  const renderPlannedSlot = () => {
-    const isCoc = system === 'CoC';
-    const shellTone = isCoc ? 'bg-[#151a18] text-[#d4d4d8]' : 'bg-[#0d0d0d] text-[#d4d4d8]';
-    const panelTone = isCoc ? 'border-[#2f7f68]/65 bg-[#0f1413]/90' : 'border-[#8a6f25]/70 bg-[#0b0b12]/90';
-    const accent = isCoc ? 'text-[#8fb7aa]' : 'text-[#f5c518]';
-
-    return (
-      <div className={`min-h-screen p-4 md:p-8 ${shellTone}`}>
-        <main className="mx-auto flex min-h-[60vh] w-full max-w-4xl items-center justify-center">
-          <section className={`w-full rounded-lg border p-6 ${panelTone}`}>
-            <div className={`text-xs font-bold uppercase tracking-[0.2em] ${accent}`}>
-              {t('multiWorkspace.status.planned')}
-            </div>
-            <h1 className="mt-3 text-2xl font-bold">{t(plannedSlotTitleKey)}</h1>
-            <p className="mt-3 text-sm leading-relaxed opacity-75">{t('multiWorkspace.planned.message')}</p>
-            <button
-              type="button"
-              onClick={navigateBackOrDashboard}
-              className={`mt-5 border px-4 py-2 text-xs font-bold uppercase tracking-wider ${
-                isCoc
-                  ? 'border-[#2f7f68]/70 text-[#8fb7aa] hover:bg-[#2f7f68]/20'
-                  : 'border-[#8a6f25]/70 text-[#f5c518] hover:bg-[#f5c518]/10'
-              }`}
-            >
-              {t(canGoBack ? 'navigation.backOneLevel' : 'multiWorkspace.actions.backToWorkspace')}
-            </button>
-          </section>
-        </main>
-      </div>
-    );
-  };
+  // AI-LANDMARK: COC_CPRED_DND_ALIGNED_WORKSPACE_RECONSTRUCTION
+  // cocModuleCards / cpModuleCards / getNonDndWorkspaceTone / renderNonDndWorkspaceDashboard /
+  // renderCharacterVault / renderCreationMethod / renderPlannedSlot removed.
+  // COC / CP RED workspace IA is fully delegated to CocWorkspaceShell / CpWorkspaceShell.
 
   const dndPlayBody = (
     <div className={`min-h-screen p-3 font-serif transition-colors duration-500 md:p-6 ${THEMES['D&D'].bg} ${THEMES['D&D'].text} ${THEMES['D&D'].selection}`}>
@@ -1062,178 +537,62 @@ export function PlayWorkspace({
     );
   }
 
-  const playBody = (
-    <div className={`min-h-screen font-serif p-4 md:p-8 transition-colors duration-500
-      ${theme.bg} ${theme.text} ${theme.selection}`}>
-      <div className="max-w-6xl mx-auto">
+  // AI-LANDMARK: LEGACY_RUNTIME_EMBEDDED_MODE
+  // Non-DND workspaces own the navigation chrome. This body renders only the selected
+  // legacy content section so old toolbars, system selectors, and internal tabs stay hidden.
+  const embeddedPlayBody = (
+    <div className={`min-h-screen p-4 transition-colors duration-500 md:p-6 ${theme.bg} ${theme.text} ${theme.selection}`}>
+      <div className="mx-auto w-full max-w-6xl">
+        <div className={`${theme.panelBg} relative min-h-[70vh] overflow-hidden p-4 md:p-6 ${
+          system === 'CP'
+            ? 'cp-scanlines shadow-[inset_0_0_44px_rgba(245,197,24,0.045),0_0_0_1px_rgba(245,197,24,0.045)]'
+            : ''
+        }`}>
+          {system === 'CoC' && <CocBackground />}
+          {system === 'CP' && <CpBackground />}
 
-        {/* ── Top bar ─────────────────────────────────── */}
-        <div className={`flex flex-col gap-4 mb-8 pb-4 ${theme.headerBorder}`}>
-
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-            {/* CoC title — Special Elite typewriter */}
-            {system === 'CoC' && (
-              <div className="flex flex-col gap-1">
-                <h1 className="font-coc-title text-3xl md:text-4xl text-[#5aa58f] leading-tight">
-                  克苏鲁的呼唤
-                </h1>
-                <span className="font-elite text-xs tracking-[0.18em] text-[#8fb7aa]/75 uppercase">
-                  Call of Cthulhu &nbsp;·&nbsp; 调查员笔记
-                </span>
-              </div>
+          <div className="relative z-10">
+            {system === 'CoC' && tab === 'creator' && (
+              <CocCreator onComplete={() => openWorkspaceTab('sheet')} />
             )}
+            {system === 'CoC' && tab === 'sheet' && <CocSheet />}
+            {system === 'CoC' && tab === 'gameplay' && <CocGameplay embedded />}
 
-            {/* CP RED title — Orbitron + glitch + neon */}
-            {system === 'CP' && (
-              <div className="flex flex-col gap-1">
-                <h1
-                  className="font-cp-title text-2xl md:text-3xl neon-gold glitch leading-tight"
-                  data-text="CYBERPUNK RED"
-                >
-                  CYBERPUNK RED
-                </h1>
-                <div className="flex items-center gap-1 font-cp-body text-[11px] text-[#00e5ff] neon-cyan tracking-[0.16em] uppercase">
-                  <span>&gt;&gt;</span>
-                  <span>角色卡</span>
-                  <span className="opacity-50">·</span>
-                  <span>Night City</span>
-                  <span>&gt;&gt;</span>
-                </div>
-              </div>
+            {system === 'CP' && tab === 'creator' && (
+              <CpCreator onComplete={() => openWorkspaceTab('sheet')} />
             )}
-
-            <div className={`self-start lg:self-end text-xs md:text-sm opacity-85 border ${theme.border} px-3 py-1 bg-black/5`}>
-              <span className={`${theme.primary} font-bold`}>当前：</span>
-              <span>{SYSTEM_DISPLAY_LABELS[system]}</span>
-              <span className="opacity-50 mx-2">/</span>
-              <span>{currentPageLabel}</span>
-              {(activeCharacter as any).name && (
-                <>
-                  <span className="opacity-50 mx-2">/</span>
-                  <span>{(activeCharacter as any).name}</span>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-            <div className="flex gap-2 flex-wrap items-center">
-
-              {/* System selector — 3-way dropdown */}
-              <div className="relative">
-                <select
-                  value={system}
-                  onChange={handleSwitchSystem}
-                  className={`appearance-none cursor-pointer h-9 px-3 pr-8 border-2 ${theme.border} ${theme.primary} font-bold uppercase text-sm font-mono
-                    bg-black/5 focus:outline-none hover:opacity-85 transition-opacity`}
-                  aria-label="切换规则系统"
-                >
-                  <option value="D&D"  style={{ background: '#fdf6e3', color: '#2c1810' }}>DND 5e 2024</option>
-                  <option value="CoC"  style={{ background: '#111',    color: '#5aa58f' }}>COC 7e</option>
-                  <option value="CP"   style={{ background: '#0d0d0d', color: '#d8b954' }}>Cyberpunk RED</option>
-                </select>
-                <div className={`pointer-events-none absolute right-2 top-2.5 text-xs ${theme.primary}`}>▼</div>
-              </div>
-
-            </div>
-
-            <div className="flex gap-2 flex-wrap items-center">
-              <Button variant="outline" size="sm" onClick={navigateBackOrDashboard}
-                className={`uppercase font-bold transition-colors rounded-none ${theme.btnOutline}`}>
-                {t(canGoBack ? 'navigation.backOneLevel' : 'multiWorkspace.actions.backToWorkspace')}
-              </Button>
-
-              <div className="relative">
-                <input type="file" onChange={handleImport} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" accept=".json" />
-                <Button variant="outline" size="sm"
-                  className={`uppercase font-bold transition-colors rounded-none ${theme.btnOutline}`}>
-                  <Upload className="w-4 h-4 mr-2" /> 导入角色
-                </Button>
-              </div>
-
-              <Button variant="outline" size="sm" onClick={handleExport}
-                className={`uppercase font-bold transition-colors rounded-none ${theme.btnOutline}`}>
-                <Save className="w-4 h-4 mr-2" /> 导出角色
-              </Button>
-
-              <Button variant="outline" size="sm" onClick={() => handleToolbarPlaceholder('数据管理功能后续实现')}
-                className={`uppercase font-bold transition-colors rounded-none opacity-75 hover:opacity-100 ${theme.btnOutline}`}>
-                数据
-              </Button>
-
-              <Button variant="outline" size="sm" onClick={() => handleToolbarPlaceholder('设置功能后续实现')}
-                className={`uppercase font-bold transition-colors rounded-none opacity-75 hover:opacity-100 ${theme.btnOutline}`}>
-                设置
-              </Button>
-
-              <Button variant="outline" size="sm" onClick={() => handleToolbarPlaceholder('帮助与规则说明后续整理')}
-                className={`uppercase font-bold transition-colors rounded-none opacity-75 hover:opacity-100 ${theme.btnOutline}`}>
-                帮助
-              </Button>
-            </div>
+            {system === 'CP' && tab === 'sheet' && <CpSheet />}
+            {system === 'CP' && tab === 'gameplay' && <CpGameplay embedded />}
+            {system === 'CP' && tab === 'market' && <CpMarket />}
           </div>
         </div>
-
-        {/* ── Tabs ────────────────────────────────────── */}
-        <Tabs value={tab} onValueChange={openWorkspaceTab} className="w-full">
-          <TabsList className={`grid w-full mb-8 p-1 border rounded-none gap-1
-            ${system === 'CP' ? 'grid-cols-4 shadow-[0_0_12px_rgba(245,197,24,0.12)] border-[#8a6f25]/70' : 'grid-cols-3'}
-            ${theme.tabBg} ${theme.border}
-            ${system === 'CoC' ? 'border-[#2f7f68]/80' : ''}`}>
-            {tabVals.map((v, i) => (
-              <TabsTrigger key={v} value={v}
-                className={`rounded-none transition-colors ${theme.tabActive} ${theme.tabFont}
-                  ${system === 'CP' && v === 'market' ? 'data-[state=active]:bg-[#f5c518] data-[state=active]:shadow-[0_0_8px_rgba(245,197,24,0.30)]' : ''}`}>
-                {labels[i]}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          <div className={`${theme.panelBg} p-6 min-h-[70vh] relative overflow-hidden
-            ${system === 'CP' ? 'cp-scanlines shadow-[inset_0_0_44px_rgba(245,197,24,0.045),0_0_0_1px_rgba(245,197,24,0.045)]' : ''}`}>
-            {/* System-specific decorative background */}
-            {system === 'CoC' && <CocBackground />}
-            {system === 'CP'  && <CpBackground />}
-
-            {/* Content layer above the background */}
-            <div className="relative z-10">
-              {system === 'CoC' && (
-                <>
-                  <TabsContent value="creator"><CocCreator onComplete={() => openWorkspaceTab('sheet')} /></TabsContent>
-                  <TabsContent value="sheet"><CocSheet /></TabsContent>
-                  <TabsContent value="gameplay"><CocGameplay /></TabsContent>
-                </>
-              )}
-              {system === 'CP' && (
-                <>
-                  <TabsContent value="creator"><CpCreator onComplete={() => openWorkspaceTab('sheet')} /></TabsContent>
-                  <TabsContent value="sheet"><CpSheet /></TabsContent>
-                  <TabsContent value="gameplay"><CpGameplay /></TabsContent>
-                  <TabsContent value="market"><CpMarket /></TabsContent>
-                </>
-              )}
-            </div>
-          </div>
-        </Tabs>
       </div>
     </div>
   );
 
-  if (systemWorkspaceView === 'dashboard') {
-    return renderNonDndWorkspaceDashboard(system === 'CoC' ? cocModuleCards : cpModuleCards);
+  if (system === 'CoC') {
+    return (
+      <CocWorkspaceShell
+        view={systemWorkspaceView}
+        onViewChange={openWorkspaceView}
+        onOpenPlayTab={openWorkspaceTab}
+        onBack={navigateBackOrDashboard}
+        canGoBack={canGoBack}
+      >
+        {embeddedPlayBody}
+      </CocWorkspaceShell>
+    );
   }
 
-  if (systemWorkspaceView === 'vault') {
-    return renderCharacterVault();
-  }
-
-  if (systemWorkspaceView === 'createMethod') {
-    return renderCreationMethod();
-  }
-
-  if (systemWorkspaceView === 'planned') {
-    return renderPlannedSlot();
-  }
-
-  return playBody;
+  return (
+    <CpWorkspaceShell
+      view={systemWorkspaceView}
+      onViewChange={openWorkspaceView}
+      onOpenPlayTab={openWorkspaceTab}
+      onBack={navigateBackOrDashboard}
+      canGoBack={canGoBack}
+    >
+      {embeddedPlayBody}
+    </CpWorkspaceShell>
+  );
 }

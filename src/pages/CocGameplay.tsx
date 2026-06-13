@@ -36,7 +36,13 @@ type PendingGrowthMark = {
   skillValue: number;
 };
 
-export function CocGameplay() {
+type CocGameplayProps = {
+  embedded?: boolean;
+};
+
+// AI-LANDMARK: LEGACY_RUNTIME_EMBEDDED_MODE
+// embedded hides legacy gameplay title chrome when COC is rendered inside the workspace shell.
+export function CocGameplay({ embedded = false }: CocGameplayProps = {}) {
   const {
     character,
     updateSkill,
@@ -582,9 +588,11 @@ export function CocGameplay() {
 
   return (
     <div className="space-y-6 text-[#d4d4d8] font-serif">
-      <div className="flex justify-between items-center border-b border-[#2f7f68]/45 pb-2">
-        <h2 className="text-2xl font-bold uppercase tracking-widest text-[#8fb7aa]">游玩面板 <span className="text-sm tracking-widest text-[#8fb7aa]/65 ml-2">GAMEPLAY</span></h2>
-      </div>
+      {!embedded && (
+        <div className="flex justify-between items-center border-b border-[#2f7f68]/45 pb-2">
+          <h2 className="text-2xl font-bold uppercase tracking-widest text-[#8fb7aa]">游玩面板 <span className="text-sm tracking-widest text-[#8fb7aa]/65 ml-2">GAMEPLAY</span></h2>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">

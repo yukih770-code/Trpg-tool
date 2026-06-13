@@ -30,7 +30,13 @@ import {
   rollExploding,
 } from './cpGameplay/CpGameplayShared';
 
-export function CpGameplay() {
+type CpGameplayProps = {
+  embedded?: boolean;
+};
+
+// AI-LANDMARK: LEGACY_RUNTIME_EMBEDDED_MODE
+// embedded hides legacy CP RED runtime hero chrome when rendered inside the workspace shell.
+export function CpGameplay({ embedded = false }: CpGameplayProps = {}) {
   const {
     character,
     changeHp,
@@ -371,45 +377,47 @@ export function CpGameplay() {
 
   return (
     <div className="space-y-5 text-slate-100">
-      <div className="rounded border border-[#b08d2a]/60 bg-black/80 p-5 shadow-[0_0_30px_rgba(176,141,42,0.16)]">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.3em] text-cyan-200/70">Combat Runtime</p>
-            <h2 className="text-2xl font-black uppercase tracking-[0.12em] text-[#f5c518]">
-              {character.lifePath?.handle || character.name}
-            </h2>
-            <p className="text-sm text-slate-300">
-              {character.role} Rank {character.roleLevel} · EB {character.eb} · Humanity {character.humanity.current}
-            </p>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-center text-xs sm:grid-cols-6">
-            <div className="rounded border border-red-500/50 bg-red-950/40 px-3 py-2">
-              <p className="text-red-200/80">HP</p>
-              <p className="text-lg font-black text-red-100">{character.hp.current}/{character.hp.max}</p>
+      {!embedded && (
+        <div className="rounded border border-[#b08d2a]/60 bg-black/80 p-5 shadow-[0_0_30px_rgba(176,141,42,0.16)]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.3em] text-cyan-200/70">Combat Runtime</p>
+              <h2 className="text-2xl font-black uppercase tracking-[0.12em] text-[#f5c518]">
+                {character.lifePath?.handle || character.name}
+              </h2>
+              <p className="text-sm text-slate-300">
+                {character.role} Rank {character.roleLevel} · EB {character.eb} · Humanity {character.humanity.current}
+              </p>
             </div>
-            <div className="rounded border border-[#b08d2a]/45 bg-[#f5c518]/8 px-3 py-2">
-              <p className="text-[#f3d77a]">BODY</p>
-              <p className="text-lg font-black text-[#f7e08a]">{character.stats.BODY}</p>
-            </div>
-            <div className="rounded border border-cyan-500/40 bg-cyan-950/30 px-3 py-2">
-              <p className="text-cyan-200/80">REF</p>
-              <p className="text-lg font-black text-cyan-100">{character.stats.REF}</p>
-            </div>
-            <div className="rounded border border-emerald-500/40 bg-emerald-950/30 px-3 py-2">
-              <p className="text-emerald-200/80">MOVE</p>
-              <p className="text-lg font-black text-emerald-100">{character.stats.MOVE}</p>
-            </div>
-            <div className="rounded border border-violet-500/40 bg-violet-950/30 px-3 py-2">
-              <p className="text-violet-200/80">EMP</p>
-              <p className="text-lg font-black text-violet-100">{character.stats.EMP}</p>
-            </div>
-            <div className="rounded border border-orange-500/40 bg-orange-950/30 px-3 py-2">
-              <p className="text-orange-200/80">Wound</p>
-              <p className="text-lg font-black text-orange-100">{woundPenalty}</p>
+            <div className="grid grid-cols-3 gap-2 text-center text-xs sm:grid-cols-6">
+              <div className="rounded border border-red-500/50 bg-red-950/40 px-3 py-2">
+                <p className="text-red-200/80">HP</p>
+                <p className="text-lg font-black text-red-100">{character.hp.current}/{character.hp.max}</p>
+              </div>
+              <div className="rounded border border-[#b08d2a]/45 bg-[#f5c518]/8 px-3 py-2">
+                <p className="text-[#f3d77a]">BODY</p>
+                <p className="text-lg font-black text-[#f7e08a]">{character.stats.BODY}</p>
+              </div>
+              <div className="rounded border border-cyan-500/40 bg-cyan-950/30 px-3 py-2">
+                <p className="text-cyan-200/80">REF</p>
+                <p className="text-lg font-black text-cyan-100">{character.stats.REF}</p>
+              </div>
+              <div className="rounded border border-emerald-500/40 bg-emerald-950/30 px-3 py-2">
+                <p className="text-emerald-200/80">MOVE</p>
+                <p className="text-lg font-black text-emerald-100">{character.stats.MOVE}</p>
+              </div>
+              <div className="rounded border border-violet-500/40 bg-violet-950/30 px-3 py-2">
+                <p className="text-violet-200/80">EMP</p>
+                <p className="text-lg font-black text-violet-100">{character.stats.EMP}</p>
+              </div>
+              <div className="rounded border border-orange-500/40 bg-orange-950/30 px-3 py-2">
+                <p className="text-orange-200/80">Wound</p>
+                <p className="text-lg font-black text-orange-100">{woundPenalty}</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <CpRollConsolePanel entries={log} />
 

@@ -255,6 +255,31 @@ Open the app in the browser and verify each page loads without crashing.
 
 ---
 
+## 5b. COC / CP RED DND-aligned Workspace Reconstruction Check
+
+- [ ] COC workspace nav bar shows 5 buttons: Overview / Investigator Vault / Create Investigator / COC Compendium / Source Status (no Play button in nav)
+- [ ] CP RED workspace nav bar shows 5 buttons: Overview / Edgerunner Vault / Create Edgerunner / CP RED Compendium / Source Status
+- [ ] COC overview (`dashboard` view) — shows breadcrumb, system title, current investigator card OR empty state with create button
+- [ ] CP RED overview — same pattern with Edgerunner data (name / handle / role / roleLevel)
+- [ ] COC vault — shows current investigator card with 3 action buttons (view sheet / continue editing / start investigation)
+- [ ] CP RED vault — shows current Edgerunner card with 3 action buttons
+- [ ] COC create — shows 4 method cards: standard (active → opens creator tab), quick / local import / workshop (all marked Planned)
+- [ ] CP RED create — same 4 method cards
+- [ ] COC compendium — shows 6 entry shells (skills / occupations / sanity / damage / investigationRules / clueRules), all Planned badges
+- [ ] CP RED compendium — shows 6 entry shells (skills / equipment / market / cyberware / combatRules / netrunning), all Planned badges
+- [ ] COC sources — shows 1 source entry (coc7e-core, Lightweight Runtime badge)
+- [ ] CP RED sources — shows 1 source entry (cpred-core, Lightweight Runtime badge)
+- [ ] COC `play` view → renders old COC runtime (tabs + CocCreator/CocSheet/CocGameplay) unchanged
+- [ ] CP RED `play` view → renders old CP RED runtime (tabs + CpCreator/CpSheet/CpGameplay/CpMarket) unchanged
+- [ ] `NonDndWorkspaceView` type includes `'compendium' | 'sources'` in `PlayWorkspace.tsx`
+- [ ] `CocWorkspaceShell` / `CpWorkspaceShell` are wired as the sole renderers for CoC / CP in `PlayWorkspace.tsx`
+- [ ] Old render functions (`renderNonDndWorkspaceDashboard`, `renderCharacterVault`, `renderCreationMethod`, `renderPlannedSlot`) are removed from `PlayWorkspace.tsx`
+- [ ] `cocWorkspace.*` and `cpWorkspace.*` keys exist in both `zh-CN.ts` and `en.ts`
+- [ ] Landmark `COC_CPRED_DND_ALIGNED_WORKSPACE_RECONSTRUCTION` is present in shells and `PlayWorkspace.tsx`
+- [ ] No store, schema, runtime rule logic, dice algorithm, or CharacterData changed
+
+---
+
 ## 6. Platform Core Concepts Baseline Check (Docs Only)
 
 - [ ] `docs/architecture/PLATFORM_CORE_CONCEPTS.md` exists and is readable
