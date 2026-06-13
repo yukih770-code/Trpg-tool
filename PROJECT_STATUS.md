@@ -49,6 +49,8 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | Multi-System Workspace Shell Planned Slots v1 | ✅ Done (module entries + planned placeholders only) |
 | DND Character Vault & Creation Method Entry v1 | ✅ Done (Vault shell + creation method entry; runtime unchanged) |
 | Platform Core Concepts / Game System Registry Baseline v1 | ✅ Done (docs/architecture only; no code change) |
+| System Actor Session Workspace IA Correction Follow-up v1 | ✅ Done (removed 9 Actor/Session cards from module grids; workspace-tier guidance is informational only) |
+| System Home Simplification v1 | ✅ Done (DND/COC/CP RED home pages simplified to core entry points; index cards and data grids removed from home) |
 
 Architecture phase scope:
 - Documents DND / COC / Cyberpunk RED feature layers, priorities, page responsibilities, and freeze decisions.

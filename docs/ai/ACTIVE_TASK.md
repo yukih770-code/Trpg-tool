@@ -6,34 +6,58 @@
 
 ## Task
 
-- ID: Platform Core Concepts / Game System Registry Baseline v1
-- Name: Platform Core Concepts / Game System Registry Baseline v1
-- Goal: Establish platform-level architectural vocabulary and Game System Registry baseline. Documentation and metadata only — no code, store schema, runtime, or rule data changes.
-- Phase: P1 platform architecture
-- Status: Implemented; docs only, no tsc/build impact expected
+- ID: System Home Simplification v1
+- Name: System Home Simplification v1
+- Goal: Simplify DND / COC / CP RED system dashboard home pages to function as Game System Home pages — core entry points only, no data index cards on home.
+- Phase: P1 UI / IA simplification
+- Status: Implemented; awaiting manual build verification
 
 ## Result Summary
 
-- New file: `docs/architecture/PLATFORM_CORE_CONCEPTS.md`
-  - 14 core concept definitions (Game System through UI Theme / Layout Pack)
-  - Game System Registry V1 field spec (V1 required / optional / future)
-  - Built-in system entries: `dnd5e2024`, `coc7e`, `cpred`
-  - Future system categories (Japanese TRPG, Wargame, Custom Boardgame, Narrative)
-  - Terminology alignment table
-  - Atmospheric Minimalism / 氛围化简约 artistic direction
-  - Workshop / Plugin safety model and content layer classification
-  - Three-tier workspace IA summary
-  - Board Capability Levels L0–L4
-  - Dice Profile vocabulary
-  - Landmark: `PLATFORM_CORE_CONCEPTS_GAME_SYSTEM_REGISTRY_BASELINE`
-- Updated: `PROJECT_STATUS.md`, `TEST_CHECKLIST.md`, `docs/ai/SYMBOL_MAP.md`, `docs/ai/TASK_ARCHIVE.md`
-- No src/ files modified. No store, schema, migration, runtime, or rule data changed.
+### src/ changes
+
+- **`src/pages/dndWorkspace/DndWorkspaceShell.tsx`**
+  - Removed `spellIndex`, `featIndex`, `equipmentIndex`, `classIndex` from `moduleCards`
+  - Added `noteKey` to `compendium` card (`dndWorkspace.modules.compendiumNote`)
+  - Renamed `sources` card label to `dndWorkspace.modules.sources` (now "规则源状态 / System Health") with `noteKey`
+  - Replaced `completionRows` full grid section on dashboard with a compact footnote + link to Sources view
+  - Added landmark: `SYSTEM_HOME_SIMPLIFICATION`
+
+- **`src/pages/PlayWorkspace.tsx`**
+  - Removed `completion` planned card from `cocModuleCards`
+  - Removed `completion` planned card from `cpModuleCards`
+  - Added landmark comments: `SYSTEM_HOME_SIMPLIFICATION` on both COC and CP removal lines
+
+- **`src/i18n/locales/zh-CN.ts`**
+  - Added `dndWorkspace.modules.compendiumNote`
+  - Added `dndWorkspace.modules.sourcesNote`
+  - Updated `dndWorkspace.modules.sources` label to '规则源状态 / System Health'
+  - Added `dndWorkspace.dashboard.completionFootnote`
+  - Updated `multiWorkspace.coc.notes.compendium` (describes Rules Compendium content)
+  - Updated `multiWorkspace.coc.notes.sources` (adds System Health context)
+  - Updated `multiWorkspace.cp.notes.compendium`
+  - Updated `multiWorkspace.cp.notes.sources`
+
+- **`src/i18n/locales/en.ts`**
+  - Same keys as zh-CN.ts in English
+  - `dndWorkspace.modules.compendium` label changed to 'Rules Compendium'
+  - `dndWorkspace.modules.sources` label changed to 'Source Status / System Health'
+
+### No changes
+
+- Store schema / migration — untouched
+- CharacterData / Investigator / CP RED save structures — untouched
+- Runtime rule logic / dice algorithms — untouched
+- DND / COC / CP RED rule data — untouched
 
 ## Scope
 
 ### Allowed Files
 
-- `docs/architecture/PLATFORM_CORE_CONCEPTS.md` (new)
+- `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- `src/pages/PlayWorkspace.tsx`
+- `src/i18n/locales/zh-CN.ts`
+- `src/i18n/locales/en.ts`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
 - `docs/ai/SYMBOL_MAP.md`
@@ -46,39 +70,38 @@
 - CharacterData / Investigator / CP RED save structures
 - Runtime rule logic / dice algorithms
 - DND / COC / CP RED rule data
-- Any src/ file
-- Game System engine implementation
-- Plugin execution
-- Workshop subscription
+- Any other src/ file
 - git add / commit
 
 ## Navigation
 
 ### Key Symbols
 
-- `PLATFORM_CORE_CONCEPTS_GAME_SYSTEM_REGISTRY_BASELINE`
-- Full doc: `docs/architecture/PLATFORM_CORE_CONCEPTS.md`
+- `SYSTEM_HOME_SIMPLIFICATION`
+- `SYSTEM_ACTOR_SESSION_WORKSPACE_IA_CORRECTION`
 
 ### Locate Commands
 
 ```powershell
-rg -n "PLATFORM_CORE_CONCEPTS_GAME_SYSTEM_REGISTRY_BASELINE" docs
+rg -n "SYSTEM_HOME_SIMPLIFICATION" src docs
+rg -n "compendiumNote\|sourcesNote\|completionFootnote" src
 ```
 
 ## Completion Criteria
 
-- `docs/architecture/PLATFORM_CORE_CONCEPTS.md` exists with all 14 concepts, registry field spec, three system entries, terminology alignment, artistic direction, safety model, and landmark comment.
-- `docs/ai/SYMBOL_MAP.md` references the new doc and landmark.
-- `PROJECT_STATUS.md` records the task as completed.
-- `TEST_CHECKLIST.md` has a Platform Core Concepts Baseline Check section.
-- No src/ file was modified.
-- `npx tsc --noEmit` and `npm run build` still pass (no src/ changes).
+- `moduleCards` in DndWorkspaceShell no longer contains spellIndex / featIndex / equipmentIndex / classIndex
+- `completionRows` grid no longer appears on the dashboard home; replaced with footnote
+- `cocModuleCards` and `cpModuleCards` no longer contain a `completion` card
+- New i18n keys exist and resolve in both zh-CN and en
+- `SYSTEM_HOME_SIMPLIFICATION` landmark present in src files and SYMBOL_MAP.md
+- Documentation updated
 
 ## Verification
 
 ```powershell
 cd D:\Download\dnd
-git status --short
 npx tsc --noEmit
 npm run build
+rg -n "SYSTEM_HOME_SIMPLIFICATION" src docs
+rg -n "compendiumNote" src/i18n
 ```

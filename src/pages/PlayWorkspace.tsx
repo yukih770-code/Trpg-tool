@@ -556,8 +556,9 @@ export function PlayWorkspace() {
     // handouts → Session / Campaign Workspace; notes → Actor Workspace; locations → Session / Campaign Workspace.
     // They are described in the workspace-tier guidance section, not listed as entry points here.
     { labelKey: 'multiWorkspace.coc.modules.compendium', noteKey: 'multiWorkspace.coc.notes.compendium', status: 'planned' },
-    { labelKey: 'multiWorkspace.coc.modules.completion', noteKey: 'multiWorkspace.coc.notes.completion', status: 'planned' },
     { labelKey: 'multiWorkspace.coc.modules.sources', noteKey: 'multiWorkspace.coc.notes.sources', status: 'planned' },
+    // completion consolidated into sources / compendium entries. System Home does not show a separate data-coverage card.
+    // AI-LANDMARK: SYSTEM_HOME_SIMPLIFICATION (COC: completion card removed from home grid)
   ];
 
   const cpModuleCards: WorkspaceModuleCard[] = [
@@ -573,8 +574,9 @@ export function PlayWorkspace() {
     // All three → Session / Campaign Workspace.
     // They are described in the workspace-tier guidance section, not listed as entry points here.
     { labelKey: 'multiWorkspace.cp.modules.compendium', noteKey: 'multiWorkspace.cp.notes.compendium', status: 'planned' },
-    { labelKey: 'multiWorkspace.cp.modules.completion', noteKey: 'multiWorkspace.cp.notes.completion', status: 'planned' },
     { labelKey: 'multiWorkspace.cp.modules.sources', noteKey: 'multiWorkspace.cp.notes.sources', status: 'planned' },
+    // completion consolidated into sources / compendium entries. System Home does not show a separate data-coverage card.
+    // AI-LANDMARK: SYSTEM_HOME_SIMPLIFICATION (CP RED: completion card removed from home grid)
   ];
 
   const getNonDndWorkspaceTone = () => {

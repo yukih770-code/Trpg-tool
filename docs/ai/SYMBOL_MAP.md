@@ -193,6 +193,17 @@ This file helps AI quickly locate important types, helper functions, store actio
 - New i18n keys (follow-up): `dndWorkspace.ia.note`, `multiWorkspace.ia.note`
 - Updated i18n keys (follow-up): `dndWorkspace.ia.actorWorkspaceNote`, `dndWorkspace.ia.sessionWorkspaceNote`, `multiWorkspace.ia.actorWorkspaceNote`, `multiWorkspace.ia.sessionWorkspaceNote`
 
+## System Home Simplification
+
+- `AI-LANDMARK: SYSTEM_HOME_SIMPLIFICATION`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`, `src/pages/PlayWorkspace.tsx`
+- **DND**: `spellIndex`, `featIndex`, `equipmentIndex`, `classIndex` removed from `moduleCards`. Now only 5 cards: `characters`, `create`, `sheet`, `compendium`, `sources`. `completionRows` full grid replaced with a compact footnote linking to Sources view.
+- **COC**: `completion` planned card removed from `cocModuleCards`. Cards: `vault`, `create`, `sheet`, `skillChecks`, `pushedRolls`, `growth`, `compendium`, `sources`.
+- **CP RED**: `completion` planned card removed from `cpModuleCards`. Cards: `vault`, `create`, `sheet`, `skillChecks`, `combat`, `market`, `cyberware`, `netrunning`, `compendium`, `sources`.
+- New i18n keys: `dndWorkspace.modules.compendiumNote`, `dndWorkspace.modules.sourcesNote`, `dndWorkspace.dashboard.completionFootnote`
+- Updated labels: `dndWorkspace.modules.compendium` → 'Rules Compendium' (en) / '规则库' (zh); `dndWorkspace.modules.sources` → 'Source Status / System Health' (en) / '规则源状态 / System Health' (zh)
+- Updated COC/CP notes: `multiWorkspace.coc.notes.compendium`, `multiWorkspace.coc.notes.sources`, `multiWorkspace.cp.notes.compendium`, `multiWorkspace.cp.notes.sources`
+- No store, schema, runtime, or rule data changed
+
 ## Platform Character Entry Pattern
 
 - COC / CP RED lightweight Vault shell rendering: `renderCharacterVault` in `src/pages/PlayWorkspace.tsx`

@@ -69,17 +69,20 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
 
   // AI-LANDMARK: MULTI_SYSTEM_WORKSPACE_PLANNED_SLOTS
   // DND planned modules are platform entry points only, not inventory/map/journal implementations.
+  //
+  // AI-LANDMARK: SYSTEM_HOME_SIMPLIFICATION
+  // System Home only shows core Game System entry points.
+  // spellIndex / featIndex / equipmentIndex / classIndex are accessible inside the Compendium view;
+  // they are NOT listed as top-level home cards. Data coverage detail is linked from Source Status.
   const moduleCards: { labelKey: string; noteKey?: string; planned?: boolean; onClick: () => void }[] = [
     { labelKey: 'dndWorkspace.modules.characters', onClick: () => onViewChange('characters') },
     { labelKey: 'dndWorkspace.modules.create', onClick: () => onViewChange('create') },
     { labelKey: 'dndWorkspace.modules.sheet', onClick: () => onOpenPlayTab('sheet') },
-    { labelKey: 'dndWorkspace.modules.compendium', onClick: () => onViewChange('compendium') },
-    { labelKey: 'dndWorkspace.modules.spellIndex', onClick: () => onViewChange('compendium') },
-    { labelKey: 'dndWorkspace.modules.featIndex', onClick: () => onViewChange('compendium') },
-    { labelKey: 'dndWorkspace.modules.equipmentIndex', onClick: () => onViewChange('compendium') },
-    { labelKey: 'dndWorkspace.modules.classIndex', onClick: () => onViewChange('compendium') },
-    { labelKey: 'dndWorkspace.modules.sources', onClick: () => onViewChange('sources') },
-    // Actor Workspace and Session / Campaign Workspace modules (inventory, map, journal) have been
+    { labelKey: 'dndWorkspace.modules.compendium', noteKey: 'dndWorkspace.modules.compendiumNote', onClick: () => onViewChange('compendium') },
+    { labelKey: 'dndWorkspace.modules.sources', noteKey: 'dndWorkspace.modules.sourcesNote', onClick: () => onViewChange('sources') },
+    // spellIndex / featIndex / equipmentIndex / classIndex removed from System Home grid.
+    // Accessible inside the Compendium view. System Home only shows core entry points.
+    // Actor Workspace and Session / Campaign Workspace modules (inventory, map, journal) also
     // removed from the system dashboard module grid.
     // They are described in the workspace-tier guidance section below, not listed as entry points here.
     // AI-LANDMARK: SYSTEM_ACTOR_SESSION_WORKSPACE_IA_CORRECTION (follow-up: removed Actor/Session cards from grid)
@@ -197,18 +200,16 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                 </div>
               </section>
 
-              <section className={panelClass}>
-                <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-[#58180d]">
-                  {t('dndWorkspace.dashboard.completionTitle')}
-                </h2>
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                  {completionRows.map((row) => (
-                    <div key={row.labelKey} className="border border-[#58180d]/20 bg-white/50 p-3">
-                      <div className="text-xs font-bold text-[#58180d]">{t(row.labelKey)}</div>
-                      <div className="mt-1 font-mono text-[11px] text-[#2c1810]/80">{row.value}</div>
-                    </div>
-                  ))}
-                </div>
+              {/* Data coverage detail is in Source Status view; System Home shows only a summary footnote */}
+              <section className={`${panelClass} flex flex-wrap items-center justify-between gap-3`}>
+                <span className="text-[11px] text-[#58180d]/55">{t('dndWorkspace.dashboard.completionFootnote')}</span>
+                <button
+                  type="button"
+                  onClick={() => onViewChange('sources')}
+                  className="border border-[#58180d]/30 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#58180d]/65 hover:border-[#58180d] hover:text-[#58180d]"
+                >
+                  {t('dndWorkspace.nav.sources')} →
+                </button>
               </section>
 
               <section className={panelClass}>

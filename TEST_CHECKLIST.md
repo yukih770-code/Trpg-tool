@@ -210,7 +210,25 @@ Open the app in the browser and verify each page loads without crashing.
 
 ---
 
-## 5. Platform Core Concepts Baseline Check (Docs Only)
+## 5. System Home Simplification Check
+
+- [ ] DND Dashboard — module grid shows exactly 5 cards: 角色库 / 创建角色 / 打开角色卡 / 规则库 / 规则源状态 (no spellIndex / featIndex / equipmentIndex / classIndex)
+- [ ] DND Dashboard — 规则库 card has a descriptive note explaining indexes are accessible inside Compendium, not on home
+- [ ] DND Dashboard — 规则源状态 card label reads '规则源状态 / System Health' with a note about data coverage
+- [ ] DND Dashboard — data completion section is NOT a full grid; replaced by a compact footnote line with a link to Source Status view
+- [ ] DND Compendium view — still shows spell/feat/equipment/class index counts (accessible via nav or compendium card, not on home)
+- [ ] COC Workspace — module grid does NOT contain a separate 数据完成度 / Data Completion card; coverage detail is in Rules Compendium / Source Status
+- [ ] COC Workspace — 规则库 card note describes its contents (skill list, occupations, rule index, coverage tracking)
+- [ ] COC Workspace — 规则源状态 card note mentions System Health and owner source registration
+- [ ] CP RED Workspace — module grid does NOT contain a separate 数据完成度 / Data Completion card
+- [ ] CP RED Workspace — 规则库 card note describes its contents (equipment index, cyberware list, skill reference, coverage tracking)
+- [ ] CP RED Workspace — 规则源状态 card note mentions System Health and owner source registration
+- [ ] All three system homes answer the core questions: which Game System is this, which Actor can I select/create, can I access Rules Compendium, can I check Source Status / System Health
+- [ ] No store, schema, runtime, or rule data changed by this simplification
+
+---
+
+## 6. Platform Core Concepts Baseline Check (Docs Only)
 
 - [ ] `docs/architecture/PLATFORM_CORE_CONCEPTS.md` exists and is readable
 - [ ] Document defines all 14 platform concepts (Game System through UI Theme / Layout Pack)
