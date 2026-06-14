@@ -1,5 +1,5 @@
-// AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V1
-import { BrainCircuit, Boxes, ChevronRight, Database, Hammer, Map, Network, Play, Upload } from 'lucide-react';
+// AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V2
+import { BookOpen, ChevronRight, Library, Play, Sparkles, Upload } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { createTranslator, type Locale } from '../i18n';
@@ -9,7 +9,6 @@ import { useCocStore } from '../store/cocStore';
 import { useCpStore } from '../store/cpStore';
 
 type System = 'D&D' | 'CoC' | 'CP';
-type DevStatusKey = 'scaffold' | 'interfaceReserved' | 'plannedImpl' | 'mock' | 'toolEntry';
 
 type HomeProps = {
   locale: Locale;
@@ -17,70 +16,55 @@ type HomeProps = {
   onOpenPlaceholder: (feature: string) => void;
 };
 
-// System-level cards with per-system accent colours
 const systemCards: {
   system: System;
   labelKey: string;
-  descKey: string;
-  cardAccent: string;
   resumeAccent: string;
+  recentAccent: string;
 }[] = [
   {
     system: 'D&D',
     labelKey: 'glossary.dnd2024',
-    descKey: 'playMenu.dnd.desc',
-    cardAccent: 'border-[#58180d]/30 bg-[#fff8e6] hover:border-[#58180d]/55 hover:shadow-md',
     resumeAccent: 'border-[#58180d]/30 bg-[#fff8e6]',
+    recentAccent: 'border-[#58180d]/20 bg-[#fff8e6]/70 hover:border-[#58180d]/40 hover:bg-[#fff8e6]',
   },
   {
     system: 'CoC',
     labelKey: 'glossary.coc7e',
-    descKey: 'playMenu.coc.desc',
-    cardAccent: 'border-[#2f7f68]/30 bg-[#f1fbf7] hover:border-[#2f7f68]/55 hover:shadow-md',
     resumeAccent: 'border-[#2f7f68]/30 bg-[#f1fbf7]',
+    recentAccent: 'border-[#2f7f68]/20 bg-[#f1fbf7]/70 hover:border-[#2f7f68]/40 hover:bg-[#f1fbf7]',
   },
   {
     system: 'CP',
     labelKey: 'glossary.cyberpunkRed',
-    descKey: 'playMenu.cp.desc',
-    cardAccent: 'border-[#f5c518]/40 bg-[#fffbea] hover:border-[#f5c518]/70 hover:shadow-md',
     resumeAccent: 'border-[#f5c518]/40 bg-[#fffbea]',
+    recentAccent: 'border-[#f5c518]/30 bg-[#fffbea]/70 hover:border-[#f5c518]/55 hover:bg-[#fffbea]',
   },
 ];
 
-// Dev-zone cards — lower visual weight, explicit status badge
-const devStatusLabelKeys: Record<DevStatusKey, string> = {
-  scaffold: 'home.devZone.status.scaffold',
-  interfaceReserved: 'home.devZone.status.interfaceReserved',
-  plannedImpl: 'home.devZone.status.plannedImpl',
-  mock: 'home.devZone.status.mock',
-  toolEntry: 'home.devZone.status.toolEntry',
-};
-
-type DevCardDef = {
+const pinnedEntries: {
   key: string;
-  titleKey: string;
-  icon: typeof Map;
-  statusKey: DevStatusKey;
-  placeholderKey?: string; // undefined = disabled (no placeholder page yet)
-};
-
-const devCards: DevCardDef[] = [
-  { key: 'campaigns',     titleKey: 'home.devZone.campaigns.title',     icon: Map,         statusKey: 'plannedImpl',       placeholderKey: 'campaigns' },
-  { key: 'sourceSettings',titleKey: 'home.devZone.sourceSettings.title',icon: Database,    statusKey: 'interfaceReserved' },
-  { key: 'workshop',      titleKey: 'home.devZone.workshop.title',      icon: Boxes,       statusKey: 'plannedImpl',       placeholderKey: 'community' },
-  { key: 'studio',        titleKey: 'home.devZone.studio.title',        icon: Hammer,      statusKey: 'plannedImpl',       placeholderKey: 'studio' },
-  { key: 'vtt',           titleKey: 'home.devZone.vtt.title',           icon: Network,     statusKey: 'plannedImpl' },
-  { key: 'aiHost',        titleKey: 'home.devZone.aiHost.title',        icon: BrainCircuit,statusKey: 'plannedImpl',       placeholderKey: 'aiHost' },
-  { key: 'privateImport', titleKey: 'home.devZone.privateImport.title', icon: Upload,      statusKey: 'toolEntry',         placeholderKey: 'privateImport' },
+  labelKey: string;
+  icon: typeof Library;
+  placeholderKey: string;
+}[] = [
+  { key: 'ruleSystems', labelKey: 'home.pinned.ruleSystems', icon: Library,   placeholderKey: 'ruleSystems' },
+  { key: 'campaigns',   labelKey: 'home.pinned.campaigns',   icon: BookOpen,  placeholderKey: 'campaigns'   },
+  { key: 'workshop',    labelKey: 'home.pinned.workshop',    icon: Sparkles,  placeholderKey: 'community'   },
 ];
+
+const platformStatusTagKeys = [
+  'home.platformStatus.tags.devMode',
+  'home.platformStatus.tags.scaffoldVisible',
+  'home.platformStatus.tags.interfaceReserved',
+] as const;
 
 export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
   const { t } = createTranslator(locale);
-  const system       = useAppStore((state) => state.system as System);
-  const dndChar      = useCharacterStore((state) => state.character);
-  const cocChar      = useCocStore((state) => state.character);
-  const cpChar       = useCpStore((state) => state.character);
+  const system  = useAppStore((state) => state.system as System);
+  const dndChar = useCharacterStore((state) => state.character);
+  const cocChar = useCocStore((state) => state.character);
+  const cpChar  = useCpStore((state) => state.character);
 
   const activeSystemCard = systemCards.find((c) => c.system === system) ?? systemCards[0];
 
@@ -88,20 +72,25 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
     system === 'CoC' ? cocChar
     : system === 'CP'  ? cpChar
     : dndChar;
+  const activeCharName = (activeCharacter as { name?: string } | null)?.name?.trim();
 
-  const characterName = (activeCharacter as { name?: string }).name?.trim();
+  const charNameBySystem = {
+    'D&D': (dndChar as { name?: string } | null)?.name?.trim(),
+    'CoC': (cocChar as { name?: string } | null)?.name?.trim(),
+    'CP':  (cpChar  as { name?: string } | null)?.name?.trim(),
+  };
 
   return (
     <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 md:px-8">
+      <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-8 md:px-8">
 
-        {/* ── Compact Hero ─────────────────────────────────────────── */}
+        {/* ── Compact Hero ───────────────────────────────────────────── */}
         <div>
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{t('home.hero.title')}</h1>
           <p className="mt-1.5 text-sm text-[#51483d]">{t('home.hero.subtitle')}</p>
         </div>
 
-        {/* ── Section 1: 继续上次 ─────────────────────────────────── */}
+        {/* ── Section 1: 继续上次 ────────────────────────────────────── */}
         <section aria-label={t('home.resume.sectionTitle')}>
           <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
             {t('home.resume.sectionTitle')}
@@ -120,14 +109,13 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
                     {t('home.resume.currentCharacter')}
                   </span>
                   <span className="text-sm">
-                    {characterName || <span className="text-[#51483d]">{t('home.resume.noCharacter')}</span>}
+                    {activeCharName || (
+                      <span className="text-[#51483d]">{t('home.resume.noCharacter')}</span>
+                    )}
                   </span>
                 </div>
               </div>
-              <Button
-                onClick={() => onEnterPlay(system)}
-                className="w-fit rounded-md"
-              >
+              <Button onClick={() => onEnterPlay(system)} className="w-fit rounded-md">
                 <Play className="mr-2 h-4 w-4" />
                 {t('home.resume.continueButton')}
               </Button>
@@ -135,82 +123,77 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
           </div>
         </section>
 
-        {/* ── Section 2: 规则系统库 ───────────────────────────────── */}
-        <section aria-label={t('home.systems.sectionTitle')}>
+        {/* ── Section 2: 最近使用 ────────────────────────────────────── */}
+        <section aria-label={t('home.recent.sectionTitle')}>
           <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
-            {t('home.systems.sectionTitle')}
+            {t('home.recent.sectionTitle')}
           </h2>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="flex flex-col gap-2">
             {systemCards.map((card) => (
-              <div
+              <button
                 key={card.system}
-                className={`flex flex-col rounded-xl border p-5 transition ${card.cardAccent}`}
+                type="button"
+                onClick={() => onEnterPlay(card.system)}
+                className={`flex items-center justify-between rounded-lg border px-4 py-3 text-left transition ${card.recentAccent}`}
               >
-                <div className="mb-1 font-bold">{t(card.labelKey)}</div>
-                <div className="mb-4 flex-1 text-xs text-[#51483d]">{t(card.descKey)}</div>
-                <Button
-                  size="sm"
-                  onClick={() => onEnterPlay(card.system)}
-                  className="w-full rounded-md"
-                >
-                  {t('home.systems.enterSystem')}
-                  <ChevronRight className="ml-1 h-3.5 w-3.5" />
-                </Button>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {[
-                    t('navigation.actorVault'),
-                    t('navigation.rulesCompendium'),
-                    t('navigation.sourceStatus'),
-                  ].map((label) => (
-                    <button
-                      key={label}
-                      type="button"
-                      onClick={() => onEnterPlay(card.system)}
-                      className="rounded-md border border-[#2f2a22]/20 bg-white/50 px-2 py-0.5 text-[10px] text-[#51483d] transition hover:bg-white/90"
-                    >
-                      {label}
-                    </button>
-                  ))}
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-semibold">{t(card.labelKey)}</span>
+                  {charNameBySystem[card.system] && (
+                    <span className="text-xs text-[#51483d]">{charNameBySystem[card.system]}</span>
+                  )}
                 </div>
-              </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-[#51483d]" />
+              </button>
             ))}
           </div>
         </section>
 
-        {/* ── Section 3: 开发中功能 ───────────────────────────────── */}
-        <section aria-label={t('home.devZone.sectionTitle')}>
+        {/* ── Section 3: 固定入口 ────────────────────────────────────── */}
+        <section aria-label={t('home.pinned.sectionTitle')}>
           <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
-            {t('home.devZone.sectionTitle')}
+            {t('home.pinned.sectionTitle')}
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {devCards.map((card) => {
-              const Icon = card.icon;
-              const clickable = Boolean(card.placeholderKey);
+          <div className="grid gap-3 sm:grid-cols-3">
+            {pinnedEntries.map((entry) => {
+              const Icon = entry.icon;
               return (
                 <button
-                  key={card.key}
+                  key={entry.key}
                   type="button"
-                  disabled={!clickable}
-                  onClick={clickable ? () => onOpenPlaceholder(card.placeholderKey!) : undefined}
-                  className={`rounded-lg border border-[#2f2a22]/12 bg-[#faf8f2] p-4 text-left transition ${
-                    clickable
-                      ? 'cursor-pointer hover:border-[#2f2a22]/25 hover:bg-white'
-                      : 'cursor-default opacity-55'
-                  }`}
+                  onClick={() => onOpenPlaceholder(entry.placeholderKey)}
+                  className="flex items-center gap-3 rounded-xl border border-[#2f2a22]/15 bg-white/60 px-4 py-4 text-left transition hover:border-[#2f2a22]/30 hover:bg-white/90"
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <Icon className="mt-0.5 h-4 w-4 shrink-0 text-[#6a5f52]" />
-                    <Badge
-                      variant="outline"
-                      className="rounded-md border-[#2f2a22]/25 text-[9px] font-medium uppercase tracking-wide"
-                    >
-                      {t(devStatusLabelKeys[card.statusKey])}
-                    </Badge>
-                  </div>
-                  <div className="mt-2.5 text-sm font-bold text-[#17130f]">{t(card.titleKey)}</div>
+                  <Icon className="h-5 w-5 shrink-0 text-[#6a5f52]" />
+                  <span className="text-sm font-semibold">{t(entry.labelKey)}</span>
                 </button>
               );
             })}
+          </div>
+        </section>
+
+        {/* ── Section 4: 平台状态摘要 ───────────────────────────────── */}
+        <section aria-label={t('home.platformStatus.sectionTitle')}>
+          <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
+            {t('home.platformStatus.sectionTitle')}
+          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            {platformStatusTagKeys.map((key) => (
+              <Badge
+                key={key}
+                variant="outline"
+                className="rounded-md border-[#2f2a22]/20 text-[10px] font-medium text-[#51483d]"
+              >
+                {t(key)}
+              </Badge>
+            ))}
+            <button
+              type="button"
+              onClick={() => onOpenPlaceholder('privateImport')}
+              className="ml-auto flex items-center gap-1.5 rounded-md border border-[#2f2a22]/15 bg-white/50 px-3 py-1.5 text-[11px] text-[#51483d] transition hover:bg-white/90"
+            >
+              <Upload className="h-3 w-3" />
+              {t('home.platformStatus.privateImport')}
+            </button>
           </div>
         </section>
 

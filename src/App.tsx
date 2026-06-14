@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { ArrowLeft, ChevronUp, ChevronsLeft, ChevronsRight, Gamepad2, HomeIcon, Settings, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronUp, ChevronsLeft, ChevronsRight, HomeIcon, Library, Settings, Sparkles } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Toaster } from '../components/ui/sonner';
 import { createTranslator, type Locale, readStoredLocale, writeStoredLocale } from './i18n';
 import { Home } from './pages/Home';
 import { PlayMenu } from './pages/PlayMenu';
+import { SystemLibrary } from './pages/SystemLibrary';
 import {
   PlayWorkspace,
   defaultPlayWorkspaceNavigationState,
@@ -13,7 +14,7 @@ import {
 } from './pages/PlayWorkspace';
 import { useAppStore } from './store/appStore';
 
-type AppView = 'home' | 'play' | 'placeholder';
+type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary';
 type PlayStage = 'menu' | 'workspace';
 type System = 'D&D' | 'CoC' | 'CP';
 
@@ -62,14 +63,14 @@ function writeStoredSidebarCollapsed(collapsed: boolean): void {
 }
 
 const navItems: {
-  key: 'home' | 'play' | 'settings';
+  key: 'home' | 'systemLibrary' | 'settings';
   labelKey: string;
   kind: 'view' | 'placeholder';
   icon: typeof HomeIcon;
 }[] = [
-  { key: 'home', labelKey: 'shell.nav.home', kind: 'view', icon: HomeIcon },
-  { key: 'play', labelKey: 'shell.nav.play', kind: 'view', icon: Gamepad2 },
-  { key: 'settings', labelKey: 'shell.nav.settings', kind: 'placeholder', icon: Settings },
+  { key: 'home',          labelKey: 'shell.nav.home',          kind: 'view',        icon: HomeIcon },
+  { key: 'systemLibrary', labelKey: 'shell.nav.systemLibrary', kind: 'view',        icon: Library  },
+  { key: 'settings',      labelKey: 'shell.nav.settings',      kind: 'placeholder', icon: Settings },
 ];
 
 function isPlaceholderKey(value: string): value is PlaceholderKey {
@@ -134,8 +135,7 @@ export default function App() {
 
   const fallbackNavigation = () => {
     if (appView === 'play' && playStage === 'workspace') {
-      setPlayStage('menu');
-      setAppView('play');
+      setAppView('systemLibrary');
       return;
     }
 
@@ -346,6 +346,10 @@ export default function App() {
 
   const openPlaceholder = (feature: string) => {
     pushNavigation();
+    if (feature === 'ruleSystems' || feature === 'systemLibrary') {
+      setAppView('systemLibrary');
+      return;
+    }
     setActivePlaceholder(normalizeFeatureKey(feature));
     setAppView('placeholder');
   };
@@ -401,8 +405,6 @@ export default function App() {
                     onClick={() => {
                       if (item.key === 'home') {
                         navigateHome();
-                      } else if (item.key === 'play') {
-                        enterPlay();
                       } else {
                         openPlaceholder(item.key);
                       }
@@ -423,6 +425,10 @@ export default function App() {
         <section className="min-w-0 flex-1">
           {appView === 'home' && (
             <Home locale={locale} onEnterPlay={enterPlay} onOpenPlaceholder={openPlaceholder} />
+          )}
+
+          {appView === 'systemLibrary' && (
+            <SystemLibrary locale={locale} onEnterPlay={enterPlay} />
           )}
 
           {appView === 'play' && playStage === 'menu' && (
@@ -516,7 +522,7 @@ export default function App() {
                 </section>
 
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <Button onClick={() => enterPlay()} className="rounded-md">
+                  <Button onClick={() => openPlaceholder('ruleSystems')} className="rounded-md">
                     {t('shell.enterPlay')}
                   </Button>
                   <Button variant="outline" onClick={navigateHome} className="rounded-md border-[#2f2a22]/20">
@@ -542,7 +548,7 @@ export default function App() {
                   {isPrivateImportPlaceholder ? t(`${placeholderBaseKey}.note`) : t('shell.plannedNote')}
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <Button onClick={() => enterPlay()} className="rounded-md">
+                  <Button onClick={() => openPlaceholder('ruleSystems')} className="rounded-md">
                     {t('shell.enterPlay')}
                   </Button>
                   <Button variant="outline" onClick={navigateHome} className="rounded-md border-[#2f2a22]/20">

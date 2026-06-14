@@ -47,6 +47,7 @@ export const zhCN = {
     nav: {
       home: '首页',
       play: '规则系统',
+      systemLibrary: '系统库',
       campaigns: '战役管理',
       community: '社区模组',
       privateImport: '私有导入',
@@ -828,26 +829,97 @@ export const zhCN = {
       continueButton: '继续',
       noHistory: '还没有最近记录，请先选择规则系统',
     },
-    systems: {
-      sectionTitle: '规则系统库',
-      enterSystem: '进入系统',
+    recent: {
+      sectionTitle: '最近使用',
     },
-    devZone: {
-      sectionTitle: '开发中功能',
-      status: {
-        scaffold: '脚手架',
+    pinned: {
+      sectionTitle: '固定入口',
+      ruleSystems: '规则系统库',
+      campaigns: '我的战役',
+      workshop: '创意工坊',
+    },
+    platformStatus: {
+      sectionTitle: '平台状态摘要',
+      tags: {
+        devMode: '开发期',
+        scaffoldVisible: '脚手架可见',
         interfaceReserved: '接口预留',
-        plannedImpl: '后续实现',
-        mock: 'Mock',
-        toolEntry: '工具入口',
       },
-      campaigns: { title: '战役库' },
-      sourceSettings: { title: '规则来源设置' },
-      workshop: { title: '创意工坊' },
-      studio: { title: '内容创作坊' },
-      vtt: { title: 'Session / VTT' },
-      aiHost: { title: 'AI 主持' },
-      privateImport: { title: '私有导入' },
+      privateImport: '私有导入',
+    },
+  },
+  systemLibrary: {
+    title: '规则系统库',
+    subtitle: '浏览并进入已接入的规则系统，查看计划中与社区系统。',
+    searchPlaceholder: '搜索规则系统、类型、题材、标签……',
+    enterSystem: '进入系统',
+    unavailableButton: '后续接入',
+    noResults: '没有匹配的规则系统',
+    category: {
+      label: '类型',
+      all: '全部',
+      trpg: 'TRPG',
+      boardgame: '桌游',
+      wargame: '战棋',
+      cardgame: '卡牌',
+      custom: '自定义',
+    },
+    availability: {
+      label: '可用',
+      all: '全部',
+      available: '可进入',
+      unavailable: '未接入',
+    },
+    source: {
+      label: '来源',
+      all: '全部',
+      builtin: '内置',
+      local: '本地',
+      community: '社区',
+    },
+    badge: {
+      available: '可进入',
+      unavailable: '未接入',
+    },
+    tags: {
+      trpg: 'TRPG',
+      fantasy: '奇幻',
+      investigation: '调查',
+      horror: '恐怖',
+      cyberpunk: '赛博朋克',
+      scifi: '科幻',
+      builtin: '内置',
+      darkFantasy: '黑暗奇幻',
+      war: '战争',
+      japaneseTrpg: '日式',
+      custom: '自定义',
+      local: '本地',
+    },
+    systems: {
+      dnd2024: {
+        name: 'DND 5e 2024',
+        desc: '奇幻规则运行时 · Creator / Sheet / Gameplay 可用。',
+      },
+      coc7e: {
+        name: 'COC 7e',
+        desc: '调查员工作区 · Creator / Sheet / Gameplay 可用。',
+      },
+      cyberpunkRed: {
+        name: 'Cyberpunk RED',
+        desc: '夜之城运行时 · Creator / Sheet / Gameplay / Market 可用。',
+      },
+      warhammer: {
+        name: '战锤 FRPG',
+        desc: '战锤幻想角色扮演。暂未接入，后续规划中。',
+      },
+      japaneseTrpg: {
+        name: '日式 TRPG',
+        desc: '日式 TRPG 合集，多系统支持后续接入。',
+      },
+      customSystem: {
+        name: '自定义规则系统',
+        desc: '导入或创建自定义规则系统。接口预留，暂未开放。',
+      },
     },
   },
 } as const;

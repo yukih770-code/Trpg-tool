@@ -6,37 +6,39 @@
 
 ## Task
 
-- ID: Platform Home Launchpad IA Cleanup v1
-- Name: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V1
-- Goal: Restructure the platform home page from a feature-stacking page into a clean three-section Launchpad.
+- ID: System Library Filter Taxonomy Cleanup v1
+- Name: SYSTEM_LIBRARY_FILTER_TAXONOMY_CLEANUP_V1
+- Goal: Replace dev-status-as-filter with user-facing taxonomy. Remove 脚手架/计划中 from primary filters. Add 类型/可用/来源 as the three main filter dimensions. Add genre tags to cards.
 - Phase: P1 platform UX / IA
 - Status: Done
 
 ## Result Summary
 
-- `src/pages/Home.tsx` fully rewritten with three-section Launchpad structure.
-- Section 1 **继续上次 / Resume**: highest-priority CTA; shows current system + character name; single 「继续」button calls `onEnterPlay(system)`. System accent colour (D&D parchment / COC teal / CP gold) tints the card border/bg.
-- Section 2 **规则系统库 / Rule Systems**: 3 equal-weight system cards (DND/COC/CP RED), each with system name, one-line desc (reuses `playMenu.*.desc`), 「进入系统」button, and 3 small chip links (角色库 / 规则库 / 数据状态) that also call `onEnterPlay`. Per-system accent colours.
-- Section 3 **开发中功能 / In Development**: 7 dev-zone cards (战役库/规则来源设置/创意工坊/内容创作坊/Session·VTT/AI主持/私有导入), each with an explicit status badge (脚手架/接口预留/后续实现/Mock/工具入口). Cards with placeholder pages are clickable; sourceSettings and vtt are disabled (`opacity-55`, `cursor-default`). Never "即将开放".
-- Private Import moved from Hero buttons into dev-zone section with 工具入口 badge; still calls `onOpenPlaceholder('privateImport')`.
-- Sidebar nav label 'play' renamed: `游玩` → `规则系统` (zh-CN), `Play` → `Rule Systems` (en).
-- Hero compressed to 2 lines (title + updated subtitle). No Hero buttons.
-- i18n: `home.hero.*` trimmed to title+subtitle; new keys under `home.resume.*`, `home.systems.*`, `home.devZone.*`; old `home.snapshot.*` / `home.workspaces.*` / `home.roadmap.*` removed.
-- No store, schema, migration, save format, DND/COC/CP RED workspace, Actor Vault Shell/adapter, Builder, dice, runtime, Campaign/Module/Session, routing, or History API changes.
+- `SystemLibrary.tsx` fully rewritten (types, entries, filters, card layout).
+- **New types**: `AvailabilityKey = 'available' | 'unavailable'`; `SourceKey = 'builtin' | 'local' | 'community'`. Old `StatusKey` removed.
+- **`SystemEntry`**: `status` field removed; replaced with `availability + source + tagKeys[]`.
+- **Three filter rows with labels**:
+  - 类型 / Type: 全部/TRPG/桌游/战棋/卡牌/自定义
+  - 可用 / Availability: 全部/可进入/未接入
+  - 来源 / Source: 全部/内置/本地/社区
+- **Cards (available)**: badge 「可进入」(teal), genre tag chips, button 「进入系统」.
+- **Cards (unavailable)**: opacity-65, badge 「未接入」(muted), disabled button 「后续接入」. Not disguised as available.
+- **Genre tags** on every card: DND(TRPG/奇幻/内置), COC(TRPG/调查/恐怖/内置), CP(TRPG/赛博朋克/科幻/内置), 战锤(TRPG/黑暗奇幻/战争), 日式TRPG(TRPG/日式), 自定义(自定义/本地).
+- **Search** now also matches tag text (tags joined into search corpus).
+- i18n: removed `systemLibrary.statusFilter.*`, `systemLibrary.badge.(scaffold/planned/installed/community/local)`; added `systemLibrary.availability.*`, `systemLibrary.source.*`, `systemLibrary.badge.(available/unavailable)`, `systemLibrary.tags.*`, `systemLibrary.unavailableButton`, `systemLibrary.category.label`.
+- No store, schema, migration, routing, or workspace-internal changes.
 
 ## Navigation
 
 ### Landmark
 
 ```text
-AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V1
+AI-LANDMARK: SYSTEM_LIBRARY_SCAFFOLD_V1  (unchanged — still in SystemLibrary.tsx)
 ```
-
-Located in: `src/pages/Home.tsx` (top of file comment)
 
 ### Locate Commands
 
 ```powershell
-rg -n "PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V1" src/
-rg -n "home\.resume\|home\.systems\|home\.devZone" src/pages/Home.tsx
+rg -n "SYSTEM_LIBRARY_SCAFFOLD_V1" src/
+rg -n "availability\|AvailabilityKey\|SourceKey" src/pages/SystemLibrary.tsx
 ```

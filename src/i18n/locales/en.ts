@@ -47,6 +47,7 @@ export const en = {
     nav: {
       home: 'Home',
       play: 'Rule Systems',
+      systemLibrary: 'System Library',
       campaigns: 'Campaigns',
       community: 'Community Modules',
       privateImport: 'Private Import',
@@ -828,26 +829,97 @@ export const en = {
       continueButton: 'Continue',
       noHistory: 'No recent session — choose a ruleset to get started.',
     },
-    systems: {
-      sectionTitle: 'Rule Systems',
-      enterSystem: 'Enter System',
+    recent: {
+      sectionTitle: 'Recent',
     },
-    devZone: {
-      sectionTitle: 'In Development',
-      status: {
-        scaffold: 'Scaffold',
+    pinned: {
+      sectionTitle: 'Pinned',
+      ruleSystems: 'Rule Systems',
+      campaigns: 'My Campaigns',
+      workshop: 'Workshop',
+    },
+    platformStatus: {
+      sectionTitle: 'Platform Status',
+      tags: {
+        devMode: 'Dev Mode',
+        scaffoldVisible: 'Scaffold Visible',
         interfaceReserved: 'Interface Reserved',
-        plannedImpl: 'Planned',
-        mock: 'Mock',
-        toolEntry: 'Tool Entry',
       },
-      campaigns: { title: 'Campaign Vault' },
-      sourceSettings: { title: 'Source Settings' },
-      workshop: { title: 'Workshop' },
-      studio: { title: 'Content Studio' },
-      vtt: { title: 'Session / VTT' },
-      aiHost: { title: 'AI Host' },
-      privateImport: { title: 'Private Import' },
+      privateImport: 'Private Import',
+    },
+  },
+  systemLibrary: {
+    title: 'Rule Systems',
+    subtitle: 'Browse available rule systems and see what is coming.',
+    searchPlaceholder: 'Search systems, types, genre, tags…',
+    enterSystem: 'Enter System',
+    unavailableButton: 'Coming Later',
+    noResults: 'No matching rule systems',
+    category: {
+      label: 'Type',
+      all: 'All',
+      trpg: 'TRPG',
+      boardgame: 'Board Game',
+      wargame: 'Wargame',
+      cardgame: 'Card Game',
+      custom: 'Custom',
+    },
+    availability: {
+      label: 'Availability',
+      all: 'All',
+      available: 'Available',
+      unavailable: 'Not Available',
+    },
+    source: {
+      label: 'Source',
+      all: 'All',
+      builtin: 'Built-in',
+      local: 'Local',
+      community: 'Community',
+    },
+    badge: {
+      available: 'Available',
+      unavailable: 'Not Available',
+    },
+    tags: {
+      trpg: 'TRPG',
+      fantasy: 'Fantasy',
+      investigation: 'Investigation',
+      horror: 'Horror',
+      cyberpunk: 'Cyberpunk',
+      scifi: 'Sci-Fi',
+      builtin: 'Built-in',
+      darkFantasy: 'Dark Fantasy',
+      war: 'War',
+      japaneseTrpg: 'Japanese TRPG',
+      custom: 'Custom',
+      local: 'Local',
+    },
+    systems: {
+      dnd2024: {
+        name: 'DND 5e 2024',
+        desc: 'Fantasy rules runtime — Creator / Sheet / Gameplay available.',
+      },
+      coc7e: {
+        name: 'COC 7e',
+        desc: 'Investigator workspace — Creator / Sheet / Gameplay available.',
+      },
+      cyberpunkRed: {
+        name: 'Cyberpunk RED',
+        desc: 'Night City runtime — Creator / Sheet / Gameplay / Market available.',
+      },
+      warhammer: {
+        name: 'Warhammer FRPG',
+        desc: 'Warhammer Fantasy Roleplay — not yet available.',
+      },
+      japaneseTrpg: {
+        name: 'Japanese TRPG',
+        desc: 'Japanese TRPG collection — multi-system support coming.',
+      },
+      customSystem: {
+        name: 'Custom System',
+        desc: 'Import or create a custom rule system — interface reserved.',
+      },
     },
   },
 } as const;

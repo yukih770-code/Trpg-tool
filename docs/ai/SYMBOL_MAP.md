@@ -713,7 +713,63 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Alive i18n keys preserved: `multiWorkspace.actorVault.existingActors/addActor/activeIndicator/addActorNote/totalCount/completeCount/incompleteCount/recentUpdate/source/sourcePlatform/creator/creatorPlaceholder/campaign/campaignNone`, `multiWorkspace.actions.(backToWorkspace|viewInvestigatorSheet|viewCharacterSheet|continueEdgerunnerEditing|startInvestigation|startMission|createInvestigator|createEdgerunner)`, `cocWorkspace.nav.sheet`, `dndWorkspace.modules.(spellIndex|featIndex|equipmentIndex|classIndex)`, `dndWorkspace.characters.(current|empty|unnamed|level|species|background|class)`
 - Verify clean: `rg "vaultTitle|singleActorLimitNote|campaignTeaser|entryPattern|replaceCurrentCharacter|continueInvestigatorEditing" src/i18n/`
 
-## Platform Home Launchpad IA Cleanup
+## System Library Filter Taxonomy Cleanup V1
+
+- Changes are in `src/pages/SystemLibrary.tsx` (full rewrite) and i18n locales
+- `AvailabilityKey`: `'available' | 'unavailable'` — replaces `StatusKey`
+- `SourceKey`: `'builtin' | 'local' | 'community'`
+- `SystemEntry.availability`: drives card badge + button + opacity
+- `SystemEntry.source`: drives source filter
+- `SystemEntry.tagKeys[]`: i18n key array; shown as small chips on card, also searched
+- `AVAILABILITY_BADGE_CLASS`: `Record<AvailabilityKey, string>` — teal for available, muted for unavailable
+- Filter rows use `filterRow()` helper with inline label prefix
+- Available card: badge 「可进入」, Button「进入系统」→ `onEnterPlay(system)`
+- Unavailable card: opacity-65, badge 「未接入」, disabled `<button>`「后续接入」
+- i18n removed: `systemLibrary.statusFilter.*`, `systemLibrary.badge.(scaffold/planned/installed/community/local)`
+- i18n added: `systemLibrary.category.label`, `systemLibrary.availability.*`, `systemLibrary.source.*`, `systemLibrary.badge.(available/unavailable)`, `systemLibrary.tags.*`, `systemLibrary.unavailableButton`
+- Verify: `rg "statusFilter\|badge\.scaffold\|badge\.planned" src/`
+
+## System Library Duplicate Entry Consolidation V1
+
+- No new landmark (wiring change only); changes in `src/App.tsx`
+- Left nav item: `{ key: 'systemLibrary', labelKey: 'shell.nav.systemLibrary', kind: 'view', icon: Library }` — calls `openPlaceholder('systemLibrary')` → intercepted → `setAppView('systemLibrary')`
+- `openPlaceholder` intercept: `feature === 'ruleSystems' || feature === 'systemLibrary'` both → `setAppView('systemLibrary')`
+- `fallbackNavigation`: workspace no-stack-fallback now → `setAppView('systemLibrary')` (not PlayMenu)
+- Settings + placeholder page buttons: `openPlaceholder('ruleSystems')` (not `enterPlay()`)
+- `PlayMenu`: no longer reachable through any UI flow; code retained. Dead render: `appView==='play' && playStage==='menu'`
+- i18n keys added: `shell.nav.systemLibrary`, `systemLibrary.subtitle`
+- Locate: `rg -n "systemLibrary\|ruleSystems" src/App.tsx`
+
+## System Library Scaffold V1
+
+- `AI-LANDMARK: SYSTEM_LIBRARY_SCAFFOLD_V1`: `src/pages/SystemLibrary.tsx` (top of file comment)
+- Locate: `rg -n "SYSTEM_LIBRARY_SCAFFOLD_V1" src/`
+- `SYSTEM_ENTRIES[]`: static array of `SystemEntry` — id, system?, nameKey, typeLabel, descKey, status, category. Installed = DND/COC/CP; Placeholder = 战锤/日式TRPG/自定义.
+- `StatusKey`: `'installed' | 'scaffold' | 'planned' | 'community' | 'local'`
+- `CategoryKey`: `'trpg' | 'boardgame' | 'wargame' | 'cardgame' | 'custom'`
+- `STATUS_BADGE_CLASS`: `Record<StatusKey, string>` — tailwind classes per status
+- Search: React `useState` on `search: string`; filters by `t(nameKey) + t(descKey) + typeLabel` (local, no API)
+- Category + status: React `useState` on `'all' | CategoryKey` and `'all' | StatusKey`
+- Props: `locale: Locale`, `onEnterPlay: (system?: System) => void`
+- App.tsx: `AppView` extended with `'systemLibrary'`; `openPlaceholder('ruleSystems')` → `setAppView('systemLibrary')` (intercept before normalizeFeatureKey); `<SystemLibrary locale={locale} onEnterPlay={enterPlay} />` render added
+- i18n keys added: `systemLibrary.title/searchPlaceholder/enterSystem/noResults/category.*/statusFilter.*/badge.*/systems.*`
+- Verify: `rg -n "SYSTEM_LIBRARY_SCAFFOLD_V1" src/`
+
+## Platform Home Launchpad IA Cleanup V2
+
+- `AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V2`: `src/pages/Home.tsx` (top of file comment)
+- Locate: `rg -n "PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V2" src/`
+- **4-section structure**: 继续上次/Resume → 最近使用/Recent → 固定入口/Pinned → 平台状态摘要/Platform Status
+- `systemCards[]`: per-system `resumeAccent` + `recentAccent` colour classes; no `cardAccent` or `descKey` (system descriptions no longer on home page)
+- `pinnedEntries[]`: 3 entries with `key`, `labelKey`, `icon`, `placeholderKey`; all → `onOpenPlaceholder(key)`
+- `platformStatusTagKeys`: const array of `home.platformStatus.tags.*` i18n keys — rendered as `<Badge>` chips
+- Private Import: small utility `<button>` in Section 4 → `onOpenPlaceholder('privateImport')`
+- `charNameBySystem`: `Record<System, string | undefined>` — derived from 3 store reads; char name shown in recent row if present
+- i18n keys added: `home.recent.*`, `home.pinned.*`, `home.platformStatus.*`
+- i18n keys removed: `home.systems.*`, `home.devZone.*` (and all `DevStatusKey` / `DevCardDef` types dropped)
+- Verify clean: `rg "home\.systems\.\|home\.devZone\." src/pages/Home.tsx`
+
+## Platform Home Launchpad IA Cleanup V1 (superseded by V2)
 
 - `AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V1`: `src/pages/Home.tsx` (top of file comment)
 - Locate: `rg -n "PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V1" src/`

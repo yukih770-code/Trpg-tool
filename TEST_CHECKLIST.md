@@ -650,24 +650,87 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
-## 8e. Platform Home Launchpad IA Cleanup v1 Check
+## 8i. System Library Filter Taxonomy Cleanup v1 Check
 
-- [ ] `src/pages/Home.tsx` contains `AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V1`
-- [ ] Home page first visible section is **继续上次 / Resume** with a 「继续」button — not "进入游玩工作区"
-- [ ] 继续上次 card shows current system name and character name (or placeholder if none)
-- [ ] 继续上次 card has system-appropriate accent colour (D&D parchment / COC teal / CP gold)
-- [ ] **规则系统库 / Rule Systems** section shows 3 equal-weight cards (DND/COC/CP RED), each with 「进入系统」button and 3 chip links
-- [ ] **开发中功能 / In Development** section uses status badges — NOT "即将开放" / "Coming Soon"
-- [ ] Dev-zone cards with placeholders (战役库/创意工坊/AI主持/私有导入 etc.) are clickable; sourceSettings and vtt cards are visually disabled
-- [ ] Private Import is **not** in the Hero CTA area; it is in the dev-zone section with 工具入口 badge
-- [ ] Sidebar nav label changed: 游玩 → 规则系统 (zh-CN) / Play → Rule Systems (en)
-- [ ] Hero is compact (title + subtitle only, no buttons)
-- [ ] `rg "home\.hero\.enterPlay\|home\.snapshot\.\|home\.workspaces\.\|home\.roadmap\." src/pages/` returns **zero matches**
-- [ ] Clicking 进入系统 on any system card enters the correct workspace
+- [ ] System library shows **三行筛选**: 类型 / 可用 / 来源 — each with a label prefix
+- [ ] 类型 chips: 全部/TRPG/桌游/战棋/卡牌/自定义
+- [ ] 可用 chips: 全部/可进入/未接入 — NOT 脚手架/计划中
+- [ ] 来源 chips: 全部/内置/本地/社区
+- [ ] DND/COC/CP RED cards show 「可进入」badge (teal) and 「进入系统」button
+- [ ] 战锤/日式TRPG/自定义系统 cards show 「未接入」badge (muted) and disabled 「后续接入」button
+- [ ] Unavailable cards are visually lower-weight (opacity-65)
+- [ ] Genre tag chips visible on all cards (e.g. DND: TRPG/奇幻/内置, COC: 调查/恐怖)
+- [ ] Search box placeholder: 搜索规则系统、类型、题材、标签……
+- [ ] Search filters by tag text (e.g. typing 「奇幻」shows DND only)
+- [ ] 可用 filter 「可进入」shows only DND/COC/CP RED
+- [ ] 来源 filter 「本地」shows only 自定义规则系统
+- [ ] DND/COC/CP 「进入系统」navigates to correct workspace
+- [ ] `npx tsc --noEmit` passes with zero errors
+- [ ] `npm run build` completes without errors
+
+---
+
+## 8h. System Library Duplicate Entry Consolidation v1 Check
+
+- [ ] Left sidebar nav shows 「系统库」(zh) / 「System Library」(en) with Library icon — not 「规则系统」
+- [ ] Clicking left nav 「系统库」enters the SystemLibrary page (规则系统库)
+- [ ] From home, clicking fixed entry 「规则系统库」enters the **same** SystemLibrary page
+- [ ] SystemLibrary page shows subtitle: 「管理已接入、计划中和社区规则系统。」
+- [ ] The old 「选择规则系统」PlayMenu page is NOT reachable through any normal UI click path
+- [ ] After clicking 「进入系统」for DND/COC/CP in SystemLibrary → entering workspace → clicking back with empty nav stack → returns to SystemLibrary (not PlayMenu)
+- [ ] Settings page 「进入游玩工作区」button → goes to SystemLibrary
 - [ ] DND / COC / CP RED internal Actor Vault not regressed
 - [ ] No store / schema / migration / routing files modified
 - [ ] `npx tsc --noEmit` passes with zero errors
 - [ ] `npm run build` completes without errors
+
+---
+
+## 8g. System Library Scaffold v1 Check
+
+- [ ] `src/pages/SystemLibrary.tsx` contains `AI-LANDMARK: SYSTEM_LIBRARY_SCAFFOLD_V1`
+- [ ] Home → 固定入口 → 规则系统库 navigates to SystemLibrary page (not generic placeholder)
+- [ ] SystemLibrary page shows title 「规则系统库」
+- [ ] Search box filters cards in real-time by name / desc / type
+- [ ] Category chips (全部/TRPG/桌游/战棋/卡牌/自定义) filter cards correctly; only TRPG/自定义 have entries in V1
+- [ ] Status chips (全部/已接入/脚手架/计划中/社区/本地) filter cards correctly
+- [ ] DND 5e 2024 card shows 「已接入」badge and clickable 「进入系统」button → enters DND workspace
+- [ ] COC 7e card shows 「已接入」badge and clickable 「进入系统」button → enters COC workspace
+- [ ] Cyberpunk RED card shows 「已接入」badge and clickable 「进入系统」button → enters CP RED workspace
+- [ ] 战锤 / 日式TRPG cards show 「计划中」badge, lower opacity, and **disabled** (non-clickable) button
+- [ ] 自定义规则系统 card shows 「脚手架」badge, lower opacity, and **disabled** button
+- [ ] No placeholder system is visually indistinguishable from installed systems
+- [ ] DND / COC / CP RED internal Actor Vault not regressed
+- [ ] No store / schema / migration / routing files modified
+- [ ] `npx tsc --noEmit` passes with zero errors
+- [ ] `npm run build` completes without errors
+
+---
+
+## 8f. Platform Home Launchpad IA Cleanup v2 Check
+
+- [ ] `src/pages/Home.tsx` contains `AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V2`
+- [ ] Home page first visible section is **继续上次 / Resume** with a 「继续」button
+- [ ] 继续上次 card shows current system name and character name (or placeholder if none); system-accent colour applied
+- [ ] **最近使用 / Recent** section shows 3 lightweight system rows (DND/COC/CP); character name appears below system name if exists; clicking enters that system
+- [ ] **固定入口 / Pinned** section shows exactly 3 entries: 规则系统库 / 我的战役 / 创意工坊; all open placeholder (no fake routing)
+- [ ] **平台状态摘要 / Platform Status** section shows 3 status badges (开发期/脚手架可见/接口预留) + Private Import small button in same row
+- [ ] Private Import is a **small utility button** in platform status — not a prominent card or Hero CTA
+- [ ] Home does **not** show a full 3-column system feature grid
+- [ ] Home does **not** show a dev-zone card wall (7 cards)
+- [ ] `rg "home\.systems\.\|home\.devZone\." src/pages/Home.tsx` returns **zero matches**
+- [ ] Clicking any 最近使用 row or 继续上次「继续」button enters the correct workspace
+- [ ] DND / COC / CP RED internal Actor Vault not regressed
+- [ ] No store / schema / migration / routing files modified
+- [ ] `npx tsc --noEmit` passes with zero errors
+- [ ] `npm run build` completes without errors
+
+---
+
+## 8e. Platform Home Launchpad IA Cleanup v1 Check
+
+- [ ] `src/pages/Home.tsx` previously contained `AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V1` (superseded by v2)
+- [ ] Sidebar nav label: 游玩 → 规则系统 (zh-CN) / Play → Rule Systems (en) — carried forward to v2
 
 ---
 
