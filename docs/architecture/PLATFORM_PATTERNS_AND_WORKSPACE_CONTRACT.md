@@ -124,8 +124,8 @@ Every Game System may declare the following standard Sections. Each Section has 
 
 | Section id | User-visible name | Responsible for | Not responsible for | Top nav? | Needs Actor ctx? | Needs Session ctx? |
 |---|---|---|---|---|---|---|
-| `overview` | System Home / 工作台总览 | Current/last Actor + recommended next step | Coverage tables, Actor state, runtime | **Yes** | No | No |
-| `actorVault` | Actor Vault / 角色库·调查员库·Edgerunner库 | Actor list, import/export/copy/archive | Building, runtime | **Yes** | No | No |
+| `overview` | System Info / 关于此系统 | Low-frequency system scope, architecture notes, guidance | Default landing, primary CTA, coverage tables, Actor state, runtime | No (secondary) | No | No |
+| `actorVault` | Actor Vault / 角色库 | Actor list, current Actor context, create/open/play CTAs | Building, runtime | **Yes** (default) | No | No |
 | `creationMethod` | Create / 创建 | Standard / Quick / Local Import / Workshop Import selection | Step-by-step editing (that is Builder) | Cautious | No | No |
 | `builder` | Builder | Step-by-step Actor creation/editing | Library, full Sheet, runtime | No (Actor CTA) | Yes | No |
 | `sheet` | Sheet / 角色卡 | Actor status display + downtime maintenance | Checks, dice, runtime consumption | No (Actor CTA) | Yes | No |
@@ -171,7 +171,10 @@ A future Game System (Japanese TRPG, wargame, narrative, custom) declares, in it
 
 ## 5. Top Navigation Rules
 
-- **Top system navigation is appropriate for:** `overview`, `actorVault`, `rulesCompendium`, `sourceStatus` (all system-level, not tied to a specific Actor).
+- **Top system navigation is appropriate for:** `actorVault`, `rulesCompendium`, `sourceStatus`.
+- **Default system entry:** `actorVault`. Player-facing TRPG workflows start from the current Actor / character asset, not from an architecture overview.
+- **Low-frequency secondary entry:** `overview` / System Info may remain reachable from Actor Vault or breadcrumb/parent flows, but it is not the default landing page and not a primary top-nav item.
+- **Top nav labels are generic platform labels:** Actor Vault / Rules Compendium / Source Status. System-specific names such as Investigator Vault or Edgerunner Vault belong in page titles, cards, and CTAs.
 - **Use with caution:** `creationMethod` (it is a Vault/Home "create" entry, acceptable as a nav item but conceptually a creation entry, not a peer tab).
 - **Do not place directly in top nav:** `builder`, `sheet`, `runtime` — these depend on an Actor context and must be reached through Actor / Creation / Sheet CTAs. Placing them as peer top-nav tabs creates empty shells when no Actor exists.
 

@@ -146,10 +146,11 @@ actorSheet.parent      = actorVault
 runtime.parent         = actorSheet (or actor context)
 builderStep.parent     = builder
 builder.parent         = creationMethod
-creationMethod.parent  = systemOverview (or actorVault)
-rulesCompendium.parent = systemOverview
+creationMethod.parent  = actorVault
+rulesCompendium.parent = actorVault
 ruleCategory.parent    = rulesCompendium
-sourceStatus.parent    = systemOverview
+sourceStatus.parent    = actorVault
+systemOverview.parent  = actorVault
 sessionCampaign.parent = gameSystem (or playHome)
 ```
 
@@ -203,18 +204,20 @@ Constraints:
 Default parent of each Section (from `PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md` §3):
 
 ```text
-overview        → gameSystem
-actorVault      → systemOverview
-creationMethod  → systemOverview
+overview        → actorVault
+actorVault      → playHome
+creationMethod  → actorVault
 builder         → creationMethod
 builderStep     → builder
 sheet           → actorVault
 runtime         → sheet (or actor context)
-rulesCompendium → systemOverview
+rulesCompendium → actorVault
 ruleCategory    → rulesCompendium
-sourceStatus    → systemOverview
-sessionCampaign → systemOverview (or gameSystem)
+sourceStatus    → actorVault
+sessionCampaign → actorVault (or gameSystem)
 ```
+
+V1 product default: entering a Game System lands on `actorVault`. `overview` is retained as a low-frequency System Info node, not as the default system landing page.
 
 Compatibility requirements — the model accommodates:
 - **DND / COC / CP RED** — current built-in systems.

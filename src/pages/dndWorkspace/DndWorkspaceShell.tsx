@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { BookOpen, LayoutDashboard, Library, ScrollText, Users } from 'lucide-react';
+import { BookOpen, Library, ScrollText, Users } from 'lucide-react';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import {
   DND_2024_BACKGROUND_INDEX_DATA,
@@ -24,9 +24,10 @@ import { useCharacterStore } from '../../store/characterStore';
  * Display-only shell: no rules data changes, no runtime automation, and no
  * real source enable/disable filtering in this phase.
  *
- * Contract Alignment v1: top nav limited to system-level Sections only
- * (overview / actorVault / rulesCompendium / sourceStatus). creationMethod
- * ('create' view) is accessible via CTAs from overview and actorVault.
+ * Contract Alignment v1: top nav limited to system-level Sections only.
+ * Actor Vault is the default/root user entry; overview/dashboard is retained
+ * as low-frequency System Info, not as a primary nav item. creationMethod
+ * ('create' view) is accessible via CTAs from Actor Vault.
  * builder / sheet / runtime are Actor-context flows — not top-nav peers.
  */
 
@@ -59,11 +60,12 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   // Top nav = system-level Sections only (Contract §5 / PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT_V1).
   // 'create' (creationMethod) is Actor/Creation context — accessible via CTA from overview & vault.
   // builder / sheet / runtime must NOT appear here; they depend on an Actor context.
-  const navItems: { key: DndWorkspaceView; labelKey: string; icon: typeof LayoutDashboard }[] = [
-    { key: 'dashboard',  labelKey: 'dndWorkspace.nav.dashboard',  icon: LayoutDashboard },
-    { key: 'characters', labelKey: 'dndWorkspace.nav.characters', icon: Users },
-    { key: 'compendium', labelKey: 'dndWorkspace.nav.compendium', icon: Library },
-    { key: 'sources',    labelKey: 'dndWorkspace.nav.sources',    icon: ScrollText },
+  // AI-LANDMARK: SYSTEM_DEFAULT_ENTRY_ACTOR_VAULT_GENERIC_NAV_LABELS_V1
+  // Top nav uses generic platform labels only. System flavor stays inside page titles/content.
+  const navItems: { key: DndWorkspaceView; labelKey: string; icon: typeof Users }[] = [
+    { key: 'characters', labelKey: 'navigation.actorVault',      icon: Users },
+    { key: 'compendium', labelKey: 'navigation.rulesCompendium', icon: Library },
+    { key: 'sources',    labelKey: 'navigation.sourceStatus',    icon: ScrollText },
   ];
 
   const completionRows: { labelKey: string; value: string }[] = [
@@ -185,7 +187,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
             <div className="flex flex-col gap-6">
               <section className={panelClass}>
                 <div className="mb-4 text-[11px] font-bold uppercase tracking-wider text-[#58180d]/55">
-                  {t('navigation.breadcrumb.platform')} / {t('navigation.breadcrumb.play')} / DND 5e 2024 / {t('navigation.gameSystemHome')}
+                  {t('navigation.breadcrumb.platform')} / {t('navigation.breadcrumb.play')} / DND 5e 2024 / {t('navigation.systemInfo')}
                 </div>
                 <div className="flex flex-wrap items-end justify-between gap-4">
                   <div>
@@ -229,9 +231,6 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                     <div className="flex flex-col gap-2 lg:w-44">
                       <button type="button" onClick={() => onOpenPlayTab('sheet')} className="border border-[#58180d]/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#58180d] hover:bg-[#58180d]/10">
                         {t('dndWorkspace.actions.viewSheet')}
-                      </button>
-                      <button type="button" onClick={() => onOpenPlayTab('gameplay')} className="border border-[#58180d] bg-[#58180d] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#fdf6e3] hover:bg-[#2c1810]">
-                        {t('dndWorkspace.actions.startPlaying')}
                       </button>
                     </div>
                   </div>
@@ -306,96 +305,131 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
             </section>
           )}
 
+          {/* AI-LANDMARK: ACTOR_VAULT_RESPONSIBILITY_CLEANUP_HIDE_RUNTIME_CTA_V1
+              AI-LANDMARK: ACTOR_VAULT_ACTION_HIERARCHY_CLEANUP_V1
+              AI-LANDMARK: ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1
+              AI-LANDMARK: ACTOR_VAULT_EXISTING_ADD_SPLIT_V1
+              Actor Vault = Actor Asset Hub. Two sections: Existing Actors + Add Actor.
+              Single-actor mode: no multi-actor store. Existing = current char. Add = creation/import shells.
+              Existing Actors: Tier-D View Sheet only. No Create/Edit/Runtime in actor card.
+              Add Actor: Tier-E Standard Create (→ Builder) + planned quick/import entries. */}
           {view === 'characters' && (
-            <section className={panelClass}>
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-bold text-[#58180d]">{t('dndWorkspace.characters.title')}</h2>
-                  <p className="mt-1 text-sm text-[#58180d]/70">{t('dndWorkspace.characters.hint')}</p>
+            <div className="flex flex-col gap-6">
+
+              {/* ── 已有角色 / Existing Actors ── */}
+              <section className={panelClass}>
+                <div className="mb-4">
+                  <h2 className="text-xl font-bold text-[#58180d]">{t('multiWorkspace.actorVault.existingActors')}</h2>
+                  <p className="mt-0.5 text-xs text-[#58180d]/55">{t('multiWorkspace.actorVault.singleActorLimitNote')}</p>
                 </div>
+
+                {hasCurrentCharacter ? (
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
+                    <div className="border border-[#58180d]/20 bg-white/55 p-5">
+                      <div className="text-xs uppercase tracking-wider text-[#58180d]/70">{t('dndWorkspace.characters.current')}</div>
+                      <h3 className="mt-2 text-2xl font-bold text-[#2c1810]">{characterName || t('dndWorkspace.characters.unnamed')}</h3>
+                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.level')}</div>
+                          <div className="font-bold">{dndChar.level || 1}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.class')}</div>
+                          <div className="font-bold">{dndChar.jobClass || '-'}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.species')}</div>
+                          <div className="font-bold">{dndChar.race || '-'}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.background')}</div>
+                          <div className="font-bold">{dndChar.background || '-'}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('multiWorkspace.actorVault.source')}</div>
+                          <div className="font-bold">{t('multiWorkspace.actorVault.sourcePlatform')}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('multiWorkspace.actorVault.campaign')}</div>
+                          <div className="font-bold">{t('multiWorkspace.actorVault.campaignNone')}</div>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Tier-D object-level CTA: View Sheet only. See ACTOR_VAULT_EXISTING_ADD_SPLIT_V1. */}
+                    <div className="flex flex-col gap-2 lg:w-44">
+                      <button
+                        type="button"
+                        onClick={() => onOpenPlayTab('sheet')}
+                        className="border border-[#58180d]/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#58180d] hover:bg-[#58180d]/10"
+                      >
+                        {t('dndWorkspace.actions.viewSheet')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border border-dashed border-[#58180d]/30 bg-white/45 p-8 text-center">
+                    <h3 className="text-xl font-bold text-[#58180d]">{t('multiWorkspace.actorVault.emptyTitle')}</h3>
+                    <p className="mx-auto mt-2 max-w-xl text-sm text-[#58180d]/70">{t('multiWorkspace.actorVault.emptyNote')}</p>
+                  </div>
+                )}
+              </section>
+
+              {/* ── 添加角色 / Add Actor ── */}
+              <section className={panelClass}>
+                <div className="mb-4">
+                  <h2 className="text-xl font-bold text-[#58180d]">{t('multiWorkspace.actorVault.addActor')}</h2>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {creationMethodCards.map((card) => (
+                    <button
+                      key={card.labelKey}
+                      type="button"
+                      onClick={card.onClick}
+                      className={`min-h-28 border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${
+                        card.planned
+                          ? 'border-[#58180d]/25 bg-white/30 hover:border-[#58180d]/45'
+                          : 'border-[#58180d] bg-[#58180d]/5 hover:bg-[#58180d]/10'
+                      }`}
+                    >
+                      <span className="flex items-start justify-between gap-3">
+                        <span className="font-bold text-[#58180d]">{t(card.labelKey)}</span>
+                        {card.planned && (
+                          <span className="shrink-0 border border-[#58180d]/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#58180d]/70">
+                            {t('multiWorkspace.status.planned')}
+                          </span>
+                        )}
+                      </span>
+                      <span className="mt-3 block text-xs font-normal leading-relaxed text-[#58180d]/65">{t(card.noteKey)}</span>
+                    </button>
+                  ))}
+                </div>
+                {plannedSlotLabelKey && (
+                  <div className="mt-4 border border-dashed border-[#58180d]/40 bg-white/40 p-4">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]/70">
+                      {t('multiWorkspace.status.planned')}
+                    </div>
+                    <h3 className="mt-2 font-bold text-[#58180d]">{t(plannedSlotLabelKey)}</h3>
+                    <p className="mt-2 text-sm text-[#58180d]/75">{t('dndWorkspace.creation.plannedMessage')}</p>
+                  </div>
+                )}
+                {hasCurrentCharacter && (
+                  <p className="mt-4 text-[9px] text-[#58180d]/40">{t('multiWorkspace.singleActor.characterNote')}</p>
+                )}
+                <p className="mt-3 border-t border-[#58180d]/10 pt-3 text-[10px] text-[#58180d]/40">
+                  {t('multiWorkspace.actorVault.campaignTeaser')}
+                </p>
+              </section>
+
+              <div className="flex justify-end">
                 <button
                   type="button"
-                  onClick={() => onViewChange('create')}
-                  className="border border-[#58180d] bg-[#58180d] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#fdf6e3] hover:bg-[#2c1810]"
+                  onClick={() => onViewChange('dashboard')}
+                  className="text-[10px] text-[#58180d]/45 underline hover:text-[#58180d]/65"
                 >
-                  {t('dndWorkspace.actions.createCharacter')}
+                  {t('navigation.systemInfo')}
                 </button>
               </div>
-
-              {hasCurrentCharacter ? (
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
-                  <div className="border border-[#58180d]/20 bg-white/55 p-5">
-                    <div className="text-xs uppercase tracking-wider text-[#58180d]/70">{t('dndWorkspace.characters.current')}</div>
-                    <h3 className="mt-2 text-2xl font-bold text-[#2c1810]">{characterName || t('dndWorkspace.characters.unnamed')}</h3>
-                    <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.level')}</div>
-                        <div className="font-bold">{dndChar.level || 1}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.species')}</div>
-                        <div className="font-bold">{dndChar.race || t('dndBuilder.common.unselected')}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.background')}</div>
-                        <div className="font-bold">{dndChar.background || t('dndBuilder.common.unselected')}</div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.class')}</div>
-                        <div className="font-bold">{dndChar.jobClass || t('dndBuilder.common.unselected')}</div>
-                      </div>
-                    </div>
-                    <div className="mt-4 border border-dashed border-[#58180d]/30 bg-white/40 p-3 text-xs text-[#58180d]/65">
-                      {t('dndWorkspace.characters.vaultBoundary')}
-                    </div>
-                    {/* AI-LANDMARK: PLATFORM_ACTOR_ENTRY_PATTERN_ALIGNMENT — Actor abstraction note */}
-                    <p className="mt-2 text-[10px] leading-relaxed text-[#58180d]/45">
-                      {t('dndWorkspace.characters.actorNote')}
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-2 lg:w-44">
-                    <button type="button" onClick={() => onOpenPlayTab('sheet')} className="border border-[#58180d]/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#58180d] hover:bg-[#58180d]/10">
-                      {t('dndWorkspace.actions.viewSheet')}
-                    </button>
-                    <button type="button" onClick={() => onOpenPlayTab('creator')} className="border border-[#58180d]/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#58180d] hover:bg-[#58180d]/10">
-                      {t('dndWorkspace.actions.continueEditing')}
-                    </button>
-                    <button type="button" onClick={() => onOpenPlayTab('gameplay')} className="border border-[#58180d] bg-[#58180d] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#fdf6e3] hover:bg-[#2c1810]">
-                      {t('dndWorkspace.actions.startPlaying')}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="border border-dashed border-[#58180d]/30 bg-white/45 p-8 text-center">
-                  <h3 className="text-xl font-bold text-[#58180d]">{t('dndWorkspace.characters.empty')}</h3>
-                  <p className="mx-auto mt-2 max-w-xl text-sm text-[#58180d]/70">{t('dndWorkspace.characters.emptyNote')}</p>
-                  <button
-                    type="button"
-                    onClick={() => onViewChange('create')}
-                    className="mt-5 border border-[#58180d] bg-[#58180d] px-5 py-2 text-xs font-bold uppercase tracking-wider text-[#fdf6e3] hover:bg-[#2c1810]"
-                  >
-                    {t('dndWorkspace.actions.createCharacter')}
-                  </button>
-                </div>
-              )}
-
-              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="border border-[#58180d]/20 bg-white/45 p-4">
-                  <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]">{t('dndWorkspace.creation.localImport')}</div>
-                  <p className="mt-2 text-xs leading-relaxed text-[#58180d]/65">{t('dndWorkspace.creation.localImportNote')}</p>
-                  <span className="mt-3 inline-block border border-[#58180d]/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#58180d]/70">
-                    {t('multiWorkspace.status.planned')}
-                  </span>
-                </div>
-                <div className="border border-[#58180d]/20 bg-white/45 p-4">
-                  <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]">{t('dndWorkspace.characters.exportImport')}</div>
-                  <p className="mt-2 text-xs leading-relaxed text-[#58180d]/65">{t('dndWorkspace.characters.exportImportNote')}</p>
-                  <span className="mt-3 inline-block border border-[#58180d]/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#58180d]/70">
-                    {t('multiWorkspace.status.planned')}
-                  </span>
-                </div>
-              </div>
-            </section>
+            </div>
           )}
 
           {view === 'compendium' && (

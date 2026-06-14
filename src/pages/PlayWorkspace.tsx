@@ -417,8 +417,8 @@ type PlayWorkspaceProps = {
 
 export const defaultPlayWorkspaceNavigationState: PlayWorkspaceNavigationState = {
   tab: 'creator',
-  dndWorkspaceView: 'dashboard',
-  systemWorkspaceView: 'dashboard',
+  dndWorkspaceView: 'characters',
+  systemWorkspaceView: 'vault',
   plannedSlotTitleKey: 'multiWorkspace.planned.title',
 };
 
@@ -471,14 +471,14 @@ export function PlayWorkspace({
     emitNavigationState(next);
   };
 
-  const navigateBackOrDashboard = () => {
+  const navigateBackOrVault = () => {
     if (canGoBack && onBack) {
       onBack();
       return;
     }
 
-    setSystemWorkspaceView('dashboard');
-    emitNavigationState({ systemWorkspaceView: 'dashboard' });
+    setSystemWorkspaceView('vault');
+    emitNavigationState({ systemWorkspaceView: 'vault' });
   };
 
   const openWorkspaceTab = (nextTab: string) => {
@@ -510,7 +510,8 @@ export function PlayWorkspace({
           <DndBackground />
           <div className="relative z-10">
             {tab === 'creator' && <Creator onComplete={() => openDndPlayTab('sheet')} />}
-            {tab === 'sheet' && <Sheet onStartPlaying={() => openDndPlayTab('gameplay')} />}
+            {/* AI-LANDMARK: ACTOR_VAULT_RESPONSIBILITY_CLEANUP_HIDE_RUNTIME_CTA_V1 — onStartPlaying not passed; runtime entry gated. */}
+            {tab === 'sheet' && <Sheet />}
             {tab === 'gameplay' && <Gameplay />}
           </div>
         </div>
@@ -585,7 +586,7 @@ export function PlayWorkspace({
         currentPlayTab={tab}
         onViewChange={openWorkspaceView}
         onOpenPlayTab={openWorkspaceTab}
-        onBack={navigateBackOrDashboard}
+        onBack={navigateBackOrVault}
         canGoBack={canGoBack}
       >
         {embeddedPlayBody}
@@ -599,7 +600,7 @@ export function PlayWorkspace({
       currentPlayTab={tab}
       onViewChange={openWorkspaceView}
       onOpenPlayTab={openWorkspaceTab}
-      onBack={navigateBackOrDashboard}
+      onBack={navigateBackOrVault}
       canGoBack={canGoBack}
     >
       {embeddedPlayBody}

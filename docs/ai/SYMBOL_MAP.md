@@ -391,6 +391,49 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Current-location breadcrumb copy: `navigation.currentLocation`, `navigation.breadcrumb.*` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`
 - `AI-LANDMARK: PLATFORM_NAVIGATION_HISTORY_STACK`: `src/App.tsx`
 
+## System Default Entry / Generic Nav Labels
+
+- `AI-LANDMARK: SYSTEM_DEFAULT_ENTRY_ACTOR_VAULT_GENERIC_NAV_LABELS_V1`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`, `src/pages/cocWorkspace/CocWorkspaceShell.tsx`, `src/pages/cpWorkspace/CpWorkspaceShell.tsx`
+- Default system workspace entry: `defaultPlayWorkspaceNavigationState` in `src/pages/PlayWorkspace.tsx` — DND `characters`, COC/CP RED `vault`.
+- Actor Vault parent/root resolver: `getParentNodeType()` and `goUp()` in `src/App.tsx` — `actorVault → playMenu`; `rulesCompendium/sourceStatus/systemOverview/creationMethod → actorVault`.
+- Generic top-nav labels: `navigation.actorVault`, `navigation.rulesCompendium`, `navigation.sourceStatus` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`.
+- Low-frequency overview label: `navigation.systemInfo` / `navigation.breadcrumb.systemOverview`.
+
+## UI Action Hierarchy & Page Responsibility Contract
+
+- `AI-LANDMARK: UI_ACTION_HIERARCHY_PAGE_RESPONSIBILITY_CONTRACT_V1`: `docs/architecture/UI_ACTION_HIERARCHY_AND_PAGE_RESPONSIBILITY_CONTRACT.md`
+- Action tiers (A–H): Platform → System → Collection → Object → Creation-flow → Runtime-context → System-info → Planned
+- Page responsibility contracts: `actorVault | actorSheet | creationMethod | builder | runtime | rulesCompendium | sourceStatus | systemOverview`
+- Container placement rules: page header / object card / empty state / sidebar / footer (§4 in doc)
+- Button priority rules: primary CTA table per page, secondary, tertiary (§5 in doc)
+- Anti-patterns (9): see §6 in doc — key ones: Create Character inside actor card; Start Playing without session context; planned cards as primary visual; System Info as peer-level button
+- Required UI task declaration: every task must declare page responsibility + action hierarchy + primary CTA + hidden actions before implementation (§7 in doc)
+- Review checklist: 12-item audit checklist (§8 in doc)
+- Relation to other docs: PLATFORM_PATTERNS_WORKSPACE_CONTRACT_V1 → Section definition; NAVIGATION_BACK_UP_BREADCRUMB_MODEL_V1 → nav semantics; this doc → action placement within Sections (§10 in doc)
+
+## Actor Vault Responsibility Cleanup / Runtime CTA Gate
+
+- `AI-LANDMARK: ACTOR_VAULT_RESPONSIBILITY_CLEANUP_HIDE_RUNTIME_CTA_V1`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx` (characters + dashboard views), `src/pages/cocWorkspace/CocWorkspaceShell.tsx` (renderInvestigatorCard + vault + sheet), `src/pages/cpWorkspace/CpWorkspaceShell.tsx` (renderEdgerunnerCard + vault + CpEdgerunnerSheetShell), `src/pages/PlayWorkspace.tsx`
+- DND Sheet runtime gate: `<Sheet />` called without `onStartPlaying` in `src/pages/PlayWorkspace.tsx`; button already prop-gated in `src/pages/Sheet.tsx`.
+- CP RED Sheet runtime gate: `startMission` button removed from `CpEdgerunnerSheetShell`; `continueEditing` retained (幕间维护).
+- Runtime gate i18n: `navigation.runtimeGateNote` in `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`.
+- System Info demotion: all 3 vault views now have System Info as a small text underline link (`text-[10px] ... underline`), not a peer-level button.
+
+## Actor Vault Action Hierarchy Cleanup
+
+- `AI-LANDMARK: ACTOR_VAULT_ACTION_HIERARCHY_CLEANUP_V1` (5 locations): `src/pages/dndWorkspace/DndWorkspaceShell.tsx` (characters comment block), `src/pages/cocWorkspace/CocWorkspaceShell.tsx` (renderInvestigatorCard CTA comment + vault section comment), `src/pages/cpWorkspace/CpWorkspaceShell.tsx` (renderEdgerunnerCard CTA comment + vault section comment)
+- Note: Edit secondary buttons added in this task were subsequently removed by `ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1` (see below)
+
+## Actor Vault Single-Actor Action Cleanup
+
+- `AI-LANDMARK: ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1` (6 locations): `src/pages/dndWorkspace/DndWorkspaceShell.tsx` (characters comment + CTA inline comment), `src/pages/cocWorkspace/CocWorkspaceShell.tsx` (renderInvestigatorCard CTA comment + vault section comment), `src/pages/cpWorkspace/CpWorkspaceShell.tsx` (renderEdgerunnerCard CTA comment + vault section comment)
+- DND vault (actor exists): header `createCharacter` hidden (`!hasCurrentCharacter` guard); actor card = `viewSheet` only; footer shows `replaceCurrentCharacter` small link + `singleActor.characterNote`
+- COC vault (actor exists): header `createInvestigator` hidden; `renderInvestigatorCard()` = `viewInvestigatorSheet` only; footer shows `replaceCurrentInvestigator` + `singleActor.investigatorNote`
+- CP RED vault (actor exists): header `createEdgerunner` hidden; `renderEdgerunnerCard()` = `viewCharacterSheet` only; footer shows `replaceCurrentEdgerunner` + `singleActor.edgerunnerNote`
+- Empty state (no actor): unchanged — prominent Create CTA shown normally
+- New i18n keys (both locales): `multiWorkspace.actions.replaceCurrentCharacter/Investigator/Edgerunner` + `multiWorkspace.singleActor.{characterNote,investigatorNote,edgerunnerNote}`
+- Product rationale: current version is single-actor mode; showing Create when actor exists implies multi-actor support which is not implemented
+
 ## Local Data Contract / Character Export
 
 - Character export envelope type: `TrpgCharacterExportEnvelope` in `src/lib/data-contract/export-envelope.ts`
@@ -531,6 +574,46 @@ This file helps AI quickly locate important types, helper functions, store actio
 - CP RED RollConsole panel: `src/pages/cpGameplay/CpRollConsolePanel.tsx`
 - `AI-LANDMARK: CPRED_RUNTIME_LOG_ENVELOPE`: `src/pages/cpGameplay/CpGameplayShared.tsx`
 - Each system runtime operation should write to local `RuntimeLogEntry[]` / RollConsole rather than Sheet-local toast-only result displays.
+
+## Actor Vault Existing/Add Split
+
+- `AI-LANDMARK: ACTOR_VAULT_EXISTING_ADD_SPLIT_V1` (3 locations): `src/pages/dndWorkspace/DndWorkspaceShell.tsx` (characters view comment), `src/pages/cocWorkspace/CocWorkspaceShell.tsx` (vault view comment), `src/pages/cpWorkspace/CpWorkspaceShell.tsx` (vault view comment)
+- **Two-section vault layout**: `<div className="flex flex-col gap-6">` wrapping two `<section className={panelClass}>` — Existing Actors section + Add Actor section
+- **Existing Actors section**: inline actor card (new render, not `renderInvestigatorCard()` / `renderEdgerunnerCard()`) + View Sheet CTA; empty state when no actor
+- **DND actor card fields**: name / level / class / species / background / source (placeholder) / campaign (placeholder) — uses `dndChar.*` fields
+- **COC actor card fields**: name / occupation / age / residence / source (placeholder) / campaign (placeholder) — uses `cocChar.*` fields; inline render separate from shared `renderInvestigatorCard()`
+- **CP RED actor card fields**: handle (h3 heading) / name / role / roleLevel / source (placeholder) / campaign (placeholder) — uses `cpChar.*` fields; inline render separate from shared `renderEdgerunnerCard()`
+- **Add Actor section**: maps over cards array with Standard Create (→ `onOpenPlayTab('creator')`) + planned entries
+- **DND**: reuses existing `creationMethodCards` array (defined at component level, also used by `view === 'create'`)
+- **COC / CP RED**: inline card array defined in vault section; each planned card sets `plannedSlotLabelKey`
+- **Planned card visual**: lower weight styling + PLANNED badge (`multiWorkspace.status.planned`); Standard Create has primary styling
+- **singleActor.* notes**: moved inside Add Actor section (no longer in footer Replace link area)
+- **campaignTeaser**: displayed at bottom of Add Actor section
+- **Standard Create → Builder directly**: `onOpenPlayTab('creator')` in all 3 systems (bypasses `view='create'` / `createMethod` navigation step)
+- **`renderInvestigatorCard()` / `renderEdgerunnerCard()`**: shared functions untouched (still called by dashboard view)
+- **i18n sub-object**: `multiWorkspace.actorVault.*` (13 keys: existingActors / addActor / emptyTitle / emptyNote / singleActorLimitNote / source / sourcePlatform / creator / creatorPlaceholder / campaign / campaignNone / campaignTeaser)
+- Locate: `rg -n "ACTOR_VAULT_EXISTING_ADD_SPLIT_V1" src`
+- Locate i18n: `rg -n "actorVault" src/i18n`
+
+## Multi-Actor Store Architecture Review
+
+- `AI-LANDMARK: MULTI_ACTOR_STORE_ARCHITECTURE_REVIEW_V1`: `docs/architecture/MULTI_ACTOR_STORE_ARCHITECTURE_REVIEW.md`
+- Full review document (L3 architecture, docs only, no src/ change): `docs/architecture/MULTI_ACTOR_STORE_ARCHITECTURE_REVIEW.md`
+- **Platform name**: Actor; system names: Character (DND) / Investigator (COC) / Edgerunner (CP RED)
+- **ActorKind**: `playerCharacter | unit | vehicle | npc | companion | custom` (V1 only needs `playerCharacter`)
+- **ActorInstanceId**: `string` — `actor-{timestamp}-{rand7}`; never derived from name/index
+- **actorInstanceId source**: existing `id: string` field on `CharacterData` / `CocCharacter` / `CpCharacter` — lazy-populated if empty
+- **ActorMeta**: universal fields (`actorInstanceId`, `systemId`, `actorKind`, `displayName`, `updatedAt`, source/creator, campaign) + `systemSummary: SystemActorSummary`
+- **SystemActorSummary**: discriminated union — `DndActorSummary` (level/class/subclass/species/background) + `CocActorSummary` (occupation/age/residence) + `CpRedActorSummary` (handle/role/roleLevel)
+- **ActorSourceType**: `platform-created | local-import | workshop-import | copied | preset | unknown`
+- **Creator fields**: `creatorName?` / `creatorUid?` (reserved, future accounts) / `importedBy?`
+- **CampaignStatus**: `none | bound | created-for | copied-from`; `campaignId?` / `campaignName?` reserved (no Campaign store in V1)
+- **Recommended data model**: Option A (per-system arrays: `characters: T[]` + `activeCharacterId: string | null`)
+- **Option B** (unified ActorRegistry): deferred — needed only for cross-system unified vault (V2+ feature)
+- **Migration strategy**: single object → `characters[0]`; lazy `id` → `actorInstanceId`; additive in Zustand `migrate` callback; no destructive one-time script
+- **UI impact**: two-section vault layout unchanged; Existing section becomes multi-item list; ordered by `updatedAt`
+- **10 risk boundaries**: localStorage migration · import/export compat · actor switching call sites · current actor pointer · campaign binding · runtime actor reference · inventory ownership · spell/resource state · undo/trash · actor count limit
+- Locate: `rg -n "MULTI_ACTOR_STORE_ARCHITECTURE_REVIEW_V1" docs/`
 
 ## General Search Notes
 

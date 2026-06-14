@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { BookOpen, LayoutDashboard, Library, ScrollText, Users } from 'lucide-react';
+import { BookOpen, Library, ScrollText, Users } from 'lucide-react';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useCocStore } from '../../store/cocStore';
 
@@ -16,8 +16,9 @@ import { useCocStore } from '../../store/cocStore';
  * and rendered under the 'play' view. No store schema, runtime rule logic, or dice
  * algorithm is modified.
  *
- * Contract Alignment v1: top nav limited to system-level Sections only
- * (overview / actorVault / rulesCompendium / sourceStatus). creationMethod,
+ * Contract Alignment v1: top nav limited to generic platform Sections only.
+ * Actor Vault is the default/root user entry; overview/dashboard is retained
+ * as low-frequency System Info, not as a primary nav item. creationMethod,
  * sheet, and runtime are Actor/Creation context — accessible via CTAs only.
  * builder / sheet / runtime must NOT appear as peer top-nav items.
  */
@@ -372,11 +373,12 @@ export function CocWorkspaceShell({
   // Top nav = system-level Sections only (Contract §5 / PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT_V1).
   // createMethod / sheet / runtime (play) are Actor/Creation context — accessible via CTA only.
   // builder / sheet / runtime must NOT appear here; they depend on an Actor context.
-  const navItems: { key: CocWorkspaceView; labelKey: string; icon: typeof LayoutDashboard }[] = [
-    { key: 'dashboard',  labelKey: 'cocWorkspace.nav.overview',   icon: LayoutDashboard },
-    { key: 'vault',      labelKey: 'cocWorkspace.nav.vault',      icon: Users },
-    { key: 'compendium', labelKey: 'cocWorkspace.nav.compendium', icon: Library },
-    { key: 'sources',    labelKey: 'cocWorkspace.nav.sources',    icon: ScrollText },
+  // AI-LANDMARK: SYSTEM_DEFAULT_ENTRY_ACTOR_VAULT_GENERIC_NAV_LABELS_V1
+  // Top nav uses generic platform labels only. COC-specific labels stay inside page content.
+  const navItems: { key: CocWorkspaceView; labelKey: string; icon: typeof Users }[] = [
+    { key: 'vault',      labelKey: 'navigation.actorVault',      icon: Users },
+    { key: 'compendium', labelKey: 'navigation.rulesCompendium', icon: Library },
+    { key: 'sources',    labelKey: 'navigation.sourceStatus',    icon: ScrollText },
   ];
 
   // Actor-context views (createMethod / sheet / play / planned) are not in the nav,
@@ -392,7 +394,7 @@ export function CocWorkspaceShell({
     if (canGoBack && onBack) {
       onBack();
     } else {
-      onViewChange('dashboard');
+      onViewChange('vault');
     }
   };
 
@@ -445,6 +447,11 @@ export function CocWorkspaceShell({
           ))}
         </div>
       </div>
+      {/* AI-LANDMARK: ACTOR_VAULT_RESPONSIBILITY_CLEANUP_HIDE_RUNTIME_CTA_V1
+          AI-LANDMARK: ACTOR_VAULT_ACTION_HIERARCHY_CLEANUP_V1
+          AI-LANDMARK: ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1
+          Actor card CTA: Tier-D View Sheet only. Edit excluded (goes to Creation Method, not object-level).
+          Runtime (startInvestigation) gated. Replace is low-freq bottom entry on vault page. */}
       <div className="flex flex-col gap-2">
         <button
           type="button"
@@ -452,20 +459,6 @@ export function CocWorkspaceShell({
           className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.secondary}`}
         >
           {t('multiWorkspace.actions.viewInvestigatorSheet')}
-        </button>
-        <button
-          type="button"
-          onClick={() => onOpenPlayTab('creator')}
-          className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.secondary}`}
-        >
-          {t('multiWorkspace.actions.continueInvestigatorEditing')}
-        </button>
-        <button
-          type="button"
-          onClick={() => onOpenPlayTab('gameplay')}
-          className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.primary}`}
-        >
-          {t('multiWorkspace.actions.startInvestigation')}
         </button>
       </div>
     </div>
@@ -517,7 +510,7 @@ export function CocWorkspaceShell({
             <div className="flex flex-col gap-6">
               <section className={panelClass}>
                 <div className={`mb-4 text-[11px] font-bold uppercase tracking-wider ${teal.accent} opacity-55`}>
-                  {t('navigation.breadcrumb.platform')} / {t('navigation.breadcrumb.play')} / {t('glossary.coc7e')} / {t('navigation.gameSystemHome')}
+                  {t('navigation.breadcrumb.platform')} / {t('navigation.breadcrumb.play')} / {t('glossary.coc7e')} / {t('navigation.systemInfo')}
                 </div>
                 <div className="flex flex-wrap items-end justify-between gap-4">
                   <div>
@@ -573,71 +566,151 @@ export function CocWorkspaceShell({
             </div>
           )}
 
-          {/* Investigator Vault */}
+          {/* Investigator Vault — AI-LANDMARK: ACTOR_VAULT_ACTION_HIERARCHY_CLEANUP_V1
+                              AI-LANDMARK: ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1
+                              AI-LANDMARK: ACTOR_VAULT_EXISTING_ADD_SPLIT_V1
+              Actor Vault = Actor Asset Hub. Two sections: Existing Actors + Add Actor.
+              Existing Actors: Tier-D View Sheet only. Add Actor: Tier-E Standard Create + planned entries. */}
           {view === 'vault' && (
-            <section className={panelClass}>
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <div className={`text-xs font-bold uppercase tracking-[0.2em] ${teal.accent}`}>
-                    {t('multiWorkspace.entryPattern.eyebrow')}
-                  </div>
-                  <h2 className={`mt-1 text-xl font-bold ${teal.accentStrong}`}>
-                    {t('multiWorkspace.coc.entry.vaultTitle')}
-                  </h2>
-                  <p className="mt-1 text-sm opacity-75">{t('multiWorkspace.coc.entry.vaultHint')}</p>
+            <div className="flex flex-col gap-6">
+
+              {/* ── 已有角色 / Existing Actors ── */}
+              <section className={panelClass}>
+                <div className="mb-4">
+                  <h2 className={`text-xl font-bold ${teal.accentStrong}`}>{t('multiWorkspace.actorVault.existingActors')}</h2>
+                  <p className={`mt-0.5 text-xs opacity-55`}>{t('multiWorkspace.actorVault.singleActorLimitNote')}</p>
                 </div>
+
+                {hasCurrentCharacter ? (
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]">
+                    <div className={`${teal.card} p-5`}>
+                      <div className={`text-xs font-bold uppercase tracking-wider ${teal.accent}`}>
+                        {t('multiWorkspace.coc.entry.current')}
+                      </div>
+                      <h3 className="mt-2 text-2xl font-bold">{displayName || t('multiWorkspace.coc.entry.unnamed')}</h3>
+                      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                        <div className="border border-white/10 bg-black/10 p-3">
+                          <div className={`text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>{t('multiWorkspace.coc.entry.occupation')}</div>
+                          <div className="mt-1 break-words text-sm font-bold">{cocChar.occupation || '-'}</div>
+                        </div>
+                        <div className="border border-white/10 bg-black/10 p-3">
+                          <div className={`text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>{t('multiWorkspace.coc.entry.age')}</div>
+                          <div className="mt-1 break-words text-sm font-bold">{cocChar.age || '-'}</div>
+                        </div>
+                        <div className="border border-white/10 bg-black/10 p-3">
+                          <div className={`text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>{t('multiWorkspace.coc.entry.residence')}</div>
+                          <div className="mt-1 break-words text-sm font-bold">{cocChar.residence || '-'}</div>
+                        </div>
+                        <div className="border border-white/10 bg-black/10 p-3">
+                          <div className={`text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>{t('multiWorkspace.actorVault.source')}</div>
+                          <div className="mt-1 break-words text-sm font-bold">{t('multiWorkspace.actorVault.sourcePlatform')}</div>
+                        </div>
+                        <div className="border border-white/10 bg-black/10 p-3">
+                          <div className={`text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>{t('multiWorkspace.actorVault.campaign')}</div>
+                          <div className="mt-1 break-words text-sm font-bold">{t('multiWorkspace.actorVault.campaignNone')}</div>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Tier-D object-level CTA: View Sheet only. See ACTOR_VAULT_EXISTING_ADD_SPLIT_V1. */}
+                    <div className="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onViewChange('sheet')}
+                        className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.secondary}`}
+                      >
+                        {t('multiWorkspace.actions.viewInvestigatorSheet')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`rounded-lg border ${teal.planned} p-8 text-center`}>
+                    <h3 className={`text-xl font-bold ${teal.accentStrong}`}>{t('multiWorkspace.actorVault.emptyTitle')}</h3>
+                    <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed opacity-75">{t('multiWorkspace.actorVault.emptyNote')}</p>
+                  </div>
+                )}
+              </section>
+
+              {/* ── 添加角色 / Add Actor ── */}
+              <section className={panelClass}>
+                <div className="mb-4">
+                  <h2 className={`text-xl font-bold ${teal.accentStrong}`}>{t('multiWorkspace.actorVault.addActor')}</h2>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {[
+                    {
+                      labelKey: 'multiWorkspace.creation.standard',
+                      noteKey: 'multiWorkspace.coc.creation.standardNote',
+                      planned: false,
+                      onClick: () => onOpenPlayTab('creator'),
+                    },
+                    {
+                      labelKey: 'multiWorkspace.creation.quick',
+                      noteKey: 'multiWorkspace.coc.creation.quickNote',
+                      planned: true,
+                      onClick: () => setPlannedSlotLabelKey('multiWorkspace.creation.quick'),
+                    },
+                    {
+                      labelKey: 'multiWorkspace.creation.localImportInvestigator',
+                      noteKey: 'multiWorkspace.coc.creation.localImportNote',
+                      planned: true,
+                      onClick: () => setPlannedSlotLabelKey('multiWorkspace.creation.localImportInvestigator'),
+                    },
+                    {
+                      labelKey: 'multiWorkspace.creation.workshop',
+                      noteKey: 'multiWorkspace.coc.creation.workshopNote',
+                      planned: true,
+                      onClick: () => setPlannedSlotLabelKey('multiWorkspace.creation.workshop'),
+                    },
+                  ].map((card) => (
+                    <button
+                      key={card.labelKey}
+                      type="button"
+                      onClick={card.onClick}
+                      className={`min-h-28 rounded-lg border p-4 text-left transition hover:-translate-y-0.5 ${
+                        card.planned
+                          ? `border-[#2f7f68]/25 bg-black/10 ${teal.cardHover}`
+                          : 'border-[#2f7f68] bg-[#2f7f68]/10 hover:bg-[#2f7f68]/20'
+                      }`}
+                    >
+                      <span className="flex items-start justify-between gap-3">
+                        <span className={`font-bold ${teal.accentStrong}`}>{t(card.labelKey)}</span>
+                        {card.planned && (
+                          <span className={`shrink-0 border px-2 py-0.5 text-[10px] uppercase tracking-wider ${teal.badgePlanned}`}>
+                            {t('multiWorkspace.status.planned')}
+                          </span>
+                        )}
+                      </span>
+                      <span className="mt-3 block text-xs leading-relaxed opacity-75">{t(card.noteKey)}</span>
+                    </button>
+                  ))}
+                </div>
+                {plannedSlotLabelKey && (
+                  <div className={`mt-4 border ${teal.planned} p-4`}>
+                    <div className={`text-xs font-bold uppercase tracking-wider ${teal.accent} opacity-70`}>
+                      {t('multiWorkspace.status.planned')}
+                    </div>
+                    <h3 className={`mt-2 font-bold ${teal.accentStrong}`}>{t(plannedSlotLabelKey)}</h3>
+                    <p className="mt-2 text-sm opacity-75">{t('multiWorkspace.planned.message')}</p>
+                  </div>
+                )}
+                {hasCurrentCharacter && (
+                  <p className="mt-4 text-[9px] opacity-40">{t('multiWorkspace.singleActor.investigatorNote')}</p>
+                )}
+                <p className={`mt-3 border-t border-white/10 pt-3 text-[10px] opacity-40`}>
+                  {t('multiWorkspace.actorVault.campaignTeaser')}
+                </p>
+              </section>
+
+              <div className="flex justify-end">
                 <button
                   type="button"
-                  onClick={() => onViewChange('createMethod')}
-                  className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.primary}`}
+                  onClick={() => onViewChange('dashboard')}
+                  className="text-[10px] opacity-45 underline hover:opacity-65"
                 >
-                  {t('multiWorkspace.actions.createInvestigator')}
+                  {t('navigation.systemInfo')}
                 </button>
               </div>
-
-              {hasCurrentCharacter ? (
-                <>
-                  {renderInvestigatorCard()}
-                  <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div className={`border ${teal.planned} p-4`}>
-                      <div className={`text-xs font-bold uppercase tracking-wider ${teal.accent}`}>
-                        {t('multiWorkspace.creation.localImportInvestigator')}
-                      </div>
-                      <p className={`mt-2 text-xs leading-relaxed opacity-65`}>
-                        {t('multiWorkspace.coc.creation.localImportNote')}
-                      </p>
-                      <span className={`mt-3 inline-block border px-2 py-0.5 text-[10px] uppercase tracking-wider ${teal.badgePlanned}`}>
-                        {t('multiWorkspace.status.planned')}
-                      </span>
-                    </div>
-                    <div className={`border ${teal.planned} p-4`}>
-                      <div className={`text-xs font-bold uppercase tracking-wider ${teal.accent}`}>
-                        {t('multiWorkspace.coc.entry.vaultBoundary')}
-                      </div>
-                      <p className="mt-2 text-xs leading-relaxed opacity-65">
-                        {t('navigation.actorAbstractionNote')}
-                      </p>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className={`rounded-lg border ${teal.planned} p-8 text-center`}>
-                  <h3 className={`text-xl font-bold ${teal.accentStrong}`}>
-                    {t('multiWorkspace.coc.entry.empty')}
-                  </h3>
-                  <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed opacity-75">
-                    {t('multiWorkspace.coc.entry.emptyNote')}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => onViewChange('createMethod')}
-                    className={`mt-5 border px-5 py-2 text-xs font-bold uppercase tracking-wider ${teal.primary}`}
-                  >
-                    {t('multiWorkspace.actions.createInvestigator')}
-                  </button>
-                </div>
-              )}
-            </section>
+            </div>
           )}
 
           {/* Creation Method */}
@@ -740,24 +813,9 @@ export function CocWorkspaceShell({
                     <p className="mt-0.5 text-sm opacity-65">{cocChar.occupation}</p>
                   )}
                 </div>
-                {hasCurrentCharacter && (
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onOpenPlayTab('creator')}
-                      className={`border px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${teal.secondary}`}
-                    >
-                      {t('multiWorkspace.actions.continueInvestigatorEditing')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onOpenPlayTab('gameplay')}
-                      className={`border px-3 py-1.5 text-xs font-bold uppercase tracking-wider ${teal.primary}`}
-                    >
-                      {t('multiWorkspace.actions.startInvestigation')}
-                    </button>
-                  </div>
-                )}
+                {/* AI-LANDMARK: ACTOR_VAULT_RESPONSIBILITY_CLEANUP_HIDE_RUNTIME_CTA_V1
+                    Sheet header: runtime CTAs (startInvestigation / continueEditing) removed.
+                    Runtime entry requires Module / Scene / Session architecture. */}
               </div>
 
               {hasCurrentCharacter ? (

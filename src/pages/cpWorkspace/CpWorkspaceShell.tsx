@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { BookOpen, LayoutDashboard, Library, ScrollText, Users } from 'lucide-react';
+import { BookOpen, Library, ScrollText, Users } from 'lucide-react';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useCpStore } from '../../store/cpStore';
 
@@ -10,8 +10,9 @@ import { useCpStore } from '../../store/cpStore';
  * AI-LANDMARK: CPRED_WORKSPACE_CONTRACT_ALIGNMENT_V1
  *
  * CP RED Game System Workspace Shell — aligned with DndWorkspaceShell structure.
- * Top nav = 4 system-level Sections only (Contract §5 / PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT_V1):
- *   dashboard (systemOverview) / vault (actorVault) / compendium (rulesCompendium) / sources (sourceStatus)
+ * Top nav = generic platform Sections only (Contract §5 / PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT_V1).
+ * Actor Vault is the default/root user entry; dashboard/systemOverview is retained as
+ * low-frequency System Info, not as a primary nav item.
  * createMethod / sheet / mission (runtime) are Actor/Creation context — accessible via CTA only.
  * Existing CP RED runtime (CpCreator / CpSheet / CpGameplay / CpMarket) is preserved
  * as children and rendered under the 'play' view. No store schema, runtime rule logic,
@@ -126,14 +127,9 @@ export function CpEdgerunnerSheetShell({
             ))}
           </div>
         </div>
+        {/* AI-LANDMARK: ACTOR_VAULT_RESPONSIBILITY_CLEANUP_HIDE_RUNTIME_CTA_V1
+            Sheet CTA: startMission hidden (runtime gated). continueEditing kept (幕间维护). */}
         <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={onStartMission}
-            className={`border px-4 py-3 text-xs font-bold uppercase tracking-wider ${gold.primary}`}
-          >
-            {t('multiWorkspace.actions.startMission')}
-          </button>
           <button
             type="button"
             onClick={onContinueEditing}
@@ -141,6 +137,9 @@ export function CpEdgerunnerSheetShell({
           >
             {t('multiWorkspace.actions.continueEdgerunnerEditing')}
           </button>
+          <p className="mt-1 text-[10px] leading-relaxed opacity-40">
+            {t('navigation.runtimeGateNote')}
+          </p>
         </div>
       </div>
 
@@ -515,11 +514,12 @@ export function CpWorkspaceShell({
   // AI-LANDMARK: CPRED_WORKSPACE_CONTRACT_ALIGNMENT_V1
   // Top nav = system-level Sections only (Contract §5 / PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT_V1).
   // createMethod / sheet / runtime (play/mission) are Actor/Creation context — accessible via CTA only.
-  const navItems: { key: CpWorkspaceView; labelKey: string; icon: typeof LayoutDashboard }[] = [
-    { key: 'dashboard',  labelKey: 'cpWorkspace.nav.overview',   icon: LayoutDashboard },
-    { key: 'vault',      labelKey: 'cpWorkspace.nav.vault',      icon: Users },
-    { key: 'compendium', labelKey: 'cpWorkspace.nav.compendium', icon: Library },
-    { key: 'sources',    labelKey: 'cpWorkspace.nav.sources',    icon: ScrollText },
+  // AI-LANDMARK: SYSTEM_DEFAULT_ENTRY_ACTOR_VAULT_GENERIC_NAV_LABELS_V1
+  // Top nav uses generic platform labels only. CP RED-specific labels stay inside page content.
+  const navItems: { key: CpWorkspaceView; labelKey: string; icon: typeof Users }[] = [
+    { key: 'vault',      labelKey: 'navigation.actorVault',      icon: Users },
+    { key: 'compendium', labelKey: 'navigation.rulesCompendium', icon: Library },
+    { key: 'sources',    labelKey: 'navigation.sourceStatus',    icon: ScrollText },
   ];
 
   const isActiveNav = (item: (typeof navItems)[number]) => view === item.key;
@@ -533,7 +533,7 @@ export function CpWorkspaceShell({
     if (canGoBack && onBack) {
       onBack();
     } else {
-      onViewChange('dashboard');
+      onViewChange('vault');
     }
   };
 
@@ -564,6 +564,11 @@ export function CpWorkspaceShell({
           ))}
         </div>
       </div>
+      {/* AI-LANDMARK: ACTOR_VAULT_RESPONSIBILITY_CLEANUP_HIDE_RUNTIME_CTA_V1
+          AI-LANDMARK: ACTOR_VAULT_ACTION_HIERARCHY_CLEANUP_V1
+          AI-LANDMARK: ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1
+          Actor card CTA: Tier-D View Sheet only. Edit excluded (goes to Creation Method, not object-level).
+          Runtime (startMission) gated. Replace is low-freq bottom entry on vault page. */}
       <div className="flex flex-col gap-2">
         <button
           type="button"
@@ -571,20 +576,6 @@ export function CpWorkspaceShell({
           className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${gold.secondary}`}
         >
           {t('multiWorkspace.actions.viewCharacterSheet')}
-        </button>
-        <button
-          type="button"
-          onClick={() => onOpenPlayTab('creator')}
-          className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${gold.secondary}`}
-        >
-          {t('multiWorkspace.actions.continueEdgerunnerEditing')}
-        </button>
-        <button
-          type="button"
-          onClick={() => onOpenPlayTab('gameplay')}
-          className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${gold.primary}`}
-        >
-          {t('multiWorkspace.actions.startMission')}
         </button>
       </div>
     </div>
@@ -636,7 +627,7 @@ export function CpWorkspaceShell({
             <div className="flex flex-col gap-6">
               <section className={panelClass}>
                 <div className={`mb-4 text-[11px] font-bold uppercase tracking-wider ${gold.accent} opacity-55`}>
-                  {t('navigation.breadcrumb.platform')} / {t('navigation.breadcrumb.play')} / {t('glossary.cyberpunkRed')} / {t('navigation.gameSystemHome')}
+                  {t('navigation.breadcrumb.platform')} / {t('navigation.breadcrumb.play')} / {t('glossary.cyberpunkRed')} / {t('navigation.systemInfo')}
                 </div>
                 <div className="flex flex-wrap items-end justify-between gap-4">
                   <div>
@@ -692,77 +683,153 @@ export function CpWorkspaceShell({
             </div>
           )}
 
-          {/* Edgerunner Vault */}
+          {/* Edgerunner Vault — AI-LANDMARK: ACTOR_VAULT_ACTION_HIERARCHY_CLEANUP_V1
+                             AI-LANDMARK: ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1
+                             AI-LANDMARK: ACTOR_VAULT_EXISTING_ADD_SPLIT_V1
+              Actor Vault = Actor Asset Hub. Two sections: Existing Actors + Add Actor.
+              Existing Actors: Tier-D View Sheet only. Add Actor: Tier-E Standard Create + planned entries. */}
           {view === 'vault' && (
-            <section className={panelClass}>
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <div className={`text-xs font-bold uppercase tracking-[0.2em] ${gold.accent}`}>
-                    {t('multiWorkspace.entryPattern.eyebrow')}
-                  </div>
-                  <h2 className={`mt-1 text-xl font-bold ${gold.accentStrong}`}>
-                    {t('multiWorkspace.cp.entry.vaultTitle')}
-                  </h2>
-                  <p className="mt-1 text-sm opacity-75">{t('multiWorkspace.cp.entry.vaultHint')}</p>
+            <div className="flex flex-col gap-6">
+
+              {/* ── 已有角色 / Existing Actors ── */}
+              <section className={panelClass}>
+                <div className="mb-4">
+                  <h2 className={`text-xl font-bold ${gold.accentStrong}`}>{t('multiWorkspace.actorVault.existingActors')}</h2>
+                  <p className="mt-0.5 text-xs opacity-55">{t('multiWorkspace.actorVault.singleActorLimitNote')}</p>
                 </div>
+
+                {hasCurrentCharacter ? (
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]">
+                    <div className={`${gold.card} p-5`}>
+                      <div className={`text-xs font-bold uppercase tracking-wider ${gold.accent}`}>
+                        {t('multiWorkspace.cp.entry.current')}
+                      </div>
+                      <h3 className={`mt-2 text-2xl font-black tracking-widest ${gold.accentStrong}`}>
+                        {displayName || t('multiWorkspace.cp.entry.unnamed')}
+                      </h3>
+                      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                        <div className="border border-white/10 bg-black/10 p-3">
+                          <div className={`text-[10px] font-bold uppercase tracking-wider ${gold.accent}`}>{t('multiWorkspace.cp.entry.name')}</div>
+                          <div className="mt-1 break-words text-sm font-bold">{cpChar.name || '-'}</div>
+                        </div>
+                        <div className="border border-white/10 bg-black/10 p-3">
+                          <div className={`text-[10px] font-bold uppercase tracking-wider ${gold.accent}`}>{t('multiWorkspace.cp.entry.role')}</div>
+                          <div className="mt-1 break-words text-sm font-bold">{cpChar.role || '-'}</div>
+                        </div>
+                        <div className="border border-white/10 bg-black/10 p-3">
+                          <div className={`text-[10px] font-bold uppercase tracking-wider ${gold.accent}`}>{t('multiWorkspace.cp.entry.roleLevel')}</div>
+                          <div className="mt-1 break-words text-sm font-bold">{cpChar.roleLevel ?? '-'}</div>
+                        </div>
+                        <div className="border border-white/10 bg-black/10 p-3">
+                          <div className={`text-[10px] font-bold uppercase tracking-wider ${gold.accent}`}>{t('multiWorkspace.actorVault.source')}</div>
+                          <div className="mt-1 break-words text-sm font-bold">{t('multiWorkspace.actorVault.sourcePlatform')}</div>
+                        </div>
+                        <div className="border border-white/10 bg-black/10 p-3 col-span-2">
+                          <div className={`text-[10px] font-bold uppercase tracking-wider ${gold.accent}`}>{t('multiWorkspace.actorVault.campaign')}</div>
+                          <div className="mt-1 break-words text-sm font-bold">{t('multiWorkspace.actorVault.campaignNone')}</div>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Tier-D object-level CTA: View Sheet only. See ACTOR_VAULT_EXISTING_ADD_SPLIT_V1. */}
+                    <div className="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onOpenPlayTab('sheet')}
+                        className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${gold.secondary}`}
+                      >
+                        {t('multiWorkspace.actions.viewCharacterSheet')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`rounded-lg border ${gold.planned} p-8 text-center`}>
+                    <h3 className={`text-xl font-bold ${gold.accentStrong}`}>{t('multiWorkspace.actorVault.emptyTitle')}</h3>
+                    <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed opacity-75">{t('multiWorkspace.actorVault.emptyNote')}</p>
+                  </div>
+                )}
+              </section>
+
+              {/* ── 添加角色 / Add Actor ── */}
+              <section className={panelClass}>
+                <div className="mb-4">
+                  <h2 className={`text-xl font-bold ${gold.accentStrong}`}>{t('multiWorkspace.actorVault.addActor')}</h2>
+                </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {[
+                    {
+                      labelKey: 'multiWorkspace.creation.standard',
+                      noteKey: 'multiWorkspace.cp.creation.standardNote',
+                      planned: false,
+                      onClick: () => onOpenPlayTab('creator'),
+                    },
+                    {
+                      labelKey: 'multiWorkspace.creation.quick',
+                      noteKey: 'multiWorkspace.cp.creation.quickNote',
+                      planned: true,
+                      onClick: () => setPlannedSlotLabelKey('multiWorkspace.creation.quick'),
+                    },
+                    {
+                      labelKey: 'multiWorkspace.creation.localImportCharacter',
+                      noteKey: 'multiWorkspace.cp.creation.localImportNote',
+                      planned: true,
+                      onClick: () => setPlannedSlotLabelKey('multiWorkspace.creation.localImportCharacter'),
+                    },
+                    {
+                      labelKey: 'multiWorkspace.creation.workshop',
+                      noteKey: 'multiWorkspace.cp.creation.workshopNote',
+                      planned: true,
+                      onClick: () => setPlannedSlotLabelKey('multiWorkspace.creation.workshop'),
+                    },
+                  ].map((card) => (
+                    <button
+                      key={card.labelKey}
+                      type="button"
+                      onClick={card.onClick}
+                      className={`min-h-28 rounded-lg border p-4 text-left transition hover:-translate-y-0.5 ${
+                        card.planned
+                          ? `border-[#d8b954]/25 bg-black/10 ${gold.cardHover}`
+                          : 'border-[#f5c518] bg-[#f5c518]/10 hover:bg-[#f5c518]/20'
+                      }`}
+                    >
+                      <span className="flex items-start justify-between gap-3">
+                        <span className={`font-bold ${gold.accentStrong}`}>{t(card.labelKey)}</span>
+                        {card.planned && (
+                          <span className={`shrink-0 border px-2 py-0.5 text-[10px] uppercase tracking-wider ${gold.badgePlanned}`}>
+                            {t('multiWorkspace.status.planned')}
+                          </span>
+                        )}
+                      </span>
+                      <span className="mt-3 block text-xs leading-relaxed opacity-75">{t(card.noteKey)}</span>
+                    </button>
+                  ))}
+                </div>
+                {plannedSlotLabelKey && (
+                  <div className={`mt-4 border ${gold.planned} p-4`}>
+                    <div className={`text-xs font-bold uppercase tracking-wider ${gold.accent} opacity-70`}>
+                      {t('multiWorkspace.status.planned')}
+                    </div>
+                    <h3 className={`mt-2 font-bold ${gold.accentStrong}`}>{t(plannedSlotLabelKey)}</h3>
+                    <p className="mt-2 text-sm opacity-75">{t('multiWorkspace.planned.message')}</p>
+                  </div>
+                )}
+                {hasCurrentCharacter && (
+                  <p className="mt-4 text-[9px] opacity-40">{t('multiWorkspace.singleActor.edgerunnerNote')}</p>
+                )}
+                <p className={`mt-3 border-t border-white/10 pt-3 text-[10px] opacity-40`}>
+                  {t('multiWorkspace.actorVault.campaignTeaser')}
+                </p>
+              </section>
+
+              <div className="flex justify-end">
                 <button
                   type="button"
-                  onClick={() => onViewChange('createMethod')}
-                  className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${gold.primary}`}
+                  onClick={() => onViewChange('dashboard')}
+                  className="text-[10px] opacity-45 underline hover:opacity-65"
                 >
-                  {t('multiWorkspace.actions.createEdgerunner')}
+                  {t('navigation.systemInfo')}
                 </button>
               </div>
-
-              {hasCurrentCharacter ? (
-                <>
-                  {renderEdgerunnerCard()}
-                  <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div className={`border ${gold.planned} p-4`}>
-                      <div className={`text-xs font-bold uppercase tracking-wider ${gold.accent}`}>
-                        {t('cpWorkspace.vault.listPlaceholderTitle')}
-                      </div>
-                      <p className={`mt-2 text-xs leading-relaxed opacity-65`}>
-                        {t('cpWorkspace.vault.listPlaceholderNote')}
-                      </p>
-                      <span className={`mt-3 inline-block border px-2 py-0.5 text-[10px] uppercase tracking-wider ${gold.badgePlanned}`}>
-                        {t('multiWorkspace.status.planned')}
-                      </span>
-                    </div>
-                    <div className={`border ${gold.planned} p-4`}>
-                      <div className={`text-xs font-bold uppercase tracking-wider ${gold.accent}`}>
-                        {t('multiWorkspace.creation.localImportCharacter')}
-                      </div>
-                      <p className={`mt-2 text-xs leading-relaxed opacity-65`}>
-                        {t('multiWorkspace.cp.creation.localImportNote')}
-                      </p>
-                      <span className={`mt-3 inline-block border px-2 py-0.5 text-[10px] uppercase tracking-wider ${gold.badgePlanned}`}>
-                        {t('multiWorkspace.status.planned')}
-                      </span>
-                    </div>
-                  </div>
-                  <p className={`mt-4 border-t border-white/10 pt-3 text-xs opacity-60`}>
-                    {t('multiWorkspace.cp.entry.vaultBoundary')} {t('navigation.actorAbstractionNote')}
-                  </p>
-                </>
-              ) : (
-                <div className={`rounded-lg border ${gold.planned} p-8 text-center`}>
-                  <h3 className={`text-xl font-bold ${gold.accentStrong}`}>
-                    {t('multiWorkspace.cp.entry.empty')}
-                  </h3>
-                  <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed opacity-75">
-                    {t('multiWorkspace.cp.entry.emptyNote')}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => onViewChange('createMethod')}
-                    className={`mt-5 border px-5 py-2 text-xs font-bold uppercase tracking-wider ${gold.primary}`}
-                  >
-                    {t('multiWorkspace.actions.createEdgerunner')}
-                  </button>
-                </div>
-              )}
-            </section>
+            </div>
           )}
 
           {/* Creation Method */}

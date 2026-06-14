@@ -448,6 +448,18 @@ After modifying one system, verify the other two are unaffected:
 - [ ] Desktop home body keeps only current asset context and 1-2 primary actions; mobile stacks into one column without horizontal overflow.
 - [ ] Home density polish does not change store schema, rule data, runtime logic, dice algorithms, map, inventory, session, Workshop, backend, or plugin behavior.
 
+### System Default Entry / Generic Nav Labels
+
+- [ ] Entering DND from system selection defaults to 角色库 / Actor Vault, not 工作台总览 / dashboard.
+- [ ] Entering COC from system selection defaults to 角色库 / Actor Vault, while page content may still say 调查员库.
+- [ ] Entering CP RED from system selection defaults to 角色库 / Actor Vault, while page content may still say Edgerunner 库.
+- [ ] DND / COC / CP RED top system nav shows exactly three generic labels: 角色库 / 规则库 / 数据状态.
+- [ ] 工作台总览 / Overview is not the first top-nav item and is only reachable as secondary 系统信息 / System Info.
+- [ ] Rules Compendium / Source Status Up returns to Actor Vault; Actor Vault Up returns to system selection.
+- [ ] Creation Method / Builder / Sheet / Runtime parent flow remains Actor Vault → Creation Method → Builder and Actor Vault → Sheet → Runtime.
+- [ ] Breadcrumb uses Actor Vault as the system root and labels overview as System Info.
+- [ ] No store schema, save format, rule logic, dice algorithm, import/export, React Router, URL routing, browser History API, map, inventory, session, Workshop, backend, or plugin behavior changed.
+
 ### CP RED Workspace Cleanup v1
 
 - [ ] CP RED Workspace shows only one top system navigation.
@@ -523,6 +535,137 @@ After modifying one system, verify the other two are unaffected:
 - [ ] Paid-book or official-but-not-public content is referenced by metadata only; long rules text is not copied
 - [ ] Homebrew/demo/placeholder data is visibly labeled or kept quarantined
 - [ ] High-risk legacy datasets remain unchanged unless the task explicitly schedules quarantine or source labeling
+
+---
+
+## 6k. Actor Vault Single-Actor Action Cleanup v1 Check
+
+- [ ] **DND — actor exists**: vault header shows NO "Create Character" primary button
+- [ ] **DND — actor exists**: actor card CTA column shows **only** "View Sheet"; no "Continue Editing" button
+- [ ] **DND — actor exists**: footer shows "重新创建 / 替换当前角色" as small underline link with explanatory note
+- [ ] **DND — no actor**: empty state shows "Create Character" as prominent primary CTA
+- [ ] **COC — investigator exists**: vault header shows NO "Create Investigator" primary button
+- [ ] **COC — investigator exists**: investigator card CTA column shows **only** "View Investigator Sheet"; no "Continue Editing" button
+- [ ] **COC — investigator exists**: footer shows "重新创建 / 替换当前调查员" as small underline link with explanatory note
+- [ ] **COC — no investigator**: empty state shows "Create Investigator" as prominent primary CTA
+- [ ] **CP RED — Edgerunner exists**: vault header shows NO "Create Edgerunner" primary button
+- [ ] **CP RED — Edgerunner exists**: Edgerunner card CTA column shows **only** "View Character Sheet"; no "Continue Editing" button
+- [ ] **CP RED — Edgerunner exists**: footer shows "重新创建 / 替换当前 Edgerunner" as small underline link with explanatory note
+- [ ] **CP RED — no Edgerunner**: empty state shows "Create Edgerunner" as prominent primary CTA
+- [ ] Replace links use clearly lower visual weight than View Sheet button (opacity/size)
+- [ ] `ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1` landmark present in all 3 shell files (6 locations)
+- [ ] `multiWorkspace.actions.replaceCurrentCharacter/Investigator/Edgerunner` keys in both locale files
+- [ ] `multiWorkspace.singleActor.characterNote/investigatorNote/edgerunnerNote` keys in both locale files
+- [ ] Top nav unaffected: still shows 角色库 / 规则库 / 数据状态
+- [ ] View Sheet button still opens sheet correctly in all 3 systems
+- [ ] Creation Method / Builder code assets untouched
+- [ ] Runtime code untouched
+- [ ] No store schema, migration, save format, rule logic, dice, import/export, or routing changed
+
+---
+
+## 7a. Multi-Actor Store Architecture Review v1 Check (Docs Only)
+
+- [ ] `docs/architecture/MULTI_ACTOR_STORE_ARCHITECTURE_REVIEW.md` exists and contains `AI-LANDMARK: MULTI_ACTOR_STORE_ARCHITECTURE_REVIEW_V1`
+- [ ] Section 1 (Actor unified concept): platform name = Actor; system names = Character / Investigator / Edgerunner; vault UI = 角色库 (generic)
+- [ ] Section 2 (Actor instance ID): `actorInstanceId` defined; existing `id` field reused; lazy migration if empty; copy generates new ID
+- [ ] Section 3 (Actor metadata): `ActorMeta` (universal fields) + `SystemActorSummary` (discriminated union per system) documented
+- [ ] Section 4 (Source/Creator): 5 `ActorSourceType` values; `creatorName` / `creatorUid` / `importedBy` defined; `creatorUid` reserved for future accounts
+- [ ] Section 5 (Campaign binding): `CampaignStatus` 4 values; actor can exist independently; `campaignId` reserved; no Campaign store implemented
+- [ ] Section 6 (Data models): Option A (per-system arrays) vs Option B (unified Actor Registry) compared with advantages/disadvantages/risks
+- [ ] Section 6 recommends **Option A** for V1 multi-actor
+- [ ] Section 7 (Migration): single object → `characters[0]`; `id` → `actorInstanceId` (lazy); `schemaVersion` bump; `migrate()` callback; no destructive one-time script
+- [ ] Section 8 (UI impact): two-section vault layout unchanged; Existing section becomes list; active actor pointer `activeCharacterId`; most-recent by `updatedAt`
+- [ ] Section 9 (Risk boundaries): 10 risks listed (localStorage migration / import-export compat / actor switching / runtime reference / inventory / spell state / undo / campaign binding / actor count limit / active pointer call sites)
+- [ ] `src/` **not touched** by this task
+- [ ] `PROJECT_STATUS.md` row added for Multi-Actor Store Architecture Review v1
+- [ ] `docs/ai/SYMBOL_MAP.md` section added
+- [ ] `docs/ai/TASK_ARCHIVE.md` entry appended
+
+---
+
+## 6l. Actor Vault Existing/Add Split v1 Check
+
+- [ ] **DND — Existing Actors section**: heading "已有角色 / Existing Actors" visible with singleActorLimitNote subtitle
+- [ ] **DND — actor exists**: Existing Actors shows actor card with name / level / class / species / background / source (placeholder) / campaign (placeholder) metadata grid
+- [ ] **DND — actor exists**: actor card CTA column shows **only** "View Sheet"; no Create / Edit / Continue Editing / Start Playing in Existing section
+- [ ] **DND — no actor**: Existing Actors shows dashed-border empty state with emptyTitle + emptyNote text
+- [ ] **DND — Add Actor section**: heading "添加角色 / Add Actor" visible
+- [ ] **DND — Add Actor**: Standard Create card is visually primary (solid border / bg); clicking goes directly to Builder (`onOpenPlayTab('creator')`) — does NOT navigate to `view='create'` first
+- [ ] **DND — Add Actor**: Quick Create / Local Import / Workshop Import cards are visually lighter (planned styling) and show PLANNED badge
+- [ ] **DND — planned slot message**: clicking a planned Add Actor card shows the plannedSlotLabelKey message block below the grid
+- [ ] **DND**: no Replace link in footer (removed); singleActor.characterNote caption still visible inside Add Actor section when actor exists
+- [ ] **DND**: campaignTeaser text visible at bottom of Add Actor section
+- [ ] **COC — Existing Actors section**: heading visible with singleActorLimitNote subtitle
+- [ ] **COC — investigator exists**: Existing Actors shows inline card with name / occupation / age / residence / source (placeholder) / campaign (placeholder) — NOT using shared `renderInvestigatorCard()`
+- [ ] **COC — investigator exists**: actor card CTA column shows **only** "View Investigator Sheet"; no other CTAs in Existing section
+- [ ] **COC — no investigator**: Existing Actors shows empty state
+- [ ] **COC — Add Actor**: Standard Create card goes to Builder (`onOpenPlayTab('creator')`); 3 planned cards shown
+- [ ] **COC**: dashboard view still uses `renderInvestigatorCard()` (unchanged by this task)
+- [ ] **CP RED — Existing Actors section**: heading visible with singleActorLimitNote subtitle
+- [ ] **CP RED — Edgerunner exists**: Existing Actors shows inline card with handle (as h3) / name / role / roleLevel / source (placeholder) / campaign (placeholder) — NOT using shared `renderEdgerunnerCard()`
+- [ ] **CP RED — Edgerunner exists**: actor card CTA column shows **only** "View Character Sheet"; no other CTAs in Existing section
+- [ ] **CP RED — no Edgerunner**: Existing Actors shows empty state
+- [ ] **CP RED — Add Actor**: Standard Create card goes to Builder (`onOpenPlayTab('sheet')` → actually `onOpenPlayTab('creator')`); 3 planned cards shown
+- [ ] **CP RED**: dashboard view still uses `renderEdgerunnerCard()` (unchanged by this task)
+- [ ] Source / Creator / Campaign fields in all 3 actor cards are UI placeholders (no real systems); values are static i18n strings (sourcePlatform / campaignNone)
+- [ ] `multiWorkspace.actorVault.*` keys present in both locale files (existingActors / addActor / emptyTitle / emptyNote / singleActorLimitNote / source / sourcePlatform / creator / creatorPlaceholder / campaign / campaignNone / campaignTeaser)
+- [ ] `ACTOR_VAULT_EXISTING_ADD_SPLIT_V1` landmark present in all 3 shell files
+- [ ] Top nav unaffected: still shows 角色库 / 规则库 / 数据状态
+- [ ] Runtime code untouched; store / schema / migration / rule logic / dice / routing / import-export unchanged
+
+---
+
+## 6j. Actor Vault Action Hierarchy Cleanup v1 Check
+
+- [ ] DND Actor Vault: actor card CTA column shows **View Sheet** (primary) + **Continue Editing** (secondary, dimmer styling) + runtimeGateNote text *(superseded by 6k — continueEditing was removed in ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1)*
+- [ ] `ACTOR_VAULT_ACTION_HIERARCHY_CLEANUP_V1` landmark present in all 3 shell files
+- [ ] Runtime entry (startPlaying / startInvestigation / startMission) still absent from all vaults
+- [ ] No store schema, migration, save format, rule logic, dice algorithm, runtime formula, import/export, or routing changed
+
+---
+
+## 6i. UI Action Hierarchy & Page Responsibility Contract v1 Check
+
+- [ ] `docs/architecture/UI_ACTION_HIERARCHY_AND_PAGE_RESPONSIBILITY_CONTRACT.md` exists
+- [ ] Document defines 8 action tiers (A: Platform → B: System → C: Collection → D: Object → E: Creation-flow → F: Runtime-context → G: System-info → H: Planned)
+- [ ] Each action tier has: definition, examples, correct containers, forbidden containers
+- [ ] Page responsibility contracts defined for: Actor Vault / Actor Sheet / Creation Method / Builder / Runtime / Rules Compendium / Source Status / System Overview
+- [ ] Container placement rules defined for: page header / object card / empty state / sidebar / footer/menu
+- [ ] Button priority rules defined: primary CTA table, secondary, tertiary
+- [ ] At least 9 anti-patterns listed with explanations
+- [ ] Required UI task workflow declared (page responsibility + action hierarchy + primary CTA + hidden actions)
+- [ ] 12-item review checklist present
+- [ ] Current DND / COC / CP RED application section present with specific per-system guidance
+- [ ] Relationship to PLATFORM_PATTERNS and NAVIGATION docs explained in §10
+- [ ] `UI_ACTION_HIERARCHY_PAGE_RESPONSIBILITY_CONTRACT_V1` landmark present in the document
+- [ ] `docs/ai/SYMBOL_MAP.md` updated with UI Action Hierarchy section
+- [ ] No `src/` files modified (doc-only task)
+- [ ] `git status --short` shows only doc files changed
+
+---
+
+## 6h. Actor Vault Responsibility Cleanup + Hide Runtime CTA v1 Check
+
+- [ ] DND Actor Vault (`characters` view): only "View Sheet" + "Create Character" CTAs visible; no "Continue Editing", no "Start Playing"
+- [ ] DND Actor Vault: no local-import or export/import planned cards at bottom
+- [ ] DND Actor Vault: System Info visible only as small text underline link (not a button)
+- [ ] DND dashboard (`dashboard` view): no "Start Playing" button; only "View Sheet"
+- [ ] DND Sheet (in play view): no "Start Playing" button visible
+- [ ] COC Vault (`vault` view): investigator card shows only "View Investigator Sheet"; no "Continue Editing", no "Start Investigation"
+- [ ] COC Vault: no local-import planned card grid at bottom
+- [ ] COC Vault: System Info visible only as small text underline link
+- [ ] COC Sheet (`sheet` view) header: no "Continue Investigator Editing", no "Start Investigation" buttons
+- [ ] CP RED Vault (`vault` view): edgerunner card shows only "View Character Sheet"; no "Continue Editing", no "Start Mission"
+- [ ] CP RED Vault: no planned cards (listPlaceholder + localImportCharacter) at bottom
+- [ ] CP RED Vault: System Info visible only as small text underline link
+- [ ] CP RED Sheet (CpEdgerunnerSheetShell): no "Start Mission" button; "Continue Editing" still present
+- [ ] `runtimeGateNote` text visible where expected (vault CTA columns, CP RED sheet sidebar)
+- [ ] `ACTOR_VAULT_RESPONSIBILITY_CLEANUP_HIDE_RUNTIME_CTA_V1` landmark present in DndWorkspaceShell, CocWorkspaceShell, CpWorkspaceShell, PlayWorkspace
+- [ ] `navigation.runtimeGateNote` key present in both `zh-CN.ts` and `en.ts`
+- [ ] Runtime code (Gameplay, CocGameplay, CpGameplay) untouched; only UI entry points removed
+- [ ] No store schema, migration, save format, rule logic, dice, runtime formula, or import/export changed
+- [ ] No React Router / URL routing / browser History API introduced
 
 ---
 

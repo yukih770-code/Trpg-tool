@@ -160,7 +160,9 @@ export default function App() {
   // Maps to the LocationNode model in docs/architecture/NAVIGATION_BACK_UP_BREADCRUMB_MODEL.md.
   // Up = parent resolver (deterministic); Back = history stack (unchanged).
   //
-  // Parent chain: runtime/builder/actorSheet → actorVault/creationMethod/… → systemOverview → playMenu
+  // Parent chain: runtime/builder/actorSheet → actorVault/creationMethod → actorVault → playMenu.
+  // systemOverview is retained as a low-frequency System Info node; it is not
+  // the default landing page or top-nav root.
   type WorkspaceNodeType =
     | 'systemOverview'
     | 'actorVault'
@@ -208,11 +210,11 @@ export default function App() {
       case 'runtime':         return 'actorSheet';
       case 'builder':         return 'creationMethod';
       case 'actorSheet':      return 'actorVault';
-      case 'actorVault':      return 'systemOverview';
-      case 'creationMethod':  return 'systemOverview';
-      case 'rulesCompendium': return 'systemOverview';
-      case 'sourceStatus':    return 'systemOverview';
-      case 'systemOverview':  return 'playMenu';
+      case 'actorVault':      return 'playMenu';
+      case 'creationMethod':  return 'actorVault';
+      case 'rulesCompendium': return 'actorVault';
+      case 'sourceStatus':    return 'actorVault';
+      case 'systemOverview':  return 'actorVault';
     }
   };
 
@@ -226,6 +228,34 @@ export default function App() {
       case 'sourceStatus':    return 'navigation.breadcrumb.sourceStatus';
       case 'runtime':         return 'navigation.breadcrumb.runtime';
       case 'builder':         return 'navigation.breadcrumb.builder';
+    }
+  };
+
+  const getBreadcrumbViewLabelKeys = (nodeType: WorkspaceNodeType): string[] => {
+    switch (nodeType) {
+      case 'actorVault':
+        return ['navigation.breadcrumb.actorVault'];
+      case 'systemOverview':
+        return ['navigation.breadcrumb.actorVault', getBreadcrumbViewLabelKey(nodeType)];
+      case 'creationMethod':
+        return ['navigation.breadcrumb.actorVault', getBreadcrumbViewLabelKey(nodeType)];
+      case 'builder':
+        return [
+          'navigation.breadcrumb.actorVault',
+          'navigation.breadcrumb.creationMethod',
+          getBreadcrumbViewLabelKey(nodeType),
+        ];
+      case 'actorSheet':
+        return ['navigation.breadcrumb.actorVault', getBreadcrumbViewLabelKey(nodeType)];
+      case 'runtime':
+        return [
+          'navigation.breadcrumb.actorVault',
+          'navigation.breadcrumb.actorSheet',
+          getBreadcrumbViewLabelKey(nodeType),
+        ];
+      case 'rulesCompendium':
+      case 'sourceStatus':
+        return ['navigation.breadcrumb.actorVault', getBreadcrumbViewLabelKey(nodeType)];
     }
   };
 
@@ -260,8 +290,11 @@ export default function App() {
         case 'creationMethod':
           next.dndWorkspaceView = 'create';
           break;
-        default: // systemOverview + any unhandled
+        case 'systemOverview':
           next.dndWorkspaceView = 'dashboard';
+          break;
+        default:
+          next.dndWorkspaceView = 'characters';
       }
     } else {
       // CoC / CP RED
@@ -281,8 +314,11 @@ export default function App() {
         case 'creationMethod':
           next.systemWorkspaceView = 'createMethod';
           break;
-        default: // systemOverview + any unhandled
+        case 'systemOverview':
           next.systemWorkspaceView = 'dashboard';
+          break;
+        default:
+          next.systemWorkspaceView = 'vault';
       }
     }
 
@@ -426,8 +462,13 @@ export default function App() {
                         playWorkspaceNavigation.systemWorkspaceView,
                         playWorkspaceNavigation.tab,
                       );
-                      const viewLabel = t(getBreadcrumbViewLabelKey(nodeType));
-                      return `${t('navigation.breadcrumb.platform')} / ${t('navigation.breadcrumb.play')} / ${systemLabel} / ${viewLabel}`;
+                      const viewLabels = getBreadcrumbViewLabelKeys(nodeType).map((labelKey) => t(labelKey));
+                      return [
+                        t('navigation.breadcrumb.platform'),
+                        t('navigation.breadcrumb.play'),
+                        systemLabel,
+                        ...viewLabels,
+                      ].join(' / ');
                     })()}
                   </div>
                 </div>
