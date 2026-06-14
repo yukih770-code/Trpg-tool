@@ -6,64 +6,34 @@
 
 ## Task
 
-- ID: Multi-Actor Store Architecture Review v1
-- Name: MULTI_ACTOR_STORE_ARCHITECTURE_REVIEW_V1
-- Goal: Architecture review and documentation for future multi-actor vault. No `src/` implementation. Covers: Actor unified concept, actorInstanceId, ActorMeta, source/creator, campaign binding, two data model options (A vs B), migration strategy, UI impact, risk boundaries.
-- Phase: P1 platform IA
+- ID: Campaign Vault + Source Settings + Workshop Scaffold Pattern Integration v1
+- Name: CAMPAIGN_SOURCE_WORKSHOP_SCAFFOLD_PATTERN_V1
+- Goal: Integrate Campaign Vault, Source Settings, Workshop Scaffold, and Developer Scaffold Mode principles into existing architecture contracts.
+- Phase: P1 platform architecture
 - Status: Done
 
 ## Result Summary
 
-- New file: `docs/architecture/MULTI_ACTOR_STORE_ARCHITECTURE_REVIEW.md` (landmark: MULTI_ACTOR_STORE_ARCHITECTURE_REVIEW_V1)
-- `PROJECT_STATUS.md`: row added
-- `TEST_CHECKLIST.md`: §7a added
-- `docs/ai/SYMBOL_MAP.md`: Multi-Actor Store Architecture Review section added
-- `docs/ai/TASK_ARCHIVE.md`: entry appended
-- `src/`: **not touched**
-
-## Scope
-
-### Allowed Files (modified)
-
-- `docs/architecture/MULTI_ACTOR_STORE_ARCHITECTURE_REVIEW.md` (new)
-- `PROJECT_STATUS.md`
-- `TEST_CHECKLIST.md`
-- `docs/ai/SYMBOL_MAP.md`
-- `docs/ai/ACTIVE_TASK.md`
-- `docs/ai/TASK_ARCHIVE.md`
-
-### Forbidden Changes (all confirmed untouched)
-
-- `src/` (all files)
-- store schema / migration
-- save format
-- CharacterData / Investigator / CP RED data structures
-- import/export logic
-- runtime / dice / rule logic
-- React Router / URL routing
-- git add / commit
+- `PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`: added Campaign Vault / Source Settings / Workshop Scaffold principles near Game System Workspace Pattern.
+- `UI_ACTION_HIERARCHY_AND_PAGE_RESPONSIBILITY_CONTRACT.md`: added Developer Scaffold Mode transparency rules under Planned / Future Action.
+- Recorded that Actor Vault manages actors, Campaign Vault manages campaigns/rooms/long-term play spaces, Source Settings manages rules/extensions, Builder consumes Source Settings, Session Runtime consumes Campaign, and Workshop can feed all of them.
+- Recorded Workshop item categories: Playable Asset, Table Asset, Creative Work, Creator Space, plus future `usageType` principle.
+- No new architecture document and no `src/`, store, schema, migration, save format, runtime, dice, rule data, React Router, URL routing, or browser History API changes.
 
 ## Navigation
 
 ### Landmark
 
-```
-AI-LANDMARK: MULTI_ACTOR_STORE_ARCHITECTURE_REVIEW_V1
+```text
+AI-LANDMARK: CAMPAIGN_SOURCE_WORKSHOP_SCAFFOLD_PATTERN_V1
 ```
 
-Located in: `docs/architecture/MULTI_ACTOR_STORE_ARCHITECTURE_REVIEW.md`
+Located in:
+- `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`
+- `docs/architecture/UI_ACTION_HIERARCHY_AND_PAGE_RESPONSIBILITY_CONTRACT.md`
 
 ### Locate Commands
 
 ```powershell
-rg -n "MULTI_ACTOR_STORE_ARCHITECTURE_REVIEW_V1" docs/
+rg -n "CAMPAIGN_SOURCE_WORKSHOP_SCAFFOLD_PATTERN_V1|Campaign Vault|Source Settings|Developer Scaffold Mode" docs/architecture docs/ai PROJECT_STATUS.md TEST_CHECKLIST.md
 ```
-
-### Key Decisions
-
-- Recommended data model: **Option A** (per-system arrays) for V1 multi-actor
-- `actorInstanceId` uses existing `id` field on each character type (lazy migration if empty)
-- `ActorMeta` = universal fields + `SystemActorSummary` discriminated union
-- Migration: additive — single object wraps to `characters[0]`; lazy in Zustand `migrate` callback
-- Campaign binding: reserved fields only; no Campaign store in V1 multi-actor
-- Highest risks: localStorage migration · active-actor pointer call sites · runtime actor reference

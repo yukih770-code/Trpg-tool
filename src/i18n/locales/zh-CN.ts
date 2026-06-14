@@ -248,6 +248,25 @@ export const zhCN = {
       exportImport: '导入 / 导出',
       exportImportNote: '现有导入导出能力保留在 PlayWorkspace 兼容层；Vault 化会在后续轮次接入。',
     },
+    characterLibrary: {
+      title: '已有角色',
+      existingActorsSubtitle: '管理你的 DND 角色，搜索、筛选并进入角色卡。',
+      backToVault: '返回角色库',
+      searchPlaceholder: '搜索角色名、职业、物种、背景……',
+      noResults: '没有符合条件的角色',
+      statusComplete: '资料完整',
+      statusIncomplete: '未完成',
+      filter: {
+        all: '全部',
+        complete: '资料完整',
+        incomplete: '未完成',
+      },
+      sort: {
+        default: '最近更新',
+        name: '名称',
+        level: '等级',
+      },
+    },
     compendium: {
       title: '规则库',
       note: '索引为来源定位层；规则文本待人工核对后接入。',
@@ -301,6 +320,13 @@ export const zhCN = {
       emptyTitle: '你还没有角色',
       emptyNote: '请从"添加角色"开始创建或导入。',
       singleActorLimitNote: '当前版本只显示一个当前角色；完整多角色库后续接入。',
+      multiActorNote: '选择一个角色进入游玩或查看角色卡。',
+      activeIndicator: '当前',
+      addActorNote: '创建、导入或从社区添加角色。',
+      totalCount: '角色总数',
+      completeCount: '资料完整',
+      incompleteCount: '未完成',
+      recentUpdate: '最近更新',
       source: '来源',
       sourcePlatform: '本平台创建',
       creator: '创建者',
@@ -449,6 +475,24 @@ export const zhCN = {
   },
   cocWorkspace: {
     title: 'COC 工作台',
+    characterLibrary: {
+      title: '已有角色',
+      existingActorsSubtitle: '管理你的 COC 调查员，搜索、筛选并进入调查员卡。',
+      backToVault: '返回角色库',
+      searchPlaceholder: '搜索姓名、职业、时代、居住地……',
+      noResults: '没有符合条件的调查员',
+      statusComplete: '资料完整',
+      statusIncomplete: '未完成',
+      filter: {
+        all: '全部',
+        complete: '资料完整',
+        incomplete: '未完成',
+      },
+      sort: {
+        default: '最近更新',
+        name: '名称',
+      },
+    },
     nav: {
       overview: '工作台总览',
       vault: '调查员库',
@@ -498,6 +542,25 @@ export const zhCN = {
   },
   cpWorkspace: {
     title: 'CP RED 工作台',
+    characterLibrary: {
+      title: '已有角色',
+      existingActorsSubtitle: '管理你的 CP RED Edgerunner，搜索、筛选并进入角色卡。',
+      backToVault: '返回角色库',
+      searchPlaceholder: '搜索姓名、街头名号、职业……',
+      noResults: '没有符合条件的 Edgerunner',
+      statusComplete: '资料完整',
+      statusIncomplete: '未完成',
+      filter: {
+        all: '全部',
+        complete: '资料完整',
+        incomplete: '未完成',
+      },
+      sort: {
+        default: '最近更新',
+        name: '名称',
+        roleLevel: '角色等级',
+      },
+    },
     nav: {
       overview: '工作台总览',
       vault: 'Edgerunner 库',

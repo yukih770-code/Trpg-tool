@@ -296,7 +296,11 @@ This file helps AI quickly locate important types, helper functions, store actio
 
 - Full pattern + section contract definitions: `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`
 - `AI-LANDMARK: PLATFORM_PATTERNS_WORKSPACE_CONTRACT_V1`: `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`
+- `AI-LANDMARK: SYSTEM_APP_SHELL_THEME_LAYERING_PRINCIPLE_V1`: `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`
+- `AI-LANDMARK: CAMPAIGN_SOURCE_WORKSHOP_SCAFFOLD_PATTERN_V1`: `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`, `docs/architecture/UI_ACTION_HIERARCHY_AND_PAGE_RESPONSIBILITY_CONTRACT.md`
 - Nine platform patterns: Game System Workspace, Actor / Player Asset Entry, Builder, Sheet, Runtime / Gameplay, Rules Compendium, Source Status / System Health, Session / Campaign, Navigation — Section 2
+- System App Shell / System Theme layering principle: near Game System Workspace Pattern in Section 2
+- Campaign Vault / Source Settings / Workshop Scaffold principles: near Game System Workspace Pattern in Section 2
 - Workspace Section Contract (9 sections: overview / actorVault / creationMethod / builder / sheet / runtime / rulesCompendium / sourceStatus / sessionCampaign): Section 3
 - implemented / planned / absent three-state semantics: Section 4
 - Top navigation rules: Section 5
@@ -614,6 +618,93 @@ This file helps AI quickly locate important types, helper functions, store actio
 - **UI impact**: two-section vault layout unchanged; Existing section becomes multi-item list; ordered by `updatedAt`
 - **10 risk boundaries**: localStorage migration · import/export compat · actor switching call sites · current actor pointer · campaign binding · runtime actor reference · inventory ownership · spell/resource state · undo/trash · actor count limit
 - Locate: `rg -n "MULTI_ACTOR_STORE_ARCHITECTURE_REVIEW_V1" docs/`
+
+## DND Multi-Actor Store + Actor Vault Library
+
+- `AI-LANDMARK: DND_MULTI_ACTOR_STORE_ACTOR_VAULT_LIBRARY_V1`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- **DndWorkspaceView extended**: added `'characterLibrary'` — three-layer vault navigation:
+  - `'characters'` → vault homepage (two entry cards: 已有角色 + 添加角色)
+  - `'characterLibrary'` → existing character library (search + filter + sort + detailed cards)
+  - `'create'` → add character (Standard Create / planned methods)
+- **Vault homepage** (`view === 'characters'`):
+  - 已有角色 card: stats (totalChars / completeChars / incompleteChars / recentUpdate=—), click → `'characterLibrary'`
+  - 添加角色 card: addActorNote, click → `'create'`
+  - Does NOT show character list (moved to characterLibrary view)
+- **Character library** (`view === 'characterLibrary'`):
+  - Local state: `libSearch` (string), `libFilter` ('all'|'complete'|'incomplete'), `libSort` ('default'|'name'|'level')
+  - `isCharComplete`: name+jobClass+race+background all truthy
+  - `libChars`: filtered + sorted derived list; active character slot always uses `dndChar` compat field
+  - Search: name / jobClass / race / background (client-side, case-insensitive)
+  - Filter tabs: 全部 / 资料完整 / 未完成 (functional)
+  - Sort: 名称 (localeCompare zh) / 等级 (desc) / 最近更新 (insertion order)
+  - Character cards: name + active badge + status badge (Complete/Incomplete) + level + class+subclass + race + background + source/creator/campaign metadata row + 进入 CTA
+  - Back button → `'characters'`
+- **Nav**: `isActive` check extended: `view === item.key || (item.key === 'characters' && view === 'characterLibrary')`
+- **i18n added**:
+  - `multiWorkspace.actorVault.addActorNote/totalCount/completeCount/incompleteCount/recentUpdate` (5 keys)
+  - `dndWorkspace.characterLibrary.*`: title/backToVault/searchPlaceholder/noResults/statusComplete/statusIncomplete/filter.{all,complete,incomplete}/sort.{default,name,level} (11 keys)
+- Locate: `rg -n "DND_MULTI_ACTOR_STORE_ACTOR_VAULT_LIBRARY_V1" src/`
+
+## DND Multi-Actor Store Minimal Implementation
+
+- `AI-LANDMARK: DND_MULTI_ACTOR_STORE_MINIMAL_IMPLEMENTATION_V1`: `src/store/characterStore.ts`
+- **Store changes** (DND only — COC/CP RED untouched):
+  - New state fields: `characters: CharacterData[]`, `activeCharacterId: string | null`
+  - `character: CharacterData` remains as compat mirror — all existing read/mutation call sites continue to work
+  - `syncActiveCharacter(character, characters, activeCharacterId): CharacterData[]` helper — syncs compat field back into array at switch/reset/load checkpoints
+  - New actions: `setActiveCharacterId(id)` (sync current → array, then load target), `addCharacter(data)` (sync + append)
+  - Updated `resetCreator()` — syncs current → array, then creates new blank, adds to array, sets as active
+  - Updated `loadCharacter(data)` — syncs current → array, upserts migrated char, sets as active
+  - `merge` callback: legacy `{character}` → wraps to `characters[0]`; multi-actor shape → migrates all, substitutes compat field for active slot on rehydration
+  - Initial state: `_initialChar` extracted as module-level constant; `characters = [_initialChar]`, `activeCharacterId = _initialChar.id`
+- **DndWorkspaceShell.tsx** vault changes:
+  - Reads `dndCharacters`, `dndActiveCharacterId`, `setDndActiveCharacterId`, `resetDndCreator` from store
+  - Existing Actors section: iterates `dndCharacters[]`, renders a card per character; active character shows "当前" badge
+  - "进入" button per card: calls `setActiveCharacterId(char.id)` then `onOpenPlayTab('sheet')`
+  - Standard Creation onClick: calls `resetDndCreator()` then `onOpenPlayTab('creator')` (ensures fresh blank char added to array)
+- **i18n keys added** (`multiWorkspace.actorVault.*`):
+  - `multiActorNote`: "选择一个角色进入游玩或查看角色卡。" / "Select a character to enter play or view their sheet."
+  - `activeIndicator`: "当前" / "Active"
+- **Compatibility**: `character` compat field preserved — Sheet, Gameplay, and all runtime pages continue to read `state.character` without change
+- Locate: `rg -n "DND_MULTI_ACTOR_STORE_MINIMAL_IMPLEMENTATION_V1" src/`
+
+## Platform Actor Vault Library Framework
+
+- `AI-LANDMARK: PLATFORM_ACTOR_VAULT_LIBRARY_FRAMEWORK_EXTRACTION_V1`: `src/lib/platform/actorVault.ts`, `src/components/platform/ActorVaultLibraryShell.tsx`, `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- **Platform types**: `ActorVaultSummary`, `ActorVaultStats`, `ActorVaultAddOption`, `ActorVaultSortOption`, `ActorVaultAdapter<TActor>`, `ActorVaultColorTheme`, `ActorVaultShellStrings`, `ActorVaultDetailField`, `ActorVaultMetaRow`: `src/lib/platform/actorVault.ts`
+- **`deriveVaultSummaries<T>(adapter)`**: convenience helper → `adapter.getActors().map((actor, i) => adapter.getSummary(actor, i))`: `src/lib/platform/actorVault.ts`
+- **`ActorVaultAdapter<TActor>`**: interface — `getActors()`, `getActiveActorId()`, `getSummary(actor, index)`, `getStats(summaries)`, `getAddOptions()`, `getSortOptions()`, `getDefaultSortKey()`, `onEnterActor(id)`: `src/lib/platform/actorVault.ts`
+- **`ActorVaultSortOption.kind`**: `'default'` = insertion order, `'name'` = localeCompare sortName, `'numeric'` = sortNumeric desc: `src/lib/platform/actorVault.ts`
+- **`ActorVaultColorTheme`**: includes explicit `hoverBorder`, `focusBorder`, `hoverText` fields (no dynamic `.replace()` in shell — all as Tailwind class literals for JIT scanning): `src/lib/platform/actorVault.ts`
+- **`ActorVaultLibraryShell`**: platform reusable UI shell; internal state: `mode: 'home'|'existing'`, `search`, `filter: 'all'|'complete'|'incomplete'`, `sortKey`; home view = two entry cards (existing-actors stats + add-actor); existing view = search+sort+filter+card list: `src/components/platform/ActorVaultLibraryShell.tsx`
+- **`ActorVaultCard`** (internal): renders name + active badge + status badge + detailFields grid + metaRows + Enter CTA: `src/components/platform/ActorVaultLibraryShell.tsx`
+- **DND adapter**: `isDndCharComplete`, `buildDndActorSummary`, `buildDndVaultStats`, `buildDndSortOptions`, `buildDndVaultShellStrings`, `buildDndVaultAdapterStrings`: `src/pages/dndWorkspace/dndActorVaultAdapter.ts`
+- **`DND_VAULT_COLOR_THEME`**: DND dark-red parchment Tailwind class string constants; all hover/focus variants as explicit literals: `src/pages/dndWorkspace/dndActorVaultAdapter.ts`
+- **`DndWorkspaceView` change**: `'characterLibrary'` removed — shell now manages home/existing internally; type is `'dashboard'|'characters'|'create'|'compendium'|'sources'|'play'`: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- **DND adapter construction site**: `_dndVaultAdapter` built in `DndWorkspaceShell` from Zustand selectors; `getActors()` substitutes active char with live compat `dndChar` field: `src/pages/dndWorkspace/DndWorkspaceShell.tsx`
+- **i18n**: reuses existing `multiWorkspace.actorVault.*` + `dndWorkspace.characterLibrary.*` keys — no new platform-level keys added
+- Locate: `rg -n "PLATFORM_ACTOR_VAULT_LIBRARY_FRAMEWORK_EXTRACTION_V1" src/`
+
+## COC Actor Vault Library Adoption
+
+- `AI-LANDMARK: COC_ACTOR_VAULT_LIBRARY_ADOPTION_V1`: `src/pages/cocWorkspace/cocActorVaultAdapter.ts`, `src/pages/cocWorkspace/CocWorkspaceShell.tsx`
+- `cocActorVaultAdapter.ts`: `isCocCharComplete`, `buildCocActorSummary`, `buildCocVaultStats`, `buildCocSortOptions`, `buildCocVaultShellStrings`, `buildCocVaultAdapterStrings`, `COC_VAULT_COLOR_THEME`
+- `COC_VAULT_COLOR_THEME`: dark teal theme; all Tailwind class strings as literals; includes `bgInput: 'bg-[#0d1211]/90'`
+- `ActorVaultColorTheme.bgInput`: new field — used by shell for search/sort input backgrounds; dark-theme safe; DND sets `'bg-white/80'`
+- V1 constraint: `getActors()` returns `[]` or `[cocChar]` (single-actor; no store change)
+- `onEnterActor(_id)` → `onViewChange('sheet')`; `onRequestAdd()` → `onViewChange('createMethod')`
+- Locate: `rg -n "COC_ACTOR_VAULT_LIBRARY_ADOPTION_V1" src/`
+
+## CP RED Actor Vault Library Adoption
+
+- `AI-LANDMARK: CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1`: `src/pages/cpWorkspace/cpActorVaultAdapter.ts`, `src/pages/cpWorkspace/CpWorkspaceShell.tsx`
+- `cpActorVaultAdapter.ts`: `isCpCharComplete`, `buildCpActorSummary`, `buildCpVaultStats`, `buildCpSortOptions`, `buildCpVaultShellStrings`, `buildCpVaultAdapterStrings`, `CP_VAULT_COLOR_THEME`
+- `CP_VAULT_COLOR_THEME`: dark gold theme; all Tailwind class strings as literals; `bgCard: 'bg-[#0d0d0d]/85'`, `bgInput: 'bg-[#0a0a0a]/90'`
+- Sort options: `default` (insertionOrder), `name` (localeCompare), `roleLevel` (numeric desc via `sortNumeric`)
+- `displayName` = `lifePath?.handle?.trim()` preferred over `name` (street handle first)
+- V1 constraint: `getActors()` returns `[]` or `[cpChar]` when `name` or `handle` present (single-actor; no store change)
+- `onEnterActor(_id)` → `onOpenPlayTab('sheet')`; `onRequestAdd()` → `onViewChange('createMethod')`
+- Locate: `rg -n "CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1" src/`
 
 ## General Search Notes
 

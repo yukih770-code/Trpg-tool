@@ -248,6 +248,25 @@ export const en = {
       exportImport: 'Import / Export',
       exportImportNote: 'Existing import/export remains in the PlayWorkspace compatibility layer; Vault integration is deferred to a later round.',
     },
+    characterLibrary: {
+      title: 'Existing Characters',
+      existingActorsSubtitle: 'Manage your DND characters, search, filter, and open their sheets.',
+      backToVault: 'Back to Vault',
+      searchPlaceholder: 'Search by name, class, species, background…',
+      noResults: 'No characters match your search',
+      statusComplete: 'Complete',
+      statusIncomplete: 'Incomplete',
+      filter: {
+        all: 'All',
+        complete: 'Complete',
+        incomplete: 'Incomplete',
+      },
+      sort: {
+        default: 'Recent',
+        name: 'Name',
+        level: 'Level',
+      },
+    },
     compendium: {
       title: 'Compendium',
       note: 'Indexes are a source-location layer; rules text will be wired in after human verification.',
@@ -301,6 +320,13 @@ export const en = {
       emptyTitle: 'No Characters Yet',
       emptyNote: 'Start by creating or importing from Add Actor below.',
       singleActorLimitNote: 'Current version shows one active character. Full multi-character library will be connected later.',
+      multiActorNote: 'Select a character to enter play or view their sheet.',
+      activeIndicator: 'Active',
+      addActorNote: 'Create, import, or add characters from the community.',
+      totalCount: 'Total Characters',
+      completeCount: 'Complete',
+      incompleteCount: 'Incomplete',
+      recentUpdate: 'Recently Updated',
       source: 'Source',
       sourcePlatform: 'Created on this platform',
       creator: 'Creator',
@@ -449,6 +475,24 @@ export const en = {
   },
   cocWorkspace: {
     title: 'COC Workspace',
+    characterLibrary: {
+      title: 'Existing Characters',
+      existingActorsSubtitle: 'Manage your COC investigators, search, filter, and open their sheets.',
+      backToVault: 'Back to Vault',
+      searchPlaceholder: 'Search by name, occupation, era, residence…',
+      noResults: 'No investigators match your search',
+      statusComplete: 'Complete',
+      statusIncomplete: 'Incomplete',
+      filter: {
+        all: 'All',
+        complete: 'Complete',
+        incomplete: 'Incomplete',
+      },
+      sort: {
+        default: 'Recently Updated',
+        name: 'Name',
+      },
+    },
     nav: {
       overview: 'Overview',
       vault: 'Investigator Vault',
@@ -498,6 +542,25 @@ export const en = {
   },
   cpWorkspace: {
     title: 'CP RED Workspace',
+    characterLibrary: {
+      title: 'Characters',
+      existingActorsSubtitle: 'Manage your CP RED Edgerunners, search, filter, and open their sheets.',
+      backToVault: 'Back to Vault',
+      searchPlaceholder: 'Search by name, handle, role…',
+      noResults: 'No Edgerunners match your search',
+      statusComplete: 'Complete',
+      statusIncomplete: 'Incomplete',
+      filter: {
+        all: 'All',
+        complete: 'Complete',
+        incomplete: 'Incomplete',
+      },
+      sort: {
+        default: 'Recently Updated',
+        name: 'Name',
+        roleLevel: 'Role Level',
+      },
+    },
     nav: {
       overview: 'Overview',
       vault: 'Edgerunner Vault',

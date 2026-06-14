@@ -2,6 +2,18 @@ import { useState, type ReactNode } from 'react';
 import { BookOpen, Library, ScrollText, Users } from 'lucide-react';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useCpStore } from '../../store/cpStore';
+// AI-LANDMARK: CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1
+import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
+import { deriveVaultSummaries, type ActorVaultAdapter } from '../../lib/platform/actorVault';
+import type { CpCharacter } from '../../lib/cp-types';
+import {
+  buildCpActorSummary,
+  buildCpVaultAdapterStrings,
+  buildCpVaultStats,
+  buildCpSortOptions,
+  buildCpVaultShellStrings,
+  CP_VAULT_COLOR_THEME,
+} from './cpActorVaultAdapter';
 
 /**
  * CpWorkspaceShell
@@ -547,6 +559,27 @@ export function CpWorkspaceShell({
 
   const panelClass = gold.panel;
 
+  // ── CP RED Actor Vault adapter (AI-LANDMARK: CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1) ──
+  const _cpAdapterStrings = buildCpVaultAdapterStrings(t);
+  const _cpVaultAdapter: ActorVaultAdapter<CpCharacter> = {
+    getActors:        () => cpChar.name?.trim() || cpChar.lifePath?.handle?.trim() ? [cpChar] : [],
+    getActiveActorId: () => cpChar.id?.trim() || 'cp-single',
+    getSummary:       (char, index) => buildCpActorSummary(char, index, _cpAdapterStrings),
+    getStats:         (summaries) => buildCpVaultStats(summaries),
+    getAddOptions:    () => [],
+    getSortOptions:   () => buildCpSortOptions({
+      default:   t('cpWorkspace.characterLibrary.sort.default'),
+      name:      t('cpWorkspace.characterLibrary.sort.name'),
+      roleLevel: t('cpWorkspace.characterLibrary.sort.roleLevel'),
+    }),
+    getDefaultSortKey: () => 'default',
+    onEnterActor:      (_id) => { onOpenPlayTab('sheet'); },
+  };
+  const _cpVaultSummaries = deriveVaultSummaries(_cpVaultAdapter);
+  const _cpVaultStats     = _cpVaultAdapter.getStats(_cpVaultSummaries);
+  const _cpVaultSortOpts  = _cpVaultAdapter.getSortOptions();
+  const _cpVaultStrings   = buildCpVaultShellStrings(t);
+
   // ── Shared: edgerunner card with 3 action buttons ──────
   const renderEdgerunnerCard = () => (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]">
@@ -683,153 +716,24 @@ export function CpWorkspaceShell({
             </div>
           )}
 
-          {/* Edgerunner Vault — AI-LANDMARK: ACTOR_VAULT_ACTION_HIERARCHY_CLEANUP_V1
-                             AI-LANDMARK: ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1
-                             AI-LANDMARK: ACTOR_VAULT_EXISTING_ADD_SPLIT_V1
-              Actor Vault = Actor Asset Hub. Two sections: Existing Actors + Add Actor.
-              Existing Actors: Tier-D View Sheet only. Add Actor: Tier-E Standard Create + planned entries. */}
+          {/* Edgerunner Vault — AI-LANDMARK: CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1
+              Replaced bespoke vault JSX with platform ActorVaultLibraryShell.
+              Original landmarks preserved below for historical reference:
+              AI-LANDMARK: ACTOR_VAULT_ACTION_HIERARCHY_CLEANUP_V1
+              AI-LANDMARK: ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1
+              AI-LANDMARK: ACTOR_VAULT_EXISTING_ADD_SPLIT_V1 */}
           {view === 'vault' && (
-            <div className="flex flex-col gap-6">
-
-              {/* ── 已有角色 / Existing Actors ── */}
-              <section className={panelClass}>
-                <div className="mb-4">
-                  <h2 className={`text-xl font-bold ${gold.accentStrong}`}>{t('multiWorkspace.actorVault.existingActors')}</h2>
-                  <p className="mt-0.5 text-xs opacity-55">{t('multiWorkspace.actorVault.singleActorLimitNote')}</p>
-                </div>
-
-                {hasCurrentCharacter ? (
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]">
-                    <div className={`${gold.card} p-5`}>
-                      <div className={`text-xs font-bold uppercase tracking-wider ${gold.accent}`}>
-                        {t('multiWorkspace.cp.entry.current')}
-                      </div>
-                      <h3 className={`mt-2 text-2xl font-black tracking-widest ${gold.accentStrong}`}>
-                        {displayName || t('multiWorkspace.cp.entry.unnamed')}
-                      </h3>
-                      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                        <div className="border border-white/10 bg-black/10 p-3">
-                          <div className={`text-[10px] font-bold uppercase tracking-wider ${gold.accent}`}>{t('multiWorkspace.cp.entry.name')}</div>
-                          <div className="mt-1 break-words text-sm font-bold">{cpChar.name || '-'}</div>
-                        </div>
-                        <div className="border border-white/10 bg-black/10 p-3">
-                          <div className={`text-[10px] font-bold uppercase tracking-wider ${gold.accent}`}>{t('multiWorkspace.cp.entry.role')}</div>
-                          <div className="mt-1 break-words text-sm font-bold">{cpChar.role || '-'}</div>
-                        </div>
-                        <div className="border border-white/10 bg-black/10 p-3">
-                          <div className={`text-[10px] font-bold uppercase tracking-wider ${gold.accent}`}>{t('multiWorkspace.cp.entry.roleLevel')}</div>
-                          <div className="mt-1 break-words text-sm font-bold">{cpChar.roleLevel ?? '-'}</div>
-                        </div>
-                        <div className="border border-white/10 bg-black/10 p-3">
-                          <div className={`text-[10px] font-bold uppercase tracking-wider ${gold.accent}`}>{t('multiWorkspace.actorVault.source')}</div>
-                          <div className="mt-1 break-words text-sm font-bold">{t('multiWorkspace.actorVault.sourcePlatform')}</div>
-                        </div>
-                        <div className="border border-white/10 bg-black/10 p-3 col-span-2">
-                          <div className={`text-[10px] font-bold uppercase tracking-wider ${gold.accent}`}>{t('multiWorkspace.actorVault.campaign')}</div>
-                          <div className="mt-1 break-words text-sm font-bold">{t('multiWorkspace.actorVault.campaignNone')}</div>
-                        </div>
-                      </div>
-                    </div>
-                    {/* Tier-D object-level CTA: View Sheet only. See ACTOR_VAULT_EXISTING_ADD_SPLIT_V1. */}
-                    <div className="flex flex-col gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onOpenPlayTab('sheet')}
-                        className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${gold.secondary}`}
-                      >
-                        {t('multiWorkspace.actions.viewCharacterSheet')}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className={`rounded-lg border ${gold.planned} p-8 text-center`}>
-                    <h3 className={`text-xl font-bold ${gold.accentStrong}`}>{t('multiWorkspace.actorVault.emptyTitle')}</h3>
-                    <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed opacity-75">{t('multiWorkspace.actorVault.emptyNote')}</p>
-                  </div>
-                )}
-              </section>
-
-              {/* ── 添加角色 / Add Actor ── */}
-              <section className={panelClass}>
-                <div className="mb-4">
-                  <h2 className={`text-xl font-bold ${gold.accentStrong}`}>{t('multiWorkspace.actorVault.addActor')}</h2>
-                </div>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {[
-                    {
-                      labelKey: 'multiWorkspace.creation.standard',
-                      noteKey: 'multiWorkspace.cp.creation.standardNote',
-                      planned: false,
-                      onClick: () => onOpenPlayTab('creator'),
-                    },
-                    {
-                      labelKey: 'multiWorkspace.creation.quick',
-                      noteKey: 'multiWorkspace.cp.creation.quickNote',
-                      planned: true,
-                      onClick: () => setPlannedSlotLabelKey('multiWorkspace.creation.quick'),
-                    },
-                    {
-                      labelKey: 'multiWorkspace.creation.localImportCharacter',
-                      noteKey: 'multiWorkspace.cp.creation.localImportNote',
-                      planned: true,
-                      onClick: () => setPlannedSlotLabelKey('multiWorkspace.creation.localImportCharacter'),
-                    },
-                    {
-                      labelKey: 'multiWorkspace.creation.workshop',
-                      noteKey: 'multiWorkspace.cp.creation.workshopNote',
-                      planned: true,
-                      onClick: () => setPlannedSlotLabelKey('multiWorkspace.creation.workshop'),
-                    },
-                  ].map((card) => (
-                    <button
-                      key={card.labelKey}
-                      type="button"
-                      onClick={card.onClick}
-                      className={`min-h-28 rounded-lg border p-4 text-left transition hover:-translate-y-0.5 ${
-                        card.planned
-                          ? `border-[#d8b954]/25 bg-black/10 ${gold.cardHover}`
-                          : 'border-[#f5c518] bg-[#f5c518]/10 hover:bg-[#f5c518]/20'
-                      }`}
-                    >
-                      <span className="flex items-start justify-between gap-3">
-                        <span className={`font-bold ${gold.accentStrong}`}>{t(card.labelKey)}</span>
-                        {card.planned && (
-                          <span className={`shrink-0 border px-2 py-0.5 text-[10px] uppercase tracking-wider ${gold.badgePlanned}`}>
-                            {t('multiWorkspace.status.planned')}
-                          </span>
-                        )}
-                      </span>
-                      <span className="mt-3 block text-xs leading-relaxed opacity-75">{t(card.noteKey)}</span>
-                    </button>
-                  ))}
-                </div>
-                {plannedSlotLabelKey && (
-                  <div className={`mt-4 border ${gold.planned} p-4`}>
-                    <div className={`text-xs font-bold uppercase tracking-wider ${gold.accent} opacity-70`}>
-                      {t('multiWorkspace.status.planned')}
-                    </div>
-                    <h3 className={`mt-2 font-bold ${gold.accentStrong}`}>{t(plannedSlotLabelKey)}</h3>
-                    <p className="mt-2 text-sm opacity-75">{t('multiWorkspace.planned.message')}</p>
-                  </div>
-                )}
-                {hasCurrentCharacter && (
-                  <p className="mt-4 text-[9px] opacity-40">{t('multiWorkspace.singleActor.edgerunnerNote')}</p>
-                )}
-                <p className={`mt-3 border-t border-white/10 pt-3 text-[10px] opacity-40`}>
-                  {t('multiWorkspace.actorVault.campaignTeaser')}
-                </p>
-              </section>
-
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => onViewChange('dashboard')}
-                  className="text-[10px] opacity-45 underline hover:opacity-65"
-                >
-                  {t('navigation.systemInfo')}
-                </button>
-              </div>
-            </div>
+            <ActorVaultLibraryShell
+              summaries={_cpVaultSummaries}
+              stats={_cpVaultStats}
+              sortOptions={_cpVaultSortOpts}
+              defaultSortKey="default"
+              onEnterActor={_cpVaultAdapter.onEnterActor}
+              onRequestAdd={() => onViewChange('createMethod')}
+              strings={_cpVaultStrings}
+              colorTheme={CP_VAULT_COLOR_THEME}
+              panelClassName={panelClass}
+            />
           )}
 
           {/* Creation Method */}

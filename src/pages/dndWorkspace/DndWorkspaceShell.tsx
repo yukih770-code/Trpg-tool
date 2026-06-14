@@ -9,6 +9,17 @@ import {
 } from '../../data/dnd2024/characterOptionsIndex';
 import { DND_SPELL_INDEX_COUNTS } from '../../data/dnd2024/spellIndex';
 import { useCharacterStore } from '../../store/characterStore';
+import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
+import {
+  buildDndActorSummary,
+  buildDndVaultStats,
+  buildDndSortOptions,
+  buildDndVaultShellStrings,
+  buildDndVaultAdapterStrings,
+  DND_VAULT_COLOR_THEME,
+} from './dndActorVaultAdapter';
+import { deriveVaultSummaries } from '../../lib/platform/actorVault';
+import type { ActorVaultAdapter } from '../../lib/platform/actorVault';
 
 /**
  * DndWorkspaceShell
@@ -31,6 +42,8 @@ import { useCharacterStore } from '../../store/characterStore';
  * builder / sheet / runtime are Actor-context flows — not top-nav peers.
  */
 
+// AI-LANDMARK: PLATFORM_ACTOR_VAULT_LIBRARY_FRAMEWORK_EXTRACTION_V1
+// 'characterLibrary' view removed — library mode is now managed internally by ActorVaultLibraryShell.
 export type DndWorkspaceView = 'dashboard' | 'characters' | 'create' | 'compendium' | 'sources' | 'play';
 export type DndPlayTab = 'creator' | 'sheet' | 'gameplay';
 
@@ -46,6 +59,10 @@ const REPORT = DND_CHARACTER_OPTIONS_COMPLETION_REPORT;
 export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children }: DndWorkspaceShellProps) {
   const { t } = createTranslator(readStoredLocale());
   const dndChar = useCharacterStore((state) => state.character);
+  const dndCharacters = useCharacterStore((state) => state.characters);
+  const dndActiveCharacterId = useCharacterStore((state) => state.activeCharacterId);
+  const setDndActiveCharacterId = useCharacterStore((state) => state.setActiveCharacterId);
+  const resetDndCreator = useCharacterStore((state) => state.resetCreator);
   const characterName = (dndChar as { name?: string }).name?.trim();
   const hasCurrentCharacter = Boolean(
     characterName ||
@@ -55,6 +72,31 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     dndChar.isCompleted,
   );
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
+
+  // AI-LANDMARK: PLATFORM_ACTOR_VAULT_LIBRARY_FRAMEWORK_EXTRACTION_V1
+  // DND Actor Vault adapter: maps CharacterData to platform ActorVaultSummary.
+  // Search / filter / sort state is now owned by ActorVaultLibraryShell.
+  const _adapterStrings = buildDndVaultAdapterStrings(t);
+  const _dndVaultAdapter: ActorVaultAdapter<typeof dndCharacters[number]> = {
+    getActors: () =>
+      // For the active character always use the live compat field (up-to-date with in-session mutations).
+      dndCharacters.map(c => (c.id === dndActiveCharacterId ? dndChar : c)),
+    getActiveActorId: () => dndActiveCharacterId,
+    getSummary: (char, index) => buildDndActorSummary(char, index, dndActiveCharacterId, _adapterStrings),
+    getStats: (summaries) => buildDndVaultStats(summaries),
+    getAddOptions: () => [],
+    getSortOptions: () => buildDndSortOptions({
+      default: t('dndWorkspace.characterLibrary.sort.default'),
+      name:    t('dndWorkspace.characterLibrary.sort.name'),
+      level:   t('dndWorkspace.characterLibrary.sort.level'),
+    }),
+    getDefaultSortKey: () => 'default',
+    onEnterActor: (id) => { setDndActiveCharacterId(id); onOpenPlayTab('sheet'); },
+  };
+  const _vaultSummaries = deriveVaultSummaries(_dndVaultAdapter);
+  const _vaultStats     = _dndVaultAdapter.getStats(_vaultSummaries);
+  const _vaultSortOpts  = _dndVaultAdapter.getSortOptions();
+  const _vaultStrings   = buildDndVaultShellStrings(t);
 
   // AI-LANDMARK: DND_WORKSPACE_CONTRACT_ALIGNMENT_V1
   // Top nav = system-level Sections only (Contract §5 / PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT_V1).
@@ -139,7 +181,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   // AI-LANDMARK: DND_CHARACTER_VAULT_CREATION_METHOD_ENTRY
   // Creation now enters through a method picker; only Standard Creation opens the existing Builder.
   const creationMethodCards: { labelKey: string; noteKey: string; planned?: boolean; onClick: () => void }[] = [
-    { labelKey: 'dndWorkspace.creation.standard', noteKey: 'dndWorkspace.creation.standardNote', onClick: () => onOpenPlayTab('creator') },
+    { labelKey: 'dndWorkspace.creation.standard', noteKey: 'dndWorkspace.creation.standardNote', onClick: () => { resetDndCreator(); onOpenPlayTab('creator'); } },
     { labelKey: 'dndWorkspace.creation.quick', noteKey: 'dndWorkspace.creation.quickNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.quick') },
     { labelKey: 'dndWorkspace.creation.localImport', noteKey: 'dndWorkspace.creation.localImportNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.localImport') },
     { labelKey: 'dndWorkspace.creation.workshop', noteKey: 'dndWorkspace.creation.workshopNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.workshop') },
@@ -305,131 +347,23 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
             </section>
           )}
 
-          {/* AI-LANDMARK: ACTOR_VAULT_RESPONSIBILITY_CLEANUP_HIDE_RUNTIME_CTA_V1
-              AI-LANDMARK: ACTOR_VAULT_ACTION_HIERARCHY_CLEANUP_V1
-              AI-LANDMARK: ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1
-              AI-LANDMARK: ACTOR_VAULT_EXISTING_ADD_SPLIT_V1
-              Actor Vault = Actor Asset Hub. Two sections: Existing Actors + Add Actor.
-              Single-actor mode: no multi-actor store. Existing = current char. Add = creation/import shells.
-              Existing Actors: Tier-D View Sheet only. No Create/Edit/Runtime in actor card.
-              Add Actor: Tier-E Standard Create (→ Builder) + planned quick/import entries. */}
+          {/* AI-LANDMARK: PLATFORM_ACTOR_VAULT_LIBRARY_FRAMEWORK_EXTRACTION_V1
+              Actor Vault (home + existing library) now rendered by the platform shell.
+              DND-specific fields are mapped by dndActorVaultAdapter.ts.
+              'characterLibrary' was removed from DndWorkspaceView — the shell manages
+              its own 'home'/'existing' mode internally. */}
           {view === 'characters' && (
-            <div className="flex flex-col gap-6">
-
-              {/* ── 已有角色 / Existing Actors ── */}
-              <section className={panelClass}>
-                <div className="mb-4">
-                  <h2 className="text-xl font-bold text-[#58180d]">{t('multiWorkspace.actorVault.existingActors')}</h2>
-                  <p className="mt-0.5 text-xs text-[#58180d]/55">{t('multiWorkspace.actorVault.singleActorLimitNote')}</p>
-                </div>
-
-                {hasCurrentCharacter ? (
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
-                    <div className="border border-[#58180d]/20 bg-white/55 p-5">
-                      <div className="text-xs uppercase tracking-wider text-[#58180d]/70">{t('dndWorkspace.characters.current')}</div>
-                      <h3 className="mt-2 text-2xl font-bold text-[#2c1810]">{characterName || t('dndWorkspace.characters.unnamed')}</h3>
-                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.level')}</div>
-                          <div className="font-bold">{dndChar.level || 1}</div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.class')}</div>
-                          <div className="font-bold">{dndChar.jobClass || '-'}</div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.species')}</div>
-                          <div className="font-bold">{dndChar.race || '-'}</div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.background')}</div>
-                          <div className="font-bold">{dndChar.background || '-'}</div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('multiWorkspace.actorVault.source')}</div>
-                          <div className="font-bold">{t('multiWorkspace.actorVault.sourcePlatform')}</div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('multiWorkspace.actorVault.campaign')}</div>
-                          <div className="font-bold">{t('multiWorkspace.actorVault.campaignNone')}</div>
-                        </div>
-                      </div>
-                    </div>
-                    {/* Tier-D object-level CTA: View Sheet only. See ACTOR_VAULT_EXISTING_ADD_SPLIT_V1. */}
-                    <div className="flex flex-col gap-2 lg:w-44">
-                      <button
-                        type="button"
-                        onClick={() => onOpenPlayTab('sheet')}
-                        className="border border-[#58180d]/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#58180d] hover:bg-[#58180d]/10"
-                      >
-                        {t('dndWorkspace.actions.viewSheet')}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="border border-dashed border-[#58180d]/30 bg-white/45 p-8 text-center">
-                    <h3 className="text-xl font-bold text-[#58180d]">{t('multiWorkspace.actorVault.emptyTitle')}</h3>
-                    <p className="mx-auto mt-2 max-w-xl text-sm text-[#58180d]/70">{t('multiWorkspace.actorVault.emptyNote')}</p>
-                  </div>
-                )}
-              </section>
-
-              {/* ── 添加角色 / Add Actor ── */}
-              <section className={panelClass}>
-                <div className="mb-4">
-                  <h2 className="text-xl font-bold text-[#58180d]">{t('multiWorkspace.actorVault.addActor')}</h2>
-                </div>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {creationMethodCards.map((card) => (
-                    <button
-                      key={card.labelKey}
-                      type="button"
-                      onClick={card.onClick}
-                      className={`min-h-28 border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-sm ${
-                        card.planned
-                          ? 'border-[#58180d]/25 bg-white/30 hover:border-[#58180d]/45'
-                          : 'border-[#58180d] bg-[#58180d]/5 hover:bg-[#58180d]/10'
-                      }`}
-                    >
-                      <span className="flex items-start justify-between gap-3">
-                        <span className="font-bold text-[#58180d]">{t(card.labelKey)}</span>
-                        {card.planned && (
-                          <span className="shrink-0 border border-[#58180d]/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#58180d]/70">
-                            {t('multiWorkspace.status.planned')}
-                          </span>
-                        )}
-                      </span>
-                      <span className="mt-3 block text-xs font-normal leading-relaxed text-[#58180d]/65">{t(card.noteKey)}</span>
-                    </button>
-                  ))}
-                </div>
-                {plannedSlotLabelKey && (
-                  <div className="mt-4 border border-dashed border-[#58180d]/40 bg-white/40 p-4">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]/70">
-                      {t('multiWorkspace.status.planned')}
-                    </div>
-                    <h3 className="mt-2 font-bold text-[#58180d]">{t(plannedSlotLabelKey)}</h3>
-                    <p className="mt-2 text-sm text-[#58180d]/75">{t('dndWorkspace.creation.plannedMessage')}</p>
-                  </div>
-                )}
-                {hasCurrentCharacter && (
-                  <p className="mt-4 text-[9px] text-[#58180d]/40">{t('multiWorkspace.singleActor.characterNote')}</p>
-                )}
-                <p className="mt-3 border-t border-[#58180d]/10 pt-3 text-[10px] text-[#58180d]/40">
-                  {t('multiWorkspace.actorVault.campaignTeaser')}
-                </p>
-              </section>
-
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => onViewChange('dashboard')}
-                  className="text-[10px] text-[#58180d]/45 underline hover:text-[#58180d]/65"
-                >
-                  {t('navigation.systemInfo')}
-                </button>
-              </div>
-            </div>
+            <ActorVaultLibraryShell
+              summaries={_vaultSummaries}
+              stats={_vaultStats}
+              sortOptions={_vaultSortOpts}
+              defaultSortKey="default"
+              onEnterActor={(id) => _dndVaultAdapter.onEnterActor(id)}
+              onRequestAdd={() => onViewChange('create')}
+              strings={_vaultStrings}
+              colorTheme={DND_VAULT_COLOR_THEME}
+              panelClassName={panelClass}
+            />
           )}
 
           {view === 'compendium' && (

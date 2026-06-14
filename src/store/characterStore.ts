@@ -123,8 +123,32 @@ const defaultChar: CharacterData = {
   pactMagicState: undefined,
 };
 
+// AI-LANDMARK: DND_MULTI_ACTOR_STORE_MINIMAL_IMPLEMENTATION_V1
+// Sync the in-flight `character` compat field back into the `characters[]` slot
+// for `activeCharacterId`. All mutations go through `character`; this helper
+// is called at switch / reset / load checkpoints so the array stays coherent.
+function syncActiveCharacter(
+  character: CharacterData,
+  characters: CharacterData[],
+  activeCharacterId: string | null,
+): CharacterData[] {
+  if (!activeCharacterId) {
+    return characters.some(c => c.id === character.id) ? characters : [...characters, character];
+  }
+  if (characters.some(c => c.id === activeCharacterId)) {
+    return characters.map(c => (c.id === activeCharacterId ? character : c));
+  }
+  return [...characters, character];
+}
+
 interface CharacterState {
   character: CharacterData;
+  // ── Multi-actor fields (DND_MULTI_ACTOR_STORE_MINIMAL_IMPLEMENTATION_V1) ──
+  characters: CharacterData[];
+  activeCharacterId: string | null;
+  setActiveCharacterId: (id: string) => void;
+  addCharacter: (data: CharacterData) => void;
+  // ── End multi-actor fields ──
   updateField: <K extends keyof CharacterData>(key: K, value: CharacterData[K]) => void;
   toggleMod: (modName: string) => void;
   addCustomMod: (mod: CustomMod) => void;
@@ -148,10 +172,14 @@ interface CharacterState {
   loadCharacter: (data: CharacterData) => void;
 }
 
+const _initialChar: CharacterData = { ...defaultChar, id: crypto.randomUUID?.() || Date.now().toString() };
+
 export const useCharacterStore = create<CharacterState>()(
   persist(
     (set, get) => ({
-      character: { ...defaultChar, id: crypto.randomUUID?.() || Date.now().toString() },
+      character: _initialChar,
+      characters: [_initialChar],
+      activeCharacterId: _initialChar.id,
 
       updateField: (key, value) => set((state) => ({
         character: { ...state.character, [key]: value }
@@ -573,9 +601,34 @@ export const useCharacterStore = create<CharacterState>()(
         };
       }),
 
-      resetCreator: () => set({ character: { ...defaultChar, id: crypto.randomUUID?.() || Date.now().toString() } }),
+      setActiveCharacterId: (id) => set((state) => {
+        const updatedList = syncActiveCharacter(state.character, state.characters, state.activeCharacterId);
+        const target = updatedList.find(c => c.id === id);
+        if (!target) return { characters: updatedList };
+        return { character: target, characters: updatedList, activeCharacterId: id };
+      }),
 
-      loadCharacter: (data) => set({ character: migrateCharacter(data) })
+      addCharacter: (data) => set((state) => {
+        const withId: CharacterData = data.id ? data : { ...data, id: crypto.randomUUID?.() || Date.now().toString() };
+        const migrated = migrateCharacter(withId);
+        const updatedList = syncActiveCharacter(state.character, state.characters, state.activeCharacterId);
+        return { character: migrated, characters: [...updatedList, migrated], activeCharacterId: migrated.id };
+      }),
+
+      resetCreator: () => set((state) => {
+        const updatedList = syncActiveCharacter(state.character, state.characters, state.activeCharacterId);
+        const newChar: CharacterData = { ...defaultChar, id: crypto.randomUUID?.() || Date.now().toString() };
+        return { character: newChar, characters: [...updatedList, newChar], activeCharacterId: newChar.id };
+      }),
+
+      loadCharacter: (data) => set((state) => {
+        const migrated = migrateCharacter(data);
+        const updatedList = syncActiveCharacter(state.character, state.characters, state.activeCharacterId);
+        const newList = updatedList.some(c => c.id === migrated.id)
+          ? updatedList.map(c => (c.id === migrated.id ? migrated : c))
+          : [...updatedList, migrated];
+        return { character: migrated, characters: newList, activeCharacterId: migrated.id };
+      }),
 
     }),
     {
@@ -583,12 +636,51 @@ export const useCharacterStore = create<CharacterState>()(
       // On rehydration, run every saved character through the migration
       // pipeline so localStorage data from older schema versions is safely
       // upgraded before it reaches any component.
+      //
+      // DND_MULTI_ACTOR_STORE_MINIMAL_IMPLEMENTATION_V1: handles both shapes:
+      //   Legacy  { character: T }                    → wraps to characters[0]
+      //   Multi   { character: T, characters: T[], activeCharacterId: string }
+      // The `character` compat field is the authoritative copy of the active
+      // character (all in-session mutations go through it), so we substitute it
+      // back into the characters[] array at the active slot on rehydration.
       merge: (persisted: unknown, current) => {
-        const p = persisted as Partial<{ character: unknown }> | null;
+        const p = persisted as Partial<{
+          character: unknown;
+          characters: unknown[];
+          activeCharacterId: string | null;
+        }> | null;
         if (!p || typeof p !== 'object') return current;
+
+        const legacyChar = migrateCharacter(p.character ?? {});
+
+        // Legacy save: no characters array → wrap the single character
+        if (!Array.isArray(p.characters) || p.characters.length === 0) {
+          return {
+            ...current,
+            character: legacyChar,
+            characters: [legacyChar],
+            activeCharacterId: legacyChar.id,
+          };
+        }
+
+        // Multi-actor save: migrate every character in the array
+        let migratedList = (p.characters as unknown[]).map(c => migrateCharacter(c));
+        // Substitute the `character` compat field back into its array slot so
+        // any in-session mutations that didn't sync to the array aren't lost.
+        migratedList = migratedList.map(c => (c.id === legacyChar.id ? legacyChar : c));
+
+        const savedActiveId = typeof p.activeCharacterId === 'string' ? p.activeCharacterId : null;
+        const activeChar =
+          migratedList.find(c => c.id === savedActiveId) ??
+          migratedList.find(c => c.id === legacyChar.id) ??
+          migratedList[0] ??
+          legacyChar;
+
         return {
           ...current,
-          character: migrateCharacter(p.character ?? {}),
+          character: activeChar,
+          characters: migratedList,
+          activeCharacterId: activeChar.id,
         };
       },
     }

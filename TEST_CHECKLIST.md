@@ -20,6 +20,21 @@ Both must pass before committing.
 
 ---
 
+## Architecture Contract Checks
+
+- [ ] `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md` contains `AI-LANDMARK: SYSTEM_APP_SHELL_THEME_LAYERING_PRINCIPLE_V1`.
+- [ ] Game System Workspace Pattern distinguishes Platform Shell, System App Shell, and System Theme / Adapter layers.
+- [ ] New system onboarding tiers A / B / C are documented.
+- [ ] DND is documented as a reference implementation, not a copy template for COC / CP RED.
+- [ ] This docs-only principle update does not modify `src/`, store, schema, runtime, rule data, dice, React Router, or URL routing.
+- [ ] Platform contract distinguishes Actor Vault, Campaign Vault, Source Settings, Builder Flow, Session Runtime / VTT, and Workshop responsibilities.
+- [ ] Source Settings are documented as system-level settings consumed by Builder, not as scattered per-step Builder controls.
+- [ ] Workshop item classes include Playable Asset, Table Asset, Creative Work, and Creator Space, with usageType reserved as principle only.
+- [ ] UI Action Hierarchy contract documents Developer Scaffold Mode and forbids planned/scaffold/mock UI from pretending real upload, networking, map sync, or multiplayer Session success.
+- [ ] This scaffold-pattern update does not implement Campaign Vault UI, Source Manager, Workshop, VTT, backend, browser History API, or any `src/` behavior.
+
+---
+
 ## 2. Page Smoke Tests (Manual)
 
 Open the app in the browser and verify each page loads without crashing.
@@ -579,6 +594,123 @@ After modifying one system, verify the other two are unaffected:
 - [ ] Section 9 (Risk boundaries): 10 risks listed (localStorage migration / import-export compat / actor switching / runtime reference / inventory / spell state / undo / campaign binding / actor count limit / active pointer call sites)
 - [ ] `src/` **not touched** by this task
 - [ ] `PROJECT_STATUS.md` row added for Multi-Actor Store Architecture Review v1
+- [ ] `docs/ai/SYMBOL_MAP.md` section added
+- [ ] `docs/ai/TASK_ARCHIVE.md` entry appended
+
+---
+
+## 7c. DND Multi-Actor Store + Actor Vault Library v1 Check
+
+- [ ] `DndWorkspaceView` type includes `'characterLibrary'`
+- [ ] `'characters'` view shows vault homepage with two entry cards only (NO character list)
+- [ ] 已有角色 entry card shows stats: total / complete / incomplete / recent update (—)
+- [ ] 添加角色 entry card shows note text + navigates to `'create'` view on click
+- [ ] `'characterLibrary'` view renders: back button, title, search bar, filter tabs, sort dropdown, character cards
+- [ ] Search filters by name / class / race / background (local, case-insensitive)
+- [ ] Filter tabs: 全部, 资料完整, 未完成 — all functional
+- [ ] Sort: 名称 and 等级 sort correctly; 最近更新 = insertion order (labeled as planned-accurate)
+- [ ] Character cards show: name, level, class (+subclass if present), race, background, source, creator, campaign, completion badge, active badge
+- [ ] "进入" button per card: calls `setActiveCharacterId` then `onOpenPlayTab('sheet')`
+- [ ] Active character card uses `dndChar` compat field (always up-to-date)
+- [ ] Nav "角色库" highlights when `view === 'characterLibrary'`
+- [ ] `multiWorkspace.actorVault.addActorNote` + `totalCount` + `completeCount` + `incompleteCount` + `recentUpdate` added to zh-CN.ts + en.ts
+- [ ] `dndWorkspace.characterLibrary.*` section added to zh-CN.ts + en.ts (title, backToVault, searchPlaceholder, noResults, statusComplete, statusIncomplete, filter.*, sort.*)
+- [ ] COC and CP RED not touched
+- [ ] No dice/runtime/routing/Campaign/Workshop/Plugin change
+- [ ] `PROJECT_STATUS.md` row added
+- [ ] `docs/ai/SYMBOL_MAP.md` section added
+- [ ] `docs/ai/TASK_ARCHIVE.md` entry appended
+
+---
+
+## 8a. Platform Actor Vault Library Framework Extraction v1 Check
+
+- [ ] `src/lib/platform/actorVault.ts` exists and contains `AI-LANDMARK: PLATFORM_ACTOR_VAULT_LIBRARY_FRAMEWORK_EXTRACTION_V1`
+- [ ] `src/components/platform/ActorVaultLibraryShell.tsx` exists and contains `AI-LANDMARK: PLATFORM_ACTOR_VAULT_LIBRARY_FRAMEWORK_EXTRACTION_V1`
+- [ ] `src/pages/dndWorkspace/dndActorVaultAdapter.ts` exists
+- [ ] `ActorVaultSummary`, `ActorVaultStats`, `ActorVaultAdapter`, `ActorVaultColorTheme`, `ActorVaultShellStrings` types exported from `src/lib/platform/actorVault.ts`
+- [ ] `ActorVaultColorTheme` type includes `hoverBorder`, `focusBorder`, `hoverText` fields
+- [ ] `DndWorkspaceView` type no longer contains `'characterLibrary'` (shell manages home/existing internally)
+- [ ] DND 角色库 nav item (`view === 'characters'`) renders `<ActorVaultLibraryShell>` — not the old inline JSX
+- [ ] Shell home view shows two entry cards: 已有角色 (stats total/complete/incomplete/recent) + 添加角色 (note text)
+- [ ] Clicking 已有角色 card → shell navigates to existing list (internal mode change, no external view change)
+- [ ] Clicking 添加角色 card → shell calls `onRequestAdd()` → DndWorkspaceShell navigates to `'create'` view
+- [ ] Existing list view shows: back button, search input, sort select, filter tabs (全部/资料完整/未完成), character cards
+- [ ] Search covers displayName + all detailFields values + all metaRows values
+- [ ] Filter tabs functional; sort 名称/等级/最近更新 all sort correctly
+- [ ] Character card shows: name, active badge, status badge, detailFields (level/class/species/background), metaRows (source/creator/campaign), 进入 CTA
+- [ ] 进入 CTA calls `setActiveCharacterId(id)` then `onOpenPlayTab('sheet')` (unchanged behaviour)
+- [ ] Active character is substituted with live `dndChar` compat field (always up-to-date)
+- [ ] `DND_VAULT_COLOR_THEME` in `dndActorVaultAdapter.ts` has `hoverBorder`, `focusBorder`, `hoverText` as literal Tailwind class strings
+- [ ] No `.replace()` computed class strings in `ActorVaultLibraryShell.tsx`
+- [ ] COC workspace untouched; CP RED workspace untouched
+- [ ] `npx tsc --noEmit` passes with zero errors
+- [ ] `npm run build` completes without errors
+- [ ] No dice/runtime/routing/Campaign/Workshop/Plugin/import-export/save format/unified registry changes
+
+---
+
+## 8c. CP RED Actor Vault Library Adoption v1 Check
+
+- [ ] `src/pages/cpWorkspace/cpActorVaultAdapter.ts` exists and contains `AI-LANDMARK: CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1`
+- [ ] `CP_VAULT_COLOR_THEME` has `bgInput`, `bgCard`, `hoverBorder`, `focusBorder`, `hoverText` all as Tailwind literal strings (dark gold palette)
+- [ ] CP RED 角色库 (`view === 'vault'`) renders `<ActorVaultLibraryShell>` using CP RED adapter
+- [ ] CP RED vault home view: 已有角色 card shows total/complete/incomplete stats; 添加角色 card present
+- [ ] CP RED 已有角色 list: search covers 姓名/代号/Role; 全部/资料完整/未完成 filter tabs; 最近更新/名称/角色等级 sort
+- [ ] CP RED character card shows: Role, 角色能力等级, HP, Humanity, source/creator/campaign meta rows, 进入 CTA
+- [ ] `displayName` = street handle (`lifePath.handle`) preferred over real name
+- [ ] Clicking 进入 → `onOpenPlayTab('sheet')` opens the CP RED sheet
+- [ ] Clicking 添加角色 → `onViewChange('createMethod')` opens CP RED creation method view
+- [ ] `createMethod` view (with 4 option cards + plannedSlotLabelKey) still works correctly
+- [ ] CP RED store / save format / rule logic / dice / equipment / 黑市 / netrunning: not modified
+- [ ] DND and COC experience not regressed
+- [ ] `cpWorkspace.characterLibrary.*` i18n keys present in both zh-CN.ts and en.ts (including sort.roleLevel)
+- [ ] `npx tsc --noEmit` passes with zero errors
+- [ ] `npm run build` completes without errors
+
+---
+
+## 8b. COC Actor Vault Library Adoption v1 Check
+
+- [ ] `src/pages/cocWorkspace/cocActorVaultAdapter.ts` exists and contains `AI-LANDMARK: COC_ACTOR_VAULT_LIBRARY_ADOPTION_V1`
+- [ ] `COC_VAULT_COLOR_THEME` has `bgInput`, `hoverBorder`, `focusBorder`, `hoverText` all as Tailwind literal strings
+- [ ] `ActorVaultColorTheme` type now includes `bgInput: string`
+- [ ] `DND_VAULT_COLOR_THEME` in `dndActorVaultAdapter.ts` now includes `bgInput: 'bg-white/80'`
+- [ ] `ActorVaultLibraryShell.tsx` uses `t.bgCard` for home entry cards (no `bg-white/60`)
+- [ ] `ActorVaultLibraryShell.tsx` uses `t.bgInput` for search/sort inputs (no `bg-white/80`)
+- [ ] COC 角色库 (`view === 'vault'`) renders `<ActorVaultLibraryShell>` using COC adapter
+- [ ] COC vault home view: 已有角色 card shows total/complete/incomplete stats; 添加角色 card present
+- [ ] COC 已有角色 list: search covers 姓名/职业/居住地; 全部/资料完整/未完成 filter tabs; 最近更新/名称 sort
+- [ ] COC character card shows: 姓名, 职业, 年龄, 居住地, source/creator/campaign meta rows, 进入 CTA
+- [ ] Clicking 进入 → `onViewChange('sheet')` opens the COC sheet
+- [ ] Clicking 添加角色 → `onViewChange('createMethod')` opens COC creation method
+- [ ] COC store / save format / rule logic / dice / COC Pushed Roll: not modified
+- [ ] DND experience not regressed (DND vault still uses DndActorVaultAdapter, not COC)
+- [ ] CP RED workspace not modified
+- [ ] `cocWorkspace.characterLibrary.*` i18n keys present in both zh-CN.ts and en.ts
+- [ ] `npx tsc --noEmit` passes with zero errors
+- [ ] `npm run build` completes without errors
+
+---
+
+## 7b. DND Multi-Actor Store Minimal Implementation v1 Check
+
+- [ ] `src/store/characterStore.ts` contains `AI-LANDMARK: DND_MULTI_ACTOR_STORE_MINIMAL_IMPLEMENTATION_V1`
+- [ ] `CharacterState` interface has `characters: CharacterData[]`, `activeCharacterId: string | null`, `setActiveCharacterId`, `addCharacter`
+- [ ] `_initialChar` extracted as module-level constant; initial state: `characters: [_initialChar]`, `activeCharacterId: _initialChar.id`
+- [ ] `syncActiveCharacter` helper present and used in `setActiveCharacterId`, `addCharacter`, `resetCreator`, `loadCharacter`
+- [ ] `merge` callback: legacy `{character}` → wraps to `characters[0]`; multi-actor → migrates all + substitutes compat field for active slot
+- [ ] `resetCreator` syncs current character to array before creating new blank; new blank is added to array + set as active
+- [ ] `loadCharacter` syncs current character to array before upsert + activation
+- [ ] DND Actor Vault (`view === 'characters'`) iterates `dndCharacters[]` instead of single `dndChar`
+- [ ] Each character card has a "进入" button calling `setActiveCharacterId(char.id)` then `onOpenPlayTab('sheet')`
+- [ ] Active character shows `multiWorkspace.actorVault.activeIndicator` badge
+- [ ] Standard Creation (all creation method cards) calls `resetDndCreator()` before `onOpenPlayTab('creator')`
+- [ ] `multiWorkspace.actorVault.multiActorNote` added to zh-CN.ts + en.ts
+- [ ] `multiWorkspace.actorVault.activeIndicator` added to zh-CN.ts + en.ts
+- [ ] COC and CP RED files untouched (store, shell, i18n for those systems)
+- [ ] No dice/runtime/routing/import/export/Campaign/Workshop/Plugin changes
+- [ ] `PROJECT_STATUS.md` row added
 - [ ] `docs/ai/SYMBOL_MAP.md` section added
 - [ ] `docs/ai/TASK_ARCHIVE.md` entry appended
 

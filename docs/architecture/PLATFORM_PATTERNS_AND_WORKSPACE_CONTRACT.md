@@ -2,7 +2,7 @@
 
 <!-- AI-LANDMARK: PLATFORM_PATTERNS_WORKSPACE_CONTRACT_V1 -->
 
-Last updated: 2026-06-13
+Last updated: 2026-06-14
 
 ## Purpose
 
@@ -43,6 +43,97 @@ Each Pattern lists: responsibility · non-responsibility · platform-unified · 
 - **V1 minimum:** Each built-in system exposes the same named Sections; missing ones are marked `planned` / `absent`. Implemented today as `DndWorkspaceShell`, `CocWorkspaceShell`, `CpWorkspaceShell`.
 - **V1 not-do:** Per-system bespoke pages outside the contract; pushing Actor/Session content into the workspace.
 - **High-risk boundary:** Replacing the hardcoded `system === 'D&D' | 'CoC' | 'CP'` branches with registry-driven dispatch is a P2+ task — not part of this baseline.
+
+#### System App Shell 与系统主题分层
+
+<!-- AI-LANDMARK: SYSTEM_APP_SHELL_THEME_LAYERING_PRINCIPLE_V1 -->
+
+规则系统进入后应像独立的小程序 / System App，有自己的系统主题和操作空间。
+
+平台首页负责统一管理所有规则系统；进入某个规则系统后，启用该系统自己的 System App Space。
+
+视觉可以独立，但底层框架不能每个系统重做。
+
+平台分三层：
+
+```text
+Platform Shell:
+统一首页、规则系统库、系统入口、全局设置、全局导航语义。
+
+System App Shell:
+系统首页 / 工作区、角色库、规则库、数据状态、创建器入口、角色卡入口，未来包括战役 / 模组 / Session。
+
+System Theme / Adapter:
+系统主题色、背景风格、卡片风格、字段映射、角色摘要、规则库数据、系统专属页面。
+```
+
+核心原则：
+
+```text
+平台提供默认框架。
+系统提供主题和数据适配。
+高级系统可以自定义页面。
+```
+
+新系统接入分三档：
+
+- **A 档：默认模板。** 作者只提供系统名称、图标、主题色、角色字段、规则数据、角色摘要映射、创建器字段配置。平台自动生成系统首页、角色库、添加角色、已有角色仓库、搜索 / 筛选基础能力、规则库、数据状态页。
+- **B 档：主题模板。** 作者可以定义背景、卡片、按钮、字体、系统首页视觉和氛围装饰，但底层仍复用平台 Actor Vault、Builder、Sheet、Rules Compendium、Source Status。
+- **C 档：完全自定义 System App。** 高级作者可以自定义系统首页、角色库、角色卡、创建器、规则库和特殊运行时工具，但必须遵守平台接口和页面职责契约。
+
+DND 是 reference implementation，不是复制模板。后续不应把 DND 页面直接复制到 COC / CP RED，而应把 DND 已验证结构沉淀为平台框架，再通过各系统 adapter 接入。
+
+系统视觉可以不同，但底层结构保持一致：角色库、规则库、数据状态、创建器、角色卡，未来包括战役 / 模组 / Session。
+
+#### Campaign Vault / Source Settings / Workshop Scaffold
+
+<!-- AI-LANDMARK: CAMPAIGN_SOURCE_WORKSHOP_SCAFFOLD_PATTERN_V1 -->
+
+平台长期分层还必须保留以下对象边界：
+
+- **Actor Vault:** 管理角色 / 调查员 / Edgerunner / 单位 / 玩家资产。
+- **Campaign Vault:** 管理战役、房间、长期游玩空间、剧本容器、玩家成员、角色绑定、Session 入口。
+- **Source Settings:** 管理规则来源、扩展包、Legacy 内容、社区内容、自定义内容、房规开关。
+- **Builder Flow:** 创建角色时消费 Source Settings，只显示当前启用来源中的职业、物种、背景、技能、装备、法术等内容。
+- **Session Runtime / VTT:** 管理地图、聊天、投骰日志、当前场景、token、handout、音乐、战斗轮次、玩家同步。
+- **Workshop:** 管理可游玩内容、跑团素材、同人创作、音乐、小说、诗歌、画作、handout、地图、NPC、规则扩展、作者主页等。
+
+核心关系：
+
+```text
+Actor Vault 管角色。
+Campaign Vault 管战役 / 房间 / 长期游玩空间。
+Source Settings 管规则来源和扩展包。
+Builder 消费 Source Settings。
+Campaign 消费 Actor Vault。
+Session Runtime 消费 Campaign。
+Workshop 可以向 Actor Vault / Campaign Vault / Source Settings / Session Runtime 提供内容。
+```
+
+Source Settings 是系统级设置，不应该散落在每个 Builder 步骤里。
+
+- **DND:** 2024 Core、2014 Legacy、Xanathar、Tasha、Homebrew、Community Content。
+- **COC:** Core Rulebook、Investigator Handbook、scenario-specific options、house rules。
+- **CP RED:** Core rules、Black Chrome / expansion content、homebrew gear、community content。
+
+Builder 根据 Source Settings 过滤可选项。本合同只定义原则；不实现 Source Manager engine、筛选逻辑、数据结构或迁移。
+
+Campaign Vault 可以复用 Actor Vault 的仓库结构：
+
+- **Campaign Vault 首页:** 战役总数、活跃战役、已归档、最近更新。
+- **已有战役仓库:** 搜索战役名 / GM / 玩家 / 模组 / 标签；筛选活跃 / 归档 / 自建 / 导入 / 社区；战役卡片列表。
+- **战役卡片:** 战役名、GM / 创建者、玩家数、使用模组、最近 Session、状态、进入战役。
+
+Workshop 不只服务“可游玩模组”，也服务 TRPG / 桌游文化创作：
+
+| Workshop Item Type | Examples |
+|---|---|
+| Playable Asset | 冒险模组、战役包、NPC、怪物、物品、职业 / 子职业、地图、规则扩展、预设角色 |
+| Table Asset | 头像、立绘、地图素材、音乐、环境音、handout、信件、日记、线索卡、UI 主题 |
+| Creative Work | 同人画、小说、诗歌、世界观设定、战报、角色故事、角色关系图、音乐作品 |
+| Creator Space | 作者主页、系列作品、收藏、关注、评论、推荐 |
+
+Workshop Item 需要为后续数据契约预留 `usageType`：`importable` / `attachable` / `viewOnly` / `referenceOnly`。本轮只记录原则，不实现 Workshop 数据结构、订阅、上传、下载、账号、后端、插件或社区分发。
 
 ### 2.2 Actor / Player Asset Entry Pattern
 - **Responsible for:** The unified entry from Vault/Home into a specific Actor's context, and the "start playing" CTA placement.
@@ -338,3 +429,6 @@ Rules:
 | Date | Change |
 |---|---|
 | 2026-06-13 | Initial baseline — Platform Patterns & Workspace Section Contract v1 |
+| 2026-06-14 | Integrated System App Shell / System Theme layering principle near Game System Workspace Pattern; docs only, no src behavior change |
+| 2026-06-14 | Added Campaign Vault / Source Settings / Workshop Scaffold platform principles; docs only, no implementation change |
+

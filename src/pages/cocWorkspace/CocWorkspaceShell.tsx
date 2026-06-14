@@ -2,6 +2,19 @@ import { useState, type ReactNode } from 'react';
 import { BookOpen, Library, ScrollText, Users } from 'lucide-react';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useCocStore } from '../../store/cocStore';
+// AI-LANDMARK: COC_ACTOR_VAULT_LIBRARY_ADOPTION_V1
+import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
+import {
+  buildCocActorSummary,
+  buildCocVaultStats,
+  buildCocSortOptions,
+  buildCocVaultShellStrings,
+  buildCocVaultAdapterStrings,
+  COC_VAULT_COLOR_THEME,
+} from './cocActorVaultAdapter';
+import { deriveVaultSummaries } from '../../lib/platform/actorVault';
+import type { ActorVaultAdapter } from '../../lib/platform/actorVault';
+import type { CocCharacter } from '../../lib/coc-types';
 
 /**
  * CocWorkspaceShell
@@ -430,6 +443,29 @@ export function CocWorkspaceShell({
 
   const panelClass = teal.panel;
 
+  // ── Actor Vault Library (platform shell) ────────────────────────────────────
+  // AI-LANDMARK: COC_ACTOR_VAULT_LIBRARY_ADOPTION_V1
+  // V1: COC is single-actor. The store holds one CocCharacter; we wrap it as a
+  // one-element array. No store schema / save-format change is made here.
+  const _cocAdapterStrings = buildCocVaultAdapterStrings(t);
+  const _cocVaultAdapter: ActorVaultAdapter<CocCharacter> = {
+    getActors:        () => cocChar.name?.trim() ? [cocChar] : [],
+    getActiveActorId: () => cocChar.id?.trim() || 'coc-single',
+    getSummary:       (char, index) => buildCocActorSummary(char, index, _cocAdapterStrings),
+    getStats:         (summaries) => buildCocVaultStats(summaries),
+    getAddOptions:    () => [],
+    getSortOptions:   () => buildCocSortOptions({
+      default: t('cocWorkspace.characterLibrary.sort.default'),
+      name:    t('cocWorkspace.characterLibrary.sort.name'),
+    }),
+    getDefaultSortKey: () => 'default',
+    onEnterActor:      (_id) => { onViewChange('sheet'); },
+  };
+  const _cocVaultSummaries = deriveVaultSummaries(_cocVaultAdapter);
+  const _cocVaultStats     = _cocVaultAdapter.getStats(_cocVaultSummaries);
+  const _cocVaultSortOpts  = _cocVaultAdapter.getSortOptions();
+  const _cocVaultStrings   = buildCocVaultShellStrings(t);
+
   // ── Shared: investigator card with 3 action buttons ──────
   const renderInvestigatorCard = () => (
     <div className={`grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]`}>
@@ -566,151 +602,24 @@ export function CocWorkspaceShell({
             </div>
           )}
 
-          {/* Investigator Vault — AI-LANDMARK: ACTOR_VAULT_ACTION_HIERARCHY_CLEANUP_V1
-                              AI-LANDMARK: ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1
-                              AI-LANDMARK: ACTOR_VAULT_EXISTING_ADD_SPLIT_V1
-              Actor Vault = Actor Asset Hub. Two sections: Existing Actors + Add Actor.
-              Existing Actors: Tier-D View Sheet only. Add Actor: Tier-E Standard Create + planned entries. */}
+          {/* Actor Vault — AI-LANDMARK: COC_ACTOR_VAULT_LIBRARY_ADOPTION_V1
+              Replaced bespoke vault JSX with platform ActorVaultLibraryShell.
+              Previously: ACTOR_VAULT_ACTION_HIERARCHY_CLEANUP_V1 / ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1 /
+              ACTOR_VAULT_EXISTING_ADD_SPLIT_V1 — all landmark contracts still hold; now enforced by the platform shell.
+              onEnterActor opens the COC sheet. onRequestAdd navigates to createMethod.
+              V1: COC single-actor — getActors() returns [] or [cocChar]; home card shows stat 0 or 1. */}
           {view === 'vault' && (
-            <div className="flex flex-col gap-6">
-
-              {/* ── 已有角色 / Existing Actors ── */}
-              <section className={panelClass}>
-                <div className="mb-4">
-                  <h2 className={`text-xl font-bold ${teal.accentStrong}`}>{t('multiWorkspace.actorVault.existingActors')}</h2>
-                  <p className={`mt-0.5 text-xs opacity-55`}>{t('multiWorkspace.actorVault.singleActorLimitNote')}</p>
-                </div>
-
-                {hasCurrentCharacter ? (
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]">
-                    <div className={`${teal.card} p-5`}>
-                      <div className={`text-xs font-bold uppercase tracking-wider ${teal.accent}`}>
-                        {t('multiWorkspace.coc.entry.current')}
-                      </div>
-                      <h3 className="mt-2 text-2xl font-bold">{displayName || t('multiWorkspace.coc.entry.unnamed')}</h3>
-                      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                        <div className="border border-white/10 bg-black/10 p-3">
-                          <div className={`text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>{t('multiWorkspace.coc.entry.occupation')}</div>
-                          <div className="mt-1 break-words text-sm font-bold">{cocChar.occupation || '-'}</div>
-                        </div>
-                        <div className="border border-white/10 bg-black/10 p-3">
-                          <div className={`text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>{t('multiWorkspace.coc.entry.age')}</div>
-                          <div className="mt-1 break-words text-sm font-bold">{cocChar.age || '-'}</div>
-                        </div>
-                        <div className="border border-white/10 bg-black/10 p-3">
-                          <div className={`text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>{t('multiWorkspace.coc.entry.residence')}</div>
-                          <div className="mt-1 break-words text-sm font-bold">{cocChar.residence || '-'}</div>
-                        </div>
-                        <div className="border border-white/10 bg-black/10 p-3">
-                          <div className={`text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>{t('multiWorkspace.actorVault.source')}</div>
-                          <div className="mt-1 break-words text-sm font-bold">{t('multiWorkspace.actorVault.sourcePlatform')}</div>
-                        </div>
-                        <div className="border border-white/10 bg-black/10 p-3">
-                          <div className={`text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>{t('multiWorkspace.actorVault.campaign')}</div>
-                          <div className="mt-1 break-words text-sm font-bold">{t('multiWorkspace.actorVault.campaignNone')}</div>
-                        </div>
-                      </div>
-                    </div>
-                    {/* Tier-D object-level CTA: View Sheet only. See ACTOR_VAULT_EXISTING_ADD_SPLIT_V1. */}
-                    <div className="flex flex-col gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onViewChange('sheet')}
-                        className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${teal.secondary}`}
-                      >
-                        {t('multiWorkspace.actions.viewInvestigatorSheet')}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className={`rounded-lg border ${teal.planned} p-8 text-center`}>
-                    <h3 className={`text-xl font-bold ${teal.accentStrong}`}>{t('multiWorkspace.actorVault.emptyTitle')}</h3>
-                    <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed opacity-75">{t('multiWorkspace.actorVault.emptyNote')}</p>
-                  </div>
-                )}
-              </section>
-
-              {/* ── 添加角色 / Add Actor ── */}
-              <section className={panelClass}>
-                <div className="mb-4">
-                  <h2 className={`text-xl font-bold ${teal.accentStrong}`}>{t('multiWorkspace.actorVault.addActor')}</h2>
-                </div>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {[
-                    {
-                      labelKey: 'multiWorkspace.creation.standard',
-                      noteKey: 'multiWorkspace.coc.creation.standardNote',
-                      planned: false,
-                      onClick: () => onOpenPlayTab('creator'),
-                    },
-                    {
-                      labelKey: 'multiWorkspace.creation.quick',
-                      noteKey: 'multiWorkspace.coc.creation.quickNote',
-                      planned: true,
-                      onClick: () => setPlannedSlotLabelKey('multiWorkspace.creation.quick'),
-                    },
-                    {
-                      labelKey: 'multiWorkspace.creation.localImportInvestigator',
-                      noteKey: 'multiWorkspace.coc.creation.localImportNote',
-                      planned: true,
-                      onClick: () => setPlannedSlotLabelKey('multiWorkspace.creation.localImportInvestigator'),
-                    },
-                    {
-                      labelKey: 'multiWorkspace.creation.workshop',
-                      noteKey: 'multiWorkspace.coc.creation.workshopNote',
-                      planned: true,
-                      onClick: () => setPlannedSlotLabelKey('multiWorkspace.creation.workshop'),
-                    },
-                  ].map((card) => (
-                    <button
-                      key={card.labelKey}
-                      type="button"
-                      onClick={card.onClick}
-                      className={`min-h-28 rounded-lg border p-4 text-left transition hover:-translate-y-0.5 ${
-                        card.planned
-                          ? `border-[#2f7f68]/25 bg-black/10 ${teal.cardHover}`
-                          : 'border-[#2f7f68] bg-[#2f7f68]/10 hover:bg-[#2f7f68]/20'
-                      }`}
-                    >
-                      <span className="flex items-start justify-between gap-3">
-                        <span className={`font-bold ${teal.accentStrong}`}>{t(card.labelKey)}</span>
-                        {card.planned && (
-                          <span className={`shrink-0 border px-2 py-0.5 text-[10px] uppercase tracking-wider ${teal.badgePlanned}`}>
-                            {t('multiWorkspace.status.planned')}
-                          </span>
-                        )}
-                      </span>
-                      <span className="mt-3 block text-xs leading-relaxed opacity-75">{t(card.noteKey)}</span>
-                    </button>
-                  ))}
-                </div>
-                {plannedSlotLabelKey && (
-                  <div className={`mt-4 border ${teal.planned} p-4`}>
-                    <div className={`text-xs font-bold uppercase tracking-wider ${teal.accent} opacity-70`}>
-                      {t('multiWorkspace.status.planned')}
-                    </div>
-                    <h3 className={`mt-2 font-bold ${teal.accentStrong}`}>{t(plannedSlotLabelKey)}</h3>
-                    <p className="mt-2 text-sm opacity-75">{t('multiWorkspace.planned.message')}</p>
-                  </div>
-                )}
-                {hasCurrentCharacter && (
-                  <p className="mt-4 text-[9px] opacity-40">{t('multiWorkspace.singleActor.investigatorNote')}</p>
-                )}
-                <p className={`mt-3 border-t border-white/10 pt-3 text-[10px] opacity-40`}>
-                  {t('multiWorkspace.actorVault.campaignTeaser')}
-                </p>
-              </section>
-
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => onViewChange('dashboard')}
-                  className="text-[10px] opacity-45 underline hover:opacity-65"
-                >
-                  {t('navigation.systemInfo')}
-                </button>
-              </div>
-            </div>
+            <ActorVaultLibraryShell
+              summaries={_cocVaultSummaries}
+              stats={_cocVaultStats}
+              sortOptions={_cocVaultSortOpts}
+              defaultSortKey="default"
+              onEnterActor={(_id) => onViewChange('sheet')}
+              onRequestAdd={() => onViewChange('createMethod')}
+              strings={_cocVaultStrings}
+              colorTheme={COC_VAULT_COLOR_THEME}
+              panelClassName={panelClass}
+            />
           )}
 
           {/* Creation Method */}

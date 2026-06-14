@@ -239,6 +239,31 @@ Eight action tiers. Every button on every page must be classifiable into exactly
 - Must NOT compete visually with implemented core actions
 - Must NOT error on click without a visible `planned` marker
 
+#### Developer Scaffold Mode / 开发期脚手架模式
+
+<!-- AI-LANDMARK: CAMPAIGN_SOURCE_WORKSHOP_SCAFFOLD_PATTERN_V1 -->
+
+开发期可以显示未来入口和接口脚手架，但必须状态透明。
+
+Allowed labels:
+
+- `planned`
+- `scaffold`
+- `mock`
+- `disabled`
+- `interface reserved`
+- `coming later`
+
+Forbidden presentation:
+
+- 不要把未实现功能显示成已完成。
+- 不要假装上传成功。
+- 不要假装已联网。
+- 不要假装地图同步完成。
+- 不要假装多人 Session 可用。
+
+Developer Scaffold Mode 可以用于规划平台结构、验证页面职责和检查入口层级。发布期 UI 需要单独做 Release UX Cleanup，把未完成能力隐藏、降权或转为敬请期待。
+
 ---
 
 ## 3. Page Responsibility Contract
@@ -736,3 +761,4 @@ The same boundaries defined in `PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md` §1
 | Date | Change |
 |---|---|
 | 2026-06-14 | Initial baseline — UI Action Hierarchy & Page Responsibility Contract v1 |
+| 2026-06-14 | Added Developer Scaffold Mode transparency rules for planned/scaffold/mock/disabled/interface-reserved UI |
