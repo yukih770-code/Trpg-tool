@@ -432,3 +432,29 @@ Rules:
 | 2026-06-14 | Integrated System App Shell / System Theme layering principle near Game System Workspace Pattern; docs only, no src behavior change |
 | 2026-06-14 | Added Campaign Vault / Source Settings / Workshop Scaffold platform principles; docs only, no implementation change |
 
+首页不是功能总菜单。
+首页只承担启动台职责：继续上次、最近使用、固定入口、平台状态摘要。
+
+左侧导航承担平台功能分区：
+首页、规则系统、战役、创意工坊、社区、反馈、设置。
+
+规则系统库负责管理大量规则系统，而不是把所有系统长期堆在首页。
+
+创意工坊负责资产浏览、收藏、导入、发布，不负责承载所有创作行为。
+
+创作动作应内化到具体资产页面：
+角色、NPC、物品、地图、音乐、Handout、战役、规则包等资产，都可以在自己的详情页提供“发布到社区 / 上传到创意工坊”。
+
+复杂开发内容不做一级 UI 板块，放入开发者中心 / 开发手册 / GitHub：
+Manifest 教程、规则系统开发、Adapter 教程、Workshop Item Schema、示例包、开发工具。
+
+社区负责人的互动：
+找团、招募、战报、规则讨论、吐槽、新手问答、公告。
+
+反馈中心负责平台反馈：
+功能建议、Bug 报告、UI 体验意见、内容举报、版权 / 授权问题、社区纠纷。
+
+AI 主持、地图、VTT、聊天室、音乐、Handout、战斗轮次属于 Campaign / Session Runtime，不是首页一级入口。
+
+设计必须面向长期平台：
+未来可能有几十个规则系统、社区作者、规则包、战役、模组、素材和论坛内容，因此首页不能按当前 3 个系统和几个功能硬摆卡片。

@@ -46,7 +46,7 @@ export const en = {
     },
     nav: {
       home: 'Home',
-      play: 'Play',
+      play: 'Rule Systems',
       campaigns: 'Campaigns',
       community: 'Community Modules',
       privateImport: 'Private Import',
@@ -818,44 +818,36 @@ export const en = {
   home: {
     hero: {
       title: 'Hardcore Multi-System TRPG Platform',
-      subtitle: 'Local characters and rules runtime.',
-      enterPlay: 'Enter Play',
-      privateImport: 'Private Import',
+      subtitle: 'Choose a ruleset to continue character, campaign, and rules management.',
     },
-    snapshot: {
-      title: 'Current Status',
-      activeRuleset: 'Active Ruleset',
-      currentCharacter: 'Current Character',
-      emptyCharacter: 'No character yet',
+    resume: {
+      sectionTitle: 'Resume',
+      activeRuleset: 'Ruleset',
+      currentCharacter: 'Character',
+      noCharacter: 'No character yet',
+      continueButton: 'Continue',
+      noHistory: 'No recent session — choose a ruleset to get started.',
     },
-    workspaces: {
-      title: 'Rulesets',
-      playBadge: 'Play',
-      dnd: {
-        subtitle: 'Fantasy rules runtime',
-      },
-      coc: {
-        subtitle: 'Investigator workspace',
-      },
-      cp: {
-        subtitle: 'Night City runtime',
-      },
+    systems: {
+      sectionTitle: 'Rule Systems',
+      enterSystem: 'Enter System',
     },
-    roadmap: {
-      title: 'Coming Soon',
-      comingSoon: 'Coming Soon',
-      campaigns: {
-        title: 'Campaigns',
+    devZone: {
+      sectionTitle: 'In Development',
+      status: {
+        scaffold: 'Scaffold',
+        interfaceReserved: 'Interface Reserved',
+        plannedImpl: 'Planned',
+        mock: 'Mock',
+        toolEntry: 'Tool Entry',
       },
-      community: {
-        title: 'Community Modules',
-      },
-      studio: {
-        title: 'Content Studio',
-      },
-      aiHost: {
-        title: 'AI Host',
-      },
+      campaigns: { title: 'Campaign Vault' },
+      sourceSettings: { title: 'Source Settings' },
+      workshop: { title: 'Workshop' },
+      studio: { title: 'Content Studio' },
+      vtt: { title: 'Session / VTT' },
+      aiHost: { title: 'AI Host' },
+      privateImport: { title: 'Private Import' },
     },
   },
 } as const;

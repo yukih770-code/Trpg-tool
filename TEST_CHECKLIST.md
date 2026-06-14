@@ -650,6 +650,27 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8e. Platform Home Launchpad IA Cleanup v1 Check
+
+- [ ] `src/pages/Home.tsx` contains `AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V1`
+- [ ] Home page first visible section is **继续上次 / Resume** with a 「继续」button — not "进入游玩工作区"
+- [ ] 继续上次 card shows current system name and character name (or placeholder if none)
+- [ ] 继续上次 card has system-appropriate accent colour (D&D parchment / COC teal / CP gold)
+- [ ] **规则系统库 / Rule Systems** section shows 3 equal-weight cards (DND/COC/CP RED), each with 「进入系统」button and 3 chip links
+- [ ] **开发中功能 / In Development** section uses status badges — NOT "即将开放" / "Coming Soon"
+- [ ] Dev-zone cards with placeholders (战役库/创意工坊/AI主持/私有导入 etc.) are clickable; sourceSettings and vtt cards are visually disabled
+- [ ] Private Import is **not** in the Hero CTA area; it is in the dev-zone section with 工具入口 badge
+- [ ] Sidebar nav label changed: 游玩 → 规则系统 (zh-CN) / Play → Rule Systems (en)
+- [ ] Hero is compact (title + subtitle only, no buttons)
+- [ ] `rg "home\.hero\.enterPlay\|home\.snapshot\.\|home\.workspaces\.\|home\.roadmap\." src/pages/` returns **zero matches**
+- [ ] Clicking 进入系统 on any system card enters the correct workspace
+- [ ] DND / COC / CP RED internal Actor Vault not regressed
+- [ ] No store / schema / migration / routing files modified
+- [ ] `npx tsc --noEmit` passes with zero errors
+- [ ] `npm run build` completes without errors
+
+---
+
 ## 8d. Actor Vault Dead I18n Key Cleanup v1 Check
 
 - [ ] `rg "vaultTitle|singleActorLimitNote|campaignTeaser|entryPattern|replaceCurrentCharacter|continueInvestigatorEditing" src/i18n/` returns **zero matches**

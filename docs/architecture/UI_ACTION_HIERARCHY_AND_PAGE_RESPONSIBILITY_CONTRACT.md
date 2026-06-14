@@ -762,3 +762,5 @@ The same boundaries defined in `PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md` §1
 |---|---|
 | 2026-06-14 | Initial baseline — UI Action Hierarchy & Page Responsibility Contract v1 |
 | 2026-06-14 | Added Developer Scaffold Mode transparency rules for planned/scaffold/mock/disabled/interface-reserved UI |
+
+首页不承载完整功能目录。首页只显示启动台、最近使用、固定入口和状态摘要。完整功能入口应进入对应导航分区页面。

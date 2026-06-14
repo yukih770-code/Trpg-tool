@@ -1,4 +1,5 @@
-import { BrainCircuit, Boxes, Gamepad2, Hammer, Import, Map, Play, Shield } from 'lucide-react';
+// AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V1
+import { BrainCircuit, Boxes, ChevronRight, Database, Hammer, Map, Network, Play, Upload } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { createTranslator, type Locale } from '../i18n';
@@ -8,6 +9,7 @@ import { useCocStore } from '../store/cocStore';
 import { useCpStore } from '../store/cpStore';
 
 type System = 'D&D' | 'CoC' | 'CP';
+type DevStatusKey = 'scaffold' | 'interfaceReserved' | 'plannedImpl' | 'mock' | 'toolEntry';
 
 type HomeProps = {
   locale: Locale;
@@ -15,143 +17,203 @@ type HomeProps = {
   onOpenPlaceholder: (feature: string) => void;
 };
 
-const rulesets: {
+// System-level cards with per-system accent colours
+const systemCards: {
   system: System;
-  baseKey: string;
   labelKey: string;
-  accent: string;
+  descKey: string;
+  cardAccent: string;
+  resumeAccent: string;
 }[] = [
   {
     system: 'D&D',
-    baseKey: 'home.workspaces.dnd',
     labelKey: 'glossary.dnd2024',
-    accent: 'border-[#58180d]/35 bg-[#fff8e6]',
+    descKey: 'playMenu.dnd.desc',
+    cardAccent: 'border-[#58180d]/30 bg-[#fff8e6] hover:border-[#58180d]/55 hover:shadow-md',
+    resumeAccent: 'border-[#58180d]/30 bg-[#fff8e6]',
   },
   {
     system: 'CoC',
-    baseKey: 'home.workspaces.coc',
     labelKey: 'glossary.coc7e',
-    accent: 'border-[#2f7f68]/35 bg-[#f1fbf7]',
+    descKey: 'playMenu.coc.desc',
+    cardAccent: 'border-[#2f7f68]/30 bg-[#f1fbf7] hover:border-[#2f7f68]/55 hover:shadow-md',
+    resumeAccent: 'border-[#2f7f68]/30 bg-[#f1fbf7]',
   },
   {
     system: 'CP',
-    baseKey: 'home.workspaces.cp',
     labelKey: 'glossary.cyberpunkRed',
-    accent: 'border-[#f5c518]/45 bg-[#fffbea]',
+    descKey: 'playMenu.cp.desc',
+    cardAccent: 'border-[#f5c518]/40 bg-[#fffbea] hover:border-[#f5c518]/70 hover:shadow-md',
+    resumeAccent: 'border-[#f5c518]/40 bg-[#fffbea]',
   },
 ];
 
-const roadmapCards = [
-  { key: 'campaigns', baseKey: 'home.roadmap.campaigns', icon: Map },
-  { key: 'community', baseKey: 'home.roadmap.community', icon: Boxes },
-  { key: 'studio', baseKey: 'home.roadmap.studio', icon: Hammer },
-  { key: 'aiHost', baseKey: 'home.roadmap.aiHost', icon: BrainCircuit },
-];
-
-const systemLabelKeys: Record<System, string> = {
-  'D&D': 'glossary.dnd2024',
-  CoC: 'glossary.coc7e',
-  CP: 'glossary.cyberpunkRed',
+// Dev-zone cards — lower visual weight, explicit status badge
+const devStatusLabelKeys: Record<DevStatusKey, string> = {
+  scaffold: 'home.devZone.status.scaffold',
+  interfaceReserved: 'home.devZone.status.interfaceReserved',
+  plannedImpl: 'home.devZone.status.plannedImpl',
+  mock: 'home.devZone.status.mock',
+  toolEntry: 'home.devZone.status.toolEntry',
 };
+
+type DevCardDef = {
+  key: string;
+  titleKey: string;
+  icon: typeof Map;
+  statusKey: DevStatusKey;
+  placeholderKey?: string; // undefined = disabled (no placeholder page yet)
+};
+
+const devCards: DevCardDef[] = [
+  { key: 'campaigns',     titleKey: 'home.devZone.campaigns.title',     icon: Map,         statusKey: 'plannedImpl',       placeholderKey: 'campaigns' },
+  { key: 'sourceSettings',titleKey: 'home.devZone.sourceSettings.title',icon: Database,    statusKey: 'interfaceReserved' },
+  { key: 'workshop',      titleKey: 'home.devZone.workshop.title',      icon: Boxes,       statusKey: 'plannedImpl',       placeholderKey: 'community' },
+  { key: 'studio',        titleKey: 'home.devZone.studio.title',        icon: Hammer,      statusKey: 'plannedImpl',       placeholderKey: 'studio' },
+  { key: 'vtt',           titleKey: 'home.devZone.vtt.title',           icon: Network,     statusKey: 'plannedImpl' },
+  { key: 'aiHost',        titleKey: 'home.devZone.aiHost.title',        icon: BrainCircuit,statusKey: 'plannedImpl',       placeholderKey: 'aiHost' },
+  { key: 'privateImport', titleKey: 'home.devZone.privateImport.title', icon: Upload,      statusKey: 'toolEntry',         placeholderKey: 'privateImport' },
+];
 
 export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
   const { t } = createTranslator(locale);
-  const { system } = useAppStore();
-  const dndChar = useCharacterStore((state) => state.character);
-  const cocChar = useCocStore((state) => state.character);
-  const cpChar = useCpStore((state) => state.character);
+  const system       = useAppStore((state) => state.system as System);
+  const dndChar      = useCharacterStore((state) => state.character);
+  const cocChar      = useCocStore((state) => state.character);
+  const cpChar       = useCpStore((state) => state.character);
+
+  const activeSystemCard = systemCards.find((c) => c.system === system) ?? systemCards[0];
 
   const activeCharacter =
     system === 'CoC' ? cocChar
-    : system === 'CP' ? cpChar
+    : system === 'CP'  ? cpChar
     : dndChar;
 
   const characterName = (activeCharacter as { name?: string }).name?.trim();
 
   return (
     <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-8">
-        <section className="grid gap-4 lg:grid-cols-[1.45fr_0.85fr]">
-          <div className="rounded-lg border border-[#2f2a22]/15 bg-white p-5 shadow-sm">
-            <h1 className="text-2xl font-bold tracking-normal md:text-3xl">
-              {t('home.hero.title')}
-            </h1>
-            <p className="mt-2 text-sm text-[#51483d]">{t('home.hero.subtitle')}</p>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Button onClick={() => onEnterPlay()} className="rounded-md">
-                <Play className="mr-2 h-4 w-4" />
-                {t('home.hero.enterPlay')}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => onOpenPlaceholder('privateImport')}
-                className="rounded-md border-[#2f2a22]/20"
-              >
-                <Import className="mr-2 h-4 w-4" />
-                {t('home.hero.privateImport')}
-              </Button>
-            </div>
-          </div>
+      <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 md:px-8">
 
-          <div className="rounded-lg border border-[#2f2a22]/15 bg-[#17130f] p-5 text-[#f7f3ea] shadow-sm">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <Shield className="h-4 w-4" />
-              {t('home.snapshot.title')}
-            </div>
-            <div className="mt-4 rounded-md border border-white/10 bg-white/5 p-4">
-              <div className="text-xs uppercase tracking-wider text-white/55">{t('home.snapshot.activeRuleset')}</div>
-              <div className="mt-1 text-lg font-bold">{t(systemLabelKeys[system])}</div>
-              <div className="mt-4 text-xs uppercase tracking-wider text-white/55">{t('home.snapshot.currentCharacter')}</div>
-              <div className="mt-1 text-base">{characterName || t('home.snapshot.emptyCharacter')}</div>
+        {/* ── Compact Hero ─────────────────────────────────────────── */}
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{t('home.hero.title')}</h1>
+          <p className="mt-1.5 text-sm text-[#51483d]">{t('home.hero.subtitle')}</p>
+        </div>
+
+        {/* ── Section 1: 继续上次 ─────────────────────────────────── */}
+        <section aria-label={t('home.resume.sectionTitle')}>
+          <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
+            {t('home.resume.sectionTitle')}
+          </h2>
+          <div className={`rounded-xl border p-5 ${activeSystemCard.resumeAccent}`}>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[#51483d]">
+                    {t('home.resume.activeRuleset')}
+                  </span>
+                  <span className="font-bold">{t(activeSystemCard.labelKey)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[#51483d]">
+                    {t('home.resume.currentCharacter')}
+                  </span>
+                  <span className="text-sm">
+                    {characterName || <span className="text-[#51483d]">{t('home.resume.noCharacter')}</span>}
+                  </span>
+                </div>
+              </div>
+              <Button
+                onClick={() => onEnterPlay(system)}
+                className="w-fit rounded-md"
+              >
+                <Play className="mr-2 h-4 w-4" />
+                {t('home.resume.continueButton')}
+              </Button>
             </div>
           </div>
         </section>
 
-        <section className="rounded-lg border border-[#2f2a22]/15 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-lg font-bold">{t('home.workspaces.title')}</h2>
-            <Gamepad2 className="h-5 w-5 text-[#58180d]" />
-          </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {rulesets.map((ruleset) => (
-              <button
-                key={ruleset.system}
-                type="button"
-                onClick={() => onEnterPlay(ruleset.system)}
-                className={`rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${ruleset.accent}`}
+        {/* ── Section 2: 规则系统库 ───────────────────────────────── */}
+        <section aria-label={t('home.systems.sectionTitle')}>
+          <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
+            {t('home.systems.sectionTitle')}
+          </h2>
+          <div className="grid gap-4 md:grid-cols-3">
+            {systemCards.map((card) => (
+              <div
+                key={card.system}
+                className={`flex flex-col rounded-xl border p-5 transition ${card.cardAccent}`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="font-bold">{t(ruleset.labelKey)}</div>
-                  <Badge variant="outline" className="rounded-md bg-white/70">{t('home.workspaces.playBadge')}</Badge>
+                <div className="mb-1 font-bold">{t(card.labelKey)}</div>
+                <div className="mb-4 flex-1 text-xs text-[#51483d]">{t(card.descKey)}</div>
+                <Button
+                  size="sm"
+                  onClick={() => onEnterPlay(card.system)}
+                  className="w-full rounded-md"
+                >
+                  {t('home.systems.enterSystem')}
+                  <ChevronRight className="ml-1 h-3.5 w-3.5" />
+                </Button>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {[
+                    t('navigation.actorVault'),
+                    t('navigation.rulesCompendium'),
+                    t('navigation.sourceStatus'),
+                  ].map((label) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => onEnterPlay(card.system)}
+                      className="rounded-md border border-[#2f2a22]/20 bg-white/50 px-2 py-0.5 text-[10px] text-[#51483d] transition hover:bg-white/90"
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
-                <div className="mt-1 text-xs uppercase tracking-wider text-[#6a5f52]">{t(`${ruleset.baseKey}.subtitle`)}</div>
-              </button>
+              </div>
             ))}
           </div>
         </section>
 
-        <section className="rounded-lg border border-[#2f2a22]/15 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-bold">{t('home.roadmap.title')}</h2>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-            {roadmapCards.map((card) => {
+        {/* ── Section 3: 开发中功能 ───────────────────────────────── */}
+        <section aria-label={t('home.devZone.sectionTitle')}>
+          <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
+            {t('home.devZone.sectionTitle')}
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {devCards.map((card) => {
               const Icon = card.icon;
+              const clickable = Boolean(card.placeholderKey);
               return (
                 <button
                   key={card.key}
                   type="button"
-                  onClick={() => onOpenPlaceholder(card.key)}
-                  className="rounded-lg border border-[#2f2a22]/15 bg-[#faf8f2] p-4 text-left transition hover:border-[#58180d]/30"
+                  disabled={!clickable}
+                  onClick={clickable ? () => onOpenPlaceholder(card.placeholderKey!) : undefined}
+                  className={`rounded-lg border border-[#2f2a22]/12 bg-[#faf8f2] p-4 text-left transition ${
+                    clickable
+                      ? 'cursor-pointer hover:border-[#2f2a22]/25 hover:bg-white'
+                      : 'cursor-default opacity-55'
+                  }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <Icon className="h-4 w-4 text-[#58180d]" />
-                    <Badge variant="outline" className="rounded-md">{t('home.roadmap.comingSoon')}</Badge>
+                  <div className="flex items-start justify-between gap-2">
+                    <Icon className="mt-0.5 h-4 w-4 shrink-0 text-[#6a5f52]" />
+                    <Badge
+                      variant="outline"
+                      className="rounded-md border-[#2f2a22]/25 text-[9px] font-medium uppercase tracking-wide"
+                    >
+                      {t(devStatusLabelKeys[card.statusKey])}
+                    </Badge>
                   </div>
-                  <div className="mt-3 font-bold">{t(`${card.baseKey}.title`)}</div>
+                  <div className="mt-2.5 text-sm font-bold text-[#17130f]">{t(card.titleKey)}</div>
                 </button>
               );
             })}
           </div>
         </section>
+
       </main>
     </div>
   );

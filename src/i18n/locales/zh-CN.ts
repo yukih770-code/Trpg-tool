@@ -46,7 +46,7 @@ export const zhCN = {
     },
     nav: {
       home: '首页',
-      play: '游玩',
+      play: '规则系统',
       campaigns: '战役管理',
       community: '社区模组',
       privateImport: '私有导入',
@@ -818,44 +818,36 @@ export const zhCN = {
   home: {
     hero: {
       title: '硬核多规则 TRPG 平台',
-      subtitle: '本地角色与规则运行平台。',
-      enterPlay: '进入游玩工作区',
-      privateImport: 'Private Import（私有导入）',
+      subtitle: '选择规则系统，继续角色、战役与规则管理。',
     },
-    snapshot: {
-      title: '当前状态',
+    resume: {
+      sectionTitle: '继续上次',
       activeRuleset: '规则系统',
       currentCharacter: '当前角色',
-      emptyCharacter: '暂无角色',
+      noCharacter: '暂无角色',
+      continueButton: '继续',
+      noHistory: '还没有最近记录，请先选择规则系统',
     },
-    workspaces: {
-      title: '规则系统',
-      playBadge: '进入',
-      dnd: {
-        subtitle: '奇幻规则运行时',
-      },
-      coc: {
-        subtitle: '调查员工作区',
-      },
-      cp: {
-        subtitle: '夜之城运行时',
-      },
+    systems: {
+      sectionTitle: '规则系统库',
+      enterSystem: '进入系统',
     },
-    roadmap: {
-      title: '即将开放',
-      comingSoon: '即将开放',
-      campaigns: {
-        title: '战役管理',
+    devZone: {
+      sectionTitle: '开发中功能',
+      status: {
+        scaffold: '脚手架',
+        interfaceReserved: '接口预留',
+        plannedImpl: '后续实现',
+        mock: 'Mock',
+        toolEntry: '工具入口',
       },
-      community: {
-        title: 'Community Modules（社区模组）',
-      },
-      studio: {
-        title: 'Content Studio（内容创作工坊）',
-      },
-      aiHost: {
-        title: 'AI Host（AI 主持）',
-      },
+      campaigns: { title: '战役库' },
+      sourceSettings: { title: '规则来源设置' },
+      workshop: { title: '创意工坊' },
+      studio: { title: '内容创作坊' },
+      vtt: { title: 'Session / VTT' },
+      aiHost: { title: 'AI 主持' },
+      privateImport: { title: '私有导入' },
     },
   },
 } as const;

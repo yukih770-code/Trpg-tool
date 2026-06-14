@@ -713,6 +713,23 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Alive i18n keys preserved: `multiWorkspace.actorVault.existingActors/addActor/activeIndicator/addActorNote/totalCount/completeCount/incompleteCount/recentUpdate/source/sourcePlatform/creator/creatorPlaceholder/campaign/campaignNone`, `multiWorkspace.actions.(backToWorkspace|viewInvestigatorSheet|viewCharacterSheet|continueEdgerunnerEditing|startInvestigation|startMission|createInvestigator|createEdgerunner)`, `cocWorkspace.nav.sheet`, `dndWorkspace.modules.(spellIndex|featIndex|equipmentIndex|classIndex)`, `dndWorkspace.characters.(current|empty|unnamed|level|species|background|class)`
 - Verify clean: `rg "vaultTitle|singleActorLimitNote|campaignTeaser|entryPattern|replaceCurrentCharacter|continueInvestigatorEditing" src/i18n/`
 
+## Platform Home Launchpad IA Cleanup
+
+- `AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V1`: `src/pages/Home.tsx` (top of file comment)
+- Locate: `rg -n "PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V1" src/`
+- Three-section structure: `继续上次 / Resume` → `规则系统库 / Rule Systems` → `开发中功能 / In Development`
+- `systemCards[]`: per-system accent colours (D&D parchment/COC teal/CP gold), `labelKey`, `descKey`, `cardAccent`, `resumeAccent`
+- `devCards[]`: `DevCardDef` — `key`, `titleKey`, `icon`, `statusKey: DevStatusKey`, `placeholderKey?` (absent = disabled button)
+- `DevStatusKey` union: `'scaffold' | 'interfaceReserved' | 'plannedImpl' | 'mock' | 'toolEntry'`
+- `devStatusLabelKeys`: `Record<DevStatusKey, string>` mapping to `home.devZone.status.*` i18n keys
+- Props: `onEnterPlay(system?: System)` → calls `setSystem` + `setPlayStage('workspace')` in App.tsx; `onOpenPlaceholder(feature)` → opens placeholder modal
+- Active char detection: `system === 'CoC' ? cocChar : system === 'CP' ? cpChar : dndChar`
+- i18n keys added: `home.resume.*`, `home.systems.*`, `home.devZone.*` (zh-CN + en)
+- i18n keys removed: old `home.snapshot.*` / `home.workspaces.*` / `home.roadmap.*` (were in prior Home.tsx)
+- Sidebar label: `shell.nav.play` → `'规则系统'` (zh) / `'Rule Systems'` (en)
+- Private Import: moved from Hero → dev-zone card with `statusKey: 'toolEntry'`, `placeholderKey: 'privateImport'`
+- Verify clean: `rg -n "home\.resume\|home\.systems\|home\.devZone" src/pages/Home.tsx`
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.
