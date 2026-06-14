@@ -6,34 +6,35 @@
 
 ## Task
 
-- ID: Campaign Vault + Source Settings + Workshop Scaffold Pattern Integration v1
-- Name: CAMPAIGN_SOURCE_WORKSHOP_SCAFFOLD_PATTERN_V1
-- Goal: Integrate Campaign Vault, Source Settings, Workshop Scaffold, and Developer Scaffold Mode principles into existing architecture contracts.
-- Phase: P1 platform architecture
+- ID: Actor Vault Dead I18n Key Cleanup v1
+- Name: ACTOR_VAULT_DEAD_I18N_CLEANUP_V1
+- Goal: Remove all dead i18n keys left over from the three-system Actor Vault migration (DND / COC / CP RED).
+- Phase: P1 platform i18n hygiene
 - Status: Done
 
 ## Result Summary
 
-- `PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`: added Campaign Vault / Source Settings / Workshop Scaffold principles near Game System Workspace Pattern.
-- `UI_ACTION_HIERARCHY_AND_PAGE_RESPONSIBILITY_CONTRACT.md`: added Developer Scaffold Mode transparency rules under Planned / Future Action.
-- Recorded that Actor Vault manages actors, Campaign Vault manages campaigns/rooms/long-term play spaces, Source Settings manages rules/extensions, Builder consumes Source Settings, Session Runtime consumes Campaign, and Workshop can feed all of them.
-- Recorded Workshop item categories: Playable Asset, Table Asset, Creative Work, Creator Space, plus future `usageType` principle.
-- No new architecture document and no `src/`, store, schema, migration, save format, runtime, dice, rule data, React Router, URL routing, or browser History API changes.
+- Removed ~60 dead keys across `zh-CN.ts` and `en.ts`.
+- Sections cleaned: `multiWorkspace.actions` (5 dead keys), `multiWorkspace.singleActor` (entire block), `multiWorkspace.actorVault` (5 dead keys), `multiWorkspace.entryPattern` (entire block), `multiWorkspace.coc.home` (3 dead keys), `multiWorkspace.coc.modules` (entire block), `multiWorkspace.coc.notes` (entire block), `multiWorkspace.coc.entry` (4 dead keys), `multiWorkspace.cp.home` (3 dead keys), `multiWorkspace.cp.modules` (entire block), `multiWorkspace.cp.notes` (entire block), `multiWorkspace.cp.entry` (4 dead keys), `cocWorkspace.nav` (6 → 1, kept `sheet`), `cpWorkspace.nav` (entire block), `cpWorkspace.vault` (entire block), `dndWorkspace.home` (4 dead keys), `dndWorkspace.modules` (10 → 4, kept `spellIndex/featIndex/equipmentIndex/classIndex`), `dndWorkspace.characters` (7 → 7 alive fields, removed 7 dead fields).
+- No `src/pages/`, `src/components/`, `src/lib/`, store, schema, migration, save format, or routing files modified.
+- All removed keys confirmed dead via `rg` (zero non-i18n src/ references).
 
 ## Navigation
 
 ### Landmark
 
 ```text
-AI-LANDMARK: CAMPAIGN_SOURCE_WORKSHOP_SCAFFOLD_PATTERN_V1
+AI-LANDMARK: ACTOR_VAULT_DEAD_I18N_CLEANUP_V1
 ```
 
-Located in:
-- `docs/architecture/PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT.md`
-- `docs/architecture/UI_ACTION_HIERARCHY_AND_PAGE_RESPONSIBILITY_CONTRACT.md`
+Located in: `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts` (absence of removed keys; no inline landmark comment needed for deletion tasks).
 
 ### Locate Commands
 
 ```powershell
-rg -n "CAMPAIGN_SOURCE_WORKSHOP_SCAFFOLD_PATTERN_V1|Campaign Vault|Source Settings|Developer Scaffold Mode" docs/architecture docs/ai PROJECT_STATUS.md TEST_CHECKLIST.md
+# Confirm cleaned keys are gone
+rg "vaultTitle|singleActorLimitNote|campaignTeaser|entryPattern|replaceCurrentCharacter|continueInvestigatorEditing|emptyTitle.*角色" src/i18n/
+
+# Confirm alive keys still present
+rg "continueEdgerunnerEditing|actorVault\.existingActors|cocWorkspace\.nav\.sheet" src/i18n/
 ```

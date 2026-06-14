@@ -650,6 +650,23 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8d. Actor Vault Dead I18n Key Cleanup v1 Check
+
+- [ ] `rg "vaultTitle|singleActorLimitNote|campaignTeaser|entryPattern|replaceCurrentCharacter|continueInvestigatorEditing" src/i18n/` returns **zero matches**
+- [ ] `rg "multiWorkspace\.singleActor\." src/i18n/` returns **zero matches**
+- [ ] `rg "cocWorkspace\.nav\." src/i18n/` returns exactly one match per locale: `nav: { sheet: ...` only
+- [ ] `rg "cpWorkspace\.nav\." src/i18n/` returns **zero matches**
+- [ ] `rg "cpWorkspace\.vault\." src/i18n/` returns **zero matches**
+- [ ] `rg "dndWorkspace\.home\.(openCurrent|enterCompendium|boundarySummary)" src/i18n/` returns **zero matches**
+- [ ] `rg "dndWorkspace\.modules\.(characters|create|sheet|play|compendium[^I]|inventory|map|journal|sources)" src/i18n/` returns **zero matches**
+- [ ] `rg "dndWorkspace\.characters\.(title|emptyNote|hint|vaultBoundary|actorNote|exportImport)" src/i18n/` returns **zero matches**
+- [ ] Alive keys still present: `continueEdgerunnerEditing`, `actorVault.existingActors`, `actorVault.activeIndicator`, `cocWorkspace.nav.sheet`, `dndWorkspace.modules.spellIndex`, `dndWorkspace.characters.current`
+- [ ] No `src/pages/`, `src/components/`, `src/lib/`, store, schema, migration, save format, or routing files were modified
+- [ ] `npx tsc --noEmit` passes with zero errors
+- [ ] `npm run build` completes without errors
+
+---
+
 ## 8c. CP RED Actor Vault Library Adoption v1 Check
 
 - [ ] `src/pages/cpWorkspace/cpActorVaultAdapter.ts` exists and contains `AI-LANDMARK: CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1`

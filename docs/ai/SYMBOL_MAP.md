@@ -706,6 +706,13 @@ This file helps AI quickly locate important types, helper functions, store actio
 - `onEnterActor(_id)` → `onOpenPlayTab('sheet')`; `onRequestAdd()` → `onViewChange('createMethod')`
 - Locate: `rg -n "CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1" src/`
 
+## Actor Vault Dead I18n Key Cleanup
+
+- `AI-LANDMARK: ACTOR_VAULT_DEAD_I18N_CLEANUP_V1`: `docs/ai/ACTIVE_TASK.md` (task record only; deletion tasks have no inline landmark in source files)
+- Dead keys removed: `multiWorkspace.singleActor.*`, `multiWorkspace.entryPattern.*`, `multiWorkspace.actions.(continueInvestigatorEditing|continueEditing|replaceCurrentCharacter|replaceCurrentInvestigator|replaceCurrentEdgerunner)`, `multiWorkspace.actorVault.(emptyTitle|emptyNote|singleActorLimitNote|multiActorNote|campaignTeaser)`, `multiWorkspace.coc.home.(openCurrentActor|startRuntime|systemHealth)`, `multiWorkspace.coc.(modules|notes).*`, `multiWorkspace.coc.entry.(vaultTitle|vaultHint|emptyNote|vaultBoundary)`, same for `multiWorkspace.cp.*`, `cocWorkspace.nav.(overview|vault|create|runtime|compendium|sources)`, `cpWorkspace.nav.*`, `cpWorkspace.vault.*`, `dndWorkspace.home.(openCurrentCharacter|openCurrentCharacterNote|enterCompendium|boundarySummary)`, `dndWorkspace.modules.(characters|create|sheet|play|compendium|compendiumNote|sources|sourcesNote|inventory|map|journal)`, `dndWorkspace.characters.(title|emptyNote|hint|vaultBoundary|actorNote|exportImport|exportImportNote)`
+- Alive i18n keys preserved: `multiWorkspace.actorVault.existingActors/addActor/activeIndicator/addActorNote/totalCount/completeCount/incompleteCount/recentUpdate/source/sourcePlatform/creator/creatorPlaceholder/campaign/campaignNone`, `multiWorkspace.actions.(backToWorkspace|viewInvestigatorSheet|viewCharacterSheet|continueEdgerunnerEditing|startInvestigation|startMission|createInvestigator|createEdgerunner)`, `cocWorkspace.nav.sheet`, `dndWorkspace.modules.(spellIndex|featIndex|equipmentIndex|classIndex)`, `dndWorkspace.characters.(current|empty|unnamed|level|species|background|class)`
+- Verify clean: `rg "vaultTitle|singleActorLimitNote|campaignTeaser|entryPattern|replaceCurrentCharacter|continueInvestigatorEditing" src/i18n/`
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.
