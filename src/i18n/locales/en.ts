@@ -74,28 +74,6 @@ export const en = {
       },
     },
   },
-  playMenu: {
-    title: 'Choose a Ruleset',
-    backToMenu: 'Back to System Selection',
-    status: {
-      available: 'Available',
-      dataCorrection: 'Data correction in progress',
-      manualTracking: 'Manual tracking',
-      sourceAudit: 'Rule source proofreading',
-    },
-    dnd: {
-      desc: 'Fantasy rules runtime · Creator / Sheet / Gameplay',
-      enter: 'Enter DND 5e 2024',
-    },
-    coc: {
-      desc: 'Investigator workspace · Creator / Sheet / Gameplay',
-      enter: 'Enter Call of Cthulhu 7e',
-    },
-    cp: {
-      desc: 'Night City runtime · Creator / Sheet / Gameplay / Market',
-      enter: 'Enter Cyberpunk RED',
-    },
-  },
   navigation: {
     actorVault: 'Actor Vault',
     rulesCompendium: 'Rules Compendium',

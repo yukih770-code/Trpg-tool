@@ -5,7 +5,6 @@ import { Button } from '../components/ui/button';
 import { Toaster } from '../components/ui/sonner';
 import { createTranslator, type Locale, readStoredLocale, writeStoredLocale } from './i18n';
 import { Home } from './pages/Home';
-import { PlayMenu } from './pages/PlayMenu';
 import { SystemLibrary } from './pages/SystemLibrary';
 import {
   PlayWorkspace,
@@ -48,8 +47,8 @@ function areNavigationStatesEqual(left: NavigationState, right: NavigationState)
 }
 
 // AI-LANDMARK: PLATFORM_PLAY_MENU_COLLAPSIBLE_SIDEBAR
-// Sidebar is collapsible (persisted via localStorage); Play opens a ruleset
-// menu first, and the selected ruleset workspace is the preserved PlayWorkspace.
+// Sidebar is collapsible (persisted via localStorage). Entering a system goes
+// directly to the preserved PlayWorkspace via SystemLibrary (no PlayMenu).
 const sidebarStorageKey = 'trpg-platform-sidebar-collapsed';
 
 function readStoredSidebarCollapsed(): boolean {
@@ -160,7 +159,7 @@ export default function App() {
   // Maps to the LocationNode model in docs/architecture/NAVIGATION_BACK_UP_BREADCRUMB_MODEL.md.
   // Up = parent resolver (deterministic); Back = history stack (unchanged).
   //
-  // Parent chain: runtime/builder/actorSheet → actorVault/creationMethod → actorVault → playMenu.
+  // Parent chain: runtime/builder/actorSheet → actorVault/creationMethod → actorVault → systemLibrary.
   // systemOverview is retained as a low-frequency System Info node; it is not
   // the default landing page or top-nav root.
   type WorkspaceNodeType =
@@ -205,12 +204,12 @@ export default function App() {
     return 'systemOverview'; // 'dashboard' or 'planned'
   };
 
-  const getParentNodeType = (nodeType: WorkspaceNodeType): WorkspaceNodeType | 'playMenu' => {
+  const getParentNodeType = (nodeType: WorkspaceNodeType): WorkspaceNodeType | 'systemLibrary' => {
     switch (nodeType) {
       case 'runtime':         return 'actorSheet';
       case 'builder':         return 'creationMethod';
       case 'actorSheet':      return 'actorVault';
-      case 'actorVault':      return 'playMenu';
+      case 'actorVault':      return 'systemLibrary';
       case 'creationMethod':  return 'actorVault';
       case 'rulesCompendium': return 'actorVault';
       case 'sourceStatus':    return 'actorVault';
@@ -270,8 +269,8 @@ export default function App() {
 
     pushNavigation(); // snapshot current state so Back can return here
 
-    if (parentType === 'playMenu') {
-      setPlayStage('menu');
+    if (parentType === 'systemLibrary') {
+      setAppView('systemLibrary');
       return;
     }
 
@@ -333,14 +332,11 @@ export default function App() {
   };
 
   const enterPlay = (system?: System) => {
+    if (!system) return;
     pushNavigation();
-    if (system) {
-      setSystem(system);
-      setPlayWorkspaceNavigation(defaultPlayWorkspaceNavigationState);
-      setPlayStage('workspace');
-    } else {
-      setPlayStage('menu');
-    }
+    setSystem(system);
+    setPlayWorkspaceNavigation(defaultPlayWorkspaceNavigationState);
+    setPlayStage('workspace');
     setAppView('play');
   };
 
@@ -429,10 +425,6 @@ export default function App() {
 
           {appView === 'systemLibrary' && (
             <SystemLibrary locale={locale} onEnterPlay={enterPlay} />
-          )}
-
-          {appView === 'play' && playStage === 'menu' && (
-            <PlayMenu locale={locale} onSelectSystem={(system) => enterPlay(system)} />
           )}
 
           {appView === 'play' && playStage === 'workspace' && (

@@ -13,6 +13,29 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Do not create a separate `CODE_LANDMARKS.md`; generate landmark listings with `rg -n "AI-LANDMARK"` when needed.
 - Task history belongs in `docs/ai/TASK_ARCHIVE.md`.
 
+## Platform Home Launchpad + System Library IA
+
+- `Home` component: `src/pages/Home.tsx`
+- `AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V2`: `src/pages/Home.tsx`
+- Home sections: 继续上次 / 最近使用 / 固定入口 / 平台状态摘要 — `src/pages/Home.tsx`
+- `pinnedEntries[]`: key/labelKey/icon/placeholderKey entries for fixed shortcuts — `src/pages/Home.tsx`
+- `SystemLibrary` component: `src/pages/SystemLibrary.tsx`
+- `AI-LANDMARK: SYSTEM_LIBRARY_SCAFFOLD_V1`: `src/pages/SystemLibrary.tsx`
+- `AppView` union: `'home' | 'play' | 'placeholder' | 'systemLibrary'` — `src/App.tsx`
+- `openPlaceholder(feature)` intercept: `feature === 'ruleSystems' || feature === 'systemLibrary'` → `setAppView('systemLibrary')` — `src/App.tsx`
+- `navItems` key union: `'home' | 'systemLibrary' | 'settings'` (play removed) — `src/App.tsx`
+- `fallbackNavigation`: workspace case → `setAppView('systemLibrary')` — `src/App.tsx`
+- `AvailabilityKey`: `'available' | 'unavailable'` — `src/pages/SystemLibrary.tsx`
+- `SourceKey`: `'builtin' | 'local' | 'community'` — `src/pages/SystemLibrary.tsx`
+- `CategoryKey`: `'trpg' | 'boardgame' | 'wargame' | 'cardgame' | 'custom'` — `src/pages/SystemLibrary.tsx`
+- `SystemEntry.tagKeys[]`: i18n key array for genre tag chips; included in search corpus — `src/pages/SystemLibrary.tsx`
+- `filterRow()` helper: renders label + chip row — `src/pages/SystemLibrary.tsx`
+- `PlayMenu`: **deleted** (`src/pages/PlayMenu.tsx` removed; import + JSX block removed from App.tsx)
+- `getParentNodeType` return type: `WorkspaceNodeType | 'systemLibrary'` — `src/App.tsx`
+- goUp `'actorVault'` parent: → `setAppView('systemLibrary')` (was `setPlayStage('menu')`) — `src/App.tsx`
+- `enterPlay(system)`: guard `if (!system) return;` at top; no dead else/menu branch — `src/App.tsx`
+- `playStage` / `PlayStage`: still present; only `'workspace'` is reachable from UI — `src/App.tsx`
+
 ## CP RED Inventory / Equipment
 
 - `CpInventory`: `src/lib/cp-types.ts`

@@ -650,6 +650,43 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8k. PlayMenu Dead Code Cleanup v1 Check
+
+- [ ] `rg "PlayMenu" src/` returns **zero matches**
+- [ ] `rg "playStage === 'menu'" src/` returns **zero matches**
+- [ ] `rg "setPlayStage\('menu'\)" src/` returns **zero matches**
+- [ ] `rg "选择规则系统|Choose a game system" src/` returns **zero matches** (in runtime code; archive/docs allowed)
+- [ ] `src/pages/PlayMenu.tsx` does **not exist**
+- [ ] `playMenu.*` i18n keys absent from `src/i18n/locales/zh-CN.ts` and `src/i18n/locales/en.ts`
+- [ ] `navigation.backToSystemSelect` key is still present in both locale files (live key, should NOT be removed)
+- [ ] `playStage === 'workspace'` branch still exists in App.tsx (retain for workspace render)
+- [ ] Pressing Up from DND / COC / CP RED Actor Vault → goes to SystemLibrary, not a blank screen
+- [ ] Left nav 「系统库」→ SystemLibrary still works
+- [ ] Home fixed entry 「规则系统库」→ SystemLibrary still works
+- [ ] DND / COC / CP RED 「进入系统」→ enters workspace still works
+- [ ] No store / schema / migration / routing / workspace-internal files modified
+- [ ] `npx tsc --noEmit` passes with zero errors
+- [ ] `npm run build` completes without errors
+
+---
+
+## 8j. System Library Smoke Test + Legacy Path Check v1 Check
+
+- [ ] Home page first section is **继续上次** (not a full feature grid or dev-card wall)
+- [ ] Home page has exactly 4 sections: 继续上次 / 最近使用 / 固定入口 / 平台状态摘要
+- [ ] Left sidebar nav shows 「系统库」with Library icon — clicking enters SystemLibrary page
+- [ ] Home fixed entry 「规则系统库」enters the **same** SystemLibrary page as the left nav
+- [ ] SystemLibrary page filters show 3 rows: 类型 / 可用 / 来源 — no 脚手架/计划中 chip anywhere
+- [ ] DND / COC / CP RED cards show 「可进入」badge and active 「进入系统」button
+- [ ] Clicking 「进入系统」for DND / COC / CP RED enters the correct workspace (NOT PlayMenu)
+- [ ] After workspace entry: Back with empty nav stack → returns to SystemLibrary (not PlayMenu)
+- [ ] PlayMenu is NOT reachable via any normal UI click path (nav, home, system library, settings, back)
+- [ ] 战锤 / 日式TRPG / 自定义系统 cards show 「未接入」badge and disabled 「后续接入」button
+- [ ] `rg "enterPlay()" src/App.tsx` shows only the function definition, no calls without a system arg
+- [ ] `rg "playStage.*menu\|setPlayStage.*menu" src/App.tsx` shows only the `else { setPlayStage('menu') }` branch inside `enterPlay` — never called from UI
+
+---
+
 ## 8i. System Library Filter Taxonomy Cleanup v1 Check
 
 - [ ] System library shows **三行筛选**: 类型 / 可用 / 来源 — each with a label prefix

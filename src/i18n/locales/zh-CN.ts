@@ -74,28 +74,6 @@ export const zhCN = {
       },
     },
   },
-  playMenu: {
-    title: '选择规则系统',
-    backToMenu: '返回系统选择',
-    status: {
-      available: '可用',
-      dataCorrection: '数据校正中',
-      manualTracking: '手动追踪',
-      sourceAudit: '规则源校对中',
-    },
-    dnd: {
-      desc: '奇幻规则运行时 · Creator / Sheet / Gameplay',
-      enter: '进入 DND 5e 2024',
-    },
-    coc: {
-      desc: '调查员工作区 · Creator / Sheet / Gameplay',
-      enter: '进入克苏鲁的呼唤 7版',
-    },
-    cp: {
-      desc: '夜之城运行时 · Creator / Sheet / Gameplay / Market',
-      enter: '进入 Cyberpunk RED',
-    },
-  },
   navigation: {
     actorVault: '角色库',
     rulesCompendium: '规则库',
