@@ -6,46 +6,56 @@
 
 ## Task
 
-- ID: PlayMenu Dead Code Cleanup v1
-- Name: PLAYMENU_DEAD_CODE_CLEANUP_V1
-- Goal: Remove PlayMenu legacy path entirely. Delete import, JSX render block, dead playStage='menu' branch, dead i18n keys. Fix goUp to go to systemLibrary. Delete PlayMenu.tsx.
+- ID: Workshop Browse + Subscriptions UX Refinement v1
+- Name: WORKSHOP_BROWSE_SUBSCRIPTIONS_UX_REFINEMENT_V1
+- Goal: Reduce top tabs to 浏览/我的订阅 (remove 更新与依赖). Add filter visual hierarchy (basicSection/advancedSection, subtype nesting). Add 6 browse samples + 4 subscription samples with status badges. Redesign Subscriptions as item-level list with badges/landing/search/filters. Update i18n + docs.
 - Phase: P1 platform UX / IA
 - Status: Done
 
 ## Result Summary
 
-- **`src/App.tsx`**:
-  - Removed `import { PlayMenu }` line
-  - Updated sidebar landmark comment (kept PLATFORM_PLAY_MENU_COLLAPSIBLE_SIDEBAR, updated description)
-  - Updated goUp parent chain comment: `playMenu` → `systemLibrary`
-  - `getParentNodeType` return type: `WorkspaceNodeType | 'playMenu'` → `WorkspaceNodeType | 'systemLibrary'`
-  - `getParentNodeType` `'actorVault'` case: `return 'playMenu'` → `return 'systemLibrary'`
-  - `goUp`: `if (parentType === 'playMenu') { setPlayStage('menu'); return; }` → `if (parentType === 'systemLibrary') { setAppView('systemLibrary'); return; }`
-  - `enterPlay`: removed dead `else { setPlayStage('menu'); }` branch; added early `if (!system) return;` guard
-  - Removed JSX block `{appView === 'play' && playStage === 'menu' && <PlayMenu .../>}`
-- **`src/i18n/locales/zh-CN.ts`**: Removed entire `playMenu: { ... }` block (22 lines)
-- **`src/i18n/locales/en.ts`**: Removed entire `playMenu: { ... }` block (22 lines)
-- **`src/pages/PlayMenu.tsx`**: Deleted (no longer imported anywhere)
-- **`playStage` / `PlayStage` type**: Retained — still used by `playStage === 'workspace'` workspace render branch
-- **`navigation.backToSystemSelect`**: NOT removed — still used in workspace toolbar back button label
-- No store / schema / migration / save format / rule data / React Router / URL routing / browser History API changed
-- No SystemLibrary / Home / DND / COC / CP RED internal workspace changed
+- **`src/lib/platform/workshopTypes.ts`**: Full rewrite (supersedes TAXONOMY_CLEANUP_V1)
+  - Added `WorkshopSubscriptionStatusKey`, `WORKSHOP_SUBSCRIPTION_STATUS_KEYS`, `WORKSHOP_SUBSCRIPTION_SAMPLES`
+  - `WorkshopSubscriptionItem` now includes `landing: WorkshopLandingTarget` + `status: WorkshopSubscriptionStatusKey`
+  - 6 browse samples (dnd-expansion-rules, castle-investigation-maps, night-city-ambience, dnd-starter-character-template, coc-investigator-npc-pack, random-encounter-template)
+  - 4 subscription samples (ok, hasUpdate, ok, possibleConflict)
+  - `WORKSHOP_LANDING_MAP` and `WORKSHOP_SUBTYPES` unchanged
+- **`src/components/platform/WorkshopShell.tsx`**: Full rewrite
+  - `WorkshopTab = 'browse' | 'subscriptions'` (updates tab removed)
+  - Filter card split into 基础筛选 (system + category + subtype nesting) / 高级筛选 (shape + sort) sections
+  - Subtype sub-panel: `ml-[88px]` indent + left border + currentCategoryLabel header + subtypeRowLabel row
+  - `statusBadgeCls()` for 7 status badge colors
+  - `cardLanding()` / `subLanding()` helpers (systemRuleSources → prepends system name)
+  - Browse cards show `card.landing` field
+  - Subscriptions tab: search input + status filter + category filter + item list with badges + landingFootnote + preflightNote
+- **`src/i18n/locales/zh-CN.ts`**: workshop block replaced
+  - Added: filter.basicSection, filter.advancedSection, filter.subtype.currentCategoryLabel/subtypeRowLabel/randomTable, card.landing
+  - Removed: tabs.updates, landingTitle, subscriptions.statusReserved/cancelReserved, updates.*
+  - Added: subscriptions.search.placeholder, subscriptions.filterStatus, subscriptions.statusFilter.*, subscriptions.badge.*, subscriptions.manageReserved, subscriptions.noResults, subscriptions.statusNote, subscriptions.preflightNote, subscriptions.landingFootnote
+- **`src/i18n/locales/en.ts`**: Mirror of zh-CN changes
+- No store / schema / migration / save format / rule data / Builder / dice / runtime / Campaign / Module / Session / React Router / URL routing / browser History API changed
+- No Actor Vault / System Library / DND / COC / CP RED internal workspace changed
 
 ## Navigation
 
 ### Landmark
 
 ```text
-AI-LANDMARK: PLAYMENU_DEAD_CODE_CLEANUP_V1  (new — docs only; no runtime marker file)
-AI-LANDMARK: PLATFORM_PLAY_MENU_COLLAPSIBLE_SIDEBAR  (updated comment — src/App.tsx)
+AI-LANDMARK: WORKSHOP_BROWSE_SUBSCRIPTIONS_UX_REFINEMENT_V1
 ```
 
 ### Locate Commands
 
 ```powershell
-# Confirm PlayMenu fully gone from runtime:
-rg "PlayMenu|playStage === 'menu'|setPlayStage\('menu'\)|选择规则系统|Choose a game system" src
+# Confirm updates tab removed:
+rg "updates|更新与依赖" src/components/platform/WorkshopShell.tsx
 
-# Confirm goUp goes to systemLibrary:
-rg -n "systemLibrary" src/App.tsx
+# Confirm filter sections present:
+rg "basicSection|advancedSection|currentCategoryLabel|subtypeRowLabel" src/components/platform/WorkshopShell.tsx
+
+# Confirm status badge helper:
+rg "statusBadgeCls|WorkshopSubscriptionStatusKey" src/components/platform/WorkshopShell.tsx
+
+# Confirm subscription samples:
+rg "WORKSHOP_SUBSCRIPTION_SAMPLES|sub\." src/lib/platform/workshopTypes.ts
 ```

@@ -672,6 +672,67 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8l. Workshop Browse Taxonomy Cleanup v1 Check
+
+- [ ] `rg "WorkshopAssetType|WORKSHOP_ASSET_TYPE_KEYS|assetType|bundleContains|splitByAssetType" src/` returns **zero matches**
+- [ ] `src/lib/platform/workshopTypes.ts` exports `WorkshopCategory`, `WorkshopSystem`, `WorkshopContentShape`, `WorkshopSort`, `WORKSHOP_SUBTYPES`, `WORKSHOP_LANDING_MAP`
+- [ ] `WORKSHOP_BROWSE_SAMPLES` has exactly **4 items**; none has id `sample.starter-bundle`
+- [ ] `WORKSHOP_SUBSCRIPTION_SAMPLES` has exactly **2 items**; none has id `sub.starter-bundle`
+- [ ] `WorkshopShell.tsx` renders search box + 5 filter rows (adaptedSystem, primaryCategory, subtype contextual, contentShape, sort)
+- [ ] Subtype row is **hidden** when primary category is `all`
+- [ ] Subtype row is **shown** when primary category is e.g. `ruleContent`
+- [ ] `toolTemplate` primary category shows **no subtype row** (empty subtypes array)
+- [ ] Search box filters cards by title and tags
+- [ ] Selecting `mediaAsset` shows the 夜城 card; selecting `character` shows the 新手角色模板 card
+- [ ] Landing section lists all 7 primary categories + collection shape row
+- [ ] `workshop.filter.adaptedSystem.*`, `workshop.category.*`, `workshop.filter.subtype.*`, `workshop.filter.contentShape.*`, `workshop.filter.sort.*` all present in both locale files
+- [ ] `workshop.assetType.*` and `workshop.bundleContains` are **absent** from both locale files
+- [ ] No store / schema / migration / routing / workspace-internal files modified
+- [ ] `npx tsc --noEmit` passes with zero errors
+- [ ] `npm run build` completes without errors
+
+---
+
+## 8m. Workshop Browse + Subscriptions UX Refinement v1 Check
+
+- [ ] Workshop top tab bar shows exactly **2 tabs**: 浏览 / 我的订阅 — no 更新与依赖 tab
+- [ ] Filter card has **两个独立区块**: 基础筛选 (适配系统 + 主分类 + 细分类型子面板) and 高级筛选 (内容形态 + 排序)
+- [ ] Subtype sub-panel appears only when `primaryCategory ≠ 'all'` and the category has subtypes (e.g. `creatureNpc`, `ruleContent`)
+- [ ] Subtype sub-panel is **hidden** when `primaryCategory === 'toolTemplate'` (empty subtypes array)
+- [ ] Subtype sub-panel renders with `ml-[88px]` indent and left border — visually nested under 主分类 row
+- [ ] Subtype sub-panel header line reads `当前分类：{categoryLabel}` (using `currentCategoryLabel` i18n key)
+- [ ] Subtype sub-panel row label is `细分类型：` (using `subtypeRowLabel` i18n key)
+- [ ] Browse grid shows exactly **6 sample cards**: dnd-expansion-rules, castle-investigation-maps, night-city-ambience, dnd-starter-character-template, coc-investigator-npc-pack, random-encounter-template
+- [ ] Each browse card shows a **落位 (landing)** field row
+- [ ] `systemRuleSources` landing prepends system name (e.g. "DND 5e 2024 的系统规则来源")
+- [ ] 我的订阅 tab shows **search input** at top + status filter + category filter rows
+- [ ] 我的订阅 list shows **4 sample items** with per-item status badges (ok/hasUpdate/ok/possibleConflict)
+- [ ] Status badge colors: ok=emerald, hasUpdate=blue, possibleConflict=amber, needsAttention=red, missingDependency=orange, affectsCampaign=purple, disabled=muted
+- [ ] Each subscription item shows per-item landing destination
+- [ ] `systemRuleSources` subscription landing also prepends system name
+- [ ] **管理接口预留** button visible per subscription item (placeholder, no action required)
+- [ ] Subscription list **low-weight footnotes** visible at bottom: preflightNote + landingFootnote (text opacity ~40%)
+- [ ] `workshop.filter.basicSection` and `workshop.filter.advancedSection` present in both locale files
+- [ ] `workshop.filter.subtype.currentCategoryLabel`, `workshop.filter.subtype.subtypeRowLabel`, `workshop.filter.subtype.randomTable` present in both locale files
+- [ ] `workshop.card.landing` key present in both locale files
+- [ ] `workshop.subscriptions.search.placeholder` present in both locale files
+- [ ] `workshop.subscriptions.filterStatus` present in both locale files
+- [ ] `workshop.subscriptions.statusFilter.*` (7 keys) present in both locale files
+- [ ] `workshop.subscriptions.badge.*` (7 keys) present in both locale files
+- [ ] `workshop.subscriptions.manageReserved` present in both locale files
+- [ ] `workshop.subscriptions.preflightNote` and `workshop.subscriptions.landingFootnote` present in both locale files
+- [ ] `workshop.tabs.updates` key is **absent** from both locale files
+- [ ] `workshop.landingTitle` key is **absent** from both locale files
+- [ ] `workshop.subscriptions.statusReserved` and `workshop.subscriptions.cancelReserved` keys are **absent** from both locale files
+- [ ] `workshop.updates.*` keys are **absent** from both locale files
+- [ ] `WORKSHOP_SUBSCRIPTION_SAMPLES` has exactly **4 items** in `workshopTypes.ts`
+- [ ] `WorkshopSubscriptionItem` type includes `landing: WorkshopLandingTarget` and `status: WorkshopSubscriptionStatusKey`
+- [ ] No store / schema / migration / routing / workspace-internal / rule-data files modified
+- [ ] `npx tsc --noEmit` passes with zero errors
+- [ ] `npm run build` completes without errors
+
+---
+
 ## 8k. PlayMenu Dead Code Cleanup v1 Check
 
 - [ ] `rg "PlayMenu" src/` returns **zero matches**

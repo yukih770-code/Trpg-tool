@@ -298,16 +298,30 @@ This file helps AI quickly locate important types, helper functions, store actio
 
 ## Platform Workshop & System Rule Sources
 
-- `AI-LANDMARK: PLATFORM_WORKSHOP_SYSTEM_RULE_SOURCES_SHELL_V1`
-- Workshop static types + sample data: `src/lib/platform/workshopTypes.ts` (`WorkshopAssetType`, `WorkshopLandingTarget`, `WORKSHOP_BROWSE_SAMPLES`, `WORKSHOP_SUBSCRIPTION_SAMPLES`, `WORKSHOP_LANDING_MAP`, `localized`)
-- System Rule Sources types: `src/lib/platform/systemRuleSources.ts` (`RuleSourceStatus`, `RuleSourceKind`, `SystemRuleSourceItem`, `RULE_SOURCE_CORE_KINDS`)
-- Workshop UI shell (browse / my subscriptions / updates tabs + content landing): `src/components/platform/WorkshopShell.tsx`
-- Workshop page wrapper: `src/pages/Workshop.tsx`
-- System Rule Sources shell (core/community/custom sections + override/conflict reservation note): `src/components/platform/SystemRuleSourcesShell.tsx` (`SystemRuleSourcesShell`, `SystemRuleSourcesTheme`)
-- Per-system rule source data: `src/pages/dndWorkspace/dndRuleSourcesAdapter.ts` (`DND_RULE_SOURCES`), `src/pages/cocWorkspace/cocRuleSourcesAdapter.ts` (`COC_RULE_SOURCES`), `src/pages/cpWorkspace/cpRuleSourcesAdapter.ts` (`CPRED_RULE_SOURCES`)
-- Platform Workshop entry: `App.tsx` sidebar nav `workshop` + `appView === 'workshop'`; Home/community card reroutes to Workshop via `openPlaceholder('community'|'workshop')`
-- `ruleSources` workspace view added to `DndWorkspaceView` / `CocWorkspaceView` / `CpWorkspaceView` / `NonDndWorkspaceView`; nav label `navigation.ruleSources`
-- i18n: `workshop.*`, `systemRuleSources.*`, `shell.nav.workshop`, `navigation.ruleSources` in `src/i18n/locales/zh-CN.ts` and `en.ts`
+- `AI-LANDMARK: WORKSHOP_BROWSE_SUBSCRIPTIONS_UX_REFINEMENT_V1` (supersedes `WORKSHOP_BROWSE_TAXONOMY_CLEANUP_V1` and `PLATFORM_WORKSHOP_SYSTEM_RULE_SOURCES_SHELL_V1`)
+- Workshop types + sample data: `src/lib/platform/workshopTypes.ts`
+  - Types: `WorkshopCategory` (7 primary), `WorkshopSystem`, `WorkshopContentShape`, `WorkshopSort`, `WorkshopLandingTarget`, `WorkshopSubscriptionStatusKey`
+  - Constants: `WORKSHOP_CATEGORY_KEYS`, `WORKSHOP_SYSTEM_KEYS`, `WORKSHOP_CONTENT_SHAPE_KEYS`, `WORKSHOP_SORT_KEYS`, `WORKSHOP_SUBSCRIPTION_STATUS_KEYS`
+  - `WORKSHOP_SUBTYPES: Record<WorkshopCategory, string[]>` — contextual subtypes per category
+  - `WORKSHOP_LANDING_MAP: Record<WorkshopCategory, WorkshopLandingTarget>`
+  - `WORKSHOP_BROWSE_SAMPLES` (6 items), `WORKSHOP_SUBSCRIPTION_SAMPLES` (4 items with status badges)
+  - `WorkshopSubscriptionItem` includes `landing: WorkshopLandingTarget` + `status: WorkshopSubscriptionStatusKey`
+- Workshop UI shell: `src/components/platform/WorkshopShell.tsx`
+  - `WorkshopTab = 'browse' | 'subscriptions'` — updates tab removed
+  - Browse filter card: 基础筛选 block (adaptedSystem + primaryCategory + subtype sub-panel) / 高级筛选 block (contentShape + sort)
+  - `FilterRow` helper: `w-[88px]` label column, `string[]` options
+  - Subtype sub-panel: `ml-[88px]` indent + left border + `currentCategoryLabel` header + `subtypeRowLabel` row; visible only when category has subtypes
+  - `statusBadgeCls(status: WorkshopSubscriptionStatusKey): string` — 7 color variants
+  - `cardLanding()` / `subLanding()` helpers — prepend system name for `systemRuleSources`
+  - Browse cards show `card.landing` (落位) field
+  - Subscriptions tab: search input + statusFilter row + category row + item list with badge + per-item landing + manageReserved button + preflightNote + landingFootnote
+- Workshop page wrapper: `src/pages/Workshop.tsx` (unchanged — thin wrapper)
+- System Rule Sources: `src/lib/platform/systemRuleSources.ts`, `src/components/platform/SystemRuleSourcesShell.tsx` (unchanged)
+- Per-system rule source data: `dndRuleSourcesAdapter.ts`, `cocRuleSourcesAdapter.ts`, `cpRuleSourcesAdapter.ts` (unchanged)
+- Platform Workshop entry: `App.tsx` sidebar nav `workshop` + `appView === 'workshop'`; Home/community card → `openPlaceholder('community'|'workshop')`
+- i18n `workshop.*` fully replaced in `zh-CN.ts` + `en.ts`:
+  - Added: `filter.basicSection`, `filter.advancedSection`, `filter.subtype.currentCategoryLabel/subtypeRowLabel/randomTable`, `card.landing`, `subscriptions.search.placeholder`, `subscriptions.filterStatus`, `subscriptions.statusFilter.*` (7), `subscriptions.badge.*` (7), `subscriptions.manageReserved`, `subscriptions.noResults`, `subscriptions.statusNote`, `subscriptions.preflightNote`, `subscriptions.landingFootnote`
+  - Removed: `tabs.updates`, `landingTitle`, `subscriptions.statusReserved`, `subscriptions.cancelReserved`, `updates.*`
 - Scaffold only: no real subscription/import/update/conflict detection; no store/schema/rule-data/runtime change
 
 ## Navigation Back / Up / Breadcrumb Model
