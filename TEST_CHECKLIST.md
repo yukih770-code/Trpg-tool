@@ -733,6 +733,45 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8n. Workshop Full Interface Scaffold v1 Check
+
+- [ ] `src/lib/platform/workshopTypes.ts` contains `AI-LANDMARK: WORKSHOP_FULL_INTERFACE_SCAFFOLD_V1`
+- [ ] `src/components/platform/WorkshopShell.tsx` contains `AI-LANDMARK: WORKSHOP_FULL_INTERFACE_SCAFFOLD_V1`
+- [ ] `WorkshopImpactScope`, `WorkshopDependencyStatus`, `WorkshopActionResult`, `WorkshopActions` types exported from `workshopTypes.ts`
+- [ ] `WORKSHOP_ACTION_STUBS` exported from `workshopTypes.ts`; all stub methods return `{ ok: false, status: 'reserved' }`
+- [ ] `WORKSHOP_ATTRIBUTE_TAGS` exported from `workshopTypes.ts`; all 7 category keys present (character/creatureNpc/ruleContent/mapScene/adventureModule/mediaAsset/toolTemplate)
+- [ ] `WORKSHOP_SUBTYPES` updated: new keys present — `presetCharacter`, `characterOption`, `dungeonMap`, `investigationScript`, `macro`, `characterSheetTemplate`
+- [ ] `WorkshopLandingTarget` includes `npcLibrary`, `moduleLibrary`, `toolLibrary`
+- [ ] `WORKSHOP_LANDING_MAP`: `creatureNpc → npcLibrary`, `toolTemplate → toolLibrary`
+- [ ] `WorkshopBrowseItem` type has: `author`, `description`, `attributeTags`, `version`, `lastUpdatedLabel`, `dependencyStatus`, `impactScope`
+- [ ] `WorkshopSubscriptionItem` type has: `author`, `version`, `lastUpdatedLabel`, `dependencyStatus`, `impactScope`
+- [ ] `WORKSHOP_BROWSE_SAMPLES` has exactly **6 items** with full metadata
+- [ ] `WORKSHOP_SUBSCRIPTION_SAMPLES` has exactly **4 items** with full metadata
+- [ ] `WorkshopShell.tsx` has state variable `activeAttributeTag` (default `'all'`)
+- [ ] `WorkshopShell.tsx` has state variable `previewId: string | null` (default `null`)
+- [ ] Filter area has **attribute tags** chip row (appears inside subtype sub-panel when category is not `'all'`)
+- [ ] Quick preview panel renders **between** filter card and browse grid when `previewId !== null`
+- [ ] Quick preview panel shows: title, description, author, version, lastUpdated, impactScope, dependencyStatus, attributeTag chips; close button sets `previewId = null`
+- [ ] Each browse card has a **快速预览** button that toggles `previewId`
+- [ ] Browse cards show: author, version, lastUpdated small text row, attributeTag chips, conditional impactScope
+- [ ] 我的订阅 tab shows **subscription profile block** at top (profile label + default label + dashed config-reserved button)
+- [ ] Subscription items show extended metadata row: version / lastUpdated / dependencyStatus / impactScope
+- [ ] Search covers: title, author, subtype, attributeTags, category, system fields
+- [ ] `SubPanelRow` helper component present in `WorkshopShell.tsx` (label-less chip row for sub-panel)
+- [ ] `handleCategoryChange` resets both `activeAttributeTag` and `previewId`
+- [ ] `workshop.filter.attributeTag.*` section present in both locale files (flat namespace)
+- [ ] `workshop.impactScope.*` (7 keys) present in both locale files
+- [ ] `workshop.dependencyStatus.*` (5 keys) present in both locale files
+- [ ] `workshop.card.quickPreview`, `workshop.card.closePreview`, `workshop.card.author`, `workshop.card.version`, `workshop.card.lastUpdated`, `workshop.card.dependencyStatus`, `workshop.card.impactScope`, `workshop.card.attributeTags`, `workshop.card.previewInterfaceNote` present in both locale files
+- [ ] `workshop.landing.npcLibrary`, `workshop.landing.moduleLibrary`, `workshop.landing.toolLibrary` present in both locale files
+- [ ] `workshop.subscriptions.profile.label`, `workshop.subscriptions.profile.default`, `workshop.subscriptions.profile.configReserved` present in both locale files
+- [ ] `workshop.subscriptions.versionLabel`, `workshop.subscriptions.lastUpdatedLabel`, `workshop.subscriptions.dependencyStatusLabel`, `workshop.subscriptions.impactScopeLabel` present in both locale files
+- [ ] No store / schema / migration / save format / rule data / Builder / dice / runtime / Actor Vault / System Library / DND / COC / CP RED internal / Campaign / Module / Session / React Router / URL routing / browser History API files modified
+- [ ] `npx tsc --noEmit` passes with zero errors
+- [ ] `npm run build` completes without errors
+
+---
+
 ## 8k. PlayMenu Dead Code Cleanup v1 Check
 
 - [ ] `rg "PlayMenu" src/` returns **zero matches**

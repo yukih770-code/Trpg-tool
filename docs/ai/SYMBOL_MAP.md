@@ -298,31 +298,40 @@ This file helps AI quickly locate important types, helper functions, store actio
 
 ## Platform Workshop & System Rule Sources
 
-- `AI-LANDMARK: WORKSHOP_BROWSE_SUBSCRIPTIONS_UX_REFINEMENT_V1` (supersedes `WORKSHOP_BROWSE_TAXONOMY_CLEANUP_V1` and `PLATFORM_WORKSHOP_SYSTEM_RULE_SOURCES_SHELL_V1`)
+- `AI-LANDMARK: WORKSHOP_FULL_INTERFACE_SCAFFOLD_V1` (supersedes `WORKSHOP_BROWSE_SUBSCRIPTIONS_UX_REFINEMENT_V1`)
 - Workshop types + sample data: `src/lib/platform/workshopTypes.ts`
-  - Types: `WorkshopCategory` (7 primary), `WorkshopSystem`, `WorkshopContentShape`, `WorkshopSort`, `WorkshopLandingTarget`, `WorkshopSubscriptionStatusKey`
-  - Constants: `WORKSHOP_CATEGORY_KEYS`, `WORKSHOP_SYSTEM_KEYS`, `WORKSHOP_CONTENT_SHAPE_KEYS`, `WORKSHOP_SORT_KEYS`, `WORKSHOP_SUBSCRIPTION_STATUS_KEYS`
-  - `WORKSHOP_SUBTYPES: Record<WorkshopCategory, string[]>` — contextual subtypes per category
-  - `WORKSHOP_LANDING_MAP: Record<WorkshopCategory, WorkshopLandingTarget>`
-  - `WORKSHOP_BROWSE_SAMPLES` (6 items), `WORKSHOP_SUBSCRIPTION_SAMPLES` (4 items with status badges)
-  - `WorkshopSubscriptionItem` includes `landing: WorkshopLandingTarget` + `status: WorkshopSubscriptionStatusKey`
+  - Core types: `WorkshopCategory` (7), `WorkshopSystem`, `WorkshopContentShape`, `WorkshopSort`, `WorkshopLandingTarget` (now includes npcLibrary/moduleLibrary/toolLibrary), `WorkshopSubscriptionStatusKey`, `WorkshopImpactScope`, `WorkshopDependencyStatus`
+  - Action interface: `WorkshopActionResult`, `WorkshopActions`, `WORKSHOP_ACTION_STUBS` (all return `{ok:false, status:'reserved'}`)
+  - Constants: `WORKSHOP_CATEGORY_KEYS`, `WORKSHOP_SYSTEM_KEYS`, `WORKSHOP_CONTENT_SHAPE_KEYS`, `WORKSHOP_SORT_KEYS`, `WORKSHOP_SUBSCRIPTION_STATUS_KEYS`, `WORKSHOP_IMPACT_SCOPE_KEYS`, `WORKSHOP_DEPENDENCY_STATUS_KEYS`
+  - `WORKSHOP_SUBTYPES: Record<WorkshopCategory, string[]>` — restructured taxonomy (presetCharacter/buildGuide/characterOption/spellAbility/dungeonMap/buildingMap/wildernessMap/scenePack/singleAdventure/investigationScript/macro/gmTool/etc)
+  - `WORKSHOP_ATTRIBUTE_TAGS: Record<WorkshopCategory, string[]>` — per-category attribute characteristics
+  - `WORKSHOP_LANDING_MAP`: creatureNpc→npcLibrary, toolTemplate→toolLibrary
+  - `WorkshopBrowseItem`: extended with author/description/attributeTags/version/lastUpdatedLabel/dependencyStatus/impactScope/contains?
+  - `WorkshopSubscriptionItem`: extended with author/version/lastUpdatedLabel/dependencyStatus/impactScope
+  - `WORKSHOP_BROWSE_SAMPLES` (6 items, full metadata), `WORKSHOP_SUBSCRIPTION_SAMPLES` (4 items, full metadata)
 - Workshop UI shell: `src/components/platform/WorkshopShell.tsx`
-  - `WorkshopTab = 'browse' | 'subscriptions'` — updates tab removed
-  - Browse filter card: 基础筛选 block (adaptedSystem + primaryCategory + subtype sub-panel) / 高级筛选 block (contentShape + sort)
-  - `FilterRow` helper: `w-[88px]` label column, `string[]` options
-  - Subtype sub-panel: `ml-[88px]` indent + left border + `currentCategoryLabel` header + `subtypeRowLabel` row; visible only when category has subtypes
-  - `statusBadgeCls(status: WorkshopSubscriptionStatusKey): string` — 7 color variants
-  - `cardLanding()` / `subLanding()` helpers — prepend system name for `systemRuleSources`
-  - Browse cards show `card.landing` (落位) field
-  - Subscriptions tab: search input + statusFilter row + category row + item list with badge + per-item landing + manageReserved button + preflightNote + landingFootnote
+  - `WorkshopTab = 'browse' | 'subscriptions'`
+  - New state: `activeAttributeTag` (attribute tag filter), `previewId` (quick preview)
+  - Browse filter: attribute tags row inside sub-panel (SubPanelRow helper, per-category from WORKSHOP_ATTRIBUTE_TAGS)
+  - Quick preview panel: page-internal, appears between filter card and browse grid; shows all metadata + description
+  - Browse cards: author, version, lastUpdated, attributeTags chips, conditional impactScope; quickPreview toggle button
+  - Subscription profile block: lightweight line at top of subscriptions tab
+  - Subscription items: extended metadata row (version/lastUpdated/dependencyStatus/impactScope)
+  - Search covers title, author, subtype, attributeTags, category, system
+  - `FilterRow` + `SubPanelRow` helpers; `statusBadgeCls()` 7 variants; `cardLanding()`/`subLanding()` helpers
 - Workshop page wrapper: `src/pages/Workshop.tsx` (unchanged — thin wrapper)
 - System Rule Sources: `src/lib/platform/systemRuleSources.ts`, `src/components/platform/SystemRuleSourcesShell.tsx` (unchanged)
 - Per-system rule source data: `dndRuleSourcesAdapter.ts`, `cocRuleSourcesAdapter.ts`, `cpRuleSourcesAdapter.ts` (unchanged)
-- Platform Workshop entry: `App.tsx` sidebar nav `workshop` + `appView === 'workshop'`; Home/community card → `openPlaceholder('community'|'workshop')`
-- i18n `workshop.*` fully replaced in `zh-CN.ts` + `en.ts`:
-  - Added: `filter.basicSection`, `filter.advancedSection`, `filter.subtype.currentCategoryLabel/subtypeRowLabel/randomTable`, `card.landing`, `subscriptions.search.placeholder`, `subscriptions.filterStatus`, `subscriptions.statusFilter.*` (7), `subscriptions.badge.*` (7), `subscriptions.manageReserved`, `subscriptions.noResults`, `subscriptions.statusNote`, `subscriptions.preflightNote`, `subscriptions.landingFootnote`
-  - Removed: `tabs.updates`, `landingTitle`, `subscriptions.statusReserved`, `subscriptions.cancelReserved`, `updates.*`
-- Scaffold only: no real subscription/import/update/conflict detection; no store/schema/rule-data/runtime change
+- Platform Workshop entry: `App.tsx` sidebar nav `workshop` + `appView === 'workshop'`
+- i18n `workshop.*` replaced in `zh-CN.ts` + `en.ts`:
+  - `filter.subtype.*`: new taxonomy keys (presetCharacter/buildGuide/characterOption/etc)
+  - `filter.attributeTag.*`: all per-category attribute tag labels
+  - `impactScope.*` (7 values), `dependencyStatus.*` (5 values)
+  - `card.quickPreview/closePreview/author/version/lastUpdated/dependencyStatus/impactScope/attributeTags/previewInterfaceNote`
+  - `landing.npcLibrary/moduleLibrary/toolLibrary`
+  - `subscriptions.profile.*` (label/default/configReserved)
+  - `subscriptions.versionLabel/lastUpdatedLabel/dependencyStatusLabel/impactScopeLabel`
+- Scaffold only: no real subscription/import/download/update/dependency/conflict/preflight; no store/schema/rule-data/runtime change
 
 ## Navigation Back / Up / Breadcrumb Model
 
