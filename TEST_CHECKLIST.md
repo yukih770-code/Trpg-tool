@@ -424,6 +424,28 @@ Open the app in the browser and verify each page loads without crashing.
 
 ---
 
+## 6d. Platform Workshop + System Rule Sources Check
+
+- [ ] Sidebar 创意工坊 / Workshop opens the Workshop page (not a Coming Soon placeholder); Home/community card also opens it
+- [ ] Workshop has Browse / My Subscriptions / Updates & Dependencies sections
+- [ ] Browse shows asset-type filters (全部/角色/NPC·怪物/地图/音乐/美术素材/规则包/冒险·剧本/合集·整合包) and sample cards
+- [ ] Bundle ("合集 / 整合包") is a content type card (with 包含 list), NOT a top-level module
+- [ ] Card buttons are only 查看详情 / 订阅接口预留; no 订阅成功 / 已下载 / 已安装 / 已导入
+- [ ] Content landing section maps each asset type to its destination library
+- [ ] My Subscriptions shows type / landing / interface-reserved status + low-weight note; cancel is reserved only
+- [ ] Updates & Dependencies shows a reservation note only (no popups, no fake conflict, no blocking)
+- [ ] DND / COC / CP RED workspaces each have a 规则来源 / Rule Sources nav entry
+- [ ] DND rule sources show 2024 Core (enabled), Xanathar's Guide (coming), Tasha's Cauldron (coming), 2014 Legacy (coming), Community Rule Packages (reserved), Player Custom Rule Packages (reserved)
+- [ ] COC rule sources show Core Rulebook (enabled), Investigator Handbook (coming), Community + Player Custom (reserved); NO scenario / adventure entries
+- [ ] CP RED rule sources show Cyberpunk RED Core (enabled), Black Chrome (coming), Community + Player Custom (reserved)
+- [ ] System Rule Sources page shows the override/conflict reservation note and states it does not affect Builder / Compendium / runtime
+- [ ] Actor Vault and System Library are unchanged (no regression)
+- [ ] No store / schema / migration / save format / rule data / dice / runtime change
+- [ ] No real subscription / import / update / conflict detection; no React Router / URL routing
+- [ ] Landmark `PLATFORM_WORKSHOP_SYSTEM_RULE_SOURCES_SHELL_V1` present
+
+---
+
 ## 6. Console Check
 
 - [ ] Open browser DevTools → Console

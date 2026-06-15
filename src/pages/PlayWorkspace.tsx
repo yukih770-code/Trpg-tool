@@ -398,7 +398,7 @@ const THEMES = {
 } as const;
 
 type System = PlatformRulesetSystem;
-export type NonDndWorkspaceView = 'dashboard' | 'vault' | 'createMethod' | 'sheet' | 'compendium' | 'sources' | 'play' | 'planned';
+export type NonDndWorkspaceView = 'dashboard' | 'vault' | 'createMethod' | 'sheet' | 'compendium' | 'sources' | 'ruleSources' | 'play' | 'planned';
 
 export type PlayWorkspaceNavigationState = {
   tab: string;

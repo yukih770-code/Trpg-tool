@@ -10,6 +10,8 @@ import {
 import { DND_SPELL_INDEX_COUNTS } from '../../data/dnd2024/spellIndex';
 import { useCharacterStore } from '../../store/characterStore';
 import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
+import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
+import { DND_RULE_SOURCES } from './dndRuleSourcesAdapter';
 import {
   buildDndActorSummary,
   buildDndVaultStats,
@@ -44,7 +46,7 @@ import type { ActorVaultAdapter } from '../../lib/platform/actorVault';
 
 // AI-LANDMARK: PLATFORM_ACTOR_VAULT_LIBRARY_FRAMEWORK_EXTRACTION_V1
 // 'characterLibrary' view removed — library mode is now managed internally by ActorVaultLibraryShell.
-export type DndWorkspaceView = 'dashboard' | 'characters' | 'create' | 'compendium' | 'sources' | 'play';
+export type DndWorkspaceView = 'dashboard' | 'characters' | 'create' | 'compendium' | 'sources' | 'ruleSources' | 'play';
 export type DndPlayTab = 'creator' | 'sheet' | 'gameplay';
 
 type DndWorkspaceShellProps = {
@@ -105,9 +107,10 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   // AI-LANDMARK: SYSTEM_DEFAULT_ENTRY_ACTOR_VAULT_GENERIC_NAV_LABELS_V1
   // Top nav uses generic platform labels only. System flavor stays inside page titles/content.
   const navItems: { key: DndWorkspaceView; labelKey: string; icon: typeof Users }[] = [
-    { key: 'characters', labelKey: 'navigation.actorVault',      icon: Users },
-    { key: 'compendium', labelKey: 'navigation.rulesCompendium', icon: Library },
-    { key: 'sources',    labelKey: 'navigation.sourceStatus',    icon: ScrollText },
+    { key: 'characters',  labelKey: 'navigation.actorVault',      icon: Users },
+    { key: 'compendium',  labelKey: 'navigation.rulesCompendium', icon: Library },
+    { key: 'ruleSources', labelKey: 'navigation.ruleSources',     icon: ScrollText },
+    { key: 'sources',     labelKey: 'navigation.sourceStatus',    icon: ScrollText },
   ];
 
   const completionRows: { labelKey: string; value: string }[] = [
@@ -168,6 +171,16 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   ];
 
   const panelClass = 'rounded-lg border-2 border-[#58180d]/30 bg-[#fff8e6]/80 p-5 shadow-sm';
+
+  const dndRuleSourcesTheme: SystemRuleSourcesTheme = {
+    panel: panelClass,
+    card: 'rounded-md border border-[#58180d]/20 bg-white/50',
+    title: 'text-[#58180d]',
+    muted: 'text-[#2c1810]/70',
+    badgeEnabled: 'border-[#2f7f68]/50 bg-[#2f7f68]/10 text-[#2f7f68]',
+    badgePlanned: 'border-[#58180d]/30 text-[#58180d]/70',
+    kindBadge: 'border-[#58180d]/30 text-[#58180d]/70',
+  };
   const handleNavClick = (nextView: DndWorkspaceView) => {
     // AI-LANDMARK: DND_GAMEPLAY_ENTRY_PRESERVATION
     // Workspace Play / Combat must open DND Gameplay, not the last Builder tab.
@@ -418,6 +431,10 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                 ))}
               </div>
             </section>
+          )}
+
+          {view === 'ruleSources' && (
+            <SystemRuleSourcesShell items={DND_RULE_SOURCES} t={t} theme={dndRuleSourcesTheme} />
           )}
         </main>
       )}

@@ -4,6 +4,8 @@ import { createTranslator, readStoredLocale } from '../../i18n';
 import { useCocStore } from '../../store/cocStore';
 // AI-LANDMARK: COC_ACTOR_VAULT_LIBRARY_ADOPTION_V1
 import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
+import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
+import { COC_RULE_SOURCES } from './cocRuleSourcesAdapter';
 import {
   buildCocActorSummary,
   buildCocVaultStats,
@@ -44,6 +46,7 @@ type CocWorkspaceView =
   | 'sheet'
   | 'compendium'
   | 'sources'
+  | 'ruleSources'
   | 'play'
   | 'planned';
 
@@ -389,10 +392,21 @@ export function CocWorkspaceShell({
   // AI-LANDMARK: SYSTEM_DEFAULT_ENTRY_ACTOR_VAULT_GENERIC_NAV_LABELS_V1
   // Top nav uses generic platform labels only. COC-specific labels stay inside page content.
   const navItems: { key: CocWorkspaceView; labelKey: string; icon: typeof Users }[] = [
-    { key: 'vault',      labelKey: 'navigation.actorVault',      icon: Users },
-    { key: 'compendium', labelKey: 'navigation.rulesCompendium', icon: Library },
-    { key: 'sources',    labelKey: 'navigation.sourceStatus',    icon: ScrollText },
+    { key: 'vault',       labelKey: 'navigation.actorVault',      icon: Users },
+    { key: 'compendium',  labelKey: 'navigation.rulesCompendium', icon: Library },
+    { key: 'ruleSources', labelKey: 'navigation.ruleSources',     icon: ScrollText },
+    { key: 'sources',     labelKey: 'navigation.sourceStatus',    icon: ScrollText },
   ];
+
+  const cocRuleSourcesTheme: SystemRuleSourcesTheme = {
+    panel: teal.panel,
+    card: 'rounded-md border border-[#2f7f68]/30 bg-[#101816]/70',
+    title: teal.accentStrong,
+    muted: teal.accent,
+    badgeEnabled: teal.statusGreen,
+    badgePlanned: teal.badgePlanned,
+    kindBadge: teal.badge,
+  };
 
   // Actor-context views (createMethod / sheet / play / planned) are not in the nav,
   // so they never produce an active highlight — the simplified check is safe.
@@ -865,6 +879,10 @@ export function CocWorkspaceShell({
                 {t('cocWorkspace.sources.planned')}
               </div>
             </section>
+          )}
+
+          {view === 'ruleSources' && (
+            <SystemRuleSourcesShell items={COC_RULE_SOURCES} t={t} theme={cocRuleSourcesTheme} />
           )}
 
           {/* Planned slot */}

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { ArrowLeft, ChevronUp, ChevronsLeft, ChevronsRight, HomeIcon, Library, Settings, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronUp, ChevronsLeft, ChevronsRight, HomeIcon, Library, Settings, Sparkles, Store } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Toaster } from '../components/ui/sonner';
 import { createTranslator, type Locale, readStoredLocale, writeStoredLocale } from './i18n';
 import { Home } from './pages/Home';
 import { SystemLibrary } from './pages/SystemLibrary';
+import { Workshop } from './pages/Workshop';
 import {
   PlayWorkspace,
   defaultPlayWorkspaceNavigationState,
@@ -13,7 +14,7 @@ import {
 } from './pages/PlayWorkspace';
 import { useAppStore } from './store/appStore';
 
-type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary';
+type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop';
 type PlayStage = 'menu' | 'workspace';
 type System = 'D&D' | 'CoC' | 'CP';
 
@@ -62,13 +63,14 @@ function writeStoredSidebarCollapsed(collapsed: boolean): void {
 }
 
 const navItems: {
-  key: 'home' | 'systemLibrary' | 'settings';
+  key: 'home' | 'systemLibrary' | 'workshop' | 'settings';
   labelKey: string;
   kind: 'view' | 'placeholder';
   icon: typeof HomeIcon;
 }[] = [
   { key: 'home',          labelKey: 'shell.nav.home',          kind: 'view',        icon: HomeIcon },
   { key: 'systemLibrary', labelKey: 'shell.nav.systemLibrary', kind: 'view',        icon: Library  },
+  { key: 'workshop',      labelKey: 'shell.nav.workshop',      kind: 'view',        icon: Store    },
   { key: 'settings',      labelKey: 'shell.nav.settings',      kind: 'placeholder', icon: Settings },
 ];
 
@@ -346,6 +348,11 @@ export default function App() {
       setAppView('systemLibrary');
       return;
     }
+    // Creative Workshop has a real scaffold page; never open it as a placeholder.
+    if (feature === 'workshop' || feature === 'community') {
+      setAppView('workshop');
+      return;
+    }
     setActivePlaceholder(normalizeFeatureKey(feature));
     setAppView('placeholder');
   };
@@ -425,6 +432,10 @@ export default function App() {
 
           {appView === 'systemLibrary' && (
             <SystemLibrary locale={locale} onEnterPlay={enterPlay} />
+          )}
+
+          {appView === 'workshop' && (
+            <Workshop locale={locale} onBackHome={navigateHome} />
           )}
 
           {appView === 'play' && playStage === 'workspace' && (

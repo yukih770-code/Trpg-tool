@@ -4,6 +4,8 @@ import { createTranslator, readStoredLocale } from '../../i18n';
 import { useCpStore } from '../../store/cpStore';
 // AI-LANDMARK: CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1
 import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
+import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
+import { CPRED_RULE_SOURCES } from './cpRuleSourcesAdapter';
 import { deriveVaultSummaries, type ActorVaultAdapter } from '../../lib/platform/actorVault';
 import type { CpCharacter } from '../../lib/cp-types';
 import {
@@ -38,6 +40,7 @@ type CpWorkspaceView =
   | 'createMethod'
   | 'compendium'
   | 'sources'
+  | 'ruleSources'
   | 'play'
   | 'planned';
 
@@ -529,10 +532,21 @@ export function CpWorkspaceShell({
   // AI-LANDMARK: SYSTEM_DEFAULT_ENTRY_ACTOR_VAULT_GENERIC_NAV_LABELS_V1
   // Top nav uses generic platform labels only. CP RED-specific labels stay inside page content.
   const navItems: { key: CpWorkspaceView; labelKey: string; icon: typeof Users }[] = [
-    { key: 'vault',      labelKey: 'navigation.actorVault',      icon: Users },
-    { key: 'compendium', labelKey: 'navigation.rulesCompendium', icon: Library },
-    { key: 'sources',    labelKey: 'navigation.sourceStatus',    icon: ScrollText },
+    { key: 'vault',       labelKey: 'navigation.actorVault',      icon: Users },
+    { key: 'compendium',  labelKey: 'navigation.rulesCompendium', icon: Library },
+    { key: 'ruleSources', labelKey: 'navigation.ruleSources',     icon: ScrollText },
+    { key: 'sources',     labelKey: 'navigation.sourceStatus',    icon: ScrollText },
   ];
+
+  const cpRuleSourcesTheme: SystemRuleSourcesTheme = {
+    panel: gold.panel,
+    card: 'rounded-md border border-[#d8b954]/30 bg-[#0d0d0d]/70',
+    title: gold.accentStrong,
+    muted: gold.accent,
+    badgeEnabled: gold.statusYellow,
+    badgePlanned: gold.badgePlanned,
+    kindBadge: gold.badge,
+  };
 
   const isActiveNav = (item: (typeof navItems)[number]) => view === item.key;
 
@@ -896,6 +910,10 @@ export function CpWorkspaceShell({
                 {t('cpWorkspace.sources.planned')}
               </div>
             </section>
+          )}
+
+          {view === 'ruleSources' && (
+            <SystemRuleSourcesShell items={CPRED_RULE_SOURCES} t={t} theme={cpRuleSourcesTheme} />
           )}
 
           {/* Planned slot */}

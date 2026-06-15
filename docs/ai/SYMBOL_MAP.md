@@ -296,6 +296,20 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Future Game System categories (Japanese TRPG, Wargame, Custom, Narrative): Section 5 of `PLATFORM_CORE_CONCEPTS.md`
 - No store, schema, runtime, or rule data changed by this baseline
 
+## Platform Workshop & System Rule Sources
+
+- `AI-LANDMARK: PLATFORM_WORKSHOP_SYSTEM_RULE_SOURCES_SHELL_V1`
+- Workshop static types + sample data: `src/lib/platform/workshopTypes.ts` (`WorkshopAssetType`, `WorkshopLandingTarget`, `WORKSHOP_BROWSE_SAMPLES`, `WORKSHOP_SUBSCRIPTION_SAMPLES`, `WORKSHOP_LANDING_MAP`, `localized`)
+- System Rule Sources types: `src/lib/platform/systemRuleSources.ts` (`RuleSourceStatus`, `RuleSourceKind`, `SystemRuleSourceItem`, `RULE_SOURCE_CORE_KINDS`)
+- Workshop UI shell (browse / my subscriptions / updates tabs + content landing): `src/components/platform/WorkshopShell.tsx`
+- Workshop page wrapper: `src/pages/Workshop.tsx`
+- System Rule Sources shell (core/community/custom sections + override/conflict reservation note): `src/components/platform/SystemRuleSourcesShell.tsx` (`SystemRuleSourcesShell`, `SystemRuleSourcesTheme`)
+- Per-system rule source data: `src/pages/dndWorkspace/dndRuleSourcesAdapter.ts` (`DND_RULE_SOURCES`), `src/pages/cocWorkspace/cocRuleSourcesAdapter.ts` (`COC_RULE_SOURCES`), `src/pages/cpWorkspace/cpRuleSourcesAdapter.ts` (`CPRED_RULE_SOURCES`)
+- Platform Workshop entry: `App.tsx` sidebar nav `workshop` + `appView === 'workshop'`; Home/community card reroutes to Workshop via `openPlaceholder('community'|'workshop')`
+- `ruleSources` workspace view added to `DndWorkspaceView` / `CocWorkspaceView` / `CpWorkspaceView` / `NonDndWorkspaceView`; nav label `navigation.ruleSources`
+- i18n: `workshop.*`, `systemRuleSources.*`, `shell.nav.workshop`, `navigation.ruleSources` in `src/i18n/locales/zh-CN.ts` and `en.ts`
+- Scaffold only: no real subscription/import/update/conflict detection; no store/schema/rule-data/runtime change
+
 ## Navigation Back / Up / Breadcrumb Model
 
 - Full navigation model: `docs/architecture/NAVIGATION_BACK_UP_BREADCRUMB_MODEL.md`
