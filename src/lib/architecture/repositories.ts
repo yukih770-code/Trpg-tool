@@ -54,6 +54,14 @@ import type {
   ProjectedEntitySummary,
   ProjectionDecision,
 } from './projection';
+import type {
+  MediaAsset,
+  MediaAssetDetail,
+  MediaAssetSummary,
+  MediaAssetValidationResult,
+  MediaAssetVariant,
+  ResolvedMediaVariant,
+} from './mediaAsset';
 
 /** Viewer + projection types live in ./projection (single source); re-exported here. */
 import type { ViewerContext, ViewerRole } from './projection';
@@ -132,18 +140,18 @@ export interface FanWorkRepository {
   getById(id: EntityId): FanWork | undefined;
 }
 
-// ─── MediaAsset (contract reserved — media model is A6) ───────────────────────
-
-export type MediaAssetMetadata = {
-  id: string;
-  kind: string;
-  altLabel?: string;
-  placeholderKind?: string;
-};
+// ─── MediaAsset (model defined in ./mediaAsset — A6) ──────────────────────────
 
 export interface MediaAssetRepository {
-  /** Reserved: returns undefined until the MediaAsset model lands (A6). */
-  getMetadata(id: EntityId): MediaAssetMetadata | undefined;
+  getMediaSummary(id: string, viewer?: ViewerContext): MediaAssetSummary | undefined;
+  getMediaDetail(id: string, viewer?: ViewerContext): MediaAssetDetail | undefined;
+  /** Resolve one variant under projection (thumbnail/preview/original/...). */
+  getMediaVariant(id: string, variant: MediaAssetVariant, viewer?: ViewerContext): ResolvedMediaVariant;
+  /** Media used by an entity / document / package (projection-filtered). */
+  getMediaByEntity(entityId: EntityId, viewer?: ViewerContext): MediaAssetSummary[];
+  getMediaByDocument(documentId: string, viewer?: ViewerContext): MediaAssetSummary[];
+  getMediaByPackage(packageId: string, viewer?: ViewerContext): MediaAssetSummary[];
+  validateMediaAsset(asset: MediaAsset): MediaAssetValidationResult;
 }
 
 // ─── Permission / Projection ──────────────────────────────────────────────────

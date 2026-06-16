@@ -36,7 +36,6 @@ import type {
   EntityGraphRepository,
   EntityRepository,
   FanWorkRepository,
-  MediaAssetMetadata,
   MediaAssetRepository,
   PermissionProjectionRepository,
   PlatformRepositories,
@@ -70,6 +69,20 @@ import {
   type ProjectedEntitySummary,
   type ProjectionDecision,
 } from './projection';
+import {
+  getMediaAssetSeedById,
+  getMediaUsageBy,
+  resolveMediaVariant,
+  toMediaAssetDetail,
+  toMediaAssetSummary,
+  validateMediaAsset,
+  type MediaAsset,
+  type MediaAssetDetail,
+  type MediaAssetSummary,
+  type MediaAssetValidationResult,
+  type MediaAssetVariant,
+  type ResolvedMediaVariant,
+} from './mediaAsset';
 import { FAN_WORKS } from '../platform/communityMockData';
 import type { FanWork } from '../platform/communityTypes';
 import { WORKSHOP_BROWSE_SAMPLES } from '../platform/workshopTypes';
@@ -341,8 +354,46 @@ class MockBlockDocumentRepository implements BlockDocumentRepository {
 }
 
 class MockMediaAssetRepository implements MediaAssetRepository {
-  getMetadata(_id: EntityId): MediaAssetMetadata | undefined {
-    return undefined; // reserved until MediaAsset model (A6)
+  getMediaSummary(id: string, viewer?: ViewerContext): MediaAssetSummary | undefined {
+    const asset = getMediaAssetSeedById(id);
+    if (!asset) return undefined;
+    if (resolveMediaVariant(asset, 'thumbnail', viewer).kind === 'denied') return undefined;
+    return toMediaAssetSummary(asset);
+  }
+
+  getMediaDetail(id: string, viewer?: ViewerContext): MediaAssetDetail | undefined {
+    const asset = getMediaAssetSeedById(id);
+    if (!asset) return undefined;
+    if (resolveMediaVariant(asset, 'preview', viewer).kind === 'denied') return undefined;
+    return toMediaAssetDetail(asset);
+  }
+
+  getMediaVariant(id: string, variant: MediaAssetVariant, viewer?: ViewerContext): ResolvedMediaVariant {
+    const asset = getMediaAssetSeedById(id);
+    if (!asset) return { kind: 'denied' };
+    return resolveMediaVariant(asset, variant, viewer);
+  }
+
+  private summariesFor(usedById: string, viewer?: ViewerContext): MediaAssetSummary[] {
+    return getMediaUsageBy(usedById)
+      .map((usage) => this.getMediaSummary(usage.mediaAssetId, viewer))
+      .filter((s): s is MediaAssetSummary => Boolean(s));
+  }
+
+  getMediaByEntity(entityId: EntityId, viewer?: ViewerContext): MediaAssetSummary[] {
+    return this.summariesFor(entityId, viewer);
+  }
+
+  getMediaByDocument(documentId: string, viewer?: ViewerContext): MediaAssetSummary[] {
+    return this.summariesFor(documentId, viewer);
+  }
+
+  getMediaByPackage(packageId: string, viewer?: ViewerContext): MediaAssetSummary[] {
+    return this.summariesFor(packageId, viewer);
+  }
+
+  validateMediaAsset(asset: MediaAsset): MediaAssetValidationResult {
+    return validateMediaAsset(asset);
   }
 }
 

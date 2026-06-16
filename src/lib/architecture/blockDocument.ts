@@ -238,6 +238,17 @@ export function documentBlockTypes(doc: BlockDocument): ContentBlockType[] {
   return Array.from(new Set(doc.blocks.map((b) => b.type)));
 }
 
+/** Distinct MediaAsset ids referenced by image / gallery / audio blocks. */
+export function documentMediaRefs(doc: BlockDocument): string[] {
+  const seen = new Set<string>();
+  for (const block of doc.blocks) {
+    if (block.type === 'image' && block.mediaAssetId) seen.add(block.mediaAssetId);
+    if (block.type === 'imageGallery') block.mediaAssetIds.forEach((id) => seen.add(id));
+    if (block.type === 'audio' && block.mediaAssetId) seen.add(block.mediaAssetId);
+  }
+  return [...seen];
+}
+
 /** Distinct entity references the document carries (derived — not authority). */
 export function documentEntityRefs(doc: BlockDocument): EntityRef[] {
   const seen = new Set<string>();
