@@ -53,6 +53,23 @@ import {
   type BlockDocumentValidationResult,
 } from './blockDocument';
 import { BLOCK_DOCUMENT_SEED, getBlockDocumentSeedById } from './blockDocumentSeed';
+import {
+  toWorkshopPackageSummary,
+  validateWorkshopPackageManifest,
+  type WorkshopPackageDetail,
+  type WorkshopPackageManifest,
+  type WorkshopPackageManifestValidationResult,
+  type WorkshopPackageSummary,
+} from './workshopPackage';
+import { WORKSHOP_PACKAGE_SEED, getWorkshopPackageSeedById } from './workshopPackageSeed';
+import {
+  decideProjection,
+  projectNodeDetail,
+  projectNodeSummary,
+  type ProjectedEntityDetail,
+  type ProjectedEntitySummary,
+  type ProjectionDecision,
+} from './projection';
 import { FAN_WORKS } from '../platform/communityMockData';
 import type { FanWork } from '../platform/communityTypes';
 import { WORKSHOP_BROWSE_SAMPLES } from '../platform/workshopTypes';
@@ -236,11 +253,55 @@ class MockFanWorkRepository implements FanWorkRepository {
 }
 
 class MockWorkshopPackageRepository implements WorkshopPackageRepository {
+  // ── Legacy browse-item access (current Workshop UI) ──
   list(): WorkshopBrowseItem[] {
     return WORKSHOP_BROWSE_SAMPLES;
   }
   getById(id: EntityId): WorkshopBrowseItem | undefined {
     return WORKSHOP_BROWSE_SAMPLES.find((w) => w.id === id);
+  }
+
+  // ── Manifest protocol (A4) ──
+  getPackageSummary(id: string): WorkshopPackageSummary | undefined {
+    const manifest = getWorkshopPackageSeedById(id);
+    return manifest ? toWorkshopPackageSummary(manifest) : undefined;
+  }
+
+  getPackageDetail(id: string): WorkshopPackageDetail | undefined {
+    return getWorkshopPackageSeedById(id);
+  }
+
+  listPackages(options?: { systemId?: string }): WorkshopPackageSummary[] {
+    return WORKSHOP_PACKAGE_SEED
+      .filter((m) => (options?.systemId ? m.systemId === options.systemId : true))
+      .map(toWorkshopPackageSummary);
+  }
+
+  getPackagesByEntity(entityId: EntityId): WorkshopPackageSummary[] {
+    return WORKSHOP_PACKAGE_SEED
+      .filter((m) =>
+        m.includedEntities.some((e) => e.entityId === entityId) ||
+        m.entryPoints.some((ep) => ep.kind === 'entity' && ep.ref === entityId) ||
+        m.dependencies.some((dep) => dep.kind === 'entity' && dep.ref === entityId),
+      )
+      .map(toWorkshopPackageSummary);
+  }
+
+  getPackagesByDocument(documentId: string): WorkshopPackageSummary[] {
+    return WORKSHOP_PACKAGE_SEED
+      .filter((m) =>
+        m.includedDocuments.some((d) => d.documentId === documentId) ||
+        m.entryPoints.some((ep) => ep.kind === 'blockDocument' && ep.ref === documentId),
+      )
+      .map(toWorkshopPackageSummary);
+  }
+
+  getPackageManifest(id: string): WorkshopPackageManifest | undefined {
+    return getWorkshopPackageSeedById(id);
+  }
+
+  validateManifest(manifest: WorkshopPackageManifest): WorkshopPackageManifestValidationResult {
+    return validateWorkshopPackageManifest(manifest);
   }
 }
 
@@ -287,13 +348,43 @@ class MockMediaAssetRepository implements MediaAssetRepository {
 
 class MockPermissionProjectionRepository implements PermissionProjectionRepository {
   constructor(private graph: MockEntityGraphRepository) {}
-  resolveProjection(viewer: ViewerContext, entityId: EntityId): EntityProjection {
+
+  resolveProjection(entityId: EntityId, viewer: ViewerContext): ProjectionDecision {
     const node = this.graph.getEntity(entityId);
-    if (viewer.role === 'owner') return 'owner';
-    if (viewer.role === 'gm') return 'gm';
-    if (viewer.role === 'player') return 'player';
-    if (node?.visibility === 'unlisted') return 'unlisted';
-    return 'public';
+    if (!node) return { projection: 'denied', allowed: false, reason: 'not-found', accessLevel: 'none' };
+    return decideProjection({ visibility: node.visibility, ownerId: node.ownerId, shareCode: node.shareCode }, viewer);
+  }
+
+  canViewEntity(entityId: EntityId, viewer: ViewerContext): boolean {
+    return this.resolveProjection(entityId, viewer).allowed;
+  }
+
+  canEditEntity(entityId: EntityId, viewer: ViewerContext): boolean {
+    const node = this.graph.getEntity(entityId);
+    if (!node) return false;
+    return viewer.role === 'admin' || (!!node.ownerId && node.ownerId === viewer.userId);
+  }
+
+  // View-tier gate. The real clone/reference ALLOWANCE is governed by the
+  // WorkshopPackage clonePolicy/readOnlyPolicy (A4), checked separately.
+  canCloneEntity(entityId: EntityId, viewer: ViewerContext): boolean {
+    return this.canViewEntity(entityId, viewer);
+  }
+
+  canReferenceEntity(entityId: EntityId, viewer: ViewerContext): boolean {
+    return this.canViewEntity(entityId, viewer);
+  }
+
+  projectEntitySummary(entityId: EntityId, viewer: ViewerContext): ProjectedEntitySummary {
+    const node = this.graph.getEntity(entityId);
+    if (!node) return { projection: 'denied', accessLevel: 'none' };
+    return projectNodeSummary(node, viewer);
+  }
+
+  projectEntityDetail(entityId: EntityId, viewer: ViewerContext): ProjectedEntityDetail {
+    const node = this.graph.getEntity(entityId);
+    if (!node) return { projection: 'denied', accessLevel: 'none' };
+    return projectNodeDetail(node, viewer);
   }
 }
 

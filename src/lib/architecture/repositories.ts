@@ -43,12 +43,21 @@ import type {
   BlockDocumentSummary,
   BlockDocumentValidationResult,
 } from './blockDocument';
+import type {
+  WorkshopPackageDetail,
+  WorkshopPackageManifest,
+  WorkshopPackageManifestValidationResult,
+  WorkshopPackageSummary,
+} from './workshopPackage';
+import type {
+  ProjectedEntityDetail,
+  ProjectedEntitySummary,
+  ProjectionDecision,
+} from './projection';
 
-/** Viewer context used to resolve a projection (auth/permissions land later). */
-export type ViewerContext = {
-  userId?: string;
-  role?: 'owner' | 'gm' | 'player' | 'guest';
-};
+/** Viewer + projection types live in ./projection (single source); re-exported here. */
+import type { ViewerContext, ViewerRole } from './projection';
+export type { ViewerContext, ViewerRole };
 
 // ─── Graph ───────────────────────────────────────────────────────────────────
 
@@ -98,8 +107,22 @@ export interface BlockDocumentRepository {
 // ─── WorkshopPackage (uses existing browse-item metadata shape for now) ───────
 
 export interface WorkshopPackageRepository {
+  /**
+   * Legacy browse-item access (consumed by current Workshop UI). Future: derived
+   * from `WorkshopPackageSummary` — see WORKSHOP_PACKAGE_MANIFEST_V1.md §11.
+   */
   list(): WorkshopBrowseItem[];
   getById(id: EntityId): WorkshopBrowseItem | undefined;
+
+  // ── Manifest protocol (A4) ──
+  getPackageSummary(id: string): WorkshopPackageSummary | undefined;
+  getPackageDetail(id: string): WorkshopPackageDetail | undefined;
+  listPackages(options?: { systemId?: string }): WorkshopPackageSummary[];
+  /** Packages that include / reference an entity (derived; authority = EntityGraph). */
+  getPackagesByEntity(entityId: EntityId): WorkshopPackageSummary[];
+  getPackagesByDocument(documentId: string): WorkshopPackageSummary[];
+  getPackageManifest(id: string): WorkshopPackageManifest | undefined;
+  validateManifest(manifest: WorkshopPackageManifest): WorkshopPackageManifestValidationResult;
 }
 
 // ─── FanWork (uses existing community FanWork shape for now) ──────────────────
@@ -126,8 +149,15 @@ export interface MediaAssetRepository {
 // ─── Permission / Projection ──────────────────────────────────────────────────
 
 export interface PermissionProjectionRepository {
-  /** Resolve which projection a viewer may read for an entity. */
-  resolveProjection(viewer: ViewerContext, entityId: EntityId): EntityProjection;
+  /** Resolve the projection decision (which view, or denied) for a viewer. */
+  resolveProjection(entityId: EntityId, viewer: ViewerContext): ProjectionDecision;
+  canViewEntity(entityId: EntityId, viewer: ViewerContext): boolean;
+  canEditEntity(entityId: EntityId, viewer: ViewerContext): boolean;
+  canCloneEntity(entityId: EntityId, viewer: ViewerContext): boolean;
+  canReferenceEntity(entityId: EntityId, viewer: ViewerContext): boolean;
+  /** Repository/Service-enforced projected DTOs — never filter in components. */
+  projectEntitySummary(entityId: EntityId, viewer: ViewerContext): ProjectedEntitySummary;
+  projectEntityDetail(entityId: EntityId, viewer: ViewerContext): ProjectedEntityDetail;
 }
 
 // ─── Aggregate composition root ───────────────────────────────────────────────
