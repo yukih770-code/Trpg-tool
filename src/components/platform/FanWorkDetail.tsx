@@ -1,13 +1,14 @@
 /**
  * FanWorkDetail
- * AI-LANDMARK: WORKSHOP_FAN_PLAZA_VISUAL_PREVIEW_REFINEMENT_V2
- * (supersedes LINKABLE_ENTITY_FAN_PLAZA_SCAFFOLD_V1 detail layout)
+ * AI-LANDMARK: WORKSHOP_FAN_PLAZA_DEDICATED_DETAIL_PAGES_V1
+ * (supersedes WORKSHOP_FAN_PLAZA_VISUAL_PREVIEW_REFINEMENT_V2 detail layout)
  *
- * Detail panel for one fan work: big cover / main preview (from coverMode),
- * content-block summary, multimodal media placeholders (image / gallery / audio /
- * external link), related objects (emphasis), related Workshop content, share
- * code / public path / visibility, permission-boundary note, and reserved
- * like/favorite/comment + author-other-works interfaces. No real backend.
+ * Dedicated Fan Work detail view (entered from a card, NOT an inline list
+ * expansion). Hero cover / main preview (from coverMode), full body, multimodal
+ * media placeholders (image / gallery / audio / external link), related objects
+ * (emphasis), related Workshop content, share code / public path / visibility,
+ * permission-boundary note, and reserved like/favorite/comment + author-other-
+ * works + related-recommend interfaces. No real backend / routing.
  */
 import { useState } from 'react';
 import type { Locale } from '../../i18n';
@@ -23,10 +24,10 @@ export type FanWorkDetailProps = {
   work: FanWork;
   t: (key: string) => string;
   locale: Locale;
-  onClose: () => void;
+  onBack: () => void;
 };
 
-export function FanWorkDetail({ work, t, locale, onClose }: FanWorkDetailProps) {
+export function FanWorkDetail({ work, t, locale, onBack }: FanWorkDetailProps) {
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
   const selectedEntity = selectedEntityId ? getEntityById(selectedEntityId) : undefined;
 
@@ -37,10 +38,20 @@ export function FanWorkDetail({ work, t, locale, onClose }: FanWorkDetailProps) 
   const relatedWorkshopItems = getRelatedWorkshopItems(work);
 
   return (
-    <div className="rounded-lg border border-[#2f2a22]/20 bg-[#faf8f2] p-4">
+    <main className="mx-auto w-full max-w-5xl px-4 py-8 md:px-8">
+      {/* Back to Fan Plaza */}
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-4 inline-flex items-center gap-1 rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
+      >
+        ← {t('fanPlaza.detail.backToPlaza')}
+      </button>
+
+      <div className="rounded-lg border border-[#2f2a22]/20 bg-[#faf8f2] p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-lg font-bold text-[#17130f]">{work.title}</h2>
+          <h2 className="text-xl font-bold text-[#17130f]">{work.title}</h2>
           <div className="mt-0.5 text-[11px] text-[#51483d]">
             {t('fanPlaza.card.author')}：{work.authorName}
             <span className="mx-2 opacity-40">·</span>
@@ -49,13 +60,6 @@ export function FanWorkDetail({ work, t, locale, onClose }: FanWorkDetailProps) 
             {t('fanPlaza.detail.updated')}：{work.updatedAtLabel}
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="shrink-0 border border-[#2f2a22]/20 px-2.5 py-1 text-[11px] font-bold text-[#51483d] hover:border-[#17130f]"
-        >
-          {t('fanPlaza.detail.close')}
-        </button>
       </div>
 
       {/* Big cover / main preview */}
@@ -184,13 +188,32 @@ export function FanWorkDetail({ work, t, locale, onClose }: FanWorkDetailProps) 
         <p className="mt-2 text-[10px] leading-relaxed text-[#51483d]/70">{t('fanPlaza.permissionBoundary')}</p>
       </section>
 
-      {/* Reserved engagement + author other works */}
+      {/* Reserved engagement */}
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" className="border border-dashed border-[#2f2a22]/30 px-2.5 py-1 text-[11px] font-bold text-[#51483d]/60">{t('fanPlaza.detail.likeReserved')}（{work.likeCount}）</button>
         <button type="button" className="border border-dashed border-[#2f2a22]/30 px-2.5 py-1 text-[11px] font-bold text-[#51483d]/60">{t('fanPlaza.detail.favoriteReserved')}（{work.favoriteCount}）</button>
-        <button type="button" className="border border-dashed border-[#2f2a22]/30 px-2.5 py-1 text-[11px] font-bold text-[#51483d]/60">{t('fanPlaza.detail.commentReserved')}（{work.commentCount}）</button>
-        <button type="button" className="border border-dashed border-[#2f2a22]/30 px-2.5 py-1 text-[11px] font-bold text-[#51483d]/60">{t('fanPlaza.detail.authorWorksReserved')}</button>
       </div>
-    </div>
+
+      {/* Comments section (reserved) */}
+      <section className="mt-3 rounded-md border border-[#2f2a22]/12 bg-white p-3">
+        <h3 className="text-[11px] font-bold uppercase tracking-wider text-[#51483d]">{t('fanPlaza.detail.commentsSection')}</h3>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button type="button" className="border border-dashed border-[#2f2a22]/30 px-2.5 py-1 text-[11px] font-bold text-[#51483d]/60">{t('fanPlaza.detail.commentReserved')}（{work.commentCount}）</button>
+          <button type="button" className="border border-dashed border-[#2f2a22]/30 px-2.5 py-1 text-[11px] font-bold text-[#51483d]/60">{t('fanPlaza.detail.authorWorksReserved')}</button>
+          <button type="button" className="border border-dashed border-[#2f2a22]/30 px-2.5 py-1 text-[11px] font-bold text-[#51483d]/60">{t('fanPlaza.detail.relatedRecommendReserved')}</button>
+        </div>
+      </section>
+      </div>
+
+      <div className="mt-6">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center gap-1 rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
+        >
+          ← {t('fanPlaza.detail.backToPlaza')}
+        </button>
+      </div>
+    </main>
   );
 }

@@ -509,6 +509,31 @@ Linkage + regression:
 
 ---
 
+## 6h. Workshop + Fan Plaza Dedicated Detail Pages v1 Check
+
+Workshop:
+- [ ] Clicking a Workshop card main area enters a dedicated item detail view (browse grid + filters are no longer on screen)
+- [ ] Detail view has a 返回创意工坊 / Back button (top and bottom); returning restores the browse page
+- [ ] Detail view shows a large hero cover, image gallery, long description, version/dependency/impact/landing info, and related fan works + related actors/campaigns/logs
+- [ ] Quick preview is now LIGHTWEIGHT only (small cover + title + author + one-line summary + system/category/version/dependency/impact + 进入详情 + subscribe reserved) — no full gallery/long description/related block
+- [ ] No fake subscribe / download / install / import success; share code / public path are display-only with reserved copy/open buttons
+
+Fan Plaza:
+- [ ] Clicking a Fan Work card main area enters a dedicated work detail view (work flow grid + filters are no longer on screen)
+- [ ] Detail view has a 返回同人广场 / Back button (top and bottom); returning restores the browse page
+- [ ] Detail view shows a large cover, body, image/gallery/audio/external-link placeholders, related objects, related Workshop content, and a Comments section (reserved)
+- [ ] Quick preview is LIGHTWEIGHT only (small cover + title + author + summary + type/format/system + related-object summary + 进入详情) — no full body/media/comments
+- [ ] No fake upload / like / favorite / comment success; buttons are interface-reserved
+
+Routing + regression:
+- [ ] No React Router / URL routing / browser History API introduced; detail is page-internal state only
+- [ ] `rg "react-router|createBrowserRouter|history.pushState|window.location" src/components/platform src/pages/Workshop.tsx src/pages/FanPlaza.tsx` returns no new routing usage
+- [ ] Platform navigation, System Library, Actor Vault, and DND Builder are unchanged (no regression)
+- [ ] No store / schema / save format / rule data / Builder / dice / runtime change; no real backend
+- [ ] Landmark `WORKSHOP_FAN_PLAZA_DEDICATED_DETAIL_PAGES_V1` present (WorkshopItemDetail.tsx + shells)
+
+---
+
 ## 6. Console Check
 
 - [ ] Open browser DevTools → Console

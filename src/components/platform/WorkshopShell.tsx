@@ -54,10 +54,8 @@ import {
   type WorkshopSubscriptionStatusKey,
   type WorkshopSystem,
 } from '../../lib/platform/workshopTypes';
-import { getFanWorkById, getRelatedFanWorkIdsForWorkshopItem } from '../../lib/platform/communityMockData';
-import { getEntityById, getRelationsByIds } from '../../lib/platform/linkableEntityMockData';
-import type { LinkableEntitySummary, LinkableEntityType } from '../../lib/platform/linkableEntityTypes';
 import { PreviewArt } from './PreviewArt';
+import { WorkshopItemDetail } from './WorkshopItemDetail';
 
 type WorkshopTab = 'browse' | 'subscriptions';
 
@@ -172,8 +170,11 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
   const [activeShape, setActiveShape] = useState<WorkshopContentShape | 'all'>('all');
   const [activeSort, setActiveSort] = useState<WorkshopSort>('featured');
 
-  // ── Quick preview state ───────────────────────────────────────────────────
+  // ── Quick preview state (lightweight) ─────────────────────────────────────
   const [previewId, setPreviewId] = useState<string | null>(null);
+
+  // ── Dedicated detail view state ───────────────────────────────────────────
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   // ── Subscription state ───────────────────────────────────────────────────
   const [subSearch, setSubSearch] = useState('');
@@ -266,37 +267,25 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
     return true;
   });
 
-  // ── Preview item ──────────────────────────────────────────────────────────
+  // ── Preview item (lightweight) ────────────────────────────────────────────
   const previewItem = previewId
     ? WORKSHOP_BROWSE_SAMPLES.find((i) => i.id === previewId) ?? null
     : null;
 
-  // ── Related content for the quick preview (association display only) ───────
-  const previewRelatedFanWorks = previewItem
-    ? getRelatedFanWorkIdsForWorkshopItem(previewItem.id)
-        .map(getFanWorkById)
-        .filter((w): w is NonNullable<typeof w> => Boolean(w))
-    : [];
-  const previewEntityRelations = previewRelatedFanWorks.flatMap((w) =>
-    getRelationsByIds(w.relationIds),
-  );
-  const collectRelatedEntities = (type: LinkableEntityType): LinkableEntitySummary[] => {
-    const seen = new Set<string>();
-    const out: LinkableEntitySummary[] = [];
-    for (const rel of previewEntityRelations) {
-      if (rel.targetType === type && !seen.has(rel.targetId)) {
-        const entity = getEntityById(rel.targetId);
-        if (entity) {
-          seen.add(rel.targetId);
-          out.push(entity);
-        }
-      }
-    }
-    return out;
+  // ── Detail item (dedicated detail view) ───────────────────────────────────
+  const detailItem = detailId
+    ? WORKSHOP_BROWSE_SAMPLES.find((i) => i.id === detailId) ?? null
+    : null;
+
+  const openDetail = (id: string) => {
+    setDetailId(id);
+    setPreviewId(null);
   };
-  const previewRelatedActors = collectRelatedEntities('actor');
-  const previewRelatedCampaigns = collectRelatedEntities('campaign');
-  const previewRelatedLogs = collectRelatedEntities('sessionLog');
+
+  // Dedicated detail view replaces the browse/subscriptions surface entirely.
+  if (detailItem) {
+    return <WorkshopItemDetail item={detailItem} t={t} locale={locale} onBack={() => setDetailId(null)} />;
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -416,190 +405,59 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
             </div>
           </div>
 
-          {/* Quick preview panel — page-internal, no modal library */}
+          {/* Quick preview — LIGHTWEIGHT only (full detail lives in the dedicated detail view) */}
           {previewItem && (
             <div className="rounded-lg border-2 border-[#17130f]/20 bg-white p-4">
-              <div className="flex items-start justify-between gap-3">
-                <h3 className="text-base font-bold leading-snug">
-                  {localized(previewItem.title, locale)}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setPreviewId(null)}
-                  className="shrink-0 border border-[#2f2a22]/20 px-2 py-0.5 text-[11px] font-bold text-[#51483d] hover:border-[#17130f]"
-                >
-                  {t('workshop.card.closePreview')}
-                </button>
-              </div>
-
-              {/* Big cover + small gallery preview */}
-              <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-                <div>
-                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[#51483d]/50">
-                    {t('workshop.card.coverPreview')}
-                  </p>
+              <div className="flex items-start gap-3">
+                <div className="w-28 shrink-0 sm:w-36">
                   <PreviewArt
                     t={t}
                     workshopKind={workshopPreviewKind(previewItem)}
                     accent={previewItem.previewAccent}
-                    ratio="16:9"
-                    galleryCount={previewItem.galleryPreviewKinds?.length}
-                    hasAudio={workshopPreviewKind(previewItem) === 'music'}
+                    ratio="4:3"
+                    showCaption={false}
                   />
                 </div>
-                {previewItem.galleryPreviewKinds && previewItem.galleryPreviewKinds.length > 0 && (
-                  <div>
-                    <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[#51483d]/50">
-                      {t('workshop.card.gallery')}
-                    </p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {previewItem.galleryPreviewKinds.slice(0, 4).map((kind, i) => (
-                        <PreviewArt
-                          key={`${kind}-${i}`}
-                          t={t}
-                          workshopKind={kind}
-                          ratio="4:3"
-                          showCaption={false}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <p className="mt-3 text-[12px] leading-relaxed text-[#51483d]/70">
-                {localized(previewItem.description, locale)}
-              </p>
-
-              <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 text-[11px] text-[#51483d]">
-                <div>
-                  <span className="font-bold">{t('workshop.card.author')}：</span>
-                  {previewItem.author}
-                </div>
-                <div>
-                  <span className="font-bold">{t('workshop.card.system')}：</span>
-                  {systemLabel(previewItem.system)}
-                </div>
-                <div>
-                  <span className="font-bold">{t('workshop.subscriptions.categoryLabel')}：</span>
-                  {previewItem.subtype
-                    ? `${categoryLabel(previewItem.category)} / ${subtypeLabel(previewItem.subtype)}`
-                    : categoryLabel(previewItem.category)}
-                </div>
-                <div>
-                  <span className="font-bold">{t('workshop.card.contentShape')}：</span>
-                  {shapeLabel(previewItem.contentShape)}
-                </div>
-                <div>
-                  <span className="font-bold">{t('workshop.card.version')}：</span>
-                  {previewItem.version}
-                </div>
-                <div>
-                  <span className="font-bold">{t('workshop.card.lastUpdated')}：</span>
-                  {previewItem.lastUpdatedLabel}
-                </div>
-                <div>
-                  <span className="font-bold">{t('workshop.card.dependencyStatus')}：</span>
-                  {depStatusLabel(previewItem.dependencyStatus)}
-                </div>
-                <div>
-                  <span className="font-bold">{t('workshop.card.impactScope')}：</span>
-                  {impactScopeLabel(previewItem.impactScope)}
-                </div>
-                <div className="col-span-2">
-                  <span className="font-bold">{t('workshop.card.landing')}：</span>
-                  {cardLanding(previewItem)}
-                </div>
-              </div>
-
-              {previewItem.attributeTags.length > 0 && (
-                <div className="mt-2.5 flex flex-wrap items-center gap-1">
-                  <span className="text-[11px] font-bold text-[#51483d] mr-1">
-                    {t('workshop.card.attributeTags')}：
-                  </span>
-                  {previewItem.attributeTags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded border border-[#2f2a22]/15 px-1.5 py-0.5 text-[10px] text-[#51483d]/70"
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-base font-bold leading-snug">{localized(previewItem.title, locale)}</h3>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewId(null)}
+                      className="shrink-0 border border-[#2f2a22]/20 px-2 py-0.5 text-[11px] font-bold text-[#51483d] hover:border-[#17130f]"
                     >
-                      {attrTagLabel(tag)}
-                    </span>
-                  ))}
+                      {t('workshop.card.closePreview')}
+                    </button>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-[#51483d]/60">
+                    {t('workshop.card.author')}：{previewItem.author}
+                  </p>
+                  <p className="mt-1 text-[12px] leading-relaxed text-[#51483d]/80">
+                    {localized(previewItem.description, locale)}
+                  </p>
+                  <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[#51483d]">
+                    <span><span className="font-bold">{t('workshop.card.system')}：</span>{systemLabel(previewItem.system)}</span>
+                    <span><span className="font-bold">{t('workshop.subscriptions.categoryLabel')}：</span>{categoryLabel(previewItem.category)}</span>
+                    <span><span className="font-bold">{t('workshop.card.version')}：</span>{previewItem.version}</span>
+                    <span><span className="font-bold">{t('workshop.card.dependencyStatus')}：</span>{depStatusLabel(previewItem.dependencyStatus)}</span>
+                    <span><span className="font-bold">{t('workshop.card.impactScope')}：</span>{impactScopeLabel(previewItem.impactScope)}</span>
+                  </div>
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openDetail(previewItem.id)}
+                      className="border border-[#17130f] bg-[#17130f] px-3 py-1 text-xs font-bold text-white"
+                    >
+                      {t('workshop.card.enterDetail')}
+                    </button>
+                    <button
+                      type="button"
+                      className="border border-dashed border-[#2f2a22]/30 px-3 py-1 text-xs font-bold text-[#51483d]/70"
+                    >
+                      {t('workshop.card.subscribeReserved')}
+                    </button>
+                  </div>
                 </div>
-              )}
-
-              {/* Related fan works / actors / campaigns / logs (association only) */}
-              <div className="mt-4 border-t border-[#2f2a22]/10 pt-3">
-                <p className="text-[11px] font-bold text-[#51483d]">{t('workshop.card.relatedFanWorks')}</p>
-                {previewRelatedFanWorks.length === 0 ? (
-                  <p className="mt-1 text-[11px] text-[#51483d]/50">{t('workshop.card.noRelatedFanWorks')}</p>
-                ) : (
-                  <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    {previewRelatedFanWorks.map((fw) => (
-                      <div key={fw.id} className="overflow-hidden rounded-md border border-[#2f2a22]/12 bg-white">
-                        <PreviewArt t={t} fanKind={fw.coverKind ?? fw.type} ratio="4:3" showCaption={false} />
-                        <div className="p-1.5">
-                          <p className="truncate text-[11px] font-bold text-[#17130f]">{fw.title}</p>
-                          <p className="text-[10px] text-[#51483d]/60">{t(`fanPlaza.workType.${fw.type}`)}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {(previewRelatedActors.length > 0 ||
-                  previewRelatedCampaigns.length > 0 ||
-                  previewRelatedLogs.length > 0) && (
-                  <div className="mt-2.5 flex flex-col gap-1.5">
-                    {([
-                      ['workshop.card.relatedActors', previewRelatedActors],
-                      ['workshop.card.relatedCampaigns', previewRelatedCampaigns],
-                      ['workshop.card.relatedLogs', previewRelatedLogs],
-                    ] as const).map(([labelKey, entities]) =>
-                      entities.length > 0 ? (
-                        <div key={labelKey} className="flex flex-wrap items-center gap-1">
-                          <span className="text-[11px] font-bold text-[#51483d]">{t(labelKey)}：</span>
-                          {entities.map((e) => (
-                            <span
-                              key={e.id}
-                              className="rounded border border-[#2f2a22]/15 px-1.5 py-0.5 text-[10px] text-[#51483d]/75"
-                            >
-                              {e.title}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null,
-                    )}
-                  </div>
-                )}
-                <p className="mt-2 text-[10px] leading-relaxed text-[#51483d]/45">{t('fanPlaza.workshop.note')}</p>
-              </div>
-
-              <p className="mt-3 text-[10px] text-[#51483d]/40">
-                {t('workshop.card.previewInterfaceNote')}
-              </p>
-              <p className="mt-1 text-[10px] leading-relaxed text-[#51483d]/40">
-                {t('workshop.card.detailStructureNote')}
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="border border-dashed border-[#2f2a22]/30 px-3 py-1 text-xs font-bold text-[#51483d]/70"
-                >
-                  {t('workshop.card.subscribeReserved')}
-                </button>
-                <button
-                  type="button"
-                  className="border border-dashed border-[#2f2a22]/30 px-3 py-1 text-xs font-bold text-[#51483d]/70"
-                >
-                  {t('workshop.card.viewFullDetailReserved')}
-                </button>
-                <button
-                  type="button"
-                  className="border border-dashed border-[#2f2a22]/30 px-3 py-1 text-xs font-bold text-[#51483d]/70"
-                >
-                  {t('workshop.card.openRelatedReserved')}
-                </button>
               </div>
             </div>
           )}
@@ -614,87 +472,102 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
               {filteredBrowse.map((item) => (
                 <div
                   key={item.id}
-                  className={`flex flex-col overflow-hidden rounded-lg border border-[#2f2a22]/15 bg-white shadow-sm ${previewId === item.id ? 'ring-2 ring-[#17130f]/20' : ''}`}
+                  className={`group flex flex-col overflow-hidden rounded-lg border border-[#2f2a22]/15 bg-white shadow-sm transition hover:border-[#17130f]/40 hover:shadow-md ${previewId === item.id ? 'ring-2 ring-[#17130f]/20' : ''}`}
                 >
-                  {/* Cover preview */}
-                  <PreviewArt
-                    t={t}
-                    workshopKind={workshopPreviewKind(item)}
-                    accent={item.previewAccent}
-                    ratio="16:9"
-                    galleryCount={item.galleryPreviewKinds?.length}
-                    hasAudio={workshopPreviewKind(item) === 'music'}
-                  />
-                  <div className="flex flex-1 flex-col p-3.5">
-                  {/* Title + category badge */}
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="text-base font-bold leading-snug">
-                      {localized(item.title, locale)}
-                    </h3>
-                    <span className="shrink-0 rounded border border-[#2f2a22]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#51483d]">
-                      {categoryLabel(item.category)}
-                    </span>
-                  </div>
-
-                  {/* Author */}
-                  <p className="mt-1 text-[11px] text-[#51483d]/55">
-                    <span className="font-bold">{t('workshop.card.author')}：</span>
-                    {item.author}
-                  </p>
-
-                  {/* Primary metadata */}
-                  <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[#51483d]">
-                    <span>
-                      <span className="font-bold">{t('workshop.card.system')}：</span>
-                      {systemLabel(item.system)}
-                    </span>
-                    {item.subtype && (
-                      <span>
-                        <span className="font-bold">{t('workshop.card.subtype')}：</span>
-                        {subtypeLabel(item.subtype)}
+                  {/* Clickable main area → dedicated detail view */}
+                  <button
+                    type="button"
+                    onClick={() => openDetail(item.id)}
+                    className="flex flex-1 flex-col text-left"
+                  >
+                    {/* Cover preview */}
+                    <PreviewArt
+                      t={t}
+                      workshopKind={workshopPreviewKind(item)}
+                      accent={item.previewAccent}
+                      ratio="16:9"
+                      galleryCount={item.galleryPreviewKinds?.length}
+                      hasAudio={workshopPreviewKind(item) === 'music'}
+                    />
+                    <div className="flex flex-1 flex-col p-3.5">
+                    {/* Title + category badge */}
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-base font-bold leading-snug group-hover:text-[#17130f]">
+                        {localized(item.title, locale)}
+                      </h3>
+                      <span className="shrink-0 rounded border border-[#2f2a22]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#51483d]">
+                        {categoryLabel(item.category)}
                       </span>
-                    )}
-                    <span>
-                      <span className="font-bold">{t('workshop.card.contentShape')}：</span>
-                      {shapeLabel(item.contentShape)}
-                    </span>
-                    <span>
-                      <span className="font-bold">{t('workshop.card.landing')}：</span>
-                      {cardLanding(item)}
-                    </span>
-                  </div>
-
-                  {/* Attribute tags */}
-                  {item.attributeTags.length > 0 && (
-                    <div className="mt-1.5 flex flex-wrap gap-1">
-                      {item.attributeTags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded border border-[#2f2a22]/15 px-1.5 py-0.5 text-[10px] text-[#51483d]/65"
-                        >
-                          {attrTagLabel(tag)}
-                        </span>
-                      ))}
                     </div>
-                  )}
 
-                  {/* Version + last updated + dependency + impact */}
-                  <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-[#51483d]/55">
-                    <span>
-                      {t('workshop.card.version')} {item.version}
-                    </span>
-                    <span>
-                      {t('workshop.card.lastUpdated')} {item.lastUpdatedLabel}
-                    </span>
-                    {item.impactScope !== 'assetsOnly' && item.impactScope !== 'none' && (
+                    {/* Author */}
+                    <p className="mt-1 text-[11px] text-[#51483d]/55">
+                      <span className="font-bold">{t('workshop.card.author')}：</span>
+                      {item.author}
+                    </p>
+
+                    {/* Primary metadata */}
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-[#51483d]">
                       <span>
-                        {t('workshop.card.impactScope')}：{impactScopeLabel(item.impactScope)}
+                        <span className="font-bold">{t('workshop.card.system')}：</span>
+                        {systemLabel(item.system)}
                       </span>
-                    )}
-                  </div>
+                      {item.subtype && (
+                        <span>
+                          <span className="font-bold">{t('workshop.card.subtype')}：</span>
+                          {subtypeLabel(item.subtype)}
+                        </span>
+                      )}
+                      <span>
+                        <span className="font-bold">{t('workshop.card.contentShape')}：</span>
+                        {shapeLabel(item.contentShape)}
+                      </span>
+                      <span>
+                        <span className="font-bold">{t('workshop.card.landing')}：</span>
+                        {cardLanding(item)}
+                      </span>
+                    </div>
 
-                  {/* Actions */}
-                  <div className="mt-3 flex flex-wrap gap-2">
+                    {/* Attribute tags */}
+                    {item.attributeTags.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {item.attributeTags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded border border-[#2f2a22]/15 px-1.5 py-0.5 text-[10px] text-[#51483d]/65"
+                          >
+                            {attrTagLabel(tag)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Version + last updated + dependency + impact */}
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-[#51483d]/55">
+                      <span>
+                        {t('workshop.card.version')} {item.version}
+                      </span>
+                      <span>
+                        {t('workshop.card.lastUpdated')} {item.lastUpdatedLabel}
+                      </span>
+                      {item.impactScope !== 'assetsOnly' && item.impactScope !== 'none' && (
+                        <span>
+                          {t('workshop.card.impactScope')}：{impactScopeLabel(item.impactScope)}
+                        </span>
+                      )}
+                    </div>
+                    </div>
+                  </button>
+
+                  {/* Actions (outside the clickable main area) */}
+                  <div className="flex flex-wrap gap-2 px-3.5 pb-3.5">
+                    <button
+                      type="button"
+                      onClick={() => openDetail(item.id)}
+                      className="border border-[#17130f] bg-[#17130f] px-3 py-1 text-xs font-bold text-white"
+                    >
+                      {t('workshop.card.enterDetail')}
+                    </button>
                     <button
                       type="button"
                       onClick={() =>
@@ -712,7 +585,6 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
                     >
                       {t('workshop.card.subscribeReserved')}
                     </button>
-                  </div>
                   </div>
                 </div>
               ))}

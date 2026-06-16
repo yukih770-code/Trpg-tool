@@ -326,6 +326,17 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Scaffold only: no real backend/upload/like/favorite/comment/copy-link/permission/URL routing; no store/schema/rule-data/runtime change
 - Deferred: Workshop preview "related fan works" hook (WorkshopShell outside allowed files; relation data + EntityRelationList ready)
 
+## Workshop + Fan Plaza Dedicated Detail Pages
+
+- `AI-LANDMARK: WORKSHOP_FAN_PLAZA_DEDICATED_DETAIL_PAGES_V1`
+- Browse vs full detail split, page-internal (no React Router / URL / browser History).
+- Workshop detail component: `src/components/platform/WorkshopItemDetail.tsx` (`WorkshopItemDetail` — props item/t/locale/onBack; hero cover + gallery, long description, version/dependency/impact/landing info, includes, related fan works + related actors/campaigns/logs, synthesized share code `WS-…` / `/share/workshop/…`, reserved load-order/changelog/comments/author-works/related-recommend).
+- `WorkshopShell.tsx`: `detailId` + `openDetail()`; early-returns `WorkshopItemDetail` when an item is open. Browse card main = `<button onClick={openDetail}>`; quick preview downgraded to lightweight (small cover + title + author + 1-line summary + system/category/version/dependency/impact + 进入详情 + subscribe reserved). Card footer: 进入详情 / 快速预览 / 订阅接口预留.
+- `FanPlazaShell.tsx`: `detailWorkId` + `previewWorkId` + `openDetail()`; early-returns `FanWorkDetail` as a dedicated page; lightweight quick preview panel inline. `FanWorkCard.tsx` props now `onOpenDetail` + `onQuickPreview` (main area `<button>` → detail).
+- `FanWorkDetail.tsx`: converted to dedicated page — `<main>` + back-to-plaza bar (top & bottom), `onBack` replaces `onClose`; hero cover + body + media placeholders + related objects + related Workshop content + share/permission + engagement + Comments section + related-recommend reserved.
+- i18n: `workshop.card.enterDetail`, `workshop.detail.*` (back/backToWorkshop/pageTitle/gallery/longDescription/versionInfo/dependencies/impactScope/landing/includes/loadOrderReserved/changelogReserved/comments/commentsReserved/authorWorksReserved/relatedRecommendReserved); `fanPlaza.card.enterDetail`/`quickPreview`; `fanPlaza.detail.backToPlaza`/`pageTitle`/`commentsSection`/`relatedRecommendReserved` — zh-CN + en mirrored.
+- No real routing/backend/upload/download/subscription/like/favorite/comment; no store/schema/save/rule-data/Builder/dice/runtime change.
+
 ## Workshop + Fan Plaza Visual Preview Refinement
 
 - `AI-LANDMARK: WORKSHOP_FAN_PLAZA_VISUAL_PREVIEW_REFINEMENT_V2`
