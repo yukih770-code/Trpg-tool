@@ -35,7 +35,6 @@ import { useState } from 'react';
 import type { Locale } from '../../i18n';
 import {
   WORKSHOP_ATTRIBUTE_TAGS,
-  WORKSHOP_BROWSE_SAMPLES,
   WORKSHOP_CATEGORY_KEYS,
   WORKSHOP_CONTENT_SHAPE_KEYS,
   WORKSHOP_LANDING_MAP,
@@ -54,6 +53,7 @@ import {
   type WorkshopSubscriptionStatusKey,
   type WorkshopSystem,
 } from '../../lib/platform/workshopTypes';
+import { platformRepo } from '../../lib/architecture/mockRepositories';
 import { PreviewArt } from './PreviewArt';
 import { WorkshopItemDetail } from './WorkshopItemDetail';
 
@@ -230,7 +230,8 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
   };
 
   // ── Filtered browse items ─────────────────────────────────────────────────
-  const filteredBrowse = WORKSHOP_BROWSE_SAMPLES.filter((item) => {
+  const browseItems = platformRepo.workshopPackages.list();
+  const filteredBrowse = browseItems.filter((item) => {
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       const titleText = localized(item.title, locale).toLowerCase();
@@ -269,12 +270,12 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
 
   // ── Preview item (lightweight) ────────────────────────────────────────────
   const previewItem = previewId
-    ? WORKSHOP_BROWSE_SAMPLES.find((i) => i.id === previewId) ?? null
+    ? browseItems.find((i) => i.id === previewId) ?? null
     : null;
 
   // ── Detail item (dedicated detail view) ───────────────────────────────────
   const detailItem = detailId
-    ? WORKSHOP_BROWSE_SAMPLES.find((i) => i.id === detailId) ?? null
+    ? browseItems.find((i) => i.id === detailId) ?? null
     : null;
 
   const openDetail = (id: string) => {

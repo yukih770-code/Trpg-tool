@@ -1,43 +1,44 @@
 /**
  * EntityRelationList
- * AI-LANDMARK: LINKABLE_ENTITY_FAN_PLAZA_SCAFFOLD_V1
+ * AI-LANDMARK: GRAPH_FIRST_ENTITY_GRAPH_DOMAIN_MODEL_V1
+ * (supersedes LINKABLE_ENTITY_FAN_PLAZA_SCAFFOLD_V1 relationIds list)
  *
- * Given a set of relation ids, renders the related entities (resolved target)
- * with their relation kind. Used in fan-work detail and (future) workshop preview.
- * Static only — selecting an entity opens a local card/preview, not a route.
+ * Renders the object relations of an entity, resolved through the
+ * EntityGraphRepository (NOT a hand-passed relationIds array). Each related
+ * object opens a local card/preview, not a route.
  */
-import { getEntityById, getRelationsByIds } from '../../lib/platform/linkableEntityMockData';
+import { LINKABLE_OBJECT_TYPES, toEntitySummary } from '../../lib/architecture/entityGraph';
+import { platformRepo } from '../../lib/architecture/mockRepositories';
 import { LinkableEntityCard } from './LinkableEntityCard';
 
 export type EntityRelationListProps = {
-  relationIds: string[];
+  entityId: string;
   t: (key: string) => string;
   onSelectEntity?: (id: string) => void;
   emptyKey?: string;
 };
 
-export function EntityRelationList({ relationIds, t, onSelectEntity, emptyKey }: EntityRelationListProps) {
-  const relations = getRelationsByIds(relationIds);
+export function EntityRelationList({ entityId, t, onSelectEntity, emptyKey }: EntityRelationListProps) {
+  const related = platformRepo.entityGraph.getRelatedEntities(entityId, {
+    direction: 'outgoing',
+    types: LINKABLE_OBJECT_TYPES,
+  });
 
-  if (relations.length === 0) {
+  if (related.length === 0) {
     return <p className="text-[11px] text-[#51483d]/60">{t(emptyKey ?? 'fanPlaza.relations.empty')}</p>;
   }
 
   return (
     <div className="flex flex-col gap-2">
-      {relations.map((rel) => {
-        const target = getEntityById(rel.targetId);
-        if (!target) return null;
-        return (
-          <LinkableEntityCard
-            key={rel.id}
-            entity={target}
-            t={t}
-            relationKindLabel={t(`fanPlaza.relationKind.${rel.relationKind}`)}
-            onView={onSelectEntity}
-          />
-        );
-      })}
+      {related.map((rel) => (
+        <LinkableEntityCard
+          key={rel.relation.id}
+          entity={toEntitySummary(rel.entity)}
+          t={t}
+          relationKindLabel={t(`fanPlaza.relationKind.${rel.relation.relationType}`)}
+          onView={onSelectEntity}
+        />
+      ))}
     </div>
   );
 }

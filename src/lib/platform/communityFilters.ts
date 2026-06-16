@@ -3,8 +3,9 @@
  * AI-LANDMARK: LINKABLE_ENTITY_FAN_PLAZA_SCAFFOLD_V1
  */
 import type { FanWork, FanWorkSystem, FanWorkType } from './communityTypes';
-import { getRelationsByIds } from './linkableEntityMockData';
 import type { LinkableEntityType } from './linkableEntityTypes';
+import { platformRepo } from '../architecture/mockRepositories';
+import { LINKABLE_OBJECT_TYPES } from '../architecture/entityGraph';
 
 export const FAN_WORK_TYPE_KEYS: FanWorkType[] = [
   'story',
@@ -45,9 +46,15 @@ export const FAN_WORK_SORT_KEYS: FanWorkSort[] = [
   'recentlyUpdated',
 ];
 
-/** Target entity types this fan work links to (via its relations). */
+/**
+ * Target entity types this fan work links to (object relations only — excludes
+ * fan works and workshop packages). Resolved via the EntityGraph, not private
+ * relation arrays.
+ */
 export function fanWorkRelatedTypes(work: FanWork): LinkableEntityType[] {
-  return getRelationsByIds(work.relationIds).map((r) => r.targetType);
+  return platformRepo.entityGraph
+    .getRelatedEntities(work.id, { direction: 'outgoing', types: LINKABLE_OBJECT_TYPES })
+    .map((related) => related.entity.type as LinkableEntityType);
 }
 
 export type FanPlazaFilterState = {

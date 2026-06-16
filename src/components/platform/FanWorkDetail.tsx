@@ -13,9 +13,9 @@
 import { useState } from 'react';
 import type { Locale } from '../../i18n';
 import type { FanWork } from '../../lib/platform/communityTypes';
-import { fanWorkCoverKind, getRelatedWorkshopItems } from '../../lib/platform/communityMockData';
-import { getEntityById } from '../../lib/platform/linkableEntityMockData';
-import { localized } from '../../lib/platform/workshopTypes';
+import { fanWorkCoverKind } from '../../lib/platform/communityMockData';
+import { localized, type WorkshopBrowseItem } from '../../lib/platform/workshopTypes';
+import { platformRepo } from '../../lib/architecture/mockRepositories';
 import { EntityRelationList } from './EntityRelationList';
 import { LinkableEntityCard } from './LinkableEntityCard';
 import { PreviewArt } from './PreviewArt';
@@ -29,13 +29,16 @@ export type FanWorkDetailProps = {
 
 export function FanWorkDetail({ work, t, locale, onBack }: FanWorkDetailProps) {
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
-  const selectedEntity = selectedEntityId ? getEntityById(selectedEntityId) : undefined;
+  const selectedEntity = selectedEntityId ? platformRepo.entities.getSummary(selectedEntityId) : undefined;
 
   const hasImage = work.contentBlocks.includes('image');
   const hasGallery = work.contentBlocks.includes('imageGallery');
   const hasAudio = work.contentBlocks.includes('audio');
   const hasExternalLink = work.contentBlocks.includes('externalLink');
-  const relatedWorkshopItems = getRelatedWorkshopItems(work);
+  const relatedWorkshopItems: WorkshopBrowseItem[] = platformRepo.entityGraph
+    .getRelatedWorkshopPackages(work.id)
+    .map((node) => platformRepo.workshopPackages.getById(node.id))
+    .filter((item): item is WorkshopBrowseItem => Boolean(item));
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 md:px-8">
@@ -142,7 +145,7 @@ export function FanWorkDetail({ work, t, locale, onBack }: FanWorkDetailProps) {
       <section className="mt-3">
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-[#51483d]">{t('fanPlaza.detail.relatedObjects')}</h3>
         <div className="mt-2">
-          <EntityRelationList relationIds={work.relationIds} t={t} onSelectEntity={setSelectedEntityId} />
+          <EntityRelationList entityId={work.id} t={t} onSelectEntity={setSelectedEntityId} />
         </div>
         {selectedEntity && (
           <div className="mt-2 rounded-md border border-dashed border-[#2f2a22]/25 bg-white p-2">

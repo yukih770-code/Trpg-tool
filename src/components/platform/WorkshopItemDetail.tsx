@@ -16,9 +16,9 @@ import {
   workshopPreviewKind,
   type WorkshopBrowseItem,
 } from '../../lib/platform/workshopTypes';
-import { getFanWorkById, getRelatedFanWorkIdsForWorkshopItem } from '../../lib/platform/communityMockData';
-import { getEntityById, getRelationsByIds } from '../../lib/platform/linkableEntityMockData';
-import type { LinkableEntitySummary, LinkableEntityType } from '../../lib/platform/linkableEntityTypes';
+import type { FanWork } from '../../lib/platform/communityTypes';
+import { platformRepo } from '../../lib/architecture/mockRepositories';
+import { LINKABLE_OBJECT_TYPES, type EntityNode, type EntityType } from '../../lib/architecture/entityGraph';
 import { PreviewArt } from './PreviewArt';
 
 export type WorkshopItemDetailProps = {
@@ -48,21 +48,25 @@ export function WorkshopItemDetail({ item, t, locale, onBack }: WorkshopItemDeta
   const shareCode = `WS-${slug.toUpperCase()}`;
   const publicPath = `/share/workshop/${slug}`;
 
-  // Related content (association display only)
-  const relatedFanWorks = getRelatedFanWorkIdsForWorkshopItem(item.id)
-    .map(getFanWorkById)
-    .filter((w): w is NonNullable<typeof w> => Boolean(w));
-  const relations = relatedFanWorks.flatMap((w) => getRelationsByIds(w.relationIds));
-  const collect = (type: LinkableEntityType): LinkableEntitySummary[] => {
+  // Related content (association display only) — resolved via the EntityGraph.
+  const relatedFanWorkNodes = platformRepo.entityGraph.getRelatedFanWorks(item.id);
+  const relatedFanWorks: FanWork[] = relatedFanWorkNodes
+    .map((node) => platformRepo.fanWorks.getById(node.id))
+    .filter((w): w is FanWork => Boolean(w));
+
+  const objectRelations = relatedFanWorkNodes.flatMap((node) =>
+    platformRepo.entityGraph.getRelatedEntities(node.id, {
+      direction: 'outgoing',
+      types: LINKABLE_OBJECT_TYPES,
+    }),
+  );
+  const collect = (type: EntityType): EntityNode[] => {
     const seen = new Set<string>();
-    const out: LinkableEntitySummary[] = [];
-    for (const rel of relations) {
-      if (rel.targetType === type && !seen.has(rel.targetId)) {
-        const e = getEntityById(rel.targetId);
-        if (e) {
-          seen.add(rel.targetId);
-          out.push(e);
-        }
+    const out: EntityNode[] = [];
+    for (const rel of objectRelations) {
+      if (rel.entity.type === type && !seen.has(rel.entity.id)) {
+        seen.add(rel.entity.id);
+        out.push(rel.entity);
       }
     }
     return out;

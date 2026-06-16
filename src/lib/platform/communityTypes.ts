@@ -76,9 +76,16 @@ export type FanWork = {
   /** Interface skeleton only — not a real accessible link. */
   shareCode: string;
   publicPathLabel: string;
-  /** EntityRelation ids (see linkableEntityMockData). */
+  /**
+   * @deprecated Legacy private relation array. No longer queried by the UI —
+   * cross-object relations now live in the EntityGraph. Retained only as a seed
+   * source (`lib/architecture/entityGraphSeed`). Query via EntityGraphRepository.
+   */
   relationIds: string[];
-  /** Related Workshop content (WORKSHOP_BROWSE_SAMPLES ids). Association only. */
+  /**
+   * @deprecated Seed source only (consumed by entityGraphSeed to build
+   * workshop↔fanwork edges). Query relations via EntityGraphRepository.
+   */
   relatedWorkshopItemIds?: string[];
   createdAtLabel: string;
   updatedAtLabel: string;

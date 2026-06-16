@@ -153,7 +153,12 @@ export function fanWorkCoverKind(work: FanWork): FanWork['type'] {
  * Accepts both linkable-entity ids (ws-elyna-template) and browse-sample ids.
  * Scaffold static mapping — not subscription / dependency / conflict logic.
  */
-const RELATED_FAN_WORKS_BY_WORKSHOP: Record<string, string[]> = {
+/**
+ * @deprecated Seed source only. Consumed by `lib/architecture/entityGraphSeed`
+ * to build the authoritative EntityGraph. Do NOT query this directly from UI —
+ * use `EntityGraphRepository` instead.
+ */
+export const RELATED_FAN_WORKS_BY_WORKSHOP: Record<string, string[]> = {
   'ws-elyna-template': ['fw-elyna-diary', 'fw-elyna-sketch', 'fw-castle-night'],
   'sample.dnd-starter-character-template': ['fw-elyna-diary', 'fw-elyna-sketch', 'fw-castle-night'],
   'sample.castle-investigation-maps': ['fw-castle-night'],
@@ -161,11 +166,12 @@ const RELATED_FAN_WORKS_BY_WORKSHOP: Record<string, string[]> = {
   'sample.night-city-ambience': ['fw-graycastle-music'],
 };
 
+/** @deprecated Superseded by `EntityGraphRepository.getRelatedFanWorks`. Retained as seed source only. */
 export function getRelatedFanWorkIdsForWorkshopItem(workshopItemId: string): string[] {
   return RELATED_FAN_WORKS_BY_WORKSHOP[workshopItemId] ?? [];
 }
 
-/** Resolve a fan work's related Workshop content (association display only). */
+/** @deprecated Superseded by `EntityGraphRepository.getRelatedWorkshopPackages`. Retained as seed source only. */
 export function getRelatedWorkshopItems(work: FanWork): WorkshopBrowseItem[] {
   return (work.relatedWorkshopItemIds ?? [])
     .map((id) => WORKSHOP_BROWSE_SAMPLES.find((w) => w.id === id))

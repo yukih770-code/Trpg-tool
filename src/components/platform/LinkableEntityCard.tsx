@@ -6,10 +6,10 @@
  * Shows type, title, summary, visibility, share code, public path label, and
  * interface-reserved buttons. No real copy-link / open / permission logic.
  */
-import type { LinkableEntitySummary } from '../../lib/platform/linkableEntityTypes';
+import { ENTITY_TYPE_I18N_KEY, type EntitySummary } from '../../lib/architecture/entityGraph';
 
 export type LinkableEntityCardProps = {
-  entity: LinkableEntitySummary;
+  entity: EntitySummary;
   t: (key: string) => string;
   relationKindLabel?: string;
   onView?: (id: string) => void;
@@ -20,7 +20,7 @@ export function LinkableEntityCard({ entity, t, relationKindLabel, onView }: Lin
     <div className="rounded-md border border-[#2f2a22]/15 bg-white p-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="border border-[#2f2a22]/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#51483d]">
-          {t(`fanPlaza.entityType.${entity.type}`)}
+          {t(`fanPlaza.entityType.${ENTITY_TYPE_I18N_KEY[entity.type]}`)}
         </span>
         {relationKindLabel && (
           <span className="text-[10px] font-bold uppercase tracking-wider text-[#8a5a4a]">{relationKindLabel}</span>

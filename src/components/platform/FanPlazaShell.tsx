@@ -12,7 +12,8 @@
  */
 import { useState } from 'react';
 import type { Locale } from '../../i18n';
-import { FAN_WORKS, fanWorkCoverKind } from '../../lib/platform/communityMockData';
+import { fanWorkCoverKind } from '../../lib/platform/communityMockData';
+import { platformRepo } from '../../lib/architecture/mockRepositories';
 import { fanWorkRelatedTypes } from '../../lib/platform/communityFilters';
 import {
   FAN_WORK_RELATION_KEYS,
@@ -80,9 +81,10 @@ export function FanPlazaShell({ t, locale, onBackHome }: FanPlazaShellProps) {
   const [previewWorkId, setPreviewWorkId] = useState<string | null>(null);
 
   const allLabel = t('workshop.filter.all');
-  const works = filterAndSortFanWorks(FAN_WORKS, filter);
-  const detailWork = detailWorkId ? FAN_WORKS.find((w) => w.id === detailWorkId) : undefined;
-  const previewWork = previewWorkId ? FAN_WORKS.find((w) => w.id === previewWorkId) : undefined;
+  const allWorks = platformRepo.fanWorks.list();
+  const works = filterAndSortFanWorks(allWorks, filter);
+  const detailWork = detailWorkId ? platformRepo.fanWorks.getById(detailWorkId) : undefined;
+  const previewWork = previewWorkId ? platformRepo.fanWorks.getById(previewWorkId) : undefined;
 
   const openDetail = (id: string) => {
     setDetailWorkId(id);
