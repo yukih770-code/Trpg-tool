@@ -37,6 +37,12 @@ import type {
 } from './entityGraph';
 import type { WorkshopBrowseItem } from '../platform/workshopTypes';
 import type { FanWork } from '../platform/communityTypes';
+import type {
+  BlockDocument,
+  BlockDocumentDetail,
+  BlockDocumentSummary,
+  BlockDocumentValidationResult,
+} from './blockDocument';
 
 /** Viewer context used to resolve a projection (auth/permissions land later). */
 export type ViewerContext = {
@@ -76,16 +82,17 @@ export interface EntityRepository {
   list(filter?: { type?: EntityType }): EntitySummary[];
 }
 
-// ─── BlockDocument (contract reserved — payload protocol is A3) ───────────────
-
-export type BlockDocumentRef = {
-  id: string;
-  schemaVersion: number;
-};
+// ─── BlockDocument (protocol defined in ./blockDocument — A3) ──────────────────
 
 export interface BlockDocumentRepository {
-  /** Reserved: returns undefined until the BlockDocument protocol lands (A3). */
-  getDocumentRef(entityId: EntityId): BlockDocumentRef | undefined;
+  getDocumentSummary(id: string): BlockDocumentSummary | undefined;
+  getDocumentDetail(id: string): BlockDocumentDetail | undefined;
+  /** Documents that reference an entity (derived; authority is the EntityGraph). */
+  getDocumentsByEntity(entityId: EntityId): BlockDocumentSummary[];
+  getDocumentsByOwner(ownerId: string): BlockDocumentSummary[];
+  /** Full payload (blocks). In mock this equals the detail. */
+  getDocumentPayload(id: string): BlockDocument | undefined;
+  validateDocument(document: BlockDocument): BlockDocumentValidationResult;
 }
 
 // ─── WorkshopPackage (uses existing browse-item metadata shape for now) ───────

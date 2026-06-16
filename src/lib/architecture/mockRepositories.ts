@@ -32,7 +32,6 @@ import {
 } from './entityGraph';
 import { ENTITY_GRAPH_SEED } from './entityGraphSeed';
 import type {
-  BlockDocumentRef,
   BlockDocumentRepository,
   EntityGraphRepository,
   EntityRepository,
@@ -44,6 +43,16 @@ import type {
   ViewerContext,
   WorkshopPackageRepository,
 } from './repositories';
+import {
+  documentEntityRefs,
+  toBlockDocumentSummary,
+  validateBlockDocument,
+  type BlockDocument,
+  type BlockDocumentDetail,
+  type BlockDocumentSummary,
+  type BlockDocumentValidationResult,
+} from './blockDocument';
+import { BLOCK_DOCUMENT_SEED, getBlockDocumentSeedById } from './blockDocumentSeed';
 import { FAN_WORKS } from '../platform/communityMockData';
 import type { FanWork } from '../platform/communityTypes';
 import { WORKSHOP_BROWSE_SAMPLES } from '../platform/workshopTypes';
@@ -238,8 +247,35 @@ class MockWorkshopPackageRepository implements WorkshopPackageRepository {
 // ─── Reserved repos (contract only — A3 / A6) ─────────────────────────────────
 
 class MockBlockDocumentRepository implements BlockDocumentRepository {
-  getDocumentRef(_entityId: EntityId): BlockDocumentRef | undefined {
-    return undefined; // reserved until BlockDocument protocol (A3)
+  getDocumentSummary(id: string): BlockDocumentSummary | undefined {
+    const doc = getBlockDocumentSeedById(id);
+    return doc ? toBlockDocumentSummary(doc) : undefined;
+  }
+
+  getDocumentDetail(id: string): BlockDocumentDetail | undefined {
+    return getBlockDocumentSeedById(id);
+  }
+
+  getDocumentsByEntity(entityId: EntityId): BlockDocumentSummary[] {
+    // Mock reverse lookup derived from block refs. In production this is served
+    // by the EntityGraph (documents projected as nodes + edges), not a scan.
+    return BLOCK_DOCUMENT_SEED
+      .filter((doc) => documentEntityRefs(doc).some((ref) => ref.entityId === entityId))
+      .map(toBlockDocumentSummary);
+  }
+
+  getDocumentsByOwner(ownerId: string): BlockDocumentSummary[] {
+    return BLOCK_DOCUMENT_SEED
+      .filter((doc) => doc.ownerId === ownerId)
+      .map(toBlockDocumentSummary);
+  }
+
+  getDocumentPayload(id: string): BlockDocument | undefined {
+    return getBlockDocumentSeedById(id);
+  }
+
+  validateDocument(document: BlockDocument): BlockDocumentValidationResult {
+    return validateBlockDocument(document);
   }
 }
 

@@ -65,8 +65,17 @@ export type FanWork = {
   coverKind?: FanWorkType;
   /** Optional author-supplied cover label (display only — no real image). */
   coverLabel?: string;
-  /** Multimodal content blocks this work actually contains. */
+  /**
+   * Multimodal content-block KIND list (derived display tags only).
+   * Future: the real body becomes a BlockDocument referenced by `bodyDocumentId`;
+   * this list is derived from that document's blocks. Not migrated this round.
+   */
   contentBlocks: FanWorkContentBlockKind[];
+  /**
+   * @reserved Future pointer to the FanWork body as a BlockDocument
+   * (see lib/architecture/blockDocument). Unused by UI in this phase.
+   */
+  bodyDocumentId?: string;
   summary: string;
   bodyPreview: string;
   coverImage?: string;
