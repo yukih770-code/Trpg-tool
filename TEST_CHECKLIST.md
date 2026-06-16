@@ -446,6 +446,69 @@ Open the app in the browser and verify each page loads without crashing.
 
 ---
 
+## 6e. Linkable Entity + Fan Plaza Check
+
+- [ ] Home and sidebar both show a 同人广场 / Fan Plaza entry; it opens the Fan Plaza page (not a placeholder)
+- [ ] Fan Plaza is a platform-level page, NOT a Workshop sub-page
+- [ ] Fan Plaza has a search box, work-type filter, adapted-system filter, related-object filter, and sort filter
+- [ ] Fan work cards show title, author, type, format, adapted system, related-object summary, tags, summary, and like/favorite/comment counts (display only)
+- [ ] Opening a work detail shows related characters / campaigns / maps / session logs / workshop content via the relation list
+- [ ] Each related object shows its share code / public path / visibility; clicking 查看对象 opens a static entity card preview (no route)
+- [ ] Detail shows the permission-boundary note (public links only show author-permitted info; full data / hidden plot / GM notes / unpublished logs are not exposed)
+- [ ] No real upload / like / favorite / comment / copy-link / publish actions; buttons are interface-reserved only
+- [ ] Fan works do not participate in Workshop subscription / dependency / conflict checks
+- [ ] System Library, Actor Vault, Workshop browse, and My Subscriptions are unchanged (no regression)
+- [ ] No store / schema / migration / save format / rule data change; no React Router / URL routing
+- [ ] Landmark `LINKABLE_ENTITY_FAN_PLAZA_SCAFFOLD_V1` present
+
+---
+
+## 6f. Platform Adaptive Navigation + Focus Mode Check
+
+- [ ] Desktop (≥ md): platform navigation is a top horizontal bar; no persistent left sidebar
+- [ ] Top nav shows 首页 / 系统库 / 创意工坊 / 同人广场 (+ 设置 on wide desktop, else in More) with clear active state
+- [ ] DND workspace, Builder, Workshop, and Fan Plaza get full horizontal width (no left-sidebar squeeze)
+- [ ] DND Builder three-column layout is visibly more spacious; ability page cards are not cramped; right summary does not cover center content
+- [ ] DND system workspace still has its own top nav (角色库 / 规则库 / 规则来源 / 数据状态); system theme not overridden by platform nav
+- [ ] Tablet width: top nav stays compact; Settings + reserved entries live in More; content not squeezed
+- [ ] Mobile (< md): bottom primary nav shows 首页 / 系统库 / 创意工坊 / 同人广场 / 更多; no left sidebar; content has bottom padding (not covered)
+- [ ] Mobile More panel opens (bottom sheet) and closes; contains Settings + reserved AI Settings / User Center / Service Status / Membership + language + back home
+- [ ] Mobile does not show the full long breadcrumb; play workspace shows a short title in the app bar
+- [ ] Focus mode (play workspace): mobile bottom nav is hidden so Builder/runtime get more height; desktop top bar stays low-weight
+- [ ] Back / Up / current-location still work in the play workspace; no double-back-button or simultaneous old-sidebar + new-nav
+- [ ] No horizontal overflow at tablet/mobile widths
+- [ ] No store / schema / migration / save format / rule data / Builder logic / runtime / dice change; no React Router / URL routing / browser History API
+- [ ] Landmark `PLATFORM_ADAPTIVE_NAVIGATION_FOCUS_MODE_V1` present in `src/App.tsx`
+
+---
+
+## 6g. Workshop + Fan Plaza Visual Preview Refinement v2 Check
+
+Workshop:
+- [ ] Browse cards each show an image/cover preview (not just a small icon); rulebook / map / music / character / npc / tool covers look visibly different
+- [ ] Browse grid is responsive: ~1–2 cols mobile, 2–3 tablet, 3–4 desktop; image area ratio is consistent (16:9)
+- [ ] Cards still show author / category / subtype / tags / version / dependency status / impact scope / landing
+- [ ] Quick preview opens (page-internal) with a big cover + small gallery + description + metadata
+- [ ] Quick preview shows related fan works (mini cards) + related characters / campaigns / logs chips + a "not subscription/dependency/conflict" note
+- [ ] No fake subscribe / download / install / import / sync success states; action buttons are interface-reserved
+
+Fan Plaza:
+- [ ] Work cards each have a cover / main preview; the plaza is image-forward, not a plain text list
+- [ ] Cards show a content-block summary (e.g. 文字 / 图片 / 图集 / 音频 / 外链 / 关联对象引用 / 创意工坊引用)
+- [ ] coverMode is reflected in the cover badge: 作者封面 / 作品首图 / 音频视觉 / 类型默认 — all four appear across the mock works
+- [ ] Story / recap / illustration / music / setting are NOT forced into one fixed template (cover follows coverMode, not type)
+- [ ] Work detail opens with a big cover, body preview, image/gallery/audio/external-link placeholders, related objects, and related Workshop content
+- [ ] No fake upload / like / favorite / comment success; buttons are interface-reserved
+
+Linkage + regression:
+- [ ] Workshop detail can show related fan works; fan-work detail can show related Workshop content; both are association display only (no subscription/dependency/conflict)
+- [ ] PreviewArt uses only CSS gradient / SVG / glyph / waveform — no external image URLs, no image generation
+- [ ] System Library, Actor Vault, DND Builder, and platform navigation are unchanged (no regression)
+- [ ] No store / schema / save format / rule data / Builder / dice / runtime change; no real backend / routing
+- [ ] Landmark `WORKSHOP_FAN_PLAZA_VISUAL_PREVIEW_REFINEMENT_V2` present (PreviewArt.tsx + shells)
+
+---
+
 ## 6. Console Check
 
 - [ ] Open browser DevTools → Console

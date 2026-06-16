@@ -40,6 +40,19 @@ export type WorkshopCategory =
 
 export type WorkshopSystem = 'dnd5e2024' | 'coc7e' | 'cyberpunkRed' | 'generic';
 
+/**
+ * Static preview-image kind. Drives the PreviewArt cover placeholder so each
+ * content style has a distinct look. Does NOT reference a real image.
+ */
+export type WorkshopPreviewImageKind =
+  | 'rulebook'
+  | 'map'
+  | 'music'
+  | 'character'
+  | 'npc'
+  | 'tool'
+  | 'adventure';
+
 export type WorkshopContentShape = 'singleItem' | 'contentPack' | 'collection';
 
 export type WorkshopSort =
@@ -256,6 +269,17 @@ export const WORKSHOP_ATTRIBUTE_TAGS: Record<WorkshopCategory, string[]> = {
   ],
 };
 
+/** Default preview-image kind per primary category (fallback when item omits it). */
+export const WORKSHOP_PREVIEW_KIND_MAP: Record<WorkshopCategory, WorkshopPreviewImageKind> = {
+  character:       'character',
+  creatureNpc:     'npc',
+  ruleContent:     'rulebook',
+  mapScene:        'map',
+  adventureModule: 'adventure',
+  mediaAsset:      'music',
+  toolTemplate:    'tool',
+};
+
 /** Default content landing target per primary category. */
 export const WORKSHOP_LANDING_MAP: Record<WorkshopCategory, WorkshopLandingTarget> = {
   character:       'actorVault',
@@ -285,9 +309,20 @@ export type WorkshopBrowseItem = {
   lastUpdatedLabel: string;
   dependencyStatus: WorkshopDependencyStatus;
   impactScope: WorkshopImpactScope;
+  /** Static cover preview kind (drives PreviewArt). No real image. */
+  previewImageKind: WorkshopPreviewImageKind;
+  /** Optional gradient accent override (hex) for the cover. */
+  previewAccent?: string;
+  /** Small static gallery preview kinds (detail view thumbnails). No real images. */
+  galleryPreviewKinds?: WorkshopPreviewImageKind[];
   /** Only set for collection-shaped items that span multiple categories. */
   contains?: WorkshopCategory[];
 };
+
+/** Resolve an item's preview kind, falling back to the category default. */
+export function workshopPreviewKind(item: WorkshopBrowseItem): WorkshopPreviewImageKind {
+  return item.previewImageKind ?? WORKSHOP_PREVIEW_KIND_MAP[item.category];
+}
 
 export type WorkshopSubscriptionItem = {
   id: string;
@@ -325,6 +360,8 @@ export const WORKSHOP_BROWSE_SAMPLES: WorkshopBrowseItem[] = [
     lastUpdatedLabel: '2025-06-01',
     dependencyStatus: 'none',
     impactScope: 'characterCreation',
+    previewImageKind: 'rulebook',
+    galleryPreviewKinds: ['rulebook', 'tool'],
   },
   {
     id: 'sample.castle-investigation-maps',
@@ -343,6 +380,8 @@ export const WORKSHOP_BROWSE_SAMPLES: WorkshopBrowseItem[] = [
     lastUpdatedLabel: '2025-05-20',
     dependencyStatus: 'none',
     impactScope: 'assetsOnly',
+    previewImageKind: 'map',
+    galleryPreviewKinds: ['map', 'map', 'adventure'],
   },
   {
     id: 'sample.night-city-ambience',
@@ -361,6 +400,8 @@ export const WORKSHOP_BROWSE_SAMPLES: WorkshopBrowseItem[] = [
     lastUpdatedLabel: '2025-04-15',
     dependencyStatus: 'none',
     impactScope: 'assetsOnly',
+    previewImageKind: 'music',
+    galleryPreviewKinds: ['music', 'music'],
   },
   {
     id: 'sample.dnd-starter-character-template',
@@ -379,6 +420,8 @@ export const WORKSHOP_BROWSE_SAMPLES: WorkshopBrowseItem[] = [
     lastUpdatedLabel: '2025-03-10',
     dependencyStatus: 'none',
     impactScope: 'assetsOnly',
+    previewImageKind: 'character',
+    galleryPreviewKinds: ['character', 'character'],
   },
   {
     id: 'sample.coc-investigator-npc-pack',
@@ -397,6 +440,8 @@ export const WORKSHOP_BROWSE_SAMPLES: WorkshopBrowseItem[] = [
     lastUpdatedLabel: '2025-05-01',
     dependencyStatus: 'none',
     impactScope: 'assetsOnly',
+    previewImageKind: 'npc',
+    galleryPreviewKinds: ['npc', 'npc', 'character'],
   },
   {
     id: 'sample.random-encounter-template',
@@ -415,6 +460,8 @@ export const WORKSHOP_BROWSE_SAMPLES: WorkshopBrowseItem[] = [
     lastUpdatedLabel: '2025-02-28',
     dependencyStatus: 'none',
     impactScope: 'assetsOnly',
+    previewImageKind: 'tool',
+    galleryPreviewKinds: ['tool', 'rulebook'],
   },
 ];
 

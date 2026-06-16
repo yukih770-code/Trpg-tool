@@ -296,6 +296,49 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Future Game System categories (Japanese TRPG, Wargame, Custom, Narrative): Section 5 of `PLATFORM_CORE_CONCEPTS.md`
 - No store, schema, runtime, or rule data changed by this baseline
 
+## Platform Adaptive Navigation & Focus Mode
+
+- `AI-LANDMARK: PLATFORM_ADAPTIVE_NAVIGATION_FOCUS_MODE_V1`: `src/App.tsx`
+- Adaptive nav lives entirely in `src/App.tsx` (no new shell component files this round)
+- Primary nav config: `PRIMARY_NAV` (home/systemLibrary/workshop/fanPlaza) in `src/App.tsx`
+- Nav helpers: `isNavActive`, `handleNavClick` in `src/App.tsx`
+- Desktop/tablet top bar: `<header className="hidden md:flex ...">`; Settings inline at `xl:`, otherwise in More
+- Mobile top app bar (`md:hidden`) shows `mobileTitle` + More button
+- Mobile bottom nav (`md:hidden fixed bottom-0`) shown when `!focusMode`
+- `focusMode = appView === 'play' && playStage === 'workspace'` — hides mobile bottom nav; breadcrumb is `hidden md:block` (mobile uses short title)
+- More panel: `moreOpen` state; bottom sheet on mobile / top-right dropdown on `md:`; Settings + reserved (aiSettings/userCenter/serviceStatus/membership) + language + back home
+- Persistent left sidebar removed (old `PLATFORM_PLAY_MENU_COLLAPSIBLE_SIDEBAR` sidebar + `sidebarCollapsed`/`toggleSidebar`/`sidebarStorageKey` deleted)
+- i18n: `shell.nav.more`, `shell.more.*`, `shell.focusMode`/`shell.exitFocusMode` in `src/i18n/locales/zh-CN.ts` and `en.ts`
+- Layout-only; no store/schema/rule-data/runtime/Builder change; no React Router / URL routing
+
+## Linkable Entity & Fan Plaza
+
+- `AI-LANDMARK: LINKABLE_ENTITY_FAN_PLAZA_SCAFFOLD_V1`
+- Linkable entity types: `src/lib/platform/linkableEntityTypes.ts` (`LinkableEntityType`, `EntityVisibility`, `EntityRelationKind`, `LinkableEntitySummary`, `EntityRelation`)
+- Linkable entity mock data + helpers: `src/lib/platform/linkableEntityMockData.ts` (`LINKABLE_ENTITIES`, `ENTITY_RELATIONS`, `getEntityById`, `getRelationsByIds`, `getRelationsFromSource`)
+- Fan work types: `src/lib/platform/communityTypes.ts` (`FanWorkType`, `FanWorkContentFormat`, `FanWorkVisibility`, `FanWorkSystem`, `FanWork`)
+- Fan work mock data: `src/lib/platform/communityMockData.ts` (`FAN_WORKS`, `getFanWorkById`, `getRelatedFanWorkIdsForWorkshopItem`)
+- Fan Plaza filters/sort: `src/lib/platform/communityFilters.ts` (`filterAndSortFanWorks`, `FAN_WORK_TYPE_KEYS`, `FAN_WORK_SYSTEM_KEYS`, `FAN_WORK_RELATION_KEYS`, `FAN_WORK_SORT_KEYS`, `fanWorkRelatedTypes`)
+- Components: `src/components/platform/FanPlazaShell.tsx`, `FanWorkCard.tsx`, `FanWorkDetail.tsx`, `LinkableEntityCard.tsx`, `EntityRelationList.tsx`
+- Page: `src/pages/FanPlaza.tsx`
+- Platform entry: `App.tsx` sidebar nav `fanPlaza` + `appView === 'fanPlaza'`; Home pinned entry `home.pinned.fanPlaza` → `onOpenPlaceholder('fanPlaza')` reroutes to Fan Plaza
+- i18n: `fanPlaza.*`, `shell.nav.fanPlaza`, `home.pinned.fanPlaza` in `src/i18n/locales/zh-CN.ts` and `en.ts`
+- Scaffold only: no real backend/upload/like/favorite/comment/copy-link/permission/URL routing; no store/schema/rule-data/runtime change
+- Deferred: Workshop preview "related fan works" hook (WorkshopShell outside allowed files; relation data + EntityRelationList ready)
+
+## Workshop + Fan Plaza Visual Preview Refinement
+
+- `AI-LANDMARK: WORKSHOP_FAN_PLAZA_VISUAL_PREVIEW_REFINEMENT_V2`
+- Unified static preview art: `src/components/platform/PreviewArt.tsx` (`PreviewArt` — CSS gradient + glyph / audio waveform, no external images). Props: `workshopKind | fanKind`, `coverMode`, `accent`, `ratio` (16:9/4:3/square), `galleryCount`, `hasAudio`, `showCaption`.
+- Workshop preview fields: `workshopTypes.ts` adds `WorkshopPreviewImageKind`, `WORKSHOP_PREVIEW_KIND_MAP`, `workshopPreviewKind(item)`; `WorkshopBrowseItem` gains `previewImageKind`/`previewAccent`/`galleryPreviewKinds` (all 6 samples set).
+- Fan work multimodal fields: `communityTypes.ts` adds `FanWorkCoverMode` (authorSelected/firstImage/audioVisual/typeFallback), `FanWorkContentBlockKind` (text/image/imageGallery/audio/externalLink/relationEmbed/workshopEmbed); `FanWork` gains `coverMode`/`coverKind`/`coverLabel`/`contentBlocks`/`relatedWorkshopItemIds`.
+- Community helpers: `communityMockData.ts` adds `fanWorkCoverKind(work)`, `getRelatedWorkshopItems(work)`, and `getRelatedFanWorkIdsForWorkshopItem` now maps browse-sample ids too (`RELATED_FAN_WORKS_BY_WORKSHOP`).
+- Workshop UI: `WorkshopShell.tsx` cards get a `PreviewArt` cover in `sm:2/lg:3/xl:4` grid; quick preview = big cover + small gallery + related fan works (mini cards) + related actors/campaigns/logs chips + detail-structure note; container `max-w-6xl`.
+- Fan Plaza UI: `FanWorkCard.tsx` (cover-from-coverMode 4:3 + content-block chips + gallery/audio badges), `FanWorkDetail.tsx` (big cover + content-block summary + media placeholders + related objects + related Workshop content; now takes `locale`), `FanPlazaShell.tsx` (image-forward `sm:2/lg:3` grid; threads `locale`; `max-w-6xl`), `FanPlaza.tsx` passes `locale`.
+- i18n: top-level `previewArt.*` (staticPlaceholder/galleryBadge/audioBadge/coverMode.*/workshopKind.*); `workshop.card.*` (coverPreview/imagePreview/gallery/includesContent/relatedFanWorks/relatedActors/relatedCampaigns/relatedLogs/noRelatedFanWorks/viewFullDetailReserved/openRelatedReserved/detailStructureNote); `fanPlaza.card.*` (coverPreview/contentBlocks/coverSource), `fanPlaza.contentBlock.*`, `fanPlaza.coverMode.*`, `fanPlaza.layout.*`, `fanPlaza.detail.*` (coverPreview/contentBlocks/mainMedia/imagePreview/galleryPreview/audioPreview/externalLinkPreview/relatedWorkshop/openWorkshopReserved) — zh-CN + en mirrored.
+- Cover priority embodied by `coverMode`: authorSelected → firstImage → audioVisual → typeFallback (type fallback visual only when no author cover / primary media).
+- Visual-only: no real upload/download/subscribe/like/favorite/comment/backend/routing; no store/schema/save/rule-data/Builder/dice/runtime change; fan works remain association-only (no subscription/dependency/conflict participation).
+
 ## Platform Workshop & System Rule Sources
 
 - `AI-LANDMARK: WORKSHOP_FULL_INTERFACE_SCAFFOLD_V1` (supersedes `WORKSHOP_BROWSE_SUBSCRIPTIONS_UX_REFINEMENT_V1`)

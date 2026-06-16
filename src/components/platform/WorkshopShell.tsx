@@ -45,6 +45,7 @@ import {
   WORKSHOP_SUBTYPES,
   WORKSHOP_SYSTEM_KEYS,
   localized,
+  workshopPreviewKind,
   type WorkshopBrowseItem,
   type WorkshopCategory,
   type WorkshopContentShape,
@@ -53,6 +54,10 @@ import {
   type WorkshopSubscriptionStatusKey,
   type WorkshopSystem,
 } from '../../lib/platform/workshopTypes';
+import { getFanWorkById, getRelatedFanWorkIdsForWorkshopItem } from '../../lib/platform/communityMockData';
+import { getEntityById, getRelationsByIds } from '../../lib/platform/linkableEntityMockData';
+import type { LinkableEntitySummary, LinkableEntityType } from '../../lib/platform/linkableEntityTypes';
+import { PreviewArt } from './PreviewArt';
 
 type WorkshopTab = 'browse' | 'subscriptions';
 
@@ -266,9 +271,36 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
     ? WORKSHOP_BROWSE_SAMPLES.find((i) => i.id === previewId) ?? null
     : null;
 
+  // ── Related content for the quick preview (association display only) ───────
+  const previewRelatedFanWorks = previewItem
+    ? getRelatedFanWorkIdsForWorkshopItem(previewItem.id)
+        .map(getFanWorkById)
+        .filter((w): w is NonNullable<typeof w> => Boolean(w))
+    : [];
+  const previewEntityRelations = previewRelatedFanWorks.flatMap((w) =>
+    getRelationsByIds(w.relationIds),
+  );
+  const collectRelatedEntities = (type: LinkableEntityType): LinkableEntitySummary[] => {
+    const seen = new Set<string>();
+    const out: LinkableEntitySummary[] = [];
+    for (const rel of previewEntityRelations) {
+      if (rel.targetType === type && !seen.has(rel.targetId)) {
+        const entity = getEntityById(rel.targetId);
+        if (entity) {
+          seen.add(rel.targetId);
+          out.push(entity);
+        }
+      }
+    }
+    return out;
+  };
+  const previewRelatedActors = collectRelatedEntities('actor');
+  const previewRelatedCampaigns = collectRelatedEntities('campaign');
+  const previewRelatedLogs = collectRelatedEntities('sessionLog');
+
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8 md:px-8">
+    <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
       {/* Header */}
       <header>
         <h1 className="text-2xl font-bold">{t('workshop.title')}</h1>
@@ -400,7 +432,42 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
                 </button>
               </div>
 
-              <p className="mt-1.5 text-[12px] leading-relaxed text-[#51483d]/70">
+              {/* Big cover + small gallery preview */}
+              <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                <div>
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[#51483d]/50">
+                    {t('workshop.card.coverPreview')}
+                  </p>
+                  <PreviewArt
+                    t={t}
+                    workshopKind={workshopPreviewKind(previewItem)}
+                    accent={previewItem.previewAccent}
+                    ratio="16:9"
+                    galleryCount={previewItem.galleryPreviewKinds?.length}
+                    hasAudio={workshopPreviewKind(previewItem) === 'music'}
+                  />
+                </div>
+                {previewItem.galleryPreviewKinds && previewItem.galleryPreviewKinds.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[#51483d]/50">
+                      {t('workshop.card.gallery')}
+                    </p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {previewItem.galleryPreviewKinds.slice(0, 4).map((kind, i) => (
+                        <PreviewArt
+                          key={`${kind}-${i}`}
+                          t={t}
+                          workshopKind={kind}
+                          ratio="4:3"
+                          showCaption={false}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <p className="mt-3 text-[12px] leading-relaxed text-[#51483d]/70">
                 {localized(previewItem.description, locale)}
               </p>
 
@@ -461,15 +528,77 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
                 </div>
               )}
 
+              {/* Related fan works / actors / campaigns / logs (association only) */}
+              <div className="mt-4 border-t border-[#2f2a22]/10 pt-3">
+                <p className="text-[11px] font-bold text-[#51483d]">{t('workshop.card.relatedFanWorks')}</p>
+                {previewRelatedFanWorks.length === 0 ? (
+                  <p className="mt-1 text-[11px] text-[#51483d]/50">{t('workshop.card.noRelatedFanWorks')}</p>
+                ) : (
+                  <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {previewRelatedFanWorks.map((fw) => (
+                      <div key={fw.id} className="overflow-hidden rounded-md border border-[#2f2a22]/12 bg-white">
+                        <PreviewArt t={t} fanKind={fw.coverKind ?? fw.type} ratio="4:3" showCaption={false} />
+                        <div className="p-1.5">
+                          <p className="truncate text-[11px] font-bold text-[#17130f]">{fw.title}</p>
+                          <p className="text-[10px] text-[#51483d]/60">{t(`fanPlaza.workType.${fw.type}`)}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {(previewRelatedActors.length > 0 ||
+                  previewRelatedCampaigns.length > 0 ||
+                  previewRelatedLogs.length > 0) && (
+                  <div className="mt-2.5 flex flex-col gap-1.5">
+                    {([
+                      ['workshop.card.relatedActors', previewRelatedActors],
+                      ['workshop.card.relatedCampaigns', previewRelatedCampaigns],
+                      ['workshop.card.relatedLogs', previewRelatedLogs],
+                    ] as const).map(([labelKey, entities]) =>
+                      entities.length > 0 ? (
+                        <div key={labelKey} className="flex flex-wrap items-center gap-1">
+                          <span className="text-[11px] font-bold text-[#51483d]">{t(labelKey)}：</span>
+                          {entities.map((e) => (
+                            <span
+                              key={e.id}
+                              className="rounded border border-[#2f2a22]/15 px-1.5 py-0.5 text-[10px] text-[#51483d]/75"
+                            >
+                              {e.title}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null,
+                    )}
+                  </div>
+                )}
+                <p className="mt-2 text-[10px] leading-relaxed text-[#51483d]/45">{t('fanPlaza.workshop.note')}</p>
+              </div>
+
               <p className="mt-3 text-[10px] text-[#51483d]/40">
                 {t('workshop.card.previewInterfaceNote')}
               </p>
-              <div className="mt-2">
+              <p className="mt-1 text-[10px] leading-relaxed text-[#51483d]/40">
+                {t('workshop.card.detailStructureNote')}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
                   className="border border-dashed border-[#2f2a22]/30 px-3 py-1 text-xs font-bold text-[#51483d]/70"
                 >
                   {t('workshop.card.subscribeReserved')}
+                </button>
+                <button
+                  type="button"
+                  className="border border-dashed border-[#2f2a22]/30 px-3 py-1 text-xs font-bold text-[#51483d]/70"
+                >
+                  {t('workshop.card.viewFullDetailReserved')}
+                </button>
+                <button
+                  type="button"
+                  className="border border-dashed border-[#2f2a22]/30 px-3 py-1 text-xs font-bold text-[#51483d]/70"
+                >
+                  {t('workshop.card.openRelatedReserved')}
                 </button>
               </div>
             </div>
@@ -481,12 +610,22 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
               {t('workshop.filter.noResults')}
             </p>
           ) : (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredBrowse.map((item) => (
                 <div
                   key={item.id}
-                  className={`${cardCls} ${previewId === item.id ? 'ring-2 ring-[#17130f]/20' : ''}`}
+                  className={`flex flex-col overflow-hidden rounded-lg border border-[#2f2a22]/15 bg-white shadow-sm ${previewId === item.id ? 'ring-2 ring-[#17130f]/20' : ''}`}
                 >
+                  {/* Cover preview */}
+                  <PreviewArt
+                    t={t}
+                    workshopKind={workshopPreviewKind(item)}
+                    accent={item.previewAccent}
+                    ratio="16:9"
+                    galleryCount={item.galleryPreviewKinds?.length}
+                    hasAudio={workshopPreviewKind(item) === 'music'}
+                  />
+                  <div className="flex flex-1 flex-col p-3.5">
                   {/* Title + category badge */}
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="text-base font-bold leading-snug">
@@ -573,6 +712,7 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
                     >
                       {t('workshop.card.subscribeReserved')}
                     </button>
+                  </div>
                   </div>
                 </div>
               ))}

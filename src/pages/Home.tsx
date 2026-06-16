@@ -1,5 +1,5 @@
 // AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V2
-import { BookOpen, ChevronRight, Library, Play, Sparkles, Upload } from 'lucide-react';
+import { BookOpen, ChevronRight, Library, Palette, Play, Sparkles, Upload } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { createTranslator, type Locale } from '../i18n';
@@ -51,6 +51,7 @@ const pinnedEntries: {
   { key: 'ruleSystems', labelKey: 'home.pinned.ruleSystems', icon: Library,   placeholderKey: 'ruleSystems' },
   { key: 'campaigns',   labelKey: 'home.pinned.campaigns',   icon: BookOpen,  placeholderKey: 'campaigns'   },
   { key: 'workshop',    labelKey: 'home.pinned.workshop',    icon: Sparkles,  placeholderKey: 'community'   },
+  { key: 'fanPlaza',    labelKey: 'home.pinned.fanPlaza',    icon: Palette,   placeholderKey: 'fanPlaza'    },
 ];
 
 const platformStatusTagKeys = [

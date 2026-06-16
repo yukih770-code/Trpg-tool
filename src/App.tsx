@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ChevronUp, ChevronsLeft, ChevronsRight, HomeIcon, Library, Settings, Sparkles, Store } from 'lucide-react';
+import { ArrowLeft, ChevronUp, HomeIcon, Library, MoreHorizontal, Palette, Settings, Sparkles, Store, X } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Toaster } from '../components/ui/sonner';
@@ -7,6 +7,7 @@ import { createTranslator, type Locale, readStoredLocale, writeStoredLocale } fr
 import { Home } from './pages/Home';
 import { SystemLibrary } from './pages/SystemLibrary';
 import { Workshop } from './pages/Workshop';
+import { FanPlaza } from './pages/FanPlaza';
 import {
   PlayWorkspace,
   defaultPlayWorkspaceNavigationState,
@@ -14,7 +15,7 @@ import {
 } from './pages/PlayWorkspace';
 import { useAppStore } from './store/appStore';
 
-type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop';
+type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop' | 'fanPlaza';
 type PlayStage = 'menu' | 'workspace';
 type System = 'D&D' | 'CoC' | 'CP';
 
@@ -47,31 +48,20 @@ function areNavigationStatesEqual(left: NavigationState, right: NavigationState)
   );
 }
 
-// AI-LANDMARK: PLATFORM_PLAY_MENU_COLLAPSIBLE_SIDEBAR
-// Sidebar is collapsible (persisted via localStorage). Entering a system goes
-// directly to the preserved PlayWorkspace via SystemLibrary (no PlayMenu).
-const sidebarStorageKey = 'trpg-platform-sidebar-collapsed';
+// AI-LANDMARK: PLATFORM_ADAPTIVE_NAVIGATION_FOCUS_MODE_V1
+// Adaptive platform navigation: desktop/tablet top horizontal bar, mobile bottom
+// primary nav + More panel. No persistent desktop left sidebar (it squeezed
+// system workspaces, especially the DND Builder three-column layout). Complex
+// workflow pages (play workspace) use focus mode to reduce platform-nav pressure.
+// Platform nav switches top-level modules only; system + page navigation stay
+// inside their own surfaces.
+type PlatformNavKey = 'home' | 'systemLibrary' | 'workshop' | 'fanPlaza';
 
-function readStoredSidebarCollapsed(): boolean {
-  if (typeof window === 'undefined') return false;
-  return window.localStorage.getItem(sidebarStorageKey) === '1';
-}
-
-function writeStoredSidebarCollapsed(collapsed: boolean): void {
-  if (typeof window === 'undefined') return;
-  window.localStorage.setItem(sidebarStorageKey, collapsed ? '1' : '0');
-}
-
-const navItems: {
-  key: 'home' | 'systemLibrary' | 'workshop' | 'settings';
-  labelKey: string;
-  kind: 'view' | 'placeholder';
-  icon: typeof HomeIcon;
-}[] = [
-  { key: 'home',          labelKey: 'shell.nav.home',          kind: 'view',        icon: HomeIcon },
-  { key: 'systemLibrary', labelKey: 'shell.nav.systemLibrary', kind: 'view',        icon: Library  },
-  { key: 'workshop',      labelKey: 'shell.nav.workshop',      kind: 'view',        icon: Store    },
-  { key: 'settings',      labelKey: 'shell.nav.settings',      kind: 'placeholder', icon: Settings },
+const PRIMARY_NAV: { key: PlatformNavKey; labelKey: string; icon: typeof HomeIcon }[] = [
+  { key: 'home',          labelKey: 'shell.nav.home',          icon: HomeIcon },
+  { key: 'systemLibrary', labelKey: 'shell.nav.systemLibrary', icon: Library  },
+  { key: 'workshop',      labelKey: 'shell.nav.workshop',      icon: Store    },
+  { key: 'fanPlaza',      labelKey: 'shell.nav.fanPlaza',      icon: Palette  },
 ];
 
 function isPlaceholderKey(value: string): value is PlaceholderKey {
@@ -88,7 +78,7 @@ export default function App() {
   const [playStage, setPlayStage] = useState<PlayStage>('menu');
   const [activePlaceholder, setActivePlaceholder] = useState<PlaceholderKey>('campaigns');
   const [locale, setLocale] = useState<Locale>(readStoredLocale);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(readStoredSidebarCollapsed);
+  const [moreOpen, setMoreOpen] = useState<boolean>(false);
   const [playWorkspaceNavigation, setPlayWorkspaceNavigation] = useState<PlayWorkspaceNavigationState>(
     defaultPlayWorkspaceNavigationState,
   );
@@ -97,14 +87,6 @@ export default function App() {
   const setSystem = useAppStore((state) => state.setSystem);
 
   const { t } = createTranslator(locale);
-
-  const toggleSidebar = () => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      writeStoredSidebarCollapsed(next);
-      return next;
-    });
-  };
 
   // AI-LANDMARK: PLATFORM_NAVIGATION_HISTORY_STACK
   // Lightweight app-level navigation stack. It stores UI location only:
@@ -353,6 +335,11 @@ export default function App() {
       setAppView('workshop');
       return;
     }
+    // Fan Plaza is a platform-level scaffold page, not a placeholder.
+    if (feature === 'fanPlaza') {
+      setAppView('fanPlaza');
+      return;
+    }
     setActivePlaceholder(normalizeFeatureKey(feature));
     setAppView('placeholder');
   };
@@ -362,207 +349,388 @@ export default function App() {
     writeStoredLocale(nextLocale);
   };
 
+  // ── Platform nav helpers ───────────────────────────────────────────────────
+  const isNavActive = (key: PlatformNavKey | 'settings'): boolean => {
+    if (key === 'settings') return appView === 'placeholder' && activePlaceholder === 'settings';
+    return appView === key;
+  };
+
+  const handleNavClick = (key: PlatformNavKey | 'settings') => {
+    setMoreOpen(false);
+    if (key === 'home') {
+      navigateHome();
+      return;
+    }
+    openPlaceholder(key);
+  };
+
   const placeholderBaseKey = `shell.placeholders.${activePlaceholder}`;
   const isPrivateImportPlaceholder = activePlaceholder === 'privateImport';
-  const sidebarToggleLabel = t(sidebarCollapsed ? 'shell.sidebar.expand' : 'shell.sidebar.collapse');
   const systemLabel = system === 'D&D' ? 'DND 5e 2024' : system === 'CoC' ? 'COC 7e' : 'Cyberpunk RED';
+
+  // Complex workflow pages reduce platform-nav pressure (focus mode).
+  const focusMode = appView === 'play' && playStage === 'workspace';
+
+  const mobileTitle =
+    appView === 'home' ? t('shell.nav.home')
+    : appView === 'systemLibrary' ? t('shell.nav.systemLibrary')
+    : appView === 'workshop' ? t('shell.nav.workshop')
+    : appView === 'fanPlaza' ? t('shell.nav.fanPlaza')
+    : appView === 'play' ? systemLabel
+    : activePlaceholder === 'settings' ? t('shell.nav.settings')
+    : t(`${placeholderBaseKey}.title`);
+
+  const desktopNavBtn = (active: boolean) =>
+    `flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition ${
+      active ? 'bg-white text-[#17130f]' : 'text-white/76 hover:bg-white/10 hover:text-white'
+    }`;
 
   return (
     <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
-      <div className="flex min-h-screen flex-col md:flex-row">
-        <aside
-          className={`border-b border-[#2f2a22]/15 bg-[#17130f] text-[#f7f3ea] transition-all md:border-b-0 md:border-r ${
-            sidebarCollapsed ? 'md:w-16' : 'md:w-64'
-          }`}
+      {/* ── Desktop / Tablet: top horizontal platform navigation ── */}
+      <header className="sticky top-0 z-30 hidden items-center gap-1 border-b border-[#2f2a22]/15 bg-[#17130f] px-3 py-2 text-[#f7f3ea] md:flex md:px-4">
+        <div className="mr-2 flex items-center gap-2 text-sm font-bold lg:mr-3">
+          <Sparkles className="h-4 w-4 shrink-0 text-[#f5c518]" />
+          <span className="hidden lg:inline">{t('shell.brand')}</span>
+        </div>
+        <nav className="flex items-center gap-1" aria-label={t('shell.navigationLabel')}>
+          {PRIMARY_NAV.map((item) => {
+            const Icon = item.icon;
+            const active = isNavActive(item.key);
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => handleNavClick(item.key)}
+                aria-current={active ? 'page' : undefined}
+                className={desktopNavBtn(active)}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span>{t(item.labelKey)}</span>
+              </button>
+            );
+          })}
+          {/* Settings is inline only on wide desktops; otherwise it lives in More. */}
+          <button
+            type="button"
+            onClick={() => handleNavClick('settings')}
+            aria-current={isNavActive('settings') ? 'page' : undefined}
+            className={`hidden xl:flex ${desktopNavBtn(isNavActive('settings'))}`}
+          >
+            <Settings className="h-4 w-4 shrink-0" />
+            <span>{t('shell.nav.settings')}</span>
+          </button>
+        </nav>
+        <div className="ml-auto flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setMoreOpen((o) => !o)}
+            aria-haspopup="menu"
+            aria-expanded={moreOpen}
+            title={t('shell.more.open')}
+            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold text-white/76 transition hover:bg-white/10 hover:text-white"
+          >
+            <MoreHorizontal className="h-4 w-4 shrink-0" />
+            <span className="hidden sm:inline">{t('shell.nav.more')}</span>
+          </button>
+        </div>
+      </header>
+
+      {/* ── Mobile: lightweight top app bar ── */}
+      <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-[#2f2a22]/15 bg-[#17130f] px-3 py-2 text-[#f7f3ea] md:hidden">
+        <div className="flex min-w-0 items-center gap-2 text-sm font-bold">
+          <Sparkles className="h-4 w-4 shrink-0 text-[#f5c518]" />
+          <span className="truncate">{mobileTitle}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setMoreOpen((o) => !o)}
+          aria-haspopup="menu"
+          aria-expanded={moreOpen}
+          aria-label={t('shell.more.open')}
+          className="ml-auto rounded-md p-1.5 text-white/70 transition hover:bg-white/10 hover:text-white"
         >
-          <div className="flex h-full flex-col gap-4 p-3">
-            <div className={`flex items-center gap-2 ${sidebarCollapsed ? 'md:flex-col md:gap-3' : 'justify-between'}`}>
-              <div className="flex min-w-0 items-center gap-2 text-sm font-bold">
-                <Sparkles className="h-4 w-4 shrink-0 text-[#f5c518]" />
-                {!sidebarCollapsed && <span className="truncate">{t('shell.brand')}</span>}
+          <MoreHorizontal className="h-5 w-5" />
+        </button>
+      </header>
+
+      {/* ── Main content (full width; no left sidebar) ── */}
+      <div className={`min-w-0 ${focusMode ? '' : 'pb-16 md:pb-0'}`}>
+        {appView === 'home' && (
+          <Home locale={locale} onEnterPlay={enterPlay} onOpenPlaceholder={openPlaceholder} />
+        )}
+
+        {appView === 'systemLibrary' && (
+          <SystemLibrary locale={locale} onEnterPlay={enterPlay} />
+        )}
+
+        {appView === 'workshop' && (
+          <Workshop locale={locale} onBackHome={navigateHome} />
+        )}
+
+        {appView === 'fanPlaza' && (
+          <FanPlaza locale={locale} onBackHome={navigateHome} />
+        )}
+
+        {appView === 'play' && playStage === 'workspace' && (
+          <div>
+            <div className="border-b border-[#2f2a22]/15 px-4 py-2 md:px-8">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={navigationStack.length > 0 ? goBack : fallbackNavigation}
+                  title={navigationStack.length > 0 ? t('navigation.backOneLevel') : t('navigation.noPreviousBackToSystemSelect')}
+                  className="rounded-md border-[#2f2a22]/20"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  {t(navigationStack.length > 0 ? 'navigation.backOneLevel' : 'navigation.backToSystemSelect')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={goUp}
+                  title={t('navigation.upOneLevel')}
+                  className="rounded-md border-[#2f2a22]/20"
+                >
+                  <ChevronUp className="mr-2 h-4 w-4" />
+                  {t('navigation.upOneLevel')}
+                </Button>
+                {/* Full breadcrumb is desktop/tablet only; mobile shows the short title in the app bar. */}
+                <div className="hidden text-xs text-[#51483d] md:block">
+                  <span className="font-bold">{t('navigation.currentLocation')}：</span>
+                  {(() => {
+                    const nodeType = deriveNodeType(
+                      system,
+                      playWorkspaceNavigation.dndWorkspaceView,
+                      playWorkspaceNavigation.systemWorkspaceView,
+                      playWorkspaceNavigation.tab,
+                    );
+                    const viewLabels = getBreadcrumbViewLabelKeys(nodeType).map((labelKey) => t(labelKey));
+                    return [
+                      t('navigation.breadcrumb.platform'),
+                      t('navigation.breadcrumb.play'),
+                      systemLabel,
+                      ...viewLabels,
+                    ].join(' / ');
+                  })()}
+                </div>
               </div>
+            </div>
+            <PlayWorkspace
+              navigationState={playWorkspaceNavigation}
+              onNavigationChange={setPlayWorkspaceNavigation}
+              onBeforeNavigate={pushNavigation}
+              onBack={goBack}
+              canGoBack={navigationStack.length > 0}
+            />
+          </div>
+        )}
+
+        {appView === 'placeholder' && activePlaceholder === 'settings' && (
+          <main className="mx-auto flex min-h-[70vh] w-full max-w-5xl flex-col justify-center px-4 py-8 md:px-8">
+            <div className="rounded-lg border border-[#2f2a22]/15 bg-white p-6 shadow-sm">
+              <h1 className="text-2xl font-bold">{t('shell.settings.title')}</h1>
+
+              <section className="mt-6 rounded-lg border border-[#2f2a22]/12 bg-[#faf8f2] p-4">
+                <h2 className="text-base font-bold">{t('shell.settings.language.title')}</h2>
+                <div className="mt-4 flex flex-wrap gap-3" role="group" aria-label={t('shell.settings.language.aria')}>
+                  <Button
+                    type="button"
+                    variant={locale === 'zh-CN' ? 'default' : 'outline'}
+                    onClick={() => setLocalePreference('zh-CN')}
+                    className="rounded-md"
+                  >
+                    {t('shell.settings.language.zhCN')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={locale === 'en' ? 'default' : 'outline'}
+                    onClick={() => setLocalePreference('en')}
+                    className="rounded-md"
+                  >
+                    {t('shell.settings.language.en')}
+                  </Button>
+                </div>
+              </section>
+
+              <section className="mt-4 rounded-lg border border-[#2f2a22]/12 bg-white p-4">
+                <h2 className="text-base font-bold">{t('shell.settings.deferred.title')}</h2>
+                <p className="mt-2 text-sm text-[#51483d]">{t('shell.settings.deferred.body')}</p>
+              </section>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Button onClick={() => openPlaceholder('ruleSystems')} className="rounded-md">
+                  {t('shell.enterPlay')}
+                </Button>
+                <Button variant="outline" onClick={navigateHome} className="rounded-md border-[#2f2a22]/20">
+                  {t('shell.backHome')}
+                </Button>
+              </div>
+            </div>
+          </main>
+        )}
+
+        {appView === 'placeholder' && activePlaceholder !== 'settings' && (
+          <main className="mx-auto flex min-h-[70vh] w-full max-w-5xl flex-col justify-center px-4 py-8 md:px-8">
+            <div className="rounded-lg border border-[#2f2a22]/15 bg-white p-6 shadow-sm">
+              {!isPrivateImportPlaceholder && (
+                <div className="mb-4">
+                  <Badge variant="outline" className="rounded-md border-[#58180d]/35 text-[#58180d]">
+                    {t('shell.comingSoon')}
+                  </Badge>
+                </div>
+              )}
+              <h1 className="text-2xl font-bold">{t(`${placeholderBaseKey}.title`)}</h1>
+              <p className="mt-3 text-sm text-[#51483d]">
+                {isPrivateImportPlaceholder ? t(`${placeholderBaseKey}.note`) : t('shell.plannedNote')}
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Button onClick={() => openPlaceholder('ruleSystems')} className="rounded-md">
+                  {t('shell.enterPlay')}
+                </Button>
+                <Button variant="outline" onClick={navigateHome} className="rounded-md border-[#2f2a22]/20">
+                  {t('shell.backHome')}
+                </Button>
+              </div>
+            </div>
+          </main>
+        )}
+      </div>
+
+      {/* ── Mobile: bottom primary navigation (hidden in focus mode) ── */}
+      {!focusMode && (
+        <nav
+          className="fixed inset-x-0 bottom-0 z-30 flex border-t border-white/10 bg-[#17130f] text-[#f7f3ea] md:hidden"
+          aria-label={t('shell.navigationLabel')}
+        >
+          {PRIMARY_NAV.map((item) => {
+            const Icon = item.icon;
+            const active = isNavActive(item.key);
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => handleNavClick(item.key)}
+                aria-current={active ? 'page' : undefined}
+                className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold transition ${
+                  active ? 'text-[#f5c518]' : 'text-white/70 hover:text-white'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                <span className="truncate">{t(item.labelKey)}</span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            aria-haspopup="menu"
+            aria-expanded={moreOpen}
+            className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold text-white/70 transition hover:text-white"
+          >
+            <MoreHorizontal className="h-5 w-5" />
+            <span className="truncate">{t('shell.nav.more')}</span>
+          </button>
+        </nav>
+      )}
+
+      {/* ── More panel (mobile bottom sheet / desktop dropdown) ── */}
+      {moreOpen && (
+        <>
+          <button
+            type="button"
+            aria-label={t('shell.more.close')}
+            onClick={() => setMoreOpen(false)}
+            className="fixed inset-0 z-40 cursor-default bg-black/40"
+          />
+          <div
+            role="menu"
+            className="fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl border border-[#2f2a22]/15 bg-white p-3 shadow-xl md:inset-auto md:bottom-auto md:right-3 md:top-14 md:w-72 md:rounded-xl"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-sm font-bold">{t('shell.more.title')}</span>
               <button
                 type="button"
-                onClick={toggleSidebar}
-                aria-label={sidebarToggleLabel}
-                title={sidebarToggleLabel}
-                className="rounded-md p-1.5 text-white/60 transition hover:bg-white/10 hover:text-white"
+                onClick={() => setMoreOpen(false)}
+                aria-label={t('shell.more.close')}
+                className="rounded-md p-1 text-[#51483d] hover:bg-[#2f2a22]/8"
               >
-                {sidebarCollapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <nav className="grid gap-1" aria-label={t('shell.navigationLabel')}>
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive =
-                  item.kind === 'view'
-                    ? appView === item.key
-                    : appView === 'placeholder' && activePlaceholder === item.key;
+            <div className="flex flex-col gap-1">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => handleNavClick('settings')}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-[#17130f] hover:bg-[#2f2a22]/8"
+              >
+                <Settings className="h-4 w-4 shrink-0" />
+                {t('shell.nav.settings')}
+              </button>
 
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    title={t(item.labelKey)}
-                    onClick={() => {
-                      if (item.key === 'home') {
-                        navigateHome();
-                      } else {
-                        openPlaceholder(item.key);
-                      }
-                    }}
-                    className={`flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition ${
-                      sidebarCollapsed ? 'md:justify-center md:px-2' : ''
-                    } ${isActive ? 'bg-white text-[#17130f]' : 'text-white/76 hover:bg-white/10 hover:text-white'}`}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    {!sidebarCollapsed && <span className="truncate">{t(item.labelKey)}</span>}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-        </aside>
+              {/* Reserved entries (interface only) */}
+              {['aiSettings', 'userCenter', 'serviceStatus', 'membership'].map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="menuitem"
+                  disabled
+                  className="flex items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm text-[#51483d]/60"
+                >
+                  {t(`shell.more.${key}`)}
+                  <span className="border border-dashed border-[#2f2a22]/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#51483d]/50">
+                    {t('shell.more.reserved')}
+                  </span>
+                </button>
+              ))}
 
-        <section className="min-w-0 flex-1">
-          {appView === 'home' && (
-            <Home locale={locale} onEnterPlay={enterPlay} onOpenPlaceholder={openPlaceholder} />
-          )}
+              <div className="my-1 border-t border-[#2f2a22]/10" />
 
-          {appView === 'systemLibrary' && (
-            <SystemLibrary locale={locale} onEnterPlay={enterPlay} />
-          )}
-
-          {appView === 'workshop' && (
-            <Workshop locale={locale} onBackHome={navigateHome} />
-          )}
-
-          {appView === 'play' && playStage === 'workspace' && (
-            <div>
-              <div className="border-b border-[#2f2a22]/15 px-4 py-2 md:px-8">
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={navigationStack.length > 0 ? goBack : fallbackNavigation}
-                    title={navigationStack.length > 0 ? t('navigation.backOneLevel') : t('navigation.noPreviousBackToSystemSelect')}
-                    className="rounded-md border-[#2f2a22]/20"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    {t(navigationStack.length > 0 ? 'navigation.backOneLevel' : 'navigation.backToSystemSelect')}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={goUp}
-                    title={t('navigation.upOneLevel')}
-                    className="rounded-md border-[#2f2a22]/20"
-                  >
-                    <ChevronUp className="mr-2 h-4 w-4" />
-                    {t('navigation.upOneLevel')}
-                  </Button>
-                  <div className="text-xs text-[#51483d]">
-                    <span className="font-bold">{t('navigation.currentLocation')}：</span>
-                    {(() => {
-                      const nodeType = deriveNodeType(
-                        system,
-                        playWorkspaceNavigation.dndWorkspaceView,
-                        playWorkspaceNavigation.systemWorkspaceView,
-                        playWorkspaceNavigation.tab,
-                      );
-                      const viewLabels = getBreadcrumbViewLabelKeys(nodeType).map((labelKey) => t(labelKey));
-                      return [
-                        t('navigation.breadcrumb.platform'),
-                        t('navigation.breadcrumb.play'),
-                        systemLabel,
-                        ...viewLabels,
-                      ].join(' / ');
-                    })()}
-                  </div>
-                </div>
+              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#51483d]/60">
+                {t('shell.more.language')}
               </div>
-              <PlayWorkspace
-                navigationState={playWorkspaceNavigation}
-                onNavigationChange={setPlayWorkspaceNavigation}
-                onBeforeNavigate={pushNavigation}
-                onBack={goBack}
-                canGoBack={navigationStack.length > 0}
-              />
+              <div className="flex gap-2 px-3 pb-1">
+                <button
+                  type="button"
+                  onClick={() => setLocalePreference('zh-CN')}
+                  className={`flex-1 rounded-md border px-2 py-1 text-xs font-bold ${
+                    locale === 'zh-CN' ? 'border-[#17130f] bg-[#17130f] text-white' : 'border-[#2f2a22]/20 text-[#51483d]'
+                  }`}
+                >
+                  {t('shell.settings.language.zhCN')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLocalePreference('en')}
+                  className={`flex-1 rounded-md border px-2 py-1 text-xs font-bold ${
+                    locale === 'en' ? 'border-[#17130f] bg-[#17130f] text-white' : 'border-[#2f2a22]/20 text-[#51483d]'
+                  }`}
+                >
+                  {t('shell.settings.language.en')}
+                </button>
+              </div>
+
+              <div className="my-1 border-t border-[#2f2a22]/10" />
+
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMoreOpen(false);
+                  navigateHome();
+                }}
+                className="rounded-md px-3 py-2 text-left text-sm font-semibold text-[#17130f] hover:bg-[#2f2a22]/8"
+              >
+                {t('shell.backHome')}
+              </button>
             </div>
-          )}
+          </div>
+        </>
+      )}
 
-          {appView === 'placeholder' && activePlaceholder === 'settings' && (
-            <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col justify-center px-4 py-8 md:px-8">
-              <div className="rounded-lg border border-[#2f2a22]/15 bg-white p-6 shadow-sm">
-                <h1 className="text-2xl font-bold">{t('shell.settings.title')}</h1>
-
-                <section className="mt-6 rounded-lg border border-[#2f2a22]/12 bg-[#faf8f2] p-4">
-                  <h2 className="text-base font-bold">{t('shell.settings.language.title')}</h2>
-                  <div className="mt-4 flex flex-wrap gap-3" role="group" aria-label={t('shell.settings.language.aria')}>
-                    <Button
-                      type="button"
-                      variant={locale === 'zh-CN' ? 'default' : 'outline'}
-                      onClick={() => setLocalePreference('zh-CN')}
-                      className="rounded-md"
-                    >
-                      {t('shell.settings.language.zhCN')}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={locale === 'en' ? 'default' : 'outline'}
-                      onClick={() => setLocalePreference('en')}
-                      className="rounded-md"
-                    >
-                      {t('shell.settings.language.en')}
-                    </Button>
-                  </div>
-                </section>
-
-                <section className="mt-4 rounded-lg border border-[#2f2a22]/12 bg-white p-4">
-                  <h2 className="text-base font-bold">{t('shell.settings.deferred.title')}</h2>
-                  <p className="mt-2 text-sm text-[#51483d]">{t('shell.settings.deferred.body')}</p>
-                </section>
-
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <Button onClick={() => openPlaceholder('ruleSystems')} className="rounded-md">
-                    {t('shell.enterPlay')}
-                  </Button>
-                  <Button variant="outline" onClick={navigateHome} className="rounded-md border-[#2f2a22]/20">
-                    {t('shell.backHome')}
-                  </Button>
-                </div>
-              </div>
-            </main>
-          )}
-
-          {appView === 'placeholder' && activePlaceholder !== 'settings' && (
-            <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col justify-center px-4 py-8 md:px-8">
-              <div className="rounded-lg border border-[#2f2a22]/15 bg-white p-6 shadow-sm">
-                {!isPrivateImportPlaceholder && (
-                  <div className="mb-4">
-                    <Badge variant="outline" className="rounded-md border-[#58180d]/35 text-[#58180d]">
-                      {t('shell.comingSoon')}
-                    </Badge>
-                  </div>
-                )}
-                <h1 className="text-2xl font-bold">{t(`${placeholderBaseKey}.title`)}</h1>
-                <p className="mt-3 text-sm text-[#51483d]">
-                  {isPrivateImportPlaceholder ? t(`${placeholderBaseKey}.note`) : t('shell.plannedNote')}
-                </p>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <Button onClick={() => openPlaceholder('ruleSystems')} className="rounded-md">
-                    {t('shell.enterPlay')}
-                  </Button>
-                  <Button variant="outline" onClick={navigateHome} className="rounded-md border-[#2f2a22]/20">
-                    {t('shell.backHome')}
-                  </Button>
-                </div>
-              </div>
-            </main>
-          )}
-        </section>
-      </div>
       <Toaster />
     </div>
   );
