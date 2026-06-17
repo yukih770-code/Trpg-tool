@@ -17,7 +17,7 @@ import {
   type WorkshopBrowseItem,
 } from '../../lib/platform/workshopTypes';
 import type { FanWork } from '../../lib/platform/communityTypes';
-import { platformRepo } from '../../lib/architecture/mockRepositories';
+import { platformRepo } from '../../lib/architecture/repositoryComposition';
 import { LINKABLE_OBJECT_TYPES, type EntityNode, type EntityType } from '../../lib/architecture/entityGraph';
 import { PreviewArt } from './PreviewArt';
 

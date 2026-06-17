@@ -4,7 +4,7 @@
  */
 import type { FanWork, FanWorkSystem, FanWorkType } from './communityTypes';
 import type { LinkableEntityType } from './linkableEntityTypes';
-import { platformRepo } from '../architecture/mockRepositories';
+import { platformRepo } from '../architecture/repositoryComposition';
 import { LINKABLE_OBJECT_TYPES } from '../architecture/entityGraph';
 
 export const FAN_WORK_TYPE_KEYS: FanWorkType[] = [

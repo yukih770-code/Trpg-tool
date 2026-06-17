@@ -12,7 +12,6 @@
  * ApiRepository implementations without touching any page (see repositories.ts).
  */
 import {
-  LINKABLE_OBJECT_TYPES,
   toEntitySummary,
   type CreateRelationInput,
   type DependencyTreeNode,
@@ -85,8 +84,8 @@ import {
 } from './mediaAsset';
 import { FAN_WORKS } from '../platform/communityMockData';
 import type { FanWork } from '../platform/communityTypes';
-import { WORKSHOP_BROWSE_SAMPLES } from '../platform/workshopTypes';
-import type { WorkshopBrowseItem } from '../platform/workshopTypes';
+import { WORKSHOP_BROWSE_SAMPLES, WORKSHOP_SUBSCRIPTION_SAMPLES } from '../platform/workshopTypes';
+import type { WorkshopBrowseItem, WorkshopSubscriptionItem } from '../platform/workshopTypes';
 
 // ─── EntityGraphRepository ─────────────────────────────────────────────────
 
@@ -273,6 +272,9 @@ class MockWorkshopPackageRepository implements WorkshopPackageRepository {
   getById(id: EntityId): WorkshopBrowseItem | undefined {
     return WORKSHOP_BROWSE_SAMPLES.find((w) => w.id === id);
   }
+  listSubscriptions(): WorkshopSubscriptionItem[] {
+    return WORKSHOP_SUBSCRIPTION_SAMPLES;
+  }
 
   // ── Manifest protocol (A4) ──
   getPackageSummary(id: string): WorkshopPackageSummary | undefined {
@@ -439,9 +441,14 @@ class MockPermissionProjectionRepository implements PermissionProjectionReposito
   }
 }
 
-// ─── Composition root (singleton) ─────────────────────────────────────────────
+// ─── Mock implementation factory ──────────────────────────────────────────────
+//
+// This module is the MOCK IMPLEMENTATION layer only. The composition root + the
+// platform singleton live in ./repositoryComposition so that Local/Api/GraphDb
+// implementations can be swapped at one place without touching this file.
 
-function createMockRepositories(): PlatformRepositories {
+/** Build a fresh set of mock-backed platform repositories. */
+export function createMockRepositories(): PlatformRepositories {
   const entityGraph = new MockEntityGraphRepository();
   return {
     entityGraph,
@@ -453,8 +460,3 @@ function createMockRepositories(): PlatformRepositories {
     permissions: new MockPermissionProjectionRepository(entityGraph),
   };
 }
-
-/** Platform repository singleton. UI/components query this, never raw mocks. */
-export const platformRepo: PlatformRepositories = createMockRepositories();
-
-export { LINKABLE_OBJECT_TYPES };

@@ -35,7 +35,7 @@ import type {
   RelationId,
   RelationQueryOptions,
 } from './entityGraph';
-import type { WorkshopBrowseItem } from '../platform/workshopTypes';
+import type { WorkshopBrowseItem, WorkshopSubscriptionItem } from '../platform/workshopTypes';
 import type { FanWork } from '../platform/communityTypes';
 import type {
   BlockDocument,
@@ -121,6 +121,8 @@ export interface WorkshopPackageRepository {
    */
   list(): WorkshopBrowseItem[];
   getById(id: EntityId): WorkshopBrowseItem | undefined;
+  /** Legacy subscription samples (current "My Subscriptions" UI). */
+  listSubscriptions(): WorkshopSubscriptionItem[];
 
   // ── Manifest protocol (A4) ──
   getPackageSummary(id: string): WorkshopPackageSummary | undefined;

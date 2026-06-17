@@ -13,9 +13,8 @@
 import { useState } from 'react';
 import type { Locale } from '../../i18n';
 import type { FanWork } from '../../lib/platform/communityTypes';
-import { fanWorkCoverKind } from '../../lib/platform/communityMockData';
 import { localized, type WorkshopBrowseItem } from '../../lib/platform/workshopTypes';
-import { platformRepo } from '../../lib/architecture/mockRepositories';
+import { platformRepo } from '../../lib/architecture/repositoryComposition';
 import { EntityRelationList } from './EntityRelationList';
 import { LinkableEntityCard } from './LinkableEntityCard';
 import { PreviewArt } from './PreviewArt';
@@ -71,7 +70,7 @@ export function FanWorkDetail({ work, t, locale, onBack }: FanWorkDetailProps) {
           <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[#51483d]/55">{t('fanPlaza.detail.coverPreview')}</p>
           <PreviewArt
             t={t}
-            fanKind={fanWorkCoverKind(work)}
+            fanKind={work.coverKind ?? work.type}
             coverMode={work.coverMode}
             ratio="16:9"
             galleryCount={hasGallery ? 3 : undefined}

@@ -12,8 +12,7 @@
  */
 import { useState } from 'react';
 import type { Locale } from '../../i18n';
-import { fanWorkCoverKind } from '../../lib/platform/communityMockData';
-import { platformRepo } from '../../lib/architecture/mockRepositories';
+import { platformRepo } from '../../lib/architecture/repositoryComposition';
 import { fanWorkRelatedTypes } from '../../lib/platform/communityFilters';
 import {
   FAN_WORK_RELATION_KEYS,
@@ -154,7 +153,7 @@ export function FanPlazaShell({ t, locale, onBackHome }: FanPlazaShellProps) {
             <div className="w-28 shrink-0 sm:w-36">
               <PreviewArt
                 t={t}
-                fanKind={fanWorkCoverKind(previewWork)}
+                fanKind={previewWork.coverKind ?? previewWork.type}
                 coverMode={previewWork.coverMode}
                 ratio="4:3"
                 showCaption={false}

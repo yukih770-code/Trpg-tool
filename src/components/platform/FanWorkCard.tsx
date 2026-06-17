@@ -10,7 +10,6 @@
  */
 import type { FanWork } from '../../lib/platform/communityTypes';
 import { fanWorkRelatedTypes } from '../../lib/platform/communityFilters';
-import { fanWorkCoverKind } from '../../lib/platform/communityMockData';
 import { PreviewArt } from './PreviewArt';
 
 export type FanWorkCardProps = {
@@ -32,7 +31,7 @@ export function FanWorkCard({ work, t, onOpenDetail, onQuickPreview }: FanWorkCa
         {/* Cover / main preview (source = coverMode) */}
         <PreviewArt
           t={t}
-          fanKind={fanWorkCoverKind(work)}
+          fanKind={work.coverKind ?? work.type}
           coverMode={work.coverMode}
           ratio="4:3"
           galleryCount={hasGallery ? 3 : undefined}

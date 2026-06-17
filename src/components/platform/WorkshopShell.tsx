@@ -39,7 +39,6 @@ import {
   WORKSHOP_CONTENT_SHAPE_KEYS,
   WORKSHOP_LANDING_MAP,
   WORKSHOP_SORT_KEYS,
-  WORKSHOP_SUBSCRIPTION_SAMPLES,
   WORKSHOP_SUBSCRIPTION_STATUS_KEYS,
   WORKSHOP_SUBTYPES,
   WORKSHOP_SYSTEM_KEYS,
@@ -53,7 +52,7 @@ import {
   type WorkshopSubscriptionStatusKey,
   type WorkshopSystem,
 } from '../../lib/platform/workshopTypes';
-import { platformRepo } from '../../lib/architecture/mockRepositories';
+import { platformRepo } from '../../lib/architecture/repositoryComposition';
 import { PreviewArt } from './PreviewArt';
 import { WorkshopItemDetail } from './WorkshopItemDetail';
 
@@ -258,7 +257,8 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
   });
 
   // ── Filtered subscription items ───────────────────────────────────────────
-  const filteredSubs = WORKSHOP_SUBSCRIPTION_SAMPLES.filter((item) => {
+  const subscriptionItems = platformRepo.workshopPackages.listSubscriptions();
+  const filteredSubs = subscriptionItems.filter((item) => {
     if (subSearch.trim()) {
       const q = subSearch.trim().toLowerCase();
       if (!localized(item.title, locale).toLowerCase().includes(q)) return false;

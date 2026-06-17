@@ -8,7 +8,7 @@
  * object opens a local card/preview, not a route.
  */
 import { LINKABLE_OBJECT_TYPES, toEntitySummary } from '../../lib/architecture/entityGraph';
-import { platformRepo } from '../../lib/architecture/mockRepositories';
+import { platformRepo } from '../../lib/architecture/repositoryComposition';
 import { LinkableEntityCard } from './LinkableEntityCard';
 
 export type EntityRelationListProps = {
