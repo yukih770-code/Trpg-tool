@@ -37,6 +37,8 @@ import type {
 } from './entityGraph';
 import type { WorkshopBrowseItem, WorkshopSubscriptionItem } from '../platform/workshopTypes';
 import type { FanWork } from '../platform/communityTypes';
+import type { CollectionItem, ImportedPackageItem } from '../platform/personalContent';
+import type { UserProfile, UserProfileSummary } from '../platform/userProfile';
 import type {
   BlockDocument,
   BlockDocumentDetail,
@@ -157,6 +159,22 @@ export interface MediaAssetRepository {
   validateMediaAsset(asset: MediaAsset): MediaAssetValidationResult;
 }
 
+// ─── Personal content (collections / imports have no model yet — mock-backed) ──
+
+export interface PersonalContentRepository {
+  /** The user's saved pointers to other objects (resolved via repos at display). */
+  listCollections(ownerId: string): CollectionItem[];
+  /** Packages the user imported (envelope/manifest summary; no real import yet). */
+  listImportedPackages(ownerId: string): ImportedPackageItem[];
+}
+
+// ─── User Profile (profile metadata only — never object data) ─────────────────
+
+export interface UserProfileRepository {
+  getProfile(userId: string): UserProfile | undefined;
+  getProfileSummary(userId: string): UserProfileSummary | undefined;
+}
+
 // ─── Permission / Projection ──────────────────────────────────────────────────
 
 export interface PermissionProjectionRepository {
@@ -181,4 +199,6 @@ export interface PlatformRepositories {
   fanWorks: FanWorkRepository;
   mediaAssets: MediaAssetRepository;
   permissions: PermissionProjectionRepository;
+  personalContent: PersonalContentRepository;
+  userProfiles: UserProfileRepository;
 }

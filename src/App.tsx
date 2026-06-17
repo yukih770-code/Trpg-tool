@@ -9,6 +9,8 @@ import { SystemLibrary } from './pages/SystemLibrary';
 import { Workshop } from './pages/Workshop';
 import { FanPlaza } from './pages/FanPlaza';
 import { DocumentLibraryShell } from './components/platform/DocumentLibraryShell';
+import { PersonalContentHub } from './components/platform/PersonalContentHub';
+import { UserProfileSpace } from './components/platform/UserProfileSpace';
 import {
   PlayWorkspace,
   defaultPlayWorkspaceNavigationState,
@@ -16,7 +18,7 @@ import {
 } from './pages/PlayWorkspace';
 import { useAppStore } from './store/appStore';
 
-type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop' | 'fanPlaza' | 'documents';
+type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop' | 'fanPlaza' | 'documents' | 'personalHub' | 'userProfile';
 type PlayStage = 'menu' | 'workspace';
 type System = 'D&D' | 'CoC' | 'CP';
 
@@ -56,11 +58,14 @@ function areNavigationStatesEqual(left: NavigationState, right: NavigationState)
 // workflow pages (play workspace) use focus mode to reduce platform-nav pressure.
 // Platform nav switches top-level modules only; system + page navigation stay
 // inside their own surfaces.
-type PlatformNavKey = 'home' | 'systemLibrary' | 'workshop' | 'fanPlaza';
+type PlatformNavKey = 'home' | 'systemLibrary' | 'personalHub' | 'workshop' | 'fanPlaza';
 
-const PRIMARY_NAV: { key: PlatformNavKey; labelKey: string; icon: typeof HomeIcon }[] = [
+// `labelKey` resolves via i18n; `label` is a literal fallback when no key exists
+// (e.g. personalHub has no shell.nav key yet — i18n locale files are out of scope).
+const PRIMARY_NAV: { key: PlatformNavKey; labelKey?: string; label?: { zh: string; en: string }; icon: typeof HomeIcon }[] = [
   { key: 'home',          labelKey: 'shell.nav.home',          icon: HomeIcon },
   { key: 'systemLibrary', labelKey: 'shell.nav.systemLibrary', icon: Library  },
+  { key: 'personalHub',   label: { zh: '我的内容', en: 'My Content' }, icon: Sparkles },
   { key: 'workshop',      labelKey: 'shell.nav.workshop',      icon: Store    },
   { key: 'fanPlaza',      labelKey: 'shell.nav.fanPlaza',      icon: Palette  },
 ];
@@ -80,6 +85,7 @@ export default function App() {
   const [activePlaceholder, setActivePlaceholder] = useState<PlaceholderKey>('campaigns');
   const [locale, setLocale] = useState<Locale>(readStoredLocale);
   const [moreOpen, setMoreOpen] = useState<boolean>(false);
+  const [profileUserId, setProfileUserId] = useState<string>('author-sample');
   const [playWorkspaceNavigation, setPlayWorkspaceNavigation] = useState<PlayWorkspaceNavigationState>(
     defaultPlayWorkspaceNavigationState,
   );
@@ -341,6 +347,11 @@ export default function App() {
       setAppView('fanPlaza');
       return;
     }
+    // Personal Content Hub is a real platform space, not a placeholder.
+    if (feature === 'personalHub') {
+      setAppView('personalHub');
+      return;
+    }
     setActivePlaceholder(normalizeFeatureKey(feature));
     setAppView('placeholder');
   };
@@ -351,6 +362,9 @@ export default function App() {
   };
 
   // ── Platform nav helpers ───────────────────────────────────────────────────
+  const navLabel = (item: (typeof PRIMARY_NAV)[number]): string =>
+    item.labelKey ? t(item.labelKey) : locale === 'en' ? item.label!.en : item.label!.zh;
+
   const isNavActive = (key: PlatformNavKey | 'settings'): boolean => {
     if (key === 'settings') return appView === 'placeholder' && activePlaceholder === 'settings';
     return appView === key;
@@ -378,6 +392,8 @@ export default function App() {
     : appView === 'workshop' ? t('shell.nav.workshop')
     : appView === 'fanPlaza' ? t('shell.nav.fanPlaza')
     : appView === 'documents' ? (locale === 'en' ? 'Documents' : '文档资料')
+    : appView === 'personalHub' ? (locale === 'en' ? 'My Content' : '我的内容')
+    : appView === 'userProfile' ? (locale === 'en' ? 'Profile' : '用户主页')
     : appView === 'play' ? systemLabel
     : activePlaceholder === 'settings' ? t('shell.nav.settings')
     : t(`${placeholderBaseKey}.title`);
@@ -408,7 +424,7 @@ export default function App() {
                 className={desktopNavBtn(active)}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span>{t(item.labelKey)}</span>
+                <span>{navLabel(item)}</span>
               </button>
             );
           })}
@@ -476,6 +492,14 @@ export default function App() {
 
         {appView === 'documents' && (
           <DocumentLibraryShell locale={locale} onBackHome={navigateHome} />
+        )}
+
+        {appView === 'personalHub' && (
+          <PersonalContentHub locale={locale} onBackHome={navigateHome} />
+        )}
+
+        {appView === 'userProfile' && (
+          <UserProfileSpace profileUserId={profileUserId} locale={locale} onBackHome={navigateHome} />
         )}
 
         {appView === 'play' && playStage === 'workspace' && (
@@ -624,7 +648,7 @@ export default function App() {
                 }`}
               >
                 <Icon className="h-5 w-5" />
-                <span className="truncate">{t(item.labelKey)}</span>
+                <span className="truncate">{navLabel(item)}</span>
               </button>
             );
           })}
@@ -654,8 +678,15 @@ export default function App() {
             role="menu"
             className="fixed inset-x-0 bottom-0 z-50 max-h-[80vh] overflow-y-auto rounded-t-2xl border border-[#2f2a22]/15 bg-white p-3 shadow-xl md:inset-auto md:bottom-auto md:right-3 md:top-14 md:w-72 md:rounded-xl"
           >
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-bold">{t('shell.more.title')}</span>
+            {/* Account header (avatar / nickname placeholder) */}
+            <div className="mb-2 flex items-center gap-2 border-b border-[#2f2a22]/10 pb-2">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#2f2a22]/15 to-[#2f2a22]/35 text-sm font-bold text-[#51483d]">
+                示
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-[#17130f]">示例作者</p>
+                <p className="truncate text-[11px] text-[#51483d]/60">@graycastle_author</p>
+              </div>
               <button
                 type="button"
                 onClick={() => setMoreOpen(false)}
@@ -667,20 +698,49 @@ export default function App() {
             </div>
 
             <div className="flex flex-col gap-1">
+              {/* 我的主页 */}
               <button
                 type="button"
                 role="menuitem"
                 onClick={() => {
                   setMoreOpen(false);
                   pushNavigation();
-                  setAppView('documents');
+                  setProfileUserId('author-sample');
+                  setAppView('userProfile');
                 }}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-[#17130f] hover:bg-[#2f2a22]/8"
               >
-                <Library className="h-4 w-4 shrink-0" />
-                {locale === 'en' ? 'Documents' : '文档资料'}
+                <Palette className="h-4 w-4 shrink-0" />
+                {locale === 'en' ? 'My Profile' : '我的主页'}
               </button>
 
+              {/* 我的内容 */}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMoreOpen(false);
+                  pushNavigation();
+                  setAppView('personalHub');
+                }}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-[#17130f] hover:bg-[#2f2a22]/8"
+              >
+                <Sparkles className="h-4 w-4 shrink-0" />
+                {locale === 'en' ? 'My Content' : '我的内容'}
+              </button>
+
+              {/* 数据与备份 → settings */}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => handleNavClick('settings')}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-[#17130f] hover:bg-[#2f2a22]/8"
+              >
+                <Library className="h-4 w-4 shrink-0" />
+                {locale === 'en' ? 'Data & Backup' : '数据与备份'}
+              </button>
+
+              {/* 设置 */}
               <button
                 type="button"
                 role="menuitem"
@@ -691,60 +751,33 @@ export default function App() {
                 {t('shell.nav.settings')}
               </button>
 
-              {/* Reserved entries (interface only) */}
-              {['aiSettings', 'userCenter', 'serviceStatus', 'membership'].map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  role="menuitem"
-                  disabled
-                  className="flex items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm text-[#51483d]/60"
-                >
-                  {t(`shell.more.${key}`)}
-                  <span className="border border-dashed border-[#2f2a22]/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#51483d]/50">
-                    {t('shell.more.reserved')}
-                  </span>
-                </button>
-              ))}
-
-              <div className="my-1 border-t border-[#2f2a22]/10" />
-
-              <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#51483d]/60">
-                {t('shell.more.language')}
-              </div>
-              <div className="flex gap-2 px-3 pb-1">
-                <button
-                  type="button"
-                  onClick={() => setLocalePreference('zh-CN')}
-                  className={`flex-1 rounded-md border px-2 py-1 text-xs font-bold ${
-                    locale === 'zh-CN' ? 'border-[#17130f] bg-[#17130f] text-white' : 'border-[#2f2a22]/20 text-[#51483d]'
-                  }`}
-                >
-                  {t('shell.settings.language.zhCN')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLocalePreference('en')}
-                  className={`flex-1 rounded-md border px-2 py-1 text-xs font-bold ${
-                    locale === 'en' ? 'border-[#17130f] bg-[#17130f] text-white' : 'border-[#2f2a22]/20 text-[#51483d]'
-                  }`}
-                >
-                  {t('shell.settings.language.en')}
-                </button>
-              </div>
-
-              <div className="my-1 border-t border-[#2f2a22]/10" />
-
+              {/* 帮助与反馈 → settings */}
               <button
                 type="button"
                 role="menuitem"
-                onClick={() => {
-                  setMoreOpen(false);
-                  navigateHome();
-                }}
-                className="rounded-md px-3 py-2 text-left text-sm font-semibold text-[#17130f] hover:bg-[#2f2a22]/8"
+                onClick={() => handleNavClick('settings')}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-[#17130f] hover:bg-[#2f2a22]/8"
               >
-                {t('shell.backHome')}
+                <MoreHorizontal className="h-4 w-4 shrink-0" />
+                {locale === 'en' ? 'Help & Feedback' : '帮助与反馈'}
+              </button>
+
+              <div className="my-1 border-t border-[#2f2a22]/10" />
+
+              {/* 退出登录 (reserved — no real auth) */}
+              <button
+                type="button"
+                role="menuitem"
+                disabled
+                className="flex items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm text-[#51483d]/55"
+              >
+                <span className="flex items-center gap-2">
+                  <ArrowLeft className="h-4 w-4 shrink-0" />
+                  {locale === 'en' ? 'Log out' : '退出登录'}
+                </span>
+                <span className="border border-dashed border-[#2f2a22]/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#51483d]/50">
+                  {t('shell.more.reserved')}
+                </span>
               </button>
             </div>
           </div>

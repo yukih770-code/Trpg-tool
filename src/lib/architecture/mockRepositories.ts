@@ -37,10 +37,14 @@ import type {
   FanWorkRepository,
   MediaAssetRepository,
   PermissionProjectionRepository,
+  PersonalContentRepository,
   PlatformRepositories,
+  UserProfileRepository,
   ViewerContext,
   WorkshopPackageRepository,
 } from './repositories';
+import type { CollectionItem, ImportedPackageItem } from '../platform/personalContent';
+import type { UserProfile, UserProfileSummary } from '../platform/userProfile';
 import {
   documentEntityRefs,
   toBlockDocumentSummary,
@@ -402,6 +406,54 @@ class MockMediaAssetRepository implements MediaAssetRepository {
   }
 }
 
+const PERSONAL_COLLECTIONS_SEED: CollectionItem[] = [
+  { id: 'col-1', itemKind: 'fanWork', targetId: 'fw-castle-night', collectedAtLabel: '2026-06-02' },
+  { id: 'col-2', itemKind: 'package', targetId: 'pkg-graycastle-campaign', collectedAtLabel: '2026-06-04' },
+  { id: 'col-3', itemKind: 'entity', targetId: 'act-elyna', collectedAtLabel: '2026-06-05' },
+];
+
+const PERSONAL_IMPORTS_SEED: ImportedPackageItem[] = [
+  { id: 'imp-1', title: '灰雾古堡氛围音乐包', sourceTrust: 'community', health: 'hasPrivateContent', importedAtLabel: '2026-06-06' },
+];
+
+class MockPersonalContentRepository implements PersonalContentRepository {
+  // Mock collections/imports are owner-scoped to the seed author for the demo.
+  listCollections(ownerId: string): CollectionItem[] {
+    return ownerId === 'author-sample' ? PERSONAL_COLLECTIONS_SEED : [];
+  }
+  listImportedPackages(ownerId: string): ImportedPackageItem[] {
+    return ownerId === 'author-sample' ? PERSONAL_IMPORTS_SEED : [];
+  }
+}
+
+const USER_PROFILE_SEED: UserProfile[] = [
+  {
+    userId: 'author-sample',
+    handle: 'graycastle_author',
+    displayName: '示例作者',
+    bio: '灰雾古堡战役的 GM 与创作者。',
+    tags: ['DND 5e 2024', '调查', '世界观'],
+    visibility: 'public',
+    pinned: [
+      { entityId: 'fw-elyna-diary', entityType: 'fanWork', label: '艾琳娜的流亡日记' },
+      { entityId: 'pkg-graycastle-campaign', entityType: 'workshopPackage' },
+    ],
+    sectionVisibility: { documents: 'public', fanWorks: 'public', workshopPackages: 'public' },
+  },
+];
+
+class MockUserProfileRepository implements UserProfileRepository {
+  getProfile(userId: string): UserProfile | undefined {
+    return USER_PROFILE_SEED.find((p) => p.userId === userId);
+  }
+  getProfileSummary(userId: string): UserProfileSummary | undefined {
+    const p = this.getProfile(userId);
+    return p
+      ? { userId: p.userId, handle: p.handle, displayName: p.displayName, avatarMediaAssetId: p.avatarMediaAssetId, tags: p.tags }
+      : undefined;
+  }
+}
+
 class MockPermissionProjectionRepository implements PermissionProjectionRepository {
   constructor(private graph: MockEntityGraphRepository) {}
 
@@ -461,5 +513,7 @@ export function createMockRepositories(): PlatformRepositories {
     fanWorks: new MockFanWorkRepository(),
     mediaAssets: new MockMediaAssetRepository(),
     permissions: new MockPermissionProjectionRepository(entityGraph),
+    personalContent: new MockPersonalContentRepository(),
+    userProfiles: new MockUserProfileRepository(),
   };
 }

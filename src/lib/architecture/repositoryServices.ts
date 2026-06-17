@@ -27,12 +27,33 @@ import {
   type ProjectedEntitySummary,
   type ViewerContext,
 } from './projection';
-import type { EntityId, RelatedEntitiesOptions, RelatedEntity } from './entityGraph';
+import type { EntityId, EntityVisibility, RelatedEntitiesOptions, RelatedEntity } from './entityGraph';
 import type { MediaAssetSummary, MediaAssetVariant, ResolvedMediaVariant } from './mediaAsset';
 import { documentEntityRefs, documentMediaRefs, type BlockDocumentDetail, type BlockDocumentSummary } from './blockDocument';
 import type { WorkshopPackageDetail, WorkshopPackageSummary } from './workshopPackage';
 import type { FanWork } from '../platform/communityTypes';
+import type {
+  DraftItem,
+  ImportedPackageItem,
+  OwnedPackageItem,
+  PackageHealthStatus,
+  PersonalContentSummary,
+} from '../platform/personalContent';
+import type { UserProfile, UserProfileSection, UserProfileSummary } from '../platform/userProfile';
+import {
+  detailModeForEntityType,
+  sectionForEntityType,
+  type RoutableEntityTarget,
+} from '../platform/routableEntity';
 import type { PlatformRepositories } from './repositories';
+
+/** Simple package health badge (detailed diagnostics deferred to a future report). */
+function packageHealth(status: string, visibility: string): PackageHealthStatus {
+  if (status === 'draft') return 'hasUnpublishedChanges';
+  if (visibility === 'private' || visibility === 'campaignOnly') return 'hasPrivateContent';
+  if (status === 'underReview' || status === 'archived') return 'needsAttention';
+  return 'available';
+}
 
 export class PlatformDataService {
   constructor(private readonly repos: PlatformRepositories = platformRepositories) {}
@@ -133,6 +154,151 @@ export class PlatformDataService {
     return this.repos.fanWorks
       .list()
       .filter((fw) => decideProjection({ visibility: fw.visibility, ownerId: fw.authorId }, viewer).allowed);
+  }
+
+  // ── Personal Content Hub (owner-scoped, read-only) ──
+  listMyDocuments(viewer: ViewerContext = ANONYMOUS_VIEWER): PersonalContentSummary[] {
+    const ownerId = viewer.userId;
+    if (!ownerId) return [];
+    return this.repos.blockDocuments
+      .listDocuments()
+      .filter((d) => d.ownerId === ownerId)
+      .map((d): PersonalContentSummary => ({
+        kind: 'document', id: d.id, title: d.title, status: d.status, visibility: d.visibility, updatedAt: d.updatedAt,
+      }));
+  }
+
+  listMyFanWorks(viewer: ViewerContext = ANONYMOUS_VIEWER): PersonalContentSummary[] {
+    const ownerId = viewer.userId;
+    if (!ownerId) return [];
+    return this.repos.fanWorks
+      .list()
+      .filter((w) => w.authorId === ownerId)
+      .map((w): PersonalContentSummary => ({
+        kind: 'fanWork', id: w.id, title: w.title, subtitle: w.authorName, visibility: w.visibility, updatedAt: w.updatedAtLabel,
+      }));
+  }
+
+  listMyPackages(viewer: ViewerContext = ANONYMOUS_VIEWER): OwnedPackageItem[] {
+    const ownerId = viewer.userId;
+    if (!ownerId) return [];
+    return this.repos.workshopPackages
+      .listPackages()
+      .filter((p) => p.author.id === ownerId)
+      .map((p): OwnedPackageItem => ({
+        kind: 'package', id: p.packageId, title: p.title, status: p.status, visibility: p.visibility,
+        updatedAt: p.updatedAt, health: packageHealth(p.status, p.visibility),
+      }));
+  }
+
+  listMyDrafts(viewer: ViewerContext = ANONYMOUS_VIEWER): DraftItem[] {
+    const ownerId = viewer.userId;
+    if (!ownerId) return [];
+    const docDrafts = this.repos.blockDocuments
+      .listDocuments()
+      .filter((d) => d.ownerId === ownerId && d.status === 'draft')
+      .map((d): DraftItem => ({ kind: 'document', id: d.id, title: d.title, status: d.status, visibility: d.visibility, updatedAt: d.updatedAt }));
+    const pkgDrafts = this.repos.workshopPackages
+      .listPackages()
+      .filter((p) => p.author.id === ownerId && p.status === 'draft')
+      .map((p): DraftItem => ({ kind: 'package', id: p.packageId, title: p.title, status: p.status, visibility: p.visibility, updatedAt: p.updatedAt }));
+    return [...docDrafts, ...pkgDrafts];
+  }
+
+  listMyCollections(viewer: ViewerContext = ANONYMOUS_VIEWER): PersonalContentSummary[] {
+    const ownerId = viewer.userId;
+    if (!ownerId) return [];
+    return this.repos.personalContent
+      .listCollections(ownerId)
+      .map((c) => this.resolveCollectionItem(c.itemKind, c.targetId, viewer))
+      .filter((s): s is PersonalContentSummary => Boolean(s));
+  }
+
+  listImportedPackages(viewer: ViewerContext = ANONYMOUS_VIEWER): ImportedPackageItem[] {
+    const ownerId = viewer.userId;
+    if (!ownerId) return [];
+    return this.repos.personalContent.listImportedPackages(ownerId);
+  }
+
+  // ── User Profile Space (visitor showcase, projection-aware) ──
+  /** Resolve an object to its owner's profile detail target (or null if denied/missing). */
+  resolveEntityProfileTarget(entityId: string, viewer: ViewerContext = ANONYMOUS_VIEWER): RoutableEntityTarget | null {
+    const projected = this.repos.permissions.projectEntitySummary(entityId, viewer);
+    if (!projected.summary) return null;
+    const node = this.repos.entities.getDetail(entityId);
+    // Ownerless official content routes to a future SystemProfile (placeholder id).
+    const profileUserId = node?.ownerId ?? 'official';
+    return {
+      profileUserId,
+      entityId,
+      entityType: projected.summary.type,
+      section: sectionForEntityType(projected.summary.type),
+      detailMode: detailModeForEntityType(projected.summary.type),
+    };
+  }
+
+  /** Profile metadata, gated by profile visibility (aggregate view, not truth source). */
+  getProfile(userId: string, viewer: ViewerContext = ANONYMOUS_VIEWER): UserProfile | undefined {
+    const profile = this.repos.userProfiles.getProfile(userId);
+    if (!profile) return undefined;
+    return decideProjection({ visibility: profile.visibility, ownerId: userId }, viewer).allowed ? profile : undefined;
+  }
+
+  getProfileSummary(userId: string): UserProfileSummary | undefined {
+    return this.repos.userProfiles.getProfileSummary(userId);
+  }
+
+  /** Items shown in a profile section, filtered to what the viewer may see (showcase). */
+  listProfileSectionItems(
+    userId: string,
+    section: UserProfileSection,
+    viewer: ViewerContext = ANONYMOUS_VIEWER,
+  ): PersonalContentSummary[] {
+    const visible = (visibility: EntityVisibility, ownerId?: string): boolean =>
+      decideProjection({ visibility, ownerId }, viewer).allowed;
+    if (section === 'documents') {
+      return this.repos.blockDocuments
+        .listDocuments()
+        .filter((d) => d.ownerId === userId && visible(d.visibility, d.ownerId))
+        .map((d): PersonalContentSummary => ({ kind: 'document', id: d.id, title: d.title, status: d.status, visibility: d.visibility, updatedAt: d.updatedAt }));
+    }
+    if (section === 'fanWorks') {
+      return this.repos.fanWorks
+        .list()
+        .filter((w) => w.authorId === userId && visible(w.visibility, w.authorId))
+        .map((w): PersonalContentSummary => ({ kind: 'fanWork', id: w.id, title: w.title, subtitle: w.authorName, visibility: w.visibility, updatedAt: w.updatedAtLabel }));
+    }
+    if (section === 'workshopPackages') {
+      return this.repos.workshopPackages
+        .listPackages()
+        .filter((p) => p.author.id === userId && visible(p.visibility, p.author.id))
+        .map((p): PersonalContentSummary => ({ kind: 'package', id: p.packageId, title: p.title, status: p.status, visibility: p.visibility, updatedAt: p.updatedAt }));
+    }
+    // characters / campaigns / media / collections / overview: not graph-entity-backed yet (A10.8+).
+    return [];
+  }
+
+  private resolveCollectionItem(
+    kind: PersonalContentSummary['kind'],
+    targetId: string,
+    viewer: ViewerContext,
+  ): PersonalContentSummary | undefined {
+    if (kind === 'fanWork') {
+      const w = this.repos.fanWorks.getById(targetId);
+      return w ? { kind: 'fanWork', id: w.id, title: w.title, subtitle: w.authorName, visibility: w.visibility, updatedAt: w.updatedAtLabel } : undefined;
+    }
+    if (kind === 'package') {
+      const p = this.repos.workshopPackages.getPackageSummary(targetId);
+      return p ? { kind: 'package', id: p.packageId, title: p.title, status: p.status, visibility: p.visibility, updatedAt: p.updatedAt } : undefined;
+    }
+    if (kind === 'document') {
+      const d = this.repos.blockDocuments.getDocumentSummary(targetId);
+      return d ? { kind: 'document', id: d.id, title: d.title, status: d.status, visibility: d.visibility, updatedAt: d.updatedAt } : undefined;
+    }
+    const projected = this.repos.permissions.projectEntitySummary(targetId, viewer);
+    return projected.summary
+      ? { kind: 'entity', id: projected.summary.id, title: projected.summary.title, subtitle: projected.summary.subtitle, visibility: projected.summary.visibility }
+      : undefined;
   }
 }
 
