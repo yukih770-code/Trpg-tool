@@ -86,6 +86,7 @@ export default function App() {
   const [locale, setLocale] = useState<Locale>(readStoredLocale);
   const [moreOpen, setMoreOpen] = useState<boolean>(false);
   const [profileUserId, setProfileUserId] = useState<string>('author-sample');
+  const [activeSettingsCat, setActiveSettingsCat] = useState<string | null>(null);
   const [playWorkspaceNavigation, setPlayWorkspaceNavigation] = useState<PlayWorkspaceNavigationState>(
     defaultPlayWorkspaceNavigationState,
   );
@@ -376,6 +377,9 @@ export default function App() {
       navigateHome();
       return;
     }
+    if (key === 'settings') {
+      setActiveSettingsCat(null); // open to the category list (mobile), not a stale second-level
+    }
     openPlaceholder(key);
   };
 
@@ -402,6 +406,77 @@ export default function App() {
     `flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold transition ${
       active ? 'bg-white text-[#17130f]' : 'text-white/76 hover:bg-white/10 hover:text-white'
     }`;
+
+  // Categorized settings (only Language + My Profile are live; rest reserved).
+  const SETTINGS_CATS = ['常规', '外观', '语言', '账号', '数据与备份', '媒体与存储', '跑团偏好', '安全与隐私', '帮助与反馈'];
+  const settingsReservedContent: Record<string, string[]> = {
+    常规: ['默认首页', '默认打开系统', '启动时恢复上次工作区'],
+    外观: ['深色 / 浅色 / 跟随系统', '主题皮肤', '强调色', '显示密度'],
+    数据与备份: ['导出平台备份', '导入平台备份', '本地备份目录', '清理缓存'],
+    媒体与存储: ['素材目录', '图片缓存', '原图保存策略', '存储占用'],
+    跑团偏好: ['默认骰子设置', '默认公开 / 私密投骰', '房间显示偏好', '聊天记录保存策略'],
+    安全与隐私: ['主页可见性', '收藏夹公开设置', '角色公开默认值', '局域网访问提示'],
+    帮助与反馈: ['使用说明', '问题反馈', '举报 / 投诉'],
+  };
+  const reservedSettingsRow = (label: string) => (
+    <div
+      key={label}
+      className="flex items-center justify-between gap-2 border-b border-[#2f2a22]/8 py-2 text-sm text-[#51483d]/70 last:border-b-0"
+    >
+      {label}
+      <span className="border border-dashed border-[#2f2a22]/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#51483d]/45">
+        {t('shell.more.reserved')}
+      </span>
+    </div>
+  );
+  const renderSettingsCategory = (cat: string) => {
+    if (cat === '语言') {
+      return (
+        <div className="flex flex-wrap gap-2" role="group" aria-label={t('shell.settings.language.aria')}>
+          <span className="flex items-center gap-1 rounded-md border border-dashed border-[#2f2a22]/25 px-2.5 py-1 text-xs font-bold text-[#51483d]/55">
+            自动检测
+            <span className="text-[9px] uppercase tracking-wider text-[#51483d]/45">{t('shell.more.reserved')}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setLocalePreference('zh-CN')}
+            className={`rounded-md border px-2.5 py-1 text-xs font-bold ${locale === 'zh-CN' ? 'border-[#17130f] bg-[#17130f] text-white' : 'border-[#2f2a22]/20 text-[#51483d]'}`}
+          >
+            {t('shell.settings.language.zhCN')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setLocalePreference('en')}
+            className={`rounded-md border px-2.5 py-1 text-xs font-bold ${locale === 'en' ? 'border-[#17130f] bg-[#17130f] text-white' : 'border-[#2f2a22]/20 text-[#51483d]'}`}
+          >
+            {t('shell.settings.language.en')}
+          </button>
+        </div>
+      );
+    }
+    if (cat === '账号') {
+      return (
+        <div className="flex flex-col">
+          {reservedSettingsRow('昵称')}
+          {reservedSettingsRow('头像')}
+          <button
+            type="button"
+            onClick={() => {
+              pushNavigation();
+              setProfileUserId('author-sample');
+              setAppView('userProfile');
+            }}
+            className="flex items-center justify-between gap-2 border-b border-[#2f2a22]/8 py-2 text-left text-sm font-semibold text-[#17130f] hover:text-[#58180d] last:border-b-0"
+          >
+            我的主页
+            <span className="text-[10px] font-normal text-[#51483d]/50">打开 →</span>
+          </button>
+          {reservedSettingsRow('登录 / 退出')}
+        </div>
+      );
+    }
+    return <div className="flex flex-col">{(settingsReservedContent[cat] ?? []).map(reservedSettingsRow)}</div>;
+  };
 
   return (
     <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
@@ -439,17 +514,18 @@ export default function App() {
             <span>{t('shell.nav.settings')}</span>
           </button>
         </nav>
+        {/* Top-right: avatar = account menu entry (not "··· 更多"). */}
         <div className="ml-auto flex items-center gap-1">
           <button
             type="button"
             onClick={() => setMoreOpen((o) => !o)}
             aria-haspopup="menu"
             aria-expanded={moreOpen}
-            title={t('shell.more.open')}
-            className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold text-white/76 transition hover:bg-white/10 hover:text-white"
+            aria-label={locale === 'en' ? 'Account menu' : '账号菜单'}
+            className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 text-sm font-semibold text-white/85 transition hover:bg-white/10"
           >
-            <MoreHorizontal className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">{t('shell.nav.more')}</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-xs font-bold text-white">示</span>
+            <span className="hidden lg:inline">示例作者</span>
           </button>
         </div>
       </header>
@@ -460,15 +536,16 @@ export default function App() {
           <Sparkles className="h-4 w-4 shrink-0 text-[#f5c518]" />
           <span className="truncate">{mobileTitle}</span>
         </div>
+        {/* Mobile top-right: avatar = account menu entry. */}
         <button
           type="button"
           onClick={() => setMoreOpen((o) => !o)}
           aria-haspopup="menu"
           aria-expanded={moreOpen}
-          aria-label={t('shell.more.open')}
-          className="ml-auto rounded-md p-1.5 text-white/70 transition hover:bg-white/10 hover:text-white"
+          aria-label={locale === 'en' ? 'Account menu' : '账号菜单'}
+          className="ml-auto flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-xs font-bold text-white transition hover:bg-white/25"
         >
-          <MoreHorizontal className="h-5 w-5" />
+          示
         </button>
       </header>
 
@@ -483,23 +560,23 @@ export default function App() {
         )}
 
         {appView === 'workshop' && (
-          <Workshop locale={locale} onBackHome={navigateHome} />
+          <Workshop locale={locale} />
         )}
 
         {appView === 'fanPlaza' && (
-          <FanPlaza locale={locale} onBackHome={navigateHome} />
+          <FanPlaza locale={locale} />
         )}
 
         {appView === 'documents' && (
-          <DocumentLibraryShell locale={locale} onBackHome={navigateHome} />
+          <DocumentLibraryShell locale={locale} onBack={goBack} />
         )}
 
         {appView === 'personalHub' && (
-          <PersonalContentHub locale={locale} onBackHome={navigateHome} />
+          <PersonalContentHub locale={locale} />
         )}
 
         {appView === 'userProfile' && (
-          <UserProfileSpace profileUserId={profileUserId} locale={locale} onBackHome={navigateHome} />
+          <UserProfileSpace profileUserId={profileUserId} locale={locale} onBack={goBack} />
         )}
 
         {appView === 'play' && playStage === 'workspace' && (
@@ -558,51 +635,71 @@ export default function App() {
         )}
 
         {appView === 'placeholder' && activePlaceholder === 'settings' && (
-          <main className="mx-auto flex min-h-[70vh] w-full max-w-5xl flex-col justify-center px-4 py-8 md:px-8">
-            <div className="rounded-lg border border-[#2f2a22]/15 bg-white p-6 shadow-sm">
-              <h1 className="text-2xl font-bold">{t('shell.settings.title')}</h1>
+          <main className="mx-auto w-full max-w-4xl px-4 py-8 md:px-8">
+            {/* Top back: full-page → "← 返回" (caller). Mobile second-level → "← 设置". */}
+            {activeSettingsCat !== null && (
+              <button
+                type="button"
+                onClick={() => setActiveSettingsCat(null)}
+                className="mb-4 inline-flex items-center gap-1 rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8 md:hidden"
+              >
+                ← {locale === 'en' ? 'Settings' : '设置'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={goBack}
+              className={`mb-4 items-center gap-1 rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8 ${activeSettingsCat !== null ? 'hidden md:inline-flex' : 'inline-flex'}`}
+            >
+              ← {locale === 'en' ? 'Back' : '返回'}
+            </button>
 
-              <section className="mt-6 rounded-lg border border-[#2f2a22]/12 bg-[#faf8f2] p-4">
-                <h2 className="text-base font-bold">{t('shell.settings.language.title')}</h2>
-                <div className="mt-4 flex flex-wrap gap-3" role="group" aria-label={t('shell.settings.language.aria')}>
-                  <Button
-                    type="button"
-                    variant={locale === 'zh-CN' ? 'default' : 'outline'}
-                    onClick={() => setLocalePreference('zh-CN')}
-                    className="rounded-md"
-                  >
-                    {t('shell.settings.language.zhCN')}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={locale === 'en' ? 'default' : 'outline'}
-                    onClick={() => setLocalePreference('en')}
-                    className="rounded-md"
-                  >
-                    {t('shell.settings.language.en')}
-                  </Button>
-                </div>
-              </section>
+            {/* Title: PC + mobile-list = 设置; mobile second-level = category name */}
+            <h1 className="hidden text-2xl font-bold md:block">{t('shell.settings.title')}</h1>
+            <h1 className="text-2xl font-bold md:hidden">{activeSettingsCat ?? t('shell.settings.title')}</h1>
 
-              <section className="mt-4 rounded-lg border border-[#2f2a22]/12 bg-white p-4">
-                <h2 className="text-base font-bold">{t('shell.settings.deferred.title')}</h2>
-                <p className="mt-2 text-sm text-[#51483d]">{t('shell.settings.deferred.body')}</p>
-              </section>
+            <div className="mt-5 md:flex md:gap-5">
+              {/* Left category list: PC always; mobile only on list view */}
+              <nav className={`flex flex-col gap-1 md:w-48 md:shrink-0 ${activeSettingsCat !== null ? 'hidden md:flex' : 'flex'}`}>
+                {SETTINGS_CATS.map((cat) => {
+                  const active = (activeSettingsCat ?? '常规') === cat;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setActiveSettingsCat(cat)}
+                      className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold transition ${active ? 'bg-[#17130f] text-white md:bg-[#2f2a22]/10 md:text-[#17130f]' : 'text-[#51483d] hover:bg-[#2f2a22]/8'}`}
+                    >
+                      {cat}
+                      <span className="text-[#51483d]/40 md:hidden">›</span>
+                    </button>
+                  );
+                })}
+              </nav>
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button onClick={() => openPlaceholder('ruleSystems')} className="rounded-md">
-                  {t('shell.enterPlay')}
-                </Button>
-                <Button variant="outline" onClick={navigateHome} className="rounded-md border-[#2f2a22]/20">
-                  {t('shell.backHome')}
-                </Button>
+              {/* Right pane: PC always (cat ?? 常规); mobile only when a category is open */}
+              <div className={`mt-3 flex-1 md:mt-0 ${activeSettingsCat !== null ? 'block' : 'hidden md:block'}`}>
+                <section className="rounded-lg border border-[#2f2a22]/12 bg-white p-4">
+                  <h2 className="mb-2 hidden text-[11px] font-bold uppercase tracking-wider text-[#51483d] md:block">
+                    {activeSettingsCat ?? '常规'}
+                  </h2>
+                  {renderSettingsCategory(activeSettingsCat ?? '常规')}
+                </section>
               </div>
             </div>
           </main>
         )}
 
         {appView === 'placeholder' && activePlaceholder !== 'settings' && (
-          <main className="mx-auto flex min-h-[70vh] w-full max-w-5xl flex-col justify-center px-4 py-8 md:px-8">
+          <main className="mx-auto w-full max-w-5xl px-4 py-8 md:px-8">
+            {/* Full-page placeholder: single top "← 返回" (Navigation & Exit Contract). */}
+            <button
+              type="button"
+              onClick={goBack}
+              className="mb-4 inline-flex items-center gap-1 rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
+            >
+              ← {locale === 'en' ? 'Back' : '返回'}
+            </button>
             <div className="rounded-lg border border-[#2f2a22]/15 bg-white p-6 shadow-sm">
               {!isPrivateImportPlaceholder && (
                 <div className="mb-4">
@@ -615,14 +712,6 @@ export default function App() {
               <p className="mt-3 text-sm text-[#51483d]">
                 {isPrivateImportPlaceholder ? t(`${placeholderBaseKey}.note`) : t('shell.plannedNote')}
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button onClick={() => openPlaceholder('ruleSystems')} className="rounded-md">
-                  {t('shell.enterPlay')}
-                </Button>
-                <Button variant="outline" onClick={navigateHome} className="rounded-md border-[#2f2a22]/20">
-                  {t('shell.backHome')}
-                </Button>
-              </div>
             </div>
           </main>
         )}
@@ -652,15 +741,17 @@ export default function App() {
               </button>
             );
           })}
+          {/* Bottom-right: avatar "我" = account menu entry (not "更多"). */}
           <button
             type="button"
             onClick={() => setMoreOpen(true)}
             aria-haspopup="menu"
             aria-expanded={moreOpen}
+            aria-label={locale === 'en' ? 'Account menu' : '账号菜单'}
             className="flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold text-white/70 transition hover:text-white"
           >
-            <MoreHorizontal className="h-5 w-5" />
-            <span className="truncate">{t('shell.nav.more')}</span>
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[9px] font-bold text-white">示</span>
+            <span className="truncate">{locale === 'en' ? 'Me' : '我'}</span>
           </button>
         </nav>
       )}

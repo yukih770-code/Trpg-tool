@@ -18,13 +18,14 @@ import { BlockDocumentReader } from './BlockDocumentReader';
 
 export type DocumentLibraryShellProps = {
   locale: Locale;
-  onBackHome: () => void;
+  /** Back to source (Navigation & Exit Contract — full page uses a single ← 返回). */
+  onBack: () => void;
 };
 
 /** Mock owner identity matching the seed `ownerId: 'author-sample'`. */
 const OWNER_VIEWER: ViewerContext = { role: 'owner', userId: 'author-sample' };
 
-export function DocumentLibraryShell({ locale, onBackHome }: DocumentLibraryShellProps) {
+export function DocumentLibraryShell({ locale, onBack }: DocumentLibraryShellProps) {
   const { t } = createTranslator(locale);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [asOwner, setAsOwner] = useState<boolean>(false);
@@ -41,6 +42,13 @@ export function DocumentLibraryShell({ locale, onBackHome }: DocumentLibraryShel
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
+      <button
+        type="button"
+        onClick={onBack}
+        className="mb-4 inline-flex items-center gap-1 rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
+      >
+        ← {locale === 'en' ? 'Back' : '返回'}
+      </button>
       <header>
         <h1 className="text-2xl font-bold">文档资料 · Live Object Document</h1>
         <p className="mt-2 max-w-3xl text-sm text-[#51483d]">
@@ -77,16 +85,6 @@ export function DocumentLibraryShell({ locale, onBackHome }: DocumentLibraryShel
 
       <div className="mt-5">
         <BlockDocumentList viewer={viewer} t={t} onOpen={setSelectedDocId} />
-      </div>
-
-      <div className="mt-6">
-        <button
-          type="button"
-          onClick={onBackHome}
-          className="rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
-        >
-          {t('shell.backHome')}
-        </button>
       </div>
     </main>
   );

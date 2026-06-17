@@ -23,7 +23,8 @@ import type { PersonalContentSummary } from '../../lib/platform/personalContent'
 export type UserProfileSpaceProps = {
   profileUserId: string;
   locale: Locale;
-  onBackHome: () => void;
+  /** Back to source (Navigation & Exit Contract — full page uses a single ← 返回). */
+  onBack: () => void;
 };
 
 const SECTION_LABEL: Record<UserProfileSection, string> = {
@@ -44,7 +45,7 @@ const KIND_LABEL: Record<PersonalContentSummary['kind'], string> = {
   entity: '对象',
 };
 
-export function UserProfileSpace({ profileUserId, locale, onBackHome }: UserProfileSpaceProps) {
+export function UserProfileSpace({ profileUserId, locale, onBack }: UserProfileSpaceProps) {
   const { t } = createTranslator(locale);
   const [section, setSection] = useState<UserProfileSection>('overview');
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
@@ -54,16 +55,22 @@ export function UserProfileSpace({ profileUserId, locale, onBackHome }: UserProf
 
   const profile = platformDataService.getProfile(profileUserId, viewer);
 
+  const backButton = (
+    <button
+      type="button"
+      onClick={onBack}
+      className="mb-4 inline-flex items-center gap-1 rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
+    >
+      ← {locale === 'en' ? 'Back' : '返回'}
+    </button>
+  );
+
   if (!profile) {
     return (
       <main className="mx-auto w-full max-w-5xl px-4 py-8 md:px-8">
+        {backButton}
         <div className="rounded-lg border border-dashed border-[#2f2a22]/30 bg-[#faf8f2] p-6 text-center text-sm text-[#51483d]/70">
           该用户主页不存在或不公开（当前身份的可见性投影为「拒绝」）。
-        </div>
-        <div className="mt-6">
-          <button type="button" onClick={onBackHome} className="rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] hover:bg-[#2f2a22]/8">
-            {t('shell.backHome')}
-          </button>
         </div>
       </main>
     );
@@ -97,6 +104,7 @@ export function UserProfileSpace({ profileUserId, locale, onBackHome }: UserProf
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
+      {backButton}
       {/* Profile header */}
       <header className="rounded-lg border border-[#2f2a22]/15 bg-white p-5 shadow-sm">
         <div className="flex items-start justify-between gap-3">
@@ -199,12 +207,6 @@ export function UserProfileSpace({ profileUserId, locale, onBackHome }: UserProf
       <p className="mt-6 text-[10px] leading-relaxed text-[#51483d]/45">
         用户主页是聚合视图（showcase 态），不是真相源；对象数据仍由各 Repository 拥有，按 Projection 决定访客可见内容。
       </p>
-
-      <div className="mt-4">
-        <button type="button" onClick={onBackHome} className="rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] hover:bg-[#2f2a22]/8">
-          {t('shell.backHome')}
-        </button>
-      </div>
     </main>
   );
 }

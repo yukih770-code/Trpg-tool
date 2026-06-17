@@ -20,7 +20,6 @@ import type {
 
 export type PersonalContentHubProps = {
   locale: Locale;
-  onBackHome: () => void;
 };
 
 /** Mock owner identity matching the seed `ownerId / authorId: 'author-sample'`. */
@@ -51,7 +50,7 @@ const HEALTH_BADGE: Record<PackageHealthStatus, string> = {
   hasUnpublishedChanges: '⬆️ 有未发布修改',
 };
 
-export function PersonalContentHub({ locale, onBackHome }: PersonalContentHubProps) {
+export function PersonalContentHub({ locale }: PersonalContentHubProps) {
   const { t } = createTranslator(locale);
   const [tab, setTab] = useState<HubTab>('documents');
 
@@ -171,16 +170,6 @@ export function PersonalContentHub({ locale, onBackHome }: PersonalContentHubPro
       </div>
 
       <div className="mt-5">{renderTab()}</div>
-
-      <div className="mt-6">
-        <button
-          type="button"
-          onClick={onBackHome}
-          className="rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
-        >
-          {t('shell.backHome')}
-        </button>
-      </div>
     </main>
   );
 }

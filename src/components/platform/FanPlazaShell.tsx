@@ -29,7 +29,6 @@ import { PreviewArt } from './PreviewArt';
 export type FanPlazaShellProps = {
   t: (key: string) => string;
   locale: Locale;
-  onBackHome: () => void;
 };
 
 function ChipRow({
@@ -68,7 +67,7 @@ function ChipRow({
   );
 }
 
-export function FanPlazaShell({ t, locale, onBackHome }: FanPlazaShellProps) {
+export function FanPlazaShell({ t, locale }: FanPlazaShellProps) {
   const [filter, setFilter] = useState<FanPlazaFilterState>({
     search: '',
     type: 'all',
@@ -216,16 +215,6 @@ export function FanPlazaShell({ t, locale, onBackHome }: FanPlazaShellProps) {
 
       {/* Low-weight note */}
       <p className="mt-4 text-[11px] leading-relaxed text-[#51483d]/70">{t('fanPlaza.associationNote')}</p>
-
-      <div className="mt-6">
-        <button
-          type="button"
-          onClick={onBackHome}
-          className="rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
-        >
-          {t('shell.backHome')}
-        </button>
-      </div>
     </main>
   );
 }

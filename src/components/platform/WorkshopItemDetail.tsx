@@ -238,16 +238,6 @@ export function WorkshopItemDetail({ item, t, locale, onBack }: WorkshopItemDeta
         <div className="rounded-md border border-dashed border-[#2f2a22]/25 bg-white p-3 text-[11px] font-bold text-[#51483d]/60">{t('workshop.detail.authorWorksReserved')}</div>
         <div className="rounded-md border border-dashed border-[#2f2a22]/25 bg-white p-3 text-[11px] font-bold text-[#51483d]/60">{t('workshop.detail.relatedRecommendReserved')}</div>
       </section>
-
-      <div className="mt-5">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-1 rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
-        >
-          ← {t('workshop.detail.back')}
-        </button>
-      </div>
     </div>
   );
 }

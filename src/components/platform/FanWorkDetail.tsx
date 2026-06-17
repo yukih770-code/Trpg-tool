@@ -206,16 +206,6 @@ export function FanWorkDetail({ work, t, locale, onBack }: FanWorkDetailProps) {
         </div>
       </section>
       </div>
-
-      <div className="mt-6">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-1 rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
-        >
-          ← {t('fanPlaza.detail.backToPlaza')}
-        </button>
-      </div>
     </main>
   );
 }
