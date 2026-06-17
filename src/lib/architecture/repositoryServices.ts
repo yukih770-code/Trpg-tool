@@ -29,8 +29,8 @@ import {
 } from './projection';
 import type { EntityId, RelatedEntitiesOptions, RelatedEntity } from './entityGraph';
 import type { MediaAssetSummary, MediaAssetVariant, ResolvedMediaVariant } from './mediaAsset';
-import type { BlockDocumentDetail } from './blockDocument';
-import type { WorkshopPackageDetail } from './workshopPackage';
+import { documentEntityRefs, documentMediaRefs, type BlockDocumentDetail, type BlockDocumentSummary } from './blockDocument';
+import type { WorkshopPackageDetail, WorkshopPackageSummary } from './workshopPackage';
 import type { FanWork } from '../platform/communityTypes';
 import type { PlatformRepositories } from './repositories';
 
@@ -77,12 +77,41 @@ export class PlatformDataService {
   }
 
   // ── Documents (gated by document visibility) ──
+  listDocuments(viewer: ViewerContext = ANONYMOUS_VIEWER): BlockDocumentSummary[] {
+    return this.repos.blockDocuments
+      .listDocuments()
+      .filter((s) => decideProjection({ visibility: s.visibility, ownerId: s.ownerId }, viewer).allowed);
+  }
+
   getDocumentDetail(id: string, viewer: ViewerContext = ANONYMOUS_VIEWER): BlockDocumentDetail | undefined {
     const detail = this.repos.blockDocuments.getDocumentDetail(id);
     if (!detail) return undefined;
     return decideProjection({ visibility: detail.visibility, ownerId: detail.ownerId }, viewer).allowed
       ? detail
       : undefined;
+  }
+
+  /** Entities a document references (each individually projected). */
+  getDocumentReferencedEntities(id: string, viewer: ViewerContext = ANONYMOUS_VIEWER): ProjectedEntitySummary[] {
+    const detail = this.repos.blockDocuments.getDocumentDetail(id);
+    if (!detail) return [];
+    return documentEntityRefs(detail).map((ref) => this.repos.permissions.projectEntitySummary(ref.entityId, viewer));
+  }
+
+  /** Media a document references (projection-filtered summaries; thumbnail only). */
+  getDocumentReferencedMedia(id: string, viewer: ViewerContext = ANONYMOUS_VIEWER): MediaAssetSummary[] {
+    const detail = this.repos.blockDocuments.getDocumentDetail(id);
+    if (!detail) return [];
+    return documentMediaRefs(detail)
+      .map((mediaId) => this.repos.mediaAssets.getMediaSummary(mediaId, viewer))
+      .filter((s): s is MediaAssetSummary => Boolean(s));
+  }
+
+  /** Workshop packages that reference a document (visibility-filtered). */
+  getPackagesByDocument(id: string, viewer: ViewerContext = ANONYMOUS_VIEWER): WorkshopPackageSummary[] {
+    return this.repos.workshopPackages
+      .getPackagesByDocument(id)
+      .filter((pkg) => decideProjection({ visibility: pkg.visibility }, viewer).allowed);
   }
 
   // ── Packages (gated by manifest visibility) ──

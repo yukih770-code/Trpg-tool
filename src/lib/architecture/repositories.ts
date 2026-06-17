@@ -102,6 +102,7 @@ export interface EntityRepository {
 // ─── BlockDocument (protocol defined in ./blockDocument — A3) ──────────────────
 
 export interface BlockDocumentRepository {
+  listDocuments(): BlockDocumentSummary[];
   getDocumentSummary(id: string): BlockDocumentSummary | undefined;
   getDocumentDetail(id: string): BlockDocumentDetail | undefined;
   /** Documents that reference an entity (derived; authority is the EntityGraph). */

@@ -323,6 +323,9 @@ class MockWorkshopPackageRepository implements WorkshopPackageRepository {
 // ─── Reserved repos (contract only — A3 / A6) ─────────────────────────────────
 
 class MockBlockDocumentRepository implements BlockDocumentRepository {
+  listDocuments(): BlockDocumentSummary[] {
+    return BLOCK_DOCUMENT_SEED.map(toBlockDocumentSummary);
+  }
   getDocumentSummary(id: string): BlockDocumentSummary | undefined {
     const doc = getBlockDocumentSeedById(id);
     return doc ? toBlockDocumentSummary(doc) : undefined;

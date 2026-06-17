@@ -8,6 +8,7 @@ import { Home } from './pages/Home';
 import { SystemLibrary } from './pages/SystemLibrary';
 import { Workshop } from './pages/Workshop';
 import { FanPlaza } from './pages/FanPlaza';
+import { DocumentLibraryShell } from './components/platform/DocumentLibraryShell';
 import {
   PlayWorkspace,
   defaultPlayWorkspaceNavigationState,
@@ -15,7 +16,7 @@ import {
 } from './pages/PlayWorkspace';
 import { useAppStore } from './store/appStore';
 
-type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop' | 'fanPlaza';
+type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop' | 'fanPlaza' | 'documents';
 type PlayStage = 'menu' | 'workspace';
 type System = 'D&D' | 'CoC' | 'CP';
 
@@ -376,6 +377,7 @@ export default function App() {
     : appView === 'systemLibrary' ? t('shell.nav.systemLibrary')
     : appView === 'workshop' ? t('shell.nav.workshop')
     : appView === 'fanPlaza' ? t('shell.nav.fanPlaza')
+    : appView === 'documents' ? (locale === 'en' ? 'Documents' : '文档资料')
     : appView === 'play' ? systemLabel
     : activePlaceholder === 'settings' ? t('shell.nav.settings')
     : t(`${placeholderBaseKey}.title`);
@@ -470,6 +472,10 @@ export default function App() {
 
         {appView === 'fanPlaza' && (
           <FanPlaza locale={locale} onBackHome={navigateHome} />
+        )}
+
+        {appView === 'documents' && (
+          <DocumentLibraryShell locale={locale} onBackHome={navigateHome} />
         )}
 
         {appView === 'play' && playStage === 'workspace' && (
@@ -661,6 +667,20 @@ export default function App() {
             </div>
 
             <div className="flex flex-col gap-1">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMoreOpen(false);
+                  pushNavigation();
+                  setAppView('documents');
+                }}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-[#17130f] hover:bg-[#2f2a22]/8"
+              >
+                <Library className="h-4 w-4 shrink-0" />
+                {locale === 'en' ? 'Documents' : '文档资料'}
+              </button>
+
               <button
                 type="button"
                 role="menuitem"
