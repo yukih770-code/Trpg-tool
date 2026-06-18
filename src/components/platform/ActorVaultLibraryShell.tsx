@@ -232,13 +232,14 @@ export function ActorVaultLibraryShell({
       ) : (
         <div className="flex flex-col gap-3">
           {sorted.map((summary) => (
-            <ActorVaultCard
-              key={summary.id}
-              summary={summary}
-              strings={strings}
-              colorTheme={t}
-              onEnterActor={onEnterActor}
-            />
+            <div key={summary.id}>
+              <ActorVaultCard
+                summary={summary}
+                strings={strings}
+                colorTheme={t}
+                onEnterActor={onEnterActor}
+              />
+            </div>
           ))}
         </div>
       )}

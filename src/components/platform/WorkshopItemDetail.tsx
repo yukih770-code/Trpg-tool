@@ -110,7 +110,9 @@ export function WorkshopItemDetail({ item, t, locale, onBack }: WorkshopItemDeta
               <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-[#51483d]/50">{t('workshop.detail.gallery')}</p>
               <div className="grid grid-cols-4 gap-2">
                 {item.galleryPreviewKinds.slice(0, 4).map((kind, i) => (
-                  <PreviewArt key={`${kind}-${i}`} t={t} workshopKind={kind} ratio="4:3" showCaption={false} />
+                  <div key={`${kind}-${i}`}>
+                    <PreviewArt t={t} workshopKind={kind} ratio="4:3" showCaption={false} />
+                  </div>
                 ))}
               </div>
             </div>

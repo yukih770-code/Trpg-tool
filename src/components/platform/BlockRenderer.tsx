@@ -70,7 +70,9 @@ export function BlockRenderer({ block, viewer, t, onSelectEntity }: BlockRendere
       return (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {block.mediaAssetIds.map((id, i) => (
-            <MediaPlaceholder key={`${id}-${i}`} mediaAssetId={id} viewer={viewer} />
+            <div key={`${id}-${i}`}>
+              <MediaPlaceholder mediaAssetId={id} viewer={viewer} />
+            </div>
           ))}
         </div>
       );

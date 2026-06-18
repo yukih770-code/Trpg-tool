@@ -204,7 +204,9 @@ export function FanPlazaShell({ t, locale }: FanPlazaShellProps) {
       {/* Multimodal work flow — image-forward grid */}
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {works.map((work) => (
-          <FanWorkCard key={work.id} work={work} t={t} onOpenDetail={openDetail} onQuickPreview={setPreviewWorkId} />
+          <div key={work.id}>
+            <FanWorkCard work={work} t={t} onOpenDetail={openDetail} onQuickPreview={setPreviewWorkId} />
+          </div>
         ))}
         {works.length === 0 && (
           <div className="rounded-lg border border-[#2f2a22]/15 bg-white p-6 text-center text-sm text-[#51483d]/60">

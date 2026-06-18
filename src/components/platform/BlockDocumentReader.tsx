@@ -71,7 +71,9 @@ export function BlockDocumentReader({ documentId, viewer, t, onBack }: BlockDocu
       {/* Body blocks */}
       <article className="mt-4 flex flex-col gap-3">
         {detail.blocks.map((block) => (
-          <BlockRenderer key={block.id} block={block} viewer={viewer} t={t} onSelectEntity={setSelectedEntityId} />
+          <div key={block.id}>
+            <BlockRenderer block={block} viewer={viewer} t={t} onSelectEntity={setSelectedEntityId} />
+          </div>
         ))}
       </article>
 
@@ -90,7 +92,9 @@ export function BlockDocumentReader({ documentId, viewer, t, onBack }: BlockDocu
           <div className="flex flex-col gap-2">
             {referencedEntities.map((projected, i) =>
               projected.summary ? (
-                <LinkableEntityCard key={projected.summary.id} entity={projected.summary} t={t} onView={setSelectedEntityId} />
+                <div key={projected.summary.id}>
+                  <LinkableEntityCard entity={projected.summary} t={t} onView={setSelectedEntityId} />
+                </div>
               ) : (
                 <div key={`denied-${i}`} className="rounded-md border border-dashed border-[#2f2a22]/30 bg-[#faf8f2] p-2 text-[11px] text-[#51483d]/60">
                   无权限查看的关联对象（投影：{projected.projection}）

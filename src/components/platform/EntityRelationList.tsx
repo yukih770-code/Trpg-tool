@@ -31,13 +31,14 @@ export function EntityRelationList({ entityId, t, onSelectEntity, emptyKey }: En
   return (
     <div className="flex flex-col gap-2">
       {related.map((rel) => (
-        <LinkableEntityCard
-          key={rel.relation.id}
-          entity={toEntitySummary(rel.entity)}
-          t={t}
-          relationKindLabel={t(`fanPlaza.relationKind.${rel.relation.relationType}`)}
-          onView={onSelectEntity}
-        />
+        <div key={rel.relation.id}>
+          <LinkableEntityCard
+            entity={toEntitySummary(rel.entity)}
+            t={t}
+            relationKindLabel={t(`fanPlaza.relationKind.${rel.relation.relationType}`)}
+            onView={onSelectEntity}
+          />
+        </div>
       ))}
     </div>
   );
