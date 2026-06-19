@@ -11,6 +11,7 @@ import { DND_SPELL_INDEX_COUNTS } from '../../data/dnd2024/spellIndex';
 import { useCharacterStore } from '../../store/characterStore';
 import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
 import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
+import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
 import { SystemWorkspaceEntryShell } from '../../components/platform/SystemWorkspaceEntryShell';
 import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
 import { DND_RULE_SOURCES } from './dndRuleSourcesAdapter';
@@ -27,6 +28,7 @@ import type { ActorVaultAdapter } from '../../lib/platform/actorVault';
 import type {
   CampaignActorAddReturnContext,
   CampaignActorSelectReturnContext,
+  CampaignRuntimeContext,
   CampaignSuggestedActor,
 } from '../../lib/platform/campaignFlow';
 
@@ -87,6 +89,8 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     useState<CampaignActorSelectReturnContext | null>(null);
   const [suggestedCampaignActor, setSuggestedCampaignActor] =
     useState<CampaignSuggestedActor | null>(null);
+  const [campaignRuntimeContext, setCampaignRuntimeContext] =
+    useState<CampaignRuntimeContext | null>(null);
 
   // AI-LANDMARK: PLATFORM_ACTOR_VAULT_LIBRARY_FRAMEWORK_EXTRACTION_V1
   // DND Actor Vault adapter: maps CharacterData to platform ActorVaultSummary.
@@ -209,7 +213,12 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   };
 
   const handleReturnToCampaignEntry = () => {
+    setCampaignRuntimeContext(null);
     onViewChange('campaigns');
+  };
+
+  const handleEnterCampaignRuntime = (context: CampaignRuntimeContext) => {
+    setCampaignRuntimeContext(context);
   };
 
   return (
@@ -229,7 +238,15 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
 
       {view !== 'play' && (
         <main className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8">
-          {view === 'dashboard' && (
+          {campaignRuntimeContext && (
+            <CampaignRuntimeShell
+              context={campaignRuntimeContext}
+              tone="dnd"
+              onExitRuntime={handleReturnToCampaignEntry}
+            />
+          )}
+
+          {!campaignRuntimeContext && view === 'dashboard' && (
             <div className="flex flex-col gap-6">
               <section className={panelClass}>
                 <div className="mb-4 text-[11px] font-bold uppercase tracking-wider text-[#58180d]/55">
@@ -265,7 +282,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
             </div>
           )}
 
-          {view === 'create' && (
+          {!campaignRuntimeContext && view === 'create' && (
             <section className={panelClass}>
               {campaignActorAddContext && (
                 <div className="mb-4 border border-[#58180d]/30 bg-white/50 p-4 text-sm text-[#58180d]">
@@ -335,7 +352,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
               DND-specific fields are mapped by dndActorVaultAdapter.ts.
               'characterLibrary' was removed from DndWorkspaceView — the shell manages
               its own 'home'/'existing' mode internally. */}
-          {view === 'characters' && (
+          {!campaignRuntimeContext && view === 'characters' && (
             <ActorVaultLibraryShell
               summaries={_vaultSummaries}
               stats={_vaultStats}
@@ -357,7 +374,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
             />
           )}
 
-          {view === 'campaigns' && (
+          {!campaignRuntimeContext && view === 'campaigns' && (
             <CampaignLibraryShell
               systemId="dnd2024"
               systemName="DND 2024"
@@ -366,12 +383,13 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
               suggestedActor={suggestedCampaignActor}
               onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
               onRequestSelectActorForCampaign={handleRequestSelectActorForCampaign}
+              onEnterCampaignRuntime={handleEnterCampaignRuntime}
               onAddCampaign={() => onViewChange('createCampaign')}
               panelClassName={panelClass}
             />
           )}
 
-          {view === 'createCampaign' && (
+          {!campaignRuntimeContext && view === 'createCampaign' && (
             <CampaignLibraryShell
               systemId="dnd2024"
               systemName="DND 2024"
@@ -381,7 +399,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
             />
           )}
 
-          {view === 'compendium' && (
+          {!campaignRuntimeContext && view === 'compendium' && (
             <section className={panelClass}>
               <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-[#58180d]">
                 {t('dndWorkspace.compendium.title')}
@@ -408,7 +426,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
             </section>
           )}
 
-          {view === 'sources' && (
+          {!campaignRuntimeContext && view === 'sources' && (
             <section className={panelClass}>
               <h2 className="mb-4 text-sm font-bold uppercase tracking-wider text-[#58180d]">
                 {t('dndWorkspace.sources.title')}
@@ -435,7 +453,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
             </section>
           )}
 
-          {view === 'ruleSources' && (
+          {!campaignRuntimeContext && view === 'ruleSources' && (
             <SystemRuleSourcesShell items={DND_RULE_SOURCES} t={t} theme={dndRuleSourcesTheme} />
           )}
         </main>

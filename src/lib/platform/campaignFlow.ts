@@ -93,6 +93,17 @@ export interface CampaignSuggestedActor {
   actorName: string;
 }
 
+export interface CampaignRuntimeContext {
+  campaignId: string;
+  campaignTitle: string;
+  campaignRoomCode?: string;
+  systemId: string;
+  selectedEntryRole: CampaignEntryRole;
+  selectedActorId?: string;
+  selectedActorName?: string;
+  source: 'campaignEntry';
+}
+
 export interface CampaignInstanceSummary {
   campaignId: string;
   systemId: string;

@@ -5,6 +5,7 @@ import { useCocStore } from '../../store/cocStore';
 // AI-LANDMARK: COC_ACTOR_VAULT_LIBRARY_ADOPTION_V1
 import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
 import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
+import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
 import { SystemWorkspaceEntryShell } from '../../components/platform/SystemWorkspaceEntryShell';
 import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
 import { COC_RULE_SOURCES } from './cocRuleSourcesAdapter';
@@ -22,6 +23,7 @@ import type { CocCharacter } from '../../lib/coc-types';
 import type {
   CampaignActorAddReturnContext,
   CampaignActorSelectReturnContext,
+  CampaignRuntimeContext,
   CampaignSuggestedActor,
 } from '../../lib/platform/campaignFlow';
 
@@ -399,6 +401,8 @@ export function CocWorkspaceShell({
     useState<CampaignActorSelectReturnContext | null>(null);
   const [suggestedCampaignActor, setSuggestedCampaignActor] =
     useState<CampaignSuggestedActor | null>(null);
+  const [campaignRuntimeContext, setCampaignRuntimeContext] =
+    useState<CampaignRuntimeContext | null>(null);
 
   const cocRuleSourcesTheme: SystemRuleSourcesTheme = {
     panel: teal.panel,
@@ -437,7 +441,12 @@ export function CocWorkspaceShell({
   };
 
   const handleReturnToCampaignEntry = () => {
+    setCampaignRuntimeContext(null);
     onViewChange('campaigns');
+  };
+
+  const handleEnterCampaignRuntime = (context: CampaignRuntimeContext) => {
+    setCampaignRuntimeContext(context);
   };
 
   // Investigator data rows for cards
@@ -550,9 +559,16 @@ export function CocWorkspaceShell({
       {/* ── Non-play views ── */}
       {view !== 'play' && (
         <main className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8">
+          {campaignRuntimeContext && (
+            <CampaignRuntimeShell
+              context={campaignRuntimeContext}
+              tone="coc"
+              onExitRuntime={handleReturnToCampaignEntry}
+            />
+          )}
 
           {/* Overview / Game System Home */}
-          {view === 'dashboard' && (
+          {!campaignRuntimeContext && view === 'dashboard' && (
             <div className="flex flex-col gap-6">
               <section className={panelClass}>
                 <div className={`mb-4 text-[11px] font-bold uppercase tracking-wider ${teal.accent} opacity-55`}>
@@ -596,7 +612,7 @@ export function CocWorkspaceShell({
               ACTOR_VAULT_EXISTING_ADD_SPLIT_V1 — all landmark contracts still hold; now enforced by the platform shell.
               onEnterActor opens the COC sheet. onRequestAdd navigates to createMethod.
               V1: COC single-actor — getActors() returns [] or [cocChar]; home card shows stat 0 or 1. */}
-          {view === 'vault' && (
+          {!campaignRuntimeContext && view === 'vault' && (
             <ActorVaultLibraryShell
               summaries={_cocVaultSummaries}
               stats={_cocVaultStats}
@@ -618,7 +634,7 @@ export function CocWorkspaceShell({
             />
           )}
 
-          {view === 'campaigns' && (
+          {!campaignRuntimeContext && view === 'campaigns' && (
             <CampaignLibraryShell
               systemId="coc7e"
               systemName={t('glossary.coc7e')}
@@ -627,12 +643,13 @@ export function CocWorkspaceShell({
               suggestedActor={suggestedCampaignActor}
               onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
               onRequestSelectActorForCampaign={handleRequestSelectActorForCampaign}
+              onEnterCampaignRuntime={handleEnterCampaignRuntime}
               onAddCampaign={() => onViewChange('createCampaign')}
               panelClassName={panelClass}
             />
           )}
 
-          {view === 'createCampaign' && (
+          {!campaignRuntimeContext && view === 'createCampaign' && (
             <CampaignLibraryShell
               systemId="coc7e"
               systemName={t('glossary.coc7e')}
@@ -643,7 +660,7 @@ export function CocWorkspaceShell({
           )}
 
           {/* Creation Method */}
-          {view === 'createMethod' && (
+          {!campaignRuntimeContext && view === 'createMethod' && (
             <section className={panelClass}>
               {campaignActorAddContext && (
                 <div className="mb-4 rounded border border-[#2f7f68]/35 bg-black/10 p-4 text-sm">
@@ -747,7 +764,7 @@ export function CocWorkspaceShell({
           {/* AI-LANDMARK: COC_WORKSPACE_CLEANUP_V1
               Investigator Sheet shell — summary view, not the full CocSheet runtime.
               Reads from store directly; no rule logic, no save-format change. */}
-          {view === 'sheet' && (
+          {!campaignRuntimeContext && view === 'sheet' && (
             <section className={panelClass}>
               <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
                 <div>
@@ -842,7 +859,7 @@ export function CocWorkspaceShell({
           )}
 
           {/* Rules Compendium (shell) */}
-          {view === 'compendium' && (
+          {!campaignRuntimeContext && view === 'compendium' && (
             <section className={panelClass}>
               <h2 className={`mb-2 text-sm font-bold uppercase tracking-wider ${teal.accent}`}>
                 {t('cocWorkspace.compendium.title')}
@@ -875,7 +892,7 @@ export function CocWorkspaceShell({
           )}
 
           {/* Source Status / System Health (shell) */}
-          {view === 'sources' && (
+          {!campaignRuntimeContext && view === 'sources' && (
             <section className={panelClass}>
               <h2 className={`mb-4 text-sm font-bold uppercase tracking-wider ${teal.accent}`}>
                 {t('cocWorkspace.sources.title')}
@@ -906,12 +923,12 @@ export function CocWorkspaceShell({
             </section>
           )}
 
-          {view === 'ruleSources' && (
+          {!campaignRuntimeContext && view === 'ruleSources' && (
             <SystemRuleSourcesShell items={COC_RULE_SOURCES} t={t} theme={cocRuleSourcesTheme} />
           )}
 
           {/* Planned slot */}
-          {view === 'planned' && (
+          {!campaignRuntimeContext && view === 'planned' && (
             <div className="flex min-h-[60vh] items-center justify-center">
               <section className={`w-full max-w-2xl ${panelClass}`}>
                 <div className={`text-xs font-bold uppercase tracking-[0.2em] ${teal.accent}`}>

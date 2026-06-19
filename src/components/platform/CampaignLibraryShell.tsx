@@ -3,6 +3,7 @@ import type {
   CampaignActorSelectReturnContext,
   CampaignEntryRole,
   CampaignInstanceSummary,
+  CampaignRuntimeContext,
   CampaignSuggestedActor,
 } from '../../lib/platform/campaignFlow';
 import { createTranslator, readStoredLocale } from '../../i18n';
@@ -21,6 +22,7 @@ type CampaignLibraryShellProps = {
   onAddCampaign?: () => void;
   onRequestAddActorForCampaign?: (context: CampaignActorAddReturnContext) => void;
   onRequestSelectActorForCampaign?: (context: CampaignActorSelectReturnContext) => void;
+  onEnterCampaignRuntime?: (context: CampaignRuntimeContext) => void;
   panelClassName?: string;
 };
 
@@ -72,6 +74,7 @@ export function CampaignLibraryShell({
   onAddCampaign,
   onRequestAddActorForCampaign,
   onRequestSelectActorForCampaign,
+  onEnterCampaignRuntime,
   panelClassName,
 }: CampaignLibraryShellProps) {
   const { t } = createTranslator(readStoredLocale());
@@ -142,6 +145,26 @@ export function CampaignLibraryShell({
         systemId,
         campaignId: sampleCampaign.campaignId,
       },
+    });
+  };
+
+  const canEnterRuntime = Boolean(
+    onEnterCampaignRuntime &&
+    (selectedEntryRole === 'host' || suggestedActor),
+  );
+
+  const enterCampaignRuntime = () => {
+    if (!canEnterRuntime || !onEnterCampaignRuntime) return;
+
+    onEnterCampaignRuntime({
+      campaignId: sampleCampaign.campaignId,
+      campaignTitle: sampleCampaign.title,
+      campaignRoomCode: sampleCampaign.roomCode,
+      systemId,
+      selectedEntryRole,
+      selectedActorId: selectedEntryRole === 'playerCharacter' ? suggestedActor?.actorId : undefined,
+      selectedActorName: selectedEntryRole === 'playerCharacter' ? suggestedActor?.actorName : undefined,
+      source: 'campaignEntry',
     });
   };
 
@@ -301,9 +324,11 @@ export function CampaignLibraryShell({
           <button
             type="button"
             onClick={() => setLibraryMode('existing')}
-            className={`self-start text-xs font-bold ${theme.muted}`}
+            aria-label={t('campaignLibrary.detail.backToMine')}
+            title={t('campaignLibrary.detail.backToMine')}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-md border text-sm font-bold ${theme.secondary}`}
           >
-            {t('campaignLibrary.detail.backToMine')}
+            ←
           </button>
 
           <div className={`rounded-lg border p-5 ${theme.card}`}>
@@ -421,8 +446,13 @@ export function CampaignLibraryShell({
                 </button>
                 <button
                   type="button"
-                  disabled
-                  className={`cursor-default border px-3 py-2 text-xs font-bold opacity-65 ${theme.secondary}`}
+                  onClick={enterCampaignRuntime}
+                  disabled={!canEnterRuntime}
+                  className={`border px-3 py-2 text-xs font-bold ${
+                    canEnterRuntime
+                      ? theme.primary
+                      : `cursor-default opacity-65 ${theme.secondary}`
+                  }`}
                 >
                   {t('campaignLibrary.detail.playerPrep.enterCampaign')}
                 </button>

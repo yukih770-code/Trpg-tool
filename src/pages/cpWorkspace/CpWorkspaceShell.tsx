@@ -5,6 +5,7 @@ import { useCpStore } from '../../store/cpStore';
 // AI-LANDMARK: CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1
 import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
 import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
+import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
 import { SystemWorkspaceEntryShell } from '../../components/platform/SystemWorkspaceEntryShell';
 import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
 import { CPRED_RULE_SOURCES } from './cpRuleSourcesAdapter';
@@ -13,6 +14,7 @@ import type { CpCharacter } from '../../lib/cp-types';
 import type {
   CampaignActorAddReturnContext,
   CampaignActorSelectReturnContext,
+  CampaignRuntimeContext,
   CampaignSuggestedActor,
 } from '../../lib/platform/campaignFlow';
 import {
@@ -540,6 +542,8 @@ export function CpWorkspaceShell({
     useState<CampaignActorSelectReturnContext | null>(null);
   const [suggestedCampaignActor, setSuggestedCampaignActor] =
     useState<CampaignSuggestedActor | null>(null);
+  const [campaignRuntimeContext, setCampaignRuntimeContext] =
+    useState<CampaignRuntimeContext | null>(null);
 
   const cpRuleSourcesTheme: SystemRuleSourcesTheme = {
     panel: gold.panel,
@@ -578,7 +582,12 @@ export function CpWorkspaceShell({
   };
 
   const handleReturnToCampaignEntry = () => {
+    setCampaignRuntimeContext(null);
     onViewChange('campaigns');
+  };
+
+  const handleEnterCampaignRuntime = (context: CampaignRuntimeContext) => {
+    setCampaignRuntimeContext(context);
   };
 
   // Edgerunner data rows for cards
@@ -667,9 +676,16 @@ export function CpWorkspaceShell({
       {/* ── Non-play views ── */}
       {view !== 'play' && (
         <main className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8">
+          {campaignRuntimeContext && (
+            <CampaignRuntimeShell
+              context={campaignRuntimeContext}
+              tone="cp"
+              onExitRuntime={handleReturnToCampaignEntry}
+            />
+          )}
 
           {/* Overview / Game System Home */}
-          {view === 'dashboard' && (
+          {!campaignRuntimeContext && view === 'dashboard' && (
             <div className="flex flex-col gap-6">
               <section className={panelClass}>
                 <div className={`mb-4 text-[11px] font-bold uppercase tracking-wider ${gold.accent} opacity-55`}>
@@ -713,7 +729,7 @@ export function CpWorkspaceShell({
               AI-LANDMARK: ACTOR_VAULT_ACTION_HIERARCHY_CLEANUP_V1
               AI-LANDMARK: ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1
               AI-LANDMARK: ACTOR_VAULT_EXISTING_ADD_SPLIT_V1 */}
-          {view === 'vault' && (
+          {!campaignRuntimeContext && view === 'vault' && (
             <ActorVaultLibraryShell
               summaries={_cpVaultSummaries}
               stats={_cpVaultStats}
@@ -735,7 +751,7 @@ export function CpWorkspaceShell({
             />
           )}
 
-          {view === 'campaigns' && (
+          {!campaignRuntimeContext && view === 'campaigns' && (
             <CampaignLibraryShell
               systemId="cyberpunk-red"
               systemName={t('glossary.cyberpunkRed')}
@@ -744,12 +760,13 @@ export function CpWorkspaceShell({
               suggestedActor={suggestedCampaignActor}
               onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
               onRequestSelectActorForCampaign={handleRequestSelectActorForCampaign}
+              onEnterCampaignRuntime={handleEnterCampaignRuntime}
               onAddCampaign={() => onViewChange('createCampaign')}
               panelClassName={panelClass}
             />
           )}
 
-          {view === 'createCampaign' && (
+          {!campaignRuntimeContext && view === 'createCampaign' && (
             <CampaignLibraryShell
               systemId="cyberpunk-red"
               systemName={t('glossary.cyberpunkRed')}
@@ -760,7 +777,7 @@ export function CpWorkspaceShell({
           )}
 
           {/* Creation Method */}
-          {view === 'createMethod' && (
+          {!campaignRuntimeContext && view === 'createMethod' && (
             <section className={panelClass}>
               {campaignActorAddContext && (
                 <div className="mb-4 rounded border border-[#d8b954]/35 bg-black/20 p-4 text-sm">
@@ -862,7 +879,7 @@ export function CpWorkspaceShell({
           )}
 
           {/* Rules Compendium (shell) */}
-          {view === 'compendium' && (
+          {!campaignRuntimeContext && view === 'compendium' && (
             <section className={panelClass}>
               <h2 className={`mb-2 text-sm font-bold uppercase tracking-wider ${gold.accent}`}>
                 {t('cpWorkspace.compendium.title')}
@@ -895,7 +912,7 @@ export function CpWorkspaceShell({
           )}
 
           {/* Source Status / System Health (shell) */}
-          {view === 'sources' && (
+          {!campaignRuntimeContext && view === 'sources' && (
             <section className={panelClass}>
               <h2 className={`mb-4 text-sm font-bold uppercase tracking-wider ${gold.accent}`}>
                 {t('cpWorkspace.sources.title')}
@@ -940,12 +957,12 @@ export function CpWorkspaceShell({
             </section>
           )}
 
-          {view === 'ruleSources' && (
+          {!campaignRuntimeContext && view === 'ruleSources' && (
             <SystemRuleSourcesShell items={CPRED_RULE_SOURCES} t={t} theme={cpRuleSourcesTheme} />
           )}
 
           {/* Planned slot */}
-          {view === 'planned' && (
+          {!campaignRuntimeContext && view === 'planned' && (
             <div className="flex min-h-[60vh] items-center justify-center">
               <section className={`w-full max-w-2xl ${panelClass}`}>
                 <div className={`text-xs font-bold uppercase tracking-[0.2em] ${gold.accent}`}>

@@ -1,0 +1,294 @@
+import { ArrowLeft } from 'lucide-react';
+import type { CampaignRuntimeContext } from '../../lib/platform/campaignFlow';
+import { createTranslator, readStoredLocale } from '../../i18n';
+
+type CampaignRuntimeTone = 'dnd' | 'coc' | 'cp';
+
+type CampaignRuntimeShellProps = {
+  context: CampaignRuntimeContext;
+  tone: CampaignRuntimeTone;
+  onExitRuntime: () => void;
+};
+
+const toneClasses: Record<CampaignRuntimeTone, {
+  wrapper: string;
+  panel: string;
+  card: string;
+  accent: string;
+  muted: string;
+  border: string;
+  badge: string;
+  action: string;
+}> = {
+  dnd: {
+    wrapper: 'bg-[#fdf6e3] text-[#2c1810]',
+    panel: 'border-[#58180d]/25 bg-white/60',
+    card: 'border-[#58180d]/20 bg-[#fff8e6]/70',
+    accent: 'text-[#58180d]',
+    muted: 'text-[#58180d]/70',
+    border: 'border-[#58180d]/25',
+    badge: 'border-[#58180d]/30 text-[#58180d]/75',
+    action: 'border-[#58180d]/35 text-[#58180d]/55',
+  },
+  coc: {
+    wrapper: 'bg-[#0f1413] text-[#d8efe6]',
+    panel: 'border-[#2f7f68]/35 bg-[#101816]/90',
+    card: 'border-[#2f7f68]/30 bg-black/20',
+    accent: 'text-[#5aa58f]',
+    muted: 'text-[#8fb7aa]/75',
+    border: 'border-[#2f7f68]/35',
+    badge: 'border-[#2f7f68]/40 text-[#8fb7aa]/80',
+    action: 'border-[#2f7f68]/40 text-[#8fb7aa]/60',
+  },
+  cp: {
+    wrapper: 'bg-[#080808] text-[#f5e8a3]',
+    panel: 'border-[#d8b954]/35 bg-[#0d0d0d]/90',
+    card: 'border-[#d8b954]/30 bg-black/30',
+    accent: 'text-[#f5c518]',
+    muted: 'text-[#d8b954]/75',
+    border: 'border-[#d8b954]/35',
+    badge: 'border-[#d8b954]/40 text-[#d8b954]/80',
+    action: 'border-[#d8b954]/40 text-[#d8b954]/60',
+  },
+};
+
+// AI-LANDMARK: CAMPAIGN_RUNTIME_SHELL_UI_V1
+// Minimal CampaignRuntimeShell: UI shell only. No multiplayer, backend, map,
+// handout, runtime log write, store write, permission system, or rule runtime.
+export function CampaignRuntimeShell({
+  context,
+  tone,
+  onExitRuntime,
+}: CampaignRuntimeShellProps) {
+  const { t } = createTranslator(readStoredLocale());
+  const theme = toneClasses[tone];
+  const isHost = context.selectedEntryRole === 'host';
+  const currentActor = context.selectedActorName ?? t('campaignRuntime.header.noActor');
+
+  const participantItems = [
+    ['campaignRuntime.participants.host', isHost ? t('campaignRuntime.status.current') : t('campaignRuntime.status.placeholder')],
+    ['campaignRuntime.participants.playerCharacters', context.selectedActorName ?? t('campaignRuntime.status.placeholder')],
+    ['campaignRuntime.participants.npc', t('campaignRuntime.status.placeholder')],
+    ['campaignRuntime.participants.spectators', t('campaignRuntime.status.placeholder')],
+    ['campaignRuntime.participants.onlineStatus', t('campaignRuntime.status.placeholder')],
+  ];
+
+  const mainStageItems = [
+    'campaignRuntime.mainStage.scene',
+    'campaignRuntime.mainStage.publicScene',
+    'campaignRuntime.mainStage.map',
+    'campaignRuntime.mainStage.script',
+    'campaignRuntime.mainStage.combat',
+    'campaignRuntime.mainStage.investigation',
+  ];
+
+  const publicSidePanelItems = [
+    'campaignRuntime.sidePanel.actorSummary',
+    'campaignRuntime.sidePanel.handout',
+    'campaignRuntime.sidePanel.sceneInfo',
+  ];
+
+  const hostConsoleItems = [
+      'campaignRuntime.host.npcManagement',
+      'campaignRuntime.host.mapManagement',
+      'campaignRuntime.host.handoutManagement',
+      'campaignRuntime.host.packageEnablement',
+      'campaignRuntime.host.playerManagement',
+      'campaignRuntime.host.campaignSettings',
+      'campaignRuntime.host.gmNotes',
+  ];
+
+  const playerPanelItems = [
+      'campaignRuntime.player.ownActor',
+      'campaignRuntime.player.publicScene',
+      'campaignRuntime.player.publicHandout',
+      'campaignRuntime.player.publicMap',
+      'campaignRuntime.player.publicLog',
+      'campaignRuntime.player.diceArea',
+  ];
+
+  const playerLockedHostItems = [
+    'campaignRuntime.host.npcManagement',
+    'campaignRuntime.host.handoutManagement',
+    'campaignRuntime.host.packageEnablement',
+    'campaignRuntime.host.campaignSettings',
+  ];
+
+  const logItems = [
+    'campaignRuntime.log.rolls',
+    'campaignRuntime.log.systemEvents',
+    'campaignRuntime.log.actorActions',
+    'campaignRuntime.log.hostPrompts',
+    'campaignRuntime.log.handoutPublishes',
+  ];
+
+  const hostActionDockItems = [
+    'campaignRuntime.actions.rollDice',
+    'campaignRuntime.actions.addScene',
+    'campaignRuntime.actions.publishHandout',
+    'campaignRuntime.actions.manageNpc',
+    'campaignRuntime.actions.openMap',
+    'campaignRuntime.actions.campaignSettings',
+  ];
+
+  const playerActionDockItems = [
+    'campaignRuntime.actions.rollDice',
+    'campaignRuntime.actions.openActorSheet',
+    'campaignRuntime.actions.openMap',
+    'campaignRuntime.actions.viewHandouts',
+    'campaignRuntime.actions.viewPublicLog',
+  ];
+
+  const renderPlaceholderList = (items: string[]) => (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      {items.map((key) => (
+        <button
+          key={key}
+          type="button"
+          disabled
+          className={`cursor-default border px-3 py-2 text-left text-xs font-bold opacity-70 ${theme.action}`}
+        >
+          {t(key)}
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <section className={`min-h-[calc(100vh-8rem)] rounded-lg border p-4 shadow-sm md:p-5 ${theme.wrapper} ${theme.border}`}>
+      <header className={`rounded-lg border p-4 ${theme.panel}`}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <button
+              type="button"
+              onClick={onExitRuntime}
+              aria-label={t('campaignRuntime.header.backToCampaignDetail')}
+              title={t('campaignRuntime.header.backToCampaignDetail')}
+              className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-transparent transition hover:opacity-80 ${theme.border} ${theme.accent}`}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <div className="min-w-0">
+              <div className={`text-[10px] font-bold uppercase tracking-[0.22em] ${theme.muted}`}>
+                {t('campaignRuntime.eyebrow')}
+              </div>
+              <h2 className={`mt-1 break-words text-2xl font-bold ${theme.accent}`}>
+                {context.campaignTitle}
+                {context.campaignRoomCode ? ` #${context.campaignRoomCode}` : ''}
+              </h2>
+            </div>
+          </div>
+          <span className={`border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${theme.badge}`}>
+            {t('campaignRuntime.header.connectionPlaceholder')}
+          </span>
+        </div>
+
+        <dl className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2 lg:grid-cols-5">
+          {[
+            [t('campaignRuntime.header.system'), context.systemId],
+            [t('campaignRuntime.header.roomCode'), context.campaignRoomCode ?? '-'],
+            [t('campaignRuntime.header.role'), t(isHost ? 'campaignRuntime.role.host' : 'campaignRuntime.role.player')],
+            [t('campaignRuntime.header.actor'), currentActor],
+            [t('campaignRuntime.header.source'), t('campaignRuntime.header.sourceCampaignEntry')],
+          ].map(([label, value]) => (
+            <div key={label} className="min-w-0">
+              <dt className={`font-bold uppercase tracking-wider ${theme.muted}`}>{label}</dt>
+              <dd className="mt-1 break-words font-semibold">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </header>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[14rem_minmax(0,1fr)_18rem]">
+        <aside className={`rounded-lg border p-4 ${theme.panel}`}>
+          <h3 className={`text-sm font-bold ${theme.accent}`}>{t('campaignRuntime.participants.title')}</h3>
+          <div className="mt-3 flex flex-col gap-2">
+            {participantItems.map(([labelKey, value]) => (
+              <div key={labelKey} className={`rounded border p-2 text-xs ${theme.card}`}>
+                <div className={`font-bold ${theme.muted}`}>{t(labelKey)}</div>
+                <div className="mt-1 font-semibold">{value}</div>
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <main className={`rounded-lg border p-4 ${theme.panel}`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className={`text-lg font-bold ${theme.accent}`}>{t('campaignRuntime.mainStage.title')}</h3>
+              <p className={`mt-1 text-xs leading-relaxed ${theme.muted}`}>
+                {t('campaignRuntime.mainStage.note')}
+              </p>
+            </div>
+            <span className={`border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${theme.badge}`}>
+              {t('campaignRuntime.status.shellOnly')}
+            </span>
+          </div>
+          <div className={`mt-4 min-h-64 rounded-lg border p-4 ${theme.card}`}>
+            {renderPlaceholderList(mainStageItems)}
+          </div>
+        </main>
+
+        <aside className={`rounded-lg border p-4 ${theme.panel}`}>
+          <h3 className={`text-sm font-bold ${theme.accent}`}>
+            {t(isHost ? 'campaignRuntime.host.title' : 'campaignRuntime.player.title')}
+          </h3>
+          <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
+            {t(isHost ? 'campaignRuntime.host.note' : 'campaignRuntime.player.note')}
+          </p>
+
+          {isHost ? (
+            <div className="mt-4 space-y-4">
+              <section>
+                <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>
+                  {t('campaignRuntime.host.consoleTitle')}
+                </h4>
+                <div className="mt-2">{renderPlaceholderList(hostConsoleItems)}</div>
+              </section>
+              <section>
+                <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>
+                  {t('campaignRuntime.sidePanel.publicInfo')}
+                </h4>
+                <div className="mt-2">{renderPlaceholderList(publicSidePanelItems)}</div>
+              </section>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-4">
+              <section>
+                <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>
+                  {t('campaignRuntime.player.publicViewTitle')}
+                </h4>
+                <div className="mt-2">{renderPlaceholderList(playerPanelItems)}</div>
+              </section>
+              <section className={`rounded border p-3 ${theme.card}`}>
+                <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>
+                  {t('campaignRuntime.host.lockedHostTools')}
+                </h4>
+                <p className={`mt-1 text-xs leading-relaxed ${theme.muted}`}>
+                  {t('campaignRuntime.player.hostToolsLockedNote')}
+                </p>
+                <div className="mt-2">{renderPlaceholderList(playerLockedHostItems)}</div>
+              </section>
+            </div>
+          )}
+        </aside>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <section className={`rounded-lg border p-4 ${theme.panel}`}>
+          <h3 className={`text-sm font-bold ${theme.accent}`}>{t('campaignRuntime.log.title')}</h3>
+          <p className={`mt-1 text-xs ${theme.muted}`}>{t('campaignRuntime.log.note')}</p>
+          <div className="mt-3">{renderPlaceholderList(logItems)}</div>
+        </section>
+
+        <section className={`rounded-lg border p-4 ${theme.panel}`}>
+          <h3 className={`text-sm font-bold ${theme.accent}`}>{t('campaignRuntime.actions.title')}</h3>
+          <p className={`mt-1 text-xs ${theme.muted}`}>
+            {t(isHost ? 'campaignRuntime.actions.hostNote' : 'campaignRuntime.actions.playerNote')}
+          </p>
+          <div className="mt-3">{renderPlaceholderList(isHost ? hostActionDockItems : playerActionDockItems)}</div>
+        </section>
+      </div>
+    </section>
+  );
+}
