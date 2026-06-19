@@ -233,7 +233,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
             <div className="flex flex-col gap-6">
               <section className={panelClass}>
                 <div className="mb-4 text-[11px] font-bold uppercase tracking-wider text-[#58180d]/55">
-                  {t('navigation.breadcrumb.platform')} / {t('navigation.breadcrumb.play')} / DND 5e 2024 / {t('navigation.systemInfo')}
+                  {t('dndWorkspace.dashboard.scopeLabel')}
                 </div>
                 <div className="flex flex-wrap items-end justify-between gap-4">
                   <div>

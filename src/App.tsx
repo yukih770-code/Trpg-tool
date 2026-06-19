@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ChevronUp, HomeIcon, Library, MoreHorizontal, Palette, Settings, Sparkles, Store, X } from 'lucide-react';
+import { ArrowLeft, HomeIcon, Library, MoreHorizontal, Palette, Settings, Sparkles, Store, X } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Toaster } from '../components/ui/sonner';
@@ -611,47 +611,18 @@ export default function App() {
 
         {appView === 'play' && playStage === 'workspace' && (
           <div>
-            <div className="border-b border-[#2f2a22]/15 px-4 py-2 md:px-8">
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="border-b border-[#2f2a22]/10 px-4 py-2 md:px-8">
+              <div className="flex items-center">
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="icon-sm"
                   onClick={navigationStack.length > 0 ? goBack : fallbackNavigation}
+                  aria-label={navigationStack.length > 0 ? t('navigation.backOneLevel') : t('navigation.noPreviousBackToSystemSelect')}
                   title={navigationStack.length > 0 ? t('navigation.backOneLevel') : t('navigation.noPreviousBackToSystemSelect')}
                   className="rounded-md border-[#2f2a22]/20"
                 >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  {t(navigationStack.length > 0 ? 'navigation.backOneLevel' : 'navigation.backToSystemSelect')}
+                  <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={goUp}
-                  title={t('navigation.upOneLevel')}
-                  className="rounded-md border-[#2f2a22]/20"
-                >
-                  <ChevronUp className="mr-2 h-4 w-4" />
-                  {t('navigation.upOneLevel')}
-                </Button>
-                {/* Full breadcrumb is desktop/tablet only; mobile shows the short title in the app bar. */}
-                <div className="hidden text-xs text-[#51483d] md:block">
-                  <span className="font-bold">{t('navigation.currentLocation')}：</span>
-                  {(() => {
-                    const nodeType = deriveNodeType(
-                      system,
-                      playWorkspaceNavigation.dndWorkspaceView,
-                      playWorkspaceNavigation.systemWorkspaceView,
-                      playWorkspaceNavigation.tab,
-                    );
-                    const viewLabels = getBreadcrumbViewLabelKeys(nodeType).map((labelKey) => t(labelKey));
-                    return [
-                      t('navigation.breadcrumb.platform'),
-                      t('navigation.breadcrumb.play'),
-                      systemLabel,
-                      ...viewLabels,
-                    ].join(' / ');
-                  })()}
-                </div>
               </div>
             </div>
             <PlayWorkspace
@@ -665,32 +636,48 @@ export default function App() {
         )}
 
         {appView === 'placeholder' && activePlaceholder === 'settings' && (
-          <main className="mx-auto w-full max-w-4xl px-4 py-8 md:px-8">
-            {/* Top back: full-page → "← 返回" (caller). Mobile second-level → "← 设置". */}
-            {activeSettingsCat !== null && (
-              <button
-                type="button"
-                onClick={() => setActiveSettingsCat(null)}
-                className="mb-4 inline-flex items-center gap-1 rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8 md:hidden"
-              >
-                ← {locale === 'en' ? 'Settings' : '设置'}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={goBack}
-              className={`mb-4 items-center gap-1 rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8 ${activeSettingsCat !== null ? 'hidden md:inline-flex' : 'inline-flex'}`}
-            >
-              ← {locale === 'en' ? 'Back' : '返回'}
-            </button>
+          <main className="w-full px-4 py-6 md:px-8 md:py-8">
+            <div className="mb-6 flex items-center gap-3">
+              {activeSettingsCat !== null ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSettingsCat(null)}
+                    aria-label={locale === 'en' ? 'Back to Settings' : '返回设置'}
+                    title={locale === 'en' ? 'Back to Settings' : '返回设置'}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#2f2a22]/20 bg-white text-[#17130f] transition hover:bg-[#2f2a22]/8 md:hidden"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    aria-label={locale === 'en' ? 'Back' : '返回'}
+                    title={locale === 'en' ? 'Back' : '返回'}
+                    className="hidden h-8 w-8 items-center justify-center rounded-md border border-[#2f2a22]/20 bg-white text-[#17130f] transition hover:bg-[#2f2a22]/8 md:inline-flex"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={goBack}
+                  aria-label={locale === 'en' ? 'Back' : '返回'}
+                  title={locale === 'en' ? 'Back' : '返回'}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#2f2a22]/20 bg-white text-[#17130f] transition hover:bg-[#2f2a22]/8"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+              )}
+              <div>
+                <h1 className="hidden text-2xl font-bold md:block">{t('shell.settings.title')}</h1>
+                <h1 className="text-2xl font-bold md:hidden">{activeSettingsCat ?? t('shell.settings.title')}</h1>
+              </div>
+            </div>
 
-            {/* Title: PC + mobile-list = 设置; mobile second-level = category name */}
-            <h1 className="hidden text-2xl font-bold md:block">{t('shell.settings.title')}</h1>
-            <h1 className="text-2xl font-bold md:hidden">{activeSettingsCat ?? t('shell.settings.title')}</h1>
-
-            <div className="mt-5 md:flex md:gap-5">
-              {/* Left category list: PC always; mobile only on list view */}
-              <nav className={`flex flex-col gap-1 md:w-48 md:shrink-0 ${activeSettingsCat !== null ? 'hidden md:flex' : 'flex'}`}>
+            <div className="grid w-full max-w-7xl grid-cols-1 gap-5 md:grid-cols-[16rem_minmax(0,1fr)]">
+              <nav className={`flex flex-col gap-1 rounded-lg border border-[#2f2a22]/12 bg-white p-2 md:sticky md:top-20 md:self-start ${activeSettingsCat !== null ? 'hidden md:flex' : 'flex'}`}>
                 {SETTINGS_CATS.map((cat) => {
                   const active = (activeSettingsCat ?? '常规') === cat;
                   return (
@@ -707,9 +694,8 @@ export default function App() {
                 })}
               </nav>
 
-              {/* Right pane: PC always (cat ?? 常规); mobile only when a category is open */}
-              <div className={`mt-3 flex-1 md:mt-0 ${activeSettingsCat !== null ? 'block' : 'hidden md:block'}`}>
-                <section className="rounded-lg border border-[#2f2a22]/12 bg-white p-4">
+              <div className={`${activeSettingsCat !== null ? 'block' : 'hidden md:block'}`}>
+                <section className="min-h-[420px] rounded-lg border border-[#2f2a22]/12 bg-white p-5 shadow-sm md:p-6">
                   <h2 className="mb-2 hidden text-[11px] font-bold uppercase tracking-wider text-[#51483d] md:block">
                     {activeSettingsCat ?? '常规'}
                   </h2>
@@ -722,13 +708,14 @@ export default function App() {
 
         {appView === 'placeholder' && activePlaceholder !== 'settings' && (
           <main className="mx-auto w-full max-w-5xl px-4 py-8 md:px-8">
-            {/* Full-page placeholder: single top "← 返回" (Navigation & Exit Contract). */}
             <button
               type="button"
               onClick={goBack}
-              className="mb-4 inline-flex items-center gap-1 rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
+              aria-label={locale === 'en' ? 'Back' : '返回'}
+              title={locale === 'en' ? 'Back' : '返回'}
+              className="mb-4 inline-flex h-8 w-8 items-center justify-center rounded-md border border-[#2f2a22]/20 bg-white text-[#17130f] transition hover:bg-[#2f2a22]/8"
             >
-              ← {locale === 'en' ? 'Back' : '返回'}
+              <ArrowLeft className="h-4 w-4" />
             </button>
             <div className="rounded-lg border border-[#2f2a22]/15 bg-white p-6 shadow-sm">
               {!isPrivateImportPlaceholder && (

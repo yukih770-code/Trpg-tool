@@ -673,7 +673,7 @@ export function CpWorkspaceShell({
             <div className="flex flex-col gap-6">
               <section className={panelClass}>
                 <div className={`mb-4 text-[11px] font-bold uppercase tracking-wider ${gold.accent} opacity-55`}>
-                  {t('navigation.breadcrumb.platform')} / {t('navigation.breadcrumb.play')} / {t('glossary.cyberpunkRed')} / {t('navigation.systemInfo')}
+                  {t('multiWorkspace.eyebrow')}
                 </div>
                 <div className="flex flex-wrap items-end justify-between gap-4">
                   <div>
