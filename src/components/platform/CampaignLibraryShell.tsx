@@ -4,7 +4,7 @@ import type {
   CampaignInstanceSummary,
 } from '../../lib/platform/campaignFlow';
 import { createTranslator, readStoredLocale } from '../../i18n';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type CampaignLibraryTone = 'dnd' | 'coc' | 'cp';
 type CampaignLibraryMode = 'home' | 'existing' | 'detail';
@@ -14,6 +14,7 @@ type CampaignLibraryShellProps = {
   systemName: string;
   tone: CampaignLibraryTone;
   mode?: 'library' | 'create';
+  initialMode?: CampaignLibraryMode;
   onAddCampaign?: () => void;
   onRequestAddActorForCampaign?: (context: CampaignActorAddReturnContext) => void;
   panelClassName?: string;
@@ -62,12 +63,13 @@ export function CampaignLibraryShell({
   systemName,
   tone,
   mode = 'library',
+  initialMode,
   onAddCampaign,
   onRequestAddActorForCampaign,
   panelClassName,
 }: CampaignLibraryShellProps) {
   const { t } = createTranslator(readStoredLocale());
-  const [libraryMode, setLibraryMode] = useState<CampaignLibraryMode>('home');
+  const [libraryMode, setLibraryMode] = useState<CampaignLibraryMode>(initialMode ?? 'home');
   const [selectedEntryRole, setSelectedEntryRole] = useState<CampaignEntryRole>('playerCharacter');
   const theme = toneClasses[tone];
   const sampleCampaign: CampaignInstanceSummary = {
@@ -101,6 +103,11 @@ export function CampaignLibraryShell({
     'campaignLibrary.detail.hostPrep.diceLogSettings',
     'campaignLibrary.detail.hostPrep.campaignSettings',
   ];
+
+  useEffect(() => {
+    if (initialMode) setLibraryMode(initialMode);
+  }, [initialMode]);
+
   const requestAddActorForCampaign = () => {
     onRequestAddActorForCampaign?.({
       campaignId: sampleCampaign.campaignId,

@@ -187,6 +187,10 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     onViewChange('create');
   };
 
+  const handleReturnToCampaignEntry = () => {
+    onViewChange('campaigns');
+  };
+
   return (
     <div className="min-h-screen bg-[#fdf6e3] text-[#2c1810] font-serif">
       {/* ── DND workspace shell brand ── */}
@@ -230,7 +234,10 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                 actorNoteKey="systemWorkspaceEntry.dnd.actorNote"
                 campaignNoteKey="systemWorkspaceEntry.dnd.campaignNote"
                 onEnterActors={() => onViewChange('characters')}
-                onEnterCampaigns={() => onViewChange('campaigns')}
+                onEnterCampaigns={() => {
+                  setCampaignActorAddContext(null);
+                  onViewChange('campaigns');
+                }}
               />
             </div>
           )}
@@ -249,14 +256,11 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                   </p>
                   <button
                     type="button"
-                    disabled
-                    className="mt-3 cursor-default border border-[#58180d]/30 px-3 py-1.5 text-xs font-bold text-[#58180d]/60"
+                    onClick={handleReturnToCampaignEntry}
+                    className="mt-3 border border-[#58180d]/40 px-3 py-1.5 text-xs font-bold text-[#58180d] transition hover:border-[#58180d] hover:bg-[#58180d]/10"
                   >
                     {campaignActorAddContext.returnLabel}
                   </button>
-                  <span className="ml-3 text-[10px] text-[#58180d]/50">
-                    {t('campaignLibrary.returnContext.placeholder')}
-                  </span>
                 </div>
               )}
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
@@ -330,6 +334,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
               systemId="dnd2024"
               systemName="DND 2024"
               tone="dnd"
+              initialMode={campaignActorAddContext ? 'detail' : undefined}
               onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
               onAddCampaign={() => onViewChange('createCampaign')}
               panelClassName={panelClass}

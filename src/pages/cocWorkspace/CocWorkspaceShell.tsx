@@ -415,6 +415,10 @@ export function CocWorkspaceShell({
     onViewChange('createMethod');
   };
 
+  const handleReturnToCampaignEntry = () => {
+    onViewChange('campaigns');
+  };
+
   // Investigator data rows for cards
   const investigatorRows = [
     { lk: 'multiWorkspace.coc.entry.name',      v: cocChar.name       || t('multiWorkspace.coc.entry.unnamed') },
@@ -555,7 +559,10 @@ export function CocWorkspaceShell({
                 actorNoteKey="systemWorkspaceEntry.coc.actorNote"
                 campaignNoteKey="systemWorkspaceEntry.coc.campaignNote"
                 onEnterActors={() => onViewChange('vault')}
-                onEnterCampaigns={() => onViewChange('campaigns')}
+                onEnterCampaigns={() => {
+                  setCampaignActorAddContext(null);
+                  onViewChange('campaigns');
+                }}
               />
             </div>
           )}
@@ -588,6 +595,7 @@ export function CocWorkspaceShell({
               systemId="coc7e"
               systemName={t('glossary.coc7e')}
               tone="coc"
+              initialMode={campaignActorAddContext ? 'detail' : undefined}
               onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
               onAddCampaign={() => onViewChange('createCampaign')}
               panelClassName={panelClass}
@@ -619,14 +627,11 @@ export function CocWorkspaceShell({
                   </p>
                   <button
                     type="button"
-                    disabled
-                    className={`mt-3 cursor-default border px-3 py-1.5 text-xs font-bold opacity-60 ${teal.secondary}`}
+                    onClick={handleReturnToCampaignEntry}
+                    className={`mt-3 border px-3 py-1.5 text-xs font-bold transition ${teal.secondary}`}
                   >
                     {campaignActorAddContext.returnLabel}
                   </button>
-                  <span className="ml-3 text-[10px] opacity-50">
-                    {t('campaignLibrary.returnContext.placeholder')}
-                  </span>
                 </div>
               )}
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">

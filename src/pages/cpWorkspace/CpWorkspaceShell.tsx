@@ -556,6 +556,10 @@ export function CpWorkspaceShell({
     onViewChange('createMethod');
   };
 
+  const handleReturnToCampaignEntry = () => {
+    onViewChange('campaigns');
+  };
+
   // Edgerunner data rows for cards
   const edgerunnerRows = [
     { lk: 'multiWorkspace.cp.entry.name',      v: cpChar.name                 || t('multiWorkspace.cp.entry.unnamed') },
@@ -672,7 +676,10 @@ export function CpWorkspaceShell({
                 actorNoteKey="systemWorkspaceEntry.cp.actorNote"
                 campaignNoteKey="systemWorkspaceEntry.cp.campaignNote"
                 onEnterActors={() => onViewChange('vault')}
-                onEnterCampaigns={() => onViewChange('campaigns')}
+                onEnterCampaigns={() => {
+                  setCampaignActorAddContext(null);
+                  onViewChange('campaigns');
+                }}
               />
             </div>
           )}
@@ -705,6 +712,7 @@ export function CpWorkspaceShell({
               systemId="cyberpunk-red"
               systemName={t('glossary.cyberpunkRed')}
               tone="cp"
+              initialMode={campaignActorAddContext ? 'detail' : undefined}
               onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
               onAddCampaign={() => onViewChange('createCampaign')}
               panelClassName={panelClass}
@@ -736,14 +744,11 @@ export function CpWorkspaceShell({
                   </p>
                   <button
                     type="button"
-                    disabled
-                    className={`mt-3 cursor-default border px-3 py-1.5 text-xs font-bold opacity-60 ${gold.secondary}`}
+                    onClick={handleReturnToCampaignEntry}
+                    className={`mt-3 border px-3 py-1.5 text-xs font-bold transition ${gold.secondary}`}
                   >
                     {campaignActorAddContext.returnLabel}
                   </button>
-                  <span className="ml-3 text-[10px] opacity-50">
-                    {t('campaignLibrary.returnContext.placeholder')}
-                  </span>
                 </div>
               )}
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
