@@ -70,6 +70,15 @@ export interface CampaignWorkspaceEntry {
   description: string;
 }
 
+export interface CampaignActorAddReturnContext {
+  campaignId: string;
+  campaignTitle: string;
+  campaignRoomCode?: string;
+  source: 'campaignEntry';
+  returnLabel: string;
+  returnTo: CampaignEntryReturnTo;
+}
+
 export interface CampaignInstanceSummary {
   campaignId: string;
   systemId: string;

@@ -1,4 +1,8 @@
-import type { CampaignEntryRole, CampaignInstanceSummary } from '../../lib/platform/campaignFlow';
+import type {
+  CampaignActorAddReturnContext,
+  CampaignEntryRole,
+  CampaignInstanceSummary,
+} from '../../lib/platform/campaignFlow';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useState } from 'react';
 
@@ -11,6 +15,7 @@ type CampaignLibraryShellProps = {
   tone: CampaignLibraryTone;
   mode?: 'library' | 'create';
   onAddCampaign?: () => void;
+  onRequestAddActorForCampaign?: (context: CampaignActorAddReturnContext) => void;
   panelClassName?: string;
 };
 
@@ -58,6 +63,7 @@ export function CampaignLibraryShell({
   tone,
   mode = 'library',
   onAddCampaign,
+  onRequestAddActorForCampaign,
   panelClassName,
 }: CampaignLibraryShellProps) {
   const { t } = createTranslator(readStoredLocale());
@@ -95,6 +101,20 @@ export function CampaignLibraryShell({
     'campaignLibrary.detail.hostPrep.diceLogSettings',
     'campaignLibrary.detail.hostPrep.campaignSettings',
   ];
+  const requestAddActorForCampaign = () => {
+    onRequestAddActorForCampaign?.({
+      campaignId: sampleCampaign.campaignId,
+      campaignTitle: sampleCampaign.title,
+      campaignRoomCode: sampleCampaign.roomCode,
+      source: 'campaignEntry',
+      returnLabel: t('campaignLibrary.returnContext.returnButton'),
+      returnTo: {
+        view: 'campaignDetail',
+        systemId,
+        campaignId: sampleCampaign.campaignId,
+      },
+    });
+  };
 
   return (
     <section className={panelClassName ?? 'rounded-lg border p-5'}>
@@ -308,8 +328,13 @@ export function CampaignLibraryShell({
               </button>
               <button
                 type="button"
-                disabled
-                className={`cursor-default border p-4 text-left text-sm font-bold opacity-65 ${theme.secondary}`}
+                onClick={requestAddActorForCampaign}
+                disabled={!onRequestAddActorForCampaign}
+                className={`border p-4 text-left text-sm font-bold ${
+                  onRequestAddActorForCampaign
+                    ? theme.secondary
+                    : `cursor-default opacity-65 ${theme.secondary}`
+                }`}
               >
                 <span className="block">{t('campaignLibrary.detail.entry.addActor')}</span>
                 <span className="mt-2 block text-xs font-normal opacity-75">
@@ -336,20 +361,32 @@ export function CampaignLibraryShell({
                 {t('campaignLibrary.detail.playerPrep.unselected')}
               </div>
               <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {[
-                  'campaignLibrary.detail.playerPrep.chooseExisting',
-                  'campaignLibrary.detail.playerPrep.addActor',
-                  'campaignLibrary.detail.playerPrep.enterCampaign',
-                ].map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    disabled
-                    className={`cursor-default border px-3 py-2 text-xs font-bold opacity-65 ${theme.secondary}`}
-                  >
-                    {t(key)}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  disabled
+                  className={`cursor-default border px-3 py-2 text-xs font-bold opacity-65 ${theme.secondary}`}
+                >
+                  {t('campaignLibrary.detail.playerPrep.chooseExisting')}
+                </button>
+                <button
+                  type="button"
+                  onClick={requestAddActorForCampaign}
+                  disabled={!onRequestAddActorForCampaign}
+                  className={`border px-3 py-2 text-xs font-bold ${
+                    onRequestAddActorForCampaign
+                      ? theme.secondary
+                      : `cursor-default opacity-65 ${theme.secondary}`
+                  }`}
+                >
+                  {t('campaignLibrary.detail.playerPrep.addActor')}
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  className={`cursor-default border px-3 py-2 text-xs font-bold opacity-65 ${theme.secondary}`}
+                >
+                  {t('campaignLibrary.detail.playerPrep.enterCampaign')}
+                </button>
               </div>
             </div>
 

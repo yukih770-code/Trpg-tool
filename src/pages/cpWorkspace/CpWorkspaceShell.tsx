@@ -10,6 +10,7 @@ import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../compo
 import { CPRED_RULE_SOURCES } from './cpRuleSourcesAdapter';
 import { deriveVaultSummaries, type ActorVaultAdapter } from '../../lib/platform/actorVault';
 import type { CpCharacter } from '../../lib/cp-types';
+import type { CampaignActorAddReturnContext } from '../../lib/platform/campaignFlow';
 import {
   buildCpActorSummary,
   buildCpVaultAdapterStrings,
@@ -529,6 +530,8 @@ export function CpWorkspaceShell({
   const hasCurrentCharacter = Boolean(cpChar.name?.trim() || cpChar.lifePath?.handle?.trim());
   const displayName = cpChar.lifePath?.handle?.trim() || cpChar.name?.trim();
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
+  const [campaignActorAddContext, setCampaignActorAddContext] =
+    useState<CampaignActorAddReturnContext | null>(null);
 
   const cpRuleSourcesTheme: SystemRuleSourcesTheme = {
     panel: gold.panel,
@@ -546,6 +549,11 @@ export function CpWorkspaceShell({
     } else {
       onViewChange('vault');
     }
+  };
+
+  const handleRequestAddActorForCampaign = (context: CampaignActorAddReturnContext) => {
+    setCampaignActorAddContext(context);
+    onViewChange('createMethod');
   };
 
   // Edgerunner data rows for cards
@@ -682,7 +690,10 @@ export function CpWorkspaceShell({
               sortOptions={_cpVaultSortOpts}
               defaultSortKey="default"
               onEnterActor={_cpVaultAdapter.onEnterActor}
-              onRequestAdd={() => onViewChange('createMethod')}
+              onRequestAdd={() => {
+                setCampaignActorAddContext(null);
+                onViewChange('createMethod');
+              }}
               strings={_cpVaultStrings}
               colorTheme={CP_VAULT_COLOR_THEME}
               panelClassName={panelClass}
@@ -694,6 +705,7 @@ export function CpWorkspaceShell({
               systemId="cyberpunk-red"
               systemName={t('glossary.cyberpunkRed')}
               tone="cp"
+              onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
               onAddCampaign={() => onViewChange('createCampaign')}
               panelClassName={panelClass}
             />
@@ -712,6 +724,28 @@ export function CpWorkspaceShell({
           {/* Creation Method */}
           {view === 'createMethod' && (
             <section className={panelClass}>
+              {campaignActorAddContext && (
+                <div className="mb-4 rounded border border-[#d8b954]/35 bg-black/20 p-4 text-sm">
+                  <div className={`font-bold ${gold.accentStrong}`}>
+                    {t('campaignLibrary.returnContext.addingActorPrefix')}「{campaignActorAddContext.campaignTitle}
+                    {campaignActorAddContext.campaignRoomCode ? ` #${campaignActorAddContext.campaignRoomCode}` : ''}」
+                    {t('campaignLibrary.returnContext.addingActorSuffix')}
+                  </div>
+                  <p className="mt-1 text-xs opacity-70">
+                    {t('campaignLibrary.returnContext.afterComplete')}
+                  </p>
+                  <button
+                    type="button"
+                    disabled
+                    className={`mt-3 cursor-default border px-3 py-1.5 text-xs font-bold opacity-60 ${gold.secondary}`}
+                  >
+                    {campaignActorAddContext.returnLabel}
+                  </button>
+                  <span className="ml-3 text-[10px] opacity-50">
+                    {t('campaignLibrary.returnContext.placeholder')}
+                  </span>
+                </div>
+              )}
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <div className={`text-xs font-bold uppercase tracking-[0.2em] ${gold.accent}`}>

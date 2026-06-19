@@ -19,6 +19,7 @@ import {
 import { deriveVaultSummaries } from '../../lib/platform/actorVault';
 import type { ActorVaultAdapter } from '../../lib/platform/actorVault';
 import type { CocCharacter } from '../../lib/coc-types';
+import type { CampaignActorAddReturnContext } from '../../lib/platform/campaignFlow';
 
 /**
  * CocWorkspaceShell
@@ -388,6 +389,8 @@ export function CocWorkspaceShell({
   const hasCurrentCharacter = Boolean(cocChar.name?.trim() || cocChar.occupation?.trim());
   const displayName = cocChar.name?.trim();
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
+  const [campaignActorAddContext, setCampaignActorAddContext] =
+    useState<CampaignActorAddReturnContext | null>(null);
 
   const cocRuleSourcesTheme: SystemRuleSourcesTheme = {
     panel: teal.panel,
@@ -405,6 +408,11 @@ export function CocWorkspaceShell({
     } else {
       onViewChange('vault');
     }
+  };
+
+  const handleRequestAddActorForCampaign = (context: CampaignActorAddReturnContext) => {
+    setCampaignActorAddContext(context);
+    onViewChange('createMethod');
   };
 
   // Investigator data rows for cards
@@ -565,7 +573,10 @@ export function CocWorkspaceShell({
               sortOptions={_cocVaultSortOpts}
               defaultSortKey="default"
               onEnterActor={(_id) => onViewChange('sheet')}
-              onRequestAdd={() => onViewChange('createMethod')}
+              onRequestAdd={() => {
+                setCampaignActorAddContext(null);
+                onViewChange('createMethod');
+              }}
               strings={_cocVaultStrings}
               colorTheme={COC_VAULT_COLOR_THEME}
               panelClassName={panelClass}
@@ -577,6 +588,7 @@ export function CocWorkspaceShell({
               systemId="coc7e"
               systemName={t('glossary.coc7e')}
               tone="coc"
+              onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
               onAddCampaign={() => onViewChange('createCampaign')}
               panelClassName={panelClass}
             />
@@ -595,6 +607,28 @@ export function CocWorkspaceShell({
           {/* Creation Method */}
           {view === 'createMethod' && (
             <section className={panelClass}>
+              {campaignActorAddContext && (
+                <div className="mb-4 rounded border border-[#2f7f68]/35 bg-black/10 p-4 text-sm">
+                  <div className={`font-bold ${teal.accentStrong}`}>
+                    {t('campaignLibrary.returnContext.addingActorPrefix')}「{campaignActorAddContext.campaignTitle}
+                    {campaignActorAddContext.campaignRoomCode ? ` #${campaignActorAddContext.campaignRoomCode}` : ''}」
+                    {t('campaignLibrary.returnContext.addingActorSuffix')}
+                  </div>
+                  <p className="mt-1 text-xs opacity-70">
+                    {t('campaignLibrary.returnContext.afterComplete')}
+                  </p>
+                  <button
+                    type="button"
+                    disabled
+                    className={`mt-3 cursor-default border px-3 py-1.5 text-xs font-bold opacity-60 ${teal.secondary}`}
+                  >
+                    {campaignActorAddContext.returnLabel}
+                  </button>
+                  <span className="ml-3 text-[10px] opacity-50">
+                    {t('campaignLibrary.returnContext.placeholder')}
+                  </span>
+                </div>
+              )}
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <div className={`text-xs font-bold uppercase tracking-[0.2em] ${teal.accent}`}>

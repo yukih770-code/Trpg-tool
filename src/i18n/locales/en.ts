@@ -1509,6 +1509,13 @@ export const en = {
         campaignSettings: 'Campaign Settings',
       },
     },
+    returnContext: {
+      addingActorPrefix: 'Adding a character for',
+      addingActorSuffix: '.',
+      afterComplete: 'After completion, this flow will return to campaign entry preparation.',
+      returnButton: '← Back to Campaign Entry Prep',
+      placeholder: 'Real completion return will connect later.',
+    },
     fields: {
       system: 'System',
       identity: 'Identity',

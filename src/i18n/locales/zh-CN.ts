@@ -1509,6 +1509,13 @@ export const zhCN = {
         campaignSettings: '战役设置',
       },
     },
+    returnContext: {
+      addingActorPrefix: '正在为',
+      addingActorSuffix: '添加角色。',
+      afterComplete: '完成后将返回战役入场准备。',
+      returnButton: '← 返回战役入场准备',
+      placeholder: '真实完成回跳将在后续接入。',
+    },
     fields: {
       system: '系统',
       identity: '身份',

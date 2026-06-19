@@ -24,6 +24,7 @@ import {
 } from './dndActorVaultAdapter';
 import { deriveVaultSummaries } from '../../lib/platform/actorVault';
 import type { ActorVaultAdapter } from '../../lib/platform/actorVault';
+import type { CampaignActorAddReturnContext } from '../../lib/platform/campaignFlow';
 
 /**
  * DndWorkspaceShell
@@ -76,6 +77,8 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     dndChar.isCompleted,
   );
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
+  const [campaignActorAddContext, setCampaignActorAddContext] =
+    useState<CampaignActorAddReturnContext | null>(null);
 
   // AI-LANDMARK: PLATFORM_ACTOR_VAULT_LIBRARY_FRAMEWORK_EXTRACTION_V1
   // DND Actor Vault adapter: maps CharacterData to platform ActorVaultSummary.
@@ -179,6 +182,11 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     { labelKey: 'dndWorkspace.creation.workshop', noteKey: 'dndWorkspace.creation.workshopNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.workshop') },
   ];
 
+  const handleRequestAddActorForCampaign = (context: CampaignActorAddReturnContext) => {
+    setCampaignActorAddContext(context);
+    onViewChange('create');
+  };
+
   return (
     <div className="min-h-screen bg-[#fdf6e3] text-[#2c1810] font-serif">
       {/* ── DND workspace shell brand ── */}
@@ -229,6 +237,28 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
 
           {view === 'create' && (
             <section className={panelClass}>
+              {campaignActorAddContext && (
+                <div className="mb-4 border border-[#58180d]/30 bg-white/50 p-4 text-sm text-[#58180d]">
+                  <div className="font-bold">
+                    {t('campaignLibrary.returnContext.addingActorPrefix')}「{campaignActorAddContext.campaignTitle}
+                    {campaignActorAddContext.campaignRoomCode ? ` #${campaignActorAddContext.campaignRoomCode}` : ''}」
+                    {t('campaignLibrary.returnContext.addingActorSuffix')}
+                  </div>
+                  <p className="mt-1 text-xs text-[#58180d]/70">
+                    {t('campaignLibrary.returnContext.afterComplete')}
+                  </p>
+                  <button
+                    type="button"
+                    disabled
+                    className="mt-3 cursor-default border border-[#58180d]/30 px-3 py-1.5 text-xs font-bold text-[#58180d]/60"
+                  >
+                    {campaignActorAddContext.returnLabel}
+                  </button>
+                  <span className="ml-3 text-[10px] text-[#58180d]/50">
+                    {t('campaignLibrary.returnContext.placeholder')}
+                  </span>
+                </div>
+              )}
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-bold text-[#58180d]">{t('dndWorkspace.creation.title')}</h2>
@@ -285,7 +315,10 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
               sortOptions={_vaultSortOpts}
               defaultSortKey="default"
               onEnterActor={(id) => _dndVaultAdapter.onEnterActor(id)}
-              onRequestAdd={() => onViewChange('create')}
+              onRequestAdd={() => {
+                setCampaignActorAddContext(null);
+                onViewChange('create');
+              }}
               strings={_vaultStrings}
               colorTheme={DND_VAULT_COLOR_THEME}
               panelClassName={panelClass}
@@ -297,6 +330,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
               systemId="dnd2024"
               systemName="DND 2024"
               tone="dnd"
+              onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
               onAddCampaign={() => onViewChange('createCampaign')}
               panelClassName={panelClass}
             />
