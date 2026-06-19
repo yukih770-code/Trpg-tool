@@ -10,6 +10,17 @@ type CampaignRuntimeShellProps = {
   onExitRuntime: () => void;
 };
 
+type RuntimeLogCategory = 'roll' | 'action' | 'system' | 'handout' | 'host';
+
+type RuntimeLogEntry = {
+  id: string;
+  category: RuntimeLogCategory;
+  scope: 'public' | 'host';
+  titleKey: string;
+  bodyKey: string;
+  metaKey: string;
+};
+
 const toneClasses: Record<CampaignRuntimeTone, {
   wrapper: string;
   panel: string;
@@ -114,14 +125,6 @@ export function CampaignRuntimeShell({
     'campaignRuntime.host.campaignSettings',
   ];
 
-  const logItems = [
-    'campaignRuntime.log.rolls',
-    'campaignRuntime.log.systemEvents',
-    'campaignRuntime.log.actorActions',
-    'campaignRuntime.log.hostPrompts',
-    'campaignRuntime.log.handoutPublishes',
-  ];
-
   const hostActionDockItems = [
     'campaignRuntime.actions.rollDice',
     'campaignRuntime.actions.addScene',
@@ -139,6 +142,61 @@ export function CampaignRuntimeShell({
     'campaignRuntime.actions.viewPublicLog',
   ];
 
+  const runtimeLogFilters = [
+    { id: 'all', labelKey: 'campaignRuntime.log.filters.all' },
+    { id: 'roll', labelKey: 'campaignRuntime.log.filters.roll' },
+    { id: 'action', labelKey: 'campaignRuntime.log.filters.action' },
+    { id: 'system', labelKey: 'campaignRuntime.log.filters.system' },
+    { id: 'handout', labelKey: 'campaignRuntime.log.filters.handout' },
+    { id: 'host', labelKey: 'campaignRuntime.log.filters.host', hostOnly: true },
+  ];
+
+  const runtimeLogEntries: RuntimeLogEntry[] = [
+    {
+      id: 'system-entry',
+      category: 'system',
+      scope: 'public',
+      titleKey: 'campaignRuntime.log.entries.systemEntry.title',
+      bodyKey: 'campaignRuntime.log.entries.systemEntry.body',
+      metaKey: 'campaignRuntime.log.entries.systemEntry.meta',
+    },
+    {
+      id: 'actor-ready',
+      category: 'action',
+      scope: 'public',
+      titleKey: 'campaignRuntime.log.entries.actorReady.title',
+      bodyKey: 'campaignRuntime.log.entries.actorReady.body',
+      metaKey: 'campaignRuntime.log.entries.actorReady.meta',
+    },
+    {
+      id: 'sample-roll',
+      category: 'roll',
+      scope: 'public',
+      titleKey: 'campaignRuntime.log.entries.sampleRoll.title',
+      bodyKey: 'campaignRuntime.log.entries.sampleRoll.body',
+      metaKey: 'campaignRuntime.log.entries.sampleRoll.meta',
+    },
+    {
+      id: 'host-prompt',
+      category: 'host',
+      scope: 'host',
+      titleKey: 'campaignRuntime.log.entries.hostPrompt.title',
+      bodyKey: 'campaignRuntime.log.entries.hostPrompt.body',
+      metaKey: 'campaignRuntime.log.entries.hostPrompt.meta',
+    },
+    {
+      id: 'handout-public',
+      category: 'handout',
+      scope: 'public',
+      titleKey: 'campaignRuntime.log.entries.handoutPublic.title',
+      bodyKey: 'campaignRuntime.log.entries.handoutPublic.body',
+      metaKey: 'campaignRuntime.log.entries.handoutPublic.meta',
+    },
+  ];
+
+  const visibleRuntimeLogFilters = runtimeLogFilters.filter((filter) => isHost || !filter.hostOnly);
+  const visibleRuntimeLogEntries = runtimeLogEntries.filter((entry) => isHost || entry.scope === 'public');
+
   const renderPlaceholderList = (items: string[]) => (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {items.map((key) => (
@@ -151,6 +209,57 @@ export function CampaignRuntimeShell({
           {t(key)}
         </button>
       ))}
+    </div>
+  );
+
+  const renderRuntimeLogPanel = () => (
+    <div className="mt-3 space-y-3">
+      <div>
+        <div className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>
+          {t('campaignRuntime.log.filterLabel')}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {visibleRuntimeLogFilters.map((filter, index) => (
+            <span
+              key={filter.id}
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${
+                index === 0 ? `${theme.badge} opacity-100` : `${theme.action} opacity-70`
+              }`}
+            >
+              {t(filter.labelKey)}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className={`rounded-lg border p-3 text-xs leading-relaxed ${theme.card}`}>
+        <div className={`font-bold ${theme.accent}`}>{t('campaignRuntime.log.shellTitle')}</div>
+        <p className={`mt-1 ${theme.muted}`}>{t('campaignRuntime.log.shellNote')}</p>
+      </div>
+
+      <div className="space-y-2">
+        {visibleRuntimeLogEntries.map((entry) => (
+          <article key={entry.id} className={`rounded-lg border p-3 ${theme.card}`}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${theme.badge}`}>
+                {t(`campaignRuntime.log.category.${entry.category}`)}
+              </span>
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
+                {t(entry.metaKey)}
+              </span>
+            </div>
+            <h4 className={`mt-2 text-sm font-bold ${theme.accent}`}>{t(entry.titleKey)}</h4>
+            <p className={`mt-1 text-xs leading-relaxed ${theme.muted}`}>{t(entry.bodyKey)}</p>
+          </article>
+        ))}
+      </div>
+
+      {!isHost ? (
+        <div className={`rounded-lg border p-3 text-xs leading-relaxed ${theme.card}`}>
+          <div className={`font-bold ${theme.accent}`}>{t('campaignRuntime.log.playerLockedTitle')}</div>
+          <p className={`mt-1 ${theme.muted}`}>{t('campaignRuntime.log.playerLockedNote')}</p>
+        </div>
+      ) : null}
     </div>
   );
 
@@ -278,7 +387,7 @@ export function CampaignRuntimeShell({
         <section className={`rounded-lg border p-4 ${theme.panel}`}>
           <h3 className={`text-sm font-bold ${theme.accent}`}>{t('campaignRuntime.log.title')}</h3>
           <p className={`mt-1 text-xs ${theme.muted}`}>{t('campaignRuntime.log.note')}</p>
-          <div className="mt-3">{renderPlaceholderList(logItems)}</div>
+          {renderRuntimeLogPanel()}
         </section>
 
         <section className={`rounded-lg border p-4 ${theme.panel}`}>
