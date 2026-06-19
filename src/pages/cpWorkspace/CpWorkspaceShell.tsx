@@ -1,14 +1,16 @@
 import { useState, type ReactNode } from 'react';
-import { BookOpen } from 'lucide-react';
+import { ArrowLeft, BookOpen } from 'lucide-react';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useCpStore } from '../../store/cpStore';
 // AI-LANDMARK: CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1
 import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
 import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
 import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
+import { ContextBar } from '../../components/platform/ContextBar';
 import { SystemWorkspaceEntryShell } from '../../components/platform/SystemWorkspaceEntryShell';
 import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
 import { CPRED_RULE_SOURCES } from './cpRuleSourcesAdapter';
+import { makeCampaignActorAddReturnContextFromSelect } from '../../lib/platform/campaignFlow';
 import { deriveVaultSummaries, type ActorVaultAdapter } from '../../lib/platform/actorVault';
 import type { CpCharacter } from '../../lib/cp-types';
 import type {
@@ -737,17 +739,27 @@ export function CpWorkspaceShell({
               defaultSortKey="default"
               onEnterActor={_cpVaultAdapter.onEnterActor}
               onRequestAdd={() => {
-                setCampaignActorAddContext(null);
-                setCampaignActorSelectContext(null);
-                setSuggestedCampaignActor(null);
+                if (campaignActorSelectContext) {
+                  setCampaignActorAddContext(makeCampaignActorAddReturnContextFromSelect(campaignActorSelectContext));
+                  setCampaignActorSelectContext(null);
+                } else {
+                  setCampaignActorAddContext(null);
+                  setCampaignActorSelectContext(null);
+                  setSuggestedCampaignActor(null);
+                }
                 onViewChange('createMethod');
               }}
-              campaignActorSelectContext={campaignActorSelectContext}
+              purpose={
+                campaignActorSelectContext
+                  ? { kind: 'selectForCampaign', context: campaignActorSelectContext }
+                  : { kind: 'manage' }
+              }
               onSelectActorForCampaign={handleSelectActorForCampaign}
               onReturnToCampaignEntry={handleReturnToCampaignEntry}
               strings={_cpVaultStrings}
               colorTheme={CP_VAULT_COLOR_THEME}
               panelClassName={panelClass}
+              contextBarClassName="border-[#d8b954]/35 bg-black/20 text-[#f5e8a3]"
             />
           )}
 
@@ -780,23 +792,14 @@ export function CpWorkspaceShell({
           {!campaignRuntimeContext && view === 'createMethod' && (
             <section className={panelClass}>
               {campaignActorAddContext && (
-                <div className="mb-4 rounded border border-[#d8b954]/35 bg-black/20 p-4 text-sm">
-                  <div className={`font-bold ${gold.accentStrong}`}>
-                    {t('campaignLibrary.returnContext.addingActorPrefix')}「{campaignActorAddContext.campaignTitle}
-                    {campaignActorAddContext.campaignRoomCode ? ` #${campaignActorAddContext.campaignRoomCode}` : ''}」
-                    {t('campaignLibrary.returnContext.addingActorSuffix')}
-                  </div>
-                  <p className="mt-1 text-xs opacity-70">
-                    {t('campaignLibrary.returnContext.afterComplete')}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleReturnToCampaignEntry}
-                    className={`mt-3 border px-3 py-1.5 text-xs font-bold transition ${gold.secondary}`}
-                  >
-                    {campaignActorAddContext.returnLabel}
-                  </button>
-                </div>
+                <ContextBar
+                  label={`${t('campaignLibrary.returnContext.addingActorPrefix')}「${campaignActorAddContext.campaignTitle}${
+                    campaignActorAddContext.campaignRoomCode ? ` #${campaignActorAddContext.campaignRoomCode}` : ''
+                  }」${t('campaignLibrary.returnContext.addingActorSuffix')} ${t('campaignLibrary.returnContext.afterComplete')}`}
+                  backLabel={campaignActorAddContext.returnLabel}
+                  onBack={handleReturnToCampaignEntry}
+                  className="mb-4 border-[#d8b954]/35 bg-black/20 text-[#f5e8a3]"
+                />
               )}
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
@@ -977,11 +980,11 @@ export function CpWorkspaceShell({
                 <button
                   type="button"
                   onClick={handleBack}
-                  className={`mt-5 border px-4 py-2 text-xs font-bold uppercase tracking-wider ${gold.secondary}`}
+                  aria-label={canGoBack && onBack ? t('navigation.backOneLevel') : t('multiWorkspace.actions.backToWorkspace')}
+                  title={canGoBack && onBack ? t('navigation.backOneLevel') : t('multiWorkspace.actions.backToWorkspace')}
+                  className={`mt-5 inline-flex h-9 w-9 items-center justify-center rounded-md border ${gold.secondary}`}
                 >
-                  {canGoBack && onBack
-                    ? t('navigation.backOneLevel')
-                    : t('multiWorkspace.actions.backToWorkspace')}
+                  <ArrowLeft className="h-4 w-4" />
                 </button>
               </section>
             </div>

@@ -15,6 +15,11 @@
  *   playerCharacter | investigator | edgerunner | unit | vehicle | npc | companion | custom
  */
 
+import type {
+  CampaignActorAddReturnContext,
+  CampaignActorSelectReturnContext,
+} from './campaignFlow';
+
 // ─── Core summary type ─────────────────────────────────────────────────────────
 
 /**
@@ -60,6 +65,13 @@ export type ActorVaultMetaRow = {
   label: string;
   value: string;
 };
+
+// ─── Library purpose ───────────────────────────────────────────────────────────
+
+export type ActorVaultPurpose =
+  | { kind: 'manage' }
+  | { kind: 'selectForCampaign'; context: CampaignActorSelectReturnContext }
+  | { kind: 'addForCampaign'; context: CampaignActorAddReturnContext };
 
 // ─── Stats (vault homepage) ────────────────────────────────────────────────────
 

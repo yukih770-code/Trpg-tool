@@ -18,16 +18,15 @@
 
 import { useEffect, useState } from 'react';
 import type {
+  ActorVaultPurpose,
   ActorVaultSummary,
   ActorVaultStats,
   ActorVaultSortOption,
   ActorVaultColorTheme,
   ActorVaultShellStrings,
 } from '../../lib/platform/actorVault';
-import type {
-  CampaignActorSelectReturnContext,
-  CampaignSuggestedActor,
-} from '../../lib/platform/campaignFlow';
+import type { CampaignActorSelectReturnContext, CampaignSuggestedActor } from '../../lib/platform/campaignFlow';
+import { ContextBar } from './ContextBar';
 
 // ─── Internal types ────────────────────────────────────────────────────────────
 
@@ -52,7 +51,7 @@ export type ActorVaultLibraryShellProps = {
    * The system workspace shell routes this to its creation flow.
    */
   onRequestAdd: () => void;
-  campaignActorSelectContext?: CampaignActorSelectReturnContext | null;
+  purpose?: ActorVaultPurpose;
   onSelectActorForCampaign?: (
     actor: CampaignSuggestedActor,
     context: CampaignActorSelectReturnContext,
@@ -64,6 +63,7 @@ export type ActorVaultLibraryShellProps = {
   colorTheme: ActorVaultColorTheme;
   /** Panel wrapper className (e.g. the system's rounded-border card style). */
   panelClassName: string;
+  contextBarClassName?: string;
 };
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -75,23 +75,30 @@ export function ActorVaultLibraryShell({
   defaultSortKey,
   onEnterActor,
   onRequestAdd,
-  campaignActorSelectContext,
+  purpose = { kind: 'manage' },
   onSelectActorForCampaign,
   onReturnToCampaignEntry,
   strings,
   colorTheme: t,
   panelClassName,
+  contextBarClassName,
 }: ActorVaultLibraryShellProps) {
   const [mode, setMode] = useState<LibraryMode>('home');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterValue>('all');
   const [sortKey, setSortKey] = useState(defaultSortKey);
 
+  const campaignActorSelectContext =
+    purpose.kind === 'selectForCampaign' ? purpose.context : null;
+  const campaignActorAddContext = purpose.kind === 'addForCampaign' ? purpose.context : null;
+
   useEffect(() => {
-    if (campaignActorSelectContext) {
-      setMode('existing');
-    }
-  }, [campaignActorSelectContext]);
+    setMode('home');
+  }, [
+    purpose.kind,
+    campaignActorSelectContext?.campaignId,
+    campaignActorAddContext?.campaignId,
+  ]);
 
   // ── Derived: filtered + sorted summaries ──────────────────────────────────
 
@@ -125,11 +132,40 @@ export function ActorVaultLibraryShell({
     }
   });
 
+  const contextLabel = campaignActorSelectContext
+    ? `${strings.campaignSelectionPrefix}「${campaignActorSelectContext.campaignTitle}${
+        campaignActorSelectContext.campaignRoomCode
+          ? ` #${campaignActorSelectContext.campaignRoomCode}`
+          : ''
+      }」${strings.campaignSelectionSuffix}`
+    : campaignActorAddContext
+      ? `${strings.campaignSelectionPrefix}「${campaignActorAddContext.campaignTitle}${
+          campaignActorAddContext.campaignRoomCode
+            ? ` #${campaignActorAddContext.campaignRoomCode}`
+            : ''
+        }」${strings.campaignSelectionSuffix}`
+      : '';
+
+  const contextBar = campaignActorSelectContext ? (
+    <ContextBar
+      label={contextLabel}
+      status={strings.selectForCampaignLabel}
+      backLabel={campaignActorSelectContext.returnLabel}
+      onBack={
+        onReturnToCampaignEntry
+          ? () => onReturnToCampaignEntry(campaignActorSelectContext)
+          : undefined
+      }
+      className={contextBarClassName}
+    />
+  ) : null;
+
   // ── Home view ─────────────────────────────────────────────────────────────
 
   if (mode === 'home') {
     return (
       <div className="flex flex-col gap-6">
+        {contextBar}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 
           {/* ── Existing actors card ── */}
@@ -180,6 +216,7 @@ export function ActorVaultLibraryShell({
 
   return (
     <div className="flex flex-col gap-4">
+      {contextBar}
 
       {/* ── Page header (no back button — top nav handles history/up/breadcrumb) ── */}
       <div>
@@ -192,28 +229,6 @@ export function ActorVaultLibraryShell({
         <h2 className={`mt-1 text-xl font-bold ${t.text}`}>{strings.libraryTitle}</h2>
         <p className={`mt-0.5 text-xs ${t.textMuted} opacity-60`}>{strings.existingActorsSubtitle}</p>
       </div>
-
-      {campaignActorSelectContext && (
-        <div className={`${panelClassName} text-sm`}>
-          <div className={`font-bold ${t.text}`}>
-            {strings.campaignSelectionPrefix}「{campaignActorSelectContext.campaignTitle}
-            {campaignActorSelectContext.campaignRoomCode ? ` #${campaignActorSelectContext.campaignRoomCode}` : ''}」
-            {strings.campaignSelectionSuffix}
-          </div>
-          <p className={`mt-1 text-xs leading-relaxed ${t.textMuted}`}>
-            {strings.campaignSelectionNote}
-          </p>
-          {onReturnToCampaignEntry && (
-            <button
-              type="button"
-              onClick={() => onReturnToCampaignEntry(campaignActorSelectContext)}
-              className={`mt-3 border px-3 py-1.5 text-xs font-bold transition ${t.borderActive} ${t.text} ${t.bgHover}`}
-            >
-              {strings.returnToCampaignEntry}
-            </button>
-          )}
-        </div>
-      )}
 
       {/* ── Search / Sort / Filter bar ── */}
       <div className={panelClassName}>

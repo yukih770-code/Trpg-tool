@@ -206,3 +206,16 @@ export function makeCampaignReturnTo(
 ): Pick<CampaignEntryContext, 'returnTo'> {
   return { returnTo };
 }
+
+export function makeCampaignActorAddReturnContextFromSelect(
+  context: CampaignActorSelectReturnContext,
+): CampaignActorAddReturnContext {
+  return {
+    campaignId: context.campaignId,
+    campaignTitle: context.campaignTitle,
+    campaignRoomCode: context.campaignRoomCode,
+    source: context.source,
+    returnLabel: context.returnLabel,
+    returnTo: context.returnTo,
+  };
+}

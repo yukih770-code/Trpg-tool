@@ -12,9 +12,11 @@ import { useCharacterStore } from '../../store/characterStore';
 import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
 import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
 import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
+import { ContextBar } from '../../components/platform/ContextBar';
 import { SystemWorkspaceEntryShell } from '../../components/platform/SystemWorkspaceEntryShell';
 import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
 import { DND_RULE_SOURCES } from './dndRuleSourcesAdapter';
+import { makeCampaignActorAddReturnContextFromSelect } from '../../lib/platform/campaignFlow';
 import {
   buildDndActorSummary,
   buildDndVaultStats,
@@ -285,23 +287,14 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
           {!campaignRuntimeContext && view === 'create' && (
             <section className={panelClass}>
               {campaignActorAddContext && (
-                <div className="mb-4 border border-[#58180d]/30 bg-white/50 p-4 text-sm text-[#58180d]">
-                  <div className="font-bold">
-                    {t('campaignLibrary.returnContext.addingActorPrefix')}「{campaignActorAddContext.campaignTitle}
-                    {campaignActorAddContext.campaignRoomCode ? ` #${campaignActorAddContext.campaignRoomCode}` : ''}」
-                    {t('campaignLibrary.returnContext.addingActorSuffix')}
-                  </div>
-                  <p className="mt-1 text-xs text-[#58180d]/70">
-                    {t('campaignLibrary.returnContext.afterComplete')}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleReturnToCampaignEntry}
-                    className="mt-3 border border-[#58180d]/40 px-3 py-1.5 text-xs font-bold text-[#58180d] transition hover:border-[#58180d] hover:bg-[#58180d]/10"
-                  >
-                    {campaignActorAddContext.returnLabel}
-                  </button>
-                </div>
+                <ContextBar
+                  label={`${t('campaignLibrary.returnContext.addingActorPrefix')}「${campaignActorAddContext.campaignTitle}${
+                    campaignActorAddContext.campaignRoomCode ? ` #${campaignActorAddContext.campaignRoomCode}` : ''
+                  }」${t('campaignLibrary.returnContext.addingActorSuffix')} ${t('campaignLibrary.returnContext.afterComplete')}`}
+                  backLabel={campaignActorAddContext.returnLabel}
+                  onBack={handleReturnToCampaignEntry}
+                  className="mb-4 border-[#58180d]/30 bg-white/50 text-[#58180d]"
+                />
               )}
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
@@ -360,17 +353,27 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
               defaultSortKey="default"
               onEnterActor={(id) => _dndVaultAdapter.onEnterActor(id)}
               onRequestAdd={() => {
-                setCampaignActorAddContext(null);
-                setCampaignActorSelectContext(null);
-                setSuggestedCampaignActor(null);
+                if (campaignActorSelectContext) {
+                  setCampaignActorAddContext(makeCampaignActorAddReturnContextFromSelect(campaignActorSelectContext));
+                  setCampaignActorSelectContext(null);
+                } else {
+                  setCampaignActorAddContext(null);
+                  setCampaignActorSelectContext(null);
+                  setSuggestedCampaignActor(null);
+                }
                 onViewChange('create');
               }}
-              campaignActorSelectContext={campaignActorSelectContext}
+              purpose={
+                campaignActorSelectContext
+                  ? { kind: 'selectForCampaign', context: campaignActorSelectContext }
+                  : { kind: 'manage' }
+              }
               onSelectActorForCampaign={handleSelectActorForCampaign}
               onReturnToCampaignEntry={handleReturnToCampaignEntry}
               strings={_vaultStrings}
               colorTheme={DND_VAULT_COLOR_THEME}
               panelClassName={panelClass}
+              contextBarClassName="border-[#58180d]/30 bg-white/50 text-[#58180d]"
             />
           )}
 
