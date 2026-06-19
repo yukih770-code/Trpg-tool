@@ -1,9 +1,9 @@
-import type { CampaignInstanceSummary } from '../../lib/platform/campaignFlow';
+import type { CampaignEntryRole, CampaignInstanceSummary } from '../../lib/platform/campaignFlow';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useState } from 'react';
 
 type CampaignLibraryTone = 'dnd' | 'coc' | 'cp';
-type CampaignLibraryMode = 'home' | 'existing';
+type CampaignLibraryMode = 'home' | 'existing' | 'detail';
 
 type CampaignLibraryShellProps = {
   systemId: string;
@@ -62,6 +62,7 @@ export function CampaignLibraryShell({
 }: CampaignLibraryShellProps) {
   const { t } = createTranslator(readStoredLocale());
   const [libraryMode, setLibraryMode] = useState<CampaignLibraryMode>('home');
+  const [selectedEntryRole, setSelectedEntryRole] = useState<CampaignEntryRole>('playerCharacter');
   const theme = toneClasses[tone];
   const sampleCampaign: CampaignInstanceSummary = {
     campaignId: 'sample-grey-mist-a12f',
@@ -84,6 +85,15 @@ export function CampaignLibraryShell({
     ['campaignLibrary.stats.joined', '0'],
     ['campaignLibrary.stats.needsAttention', '0'],
     ['campaignLibrary.stats.recentPlayed', sampleCampaign.lastPlayedAt],
+  ];
+  const hostPrepItems = [
+    'campaignLibrary.detail.hostPrep.importActors',
+    'campaignLibrary.detail.hostPrep.addMap',
+    'campaignLibrary.detail.hostPrep.addHandout',
+    'campaignLibrary.detail.hostPrep.enablePackage',
+    'campaignLibrary.detail.hostPrep.managePlayers',
+    'campaignLibrary.detail.hostPrep.diceLogSettings',
+    'campaignLibrary.detail.hostPrep.campaignSettings',
   ];
 
   return (
@@ -202,7 +212,11 @@ export function CampaignLibraryShell({
             </div>
           </div>
 
-          <div className={`rounded-lg border p-4 ${theme.card}`}>
+          <button
+            type="button"
+            onClick={() => setLibraryMode('detail')}
+            className={`rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${theme.card}`}
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
@@ -229,6 +243,143 @@ export function CampaignLibraryShell({
                 </div>
               ))}
             </dl>
+          </button>
+        </div>
+      )}
+
+      {mode === 'library' && libraryMode === 'detail' && (
+        <div className="mt-5 flex flex-col gap-4">
+          <button
+            type="button"
+            onClick={() => setLibraryMode('existing')}
+            className={`self-start text-xs font-bold ${theme.muted}`}
+          >
+            {t('campaignLibrary.detail.backToMine')}
+          </button>
+
+          <div className={`rounded-lg border p-5 ${theme.card}`}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className={`text-[10px] font-bold uppercase tracking-[0.22em] ${theme.muted}`}>
+                  {t('campaignLibrary.detail.eyebrow')}
+                </div>
+                <h3 className={`mt-2 text-2xl font-bold ${theme.accent}`}>
+                  {sampleCampaign.title} #{sampleCampaign.roomCode}
+                </h3>
+                <p className={`mt-2 text-sm leading-relaxed ${theme.muted}`}>
+                  {t('campaignLibrary.detail.subtitle')}
+                </p>
+              </div>
+              <span className={`border px-2 py-0.5 text-[10px] uppercase tracking-wider ${theme.badge}`}>
+                {t('campaignLibrary.status.sample')}
+              </span>
+            </div>
+
+            <dl className="mt-5 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2 lg:grid-cols-5">
+              {[
+                [t('campaignLibrary.fields.system'), systemName],
+                [t('campaignLibrary.detail.fields.roomCode'), sampleCampaign.roomCode ?? '-'],
+                [t('campaignLibrary.fields.sourcePackage'), t('campaignLibrary.sample.sourcePackage')],
+                [t('campaignLibrary.fields.lastPlayed'), sampleCampaign.lastPlayedAt],
+                [t('campaignLibrary.detail.fields.identityStatus'), t('campaignLibrary.detail.identityStatus')],
+              ].map(([label, value]) => (
+                <div key={label} className="min-w-0">
+                  <dt className={`font-bold uppercase tracking-wider ${theme.muted}`}>{label}</dt>
+                  <dd className="mt-1 break-words font-semibold">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          <div className={`rounded-lg border p-5 ${theme.card}`}>
+            <h4 className={`text-lg font-bold ${theme.accent}`}>{t('campaignLibrary.detail.entry.title')}</h4>
+            <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
+              {t('campaignLibrary.detail.entry.suggestedActorNote')}
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+              <button
+                type="button"
+                onClick={() => setSelectedEntryRole('playerCharacter')}
+                className={`border p-4 text-left text-sm font-bold ${
+                  selectedEntryRole === 'playerCharacter' ? theme.primary : theme.secondary
+                }`}
+              >
+                {t('campaignLibrary.detail.entry.useExistingActor')}
+              </button>
+              <button
+                type="button"
+                disabled
+                className={`cursor-default border p-4 text-left text-sm font-bold opacity-65 ${theme.secondary}`}
+              >
+                <span className="block">{t('campaignLibrary.detail.entry.addActor')}</span>
+                <span className="mt-2 block text-xs font-normal opacity-75">
+                  {t('campaignLibrary.detail.entry.addActorNote')}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedEntryRole('host')}
+                className={`border p-4 text-left text-sm font-bold ${
+                  selectedEntryRole === 'host' ? theme.primary : theme.secondary
+                }`}
+              >
+                {t('campaignLibrary.detail.entry.enterAsHost')}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className={`rounded-lg border p-5 ${theme.card}`}>
+              <h4 className={`text-lg font-bold ${theme.accent}`}>{t('campaignLibrary.detail.playerPrep.title')}</h4>
+              <div className={`mt-3 text-sm ${theme.muted}`}>
+                <span className="font-bold">{t('campaignLibrary.detail.playerPrep.currentActor')}：</span>
+                {t('campaignLibrary.detail.playerPrep.unselected')}
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                {[
+                  'campaignLibrary.detail.playerPrep.chooseExisting',
+                  'campaignLibrary.detail.playerPrep.addActor',
+                  'campaignLibrary.detail.playerPrep.enterCampaign',
+                ].map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    disabled
+                    className={`cursor-default border px-3 py-2 text-xs font-bold opacity-65 ${theme.secondary}`}
+                  >
+                    {t(key)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={`rounded-lg border p-5 ${theme.card} ${selectedEntryRole === 'host' ? '' : 'opacity-55'}`}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h4 className={`text-lg font-bold ${theme.accent}`}>{t('campaignLibrary.detail.hostPrep.title')}</h4>
+                  <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
+                    {selectedEntryRole === 'host'
+                      ? t('campaignLibrary.detail.hostPrep.activeNote')
+                      : t('campaignLibrary.detail.hostPrep.disabledNote')}
+                  </p>
+                </div>
+                <span className={`border px-2 py-0.5 text-[10px] uppercase tracking-wider ${theme.badge}`}>
+                  {t('campaignLibrary.detail.placeholder')}
+                </span>
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {hostPrepItems.map((key) => (
+                  <button
+                    key={key}
+                    type="button"
+                    disabled
+                    className={`cursor-default border px-3 py-2 text-left text-xs font-bold opacity-65 ${theme.secondary}`}
+                  >
+                    {t(key)}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
