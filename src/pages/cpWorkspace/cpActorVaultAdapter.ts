@@ -187,5 +187,10 @@ export function buildCpVaultShellStrings(t: (key: string) => string): ActorVault
     filterComplete:         t('cpWorkspace.characterLibrary.filter.complete'),
     filterIncomplete:       t('cpWorkspace.characterLibrary.filter.incomplete'),
     enterActorLabel:        t('multiWorkspace.actions.viewCharacterSheet'),
+    campaignSelectionPrefix: t('campaignLibrary.returnContext.selectingActorPrefix'),
+    campaignSelectionSuffix: t('campaignLibrary.returnContext.selectingActorSuffix'),
+    campaignSelectionNote:   t('campaignLibrary.returnContext.selectingActorNote'),
+    returnToCampaignEntry:   t('campaignLibrary.returnContext.returnButton'),
+    selectForCampaignLabel:  t('campaignLibrary.returnContext.selectActorButton'),
   };
 }

@@ -10,7 +10,11 @@ import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../compo
 import { CPRED_RULE_SOURCES } from './cpRuleSourcesAdapter';
 import { deriveVaultSummaries, type ActorVaultAdapter } from '../../lib/platform/actorVault';
 import type { CpCharacter } from '../../lib/cp-types';
-import type { CampaignActorAddReturnContext } from '../../lib/platform/campaignFlow';
+import type {
+  CampaignActorAddReturnContext,
+  CampaignActorSelectReturnContext,
+  CampaignSuggestedActor,
+} from '../../lib/platform/campaignFlow';
 import {
   buildCpActorSummary,
   buildCpVaultAdapterStrings,
@@ -532,6 +536,10 @@ export function CpWorkspaceShell({
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
   const [campaignActorAddContext, setCampaignActorAddContext] =
     useState<CampaignActorAddReturnContext | null>(null);
+  const [campaignActorSelectContext, setCampaignActorSelectContext] =
+    useState<CampaignActorSelectReturnContext | null>(null);
+  const [suggestedCampaignActor, setSuggestedCampaignActor] =
+    useState<CampaignSuggestedActor | null>(null);
 
   const cpRuleSourcesTheme: SystemRuleSourcesTheme = {
     panel: gold.panel,
@@ -553,7 +561,20 @@ export function CpWorkspaceShell({
 
   const handleRequestAddActorForCampaign = (context: CampaignActorAddReturnContext) => {
     setCampaignActorAddContext(context);
+    setCampaignActorSelectContext(null);
     onViewChange('createMethod');
+  };
+
+  const handleRequestSelectActorForCampaign = (context: CampaignActorSelectReturnContext) => {
+    setCampaignActorSelectContext(context);
+    setCampaignActorAddContext(null);
+    onViewChange('vault');
+  };
+
+  const handleSelectActorForCampaign = (actor: CampaignSuggestedActor) => {
+    setSuggestedCampaignActor(actor);
+    setCampaignActorSelectContext(null);
+    onViewChange('campaigns');
   };
 
   const handleReturnToCampaignEntry = () => {
@@ -678,6 +699,8 @@ export function CpWorkspaceShell({
                 onEnterActors={() => onViewChange('vault')}
                 onEnterCampaigns={() => {
                   setCampaignActorAddContext(null);
+                  setCampaignActorSelectContext(null);
+                  setSuggestedCampaignActor(null);
                   onViewChange('campaigns');
                 }}
               />
@@ -699,8 +722,13 @@ export function CpWorkspaceShell({
               onEnterActor={_cpVaultAdapter.onEnterActor}
               onRequestAdd={() => {
                 setCampaignActorAddContext(null);
+                setCampaignActorSelectContext(null);
+                setSuggestedCampaignActor(null);
                 onViewChange('createMethod');
               }}
+              campaignActorSelectContext={campaignActorSelectContext}
+              onSelectActorForCampaign={handleSelectActorForCampaign}
+              onReturnToCampaignEntry={handleReturnToCampaignEntry}
               strings={_cpVaultStrings}
               colorTheme={CP_VAULT_COLOR_THEME}
               panelClassName={panelClass}
@@ -712,8 +740,10 @@ export function CpWorkspaceShell({
               systemId="cyberpunk-red"
               systemName={t('glossary.cyberpunkRed')}
               tone="cp"
-              initialMode={campaignActorAddContext ? 'detail' : undefined}
+              initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
+              suggestedActor={suggestedCampaignActor}
               onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
+              onRequestSelectActorForCampaign={handleRequestSelectActorForCampaign}
               onAddCampaign={() => onViewChange('createCampaign')}
               panelClassName={panelClass}
             />

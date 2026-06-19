@@ -16,7 +16,7 @@
  * Future: CocWorkspaceShell, CpWorkspaceShell via system-specific adapters.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type {
   ActorVaultSummary,
   ActorVaultStats,
@@ -24,6 +24,10 @@ import type {
   ActorVaultColorTheme,
   ActorVaultShellStrings,
 } from '../../lib/platform/actorVault';
+import type {
+  CampaignActorSelectReturnContext,
+  CampaignSuggestedActor,
+} from '../../lib/platform/campaignFlow';
 
 // ─── Internal types ────────────────────────────────────────────────────────────
 
@@ -48,6 +52,12 @@ export type ActorVaultLibraryShellProps = {
    * The system workspace shell routes this to its creation flow.
    */
   onRequestAdd: () => void;
+  campaignActorSelectContext?: CampaignActorSelectReturnContext | null;
+  onSelectActorForCampaign?: (
+    actor: CampaignSuggestedActor,
+    context: CampaignActorSelectReturnContext,
+  ) => void;
+  onReturnToCampaignEntry?: (context: CampaignActorSelectReturnContext) => void;
   /** All i18n strings consumed by the shell. Pass via t() from the workspace shell. */
   strings: ActorVaultShellStrings;
   /** Tailwind class strings for theming. Define as string literals in a .tsx file. */
@@ -65,6 +75,9 @@ export function ActorVaultLibraryShell({
   defaultSortKey,
   onEnterActor,
   onRequestAdd,
+  campaignActorSelectContext,
+  onSelectActorForCampaign,
+  onReturnToCampaignEntry,
   strings,
   colorTheme: t,
   panelClassName,
@@ -73,6 +86,12 @@ export function ActorVaultLibraryShell({
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterValue>('all');
   const [sortKey, setSortKey] = useState(defaultSortKey);
+
+  useEffect(() => {
+    if (campaignActorSelectContext) {
+      setMode('existing');
+    }
+  }, [campaignActorSelectContext]);
 
   // ── Derived: filtered + sorted summaries ──────────────────────────────────
 
@@ -174,6 +193,28 @@ export function ActorVaultLibraryShell({
         <p className={`mt-0.5 text-xs ${t.textMuted} opacity-60`}>{strings.existingActorsSubtitle}</p>
       </div>
 
+      {campaignActorSelectContext && (
+        <div className={`${panelClassName} text-sm`}>
+          <div className={`font-bold ${t.text}`}>
+            {strings.campaignSelectionPrefix}「{campaignActorSelectContext.campaignTitle}
+            {campaignActorSelectContext.campaignRoomCode ? ` #${campaignActorSelectContext.campaignRoomCode}` : ''}」
+            {strings.campaignSelectionSuffix}
+          </div>
+          <p className={`mt-1 text-xs leading-relaxed ${t.textMuted}`}>
+            {strings.campaignSelectionNote}
+          </p>
+          {onReturnToCampaignEntry && (
+            <button
+              type="button"
+              onClick={() => onReturnToCampaignEntry(campaignActorSelectContext)}
+              className={`mt-3 border px-3 py-1.5 text-xs font-bold transition ${t.borderActive} ${t.text} ${t.bgHover}`}
+            >
+              {strings.returnToCampaignEntry}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ── Search / Sort / Filter bar ── */}
       <div className={panelClassName}>
         <div className="flex flex-wrap gap-3">
@@ -238,6 +279,8 @@ export function ActorVaultLibraryShell({
                 strings={strings}
                 colorTheme={t}
                 onEnterActor={onEnterActor}
+                campaignActorSelectContext={campaignActorSelectContext}
+                onSelectActorForCampaign={onSelectActorForCampaign}
               />
             </div>
           ))}
@@ -255,9 +298,21 @@ type ActorVaultCardProps = {
   strings: ActorVaultShellStrings;
   colorTheme: ActorVaultColorTheme;
   onEnterActor: (id: string) => void;
+  campaignActorSelectContext?: CampaignActorSelectReturnContext | null;
+  onSelectActorForCampaign?: (
+    actor: CampaignSuggestedActor,
+    context: CampaignActorSelectReturnContext,
+  ) => void;
 };
 
-function ActorVaultCard({ summary, strings, colorTheme: t, onEnterActor }: ActorVaultCardProps) {
+function ActorVaultCard({
+  summary,
+  strings,
+  colorTheme: t,
+  onEnterActor,
+  campaignActorSelectContext,
+  onSelectActorForCampaign,
+}: ActorVaultCardProps) {
   const isComplete = summary.completionStatus === 'complete';
 
   return (
@@ -320,6 +375,20 @@ function ActorVaultCard({ summary, strings, colorTheme: t, onEnterActor }: Actor
 
       {/* ── Enter CTA ── */}
       <div className="flex flex-col justify-center gap-2 lg:w-40">
+        {campaignActorSelectContext && onSelectActorForCampaign && (
+          <button
+            type="button"
+            onClick={() =>
+              onSelectActorForCampaign(
+                { actorId: summary.id, actorName: summary.displayName },
+                campaignActorSelectContext,
+              )
+            }
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${t.border} ${t.bgAccent} ${t.textInvert}`}
+          >
+            {strings.selectForCampaignLabel}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onEnterActor(summary.id)}

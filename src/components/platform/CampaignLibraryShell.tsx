@@ -1,7 +1,9 @@
 import type {
   CampaignActorAddReturnContext,
+  CampaignActorSelectReturnContext,
   CampaignEntryRole,
   CampaignInstanceSummary,
+  CampaignSuggestedActor,
 } from '../../lib/platform/campaignFlow';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useEffect, useState } from 'react';
@@ -15,8 +17,10 @@ type CampaignLibraryShellProps = {
   tone: CampaignLibraryTone;
   mode?: 'library' | 'create';
   initialMode?: CampaignLibraryMode;
+  suggestedActor?: CampaignSuggestedActor | null;
   onAddCampaign?: () => void;
   onRequestAddActorForCampaign?: (context: CampaignActorAddReturnContext) => void;
+  onRequestSelectActorForCampaign?: (context: CampaignActorSelectReturnContext) => void;
   panelClassName?: string;
 };
 
@@ -64,8 +68,10 @@ export function CampaignLibraryShell({
   tone,
   mode = 'library',
   initialMode,
+  suggestedActor,
   onAddCampaign,
   onRequestAddActorForCampaign,
+  onRequestSelectActorForCampaign,
   panelClassName,
 }: CampaignLibraryShellProps) {
   const { t } = createTranslator(readStoredLocale());
@@ -110,6 +116,22 @@ export function CampaignLibraryShell({
 
   const requestAddActorForCampaign = () => {
     onRequestAddActorForCampaign?.({
+      campaignId: sampleCampaign.campaignId,
+      campaignTitle: sampleCampaign.title,
+      campaignRoomCode: sampleCampaign.roomCode,
+      source: 'campaignEntry',
+      returnLabel: t('campaignLibrary.returnContext.returnButton'),
+      returnTo: {
+        view: 'campaignDetail',
+        systemId,
+        campaignId: sampleCampaign.campaignId,
+      },
+    });
+  };
+
+  const requestSelectActorForCampaign = () => {
+    setSelectedEntryRole('playerCharacter');
+    onRequestSelectActorForCampaign?.({
       campaignId: sampleCampaign.campaignId,
       campaignTitle: sampleCampaign.title,
       campaignRoomCode: sampleCampaign.roomCode,
@@ -326,7 +348,7 @@ export function CampaignLibraryShell({
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
               <button
                 type="button"
-                onClick={() => setSelectedEntryRole('playerCharacter')}
+                onClick={requestSelectActorForCampaign}
                 className={`border p-4 text-left text-sm font-bold ${
                   selectedEntryRole === 'playerCharacter' ? theme.primary : theme.secondary
                 }`}
@@ -365,13 +387,23 @@ export function CampaignLibraryShell({
               <h4 className={`text-lg font-bold ${theme.accent}`}>{t('campaignLibrary.detail.playerPrep.title')}</h4>
               <div className={`mt-3 text-sm ${theme.muted}`}>
                 <span className="font-bold">{t('campaignLibrary.detail.playerPrep.currentActor')}：</span>
-                {t('campaignLibrary.detail.playerPrep.unselected')}
+                {suggestedActor?.actorName ?? t('campaignLibrary.detail.playerPrep.unselected')}
               </div>
+              {suggestedActor && (
+                <div className={`mt-3 rounded border p-3 text-xs leading-relaxed ${theme.badge}`}>
+                  <div className="font-bold">
+                    {t('campaignLibrary.detail.playerPrep.suggestedActor')}：{suggestedActor.actorName}
+                  </div>
+                  <p className="mt-1 opacity-75">
+                    {t('campaignLibrary.detail.playerPrep.suggestedActorNote')}
+                  </p>
+                </div>
+              )}
               <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <button
                   type="button"
-                  disabled
-                  className={`cursor-default border px-3 py-2 text-xs font-bold opacity-65 ${theme.secondary}`}
+                  onClick={requestSelectActorForCampaign}
+                  className={`border px-3 py-2 text-xs font-bold ${theme.secondary}`}
                 >
                   {t('campaignLibrary.detail.playerPrep.chooseExisting')}
                 </button>

@@ -199,4 +199,9 @@ export type ActorVaultShellStrings = {
   filterComplete: string;
   filterIncomplete: string;
   enterActorLabel: string;
+  campaignSelectionPrefix: string;
+  campaignSelectionSuffix: string;
+  campaignSelectionNote: string;
+  returnToCampaignEntry: string;
+  selectForCampaignLabel: string;
 };

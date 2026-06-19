@@ -157,6 +157,11 @@ export function buildDndVaultShellStrings(t: (key: string) => string): ActorVaul
     filterComplete:   t('dndWorkspace.characterLibrary.filter.complete'),
     filterIncomplete: t('dndWorkspace.characterLibrary.filter.incomplete'),
     enterActorLabel:  t('dndWorkspace.actions.viewSheet'),
+    campaignSelectionPrefix: t('campaignLibrary.returnContext.selectingActorPrefix'),
+    campaignSelectionSuffix: t('campaignLibrary.returnContext.selectingActorSuffix'),
+    campaignSelectionNote:   t('campaignLibrary.returnContext.selectingActorNote'),
+    returnToCampaignEntry:   t('campaignLibrary.returnContext.returnButton'),
+    selectForCampaignLabel:  t('campaignLibrary.returnContext.selectActorButton'),
   };
 }
 

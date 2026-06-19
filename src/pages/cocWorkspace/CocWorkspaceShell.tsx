@@ -19,7 +19,11 @@ import {
 import { deriveVaultSummaries } from '../../lib/platform/actorVault';
 import type { ActorVaultAdapter } from '../../lib/platform/actorVault';
 import type { CocCharacter } from '../../lib/coc-types';
-import type { CampaignActorAddReturnContext } from '../../lib/platform/campaignFlow';
+import type {
+  CampaignActorAddReturnContext,
+  CampaignActorSelectReturnContext,
+  CampaignSuggestedActor,
+} from '../../lib/platform/campaignFlow';
 
 /**
  * CocWorkspaceShell
@@ -391,6 +395,10 @@ export function CocWorkspaceShell({
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
   const [campaignActorAddContext, setCampaignActorAddContext] =
     useState<CampaignActorAddReturnContext | null>(null);
+  const [campaignActorSelectContext, setCampaignActorSelectContext] =
+    useState<CampaignActorSelectReturnContext | null>(null);
+  const [suggestedCampaignActor, setSuggestedCampaignActor] =
+    useState<CampaignSuggestedActor | null>(null);
 
   const cocRuleSourcesTheme: SystemRuleSourcesTheme = {
     panel: teal.panel,
@@ -412,7 +420,20 @@ export function CocWorkspaceShell({
 
   const handleRequestAddActorForCampaign = (context: CampaignActorAddReturnContext) => {
     setCampaignActorAddContext(context);
+    setCampaignActorSelectContext(null);
     onViewChange('createMethod');
+  };
+
+  const handleRequestSelectActorForCampaign = (context: CampaignActorSelectReturnContext) => {
+    setCampaignActorSelectContext(context);
+    setCampaignActorAddContext(null);
+    onViewChange('vault');
+  };
+
+  const handleSelectActorForCampaign = (actor: CampaignSuggestedActor) => {
+    setSuggestedCampaignActor(actor);
+    setCampaignActorSelectContext(null);
+    onViewChange('campaigns');
   };
 
   const handleReturnToCampaignEntry = () => {
@@ -561,6 +582,8 @@ export function CocWorkspaceShell({
                 onEnterActors={() => onViewChange('vault')}
                 onEnterCampaigns={() => {
                   setCampaignActorAddContext(null);
+                  setCampaignActorSelectContext(null);
+                  setSuggestedCampaignActor(null);
                   onViewChange('campaigns');
                 }}
               />
@@ -582,8 +605,13 @@ export function CocWorkspaceShell({
               onEnterActor={(_id) => onViewChange('sheet')}
               onRequestAdd={() => {
                 setCampaignActorAddContext(null);
+                setCampaignActorSelectContext(null);
+                setSuggestedCampaignActor(null);
                 onViewChange('createMethod');
               }}
+              campaignActorSelectContext={campaignActorSelectContext}
+              onSelectActorForCampaign={handleSelectActorForCampaign}
+              onReturnToCampaignEntry={handleReturnToCampaignEntry}
               strings={_cocVaultStrings}
               colorTheme={COC_VAULT_COLOR_THEME}
               panelClassName={panelClass}
@@ -595,8 +623,10 @@ export function CocWorkspaceShell({
               systemId="coc7e"
               systemName={t('glossary.coc7e')}
               tone="coc"
-              initialMode={campaignActorAddContext ? 'detail' : undefined}
+              initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
+              suggestedActor={suggestedCampaignActor}
               onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
+              onRequestSelectActorForCampaign={handleRequestSelectActorForCampaign}
               onAddCampaign={() => onViewChange('createCampaign')}
               panelClassName={panelClass}
             />

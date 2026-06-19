@@ -79,6 +79,20 @@ export interface CampaignActorAddReturnContext {
   returnTo: CampaignEntryReturnTo;
 }
 
+export interface CampaignActorSelectReturnContext {
+  campaignId: string;
+  campaignTitle: string;
+  campaignRoomCode?: string;
+  source: 'campaignEntry';
+  returnLabel: string;
+  returnTo: CampaignEntryReturnTo;
+}
+
+export interface CampaignSuggestedActor {
+  actorId: string;
+  actorName: string;
+}
+
 export interface CampaignInstanceSummary {
   campaignId: string;
   systemId: string;

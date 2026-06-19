@@ -24,7 +24,11 @@ import {
 } from './dndActorVaultAdapter';
 import { deriveVaultSummaries } from '../../lib/platform/actorVault';
 import type { ActorVaultAdapter } from '../../lib/platform/actorVault';
-import type { CampaignActorAddReturnContext } from '../../lib/platform/campaignFlow';
+import type {
+  CampaignActorAddReturnContext,
+  CampaignActorSelectReturnContext,
+  CampaignSuggestedActor,
+} from '../../lib/platform/campaignFlow';
 
 /**
  * DndWorkspaceShell
@@ -79,6 +83,10 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
   const [campaignActorAddContext, setCampaignActorAddContext] =
     useState<CampaignActorAddReturnContext | null>(null);
+  const [campaignActorSelectContext, setCampaignActorSelectContext] =
+    useState<CampaignActorSelectReturnContext | null>(null);
+  const [suggestedCampaignActor, setSuggestedCampaignActor] =
+    useState<CampaignSuggestedActor | null>(null);
 
   // AI-LANDMARK: PLATFORM_ACTOR_VAULT_LIBRARY_FRAMEWORK_EXTRACTION_V1
   // DND Actor Vault adapter: maps CharacterData to platform ActorVaultSummary.
@@ -184,7 +192,20 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
 
   const handleRequestAddActorForCampaign = (context: CampaignActorAddReturnContext) => {
     setCampaignActorAddContext(context);
+    setCampaignActorSelectContext(null);
     onViewChange('create');
+  };
+
+  const handleRequestSelectActorForCampaign = (context: CampaignActorSelectReturnContext) => {
+    setCampaignActorSelectContext(context);
+    setCampaignActorAddContext(null);
+    onViewChange('characters');
+  };
+
+  const handleSelectActorForCampaign = (actor: CampaignSuggestedActor) => {
+    setSuggestedCampaignActor(actor);
+    setCampaignActorSelectContext(null);
+    onViewChange('campaigns');
   };
 
   const handleReturnToCampaignEntry = () => {
@@ -236,6 +257,8 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                 onEnterActors={() => onViewChange('characters')}
                 onEnterCampaigns={() => {
                   setCampaignActorAddContext(null);
+                  setCampaignActorSelectContext(null);
+                  setSuggestedCampaignActor(null);
                   onViewChange('campaigns');
                 }}
               />
@@ -321,8 +344,13 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
               onEnterActor={(id) => _dndVaultAdapter.onEnterActor(id)}
               onRequestAdd={() => {
                 setCampaignActorAddContext(null);
+                setCampaignActorSelectContext(null);
+                setSuggestedCampaignActor(null);
                 onViewChange('create');
               }}
+              campaignActorSelectContext={campaignActorSelectContext}
+              onSelectActorForCampaign={handleSelectActorForCampaign}
+              onReturnToCampaignEntry={handleReturnToCampaignEntry}
               strings={_vaultStrings}
               colorTheme={DND_VAULT_COLOR_THEME}
               panelClassName={panelClass}
@@ -334,8 +362,10 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
               systemId="dnd2024"
               systemName="DND 2024"
               tone="dnd"
-              initialMode={campaignActorAddContext ? 'detail' : undefined}
+              initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
+              suggestedActor={suggestedCampaignActor}
               onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
+              onRequestSelectActorForCampaign={handleRequestSelectActorForCampaign}
               onAddCampaign={() => onViewChange('createCampaign')}
               panelClassName={panelClass}
             />
