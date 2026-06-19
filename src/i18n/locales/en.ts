@@ -322,13 +322,13 @@ export const en = {
     },
     landingNote: 'The Workshop handles discovery and subscription. Subscribed content lands in the matching library by type.',
     landing: {
-      actorVault: 'Actor Vault',
+      actorVault: 'My Characters',
       npcLibrary: 'NPC Library',
       campaignAssets: 'Campaign Assets',
       mapLibrary: 'Map Library',
       mediaLibrary: 'Media Library',
       systemRuleSources: "the system's Rule Sources",
-      campaignVault: 'Campaign Vault',
+      campaignVault: 'My Campaigns',
       moduleLibrary: 'Module Library',
       toolLibrary: 'Tool Library',
       splitByShape: 'split by inner asset type',
@@ -571,13 +571,16 @@ export const en = {
     },
   },
   navigation: {
-    actorVault: 'Actor Vault',
+    actorModule: 'Characters',
+    campaignModule: 'Campaigns',
+    actorVault: 'My Characters',
+    campaignVault: 'My Campaigns',
     rulesCompendium: 'Rules Compendium',
     sourceStatus: 'Data Status',
     ruleSources: 'Rule Sources',
     systemInfo: 'System Info',
     aboutSystem: 'About This System',
-    backToActorVault: 'Back to Actor Vault',
+    backToActorVault: 'Back to My Characters',
     backOneLevel: 'Back One Level',
     upOneLevel: 'Up One Level',
     backToSystemSelect: 'Back to System Selection',
@@ -600,13 +603,40 @@ export const en = {
       platform: 'Platform',
       play: 'Play',
       systemOverview: 'System Info',
-      actorVault: 'Actor Vault',
+      actorVault: 'My Characters',
+      campaignVault: 'My Campaigns',
+      campaignCreation: 'Create Campaign',
       creationMethod: 'Create',
       actorSheet: 'Character Sheet',
       rulesCompendium: 'Compendium',
       sourceStatus: 'Source Status',
       runtime: 'Runtime',
       builder: 'Builder',
+    },
+  },
+  systemWorkspaceEntry: {
+    eyebrow: 'System Workspace',
+    workspace: 'Workspace',
+    subtitle: 'The system workspace only chooses the primary module. Add, create, and import options unfold after entering that module.',
+    actor: {
+      title: 'Characters',
+      enter: 'Enter Characters',
+    },
+    campaign: {
+      title: 'Campaigns',
+      enter: 'Enter Campaigns',
+    },
+    dnd: {
+      actorNote: 'Manage your DND characters.',
+      campaignNote: 'Manage your DND campaign instances.',
+    },
+    coc: {
+      actorNote: 'Enter to manage characters and use creation flows shaped by investigator skills, sanity, and growth checks.',
+      campaignNote: 'Enter to manage COC investigation campaign instances, public clues, logs, and keeper resources.',
+    },
+    cp: {
+      actorNote: 'Enter to manage characters and use creation flows shaped by role abilities, cyberware, humanity, and black market context.',
+      campaignNote: 'Enter to manage actual Night City campaign instances, NPCs, maps, and logs.',
     },
   },
   dndWorkspace: {
@@ -658,7 +688,7 @@ export const en = {
       workshop: 'Import from Workshop',
       workshopNote: 'Future support may include Steam Workshop-style community content: one-click subscriptions, dependencies, versions, author pages, ratings, and collections.',
       plannedMessage: 'This feature will be connected in a later version; this round does not implement real Workshop, subscriptions, downloads, accounts, backend, or dependency installation.',
-      actorFlowNote: 'Builder belongs to the creation flow; Sheet and Runtime are Actor context (enter via Vault CTA), not top navigation.',
+      actorFlowNote: 'Builder belongs to the creation flow; Sheet and Runtime are character context (enter via My Characters CTA), not top navigation.',
     },
     planned: {
       inventory: 'Backpack and equipment instances belong to the Actor Workspace. Select a character first, then access inventory features inside the Actor Workspace.',
@@ -703,9 +733,9 @@ export const en = {
       class: 'Class',
     },
     characterLibrary: {
-      title: 'Existing Characters',
+      title: 'My Characters',
       existingActorsSubtitle: 'Manage your DND characters, search, filter, and open their sheets.',
-      backToVault: 'Back to Vault',
+      backToVault: 'Back to My Characters',
       searchPlaceholder: 'Search by name, class, species, background…',
       noResults: 'No characters match your search',
       statusComplete: 'Complete',
@@ -759,7 +789,7 @@ export const en = {
       createEdgerunner: 'Create Edgerunner',
     },
     actorVault: {
-      existingActors: 'Existing Actors',
+      existingActors: 'My Characters',
       addActor: 'Add Actor',
       activeIndicator: 'Active',
       addActorNote: 'Create, import, or add characters from the community.',
@@ -838,9 +868,9 @@ export const en = {
   cocWorkspace: {
     title: 'COC Workspace',
     characterLibrary: {
-      title: 'Existing Characters',
+      title: 'My Characters',
       existingActorsSubtitle: 'Manage your COC investigators, search, filter, and open their sheets.',
-      backToVault: 'Back to Vault',
+      backToVault: 'Back to My Characters',
       searchPlaceholder: 'Search by name, occupation, era, residence…',
       noResults: 'No investigators match your search',
       statusComplete: 'Complete',
@@ -860,7 +890,7 @@ export const en = {
     },
     creation: {
       builderBoundary: 'Creator: build only',
-      actorFlowNote: 'Builder belongs to the creation flow; Investigator Sheet and Investigation Panel are Investigator context (enter via Vault CTA), not top navigation.',
+      actorFlowNote: 'Builder belongs to the creation flow; character sheet and investigation panel are character context (enter via My Characters CTA), not top navigation.',
     },
     sheet: {
       resources: 'Current Status',
@@ -901,7 +931,7 @@ export const en = {
     characterLibrary: {
       title: 'Characters',
       existingActorsSubtitle: 'Manage your CP RED Edgerunners, search, filter, and open their sheets.',
-      backToVault: 'Back to Vault',
+      backToVault: 'Back to My Characters',
       searchPlaceholder: 'Search by name, handle, role…',
       noResults: 'No Edgerunners match your search',
       statusComplete: 'Complete',
@@ -919,7 +949,7 @@ export const en = {
     },
     creation: {
       builderBoundary: 'Creator: build only',
-      actorFlowNote: 'Creator belongs to the creation flow; Edgerunner Sheet and Mission Panel are Edgerunner context (enter via Vault CTA), not top navigation.',
+      actorFlowNote: 'Creator belongs to the creation flow; character sheet and mission panel are character context (enter via My Characters CTA), not top navigation.',
     },
     sheet: {
       eyebrow: 'Edgerunner Sheet',
@@ -1329,6 +1359,11 @@ export const en = {
     subtitle: 'Browse available rule systems and see what is coming.',
     searchPlaceholder: 'Search systems, types, genre, tags…',
     enterSystem: 'Enter System',
+    entry: {
+      characters: 'Characters',
+      campaigns: 'Campaigns',
+      note: 'My Characters and My Campaigns are sibling entries inside the system workspace; packages are content, not campaign rooms.',
+    },
     unavailableButton: 'Coming Later',
     noResults: 'No matching rule systems',
     category: {
@@ -1378,11 +1413,11 @@ export const en = {
       },
       coc7e: {
         name: 'COC 7e',
-        desc: 'Investigator workspace — Creator / Sheet / Gameplay available.',
+        desc: 'COC 7e rule system — Character / Campaign entries available.',
       },
       cyberpunkRed: {
         name: 'Cyberpunk RED',
-        desc: 'Night City runtime — Creator / Sheet / Gameplay / Market available.',
+        desc: 'Cyberpunk RED rule system — Character / Campaign entries available.',
       },
       warhammer: {
         name: 'Warhammer FRPG',
@@ -1396,6 +1431,64 @@ export const en = {
         name: 'Custom System',
         desc: 'Import or create a custom rule system — interface reserved.',
       },
+    },
+  },
+  campaignLibrary: {
+    eyebrow: 'Campaigns',
+    title: 'My Campaigns',
+    subtitle: 'Manage the actual play spaces you host or join.',
+    shortConcept: 'Campaigns are your actual play spaces; you can host or join them.',
+    recent: 'Recent Campaign',
+    stats: {
+      total: 'Total Campaigns',
+      active: 'Active',
+      hosted: 'Hosted by Me',
+      joined: 'Joined',
+      needsAttention: 'Needs Attention',
+      recentPlayed: 'Recently Played',
+    },
+    actions: {
+      add: 'Add Campaign',
+      addNote: 'Enter the add flow first, then choose standard creation, quick creation, or import. This pass keeps entry points only and does not write data.',
+      openMine: 'My Campaigns',
+      placeholder: 'This entry is planned for the platform; real behavior will be connected after the campaign data contract.',
+    },
+    existing: {
+      title: 'My Campaigns',
+      subtitle: 'Search, filtering, and sorting will connect after the real campaign data contract; this is a placeholder list.',
+      searchPlaceholder: 'Search campaign name / host / tags',
+      sortRecent: 'Sort by recent play',
+      filterAll: 'All',
+      filterActive: 'Active',
+      filterNeedsAttention: 'Needs Attention',
+    },
+    create: {
+      eyebrow: 'Add Campaign',
+      title: 'Add Campaign',
+      subtitle: 'Choose an add method. Standard creation, quick creation, and campaign import are internal campaign-module entries; this pass keeps placeholders only and does not write data.',
+      standard: 'Standard Creation',
+      quick: 'Quick Creation',
+      importCampaign: 'Import Campaign',
+    },
+    fields: {
+      system: 'System',
+      identity: 'Identity',
+      sourcePackage: 'Source Package',
+      lastPlayed: 'Last Played',
+    },
+    sample: {
+      title: 'Grey Mist Castle',
+      identity: 'Host / Player Character',
+      sourcePackage: 'Grey Mist Castle Package',
+      lastPlayedAt: 'Example time',
+    },
+    status: {
+      sample: 'Sample',
+    },
+    concepts: {
+      roomInstance: 'A campaign is an actual play-room instance distinguished by a room code.',
+      packageReuse: 'The same Workshop content package can create many different campaigns.',
+      logOwnership: 'Campaign logs belong to the specific campaign, not to the content package itself.',
     },
   },
 } as const;

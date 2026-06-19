@@ -1,9 +1,11 @@
 import { useState, type ReactNode } from 'react';
-import { BookOpen, Library, ScrollText, Users } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useCocStore } from '../../store/cocStore';
 // AI-LANDMARK: COC_ACTOR_VAULT_LIBRARY_ADOPTION_V1
 import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
+import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
+import { SystemWorkspaceEntryShell } from '../../components/platform/SystemWorkspaceEntryShell';
 import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
 import { COC_RULE_SOURCES } from './cocRuleSourcesAdapter';
 import {
@@ -42,6 +44,8 @@ import type { CocCharacter } from '../../lib/coc-types';
 type CocWorkspaceView =
   | 'dashboard'
   | 'vault'
+  | 'campaigns'
+  | 'createCampaign'
   | 'createMethod'
   | 'sheet'
   | 'compendium'
@@ -385,19 +389,6 @@ export function CocWorkspaceShell({
   const displayName = cocChar.name?.trim();
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
 
-  // AI-LANDMARK: COC_WORKSPACE_CONTRACT_ALIGNMENT_V1
-  // Top nav = system-level Sections only (Contract §5 / PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT_V1).
-  // createMethod / sheet / runtime (play) are Actor/Creation context — accessible via CTA only.
-  // builder / sheet / runtime must NOT appear here; they depend on an Actor context.
-  // AI-LANDMARK: SYSTEM_DEFAULT_ENTRY_ACTOR_VAULT_GENERIC_NAV_LABELS_V1
-  // Top nav uses generic platform labels only. COC-specific labels stay inside page content.
-  const navItems: { key: CocWorkspaceView; labelKey: string; icon: typeof Users }[] = [
-    { key: 'vault',       labelKey: 'navigation.actorVault',      icon: Users },
-    { key: 'compendium',  labelKey: 'navigation.rulesCompendium', icon: Library },
-    { key: 'ruleSources', labelKey: 'navigation.ruleSources',     icon: ScrollText },
-    { key: 'sources',     labelKey: 'navigation.sourceStatus',    icon: ScrollText },
-  ];
-
   const cocRuleSourcesTheme: SystemRuleSourcesTheme = {
     panel: teal.panel,
     card: 'rounded-md border border-[#2f7f68]/30 bg-[#101816]/70',
@@ -406,15 +397,6 @@ export function CocWorkspaceShell({
     badgeEnabled: teal.statusGreen,
     badgePlanned: teal.badgePlanned,
     kindBadge: teal.badge,
-  };
-
-  // Actor-context views (createMethod / sheet / play / planned) are not in the nav,
-  // so they never produce an active highlight — the simplified check is safe.
-  const isActiveNav = (item: (typeof navItems)[number]) => view === item.key;
-
-  const handleNavClick = (nextView: CocWorkspaceView) => {
-    setPlannedSlotLabelKey(null);
-    onViewChange(nextView);
   };
 
   const handleBack = () => {
@@ -517,32 +499,13 @@ export function CocWorkspaceShell({
   return (
     <div className={`min-h-screen font-serif ${teal.body}`}>
 
-      {/* ── COC workspace secondary navigation ── */}
+      {/* ── COC workspace shell brand ── */}
       <div className={teal.navBar}>
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-3 md:px-8">
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 py-3 md:px-8">
           <div className="flex items-center gap-2">
             <BookOpen className={`h-5 w-5 ${teal.navBrand}`} />
             <span className={`font-elite text-lg ${teal.navBrand}`}>{t('cocWorkspace.title')}</span>
           </div>
-          <nav className="flex flex-wrap gap-1" aria-label={t('cocWorkspace.title')}>
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = isActiveNav(item);
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => handleNavClick(item.key)}
-                  className={`flex items-center gap-1.5 border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${
-                    active ? teal.navActive : teal.navInactive
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {t(item.labelKey)}
-                </button>
-              );
-            })}
-          </nav>
         </div>
       </div>
 
@@ -578,41 +541,14 @@ export function CocWorkspaceShell({
                 </div>
               </section>
 
-              <section className={panelClass}>
-                {hasCurrentCharacter ? (
-                  renderInvestigatorCard()
-                ) : (
-                  <div className="text-center">
-                    <h2 className={`text-2xl font-bold ${teal.accentStrong}`}>
-                      {t('multiWorkspace.coc.entry.empty')}
-                    </h2>
-                    <p className="mx-auto mt-2 max-w-xl text-sm opacity-75">
-                      {t('multiWorkspace.coc.home.noActorNote')}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => onViewChange('createMethod')}
-                      className={`mt-5 border px-5 py-2 text-xs font-bold uppercase tracking-wider ${teal.primary}`}
-                    >
-                      {t('multiWorkspace.actions.createInvestigator')}
-                    </button>
-                  </div>
-                )}
-                <p className={`mt-4 border-t border-white/10 pt-3 text-xs opacity-55`}>
-                  {t('navigation.rulesAndDataInTopNav')}
-                </p>
-                <details className="mt-3 text-xs opacity-55">
-                  <summary className={`cursor-pointer font-bold ${teal.accent}`}>
-                    {t('navigation.platformGuidance')}
-                  </summary>
-                  <div className="mt-2 space-y-1">
-                    <p>{t('navigation.actorAbstractionNote')}</p>
-                    <p>{t('navigation.actorMultiCampaignNote')}</p>
-                    <p>{t('navigation.selectedActorGuidance')}</p>
-                    <p>{t('navigation.campaignGuidance')}</p>
-                  </div>
-                </details>
-              </section>
+              <SystemWorkspaceEntryShell
+                systemName={t('glossary.coc7e')}
+                tone="coc"
+                actorNoteKey="systemWorkspaceEntry.coc.actorNote"
+                campaignNoteKey="systemWorkspaceEntry.coc.campaignNote"
+                onEnterActors={() => onViewChange('vault')}
+                onEnterCampaigns={() => onViewChange('campaigns')}
+              />
             </div>
           )}
 
@@ -632,6 +568,26 @@ export function CocWorkspaceShell({
               onRequestAdd={() => onViewChange('createMethod')}
               strings={_cocVaultStrings}
               colorTheme={COC_VAULT_COLOR_THEME}
+              panelClassName={panelClass}
+            />
+          )}
+
+          {view === 'campaigns' && (
+            <CampaignLibraryShell
+              systemId="coc7e"
+              systemName={t('glossary.coc7e')}
+              tone="coc"
+              onAddCampaign={() => onViewChange('createCampaign')}
+              panelClassName={panelClass}
+            />
+          )}
+
+          {view === 'createCampaign' && (
+            <CampaignLibraryShell
+              systemId="coc7e"
+              systemName={t('glossary.coc7e')}
+              tone="coc"
+              mode="create"
               panelClassName={panelClass}
             />
           )}

@@ -398,7 +398,7 @@ const THEMES = {
 } as const;
 
 type System = PlatformRulesetSystem;
-export type NonDndWorkspaceView = 'dashboard' | 'vault' | 'createMethod' | 'sheet' | 'compendium' | 'sources' | 'ruleSources' | 'play' | 'planned';
+export type NonDndWorkspaceView = 'dashboard' | 'vault' | 'campaigns' | 'createCampaign' | 'createMethod' | 'sheet' | 'compendium' | 'sources' | 'ruleSources' | 'play' | 'planned';
 
 export type PlayWorkspaceNavigationState = {
   tab: string;
@@ -417,8 +417,8 @@ type PlayWorkspaceProps = {
 
 export const defaultPlayWorkspaceNavigationState: PlayWorkspaceNavigationState = {
   tab: 'creator',
-  dndWorkspaceView: 'characters',
-  systemWorkspaceView: 'vault',
+  dndWorkspaceView: 'dashboard',
+  systemWorkspaceView: 'dashboard',
   plannedSlotTitleKey: 'multiWorkspace.planned.title',
 };
 

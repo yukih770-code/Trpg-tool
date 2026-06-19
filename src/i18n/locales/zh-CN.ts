@@ -322,13 +322,13 @@ export const zhCN = {
     },
     landingNote: '创意工坊负责发现与订阅，不负责所有内容的实际使用。订阅后的内容会根据类型进入对应功能区。',
     landing: {
-      actorVault: '角色库',
+      actorVault: '我的角色',
       npcLibrary: 'NPC 库',
       campaignAssets: '战役素材库',
       mapLibrary: '地图库',
       mediaLibrary: '媒体素材库',
       systemRuleSources: '对应系统的系统规则来源',
-      campaignVault: '战役库 / Campaign',
+      campaignVault: '我的战役 / Campaign',
       moduleLibrary: '模组库',
       toolLibrary: '工具模板库',
       splitByShape: '按内部资产类型分别落位',
@@ -571,13 +571,16 @@ export const zhCN = {
     },
   },
   navigation: {
-    actorVault: '角色库',
+    actorModule: '角色',
+    campaignModule: '战役',
+    actorVault: '我的角色',
+    campaignVault: '我的战役',
     rulesCompendium: '规则库',
     sourceStatus: '数据状态',
     ruleSources: '规则来源',
     systemInfo: '系统信息',
     aboutSystem: '关于此系统',
-    backToActorVault: '返回角色库',
+    backToActorVault: '返回我的角色',
     backOneLevel: '返回上一层',
     upOneLevel: '上一级',
     backToSystemSelect: '返回系统选择',
@@ -594,13 +597,15 @@ export const zhCN = {
     selectedActorGuidance: '选中角色后，可查看状态、资源、背包与开始游玩。',
     campaignGuidance: '进入战役后，可使用地图、线索、日志与 GM 工具。',
     actorAbstractionNote: 'Character / Investigator / Edgerunner 是各系统的显示名称；平台统一抽象为 Actor / Player Asset。当前为轻量入口壳，完整多角色系统后续接入。',
-    actorMultiCampaignNote: 'Actor 可以加入多个战役 / 模组 / 会话。当前只管理本地当前角色，多角色库与战役归属需后续数据契约后接入。',
+    actorMultiCampaignNote: 'Actor 可以加入多个战役 / 模组 / 会话。当前只管理本地当前角色，多角色管理与战役归属需后续数据契约后接入。',
     runtimeGateNote: '运行时入口将在模组 / 场景 / Session 架构完成后开放。',
     breadcrumb: {
       platform: '平台',
       play: '游玩',
       systemOverview: '系统信息',
-      actorVault: '角色库',
+      actorVault: '我的角色',
+      campaignVault: '我的战役',
+      campaignCreation: '创建战役',
       creationMethod: '创建角色',
       actorSheet: '角色卡',
       rulesCompendium: '规则库',
@@ -609,11 +614,36 @@ export const zhCN = {
       builder: '创建向导',
     },
   },
+  systemWorkspaceEntry: {
+    eyebrow: '系统工作台',
+    workspace: '工作台',
+    subtitle: '系统工作台只负责选择主模块。添加、创建和导入能力会在进入对应模块后再展开。',
+    actor: {
+      title: '角色',
+      enter: '进入角色',
+    },
+    campaign: {
+      title: '战役',
+      enter: '进入战役',
+    },
+    dnd: {
+      actorNote: '管理你的 DND 角色。',
+      campaignNote: '管理你的 DND 战役实例。',
+    },
+    coc: {
+      actorNote: '进入后可管理角色，并使用调查员技能、理智与成长检定相关创建流程。',
+      campaignNote: '进入后可管理 COC 调查战役实例、公开线索、日志和主持人资源。',
+    },
+    cp: {
+      actorNote: '进入后可管理角色，并使用职业能力、义体、人性与黑市相关创建流程。',
+      campaignNote: '进入后可管理夜城任务的实际战役实例、NPC、地图与日志。',
+    },
+  },
   dndWorkspace: {
     title: 'DND 工作台',
     nav: {
       dashboard: '工作台总览',
-      characters: '角色库',
+      characters: '我的角色',
       create: '创建角色',
       compendium: '规则库',
       sources: '规则源状态',
@@ -658,7 +688,7 @@ export const zhCN = {
       workshop: '从创意工坊导入',
       workshopNote: '未来将支持 Steam Workshop 式社区内容：一键订阅、依赖、版本、作者页、评分收藏。',
       plannedMessage: '该功能将在后续版本接入；本轮不实现真实 Workshop、订阅、下载、账号、后端或依赖安装。',
-      actorFlowNote: 'Builder 属于创建流程；角色卡与游玩面板属于角色上下文（从角色库 CTA 进入），不在顶部导航。',
+      actorFlowNote: 'Builder 属于创建流程；角色卡与游玩面板属于角色上下文（从我的角色 CTA 进入），不在顶部导航。',
     },
     planned: {
       inventory: '背包与装备实例属于 Actor Workspace（角色工作台）。请先选择角色进入角色工作台，后续在角色工作台中接入背包功能。',
@@ -703,9 +733,9 @@ export const zhCN = {
       class: '职业',
     },
     characterLibrary: {
-      title: '已有角色',
+      title: '我的角色',
       existingActorsSubtitle: '管理你的 DND 角色，搜索、筛选并进入角色卡。',
-      backToVault: '返回角色库',
+      backToVault: '返回我的角色',
       searchPlaceholder: '搜索角色名、职业、物种、背景……',
       noResults: '没有符合条件的角色',
       statusComplete: '资料完整',
@@ -759,7 +789,7 @@ export const zhCN = {
       createEdgerunner: '创建 Edgerunner',
     },
     actorVault: {
-      existingActors: '已有角色',
+      existingActors: '我的角色',
       addActor: '添加角色',
       activeIndicator: '当前',
       addActorNote: '创建、导入或从社区添加角色。',
@@ -776,7 +806,7 @@ export const zhCN = {
     },
     planned: {
       title: '规划模块',
-      message: '该功能将在后续 Player Asset Vault / Workshop / Source Manager 完成后接入；本轮不实现真实多角色库、订阅、下载、后端或依赖安装。',
+      message: '该功能将在后续 Player Asset Vault / Workshop / Source Manager 完成后接入；本轮不实现真实多角色管理、订阅、下载、后端或依赖安装。',
     },
     creation: {
       eyebrow: '创建方式',
@@ -838,9 +868,9 @@ export const zhCN = {
   cocWorkspace: {
     title: 'COC 工作台',
     characterLibrary: {
-      title: '已有角色',
+      title: '我的角色',
       existingActorsSubtitle: '管理你的 COC 调查员，搜索、筛选并进入调查员卡。',
-      backToVault: '返回角色库',
+      backToVault: '返回我的角色',
       searchPlaceholder: '搜索姓名、职业、时代、居住地……',
       noResults: '没有符合条件的调查员',
       statusComplete: '资料完整',
@@ -860,7 +890,7 @@ export const zhCN = {
     },
     creation: {
       builderBoundary: 'Creator 只做建卡',
-      actorFlowNote: '创建器属于创建流程；调查员卡与调查面板属于调查员上下文（从调查员库 CTA 进入），不在顶部导航。',
+      actorFlowNote: '创建器属于创建流程；调查员卡与调查面板属于角色上下文（从我的角色 CTA 进入），不在顶部导航。',
     },
     sheet: {
       resources: '当前状态',
@@ -899,9 +929,9 @@ export const zhCN = {
   cpWorkspace: {
     title: 'CP RED 工作台',
     characterLibrary: {
-      title: '已有角色',
+      title: '我的角色',
       existingActorsSubtitle: '管理你的 CP RED Edgerunner，搜索、筛选并进入角色卡。',
-      backToVault: '返回角色库',
+      backToVault: '返回我的角色',
       searchPlaceholder: '搜索姓名、街头名号、职业……',
       noResults: '没有符合条件的 Edgerunner',
       statusComplete: '资料完整',
@@ -919,7 +949,7 @@ export const zhCN = {
     },
     creation: {
       builderBoundary: 'Creator 只做建卡',
-      actorFlowNote: 'Creator 属于创建流程；Edgerunner 卡与任务面板属于 Edgerunner 上下文（从 Edgerunner 库 CTA 进入），不在顶部导航。',
+      actorFlowNote: 'Creator 属于创建流程；角色卡与任务面板属于角色上下文（从我的角色 CTA 进入），不在顶部导航。',
     },
     sheet: {
       eyebrow: 'Edgerunner 卡',
@@ -1329,6 +1359,11 @@ export const zhCN = {
     subtitle: '浏览并进入已接入的规则系统，查看计划中与社区系统。',
     searchPlaceholder: '搜索规则系统、类型、题材、标签……',
     enterSystem: '进入系统',
+    entry: {
+      characters: '角色',
+      campaigns: '战役',
+      note: '我的角色与我的战役是系统内并列入口；内容包是素材，不是战役房间。',
+    },
     unavailableButton: '后续接入',
     noResults: '没有匹配的规则系统',
     category: {
@@ -1378,11 +1413,11 @@ export const zhCN = {
       },
       coc7e: {
         name: 'COC 7e',
-        desc: '调查员工作区 · Creator / Sheet / Gameplay 可用。',
+        desc: 'COC 7e 规则系统 · 角色 / 战役入口可用。',
       },
       cyberpunkRed: {
         name: 'Cyberpunk RED',
-        desc: '夜之城运行时 · Creator / Sheet / Gameplay / Market 可用。',
+        desc: 'Cyberpunk RED 规则系统 · 角色 / 战役入口可用。',
       },
       warhammer: {
         name: '战锤 FRPG',
@@ -1396,6 +1431,64 @@ export const zhCN = {
         name: '自定义规则系统',
         desc: '导入或创建自定义规则系统。接口预留，暂未开放。',
       },
+    },
+  },
+  campaignLibrary: {
+    eyebrow: '战役',
+    title: '我的战役',
+    subtitle: '管理你主持或参与的实际游玩空间。',
+    shortConcept: '战役是你的实际游玩空间，可由你主持或参与。',
+    recent: '最近战役',
+    stats: {
+      total: '战役总数',
+      active: '活跃战役',
+      hosted: '我主持的',
+      joined: '我参与的',
+      needsAttention: '需要处理',
+      recentPlayed: '最近游玩',
+    },
+    actions: {
+      add: '添加战役',
+      addNote: '进入添加流程后再选择标准创建、快速创建或导入。本轮只保留入口，不执行真实写入。',
+      openMine: '我的战役',
+      placeholder: '该入口已纳入平台规划，真实功能将在战役数据契约完成后接入。',
+    },
+    existing: {
+      title: '我的战役',
+      subtitle: '搜索、筛选和排序会在真实战役数据契约完成后接入；当前仅展示占位列表。',
+      searchPlaceholder: '搜索战役名 / 主持人 / 标签',
+      sortRecent: '按最近游玩排序',
+      filterAll: '全部',
+      filterActive: '活跃',
+      filterNeedsAttention: '需要处理',
+    },
+    create: {
+      eyebrow: '添加战役',
+      title: '添加战役',
+      subtitle: '选择添加方式。标准创建、快速创建和导入战役均为战役模块内部入口；当前只做占位，不执行真实写入。',
+      standard: '标准创建',
+      quick: '快速创建',
+      importCampaign: '导入战役',
+    },
+    fields: {
+      system: '系统',
+      identity: '身份',
+      sourcePackage: '来源内容包',
+      lastPlayed: '最近游玩',
+    },
+    sample: {
+      title: '灰雾古堡',
+      identity: '主持人 / 玩家角色',
+      sourcePackage: '灰雾古堡模组',
+      lastPlayedAt: '示例时间',
+    },
+    status: {
+      sample: '示例',
+    },
+    concepts: {
+      roomInstance: '战役是一个实际游玩的房间实例，由房间号区分。',
+      packageReuse: '同一个创意工坊内容包可以创建多个不同战役。',
+      logOwnership: '战役日志属于具体战役，而不是内容包本身。',
     },
   },
 } as const;

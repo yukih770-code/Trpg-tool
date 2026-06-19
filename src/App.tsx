@@ -157,6 +157,8 @@ export default function App() {
   type WorkspaceNodeType =
     | 'systemOverview'
     | 'actorVault'
+    | 'campaignVault'
+    | 'campaignCreation'
     | 'creationMethod'
     | 'actorSheet'
     | 'rulesCompendium'
@@ -177,6 +179,8 @@ export default function App() {
         return 'builder'; // 'creator'
       }
       if (dndView === 'characters') return 'actorVault';
+      if (dndView === 'campaigns')  return 'campaignVault';
+      if (dndView === 'createCampaign') return 'campaignCreation';
       if (dndView === 'create')     return 'creationMethod';
       if (dndView === 'compendium') return 'rulesCompendium';
       if (dndView === 'sources')    return 'sourceStatus';
@@ -189,6 +193,8 @@ export default function App() {
       return 'builder'; // 'creator'
     }
     if (sysView === 'vault')        return 'actorVault';
+    if (sysView === 'campaigns')    return 'campaignVault';
+    if (sysView === 'createCampaign') return 'campaignCreation';
     if (sysView === 'createMethod') return 'creationMethod';
     if (sysView === 'sheet')        return 'actorSheet'; // CoC shell summary view
     if (sysView === 'compendium')   return 'rulesCompendium';
@@ -202,6 +208,8 @@ export default function App() {
       case 'builder':         return 'creationMethod';
       case 'actorSheet':      return 'actorVault';
       case 'actorVault':      return 'systemLibrary';
+      case 'campaignVault':   return 'systemLibrary';
+      case 'campaignCreation': return 'campaignVault';
       case 'creationMethod':  return 'actorVault';
       case 'rulesCompendium': return 'actorVault';
       case 'sourceStatus':    return 'actorVault';
@@ -213,6 +221,8 @@ export default function App() {
     switch (nodeType) {
       case 'systemOverview':  return 'navigation.breadcrumb.systemOverview';
       case 'actorVault':      return 'navigation.breadcrumb.actorVault';
+      case 'campaignVault':   return 'navigation.breadcrumb.campaignVault';
+      case 'campaignCreation': return 'navigation.breadcrumb.campaignCreation';
       case 'creationMethod':  return 'navigation.breadcrumb.creationMethod';
       case 'actorSheet':      return 'navigation.breadcrumb.actorSheet';
       case 'rulesCompendium': return 'navigation.breadcrumb.rulesCompendium';
@@ -226,6 +236,10 @@ export default function App() {
     switch (nodeType) {
       case 'actorVault':
         return ['navigation.breadcrumb.actorVault'];
+      case 'campaignVault':
+        return ['navigation.breadcrumb.campaignVault'];
+      case 'campaignCreation':
+        return ['navigation.breadcrumb.campaignVault', getBreadcrumbViewLabelKey(nodeType)];
       case 'systemOverview':
         return ['navigation.breadcrumb.actorVault', getBreadcrumbViewLabelKey(nodeType)];
       case 'creationMethod':
@@ -278,6 +292,12 @@ export default function App() {
         case 'actorVault':
           next.dndWorkspaceView = 'characters';
           break;
+        case 'campaignVault':
+          next.dndWorkspaceView = 'campaigns';
+          break;
+        case 'campaignCreation':
+          next.dndWorkspaceView = 'createCampaign';
+          break;
         case 'creationMethod':
           next.dndWorkspaceView = 'create';
           break;
@@ -301,6 +321,12 @@ export default function App() {
           break;
         case 'actorVault':
           next.systemWorkspaceView = 'vault';
+          break;
+        case 'campaignVault':
+          next.systemWorkspaceView = 'campaigns';
+          break;
+        case 'campaignCreation':
+          next.systemWorkspaceView = 'createCampaign';
           break;
         case 'creationMethod':
           next.systemWorkspaceView = 'createMethod';
@@ -327,7 +353,11 @@ export default function App() {
     if (!system) return;
     pushNavigation();
     setSystem(system);
-    setPlayWorkspaceNavigation(defaultPlayWorkspaceNavigationState);
+    setPlayWorkspaceNavigation({
+      ...defaultPlayWorkspaceNavigationState,
+      dndWorkspaceView: 'dashboard',
+      systemWorkspaceView: 'dashboard',
+    });
     setPlayStage('workspace');
     setAppView('play');
   };

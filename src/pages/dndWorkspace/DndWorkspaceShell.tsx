@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { BookOpen, Library, ScrollText, Users } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import {
   DND_2024_BACKGROUND_INDEX_DATA,
@@ -10,6 +10,8 @@ import {
 import { DND_SPELL_INDEX_COUNTS } from '../../data/dnd2024/spellIndex';
 import { useCharacterStore } from '../../store/characterStore';
 import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
+import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
+import { SystemWorkspaceEntryShell } from '../../components/platform/SystemWorkspaceEntryShell';
 import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
 import { DND_RULE_SOURCES } from './dndRuleSourcesAdapter';
 import {
@@ -46,7 +48,7 @@ import type { ActorVaultAdapter } from '../../lib/platform/actorVault';
 
 // AI-LANDMARK: PLATFORM_ACTOR_VAULT_LIBRARY_FRAMEWORK_EXTRACTION_V1
 // 'characterLibrary' view removed — library mode is now managed internally by ActorVaultLibraryShell.
-export type DndWorkspaceView = 'dashboard' | 'characters' | 'create' | 'compendium' | 'sources' | 'ruleSources' | 'play';
+export type DndWorkspaceView = 'dashboard' | 'characters' | 'campaigns' | 'createCampaign' | 'create' | 'compendium' | 'sources' | 'ruleSources' | 'play';
 export type DndPlayTab = 'creator' | 'sheet' | 'gameplay';
 
 type DndWorkspaceShellProps = {
@@ -99,19 +101,6 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   const _vaultStats     = _dndVaultAdapter.getStats(_vaultSummaries);
   const _vaultSortOpts  = _dndVaultAdapter.getSortOptions();
   const _vaultStrings   = buildDndVaultShellStrings(t);
-
-  // AI-LANDMARK: DND_WORKSPACE_CONTRACT_ALIGNMENT_V1
-  // Top nav = system-level Sections only (Contract §5 / PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT_V1).
-  // 'create' (creationMethod) is Actor/Creation context — accessible via CTA from overview & vault.
-  // builder / sheet / runtime must NOT appear here; they depend on an Actor context.
-  // AI-LANDMARK: SYSTEM_DEFAULT_ENTRY_ACTOR_VAULT_GENERIC_NAV_LABELS_V1
-  // Top nav uses generic platform labels only. System flavor stays inside page titles/content.
-  const navItems: { key: DndWorkspaceView; labelKey: string; icon: typeof Users }[] = [
-    { key: 'characters',  labelKey: 'navigation.actorVault',      icon: Users },
-    { key: 'compendium',  labelKey: 'navigation.rulesCompendium', icon: Library },
-    { key: 'ruleSources', labelKey: 'navigation.ruleSources',     icon: ScrollText },
-    { key: 'sources',     labelKey: 'navigation.sourceStatus',    icon: ScrollText },
-  ];
 
   const completionRows: { labelKey: string; value: string }[] = [
     { labelKey: 'dndWorkspace.completion.species', value: `${REPORT.species.runtime} runtime / ${REPORT.species.manifest} indexed` },
@@ -181,16 +170,6 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     badgePlanned: 'border-[#58180d]/30 text-[#58180d]/70',
     kindBadge: 'border-[#58180d]/30 text-[#58180d]/70',
   };
-  const handleNavClick = (nextView: DndWorkspaceView) => {
-    // AI-LANDMARK: DND_GAMEPLAY_ENTRY_PRESERVATION
-    // Workspace Play / Combat must open DND Gameplay, not the last Builder tab.
-    if (nextView === 'play') {
-      onOpenPlayTab('gameplay');
-      return;
-    }
-
-    onViewChange(nextView);
-  };
   // AI-LANDMARK: DND_CHARACTER_VAULT_CREATION_METHOD_ENTRY
   // Creation now enters through a method picker; only Standard Creation opens the existing Builder.
   const creationMethodCards: { labelKey: string; noteKey: string; planned?: boolean; onClick: () => void }[] = [
@@ -202,34 +181,13 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
 
   return (
     <div className="min-h-screen bg-[#fdf6e3] text-[#2c1810] font-serif">
-      {/* ── DND workspace secondary navigation ── */}
+      {/* ── DND workspace shell brand ── */}
       <div className="border-b-2 border-[#58180d]/70 bg-[#f7ebcf]/60">
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-3 md:px-8">
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 py-3 md:px-8">
           <div className="flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-[#58180d]" />
             <span className="font-dnd-title text-lg text-[#58180d]">{t('dndWorkspace.title')}</span>
           </div>
-          <nav className="flex flex-wrap gap-1" aria-label={t('dndWorkspace.title')}>
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = view === item.key;
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => handleNavClick(item.key)}
-                  className={`flex items-center gap-1.5 border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${
-                    isActive
-                      ? 'border-[#58180d] bg-[#58180d] text-[#fdf6e3]'
-                      : 'border-[#58180d]/30 text-[#58180d] hover:border-[#58180d] hover:bg-[#58180d]/10'
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {t(item.labelKey)}
-                </button>
-              );
-            })}
-          </nav>
         </div>
       </div>
 
@@ -258,59 +216,14 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                 </div>
               </section>
 
-              <section className={panelClass}>
-                {hasCurrentCharacter ? (
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_auto]">
-                    <div>
-                      <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]/65">{t('dndWorkspace.characters.current')}</div>
-                      <h2 className="mt-2 text-2xl font-bold text-[#2c1810]">{characterName || t('dndWorkspace.characters.unnamed')}</h2>
-                      <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.level')}</div>
-                          <div className="font-bold">{dndChar.level || 1}</div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.species')}</div>
-                          <div className="font-bold">{dndChar.race || t('dndBuilder.common.unselected')}</div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.background')}</div>
-                          <div className="font-bold">{dndChar.background || t('dndBuilder.common.unselected')}</div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-bold uppercase tracking-wider text-[#58180d]/60">{t('dndWorkspace.characters.class')}</div>
-                          <div className="font-bold">{dndChar.jobClass || t('dndBuilder.common.unselected')}</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-2 lg:w-44">
-                      <button type="button" onClick={() => onOpenPlayTab('sheet')} className="border border-[#58180d]/60 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#58180d] hover:bg-[#58180d]/10">
-                        {t('dndWorkspace.actions.viewSheet')}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <h2 className="text-2xl font-bold text-[#58180d]">{t('dndWorkspace.characters.empty')}</h2>
-                    <p className="mx-auto mt-2 max-w-xl text-sm text-[#58180d]/70">{t('dndWorkspace.home.noCharacterNote')}</p>
-                    <button
-                      type="button"
-                      onClick={() => onViewChange('create')}
-                      className="mt-5 border border-[#58180d] bg-[#58180d] px-5 py-2 text-xs font-bold uppercase tracking-wider text-[#fdf6e3] hover:bg-[#2c1810]"
-                    >
-                      {t('dndWorkspace.home.createFirstCharacter')}
-                    </button>
-                  </div>
-                )}
-                <p className="mt-4 border-t border-[#58180d]/15 pt-3 text-xs text-[#58180d]/55">{t('navigation.rulesAndDataInTopNav')}</p>
-                <details className="mt-3 text-xs text-[#58180d]/55">
-                  <summary className="cursor-pointer font-bold text-[#58180d]/70">{t('navigation.platformGuidance')}</summary>
-                  <div className="mt-2 space-y-1">
-                    <p>{t('navigation.selectedActorGuidance')}</p>
-                    <p>{t('navigation.campaignGuidance')}</p>
-                  </div>
-                </details>
-              </section>
+              <SystemWorkspaceEntryShell
+                systemName="DND 5e 2024"
+                tone="dnd"
+                actorNoteKey="systemWorkspaceEntry.dnd.actorNote"
+                campaignNoteKey="systemWorkspaceEntry.dnd.campaignNote"
+                onEnterActors={() => onViewChange('characters')}
+                onEnterCampaigns={() => onViewChange('campaigns')}
+              />
             </div>
           )}
 
@@ -375,6 +288,26 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
               onRequestAdd={() => onViewChange('create')}
               strings={_vaultStrings}
               colorTheme={DND_VAULT_COLOR_THEME}
+              panelClassName={panelClass}
+            />
+          )}
+
+          {view === 'campaigns' && (
+            <CampaignLibraryShell
+              systemId="dnd2024"
+              systemName="DND 2024"
+              tone="dnd"
+              onAddCampaign={() => onViewChange('createCampaign')}
+              panelClassName={panelClass}
+            />
+          )}
+
+          {view === 'createCampaign' && (
+            <CampaignLibraryShell
+              systemId="dnd2024"
+              systemName="DND 2024"
+              tone="dnd"
+              mode="create"
               panelClassName={panelClass}
             />
           )}

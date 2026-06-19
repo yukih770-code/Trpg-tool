@@ -1,9 +1,11 @@
 import { useState, type ReactNode } from 'react';
-import { BookOpen, Library, ScrollText, Users } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useCpStore } from '../../store/cpStore';
 // AI-LANDMARK: CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1
 import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
+import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
+import { SystemWorkspaceEntryShell } from '../../components/platform/SystemWorkspaceEntryShell';
 import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
 import { CPRED_RULE_SOURCES } from './cpRuleSourcesAdapter';
 import { deriveVaultSummaries, type ActorVaultAdapter } from '../../lib/platform/actorVault';
@@ -37,6 +39,8 @@ import {
 type CpWorkspaceView =
   | 'dashboard'
   | 'vault'
+  | 'campaigns'
+  | 'createCampaign'
   | 'createMethod'
   | 'compendium'
   | 'sources'
@@ -526,18 +530,6 @@ export function CpWorkspaceShell({
   const displayName = cpChar.lifePath?.handle?.trim() || cpChar.name?.trim();
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
 
-  // AI-LANDMARK: CPRED_WORKSPACE_CONTRACT_ALIGNMENT_V1
-  // Top nav = system-level Sections only (Contract §5 / PLATFORM_PATTERNS_AND_WORKSPACE_CONTRACT_V1).
-  // createMethod / sheet / runtime (play/mission) are Actor/Creation context — accessible via CTA only.
-  // AI-LANDMARK: SYSTEM_DEFAULT_ENTRY_ACTOR_VAULT_GENERIC_NAV_LABELS_V1
-  // Top nav uses generic platform labels only. CP RED-specific labels stay inside page content.
-  const navItems: { key: CpWorkspaceView; labelKey: string; icon: typeof Users }[] = [
-    { key: 'vault',       labelKey: 'navigation.actorVault',      icon: Users },
-    { key: 'compendium',  labelKey: 'navigation.rulesCompendium', icon: Library },
-    { key: 'ruleSources', labelKey: 'navigation.ruleSources',     icon: ScrollText },
-    { key: 'sources',     labelKey: 'navigation.sourceStatus',    icon: ScrollText },
-  ];
-
   const cpRuleSourcesTheme: SystemRuleSourcesTheme = {
     panel: gold.panel,
     card: 'rounded-md border border-[#d8b954]/30 bg-[#0d0d0d]/70',
@@ -546,13 +538,6 @@ export function CpWorkspaceShell({
     badgeEnabled: gold.statusYellow,
     badgePlanned: gold.badgePlanned,
     kindBadge: gold.badge,
-  };
-
-  const isActiveNav = (item: (typeof navItems)[number]) => view === item.key;
-
-  const handleNavClick = (nextView: CpWorkspaceView) => {
-    setPlannedSlotLabelKey(null);
-    onViewChange(nextView);
   };
 
   const handleBack = () => {
@@ -631,32 +616,13 @@ export function CpWorkspaceShell({
   return (
     <div className={`min-h-screen font-mono ${gold.body}`}>
 
-      {/* ── CP RED workspace secondary navigation ── */}
+      {/* ── CP RED workspace shell brand ── */}
       <div className={gold.navBar}>
-        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-3 md:px-8">
+        <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 py-3 md:px-8">
           <div className="flex items-center gap-2">
             <BookOpen className={`h-5 w-5 ${gold.navBrand}`} />
             <span className={`font-mono text-lg font-bold tracking-widest ${gold.navBrand}`}>{t('cpWorkspace.title')}</span>
           </div>
-          <nav className="flex flex-wrap gap-1" aria-label={t('cpWorkspace.title')}>
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const active = isActiveNav(item);
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => handleNavClick(item.key)}
-                  className={`flex items-center gap-1.5 border px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors ${
-                    active ? gold.navActive : gold.navInactive
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {t(item.labelKey)}
-                </button>
-              );
-            })}
-          </nav>
         </div>
       </div>
 
@@ -692,41 +658,14 @@ export function CpWorkspaceShell({
                 </div>
               </section>
 
-              <section className={panelClass}>
-                {hasCurrentCharacter ? (
-                  renderEdgerunnerCard()
-                ) : (
-                  <div className="text-center">
-                    <h2 className={`text-2xl font-bold ${gold.accentStrong}`}>
-                      {t('multiWorkspace.cp.entry.empty')}
-                    </h2>
-                    <p className="mx-auto mt-2 max-w-xl text-sm opacity-75">
-                      {t('multiWorkspace.cp.home.noActorNote')}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => onViewChange('createMethod')}
-                      className={`mt-5 border px-5 py-2 text-xs font-bold uppercase tracking-wider ${gold.primary}`}
-                    >
-                      {t('multiWorkspace.actions.createEdgerunner')}
-                    </button>
-                  </div>
-                )}
-                <p className={`mt-4 border-t border-white/10 pt-3 text-xs opacity-55`}>
-                  {t('navigation.rulesAndDataInTopNav')}
-                </p>
-                <details className="mt-3 text-xs opacity-55">
-                  <summary className={`cursor-pointer font-bold ${gold.accent}`}>
-                    {t('navigation.platformGuidance')}
-                  </summary>
-                  <div className="mt-2 space-y-1">
-                    <p>{t('navigation.actorAbstractionNote')}</p>
-                    <p>{t('navigation.actorMultiCampaignNote')}</p>
-                    <p>{t('navigation.selectedActorGuidance')}</p>
-                    <p>{t('navigation.campaignGuidance')}</p>
-                  </div>
-                </details>
-              </section>
+              <SystemWorkspaceEntryShell
+                systemName={t('glossary.cyberpunkRed')}
+                tone="cp"
+                actorNoteKey="systemWorkspaceEntry.cp.actorNote"
+                campaignNoteKey="systemWorkspaceEntry.cp.campaignNote"
+                onEnterActors={() => onViewChange('vault')}
+                onEnterCampaigns={() => onViewChange('campaigns')}
+              />
             </div>
           )}
 
@@ -746,6 +685,26 @@ export function CpWorkspaceShell({
               onRequestAdd={() => onViewChange('createMethod')}
               strings={_cpVaultStrings}
               colorTheme={CP_VAULT_COLOR_THEME}
+              panelClassName={panelClass}
+            />
+          )}
+
+          {view === 'campaigns' && (
+            <CampaignLibraryShell
+              systemId="cyberpunk-red"
+              systemName={t('glossary.cyberpunkRed')}
+              tone="cp"
+              onAddCampaign={() => onViewChange('createCampaign')}
+              panelClassName={panelClass}
+            />
+          )}
+
+          {view === 'createCampaign' && (
+            <CampaignLibraryShell
+              systemId="cyberpunk-red"
+              systemName={t('glossary.cyberpunkRed')}
+              tone="cp"
+              mode="create"
               panelClassName={panelClass}
             />
           )}
