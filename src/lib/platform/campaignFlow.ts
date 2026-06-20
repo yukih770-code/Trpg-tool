@@ -88,6 +88,27 @@ export interface CampaignActorSelectReturnContext {
   returnTo: CampaignEntryReturnTo;
 }
 
+export interface CampaignSelectForActorReturnContext {
+  actorId: string;
+  actorName: string;
+  source: 'actorLibrary' | 'actorDetail';
+  returnLabel: string;
+  returnTo: CampaignEntryReturnTo;
+}
+
+export interface CampaignAddForActorReturnContext {
+  actorId: string;
+  actorName: string;
+  source: 'actorLibrary' | 'actorDetail';
+  returnLabel: string;
+  returnTo: CampaignEntryReturnTo;
+}
+
+export type CampaignLibraryPurpose =
+  | { kind: 'manage' }
+  | { kind: 'selectForActor'; context: CampaignSelectForActorReturnContext }
+  | { kind: 'addForActor'; context: CampaignAddForActorReturnContext };
+
 export interface CampaignSuggestedActor {
   actorId: string;
   actorName: string;

@@ -56,6 +56,7 @@ export type ActorVaultLibraryShellProps = {
     actor: CampaignSuggestedActor,
     context: CampaignActorSelectReturnContext,
   ) => void;
+  onRequestSelectCampaignForActor?: (actor: CampaignSuggestedActor) => void;
   onReturnToCampaignEntry?: (context: CampaignActorSelectReturnContext) => void;
   /** All i18n strings consumed by the shell. Pass via t() from the workspace shell. */
   strings: ActorVaultShellStrings;
@@ -77,6 +78,7 @@ export function ActorVaultLibraryShell({
   onRequestAdd,
   purpose = { kind: 'manage' },
   onSelectActorForCampaign,
+  onRequestSelectCampaignForActor,
   onReturnToCampaignEntry,
   strings,
   colorTheme: t,
@@ -296,6 +298,7 @@ export function ActorVaultLibraryShell({
                 onEnterActor={onEnterActor}
                 campaignActorSelectContext={campaignActorSelectContext}
                 onSelectActorForCampaign={onSelectActorForCampaign}
+                onRequestSelectCampaignForActor={onRequestSelectCampaignForActor}
               />
             </div>
           ))}
@@ -318,6 +321,7 @@ type ActorVaultCardProps = {
     actor: CampaignSuggestedActor,
     context: CampaignActorSelectReturnContext,
   ) => void;
+  onRequestSelectCampaignForActor?: (actor: CampaignSuggestedActor) => void;
 };
 
 function ActorVaultCard({
@@ -327,6 +331,7 @@ function ActorVaultCard({
   onEnterActor,
   campaignActorSelectContext,
   onSelectActorForCampaign,
+  onRequestSelectCampaignForActor,
 }: ActorVaultCardProps) {
   const isComplete = summary.completionStatus === 'complete';
 
@@ -407,10 +412,28 @@ function ActorVaultCard({
         <button
           type="button"
           onClick={() => onEnterActor(summary.id)}
-          className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${t.borderActive} ${t.text} ${t.bgHover}`}
+          className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${
+            campaignActorSelectContext
+              ? `${t.borderActive} ${t.text} ${t.bgHover}`
+              : `${t.border} ${t.bgAccent} ${t.textInvert}`
+          }`}
         >
           {strings.enterActorLabel}
         </button>
+        {!campaignActorSelectContext && onRequestSelectCampaignForActor && (
+          <button
+            type="button"
+            onClick={() =>
+              onRequestSelectCampaignForActor({
+                actorId: summary.id,
+                actorName: summary.displayName,
+              })
+            }
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${t.borderActive} ${t.text} ${t.bgHover}`}
+          >
+            {strings.selectCampaignLabel}
+          </button>
+        )}
       </div>
     </div>
   );

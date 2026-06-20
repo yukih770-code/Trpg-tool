@@ -803,6 +803,7 @@ export const zhCN = {
       creatorPlaceholder: '当前玩家 / UID 待接入',
       campaign: '所属战役',
       campaignNone: '未加入战役',
+      selectCampaign: '选择战役',
     },
     planned: {
       title: '规划模块',
@@ -1599,6 +1600,7 @@ export const zhCN = {
       add: '添加战役',
       addNote: '进入添加流程后再选择标准创建、快速创建或导入。本轮只保留入口，不执行真实写入。',
       openMine: '我的战役',
+      viewDetail: '查看详情',
       placeholder: '该入口已纳入平台规划，真实功能将在战役数据契约完成后接入。',
     },
     existing: {
@@ -1670,9 +1672,13 @@ export const zhCN = {
       selectingActorPrefix: '正在为',
       selectingActorSuffix: '选择入场角色。',
       selectingActorNote: '选择后将返回战役入场准备。',
+      selectingCampaignPrefix: '正在为',
+      selectingCampaignSuffix: '选择战役。',
       selectActorButton: '选择此角色',
+      selectCampaignButton: '选择此战役',
       afterComplete: '完成后将返回战役入场准备。',
       returnButton: '← 返回战役入场准备',
+      returnToActorVault: '返回我的角色',
       placeholder: '真实完成回跳将在后续接入。',
     },
     fields: {

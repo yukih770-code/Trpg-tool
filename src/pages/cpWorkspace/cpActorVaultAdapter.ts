@@ -192,5 +192,6 @@ export function buildCpVaultShellStrings(t: (key: string) => string): ActorVault
     campaignSelectionNote:   t('campaignLibrary.returnContext.selectingActorNote'),
     returnToCampaignEntry:   t('campaignLibrary.returnContext.returnButton'),
     selectForCampaignLabel:  t('campaignLibrary.returnContext.selectActorButton'),
+    selectCampaignLabel:     t('multiWorkspace.actorVault.selectCampaign'),
   };
 }

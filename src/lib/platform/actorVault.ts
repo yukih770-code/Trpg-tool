@@ -216,4 +216,5 @@ export type ActorVaultShellStrings = {
   campaignSelectionNote: string;
   returnToCampaignEntry: string;
   selectForCampaignLabel: string;
+  selectCampaignLabel: string;
 };

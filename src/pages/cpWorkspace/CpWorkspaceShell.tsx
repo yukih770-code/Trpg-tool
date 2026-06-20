@@ -16,6 +16,8 @@ import type { CpCharacter } from '../../lib/cp-types';
 import type {
   CampaignActorAddReturnContext,
   CampaignActorSelectReturnContext,
+  CampaignInstanceSummary,
+  CampaignSelectForActorReturnContext,
   CampaignRuntimeContext,
   CampaignSuggestedActor,
 } from '../../lib/platform/campaignFlow';
@@ -542,6 +544,8 @@ export function CpWorkspaceShell({
     useState<CampaignActorAddReturnContext | null>(null);
   const [campaignActorSelectContext, setCampaignActorSelectContext] =
     useState<CampaignActorSelectReturnContext | null>(null);
+  const [campaignSelectForActorContext, setCampaignSelectForActorContext] =
+    useState<CampaignSelectForActorReturnContext | null>(null);
   const [suggestedCampaignActor, setSuggestedCampaignActor] =
     useState<CampaignSuggestedActor | null>(null);
   const [campaignRuntimeContext, setCampaignRuntimeContext] =
@@ -568,19 +572,58 @@ export function CpWorkspaceShell({
   const handleRequestAddActorForCampaign = (context: CampaignActorAddReturnContext) => {
     setCampaignActorAddContext(context);
     setCampaignActorSelectContext(null);
+    setCampaignSelectForActorContext(null);
     onViewChange('createMethod');
   };
 
   const handleRequestSelectActorForCampaign = (context: CampaignActorSelectReturnContext) => {
     setCampaignActorSelectContext(context);
     setCampaignActorAddContext(null);
+    setCampaignSelectForActorContext(null);
     onViewChange('vault');
   };
 
   const handleSelectActorForCampaign = (actor: CampaignSuggestedActor) => {
     setSuggestedCampaignActor(actor);
     setCampaignActorSelectContext(null);
+    setCampaignSelectForActorContext(null);
     onViewChange('campaigns');
+  };
+
+  const handleRequestSelectCampaignForActor = (actor: CampaignSuggestedActor) => {
+    setCampaignSelectForActorContext({
+      actorId: actor.actorId,
+      actorName: actor.actorName,
+      source: 'actorLibrary',
+      returnLabel: t('campaignLibrary.returnContext.returnToActorVault'),
+      returnTo: {
+        view: 'characterLibrary',
+        systemId: 'cyberpunk-red',
+        actorId: actor.actorId,
+      },
+    });
+    setCampaignActorAddContext(null);
+    setCampaignActorSelectContext(null);
+    onViewChange('campaigns');
+  };
+
+  const handleSelectCampaignForActor = (
+    _campaign: CampaignInstanceSummary,
+    context: CampaignSelectForActorReturnContext,
+  ) => {
+    setSuggestedCampaignActor({
+      actorId: context.actorId,
+      actorName: context.actorName,
+    });
+    setCampaignSelectForActorContext(null);
+    setCampaignActorAddContext(null);
+    setCampaignActorSelectContext(null);
+    onViewChange('campaigns');
+  };
+
+  const handleReturnToActorContext = () => {
+    setCampaignSelectForActorContext(null);
+    onViewChange('vault');
   };
 
   const handleReturnToCampaignEntry = () => {
@@ -718,6 +761,7 @@ export function CpWorkspaceShell({
                 onEnterCampaigns={() => {
                   setCampaignActorAddContext(null);
                   setCampaignActorSelectContext(null);
+                  setCampaignSelectForActorContext(null);
                   setSuggestedCampaignActor(null);
                   onViewChange('campaigns');
                 }}
@@ -745,6 +789,7 @@ export function CpWorkspaceShell({
                 } else {
                   setCampaignActorAddContext(null);
                   setCampaignActorSelectContext(null);
+                  setCampaignSelectForActorContext(null);
                   setSuggestedCampaignActor(null);
                 }
                 onViewChange('createMethod');
@@ -755,6 +800,7 @@ export function CpWorkspaceShell({
                   : { kind: 'manage' }
               }
               onSelectActorForCampaign={handleSelectActorForCampaign}
+              onRequestSelectCampaignForActor={handleRequestSelectCampaignForActor}
               onReturnToCampaignEntry={handleReturnToCampaignEntry}
               strings={_cpVaultStrings}
               colorTheme={CP_VAULT_COLOR_THEME}
@@ -769,9 +815,16 @@ export function CpWorkspaceShell({
               systemName={t('glossary.cyberpunkRed')}
               tone="cp"
               initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
+              purpose={
+                campaignSelectForActorContext
+                  ? { kind: 'selectForActor', context: campaignSelectForActorContext }
+                  : { kind: 'manage' }
+              }
               suggestedActor={suggestedCampaignActor}
               onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
               onRequestSelectActorForCampaign={handleRequestSelectActorForCampaign}
+              onSelectCampaignForActor={handleSelectCampaignForActor}
+              onReturnToActorContext={handleReturnToActorContext}
               onEnterCampaignRuntime={handleEnterCampaignRuntime}
               onAddCampaign={() => onViewChange('createCampaign')}
               panelClassName={panelClass}

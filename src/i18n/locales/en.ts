@@ -803,6 +803,7 @@ export const en = {
       creatorPlaceholder: 'Current player / UID pending',
       campaign: 'Campaign',
       campaignNone: 'Not in a campaign',
+      selectCampaign: 'Select Campaign',
     },
     planned: {
       title: 'Planned Module',
@@ -1599,6 +1600,7 @@ export const en = {
       add: 'Add Campaign',
       addNote: 'Enter the add flow first, then choose standard creation, quick creation, or import. This pass keeps entry points only and does not write data.',
       openMine: 'My Campaigns',
+      viewDetail: 'View Detail',
       placeholder: 'This entry is planned for the platform; real behavior will be connected after the campaign data contract.',
     },
     existing: {
@@ -1670,9 +1672,13 @@ export const en = {
       selectingActorPrefix: 'Selecting an entry character for',
       selectingActorSuffix: '.',
       selectingActorNote: 'After selection, this flow will return to campaign entry preparation.',
+      selectingCampaignPrefix: 'Selecting a campaign for',
+      selectingCampaignSuffix: '.',
       selectActorButton: 'Select This Character',
+      selectCampaignButton: 'Select This Campaign',
       afterComplete: 'After completion, this flow will return to campaign entry preparation.',
       returnButton: '← Back to Campaign Entry Prep',
+      returnToActorVault: 'Back to My Characters',
       placeholder: 'Real completion return will connect later.',
     },
     fields: {

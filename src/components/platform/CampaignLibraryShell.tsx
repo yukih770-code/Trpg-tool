@@ -3,11 +3,13 @@ import type {
   CampaignActorSelectReturnContext,
   CampaignEntryRole,
   CampaignInstanceSummary,
+  CampaignLibraryPurpose,
   CampaignRuntimeContext,
   CampaignSuggestedActor,
 } from '../../lib/platform/campaignFlow';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useEffect, useState } from 'react';
+import { ContextBar } from './ContextBar';
 
 type CampaignLibraryTone = 'dnd' | 'coc' | 'cp';
 type CampaignLibraryMode = 'home' | 'existing' | 'detail';
@@ -18,12 +20,19 @@ type CampaignLibraryShellProps = {
   tone: CampaignLibraryTone;
   mode?: 'library' | 'create';
   initialMode?: CampaignLibraryMode;
+  purpose?: CampaignLibraryPurpose;
   suggestedActor?: CampaignSuggestedActor | null;
   onAddCampaign?: () => void;
   onRequestAddActorForCampaign?: (context: CampaignActorAddReturnContext) => void;
   onRequestSelectActorForCampaign?: (context: CampaignActorSelectReturnContext) => void;
+  onSelectCampaignForActor?: (
+    campaign: CampaignInstanceSummary,
+    context: Extract<CampaignLibraryPurpose, { kind: 'selectForActor' }>['context'],
+  ) => void;
+  onReturnToActorContext?: (context: Extract<CampaignLibraryPurpose, { kind: 'selectForActor' }>['context']) => void;
   onEnterCampaignRuntime?: (context: CampaignRuntimeContext) => void;
   panelClassName?: string;
+  contextBarClassName?: string;
 };
 
 const toneClasses: Record<CampaignLibraryTone, {
@@ -70,16 +79,30 @@ export function CampaignLibraryShell({
   tone,
   mode = 'library',
   initialMode,
+  purpose = { kind: 'manage' },
   suggestedActor,
   onAddCampaign,
   onRequestSelectActorForCampaign,
+  onSelectCampaignForActor,
+  onReturnToActorContext,
   onEnterCampaignRuntime,
   panelClassName,
+  contextBarClassName,
 }: CampaignLibraryShellProps) {
   const { t } = createTranslator(readStoredLocale());
   const [libraryMode, setLibraryMode] = useState<CampaignLibraryMode>(initialMode ?? 'home');
   const [selectedEntryRole, setSelectedEntryRole] = useState<CampaignEntryRole>('playerCharacter');
   const theme = toneClasses[tone];
+  const campaignSelectForActorContext =
+    purpose.kind === 'selectForActor' ? purpose.context : null;
+  const effectiveSuggestedActor =
+    suggestedActor ??
+    (campaignSelectForActorContext
+      ? {
+          actorId: campaignSelectForActorContext.actorId,
+          actorName: campaignSelectForActorContext.actorName,
+        }
+      : null);
   const sampleCampaign: CampaignInstanceSummary = {
     campaignId: 'sample-grey-mist-a12f',
     systemId,
@@ -113,8 +136,36 @@ export function CampaignLibraryShell({
   ];
 
   useEffect(() => {
+    if (campaignSelectForActorContext) {
+      setLibraryMode('existing');
+      return;
+    }
     if (initialMode) setLibraryMode(initialMode);
-  }, [initialMode]);
+  }, [initialMode, campaignSelectForActorContext?.actorId]);
+
+  useEffect(() => {
+    if (campaignSelectForActorContext || suggestedActor) {
+      setSelectedEntryRole('playerCharacter');
+    }
+  }, [campaignSelectForActorContext?.actorId, suggestedActor?.actorId]);
+
+  const contextLabel = campaignSelectForActorContext
+    ? `${t('campaignLibrary.returnContext.selectingCampaignPrefix')}「${campaignSelectForActorContext.actorName}」${t('campaignLibrary.returnContext.selectingCampaignSuffix')}`
+    : '';
+
+  const contextBar = campaignSelectForActorContext ? (
+    <ContextBar
+      label={contextLabel}
+      status={t('campaignLibrary.returnContext.selectCampaignButton')}
+      backLabel={campaignSelectForActorContext.returnLabel}
+      onBack={
+        onReturnToActorContext
+          ? () => onReturnToActorContext(campaignSelectForActorContext)
+          : undefined
+      }
+      className={contextBarClassName}
+    />
+  ) : null;
 
   const requestSelectActorForCampaign = () => {
     setSelectedEntryRole('playerCharacter');
@@ -134,7 +185,7 @@ export function CampaignLibraryShell({
 
   const canEnterRuntime = Boolean(
     onEnterCampaignRuntime &&
-    (selectedEntryRole === 'host' || suggestedActor),
+    (selectedEntryRole === 'host' || effectiveSuggestedActor),
   );
 
   const enterCampaignRuntime = () => {
@@ -146,8 +197,8 @@ export function CampaignLibraryShell({
       campaignRoomCode: sampleCampaign.roomCode,
       systemId,
       selectedEntryRole,
-      selectedActorId: selectedEntryRole === 'playerCharacter' ? suggestedActor?.actorId : undefined,
-      selectedActorName: selectedEntryRole === 'playerCharacter' ? suggestedActor?.actorName : undefined,
+      selectedActorId: selectedEntryRole === 'playerCharacter' ? effectiveSuggestedActor?.actorId : undefined,
+      selectedActorName: selectedEntryRole === 'playerCharacter' ? effectiveSuggestedActor?.actorName : undefined,
       source: 'campaignEntry',
     });
   };
@@ -224,6 +275,7 @@ export function CampaignLibraryShell({
 
       {mode === 'library' && libraryMode === 'existing' && (
         <div className="mt-5 flex flex-col gap-4">
+          {contextBar}
           <div>
             <p className={`text-xs ${theme.muted}`}>
               {t('campaignLibrary.eyebrow')}
@@ -268,11 +320,7 @@ export function CampaignLibraryShell({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setLibraryMode('detail')}
-            className={`rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${theme.card}`}
-          >
+          <div className={`rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${theme.card}`}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
@@ -299,7 +347,27 @@ export function CampaignLibraryShell({
                 </div>
               ))}
             </dl>
-          </button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {campaignSelectForActorContext && onSelectCampaignForActor ? (
+                <button
+                  type="button"
+                  onClick={() => onSelectCampaignForActor(sampleCampaign, campaignSelectForActorContext)}
+                  className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.primary}`}
+                >
+                  {t('campaignLibrary.returnContext.selectCampaignButton')}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setLibraryMode('detail')}
+                className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${
+                  campaignSelectForActorContext ? theme.secondary : theme.primary
+                }`}
+              >
+                {t('campaignLibrary.actions.viewDetail')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -364,12 +432,12 @@ export function CampaignLibraryShell({
                 </h5>
                 <div className={`mt-3 text-sm ${theme.muted}`}>
                   <span className="font-bold">{t('campaignLibrary.detail.playerPrep.currentActor')}：</span>
-                  {suggestedActor?.actorName ?? t('campaignLibrary.detail.playerPrep.unselected')}
+                  {effectiveSuggestedActor?.actorName ?? t('campaignLibrary.detail.playerPrep.unselected')}
                 </div>
-              {suggestedActor && (
+              {effectiveSuggestedActor && (
                 <div className={`mt-3 rounded border p-3 text-xs leading-relaxed ${theme.badge}`}>
                   <div className="font-bold">
-                    {t('campaignLibrary.detail.playerPrep.suggestedActor')}：{suggestedActor.actorName}
+                    {t('campaignLibrary.detail.playerPrep.suggestedActor')}：{effectiveSuggestedActor.actorName}
                   </div>
                   <p className="mt-1 opacity-75">
                     {t('campaignLibrary.detail.playerPrep.suggestedActorNote')}
@@ -382,7 +450,7 @@ export function CampaignLibraryShell({
                   onClick={requestSelectActorForCampaign}
                   className={`border px-3 py-2 text-xs font-bold ${theme.secondary}`}
                 >
-                  {t(suggestedActor ? 'campaignLibrary.detail.playerPrep.changeActor' : 'campaignLibrary.detail.entry.selectOrAddActor')}
+                  {t(effectiveSuggestedActor ? 'campaignLibrary.detail.playerPrep.changeActor' : 'campaignLibrary.detail.entry.selectOrAddActor')}
                 </button>
                 <button
                   type="button"

@@ -162,6 +162,7 @@ export function buildDndVaultShellStrings(t: (key: string) => string): ActorVaul
     campaignSelectionNote:   t('campaignLibrary.returnContext.selectingActorNote'),
     returnToCampaignEntry:   t('campaignLibrary.returnContext.returnButton'),
     selectForCampaignLabel:  t('campaignLibrary.returnContext.selectActorButton'),
+    selectCampaignLabel:     t('multiWorkspace.actorVault.selectCampaign'),
   };
 }
 

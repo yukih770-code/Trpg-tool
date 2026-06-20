@@ -25,6 +25,8 @@ import type { CocCharacter } from '../../lib/coc-types';
 import type {
   CampaignActorAddReturnContext,
   CampaignActorSelectReturnContext,
+  CampaignInstanceSummary,
+  CampaignSelectForActorReturnContext,
   CampaignRuntimeContext,
   CampaignSuggestedActor,
 } from '../../lib/platform/campaignFlow';
@@ -401,6 +403,8 @@ export function CocWorkspaceShell({
     useState<CampaignActorAddReturnContext | null>(null);
   const [campaignActorSelectContext, setCampaignActorSelectContext] =
     useState<CampaignActorSelectReturnContext | null>(null);
+  const [campaignSelectForActorContext, setCampaignSelectForActorContext] =
+    useState<CampaignSelectForActorReturnContext | null>(null);
   const [suggestedCampaignActor, setSuggestedCampaignActor] =
     useState<CampaignSuggestedActor | null>(null);
   const [campaignRuntimeContext, setCampaignRuntimeContext] =
@@ -427,19 +431,58 @@ export function CocWorkspaceShell({
   const handleRequestAddActorForCampaign = (context: CampaignActorAddReturnContext) => {
     setCampaignActorAddContext(context);
     setCampaignActorSelectContext(null);
+    setCampaignSelectForActorContext(null);
     onViewChange('createMethod');
   };
 
   const handleRequestSelectActorForCampaign = (context: CampaignActorSelectReturnContext) => {
     setCampaignActorSelectContext(context);
     setCampaignActorAddContext(null);
+    setCampaignSelectForActorContext(null);
     onViewChange('vault');
   };
 
   const handleSelectActorForCampaign = (actor: CampaignSuggestedActor) => {
     setSuggestedCampaignActor(actor);
     setCampaignActorSelectContext(null);
+    setCampaignSelectForActorContext(null);
     onViewChange('campaigns');
+  };
+
+  const handleRequestSelectCampaignForActor = (actor: CampaignSuggestedActor) => {
+    setCampaignSelectForActorContext({
+      actorId: actor.actorId,
+      actorName: actor.actorName,
+      source: 'actorLibrary',
+      returnLabel: t('campaignLibrary.returnContext.returnToActorVault'),
+      returnTo: {
+        view: 'characterLibrary',
+        systemId: 'coc7e',
+        actorId: actor.actorId,
+      },
+    });
+    setCampaignActorAddContext(null);
+    setCampaignActorSelectContext(null);
+    onViewChange('campaigns');
+  };
+
+  const handleSelectCampaignForActor = (
+    _campaign: CampaignInstanceSummary,
+    context: CampaignSelectForActorReturnContext,
+  ) => {
+    setSuggestedCampaignActor({
+      actorId: context.actorId,
+      actorName: context.actorName,
+    });
+    setCampaignSelectForActorContext(null);
+    setCampaignActorAddContext(null);
+    setCampaignActorSelectContext(null);
+    onViewChange('campaigns');
+  };
+
+  const handleReturnToActorContext = () => {
+    setCampaignSelectForActorContext(null);
+    onViewChange('vault');
   };
 
   const handleReturnToCampaignEntry = () => {
@@ -601,6 +644,7 @@ export function CocWorkspaceShell({
                 onEnterCampaigns={() => {
                   setCampaignActorAddContext(null);
                   setCampaignActorSelectContext(null);
+                  setCampaignSelectForActorContext(null);
                   setSuggestedCampaignActor(null);
                   onViewChange('campaigns');
                 }}
@@ -628,6 +672,7 @@ export function CocWorkspaceShell({
                 } else {
                   setCampaignActorAddContext(null);
                   setCampaignActorSelectContext(null);
+                  setCampaignSelectForActorContext(null);
                   setSuggestedCampaignActor(null);
                 }
                 onViewChange('createMethod');
@@ -638,6 +683,7 @@ export function CocWorkspaceShell({
                   : { kind: 'manage' }
               }
               onSelectActorForCampaign={handleSelectActorForCampaign}
+              onRequestSelectCampaignForActor={handleRequestSelectCampaignForActor}
               onReturnToCampaignEntry={handleReturnToCampaignEntry}
               strings={_cocVaultStrings}
               colorTheme={COC_VAULT_COLOR_THEME}
@@ -652,9 +698,16 @@ export function CocWorkspaceShell({
               systemName={t('glossary.coc7e')}
               tone="coc"
               initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
+              purpose={
+                campaignSelectForActorContext
+                  ? { kind: 'selectForActor', context: campaignSelectForActorContext }
+                  : { kind: 'manage' }
+              }
               suggestedActor={suggestedCampaignActor}
               onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
               onRequestSelectActorForCampaign={handleRequestSelectActorForCampaign}
+              onSelectCampaignForActor={handleSelectCampaignForActor}
+              onReturnToActorContext={handleReturnToActorContext}
               onEnterCampaignRuntime={handleEnterCampaignRuntime}
               onAddCampaign={() => onViewChange('createCampaign')}
               panelClassName={panelClass}
