@@ -1666,6 +1666,8 @@ export const en = {
         addActor: 'Add Character',
         addActorNote: 'Future flow jumps to the formal add-character flow and returns here through returnTo.',
         enterAsHost: 'Enter as Host',
+        switchToHost: 'Switch to Host',
+        hostActiveNote: 'You will enter this campaign as Host. This is still a UI shell and does not grant real multiplayer authority.',
       },
       playerPrep: {
         title: 'Player Prep',
@@ -1673,6 +1675,8 @@ export const en = {
         unselected: 'Unselected',
         suggestedActor: 'Suggested Character',
         suggestedActorNote: 'This is the current suggested character; you can still change it before entering, and it does not confirm final selectedActorId.',
+        hostActiveActorNote: 'You are currently entering as Host; the player character will not be confirmed for this entry.',
+        switchToPlayer: 'Switch to Player Character',
         changeActor: 'Change Character',
         chooseExisting: 'Choose Existing Character',
         addActor: 'Add Character',

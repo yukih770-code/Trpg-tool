@@ -1666,6 +1666,8 @@ export const zhCN = {
         addActor: '添加角色',
         addActorNote: '未来会跳转到正式添加角色流程，并通过 returnTo 回到当前战役。',
         enterAsHost: '作为主持人进入',
+        switchToHost: '切换为主持人',
+        hostActiveNote: '将以主持人身份进入战役。当前仍为 UI 壳，不代表真实多人权限。',
       },
       playerPrep: {
         title: '玩家准备',
@@ -1673,6 +1675,8 @@ export const zhCN = {
         unselected: '未选择',
         suggestedActor: '推荐角色',
         suggestedActorNote: '这是当前预选角色；进入战役前仍可更换，且不会确认最终 selectedActorId。',
+        hostActiveActorNote: '当前以主持人身份入场，玩家角色不会在本次入场中确认。',
+        switchToPlayer: '切换为玩家角色',
         changeActor: '更换角色',
         chooseExisting: '选择已有角色',
         addActor: '添加角色',

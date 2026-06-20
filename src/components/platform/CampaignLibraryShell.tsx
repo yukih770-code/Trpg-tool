@@ -187,6 +187,15 @@ export function CampaignLibraryShell({
     onEnterCampaignRuntime &&
     (selectedEntryRole === 'host' || effectiveSuggestedActor),
   );
+  const canEnterPlayerRuntime = Boolean(
+    onEnterCampaignRuntime &&
+    selectedEntryRole === 'playerCharacter' &&
+    effectiveSuggestedActor,
+  );
+  const canEnterHostRuntime = Boolean(
+    onEnterCampaignRuntime &&
+    selectedEntryRole === 'host',
+  );
 
   const enterCampaignRuntime = () => {
     if (!canEnterRuntime || !onEnterCampaignRuntime) return;
@@ -444,26 +453,43 @@ export function CampaignLibraryShell({
                   </p>
                 </div>
               )}
+              {selectedEntryRole === 'host' && effectiveSuggestedActor && (
+                <p className={`mt-3 text-xs leading-relaxed ${theme.muted}`}>
+                  {t('campaignLibrary.detail.playerPrep.hostActiveActorNote')}
+                </p>
+              )}
               <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={requestSelectActorForCampaign}
+                  onClick={
+                    selectedEntryRole === 'host'
+                      ? () => setSelectedEntryRole('playerCharacter')
+                      : requestSelectActorForCampaign
+                  }
                   className={`border px-3 py-2 text-xs font-bold ${theme.secondary}`}
                 >
-                  {t(effectiveSuggestedActor ? 'campaignLibrary.detail.playerPrep.changeActor' : 'campaignLibrary.detail.entry.selectOrAddActor')}
+                  {t(
+                    selectedEntryRole === 'host'
+                      ? 'campaignLibrary.detail.playerPrep.switchToPlayer'
+                      : effectiveSuggestedActor
+                        ? 'campaignLibrary.detail.playerPrep.changeActor'
+                        : 'campaignLibrary.detail.entry.selectOrAddActor',
+                  )}
                 </button>
-                <button
-                  type="button"
-                  onClick={enterCampaignRuntime}
-                  disabled={!canEnterRuntime}
-                  className={`border px-3 py-2 text-xs font-bold ${
-                    canEnterRuntime
-                      ? theme.primary
-                      : `cursor-default opacity-65 ${theme.secondary}`
-                  }`}
-                >
-                  {t('campaignLibrary.detail.playerPrep.enterCampaign')}
-                </button>
+                {selectedEntryRole === 'playerCharacter' && (
+                  <button
+                    type="button"
+                    onClick={enterCampaignRuntime}
+                    disabled={!canEnterPlayerRuntime}
+                    className={`border px-3 py-2 text-xs font-bold ${
+                      canEnterPlayerRuntime
+                        ? theme.primary
+                        : `cursor-default opacity-65 ${theme.secondary}`
+                    }`}
+                  >
+                    {t('campaignLibrary.detail.playerPrep.enterCampaign')}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -475,30 +501,33 @@ export function CampaignLibraryShell({
                   {t('campaignLibrary.detail.hostPrep.title')}
                 </h5>
                 <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
-                  {t('campaignLibrary.detail.entry.hostEntryNote')}
+                  {selectedEntryRole === 'host'
+                    ? t('campaignLibrary.detail.entry.hostActiveNote')
+                    : t('campaignLibrary.detail.entry.hostEntryNote')}
                 </p>
                 <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedEntryRole('host')}
-                    className={`border px-3 py-2 text-xs font-bold ${
-                      selectedEntryRole === 'host' ? theme.primary : theme.secondary
-                    }`}
-                  >
-                    {t('campaignLibrary.detail.entry.enterAsHost')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={enterCampaignRuntime}
-                    disabled={selectedEntryRole !== 'host'}
-                    className={`border px-3 py-2 text-xs font-bold ${
-                      selectedEntryRole === 'host'
-                        ? theme.primary
-                        : `cursor-default opacity-65 ${theme.secondary}`
-                    }`}
-                  >
-                    {t('campaignLibrary.detail.playerPrep.enterCampaign')}
-                  </button>
+                  {selectedEntryRole === 'host' ? (
+                    <button
+                      type="button"
+                      onClick={enterCampaignRuntime}
+                      disabled={!canEnterHostRuntime}
+                      className={`border px-3 py-2 text-xs font-bold ${
+                        canEnterHostRuntime
+                          ? theme.primary
+                          : `cursor-default opacity-65 ${theme.secondary}`
+                      }`}
+                    >
+                      {t('campaignLibrary.detail.playerPrep.enterCampaign')}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEntryRole('host')}
+                      className={`border px-3 py-2 text-xs font-bold ${theme.secondary}`}
+                    >
+                      {t('campaignLibrary.detail.entry.switchToHost')}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
