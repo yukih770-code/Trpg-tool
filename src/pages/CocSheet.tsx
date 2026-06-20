@@ -1,9 +1,11 @@
 import { useCocStore } from '../store/cocStore';
 import { getCocDerivedStats } from '../lib/coc-utils';
 import { Input } from '../../components/ui/input';
+import { CharacterCampaignCta, useCharacterCampaignCta } from '../components/platform/CharacterCampaignCta';
 
 export function CocSheet() {
   const { character, updateField, toggleSkillGrowthMark } = useCocStore();
+  const campaignCta = useCharacterCampaignCta();
 
   const { db, build, move } = getCocDerivedStats(character.characteristics);
   const runtime = character.runtime;
@@ -67,6 +69,7 @@ export function CocSheet() {
            </div>
         </div>
       </div>
+      {campaignCta && <CharacterCampaignCta {...campaignCta} />}
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Left Column: Stats & Derived */}

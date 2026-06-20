@@ -9,6 +9,10 @@ import {
 } from '../../components/platform/ActorVaultLibraryShell';
 import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
 import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
+import {
+  CharacterCampaignCta,
+  CharacterCampaignCtaProvider,
+} from '../../components/platform/CharacterCampaignCta';
 import { ContextBar } from '../../components/platform/ContextBar';
 import { SystemWorkspaceEntryShell } from '../../components/platform/SystemWorkspaceEntryShell';
 import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
@@ -507,14 +511,19 @@ export function CocWorkspaceShell({
     onViewChange('campaigns');
   };
 
-  const handleRequestSelectCampaignForActor = (actor: CampaignSuggestedActor) => {
+  const handleRequestSelectCampaignForActor = (
+    actor: CampaignSuggestedActor,
+    source: CampaignSelectForActorReturnContext['source'] = 'actorLibrary',
+  ) => {
     setCampaignSelectForActorContext({
       actorId: actor.actorId,
       actorName: actor.actorName,
-      source: 'actorLibrary',
-      returnLabel: t('campaignLibrary.returnContext.returnToActorVault'),
+      source,
+      returnLabel: source === 'actorDetail'
+        ? t('multiWorkspace.actorVault.returnToActorSheet')
+        : t('campaignLibrary.returnContext.returnToActorVault'),
       returnTo: {
-        view: 'characterLibrary',
+        view: source === 'actorDetail' ? 'characterDetail' : 'characterLibrary',
         systemId: 'coc7e',
         actorId: actor.actorId,
       },
@@ -540,9 +549,13 @@ export function CocWorkspaceShell({
     onViewChange('campaigns');
   };
 
-  const handleReturnToActorContext = () => {
+  const handleReturnToActorContext = (context?: CampaignSelectForActorReturnContext) => {
     setCampaignSelectForActorContext(null);
     setActorCreationCompletionContext(null);
+    if (context?.returnTo.view === 'characterDetail') {
+      onViewChange('sheet');
+      return;
+    }
     onViewChange('vault');
   };
 
@@ -554,6 +567,17 @@ export function CocWorkspaceShell({
 
   const handleEnterCampaignRuntime = (context: CampaignRuntimeContext) => {
     setCampaignRuntimeContext(context);
+  };
+
+  const activeCocActorForCampaign: CampaignSuggestedActor = {
+    actorId: 'ui-preview-coc-actor',
+    actorName: displayName || t('multiWorkspace.actorCreationCompletion.placeholderActorName'),
+  };
+
+  const cocCharacterCampaignCta = {
+    tone: 'coc' as const,
+    actorName: activeCocActorForCampaign.actorName,
+    onSelectCampaign: () => handleRequestSelectCampaignForActor(activeCocActorForCampaign, 'actorDetail'),
   };
 
   // Investigator data rows for cards
@@ -661,7 +685,11 @@ export function CocWorkspaceShell({
       {/* ── Play view: preserved COC runtime ──
           AI-LANDMARK: LEGACY_RUNTIME_EMBEDDED_MODE
           Children are embedded legacy content; this shell owns navigation chrome. */}
-      {view === 'play' && children}
+      {view === 'play' && (
+        <CharacterCampaignCtaProvider value={cocCharacterCampaignCta}>
+          {children}
+        </CharacterCampaignCtaProvider>
+      )}
 
       {/* ── Non-play views ── */}
       {view !== 'play' && (
@@ -939,6 +967,8 @@ export function CocWorkspaceShell({
 
               {hasCurrentCharacter ? (
                 <div className="space-y-4">
+                  <CharacterCampaignCta {...cocCharacterCampaignCta} />
+
                   {/* HP / MP / SAN / Luck */}
                   <div className={`${teal.card} p-4`}>
                     <div className={`mb-3 text-[10px] font-bold uppercase tracking-wider ${teal.accent}`}>

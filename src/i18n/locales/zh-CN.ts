@@ -804,6 +804,7 @@ export const zhCN = {
       campaign: '所属战役',
       campaignNone: '未加入战役',
       selectCampaign: '选择战役',
+      returnToActorSheet: '返回角色卡',
     },
     actorCreationCompletion: {
       readyTitle: '角色已准备',
@@ -817,6 +818,17 @@ export const zhCN = {
       returnToCampaignEntry: '返回战役入场准备',
       shellOnlyNote: '这是本地 UI-only 完成态，不写入角色库或战役关系。',
       placeholderActorName: '新角色预览',
+    },
+    characterCampaignCta: {
+      eyebrow: '战役使用',
+      currentCampaign: '当前战役',
+      currentContext: '当前上下文',
+      noCampaign: '未加入战役',
+      actorLabel: '当前角色',
+      selectCampaign: '选择战役',
+      returnToCampaignEntry: '回到战役入场准备',
+      enterEntryPreparation: '进入入场准备',
+      shellOnlyNote: '此处只提供战役选择入口；不会创建真实战役成员关系。',
     },
     planned: {
       title: '规划模块',

@@ -15,6 +15,7 @@ import {
 } from '../../components/platform/ActorVaultLibraryShell';
 import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
 import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
+import { CharacterCampaignCtaProvider } from '../../components/platform/CharacterCampaignCta';
 import { ContextBar } from '../../components/platform/ContextBar';
 import { SystemWorkspaceEntryShell } from '../../components/platform/SystemWorkspaceEntryShell';
 import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
@@ -290,14 +291,19 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     onViewChange('campaigns');
   };
 
-  const handleRequestSelectCampaignForActor = (actor: CampaignSuggestedActor) => {
+  const handleRequestSelectCampaignForActor = (
+    actor: CampaignSuggestedActor,
+    source: CampaignSelectForActorReturnContext['source'] = 'actorLibrary',
+  ) => {
     setCampaignSelectForActorContext({
       actorId: actor.actorId,
       actorName: actor.actorName,
-      source: 'actorLibrary',
-      returnLabel: t('campaignLibrary.returnContext.returnToActorVault'),
+      source,
+      returnLabel: source === 'actorDetail'
+        ? t('multiWorkspace.actorVault.returnToActorSheet')
+        : t('campaignLibrary.returnContext.returnToActorVault'),
       returnTo: {
-        view: 'characterLibrary',
+        view: source === 'actorDetail' ? 'characterDetail' : 'characterLibrary',
         systemId: 'dnd2024',
         actorId: actor.actorId,
       },
@@ -323,9 +329,13 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     onViewChange('campaigns');
   };
 
-  const handleReturnToActorContext = () => {
+  const handleReturnToActorContext = (context?: CampaignSelectForActorReturnContext) => {
     setCampaignSelectForActorContext(null);
     setActorCreationCompletionContext(null);
+    if (context?.returnTo.view === 'characterDetail') {
+      onOpenPlayTab('sheet');
+      return;
+    }
     onViewChange('characters');
   };
 
@@ -337,6 +347,11 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
 
   const handleEnterCampaignRuntime = (context: CampaignRuntimeContext) => {
     setCampaignRuntimeContext(context);
+  };
+
+  const activeDndActorForCampaign: CampaignSuggestedActor = {
+    actorId: dndActiveCharacterId ?? 'ui-preview-dnd-actor',
+    actorName: characterName || t('multiWorkspace.actorCreationCompletion.placeholderActorName'),
   };
 
   return (
@@ -352,7 +367,17 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
       </div>
 
       {/* ── Play view: preserved Creator / Sheet / Gameplay workspace ── */}
-      {view === 'play' && children}
+      {view === 'play' && (
+        <CharacterCampaignCtaProvider
+          value={{
+            tone: 'dnd',
+            actorName: activeDndActorForCampaign.actorName,
+            onSelectCampaign: () => handleRequestSelectCampaignForActor(activeDndActorForCampaign, 'actorDetail'),
+          }}
+        >
+          {children}
+        </CharacterCampaignCtaProvider>
+      )}
 
       {view !== 'play' && (
         <main className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8 md:py-8">

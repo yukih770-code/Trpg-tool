@@ -9,6 +9,7 @@ import { LEGACY_RACE_DATA } from '../data/races';
 import { getAvailableClasses, getAvailableRaces, getAvailableFeats } from '../lib/mod-utils';
 import { DndEquipmentCatalogPanel } from './sheet/DndEquipmentCatalogPanel';
 import { createTranslator, readStoredLocale } from '../i18n';
+import { CharacterCampaignCta, useCharacterCampaignCta } from '../components/platform/CharacterCampaignCta';
 
 type SheetProps = {
   onStartPlaying?: () => void;
@@ -16,6 +17,7 @@ type SheetProps = {
 
 export function Sheet({ onStartPlaying }: SheetProps = {}) {
   const { t } = createTranslator(readStoredLocale());
+  const campaignCta = useCharacterCampaignCta();
   const {
     character,
     updateField,
@@ -160,6 +162,7 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
             </button>
           )}
         </div>
+        {campaignCta && <CharacterCampaignCta {...campaignCta} className="mt-3" />}
       </header>
 
       <section className="grid grid-cols-2 gap-2 md:grid-cols-5">

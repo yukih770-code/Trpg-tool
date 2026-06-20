@@ -146,10 +146,16 @@ It should answer:
 Possible future fields:
 
 ```ts
+type CampaignMembershipRole =
+  | 'primaryHost'
+  | 'player'
+  | 'observer'
+  | 'assistantHost';
+
 type CampaignMembership = {
   campaignId: string;
   participantId: string;
-  role: 'host' | 'coHost' | 'player' | 'spectator';
+  role: CampaignMembershipRole;
   status: 'invited' | 'active' | 'left' | 'removed' | 'archived';
   controlledCampaignActorInstanceIds: string[];
 };
@@ -161,6 +167,51 @@ Rules:
 - CampaignMembership is created only by an explicit join/invite/assign/accept workflow.
 - selectedActorId alone does not create CampaignMembership.
 - suggestedActor never creates CampaignMembership.
+- `primaryHost` must be unique within one Campaign.
+- `player`, `observer`, and `assistantHost` may have multiple memberships in one Campaign.
+
+### Single Primary Host Rule
+
+Every Campaign has exactly one platform-level primary hosting authority.
+
+Definitions:
+
+- Each Campaign can have only one Primary Host.
+- Primary Host is the Campaign's single authoritative host identity.
+- Primary Host is the platform-level equivalent of Campaign Owner / GM / Keeper / Referee.
+- Primary Host is represented by one `primaryHostParticipantId` on the Campaign.
+
+Rules:
+
+1. One Campaign can have only one `primaryHostParticipantId` at a time.
+2. RuntimeSession must inherit Campaign's single host authority.
+3. Player participants cannot choose to become Host by themselves.
+4. Non-Host users cannot bypass membership or permission by selecting a local UI `entryRole`.
+5. Host-only operations must derive authority from Primary Host membership.
+6. Current UI-only `作为主持人进入` / `Enter as Host` surfaces are placeholders and local previews only; they do not represent real multiplayer permission.
+
+Future Campaign sketch:
+
+```ts
+interface Campaign {
+  id: string;
+  primaryHostParticipantId: string;
+}
+```
+
+### Assistant Host / Co-GM Reservation
+
+Future systems may allow assistant hosts, moderators, co-GMs, assistant keepers,
+or similar helper roles.
+
+Rules:
+
+- `Primary Host` is unique.
+- `AssistantHost` / `Moderator` / `Co-GM` may be multiple.
+- AssistantHost permissions must be granted by Primary Host.
+- AssistantHost does not replace `primaryHostParticipantId`.
+- AssistantHost cannot break or dilute the Single Primary Host Rule.
+- AssistantHost permissions are scoped delegated permissions, not platform-wide host authority.
 
 ### RuntimeActor
 
@@ -206,6 +257,10 @@ Rules:
 - RuntimeSession is not the campaign itself.
 - Campaign can have many RuntimeSessions over time.
 - RuntimeSession may be active, paused, archived, or replayed.
+- `RuntimeSession.hostParticipantId` must come from `Campaign.primaryHostParticipantId`.
+- Host-only projection can be granted to Primary Host and to AssistantHost only when delegated by Primary Host.
+- Player View cannot become Host View merely because local UI state or `selectedEntryRole` says `host`.
+- RuntimeSession must not create a second host authority.
 
 ### suggestedActor
 
@@ -321,16 +376,18 @@ Rules:
 - control is not inferred from suggestedActor;
 - control is not inferred from selectedActorId until a real membership/assignment write happens;
 - one participant may control multiple instances if the campaign allows it.
+- selecting a local `entryRole: host` in the UI is not a control assignment and not host authority.
 
 ### 5. Can GM view/manage all CampaignActorInstances?
 
-Yes, future host/GM participants should be able to view/manage all CampaignActorInstances according to permission and visibility rules.
+Yes, future Primary Host participants should be able to view/manage all CampaignActorInstances according to permission and visibility rules.
 
 But:
 
 - UI projection alone is not real permission enforcement;
 - host-only UI must not imply server permissions until backend/auth exists;
 - hidden/private fields still need visibility projection and server authority later.
+- AssistantHost / Co-GM access is delegated by Primary Host and must not replace the unique `primaryHostParticipantId`.
 
 ### 6. Are NPCs, enemies, companions, summons, and minions CampaignActorInstances?
 
@@ -468,10 +525,21 @@ type CampaignParticipant = {
   displayName: string;
 };
 
+type CampaignMembershipRole =
+  | 'primaryHost'
+  | 'player'
+  | 'observer'
+  | 'assistantHost';
+
+type Campaign = {
+  id: string;
+  primaryHostParticipantId: string;
+};
+
 type CampaignMembership = {
   campaignId: string;
   participantId: string;
-  role: 'host' | 'coHost' | 'player' | 'spectator';
+  role: CampaignMembershipRole;
   status: 'invited' | 'active' | 'left' | 'removed' | 'archived';
   controlledCampaignActorInstanceIds: string[];
 };
@@ -479,6 +547,7 @@ type CampaignMembership = {
 type RuntimeSession = {
   id: string;
   campaignId: string;
+  hostParticipantId: string;
   status: 'active' | 'paused' | 'archived';
   startedAt: string;
 };
@@ -541,6 +610,8 @@ Future permissions must distinguish:
 
 - membership role;
 - controller relationship;
+- Primary Host authority;
+- AssistantHost delegated authority;
 - visibility projection;
 - server authority;
 - UI disabled/locked presentation.
@@ -549,6 +620,10 @@ Rules:
 
 - Host UI projection is not permission enforcement.
 - Player locked UI is not permission enforcement.
+- Primary Host is the root source for host authority in a Campaign.
+- There must be exactly one Primary Host per Campaign.
+- AssistantHost permissions must be delegated from the Primary Host.
+- `selectedEntryRole: 'host'` in local UI state is never sufficient to grant real host authority.
 - Backend/server must enforce real access later.
 - Visibility projections should be generated from membership, role, controlled actor instances, handout publish events, map visibility, and scene state.
 
@@ -591,9 +666,16 @@ Define participants, roles, invitations, membership status, and controlled actor
 Must answer:
 
 - who controls which campaign actor;
-- who hosts;
+- who is the unique Primary Host;
+- which AssistantHost / Co-GM users, if any, are delegated by Primary Host;
 - who can spectate;
 - how invited users become active members.
+
+Must enforce:
+
+- one and only one `primaryHostParticipantId` per Campaign;
+- Player users cannot self-promote to Host through entry UI;
+- RuntimeSession host authority inherits from Campaign primary host authority.
 
 ### Phase 4: RuntimeActor / RuntimeSession
 
@@ -634,8 +716,10 @@ Before touching campaign entry, actor selection, runtime shell, maps, handouts, 
 
 - Is this value an ActorVaultActor, CampaignActorInstance, or RuntimeActor?
 - Is this user a CampaignParticipant or a CampaignMembership?
+- Is this user the unique Primary Host, a delegated AssistantHost, a player, or an observer?
 - Is the current actor value suggested or selected?
 - Is selectedActorId local runtime context or persistent membership?
+- Is selectedEntryRole just local UI state, or has it been validated against membership authority?
 - Does this flow create a real CampaignActorInstance?
 - Does this flow create a real CampaignMembership?
 - Does this log reference runtime actor, campaign actor, or vault actor?

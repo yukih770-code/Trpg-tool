@@ -804,6 +804,7 @@ export const en = {
       campaign: 'Campaign',
       campaignNone: 'Not in a campaign',
       selectCampaign: 'Select Campaign',
+      returnToActorSheet: 'Return to Character Sheet',
     },
     actorCreationCompletion: {
       readyTitle: 'Character Ready',
@@ -817,6 +818,17 @@ export const en = {
       returnToCampaignEntry: 'Return to Campaign Entry Prep',
       shellOnlyNote: 'This is a local UI-only completion state. It does not write actor library data or campaign relations.',
       placeholderActorName: 'New Character Preview',
+    },
+    characterCampaignCta: {
+      eyebrow: 'Campaign Use',
+      currentCampaign: 'Current Campaign',
+      currentContext: 'Current Context',
+      noCampaign: 'Not in a campaign',
+      actorLabel: 'Current Character',
+      selectCampaign: 'Select Campaign',
+      returnToCampaignEntry: 'Return to Campaign Entry Prep',
+      enterEntryPreparation: 'Enter Entry Prep',
+      shellOnlyNote: 'This only provides the campaign selection entry; it does not create real campaign membership.',
     },
     planned: {
       title: 'Planned Module',

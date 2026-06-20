@@ -9,6 +9,11 @@ import {
 } from '../../components/platform/ActorVaultLibraryShell';
 import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
 import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
+import {
+  CharacterCampaignCta,
+  CharacterCampaignCtaProvider,
+  useCharacterCampaignCta,
+} from '../../components/platform/CharacterCampaignCta';
 import { ContextBar } from '../../components/platform/ContextBar';
 import { SystemWorkspaceEntryShell } from '../../components/platform/SystemWorkspaceEntryShell';
 import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
@@ -118,6 +123,7 @@ export function CpEdgerunnerSheetShell({
 }: CpEdgerunnerSheetShellProps) {
   const { t } = createTranslator(readStoredLocale());
   const character = useCpStore((state) => state.character);
+  const campaignCta = useCharacterCampaignCta();
   const displayName = character.lifePath?.handle?.trim() || character.name?.trim() || t('multiWorkspace.cp.entry.unnamed');
   const armorSummary = [
     character.armorHead ? `${t('cpWorkspace.sheet.armorHead')} SP ${character.armorHead.sp}` : null,
@@ -159,6 +165,7 @@ export function CpEdgerunnerSheetShell({
               </div>
             ))}
           </div>
+          {campaignCta && <CharacterCampaignCta {...campaignCta} className="mt-4" />}
         </div>
         {/* AI-LANDMARK: ACTOR_VAULT_RESPONSIBILITY_CLEANUP_HIDE_RUNTIME_CTA_V1
             Sheet CTA: startMission hidden (runtime gated). continueEditing kept (幕间维护). */}
@@ -648,14 +655,19 @@ export function CpWorkspaceShell({
     onViewChange('campaigns');
   };
 
-  const handleRequestSelectCampaignForActor = (actor: CampaignSuggestedActor) => {
+  const handleRequestSelectCampaignForActor = (
+    actor: CampaignSuggestedActor,
+    source: CampaignSelectForActorReturnContext['source'] = 'actorLibrary',
+  ) => {
     setCampaignSelectForActorContext({
       actorId: actor.actorId,
       actorName: actor.actorName,
-      source: 'actorLibrary',
-      returnLabel: t('campaignLibrary.returnContext.returnToActorVault'),
+      source,
+      returnLabel: source === 'actorDetail'
+        ? t('multiWorkspace.actorVault.returnToActorSheet')
+        : t('campaignLibrary.returnContext.returnToActorVault'),
       returnTo: {
-        view: 'characterLibrary',
+        view: source === 'actorDetail' ? 'characterDetail' : 'characterLibrary',
         systemId: 'cyberpunk-red',
         actorId: actor.actorId,
       },
@@ -681,9 +693,13 @@ export function CpWorkspaceShell({
     onViewChange('campaigns');
   };
 
-  const handleReturnToActorContext = () => {
+  const handleReturnToActorContext = (context?: CampaignSelectForActorReturnContext) => {
     setCampaignSelectForActorContext(null);
     setActorCreationCompletionContext(null);
+    if (context?.returnTo.view === 'characterDetail') {
+      onOpenPlayTab('sheet');
+      return;
+    }
     onViewChange('vault');
   };
 
@@ -695,6 +711,17 @@ export function CpWorkspaceShell({
 
   const handleEnterCampaignRuntime = (context: CampaignRuntimeContext) => {
     setCampaignRuntimeContext(context);
+  };
+
+  const activeCpActorForCampaign: CampaignSuggestedActor = {
+    actorId: 'ui-preview-cp-actor',
+    actorName: displayName || t('multiWorkspace.actorCreationCompletion.placeholderActorName'),
+  };
+
+  const cpCharacterCampaignCta = {
+    tone: 'cp' as const,
+    actorName: activeCpActorForCampaign.actorName,
+    onSelectCampaign: () => handleRequestSelectCampaignForActor(activeCpActorForCampaign, 'actorDetail'),
   };
 
   // Edgerunner data rows for cards
@@ -778,7 +805,11 @@ export function CpWorkspaceShell({
       {/* ── Play view: preserved CP RED runtime ──
           AI-LANDMARK: LEGACY_RUNTIME_EMBEDDED_MODE
           Children are embedded legacy content; this shell owns navigation chrome. */}
-      {view === 'play' && children}
+      {view === 'play' && (
+        <CharacterCampaignCtaProvider value={cpCharacterCampaignCta}>
+          {children}
+        </CharacterCampaignCtaProvider>
+      )}
 
       {/* ── Non-play views ── */}
       {view !== 'play' && (
