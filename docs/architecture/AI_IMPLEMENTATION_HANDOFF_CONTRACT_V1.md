@@ -14,6 +14,11 @@ This document is a process and architecture contract only. It does not implement
 UI, backend, storage, rules runtime, migration, Workshop, Package Library,
 Campaign, multiplayer, or repository behavior.
 
+Before any implementation task, AI agents must read:
+`docs/architecture/AI_IMPLEMENTATION_EXECUTION_RULES_V1.md`
+
+The final report must include an `Execution Rules Compliance` section.
+
 ## 1. Required Layer Identification
 
 Before changing files, the executing AI must identify which layer the requested
