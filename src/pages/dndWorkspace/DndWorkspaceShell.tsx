@@ -553,7 +553,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
 
           {!campaignRuntimeContext && view === 'campaigns' && (
             <CampaignLibraryShell
-              systemId="dnd2024"
+              systemId="dnd5e-2024"
               systemName="DND 2024"
               tone="dnd"
               initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
@@ -575,7 +575,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
 
           {!campaignRuntimeContext && view === 'createCampaign' && (
             <CampaignLibraryShell
-              systemId="dnd2024"
+              systemId="dnd5e-2024"
               systemName="DND 2024"
               tone="dnd"
               mode="create"

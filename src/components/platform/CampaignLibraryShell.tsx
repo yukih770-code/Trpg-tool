@@ -7,19 +7,21 @@ import type {
   CampaignRuntimeContext,
   CampaignSuggestedActor,
 } from '../../lib/platform/campaignFlow';
+import type { LocalCampaign, LocalCampaignSystemId, LocalCampaignStatus } from '../../lib/platform/campaignLocalStore';
+import { useCampaignLocalStore } from '../../lib/platform/campaignLocalStore';
 import { createTranslator, readStoredLocale } from '../../i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ContextBar } from './ContextBar';
 
 type CampaignLibraryTone = 'dnd' | 'coc' | 'cp';
-type CampaignLibraryMode = 'home' | 'existing' | 'detail';
+type CampaignLibraryMode = 'home' | 'existing' | 'detail' | 'add';
 
 type CampaignLibraryShellProps = {
-  systemId: string;
+  systemId: LocalCampaignSystemId;
   systemName: string;
   tone: CampaignLibraryTone;
   mode?: 'library' | 'create';
-  initialMode?: CampaignLibraryMode;
+  initialMode?: Exclude<CampaignLibraryMode, 'add'>;
   purpose?: CampaignLibraryPurpose;
   suggestedActor?: CampaignSuggestedActor | null;
   onAddCampaign?: () => void;
@@ -42,6 +44,7 @@ const toneClasses: Record<CampaignLibraryTone, {
   primary: string;
   secondary: string;
   badge: string;
+  danger: string;
 }> = {
   dnd: {
     card: 'border-[#58180d]/25 bg-white/55',
@@ -50,6 +53,7 @@ const toneClasses: Record<CampaignLibraryTone, {
     primary: 'border-[#58180d] bg-[#58180d] text-[#fdf6e3]',
     secondary: 'border-[#58180d]/35 text-[#58180d]/55',
     badge: 'border-[#58180d]/30 text-[#58180d]/70',
+    danger: 'border-red-700/45 text-red-700/75',
   },
   coc: {
     card: 'border-[#2f7f68]/35 bg-[#101816]/85',
@@ -58,6 +62,7 @@ const toneClasses: Record<CampaignLibraryTone, {
     primary: 'border-[#2f7f68] bg-[#2f7f68] text-[#06100d]',
     secondary: 'border-[#2f7f68]/40 text-[#8fb7aa]/60',
     badge: 'border-[#2f7f68]/40 text-[#8fb7aa]/70',
+    danger: 'border-red-400/45 text-red-300/75',
   },
   cp: {
     card: 'border-[#d8b954]/35 bg-[#0d0d0d]/85',
@@ -66,13 +71,21 @@ const toneClasses: Record<CampaignLibraryTone, {
     primary: 'border-[#f5c518] bg-[#f5c518] text-[#0d0d0d]',
     secondary: 'border-[#d8b954]/40 text-[#d8b954]/60',
     badge: 'border-[#d8b954]/40 text-[#d8b954]/70',
+    danger: 'border-red-400/45 text-red-300/75',
   },
 };
 
+const statusOrder: Record<LocalCampaignStatus, number> = {
+  active: 0,
+  draft: 1,
+  archived: 2,
+};
+
 // AI-LANDMARK: A11_SYSTEM_WORKSPACE_ENTRY_SHELL_V1
-// Campaign Library placeholder: exposes CampaignInstance mental model only.
-// No room creation, room-code generation, multiplayer, backend, actor binding,
-// PackageLibrary UI, or Workshop Builder behavior is implemented here.
+// Campaign Library now reads/writes LocalCampaign records only.
+// No CampaignMembership, CampaignActorInstance, RuntimeSession, multiplayer,
+// backend, permission, RuntimeLog, map, handout, PackageLibrary UI, or
+// Workshop Builder behavior is implemented here.
 export function CampaignLibraryShell({
   systemId,
   systemName,
@@ -91,8 +104,30 @@ export function CampaignLibraryShell({
 }: CampaignLibraryShellProps) {
   const { t } = createTranslator(readStoredLocale());
   const [libraryMode, setLibraryMode] = useState<CampaignLibraryMode>(initialMode ?? 'home');
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [selectedEntryRole, setSelectedEntryRole] = useState<CampaignEntryRole>('playerCharacter');
   const theme = toneClasses[tone];
+
+  const allCampaigns = useCampaignLocalStore((state) => state.campaigns);
+  const createCampaign = useCampaignLocalStore((state) => state.createCampaign);
+  const updateCampaign = useCampaignLocalStore((state) => state.updateCampaign);
+  const archiveCampaign = useCampaignLocalStore((state) => state.archiveCampaign);
+  const deleteCampaign = useCampaignLocalStore((state) => state.deleteCampaign);
+  const getCampaignById = useCampaignLocalStore((state) => state.getCampaignById);
+
+  const campaigns = useMemo(
+    () =>
+      allCampaigns
+        .filter((campaign) => campaign.systemId === systemId)
+        .sort((a, b) => {
+          const statusDiff = statusOrder[a.status] - statusOrder[b.status];
+          if (statusDiff !== 0) return statusDiff;
+          return b.updatedAt.localeCompare(a.updatedAt);
+        }),
+    [allCampaigns, systemId],
+  );
+  const activeCampaigns = campaigns.filter((campaign) => campaign.status !== 'archived');
+  const draftCampaigns = campaigns.filter((campaign) => campaign.status === 'draft');
   const campaignSelectForActorContext =
     purpose.kind === 'selectForActor' ? purpose.context : null;
   const effectiveSuggestedActor =
@@ -103,27 +138,23 @@ export function CampaignLibraryShell({
           actorName: campaignSelectForActorContext.actorName,
         }
       : null);
-  const sampleCampaign: CampaignInstanceSummary = {
-    campaignId: 'sample-grey-mist-a12f',
-    systemId,
-    title: t('campaignLibrary.sample.title'),
-    roomCode: 'A12F',
-    sourcePackageId: 'sample-grey-mist-package',
-    lastPlayedAt: t('campaignLibrary.sample.lastPlayedAt'),
-  };
+  const selectedCampaign =
+    selectedCampaignId && getCampaignById(selectedCampaignId)?.systemId === systemId
+      ? getCampaignById(selectedCampaignId)
+      : campaigns[0];
 
   const createActions = [
-    'campaignLibrary.create.standard',
-    'campaignLibrary.create.quick',
-    'campaignLibrary.create.importCampaign',
+    { key: 'campaignLibrary.create.standard', enabled: true },
+    { key: 'campaignLibrary.create.quick', enabled: false },
+    { key: 'campaignLibrary.create.importCampaign', enabled: false },
   ];
   const stats = [
-    ['campaignLibrary.stats.total', '1'],
-    ['campaignLibrary.stats.active', '1'],
-    ['campaignLibrary.stats.hosted', '1'],
+    ['campaignLibrary.stats.total', String(campaigns.length)],
+    ['campaignLibrary.stats.active', String(activeCampaigns.filter((campaign) => campaign.status === 'active').length)],
+    ['campaignLibrary.stats.hosted', String(campaigns.length)],
     ['campaignLibrary.stats.joined', '0'],
-    ['campaignLibrary.stats.needsAttention', '0'],
-    ['campaignLibrary.stats.recentPlayed', sampleCampaign.lastPlayedAt],
+    ['campaignLibrary.stats.needsAttention', String(draftCampaigns.length)],
+    ['campaignLibrary.stats.recentPlayed', campaigns[0] ? formatCampaignDate(campaigns[0].updatedAt) : '-'],
   ];
   const hostPrepItems = [
     'campaignLibrary.detail.hostPrep.importActors',
@@ -149,6 +180,12 @@ export function CampaignLibraryShell({
     }
   }, [campaignSelectForActorContext?.actorId, suggestedActor?.actorId]);
 
+  useEffect(() => {
+    if (selectedCampaignId && !campaigns.some((campaign) => campaign.id === selectedCampaignId)) {
+      setSelectedCampaignId(campaigns[0]?.id ?? null);
+    }
+  }, [campaigns, selectedCampaignId]);
+
   const contextLabel = campaignSelectForActorContext
     ? `${t('campaignLibrary.returnContext.selectingCampaignPrefix')}「${campaignSelectForActorContext.actorName}」${t('campaignLibrary.returnContext.selectingCampaignSuffix')}`
     : '';
@@ -168,42 +205,46 @@ export function CampaignLibraryShell({
   ) : null;
 
   const requestSelectActorForCampaign = () => {
+    if (!selectedCampaign) return;
     setSelectedEntryRole('playerCharacter');
     onRequestSelectActorForCampaign?.({
-      campaignId: sampleCampaign.campaignId,
-      campaignTitle: sampleCampaign.title,
-      campaignRoomCode: sampleCampaign.roomCode,
+      campaignId: selectedCampaign.id,
+      campaignTitle: selectedCampaign.title,
+      campaignRoomCode: selectedCampaign.roomCode,
       source: 'campaignEntry',
       returnLabel: t('campaignLibrary.returnContext.returnButton'),
       returnTo: {
         view: 'campaignDetail',
         systemId,
-        campaignId: sampleCampaign.campaignId,
+        campaignId: selectedCampaign.id,
       },
     });
   };
 
   const canEnterRuntime = Boolean(
+    selectedCampaign &&
     onEnterCampaignRuntime &&
     (selectedEntryRole === 'host' || effectiveSuggestedActor),
   );
   const canEnterPlayerRuntime = Boolean(
+    selectedCampaign &&
     onEnterCampaignRuntime &&
     selectedEntryRole === 'playerCharacter' &&
     effectiveSuggestedActor,
   );
   const canEnterHostRuntime = Boolean(
+    selectedCampaign &&
     onEnterCampaignRuntime &&
     selectedEntryRole === 'host',
   );
 
   const enterCampaignRuntime = () => {
-    if (!canEnterRuntime || !onEnterCampaignRuntime) return;
+    if (!selectedCampaign || !canEnterRuntime || !onEnterCampaignRuntime) return;
 
     onEnterCampaignRuntime({
-      campaignId: sampleCampaign.campaignId,
-      campaignTitle: sampleCampaign.title,
-      campaignRoomCode: sampleCampaign.roomCode,
+      campaignId: selectedCampaign.id,
+      campaignTitle: selectedCampaign.title,
+      campaignRoomCode: selectedCampaign.roomCode,
       systemId,
       selectedEntryRole,
       selectedActorId: selectedEntryRole === 'playerCharacter' ? effectiveSuggestedActor?.actorId : undefined,
@@ -212,18 +253,47 @@ export function CampaignLibraryShell({
     });
   };
 
+  const handleCreateCampaign = () => {
+    const campaign = createCampaign({
+      systemId,
+      title: t('campaignLibrary.create.defaultTitle'),
+      description: t('campaignLibrary.create.defaultDescription'),
+      status: 'draft',
+    });
+    setSelectedCampaignId(campaign.id);
+    setLibraryMode('detail');
+  };
+
+  const handleSelectCampaignForActor = (campaign: LocalCampaign) => {
+    if (!campaignSelectForActorContext || !onSelectCampaignForActor) return;
+    setSelectedCampaignId(campaign.id);
+    onSelectCampaignForActor(toCampaignInstanceSummary(campaign), campaignSelectForActorContext);
+  };
+
+  const handleDeleteCampaign = (campaign: LocalCampaign) => {
+    if (!window.confirm(t('campaignLibrary.actions.deleteConfirm'))) return;
+    deleteCampaign(campaign.id);
+    if (selectedCampaignId === campaign.id) {
+      setSelectedCampaignId(null);
+      setLibraryMode('existing');
+    }
+  };
+
+  const showAddFlow = (mode === 'create' || libraryMode === 'add') && libraryMode !== 'detail';
+  const showDetail = (mode === 'library' || mode === 'create') && libraryMode === 'detail';
+
   return (
     <section className={panelClassName ?? 'rounded-lg border p-5'}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className={`text-xs font-bold uppercase tracking-[0.22em] ${theme.muted}`}>
-            {t(mode === 'create' ? 'campaignLibrary.create.eyebrow' : 'campaignLibrary.eyebrow')}
+            {t(showAddFlow ? 'campaignLibrary.create.eyebrow' : 'campaignLibrary.eyebrow')}
           </div>
           <h2 className={`mt-2 text-2xl font-bold ${theme.accent}`}>
-            {t(mode === 'create' ? 'campaignLibrary.create.title' : 'campaignLibrary.title')}
+            {t(showAddFlow ? 'campaignLibrary.create.title' : 'campaignLibrary.title')}
           </h2>
           <p className={`mt-2 max-w-3xl text-sm leading-relaxed ${theme.muted}`}>
-            {t(mode === 'create' ? 'campaignLibrary.create.subtitle' : 'campaignLibrary.subtitle')}
+            {t(showAddFlow ? 'campaignLibrary.create.subtitle' : 'campaignLibrary.subtitle')}
           </p>
         </div>
         <span className={`border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${theme.badge}`}>
@@ -231,18 +301,21 @@ export function CampaignLibraryShell({
         </span>
       </div>
 
-      {mode === 'create' && (
+      {showAddFlow && (
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-          {createActions.map((key, index) => (
+          {createActions.map((action, index) => (
             <button
-              key={key}
+              key={action.key}
               type="button"
-              disabled
-              className={`min-h-28 cursor-default border p-4 text-left opacity-75 ${index === 0 ? theme.primary : theme.secondary}`}
+              disabled={!action.enabled}
+              onClick={action.enabled ? handleCreateCampaign : undefined}
+              className={`min-h-28 border p-4 text-left ${
+                action.enabled ? 'transition hover:-translate-y-0.5 hover:shadow-md' : 'cursor-default opacity-60'
+              } ${index === 0 ? theme.primary : theme.secondary}`}
             >
-              <span className="block text-sm font-bold">{t(key)}</span>
+              <span className="block text-sm font-bold">{t(action.key)}</span>
               <span className="mt-2 block text-xs leading-relaxed opacity-75">
-                {t('campaignLibrary.actions.placeholder')}
+                {t(action.enabled ? 'campaignLibrary.create.standardNote' : 'campaignLibrary.actions.placeholder')}
               </span>
             </button>
           ))}
@@ -271,7 +344,7 @@ export function CampaignLibraryShell({
 
           <button
             type="button"
-            onClick={onAddCampaign}
+            onClick={onAddCampaign ?? (() => setLibraryMode('add'))}
             className={`min-h-48 border p-6 text-left transition hover:-translate-y-0.5 hover:shadow-md ${theme.card}`}
           >
             <h3 className={`text-lg font-bold ${theme.accent}`}>{t('campaignLibrary.actions.add')}</h3>
@@ -329,240 +402,67 @@ export function CampaignLibraryShell({
             </div>
           </div>
 
-          <div className={`rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${theme.card}`}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
-                  {t('campaignLibrary.recent')}
-                </div>
-                <h3 className={`mt-1 text-xl font-bold ${theme.accent}`}>
-                  {sampleCampaign.title} #{sampleCampaign.roomCode}
-                </h3>
+          {campaigns.length === 0 ? (
+            <EmptyCampaignState
+              theme={theme}
+              title={t('campaignLibrary.empty.title')}
+              note={t('campaignLibrary.empty.note')}
+              addLabel={t('campaignLibrary.actions.add')}
+              onAdd={onAddCampaign ?? (() => setLibraryMode('add'))}
+            />
+          ) : (
+            campaigns.map((campaign) => (
+              <div key={campaign.id}>
+                <CampaignCard
+                  campaign={campaign}
+                  systemName={systemName}
+                  theme={theme}
+                  t={t}
+                  canSelect={Boolean(campaignSelectForActorContext && onSelectCampaignForActor)}
+                  onSelect={() => handleSelectCampaignForActor(campaign)}
+                  onViewDetail={() => {
+                    setSelectedCampaignId(campaign.id);
+                    setLibraryMode('detail');
+                  }}
+                  onActivate={() => updateCampaign(campaign.id, { status: 'active' })}
+                  onArchive={() => archiveCampaign(campaign.id)}
+                  onDelete={() => handleDeleteCampaign(campaign)}
+                />
               </div>
-              <span className={`border px-2 py-0.5 text-[10px] uppercase tracking-wider ${theme.badge}`}>
-                {t('campaignLibrary.status.sample')}
-              </span>
-            </div>
-            <dl className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                [t('campaignLibrary.fields.system'), systemName],
-                [t('campaignLibrary.fields.identity'), t('campaignLibrary.sample.identity')],
-                [t('campaignLibrary.fields.sourcePackage'), t('campaignLibrary.sample.sourcePackage')],
-                [t('campaignLibrary.fields.lastPlayed'), sampleCampaign.lastPlayedAt],
-              ].map(([label, value]) => (
-                <div key={label} className="min-w-0">
-                  <dt className={`font-bold uppercase tracking-wider ${theme.muted}`}>{label}</dt>
-                  <dd className="mt-1 break-words font-semibold">{value}</dd>
-                </div>
-              ))}
-            </dl>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {campaignSelectForActorContext && onSelectCampaignForActor ? (
-                <button
-                  type="button"
-                  onClick={() => onSelectCampaignForActor(sampleCampaign, campaignSelectForActorContext)}
-                  className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.primary}`}
-                >
-                  {t('campaignLibrary.returnContext.selectCampaignButton')}
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setLibraryMode('detail')}
-                className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${
-                  campaignSelectForActorContext ? theme.secondary : theme.primary
-                }`}
-              >
-                {t('campaignLibrary.actions.viewDetail')}
-              </button>
-            </div>
-          </div>
+            ))
+          )}
         </div>
       )}
 
-      {mode === 'library' && libraryMode === 'detail' && (
-        <div className="mt-5 flex flex-col gap-4">
-          <button
-            type="button"
-            onClick={() => setLibraryMode('existing')}
-            aria-label={t('campaignLibrary.detail.backToMine')}
-            title={t('campaignLibrary.detail.backToMine')}
-            className={`inline-flex h-8 w-8 items-center justify-center rounded-md border text-sm font-bold ${theme.secondary}`}
-          >
-            ←
-          </button>
-
-          <div className={`rounded-lg border p-5 ${theme.card}`}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className={`text-[10px] font-bold uppercase tracking-[0.22em] ${theme.muted}`}>
-                  {t('campaignLibrary.detail.eyebrow')}
-                </div>
-                <h3 className={`mt-2 text-2xl font-bold ${theme.accent}`}>
-                  {sampleCampaign.title} #{sampleCampaign.roomCode}
-                </h3>
-                <p className={`mt-2 text-sm leading-relaxed ${theme.muted}`}>
-                  {t('campaignLibrary.detail.subtitle')}
-                </p>
-              </div>
-              <span className={`border px-2 py-0.5 text-[10px] uppercase tracking-wider ${theme.badge}`}>
-                {t('campaignLibrary.status.sample')}
-              </span>
-            </div>
-
-            <dl className="mt-5 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2 lg:grid-cols-5">
-              {[
-                [t('campaignLibrary.fields.system'), systemName],
-                [t('campaignLibrary.detail.fields.roomCode'), sampleCampaign.roomCode ?? '-'],
-                [t('campaignLibrary.fields.sourcePackage'), t('campaignLibrary.sample.sourcePackage')],
-                [t('campaignLibrary.fields.lastPlayed'), sampleCampaign.lastPlayedAt],
-                [t('campaignLibrary.detail.fields.identityStatus'), t('campaignLibrary.detail.identityStatus')],
-              ].map(([label, value]) => (
-                <div key={label} className="min-w-0">
-                  <dt className={`font-bold uppercase tracking-wider ${theme.muted}`}>{label}</dt>
-                  <dd className="mt-1 break-words font-semibold">{value}</dd>
-                </div>
-              ))}
-            </dl>
+      {showDetail && (
+        selectedCampaign ? (
+          <CampaignDetail
+            campaign={selectedCampaign}
+            systemId={systemId}
+            systemName={systemName}
+            theme={theme}
+            t={t}
+            effectiveSuggestedActor={effectiveSuggestedActor}
+            selectedEntryRole={selectedEntryRole}
+            setSelectedEntryRole={setSelectedEntryRole}
+            requestSelectActorForCampaign={requestSelectActorForCampaign}
+            enterCampaignRuntime={enterCampaignRuntime}
+            canEnterPlayerRuntime={canEnterPlayerRuntime}
+            canEnterHostRuntime={canEnterHostRuntime}
+            hostPrepItems={hostPrepItems}
+            onBack={() => setLibraryMode('existing')}
+          />
+        ) : (
+          <div className="mt-5">
+            <EmptyCampaignState
+              theme={theme}
+              title={t('campaignLibrary.empty.title')}
+              note={t('campaignLibrary.empty.note')}
+              addLabel={t('campaignLibrary.actions.add')}
+              onAdd={onAddCampaign ?? (() => setLibraryMode('add'))}
+            />
           </div>
-
-          <div className={`rounded-lg border p-5 ${theme.card}`}>
-            <h4 className={`text-lg font-bold ${theme.accent}`}>{t('campaignLibrary.detail.entry.title')}</h4>
-            <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
-              {t('campaignLibrary.detail.entry.suggestedActorNote')}
-            </p>
-            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className={`rounded-lg border p-4 ${theme.card}`}>
-                <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
-                  {t('campaignLibrary.detail.entry.playerPath')}
-                </div>
-                <h5 className={`mt-1 text-base font-bold ${theme.accent}`}>
-                  {t('campaignLibrary.detail.playerPrep.title')}
-                </h5>
-                <div className={`mt-3 text-sm ${theme.muted}`}>
-                  <span className="font-bold">{t('campaignLibrary.detail.playerPrep.currentActor')}：</span>
-                  {effectiveSuggestedActor?.actorName ?? t('campaignLibrary.detail.playerPrep.unselected')}
-                </div>
-              {effectiveSuggestedActor && (
-                <div className={`mt-3 rounded border p-3 text-xs leading-relaxed ${theme.badge}`}>
-                  <div className="font-bold">
-                    {t('campaignLibrary.detail.playerPrep.suggestedActor')}：{effectiveSuggestedActor.actorName}
-                  </div>
-                  <p className="mt-1 opacity-75">
-                    {t('campaignLibrary.detail.playerPrep.suggestedActorNote')}
-                  </p>
-                </div>
-              )}
-              {selectedEntryRole === 'host' && effectiveSuggestedActor && (
-                <p className={`mt-3 text-xs leading-relaxed ${theme.muted}`}>
-                  {t('campaignLibrary.detail.playerPrep.hostActiveActorNote')}
-                </p>
-              )}
-              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={
-                    selectedEntryRole === 'host'
-                      ? () => setSelectedEntryRole('playerCharacter')
-                      : requestSelectActorForCampaign
-                  }
-                  className={`border px-3 py-2 text-xs font-bold ${theme.secondary}`}
-                >
-                  {t(
-                    selectedEntryRole === 'host'
-                      ? 'campaignLibrary.detail.playerPrep.switchToPlayer'
-                      : effectiveSuggestedActor
-                        ? 'campaignLibrary.detail.playerPrep.changeActor'
-                        : 'campaignLibrary.detail.entry.selectOrAddActor',
-                  )}
-                </button>
-                {selectedEntryRole === 'playerCharacter' && (
-                  <button
-                    type="button"
-                    onClick={enterCampaignRuntime}
-                    disabled={!canEnterPlayerRuntime}
-                    className={`border px-3 py-2 text-xs font-bold ${
-                      canEnterPlayerRuntime
-                        ? theme.primary
-                        : `cursor-default opacity-65 ${theme.secondary}`
-                    }`}
-                  >
-                    {t('campaignLibrary.detail.playerPrep.enterCampaign')}
-                  </button>
-                )}
-              </div>
-            </div>
-
-              <div className={`rounded-lg border p-4 ${theme.card}`}>
-                <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
-                  {t('campaignLibrary.detail.entry.hostPath')}
-                </div>
-                <h5 className={`mt-1 text-base font-bold ${theme.accent}`}>
-                  {t('campaignLibrary.detail.hostPrep.title')}
-                </h5>
-                <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
-                  {selectedEntryRole === 'host'
-                    ? t('campaignLibrary.detail.entry.hostActiveNote')
-                    : t('campaignLibrary.detail.entry.hostEntryNote')}
-                </p>
-                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {selectedEntryRole === 'host' ? (
-                    <button
-                      type="button"
-                      onClick={enterCampaignRuntime}
-                      disabled={!canEnterHostRuntime}
-                      className={`border px-3 py-2 text-xs font-bold ${
-                        canEnterHostRuntime
-                          ? theme.primary
-                          : `cursor-default opacity-65 ${theme.secondary}`
-                      }`}
-                    >
-                      {t('campaignLibrary.detail.playerPrep.enterCampaign')}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedEntryRole('host')}
-                      className={`border px-3 py-2 text-xs font-bold ${theme.secondary}`}
-                    >
-                      {t('campaignLibrary.detail.entry.switchToHost')}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            <div className={`rounded-lg border p-5 ${theme.card} ${selectedEntryRole === 'host' ? '' : 'opacity-55'}`}>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h4 className={`text-lg font-bold ${theme.accent}`}>{t('campaignLibrary.detail.hostPrep.title')}</h4>
-                  <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
-                    {selectedEntryRole === 'host'
-                      ? t('campaignLibrary.detail.hostPrep.activeNote')
-                      : t('campaignLibrary.detail.hostPrep.disabledNote')}
-                  </p>
-                </div>
-                <span className={`border px-2 py-0.5 text-[10px] uppercase tracking-wider ${theme.badge}`}>
-                  {t('campaignLibrary.detail.placeholder')}
-                </span>
-              </div>
-              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {hostPrepItems.map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    disabled
-                    className={`cursor-default border px-3 py-2 text-left text-xs font-bold opacity-65 ${theme.secondary}`}
-                  >
-                    {t(key)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        )
       )}
 
       {mode === 'library' && (
@@ -572,4 +472,369 @@ export function CampaignLibraryShell({
       )}
     </section>
   );
+}
+
+function CampaignCard({
+  campaign,
+  systemName,
+  theme,
+  t,
+  canSelect,
+  onSelect,
+  onViewDetail,
+  onActivate,
+  onArchive,
+  onDelete,
+}: {
+  campaign: LocalCampaign;
+  systemName: string;
+  theme: (typeof toneClasses)[CampaignLibraryTone];
+  t: (key: string) => string;
+  canSelect: boolean;
+  onSelect: () => void;
+  onViewDetail: () => void;
+  onActivate: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className={`rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${theme.card}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
+            {t('campaignLibrary.recent')}
+          </div>
+          <h3 className={`mt-1 text-xl font-bold ${theme.accent}`}>
+            {campaign.title}{campaign.roomCode ? ` #${campaign.roomCode}` : ''}
+          </h3>
+          <p className={`mt-2 max-w-2xl text-xs leading-relaxed ${theme.muted}`}>
+            {campaign.description || t('campaignLibrary.empty.noDescription')}
+          </p>
+        </div>
+        <span className={`border px-2 py-0.5 text-[10px] uppercase tracking-wider ${theme.badge}`}>
+          {t(`campaignLibrary.status.${campaign.status}`)}
+        </span>
+      </div>
+      <dl className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          [t('campaignLibrary.fields.system'), systemName],
+          [t('campaignLibrary.detail.fields.roomCode'), campaign.roomCode || '-'],
+          [t('campaignLibrary.fields.status'), t(`campaignLibrary.status.${campaign.status}`)],
+          [t('campaignLibrary.fields.updatedAt'), formatCampaignDate(campaign.updatedAt)],
+        ].map(([label, value]) => (
+          <div key={label} className="min-w-0">
+            <dt className={`font-bold uppercase tracking-wider ${theme.muted}`}>{label}</dt>
+            <dd className="mt-1 break-words font-semibold">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {canSelect && (
+          <button
+            type="button"
+            onClick={onSelect}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.primary}`}
+          >
+            {t('campaignLibrary.returnContext.selectCampaignButton')}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onViewDetail}
+          className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${
+            canSelect ? theme.secondary : theme.primary
+          }`}
+        >
+          {t('campaignLibrary.actions.viewDetail')}
+        </button>
+        {campaign.status !== 'active' && (
+          <button
+            type="button"
+            onClick={onActivate}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+          >
+            {t('campaignLibrary.actions.activate')}
+          </button>
+        )}
+        {campaign.status !== 'archived' && (
+          <button
+            type="button"
+            onClick={onArchive}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+          >
+            {t('campaignLibrary.actions.archive')}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onDelete}
+          className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.danger}`}
+        >
+          {t('campaignLibrary.actions.delete')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CampaignDetail({
+  campaign,
+  systemId,
+  systemName,
+  theme,
+  t,
+  effectiveSuggestedActor,
+  selectedEntryRole,
+  setSelectedEntryRole,
+  requestSelectActorForCampaign,
+  enterCampaignRuntime,
+  canEnterPlayerRuntime,
+  canEnterHostRuntime,
+  hostPrepItems,
+  onBack,
+}: {
+  campaign: LocalCampaign;
+  systemId: LocalCampaignSystemId;
+  systemName: string;
+  theme: (typeof toneClasses)[CampaignLibraryTone];
+  t: (key: string) => string;
+  effectiveSuggestedActor: CampaignSuggestedActor | null;
+  selectedEntryRole: CampaignEntryRole;
+  setSelectedEntryRole: (role: CampaignEntryRole) => void;
+  requestSelectActorForCampaign: () => void;
+  enterCampaignRuntime: () => void;
+  canEnterPlayerRuntime: boolean;
+  canEnterHostRuntime: boolean;
+  hostPrepItems: string[];
+  onBack: () => void;
+}) {
+  return (
+    <div className="mt-5 flex flex-col gap-4">
+      <button
+        type="button"
+        onClick={onBack}
+        aria-label={t('campaignLibrary.detail.backToMine')}
+        title={t('campaignLibrary.detail.backToMine')}
+        className={`inline-flex h-8 w-8 items-center justify-center rounded-md border text-sm font-bold ${theme.secondary}`}
+      >
+        ←
+      </button>
+
+      <div className={`rounded-lg border p-5 ${theme.card}`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className={`text-[10px] font-bold uppercase tracking-[0.22em] ${theme.muted}`}>
+              {t('campaignLibrary.detail.eyebrow')}
+            </div>
+            <h3 className={`mt-2 text-2xl font-bold ${theme.accent}`}>
+              {campaign.title}{campaign.roomCode ? ` #${campaign.roomCode}` : ''}
+            </h3>
+            <p className={`mt-2 text-sm leading-relaxed ${theme.muted}`}>
+              {campaign.description || t('campaignLibrary.detail.subtitle')}
+            </p>
+          </div>
+          <span className={`border px-2 py-0.5 text-[10px] uppercase tracking-wider ${theme.badge}`}>
+            {t(`campaignLibrary.status.${campaign.status}`)}
+          </span>
+        </div>
+
+        <dl className="mt-5 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2 lg:grid-cols-5">
+          {[
+            [t('campaignLibrary.fields.system'), systemName],
+            [t('campaignLibrary.detail.fields.roomCode'), campaign.roomCode ?? '-'],
+            [t('campaignLibrary.fields.status'), t(`campaignLibrary.status.${campaign.status}`)],
+            [t('campaignLibrary.fields.updatedAt'), formatCampaignDate(campaign.updatedAt)],
+            [t('campaignLibrary.detail.fields.identityStatus'), t('campaignLibrary.detail.identityStatus')],
+          ].map(([label, value]) => (
+            <div key={label} className="min-w-0">
+              <dt className={`font-bold uppercase tracking-wider ${theme.muted}`}>{label}</dt>
+              <dd className="mt-1 break-words font-semibold">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      <div className={`rounded-lg border p-5 ${theme.card}`}>
+        <h4 className={`text-lg font-bold ${theme.accent}`}>{t('campaignLibrary.detail.entry.title')}</h4>
+        <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
+          {t('campaignLibrary.detail.entry.suggestedActorNote')}
+        </p>
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className={`rounded-lg border p-4 ${theme.card}`}>
+            <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
+              {t('campaignLibrary.detail.entry.playerPath')}
+            </div>
+            <h5 className={`mt-1 text-base font-bold ${theme.accent}`}>
+              {t('campaignLibrary.detail.playerPrep.title')}
+            </h5>
+            <div className={`mt-3 text-sm ${theme.muted}`}>
+              <span className="font-bold">{t('campaignLibrary.detail.playerPrep.currentActor')}：</span>
+              {effectiveSuggestedActor?.actorName ?? t('campaignLibrary.detail.playerPrep.unselected')}
+            </div>
+            {effectiveSuggestedActor && (
+              <div className={`mt-3 rounded border p-3 text-xs leading-relaxed ${theme.badge}`}>
+                <div className="font-bold">
+                  {t('campaignLibrary.detail.playerPrep.suggestedActor')}：{effectiveSuggestedActor.actorName}
+                </div>
+                <p className="mt-1 opacity-75">
+                  {t('campaignLibrary.detail.playerPrep.suggestedActorNote')}
+                </p>
+              </div>
+            )}
+            {selectedEntryRole === 'host' && effectiveSuggestedActor && (
+              <p className={`mt-3 text-xs leading-relaxed ${theme.muted}`}>
+                {t('campaignLibrary.detail.playerPrep.hostActiveActorNote')}
+              </p>
+            )}
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={
+                  selectedEntryRole === 'host'
+                    ? () => setSelectedEntryRole('playerCharacter')
+                    : requestSelectActorForCampaign
+                }
+                className={`border px-3 py-2 text-xs font-bold ${theme.secondary}`}
+              >
+                {t(
+                  selectedEntryRole === 'host'
+                    ? 'campaignLibrary.detail.playerPrep.switchToPlayer'
+                    : effectiveSuggestedActor
+                      ? 'campaignLibrary.detail.playerPrep.changeActor'
+                      : 'campaignLibrary.detail.entry.selectOrAddActor',
+                )}
+              </button>
+              {selectedEntryRole === 'playerCharacter' && (
+                <button
+                  type="button"
+                  onClick={enterCampaignRuntime}
+                  disabled={!canEnterPlayerRuntime}
+                  className={`border px-3 py-2 text-xs font-bold ${
+                    canEnterPlayerRuntime
+                      ? theme.primary
+                      : `cursor-default opacity-65 ${theme.secondary}`
+                  }`}
+                >
+                  {t('campaignLibrary.detail.playerPrep.enterCampaign')}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className={`rounded-lg border p-4 ${theme.card}`}>
+            <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
+              {t('campaignLibrary.detail.entry.hostPath')}
+            </div>
+            <h5 className={`mt-1 text-base font-bold ${theme.accent}`}>
+              {t('campaignLibrary.detail.hostPrep.title')}
+            </h5>
+            <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
+              {selectedEntryRole === 'host'
+                ? t('campaignLibrary.detail.entry.hostActiveNote')
+                : t('campaignLibrary.detail.entry.hostEntryNote')}
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {selectedEntryRole === 'host' ? (
+                <button
+                  type="button"
+                  onClick={enterCampaignRuntime}
+                  disabled={!canEnterHostRuntime}
+                  className={`border px-3 py-2 text-xs font-bold ${
+                    canEnterHostRuntime
+                      ? theme.primary
+                      : `cursor-default opacity-65 ${theme.secondary}`
+                  }`}
+                >
+                  {t('campaignLibrary.detail.playerPrep.enterCampaign')}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setSelectedEntryRole('host')}
+                  className={`border px-3 py-2 text-xs font-bold ${theme.secondary}`}
+                >
+                  {t('campaignLibrary.detail.entry.switchToHost')}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        <div className={`rounded-lg border p-5 ${theme.card} ${selectedEntryRole === 'host' ? '' : 'opacity-55'}`}>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h4 className={`text-lg font-bold ${theme.accent}`}>{t('campaignLibrary.detail.hostPrep.title')}</h4>
+              <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
+                {selectedEntryRole === 'host'
+                  ? t('campaignLibrary.detail.hostPrep.activeNote')
+                  : t('campaignLibrary.detail.hostPrep.disabledNote')}
+              </p>
+            </div>
+            <span className={`border px-2 py-0.5 text-[10px] uppercase tracking-wider ${theme.badge}`}>
+              {t('campaignLibrary.detail.placeholder')}
+            </span>
+          </div>
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {hostPrepItems.map((key) => (
+              <button
+                key={key}
+                type="button"
+                disabled
+                className={`cursor-default border px-3 py-2 text-left text-xs font-bold opacity-65 ${theme.secondary}`}
+              >
+                {t(key)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <span className="sr-only">{systemId}</span>
+    </div>
+  );
+}
+
+function EmptyCampaignState({
+  theme,
+  title,
+  note,
+  addLabel,
+  onAdd,
+}: {
+  theme: (typeof toneClasses)[CampaignLibraryTone];
+  title: string;
+  note: string;
+  addLabel: string;
+  onAdd: () => void;
+}) {
+  return (
+    <div className={`rounded-lg border p-6 ${theme.card}`}>
+      <h3 className={`text-lg font-bold ${theme.accent}`}>{title}</h3>
+      <p className={`mt-2 text-sm leading-relaxed ${theme.muted}`}>{note}</p>
+      <button
+        type="button"
+        onClick={onAdd}
+        className={`mt-4 border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.primary}`}
+      >
+        {addLabel}
+      </button>
+    </div>
+  );
+}
+
+function toCampaignInstanceSummary(campaign: LocalCampaign): CampaignInstanceSummary {
+  return {
+    campaignId: campaign.id,
+    systemId: campaign.systemId,
+    title: campaign.title,
+    roomCode: campaign.roomCode,
+    lastPlayedAt: campaign.updatedAt,
+  };
+}
+
+function formatCampaignDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString();
 }

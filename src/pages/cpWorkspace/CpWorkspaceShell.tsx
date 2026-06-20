@@ -909,7 +909,7 @@ export function CpWorkspaceShell({
 
           {!campaignRuntimeContext && view === 'campaigns' && (
             <CampaignLibraryShell
-              systemId="cyberpunk-red"
+              systemId="cp-red"
               systemName={t('glossary.cyberpunkRed')}
               tone="cp"
               initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
@@ -931,7 +931,7 @@ export function CpWorkspaceShell({
 
           {!campaignRuntimeContext && view === 'createCampaign' && (
             <CampaignLibraryShell
-              systemId="cyberpunk-red"
+              systemId="cp-red"
               systemName={t('glossary.cyberpunkRed')}
               tone="cp"
               mode="create"
