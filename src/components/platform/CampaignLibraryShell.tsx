@@ -450,7 +450,6 @@ export function CampaignLibraryShell({
             canEnterPlayerRuntime={canEnterPlayerRuntime}
             canEnterHostRuntime={canEnterHostRuntime}
             hostPrepItems={hostPrepItems}
-            onBack={() => setLibraryMode('existing')}
           />
         ) : (
           <div className="mt-5">
@@ -591,7 +590,6 @@ function CampaignDetail({
   canEnterPlayerRuntime,
   canEnterHostRuntime,
   hostPrepItems,
-  onBack,
 }: {
   campaign: LocalCampaign;
   systemId: LocalCampaignSystemId;
@@ -606,20 +604,9 @@ function CampaignDetail({
   canEnterPlayerRuntime: boolean;
   canEnterHostRuntime: boolean;
   hostPrepItems: string[];
-  onBack: () => void;
 }) {
   return (
     <div className="mt-5 flex flex-col gap-4">
-      <button
-        type="button"
-        onClick={onBack}
-        aria-label={t('campaignLibrary.detail.backToMine')}
-        title={t('campaignLibrary.detail.backToMine')}
-        className={`inline-flex h-8 w-8 items-center justify-center rounded-md border text-sm font-bold ${theme.secondary}`}
-      >
-        ←
-      </button>
-
       <div className={`rounded-lg border p-5 ${theme.card}`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -694,17 +681,21 @@ function CampaignDetail({
                     ? () => setSelectedEntryRole('playerCharacter')
                     : requestSelectActorForCampaign
                 }
-                className={`border px-3 py-2 text-xs font-bold ${theme.secondary}`}
+                className={`border px-3 py-2 text-xs font-bold ${
+                  selectedEntryRole === 'playerCharacter' && !effectiveSuggestedActor
+                    ? theme.primary
+                    : theme.secondary
+                }`}
               >
                 {t(
                   selectedEntryRole === 'host'
                     ? 'campaignLibrary.detail.playerPrep.switchToPlayer'
                     : effectiveSuggestedActor
-                      ? 'campaignLibrary.detail.playerPrep.changeActor'
+                    ? 'campaignLibrary.detail.playerPrep.changeActor'
                       : 'campaignLibrary.detail.entry.selectOrAddActor',
                 )}
               </button>
-              {selectedEntryRole === 'playerCharacter' && (
+              {selectedEntryRole === 'playerCharacter' && effectiveSuggestedActor && (
                 <button
                   type="button"
                   onClick={enterCampaignRuntime}
