@@ -24,6 +24,7 @@ import type {
   ActorVaultSortOption,
   ActorVaultColorTheme,
   ActorVaultShellStrings,
+  ActorCreationCompletionContext,
 } from '../../lib/platform/actorVault';
 import type { CampaignActorSelectReturnContext, CampaignSuggestedActor } from '../../lib/platform/campaignFlow';
 import { ContextBar } from './ContextBar';
@@ -305,6 +306,96 @@ export function ActorVaultLibraryShell({
         </div>
       )}
 
+    </div>
+  );
+}
+
+// ─── Actor Creation Completion Shell ──────────────────────────────────────────
+
+export type ActorCreationCompletionShellStrings = {
+  readyTitle: string;
+  nextStepTitle: string;
+  standaloneNote: string;
+  forCampaignTitle: string;
+  forCampaignNote: string;
+  previewActorLabel: string;
+  openSheet: string;
+  selectCampaign: string;
+  returnToCampaignEntry: string;
+  shellOnlyNote: string;
+};
+
+export type ActorCreationCompletionShellProps = {
+  context: ActorCreationCompletionContext;
+  strings: ActorCreationCompletionShellStrings;
+  colorTheme: ActorVaultColorTheme;
+  panelClassName: string;
+  onOpenActorSheet: (actor: CampaignSuggestedActor) => void;
+  onSelectCampaign: (actor: CampaignSuggestedActor) => void;
+  onReturnToCampaignEntry: (context: Extract<ActorCreationCompletionContext, { kind: 'forCampaign' }>) => void;
+};
+
+export function ActorCreationCompletionShell({
+  context,
+  strings,
+  colorTheme: t,
+  panelClassName,
+  onOpenActorSheet,
+  onSelectCampaign,
+  onReturnToCampaignEntry,
+}: ActorCreationCompletionShellProps) {
+  const isForCampaign = context.kind === 'forCampaign';
+  const title = isForCampaign ? strings.forCampaignTitle : strings.readyTitle;
+  const note = isForCampaign ? strings.forCampaignNote : strings.standaloneNote;
+
+  return (
+    <div className={`${panelClassName} flex flex-col gap-4`}>
+      <div>
+        <div className={`text-xs font-bold uppercase tracking-[0.2em] ${t.textMuted}`}>
+          {strings.nextStepTitle}
+        </div>
+        <h2 className={`mt-1 text-xl font-bold ${t.textBody}`}>{title}</h2>
+        <p className={`mt-2 text-sm leading-relaxed ${t.textBody} opacity-70`}>
+          {note}
+        </p>
+      </div>
+
+      <div className={`rounded-lg border p-4 ${t.borderLight} ${t.bgCard}`}>
+        <div className={`text-[10px] font-bold uppercase tracking-wider ${t.textMuted}`}>
+          {strings.previewActorLabel}
+        </div>
+        <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{context.actor.actorName}</div>
+        <p className={`mt-2 text-xs leading-relaxed ${t.textMuted}`}>
+          {strings.shellOnlyNote}
+        </p>
+      </div>
+
+      {isForCampaign ? (
+        <button
+          type="button"
+          onClick={() => onReturnToCampaignEntry(context)}
+          className={`w-fit border px-4 py-2 text-xs font-bold uppercase tracking-wider ${t.border} ${t.bgAccent} ${t.textInvert}`}
+        >
+          {strings.returnToCampaignEntry}
+        </button>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onOpenActorSheet(context.actor)}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${t.border} ${t.bgAccent} ${t.textInvert}`}
+          >
+            {strings.openSheet}
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelectCampaign(context.actor)}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${t.borderActive} ${t.text} ${t.bgHover}`}
+          >
+            {strings.selectCampaign}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

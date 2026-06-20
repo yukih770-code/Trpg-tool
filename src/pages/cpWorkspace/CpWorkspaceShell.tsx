@@ -3,7 +3,10 @@ import { ArrowLeft, BookOpen } from 'lucide-react';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useCpStore } from '../../store/cpStore';
 // AI-LANDMARK: CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1
-import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
+import {
+  ActorCreationCompletionShell,
+  ActorVaultLibraryShell,
+} from '../../components/platform/ActorVaultLibraryShell';
 import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
 import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
 import { ContextBar } from '../../components/platform/ContextBar';
@@ -11,7 +14,7 @@ import { SystemWorkspaceEntryShell } from '../../components/platform/SystemWorks
 import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../components/platform/SystemRuleSourcesShell';
 import { CPRED_RULE_SOURCES } from './cpRuleSourcesAdapter';
 import { makeCampaignActorAddReturnContextFromSelect } from '../../lib/platform/campaignFlow';
-import { deriveVaultSummaries, type ActorVaultAdapter } from '../../lib/platform/actorVault';
+import { deriveVaultSummaries, type ActorCreationCompletionContext, type ActorVaultAdapter } from '../../lib/platform/actorVault';
 import type { CpCharacter } from '../../lib/cp-types';
 import type {
   CampaignActorAddReturnContext,
@@ -550,6 +553,58 @@ export function CpWorkspaceShell({
     useState<CampaignSuggestedActor | null>(null);
   const [campaignRuntimeContext, setCampaignRuntimeContext] =
     useState<CampaignRuntimeContext | null>(null);
+  const [actorCreationCompletionContext, setActorCreationCompletionContext] =
+    useState<ActorCreationCompletionContext | null>(null);
+
+  function buildActorCreationCompletionContext(): ActorCreationCompletionContext {
+    const actor: CampaignSuggestedActor = {
+      actorId: 'ui-preview-cp-actor',
+      actorName: displayName || t('multiWorkspace.actorCreationCompletion.placeholderActorName'),
+    };
+
+    if (campaignActorAddContext) {
+      return { kind: 'forCampaign', actor, campaign: campaignActorAddContext };
+    }
+
+    return { kind: 'standalone', actor };
+  }
+
+  function showActorCreationCompletion() {
+    setActorCreationCompletionContext(buildActorCreationCompletionContext());
+    setPlannedSlotLabelKey(null);
+  }
+
+  function handleOpenCompletedActorSheet() {
+    setActorCreationCompletionContext(null);
+    onOpenPlayTab('sheet');
+  }
+
+  function handleSelectCampaignForCompletedActor(actor: CampaignSuggestedActor) {
+    setActorCreationCompletionContext(null);
+    setCampaignSelectForActorContext({
+      actorId: actor.actorId,
+      actorName: actor.actorName,
+      source: 'actorLibrary',
+      returnLabel: t('campaignLibrary.returnContext.returnToActorVault'),
+      returnTo: {
+        view: 'characterLibrary',
+        systemId: 'cyberpunk-red',
+        actorId: actor.actorId,
+      },
+    });
+    setCampaignActorAddContext(null);
+    setCampaignActorSelectContext(null);
+    onViewChange('campaigns');
+  }
+
+  function handleReturnCreatedActorToCampaign(context: Extract<ActorCreationCompletionContext, { kind: 'forCampaign' }>) {
+    setSuggestedCampaignActor(context.actor);
+    setActorCreationCompletionContext(null);
+    setCampaignActorAddContext(null);
+    setCampaignActorSelectContext(null);
+    setCampaignSelectForActorContext(null);
+    onViewChange('campaigns');
+  }
 
   const cpRuleSourcesTheme: SystemRuleSourcesTheme = {
     panel: gold.panel,
@@ -573,6 +628,7 @@ export function CpWorkspaceShell({
     setCampaignActorAddContext(context);
     setCampaignActorSelectContext(null);
     setCampaignSelectForActorContext(null);
+    setActorCreationCompletionContext(null);
     onViewChange('createMethod');
   };
 
@@ -580,6 +636,7 @@ export function CpWorkspaceShell({
     setCampaignActorSelectContext(context);
     setCampaignActorAddContext(null);
     setCampaignSelectForActorContext(null);
+    setActorCreationCompletionContext(null);
     onViewChange('vault');
   };
 
@@ -587,6 +644,7 @@ export function CpWorkspaceShell({
     setSuggestedCampaignActor(actor);
     setCampaignActorSelectContext(null);
     setCampaignSelectForActorContext(null);
+    setActorCreationCompletionContext(null);
     onViewChange('campaigns');
   };
 
@@ -604,6 +662,7 @@ export function CpWorkspaceShell({
     });
     setCampaignActorAddContext(null);
     setCampaignActorSelectContext(null);
+    setActorCreationCompletionContext(null);
     onViewChange('campaigns');
   };
 
@@ -618,16 +677,19 @@ export function CpWorkspaceShell({
     setCampaignSelectForActorContext(null);
     setCampaignActorAddContext(null);
     setCampaignActorSelectContext(null);
+    setActorCreationCompletionContext(null);
     onViewChange('campaigns');
   };
 
   const handleReturnToActorContext = () => {
     setCampaignSelectForActorContext(null);
+    setActorCreationCompletionContext(null);
     onViewChange('vault');
   };
 
   const handleReturnToCampaignEntry = () => {
     setCampaignRuntimeContext(null);
+    setActorCreationCompletionContext(null);
     onViewChange('campaigns');
   };
 
@@ -757,12 +819,16 @@ export function CpWorkspaceShell({
                 tone="cp"
                 actorNoteKey="systemWorkspaceEntry.cp.actorNote"
                 campaignNoteKey="systemWorkspaceEntry.cp.campaignNote"
-                onEnterActors={() => onViewChange('vault')}
+                onEnterActors={() => {
+                  setActorCreationCompletionContext(null);
+                  onViewChange('vault');
+                }}
                 onEnterCampaigns={() => {
                   setCampaignActorAddContext(null);
                   setCampaignActorSelectContext(null);
                   setCampaignSelectForActorContext(null);
                   setSuggestedCampaignActor(null);
+                  setActorCreationCompletionContext(null);
                   onViewChange('campaigns');
                 }}
               />
@@ -792,6 +858,7 @@ export function CpWorkspaceShell({
                   setCampaignSelectForActorContext(null);
                   setSuggestedCampaignActor(null);
                 }
+                setActorCreationCompletionContext(null);
                 onViewChange('createMethod');
               }}
               purpose={
@@ -854,6 +921,29 @@ export function CpWorkspaceShell({
                   className="mb-4 border-[#d8b954]/35 bg-black/20 text-[#f5e8a3]"
                 />
               )}
+              {actorCreationCompletionContext ? (
+                <ActorCreationCompletionShell
+                  context={actorCreationCompletionContext}
+                  strings={{
+                    readyTitle: t('multiWorkspace.actorCreationCompletion.readyTitle'),
+                    nextStepTitle: t('multiWorkspace.actorCreationCompletion.nextStepTitle'),
+                    standaloneNote: t('multiWorkspace.actorCreationCompletion.standaloneNote'),
+                    forCampaignTitle: t('multiWorkspace.actorCreationCompletion.forCampaignTitle'),
+                    forCampaignNote: t('multiWorkspace.actorCreationCompletion.forCampaignNote'),
+                    previewActorLabel: t('multiWorkspace.actorCreationCompletion.previewActorLabel'),
+                    openSheet: t('multiWorkspace.actorCreationCompletion.openSheet'),
+                    selectCampaign: t('multiWorkspace.actorCreationCompletion.selectCampaign'),
+                    returnToCampaignEntry: t('multiWorkspace.actorCreationCompletion.returnToCampaignEntry'),
+                    shellOnlyNote: t('multiWorkspace.actorCreationCompletion.shellOnlyNote'),
+                  }}
+                  colorTheme={CP_VAULT_COLOR_THEME}
+                  panelClassName="rounded-lg border border-[#d8b954]/30 bg-[#0d0d0d]/75 p-5"
+                  onOpenActorSheet={handleOpenCompletedActorSheet}
+                  onSelectCampaign={handleSelectCampaignForCompletedActor}
+                  onReturnToCampaignEntry={handleReturnCreatedActorToCampaign}
+                />
+              ) : (
+                <>
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <div className={`text-xs font-bold uppercase tracking-[0.2em] ${gold.accent}`}>
@@ -875,25 +965,31 @@ export function CpWorkspaceShell({
                     labelKey: 'multiWorkspace.creation.standard',
                     noteKey:  'multiWorkspace.cp.creation.standardNote',
                     planned:  false,
-                    onClick:  () => onOpenPlayTab('creator'),
+                    onClick:  () => {
+                      if (campaignActorAddContext) {
+                        showActorCreationCompletion();
+                        return;
+                      }
+                      onOpenPlayTab('creator');
+                    },
                   },
                   {
                     labelKey: 'multiWorkspace.creation.quick',
                     noteKey:  'multiWorkspace.cp.creation.quickNote',
                     planned:  true,
-                    onClick:  () => setPlannedSlotLabelKey('multiWorkspace.creation.quick'),
+                    onClick:  showActorCreationCompletion,
                   },
                   {
                     labelKey: 'multiWorkspace.creation.localImportCharacter',
                     noteKey:  'multiWorkspace.cp.creation.localImportNote',
                     planned:  true,
-                    onClick:  () => setPlannedSlotLabelKey('multiWorkspace.creation.localImportCharacter'),
+                    onClick:  showActorCreationCompletion,
                   },
                   {
                     labelKey: 'multiWorkspace.creation.workshop',
                     noteKey:  'multiWorkspace.cp.creation.workshopNote',
                     planned:  true,
-                    onClick:  () => setPlannedSlotLabelKey('multiWorkspace.creation.workshop'),
+                    onClick:  showActorCreationCompletion,
                   },
                 ].map((card) => (
                   <button
@@ -931,6 +1027,8 @@ export function CpWorkspaceShell({
               <p className={`mt-4 border-t border-white/10 pt-3 text-[10px] opacity-50`}>
                 {t('cpWorkspace.creation.actorFlowNote')}
               </p>
+                </>
+              )}
             </section>
           )}
 

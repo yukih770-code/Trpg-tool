@@ -9,7 +9,10 @@ import {
 } from '../../data/dnd2024/characterOptionsIndex';
 import { DND_SPELL_INDEX_COUNTS } from '../../data/dnd2024/spellIndex';
 import { useCharacterStore } from '../../store/characterStore';
-import { ActorVaultLibraryShell } from '../../components/platform/ActorVaultLibraryShell';
+import {
+  ActorCreationCompletionShell,
+  ActorVaultLibraryShell,
+} from '../../components/platform/ActorVaultLibraryShell';
 import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
 import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
 import { ContextBar } from '../../components/platform/ContextBar';
@@ -26,7 +29,7 @@ import {
   DND_VAULT_COLOR_THEME,
 } from './dndActorVaultAdapter';
 import { deriveVaultSummaries } from '../../lib/platform/actorVault';
-import type { ActorVaultAdapter } from '../../lib/platform/actorVault';
+import type { ActorCreationCompletionContext, ActorVaultAdapter } from '../../lib/platform/actorVault';
 import type {
   CampaignActorAddReturnContext,
   CampaignActorSelectReturnContext,
@@ -97,6 +100,58 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     useState<CampaignSuggestedActor | null>(null);
   const [campaignRuntimeContext, setCampaignRuntimeContext] =
     useState<CampaignRuntimeContext | null>(null);
+  const [actorCreationCompletionContext, setActorCreationCompletionContext] =
+    useState<ActorCreationCompletionContext | null>(null);
+
+  function buildActorCreationCompletionContext(): ActorCreationCompletionContext {
+    const actor: CampaignSuggestedActor = {
+      actorId: dndActiveCharacterId ?? 'ui-preview-dnd-actor',
+      actorName: characterName || t('multiWorkspace.actorCreationCompletion.placeholderActorName'),
+    };
+
+    if (campaignActorAddContext) {
+      return { kind: 'forCampaign', actor, campaign: campaignActorAddContext };
+    }
+
+    return { kind: 'standalone', actor };
+  }
+
+  function showActorCreationCompletion() {
+    setActorCreationCompletionContext(buildActorCreationCompletionContext());
+    setPlannedSlotLabelKey(null);
+  }
+
+  function handleOpenCompletedActorSheet() {
+    setActorCreationCompletionContext(null);
+    onOpenPlayTab('sheet');
+  }
+
+  function handleSelectCampaignForCompletedActor(actor: CampaignSuggestedActor) {
+    setActorCreationCompletionContext(null);
+    setCampaignSelectForActorContext({
+      actorId: actor.actorId,
+      actorName: actor.actorName,
+      source: 'actorLibrary',
+      returnLabel: t('campaignLibrary.returnContext.returnToActorVault'),
+      returnTo: {
+        view: 'characterLibrary',
+        systemId: 'dnd2024',
+        actorId: actor.actorId,
+      },
+    });
+    setCampaignActorAddContext(null);
+    setCampaignActorSelectContext(null);
+    onViewChange('campaigns');
+  }
+
+  function handleReturnCreatedActorToCampaign(context: Extract<ActorCreationCompletionContext, { kind: 'forCampaign' }>) {
+    setSuggestedCampaignActor(context.actor);
+    setActorCreationCompletionContext(null);
+    setCampaignActorAddContext(null);
+    setCampaignActorSelectContext(null);
+    setCampaignSelectForActorContext(null);
+    onViewChange('campaigns');
+  }
 
   // AI-LANDMARK: PLATFORM_ACTOR_VAULT_LIBRARY_FRAMEWORK_EXTRACTION_V1
   // DND Actor Vault adapter: maps CharacterData to platform ActorVaultSummary.
@@ -194,16 +249,28 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   // AI-LANDMARK: DND_CHARACTER_VAULT_CREATION_METHOD_ENTRY
   // Creation now enters through a method picker; only Standard Creation opens the existing Builder.
   const creationMethodCards: { labelKey: string; noteKey: string; planned?: boolean; onClick: () => void }[] = [
-    { labelKey: 'dndWorkspace.creation.standard', noteKey: 'dndWorkspace.creation.standardNote', onClick: () => { resetDndCreator(); onOpenPlayTab('creator'); } },
-    { labelKey: 'dndWorkspace.creation.quick', noteKey: 'dndWorkspace.creation.quickNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.quick') },
-    { labelKey: 'dndWorkspace.creation.localImport', noteKey: 'dndWorkspace.creation.localImportNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.localImport') },
-    { labelKey: 'dndWorkspace.creation.workshop', noteKey: 'dndWorkspace.creation.workshopNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.workshop') },
+    {
+      labelKey: 'dndWorkspace.creation.standard',
+      noteKey: 'dndWorkspace.creation.standardNote',
+      onClick: () => {
+        if (campaignActorAddContext) {
+          showActorCreationCompletion();
+          return;
+        }
+        resetDndCreator();
+        onOpenPlayTab('creator');
+      },
+    },
+    { labelKey: 'dndWorkspace.creation.quick', noteKey: 'dndWorkspace.creation.quickNote', planned: true, onClick: showActorCreationCompletion },
+    { labelKey: 'dndWorkspace.creation.localImport', noteKey: 'dndWorkspace.creation.localImportNote', planned: true, onClick: showActorCreationCompletion },
+    { labelKey: 'dndWorkspace.creation.workshop', noteKey: 'dndWorkspace.creation.workshopNote', planned: true, onClick: showActorCreationCompletion },
   ];
 
   const handleRequestAddActorForCampaign = (context: CampaignActorAddReturnContext) => {
     setCampaignActorAddContext(context);
     setCampaignActorSelectContext(null);
     setCampaignSelectForActorContext(null);
+    setActorCreationCompletionContext(null);
     onViewChange('create');
   };
 
@@ -211,6 +278,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     setCampaignActorSelectContext(context);
     setCampaignActorAddContext(null);
     setCampaignSelectForActorContext(null);
+    setActorCreationCompletionContext(null);
     onViewChange('characters');
   };
 
@@ -218,6 +286,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     setSuggestedCampaignActor(actor);
     setCampaignActorSelectContext(null);
     setCampaignSelectForActorContext(null);
+    setActorCreationCompletionContext(null);
     onViewChange('campaigns');
   };
 
@@ -235,6 +304,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     });
     setCampaignActorAddContext(null);
     setCampaignActorSelectContext(null);
+    setActorCreationCompletionContext(null);
     onViewChange('campaigns');
   };
 
@@ -249,16 +319,19 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     setCampaignSelectForActorContext(null);
     setCampaignActorAddContext(null);
     setCampaignActorSelectContext(null);
+    setActorCreationCompletionContext(null);
     onViewChange('campaigns');
   };
 
   const handleReturnToActorContext = () => {
     setCampaignSelectForActorContext(null);
+    setActorCreationCompletionContext(null);
     onViewChange('characters');
   };
 
   const handleReturnToCampaignEntry = () => {
     setCampaignRuntimeContext(null);
+    setActorCreationCompletionContext(null);
     onViewChange('campaigns');
   };
 
@@ -316,12 +389,16 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                 tone="dnd"
                 actorNoteKey="systemWorkspaceEntry.dnd.actorNote"
                 campaignNoteKey="systemWorkspaceEntry.dnd.campaignNote"
-                onEnterActors={() => onViewChange('characters')}
+                onEnterActors={() => {
+                  setActorCreationCompletionContext(null);
+                  onViewChange('characters');
+                }}
                 onEnterCampaigns={() => {
                   setCampaignActorAddContext(null);
                   setCampaignActorSelectContext(null);
                   setCampaignSelectForActorContext(null);
                   setSuggestedCampaignActor(null);
+                  setActorCreationCompletionContext(null);
                   onViewChange('campaigns');
                 }}
               />
@@ -340,6 +417,29 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                   className="mb-4 border-[#58180d]/30 bg-white/50 text-[#58180d]"
                 />
               )}
+              {actorCreationCompletionContext ? (
+                <ActorCreationCompletionShell
+                  context={actorCreationCompletionContext}
+                  strings={{
+                    readyTitle: t('multiWorkspace.actorCreationCompletion.readyTitle'),
+                    nextStepTitle: t('multiWorkspace.actorCreationCompletion.nextStepTitle'),
+                    standaloneNote: t('multiWorkspace.actorCreationCompletion.standaloneNote'),
+                    forCampaignTitle: t('multiWorkspace.actorCreationCompletion.forCampaignTitle'),
+                    forCampaignNote: t('multiWorkspace.actorCreationCompletion.forCampaignNote'),
+                    previewActorLabel: t('multiWorkspace.actorCreationCompletion.previewActorLabel'),
+                    openSheet: t('multiWorkspace.actorCreationCompletion.openSheet'),
+                    selectCampaign: t('multiWorkspace.actorCreationCompletion.selectCampaign'),
+                    returnToCampaignEntry: t('multiWorkspace.actorCreationCompletion.returnToCampaignEntry'),
+                    shellOnlyNote: t('multiWorkspace.actorCreationCompletion.shellOnlyNote'),
+                  }}
+                  colorTheme={DND_VAULT_COLOR_THEME}
+                  panelClassName="border border-[#58180d]/20 bg-white/45 p-5"
+                  onOpenActorSheet={handleOpenCompletedActorSheet}
+                  onSelectCampaign={handleSelectCampaignForCompletedActor}
+                  onReturnToCampaignEntry={handleReturnCreatedActorToCampaign}
+                />
+              ) : (
+                <>
               <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-bold text-[#58180d]">{t('dndWorkspace.creation.title')}</h2>
@@ -381,6 +481,8 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
               <p className="mt-4 border-t border-[#58180d]/15 pt-3 text-[10px] text-[#58180d]/50">
                 {t('dndWorkspace.creation.actorFlowNote')}
               </p>
+                </>
+              )}
             </section>
           )}
 
@@ -406,6 +508,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                   setCampaignSelectForActorContext(null);
                   setSuggestedCampaignActor(null);
                 }
+                setActorCreationCompletionContext(null);
                 onViewChange('create');
               }}
               purpose={

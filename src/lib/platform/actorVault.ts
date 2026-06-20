@@ -18,6 +18,7 @@
 import type {
   CampaignActorAddReturnContext,
   CampaignActorSelectReturnContext,
+  CampaignSuggestedActor,
 } from './campaignFlow';
 
 // ─── Core summary type ─────────────────────────────────────────────────────────
@@ -72,6 +73,10 @@ export type ActorVaultPurpose =
   | { kind: 'manage' }
   | { kind: 'selectForCampaign'; context: CampaignActorSelectReturnContext }
   | { kind: 'addForCampaign'; context: CampaignActorAddReturnContext };
+
+export type ActorCreationCompletionContext =
+  | { kind: 'standalone'; actor: CampaignSuggestedActor }
+  | { kind: 'forCampaign'; actor: CampaignSuggestedActor; campaign: CampaignActorAddReturnContext };
 
 // ─── Stats (vault homepage) ────────────────────────────────────────────────────
 
