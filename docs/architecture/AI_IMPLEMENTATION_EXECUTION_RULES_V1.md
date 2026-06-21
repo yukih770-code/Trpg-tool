@@ -2,13 +2,14 @@
 
 <!-- AI-LANDMARK: AI_IMPLEMENTATION_EXECUTION_RULES_V1 -->
 
-Last updated: 2026-06-20
+Last updated: 2026-06-21
 
 Status: binding execution gate.
 
 This document is an execution gate, not a passive reference. All future AI
-implementation tasks must read this document before modifying code. Reports
-must explicitly state which rules were applied.
+implementation, audit, and documentation-governance tasks must read this
+document and `AI_CONTRACT_ENFORCEMENT_MATRIX_V1.md` before modifying files or
+reporting completion. Reports must explicitly state which rules were applied.
 
 这是 AI 实现任务的强制执行规范，不是普通参考资料。后续任何涉及代码、
 UI、store、runtime、repository、schema、导航、角色卡、战役、导入导出、
@@ -18,39 +19,68 @@ This document does not implement UI, store, repository, runtime, schema,
 migration, backend, permissions, multiplayer, import/export, campaign
 membership, or rules behavior.
 
-## 1. Binding Contract Stack
+## 1. Level 0 Entry Gate
+
+The following documents are global mandatory Level 0 execution gates:
+
+1. `AI_IMPLEMENTATION_EXECUTION_RULES_V1.md`
+2. `AI_CONTRACT_ENFORCEMENT_MATRIX_V1.md`
+
+Every implementation, audit, and documentation-governance task must read both
+Level 0 documents before editing files or reporting completion.
+
+`AI_CONTRACT_ENFORCEMENT_MATRIX_V1.md` defines which Level 1 documents are
+triggered by the current task, which Level 2 documents require alignment, and
+which Level 3 documents are reference only.
+
+Mandatory Level 0 rules:
+
+1. Every task must identify triggered Level 1 documents through the Matrix.
+2. Every task must report the triggered Level 1 documents and related Level 2
+   documents.
+3. Final reports must use explicit `Compliance` sections, not only "read: yes".
+4. If a Level 0 or triggered Level 1 document is missing, conflicting, or cannot
+   be executed, the AI must stop and report instead of guessing.
+5. Current repository state takes priority over old plans, old handoff text, and
+   conversation memory.
+6. UI shell does not equal real implementation.
+7. Documentation contract does not equal code implementation.
+
+## 2. Binding Contract Stack
 
 The following contracts are execution constraints, not optional references:
 
-1. `REFERENCE_ARCHITECTURE_APPLICATION_GUIDE_V1.md`
-2. `NAVIGATION_AND_EXIT_CONTRACT_V1.md`
-3. `PLATFORM_INTERACTION_UI_CONTRACT_V1.md`
-4. `CAMPAIGN_MEMBERSHIP_CONTRACT_V1.md`
-5. `CHARACTER_SHEET_UX_CONTRACT_V1.md`
-6. `DATA_MANAGEMENT_MVP_SCOPE_V1.md`
+1. `AI_CONTRACT_ENFORCEMENT_MATRIX_V1.md`
+2. `REFERENCE_ARCHITECTURE_APPLICATION_GUIDE_V1.md`
+3. `NAVIGATION_AND_EXIT_CONTRACT_V1.md`
+4. `PLATFORM_INTERACTION_UI_CONTRACT_V1.md`
+5. `CAMPAIGN_MEMBERSHIP_CONTRACT_V1.md`
+6. `CHARACTER_SHEET_UX_CONTRACT_V1.md`
+7. `DATA_MANAGEMENT_MVP_SCOPE_V1.md`
 
-Every AI implementation task must read the relevant contracts before editing.
+Every AI implementation, audit, or documentation-governance task must read the
+Matrix and the relevant triggered contracts before editing.
 When a task touches code, UI, store, repository, runtime, schema, navigation,
 campaign entry, character sheet, import/export, permissions, multiplayer, or
 data management, this execution gate must be read first.
 
-## 2. Rule Priority
+## 3. Rule Priority
 
 Apply rules in this order:
 
 1. Safety / data integrity / no destructive action.
-2. `REFERENCE_ARCHITECTURE_APPLICATION_GUIDE_V1.md`.
-3. `CAMPAIGN_MEMBERSHIP_CONTRACT_V1.md`.
-4. `PLATFORM_INTERACTION_UI_CONTRACT_V1.md`.
-5. `NAVIGATION_AND_EXIT_CONTRACT_V1.md`.
-6. `CHARACTER_SHEET_UX_CONTRACT_V1.md`.
-7. Current Phase Scope: `DATA_MANAGEMENT_MVP_SCOPE_V1.md`.
+2. Current repository state and explicit user task scope.
+3. Level 0: `AI_IMPLEMENTATION_EXECUTION_RULES_V1.md`.
+4. Level 0: `AI_CONTRACT_ENFORCEMENT_MATRIX_V1.md`.
+5. Triggered Level 1 contracts identified by the Matrix.
+6. Related Level 2 alignment documents identified by the Matrix.
+7. Level 3 reference documents and old plans.
 
 If MVP scope conflicts with a long-term architecture contract, the AI must stop
 and report the conflict. It must not choose a short-term implementation path on
 its own.
 
-## 3. Data Management MVP Positioning
+## 4. Data Management MVP Positioning
 
 Data Management MVP Scope is a phase scope, not an architecture override.
 
@@ -68,7 +98,7 @@ The MVP can define implementation order and current non-goals. It cannot:
 - present placeholder behavior as real data management;
 - bypass repository / adapter boundaries unless a contract explicitly allows it.
 
-## 4. Long-Term Architecture Non-Regression Rule
+## 5. Long-Term Architecture Non-Regression Rule
 
 MVP work must not regress the long-term architecture.
 
@@ -88,7 +118,7 @@ Mandatory rules:
 7. MVP implementation may be local-first, but it must remain replaceable,
    migratable, and able to be taken over by future repository/backend layers.
 
-## 5. Mandatory Layer Declaration
+## 6. Mandatory Layer Declaration
 
 Before implementation, the AI must declare which object layers and state layers
 are touched.
@@ -121,7 +151,7 @@ Forbidden:
 6. Treating `selectedActorId` as persistent `CampaignMembership`.
 7. Treating UI placeholder as real data management.
 
-## 6. Navigation And Back Button Check
+## 7. Navigation And Back Button Check
 
 Any task touching a page, shell, workspace, library, detail, or entry flow must
 perform a navigation check.
@@ -155,7 +185,7 @@ Mandatory rules:
 If a task cannot safely clean all navigation issues, the report must list the
 remaining risk.
 
-## 7. Button Semantics Check
+## 8. Button Semantics Check
 
 Any UI task must preserve platform button semantics.
 
@@ -178,7 +208,7 @@ Forbidden:
 3. Entering runtime directly from campaign list cards.
 4. Showing both player and host primary `进入战役` CTAs in the same entry panel.
 
-## 8. Actor / Campaign / Runtime Boundary Check
+## 9. Actor / Campaign / Runtime Boundary Check
 
 Any task touching Actor, Campaign, Entry, or Runtime must enforce:
 
@@ -199,7 +229,7 @@ Mandatory rules:
 5. AssistantHost / Co-GM may be multiple, but must be authorized by Primary
    Host.
 
-## 9. Character Sheet Layering Check
+## 10. Character Sheet Layering Check
 
 Any task touching DND / COC / CP RED character sheets must preserve:
 
@@ -218,7 +248,7 @@ Forbidden:
 4. Forcing DND / COC / CP RED into one visual template that erases system
    differences.
 
-## 10. Data Management MVP Check
+## 11. Data Management MVP Check
 
 Data implementation must prioritize the offline personal campaign MVP while
 preserving long-term architecture.
@@ -245,7 +275,7 @@ Do not implement early:
 - complete Workshop installer;
 - complete backend / WebSocket / account system.
 
-## 11. Placeholder Transparency
+## 12. Placeholder Transparency
 
 Any placeholder, scaffold, sample, mock, or disabled UI must be clearly labeled.
 
@@ -257,35 +287,52 @@ Forbidden:
   exist;
 - hiding local-only shortcuts behind final-domain terminology.
 
-## 12. Mandatory Report Section
+## 13. Mandatory Report Section
 
 Every AI implementation report must include:
 
 ```text
 Execution Rules Compliance
+AI Contract Enforcement Matrix Compliance
 ```
 
 and answer:
 
 1. Was `AI_IMPLEMENTATION_EXECUTION_RULES_V1.md` read?
-2. Which object layers were touched: Catalog / Owned / Campaign / Runtime / Log
+2. Was `AI_CONTRACT_ENFORCEMENT_MATRIX_V1.md` read?
+3. Which Level 1 documents were triggered by this task?
+4. Which Level 2 documents were read for alignment?
+5. Which object layers were touched: Catalog / Owned / Campaign / Runtime / Log
    / Projection?
-3. Which state layers were touched: UI / Flow / Runtime Local / Persistent /
+6. Which state layers were touched: UI / Flow / Runtime Local / Persistent /
    Server / Collaborative?
-4. Did the task touch navigation / back buttons? If yes, was
+7. Did the task touch navigation / back buttons? If yes, was
    `back/return/exit/返回/←` searched?
-5. Did the task touch button semantics? If yes, were the `进入` / `打开` /
+8. Did the task touch button semantics? If yes, were the `进入` / `打开` /
    `选择` / `添加` rules preserved?
-6. Did the task touch Actor / Campaign / Runtime? If yes, were suggested /
+9. Did the task touch Actor / Campaign / Runtime? If yes, were suggested /
    selected / membership boundaries preserved?
-7. Did the task touch character sheets? If yes, was Sheet / Builder / Audit /
+10. Did the task touch character sheets? If yes, was Sheet / Builder / Audit /
    Catalog layering preserved?
-8. Did the task touch data management? If yes, did it follow
+11. Did the task touch data management? If yes, did it follow
    `DATA_MANAGEMENT_MVP_SCOPE_V1.md`?
-9. Were placeholders introduced? If yes, were they clearly labeled?
-10. Were any rules not fully executed? If yes, list the reason and follow-up.
+12. Were placeholders introduced? If yes, were they clearly labeled?
+13. Were any required Level 0 / Level 1 documents missing or conflicting?
+14. Were any rules not fully executed? If yes, list the reason and follow-up.
 
-## 13. MVP Non-Regression Check
+For every triggered Level 1 or upgraded Level 2 document, the report must use
+this format:
+
+```text
+<Contract Name> Compliance:
+- Triggered this round:
+- Applicable clauses:
+- How this round complied:
+- Deviations:
+- Reason / follow-up:
+```
+
+## 14. MVP Non-Regression Check
 
 Reports for data-management or local-MVP tasks must also include:
 
@@ -296,10 +343,13 @@ Reports for data-management or local-MVP tasks must also include:
    adapter / repository boundary?
 5. Did any implementation sacrifice a long-term contract for MVP speed?
 
-## 14. Stop Conditions
+## 15. Stop Conditions
 
 The AI must stop and report rather than implement when it detects:
 
+- `AI_IMPLEMENTATION_EXECUTION_RULES_V1.md` cannot be read;
+- `AI_CONTRACT_ENFORCEMENT_MATRIX_V1.md` cannot be read;
+- a triggered Level 1 document is missing, conflicting, or impossible to apply;
 - MVP scope conflicting with a higher-priority architecture contract;
 - a proposed shortcut that would become hard to migrate;
 - a task that needs schema/migration but is scoped as UI-only;
@@ -308,11 +358,12 @@ The AI must stop and report rather than implement when it detects:
   behavior without an explicit data contract;
 - a navigation change that would create duplicate visible back/exit controls.
 
-## 15. Acceptance Boundary
+## 16. Acceptance Boundary
 
 This execution gate is satisfied only when future implementation reports can
-show which rules were applied, which layers were touched, and which boundaries
-were preserved.
+show that both Level 0 documents were read, which Level 1 documents were
+triggered, which rules were applied, which layers were touched, and which
+boundaries were preserved.
 
 It is not satisfied by citing contracts passively while implementing a shortcut
 that violates object layering, navigation, button semantics, character-sheet
