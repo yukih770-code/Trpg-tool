@@ -1,5 +1,5 @@
 import { ArrowLeft } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CampaignRuntimeContext } from '../../lib/platform/campaignFlow';
 import type { LocalCampaignSystemId } from '../../lib/platform/campaignLocalStore';
 import type {
@@ -17,6 +17,14 @@ type CampaignRuntimeShellProps = {
 };
 
 type RuntimeLogCategory = 'roll' | 'action' | 'system' | 'handout' | 'host';
+type ManualStateChangeEventType = Extract<
+  RuntimeLogEventType,
+  | 'actor.hpChanged'
+  | 'actor.resourceChanged'
+  | 'actor.sanChanged'
+  | 'actor.humanityChanged'
+  | 'actor.note'
+>;
 
 const toneClasses: Record<CampaignRuntimeTone, {
   wrapper: string;
@@ -70,6 +78,10 @@ export function CampaignRuntimeShell({
 }: CampaignRuntimeShellProps) {
   const { t } = createTranslator(readStoredLocale());
   const [systemNoteDraft, setSystemNoteDraft] = useState('');
+  const [manualStateType, setManualStateType] = useState<ManualStateChangeEventType>('actor.hpChanged');
+  const [manualStateActorId, setManualStateActorId] = useState(context.selectedActorId ?? '');
+  const [manualStateLabel, setManualStateLabel] = useState('');
+  const [manualStateNote, setManualStateNote] = useState('');
   const theme = toneClasses[tone];
   const isHost = context.selectedEntryRole === 'host';
   const currentActor = context.selectedActorName ?? t('campaignRuntime.header.noActor');
@@ -164,6 +176,20 @@ export function CampaignRuntimeShell({
   ];
 
   const visibleRuntimeLogFilters = runtimeLogFilters.filter((filter) => isHost || !filter.hostOnly);
+  const manualStateChangeOptions = useMemo(
+    () => getManualStateChangeOptions(runtimeSystemId),
+    [runtimeSystemId],
+  );
+
+  useEffect(() => {
+    if (!manualStateChangeOptions.some((option) => option.type === manualStateType)) {
+      setManualStateType(manualStateChangeOptions[0]?.type ?? 'actor.note');
+    }
+  }, [manualStateChangeOptions, manualStateType]);
+
+  useEffect(() => {
+    setManualStateActorId(context.selectedActorId ?? '');
+  }, [context.selectedActorId]);
 
   const handleAppendSystemNote = () => {
     const message = systemNoteDraft.trim();
@@ -175,6 +201,25 @@ export function CampaignRuntimeShell({
       message,
     });
     setSystemNoteDraft('');
+  };
+
+  const handleAppendManualStateChange = () => {
+    const label = manualStateLabel.trim();
+    const note = manualStateNote.trim();
+    if (!isHost || !runtimeSystemId || (!label && !note)) return;
+    appendRuntimeLogEvent({
+      campaignId: context.campaignId,
+      actorId: manualStateActorId.trim() || undefined,
+      systemId: runtimeSystemId,
+      type: manualStateType,
+      message: [label, note].filter(Boolean).join(' - '),
+      payload: {
+        label: label || undefined,
+        note: note || undefined,
+      },
+    });
+    setManualStateLabel('');
+    setManualStateNote('');
   };
 
   const renderPlaceholderList = (items: string[]) => (
@@ -218,38 +263,98 @@ export function CampaignRuntimeShell({
       </div>
 
       {isHost ? (
-        <form
-          className={`rounded-lg border p-3 ${theme.card}`}
-          onSubmit={(event) => {
-            event.preventDefault();
-            handleAppendSystemNote();
-          }}
-        >
-          <label className={`block text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>
-            {t('campaignRuntime.log.addSystemNote')}
-          </label>
-          <textarea
-            value={systemNoteDraft}
-            onChange={(event) => setSystemNoteDraft(event.target.value)}
-            placeholder={t('campaignRuntime.log.systemNotePlaceholder')}
-            rows={3}
-            className={`mt-2 w-full resize-y rounded border bg-transparent px-3 py-2 text-xs outline-none ${theme.border}`}
-          />
-          <button
-            type="submit"
-            disabled={!runtimeSystemId || !systemNoteDraft.trim()}
-            className={`mt-2 border px-3 py-2 text-xs font-bold uppercase tracking-wider ${
-              runtimeSystemId && systemNoteDraft.trim()
-                ? theme.badge
-                : `cursor-default opacity-55 ${theme.action}`
-            }`}
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          <form
+            className={`rounded-lg border p-3 ${theme.card}`}
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleAppendSystemNote();
+            }}
           >
-            {t('campaignRuntime.log.appendSystemNote')}
-          </button>
-          <p className={`mt-2 text-[11px] leading-relaxed ${theme.muted}`}>
-            {t('campaignRuntime.log.systemNoteScope')}
-          </p>
-        </form>
+            <label className={`block text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>
+              {t('campaignRuntime.log.addSystemNote')}
+            </label>
+            <textarea
+              value={systemNoteDraft}
+              onChange={(event) => setSystemNoteDraft(event.target.value)}
+              placeholder={t('campaignRuntime.log.systemNotePlaceholder')}
+              rows={3}
+              className={`mt-2 w-full resize-y rounded border bg-transparent px-3 py-2 text-xs outline-none ${theme.border}`}
+            />
+            <button
+              type="submit"
+              disabled={!runtimeSystemId || !systemNoteDraft.trim()}
+              className={`mt-2 border px-3 py-2 text-xs font-bold uppercase tracking-wider ${
+                runtimeSystemId && systemNoteDraft.trim()
+                  ? theme.badge
+                  : `cursor-default opacity-55 ${theme.action}`
+              }`}
+            >
+              {t('campaignRuntime.log.appendSystemNote')}
+            </button>
+            <p className={`mt-2 text-[11px] leading-relaxed ${theme.muted}`}>
+              {t('campaignRuntime.log.systemNoteScope')}
+            </p>
+          </form>
+
+          <form
+            className={`rounded-lg border p-3 ${theme.card}`}
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleAppendManualStateChange();
+            }}
+          >
+            <label className={`block text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>
+              {t('campaignRuntime.log.manualState.title')}
+            </label>
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <select
+                value={manualStateType}
+                onChange={(event) => setManualStateType(event.target.value as ManualStateChangeEventType)}
+                className={`rounded border bg-transparent px-3 py-2 text-xs outline-none ${theme.border}`}
+              >
+                {manualStateChangeOptions.map((option) => (
+                  <option key={option.type} value={option.type}>
+                    {t(option.labelKey)}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={manualStateActorId}
+                onChange={(event) => setManualStateActorId(event.target.value)}
+                placeholder={t('campaignRuntime.log.manualState.actorPlaceholder')}
+                className={`rounded border bg-transparent px-3 py-2 text-xs outline-none ${theme.border}`}
+              />
+            </div>
+            <input
+              value={manualStateLabel}
+              onChange={(event) => setManualStateLabel(event.target.value)}
+              placeholder={t(manualStateLabelPlaceholderKey(runtimeSystemId))}
+              className={`mt-2 w-full rounded border bg-transparent px-3 py-2 text-xs outline-none ${theme.border}`}
+            />
+            <textarea
+              value={manualStateNote}
+              onChange={(event) => setManualStateNote(event.target.value)}
+              placeholder={t('campaignRuntime.log.manualState.notePlaceholder')}
+              rows={3}
+              className={`mt-2 w-full resize-y rounded border bg-transparent px-3 py-2 text-xs outline-none ${theme.border}`}
+            />
+            <button
+              type="submit"
+              disabled={!runtimeSystemId || (!manualStateLabel.trim() && !manualStateNote.trim())}
+              className={`mt-2 border px-3 py-2 text-xs font-bold uppercase tracking-wider ${
+                runtimeSystemId && (manualStateLabel.trim() || manualStateNote.trim())
+                  ? theme.badge
+                  : `cursor-default opacity-55 ${theme.action}`
+              }`}
+            >
+              {t('campaignRuntime.log.manualState.append')}
+            </button>
+            <p className={`mt-2 text-[11px] leading-relaxed ${theme.muted}`}>
+              {t('campaignRuntime.log.manualState.scope')}
+            </p>
+          </form>
+        </div>
       ) : null}
 
       <div className="space-y-2">
@@ -471,4 +576,44 @@ function formatRuntimeLogTimestamp(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
+}
+
+function getManualStateChangeOptions(
+  systemId: LocalCampaignSystemId | null,
+): Array<{ type: ManualStateChangeEventType; labelKey: string }> {
+  switch (systemId) {
+    case 'coc7e':
+      return [
+        { type: 'actor.hpChanged', labelKey: 'campaignRuntime.log.manualState.types.hp' },
+        { type: 'actor.sanChanged', labelKey: 'campaignRuntime.log.manualState.types.san' },
+        { type: 'actor.resourceChanged', labelKey: 'campaignRuntime.log.manualState.types.cocResource' },
+        { type: 'actor.note', labelKey: 'campaignRuntime.log.manualState.types.actorNote' },
+      ];
+    case 'cp-red':
+      return [
+        { type: 'actor.hpChanged', labelKey: 'campaignRuntime.log.manualState.types.hp' },
+        { type: 'actor.humanityChanged', labelKey: 'campaignRuntime.log.manualState.types.humanity' },
+        { type: 'actor.resourceChanged', labelKey: 'campaignRuntime.log.manualState.types.cpResource' },
+        { type: 'actor.note', labelKey: 'campaignRuntime.log.manualState.types.actorNote' },
+      ];
+    case 'dnd5e-2024':
+    default:
+      return [
+        { type: 'actor.hpChanged', labelKey: 'campaignRuntime.log.manualState.types.hp' },
+        { type: 'actor.resourceChanged', labelKey: 'campaignRuntime.log.manualState.types.dndResource' },
+        { type: 'actor.note', labelKey: 'campaignRuntime.log.manualState.types.actorNote' },
+      ];
+  }
+}
+
+function manualStateLabelPlaceholderKey(systemId: LocalCampaignSystemId | null): string {
+  switch (systemId) {
+    case 'coc7e':
+      return 'campaignRuntime.log.manualState.labelPlaceholderCoc';
+    case 'cp-red':
+      return 'campaignRuntime.log.manualState.labelPlaceholderCp';
+    case 'dnd5e-2024':
+    default:
+      return 'campaignRuntime.log.manualState.labelPlaceholderDnd';
+  }
 }
