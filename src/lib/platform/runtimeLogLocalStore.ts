@@ -17,6 +17,8 @@ export type RuntimeLogEventType =
   | 'actor.humanityChanged'
   | 'system.note';
 
+export type RuntimeLogLifecycleStatus = 'active' | 'tombstoned';
+
 export interface LocalRuntimeLogEvent {
   id: string;
   campaignId: string;
@@ -30,26 +32,58 @@ export interface LocalRuntimeLogEvent {
    * structure is stable; replace it with discriminated payload types later.
    */
   payload?: unknown;
+  lifecycleStatus?: RuntimeLogLifecycleStatus;
+  tombstonedAt?: string;
+  tombstoneReason?: string;
+  tombstoneSource?: string;
+  correctsEventId?: string;
+  correctionReason?: string;
   createdAt: string;
 }
 
-export type AppendRuntimeLogEventInput = Omit<LocalRuntimeLogEvent, 'id' | 'createdAt'>;
+export type AppendRuntimeLogEventInput = Omit<
+  LocalRuntimeLogEvent,
+  'id' | 'createdAt' | 'lifecycleStatus' | 'tombstonedAt' | 'tombstoneReason' | 'tombstoneSource'
+>;
+
+export interface RuntimeLogListOptions {
+  includeTombstoned?: boolean;
+}
+
+export interface TombstoneRuntimeLogEntryInput {
+  eventId: string;
+  reason?: string;
+  source?: string;
+}
 
 interface RuntimeLogLocalStoreState {
   schemaVersion: number;
   events: LocalRuntimeLogEvent[];
-  listRuntimeLogEvents: (campaignId: string) => LocalRuntimeLogEvent[];
+  listRuntimeLogEvents: (
+    campaignId: string,
+    options?: RuntimeLogListOptions,
+  ) => LocalRuntimeLogEvent[];
   listRuntimeLogEventsBySession: (
     campaignId: string,
     sessionId: string,
+    options?: RuntimeLogListOptions,
   ) => LocalRuntimeLogEvent[];
   appendRuntimeLogEvent: (input: AppendRuntimeLogEventInput) => LocalRuntimeLogEvent;
+  tombstoneRuntimeLogEntry: (input: TombstoneRuntimeLogEntryInput) => LocalRuntimeLogEvent;
   /**
-   * Local/dev escape hatch. Real shared logs should eventually prefer
-   * tombstones or archival semantics instead of physical deletion.
+   * Local/dev escape hatch for physical cleanup only. This is not the normal
+   * product lifecycle path and does not define future hard-delete semantics.
    */
   deleteRuntimeLogEvent: (eventId: string) => void;
+  /**
+   * Local/dev escape hatch for physical cleanup only. Prefer tombstones for
+   * normal RuntimeLog lifecycle behavior.
+   */
   clearRuntimeLogForCampaign: (campaignId: string) => void;
+  /**
+   * Dev reset helper. This intentionally purges local browser state and must
+   * not be presented as ordinary user-facing deletion.
+   */
   clearAllRuntimeLogsForDev: () => void;
 }
 
@@ -72,6 +106,30 @@ function normalizeMessage(message: string): string {
   return trimmed || 'Runtime log event';
 }
 
+function normalizeOptionalText(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed || undefined;
+}
+
+function normalizeRuntimeLogEvent(event: LocalRuntimeLogEvent): LocalRuntimeLogEvent {
+  return {
+    ...event,
+    lifecycleStatus: event.lifecycleStatus ?? 'active',
+  };
+}
+
+function isActiveRuntimeLogEvent(event: LocalRuntimeLogEvent): boolean {
+  return (event.lifecycleStatus ?? 'active') === 'active';
+}
+
+function filterRuntimeLogEvents(
+  events: LocalRuntimeLogEvent[],
+  options?: RuntimeLogListOptions,
+): LocalRuntimeLogEvent[] {
+  if (options?.includeTombstoned) return events;
+  return events.filter(isActiveRuntimeLogEvent);
+}
+
 function sortRuntimeLogEvents(events: LocalRuntimeLogEvent[]): LocalRuntimeLogEvent[] {
   return [...events].sort((a, b) => {
     const createdAtOrder = a.createdAt.localeCompare(b.createdAt);
@@ -85,6 +143,7 @@ function createRuntimeLogEvent(input: AppendRuntimeLogEventInput): LocalRuntimeL
     ...input,
     id: makeRuntimeLogEventId(),
     message: normalizeMessage(input.message),
+    lifecycleStatus: 'active',
     createdAt: nowIso(),
   };
 }
@@ -95,13 +154,19 @@ export const useRuntimeLogLocalStore = create<RuntimeLogLocalStoreState>()(
       schemaVersion: RUNTIME_LOG_LOCAL_STORE_SCHEMA_VERSION,
       events: [],
 
-      listRuntimeLogEvents: (campaignId) =>
-        sortRuntimeLogEvents(get().events.filter((event) => event.campaignId === campaignId)),
+      listRuntimeLogEvents: (campaignId, options) =>
+        sortRuntimeLogEvents(filterRuntimeLogEvents(
+          get().events.filter((event) => event.campaignId === campaignId),
+          options,
+        )),
 
-      listRuntimeLogEventsBySession: (campaignId, sessionId) =>
-        sortRuntimeLogEvents(get().events.filter((event) => (
-          event.campaignId === campaignId && event.sessionId === sessionId
-        ))),
+      listRuntimeLogEventsBySession: (campaignId, sessionId, options) =>
+        sortRuntimeLogEvents(filterRuntimeLogEvents(
+          get().events.filter((event) => (
+            event.campaignId === campaignId && event.sessionId === sessionId
+          )),
+          options,
+        )),
 
       appendRuntimeLogEvent: (input) => {
         const event = createRuntimeLogEvent(input);
@@ -109,6 +174,36 @@ export const useRuntimeLogLocalStore = create<RuntimeLogLocalStoreState>()(
           events: [...state.events, event],
         }));
         return event;
+      },
+
+      tombstoneRuntimeLogEntry: (input) => {
+        let tombstonedEvent: LocalRuntimeLogEvent | null = null;
+        const tombstonedAt = nowIso();
+        const tombstoneReason = normalizeOptionalText(input.reason);
+        const tombstoneSource = normalizeOptionalText(input.source) ?? 'local';
+
+        set((state) => {
+          const eventIndex = state.events.findIndex((event) => event.id === input.eventId);
+          if (eventIndex < 0) return state;
+
+          const existing = state.events[eventIndex];
+          const nextEvent: LocalRuntimeLogEvent = {
+            ...existing,
+            lifecycleStatus: 'tombstoned',
+            tombstonedAt,
+            tombstoneSource,
+            ...(tombstoneReason ? { tombstoneReason } : {}),
+          };
+          const nextEvents = [...state.events];
+          nextEvents[eventIndex] = nextEvent;
+          tombstonedEvent = nextEvent;
+          return { events: nextEvents };
+        });
+
+        if (!tombstonedEvent) {
+          throw new Error(`Runtime log event not found: ${input.eventId}`);
+        }
+        return tombstonedEvent;
       },
 
       deleteRuntimeLogEvent: (eventId) => set((state) => ({
@@ -138,7 +233,7 @@ export const useRuntimeLogLocalStore = create<RuntimeLogLocalStoreState>()(
         return {
           ...current,
           schemaVersion: RUNTIME_LOG_LOCAL_STORE_SCHEMA_VERSION,
-          events: p.events.filter(isLocalRuntimeLogEvent),
+          events: p.events.filter(isLocalRuntimeLogEvent).map(normalizeRuntimeLogEvent),
         };
       },
     },
@@ -156,6 +251,12 @@ function isLocalRuntimeLogEvent(value: unknown): value is LocalRuntimeLogEvent {
     isLocalCampaignSystemId(event.systemId) &&
     isRuntimeLogEventType(event.type) &&
     typeof event.message === 'string' &&
+    isOptionalRuntimeLogLifecycleStatus(event.lifecycleStatus) &&
+    isOptionalString(event.tombstonedAt) &&
+    isOptionalString(event.tombstoneReason) &&
+    isOptionalString(event.tombstoneSource) &&
+    isOptionalString(event.correctsEventId) &&
+    isOptionalString(event.correctionReason) &&
     typeof event.createdAt === 'string'
   );
 }
@@ -179,4 +280,10 @@ function isRuntimeLogEventType(value: unknown): value is RuntimeLogEventType {
     value === 'actor.humanityChanged' ||
     value === 'system.note'
   );
+}
+
+function isOptionalRuntimeLogLifecycleStatus(
+  value: unknown,
+): value is RuntimeLogLifecycleStatus | undefined {
+  return value === undefined || value === 'active' || value === 'tombstoned';
 }
