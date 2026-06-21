@@ -243,7 +243,7 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
               type="button"
               disabled
               title={t('home.platformStatus.localImportReserved')}
-              className="ml-auto flex cursor-not-allowed items-center gap-1.5 rounded-md border border-[#2f2a22]/15 bg-white/50 px-3 py-1.5 text-[11px] text-[#51483d] opacity-75"
+              className="flex cursor-not-allowed items-center gap-1.5 rounded-md border border-[#2f2a22]/15 bg-white/50 px-3 py-1.5 text-[11px] text-[#51483d] opacity-75 sm:ml-auto"
             >
               <Upload className="h-3 w-3" />
               {t('home.platformStatus.privateImport')}

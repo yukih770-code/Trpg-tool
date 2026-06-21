@@ -65,7 +65,7 @@ type PlatformNavKey = 'home' | 'systemLibrary' | 'personalHub' | 'workshop' | 'f
 const PRIMARY_NAV: { key: PlatformNavKey; labelKey?: string; label?: { zh: string; en: string }; icon: typeof HomeIcon }[] = [
   { key: 'home',          labelKey: 'shell.nav.home',          icon: HomeIcon },
   { key: 'systemLibrary', labelKey: 'shell.nav.systemLibrary', icon: Library  },
-  { key: 'personalHub',   label: { zh: '我的内容', en: 'My Content' }, icon: Sparkles },
+  { key: 'personalHub',   label: { zh: '我的资料库', en: 'My Library' }, icon: Sparkles },
   { key: 'workshop',      labelKey: 'shell.nav.workshop',      icon: Store    },
   { key: 'fanPlaza',      labelKey: 'shell.nav.fanPlaza',      icon: Palette  },
 ];
@@ -426,7 +426,7 @@ export default function App() {
     : appView === 'workshop' ? t('shell.nav.workshop')
     : appView === 'fanPlaza' ? t('shell.nav.fanPlaza')
     : appView === 'documents' ? (locale === 'en' ? 'Documents' : '文档资料')
-    : appView === 'personalHub' ? (locale === 'en' ? 'My Content' : '我的内容')
+    : appView === 'personalHub' ? (locale === 'en' ? 'My Library' : '我的资料库')
     : appView === 'userProfile' ? (locale === 'en' ? 'Profile' : '用户主页')
     : appView === 'play' ? systemLabel
     : activePlaceholder === 'settings' ? t('shell.nav.settings')
@@ -526,10 +526,12 @@ export default function App() {
                 type="button"
                 onClick={() => handleNavClick(item.key)}
                 aria-current={active ? 'page' : undefined}
+                aria-label={navLabel(item)}
+                title={navLabel(item)}
                 className={desktopNavBtn(active)}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span>{navLabel(item)}</span>
+                <span className="hidden lg:inline">{navLabel(item)}</span>
               </button>
             );
           })}
@@ -606,7 +608,15 @@ export default function App() {
         )}
 
         {appView === 'userProfile' && (
-          <UserProfileSpace profileUserId={profileUserId} locale={locale} onBack={goBack} />
+          <UserProfileSpace
+            profileUserId={profileUserId}
+            locale={locale}
+            onBack={goBack}
+            onOpenPersonalHub={() => {
+              pushNavigation();
+              setAppView('personalHub');
+            }}
+          />
         )}
 
         {appView === 'play' && playStage === 'workspace' && (
@@ -822,7 +832,7 @@ export default function App() {
                 {locale === 'en' ? 'My Profile' : '我的主页'}
               </button>
 
-              {/* 我的内容 */}
+              {/* 我的资料库 */}
               <button
                 type="button"
                 role="menuitem"
@@ -834,7 +844,7 @@ export default function App() {
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-[#17130f] hover:bg-[#2f2a22]/8"
               >
                 <Sparkles className="h-4 w-4 shrink-0" />
-                {locale === 'en' ? 'My Content' : '我的内容'}
+                {locale === 'en' ? 'My Library' : '我的资料库'}
               </button>
 
               {/* 数据与备份 → settings */}
