@@ -28,6 +28,10 @@ import type {
 } from '../../lib/platform/actorVault';
 import type { CampaignActorSelectReturnContext, CampaignSuggestedActor } from '../../lib/platform/campaignFlow';
 import { downloadActorVaultExportSnapshot } from '../../lib/platform/actorVaultExportSnapshot';
+import {
+  parseActorVaultImportPreview,
+  type ActorVaultImportPreview,
+} from '../../lib/platform/actorVaultImportPreview';
 import type { ActorVaultLifecycleStatus } from '../../lib/platform/actorVaultLifecycleStore';
 import { useActorVaultLifecycleStore } from '../../lib/platform/actorVaultLifecycleStore';
 import { ContextBar } from './ContextBar';
@@ -95,6 +99,8 @@ export function ActorVaultLibraryShell({
   const [filter, setFilter] = useState<FilterValue>('all');
   const [lifecycleFilter, setLifecycleFilter] = useState<LifecycleFilterValue>('active');
   const [sortKey, setSortKey] = useState(defaultSortKey);
+  const [importPreview, setImportPreview] = useState<ActorVaultImportPreview | null>(null);
+  const [importPreviewFileName, setImportPreviewFileName] = useState('');
   const lifecycleMetas = useActorVaultLifecycleStore((state) => state.metas);
   const archiveActor = useActorVaultLifecycleStore((state) => state.archiveActor);
   const trashActor = useActorVaultLifecycleStore((state) => state.trashActor);
@@ -201,6 +207,17 @@ export function ActorVaultLibraryShell({
     />
   ) : null;
 
+  const handleImportPreviewFile = async (file: File | undefined) => {
+    if (!file) return;
+    setImportPreviewFileName(file.name);
+    try {
+      const fileText = await file.text();
+      setImportPreview(parseActorVaultImportPreview(fileText));
+    } catch {
+      setImportPreview(parseActorVaultImportPreview(''));
+    }
+  };
+
   // ── Home view ─────────────────────────────────────────────────────────────
 
   if (mode === 'home') {
@@ -278,15 +295,32 @@ export function ActorVaultLibraryShell({
             <div>
               <div className="font-bold uppercase tracking-wider">{strings.lifecycleManagementSummary}</div>
               <div className={`mt-1 ${t.textBody}`}>{strings.lifecycleFilteredCount}: {filtered.length}</div>
-              <button
-                type="button"
-                onClick={() => downloadActorVaultExportSnapshot()}
-                className={`mt-3 border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${t.borderActive} ${t.text} ${t.bgHover}`}
-              >
-                {strings.exportSnapshot}
-              </button>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => downloadActorVaultExportSnapshot()}
+                  className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${t.borderActive} ${t.text} ${t.bgHover}`}
+                >
+                  {strings.exportSnapshot}
+                </button>
+                <label className={`cursor-pointer border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${t.borderActive} ${t.text} ${t.bgHover}`}>
+                  {strings.importPreview}
+                  <input
+                    type="file"
+                    accept="application/json,.json"
+                    className="hidden"
+                    onChange={(event) => {
+                      void handleImportPreviewFile(event.currentTarget.files?.[0]);
+                      event.currentTarget.value = '';
+                    }}
+                  />
+                </label>
+              </div>
               <p className={`mt-2 text-[11px] leading-relaxed ${t.textMuted}`}>
                 {strings.exportSnapshotNote}
+              </p>
+              <p className={`mt-1 text-[11px] leading-relaxed ${t.textMuted}`}>
+                {strings.importPreviewNote}
               </p>
             </div>
             <div>
@@ -302,6 +336,19 @@ export function ActorVaultLibraryShell({
               <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{lifecycleCounts.trashed}</div>
             </div>
           </div>
+        )}
+
+        {isManagePurpose && importPreview && (
+          <ActorVaultImportPreviewPanel
+            preview={importPreview}
+            fileName={importPreviewFileName}
+            strings={strings}
+            colorTheme={t}
+            onClear={() => {
+              setImportPreview(null);
+              setImportPreviewFileName('');
+            }}
+          />
         )}
 
         <div className="flex flex-wrap gap-3">
@@ -410,6 +457,120 @@ export function ActorVaultLibraryShell({
         </div>
       )}
 
+    </div>
+  );
+}
+
+function ActorVaultImportPreviewPanel({
+  preview,
+  fileName,
+  strings,
+  colorTheme: t,
+  onClear,
+}: {
+  preview: ActorVaultImportPreview;
+  fileName: string;
+  strings: ActorVaultShellStrings;
+  colorTheme: ActorVaultColorTheme;
+  onClear: () => void;
+}) {
+  const systemSummary = [
+    `DND ${preview.systemCounts['dnd5e-2024']}`,
+    `COC ${preview.systemCounts.coc7e}`,
+    `CP RED ${preview.systemCounts['cp-red']}`,
+  ].join(' / ');
+  const lifecycleSummary = [
+    `${strings.lifecycleActive} ${preview.lifecycleCounts.active}`,
+    `${strings.lifecycleArchived} ${preview.lifecycleCounts.archived}`,
+    `${strings.lifecycleTrashed} ${preview.lifecycleCounts.trashed}`,
+  ].join(' / ');
+  const visibleActors = preview.actors.slice(0, 6);
+  const remainingActorCount = Math.max(0, preview.actors.length - visibleActors.length);
+
+  return (
+    <div className={`mb-3 border-b pb-3 ${t.borderLight}`}>
+      <div className={`border p-3 ${t.borderLight} ${t.bgCard}`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className={`text-[11px] font-bold uppercase tracking-wider ${t.text}`}>
+              {strings.importPreviewTitle}
+            </div>
+            <div className={`mt-1 text-[11px] ${t.textMuted}`}>
+              {strings.importPreviewFile}: {fileName || '—'}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className={`border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${preview.isValidSnapshot ? t.borderActive : 'border-red-400'} ${preview.isValidSnapshot ? t.text : 'text-red-600'}`}>
+              {preview.isValidSnapshot ? strings.importPreviewValid : strings.importPreviewInvalid}
+            </span>
+            <button
+              type="button"
+              onClick={onClear}
+              className={`border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${t.borderLight} ${t.text} ${t.bgHover}`}
+            >
+              {strings.importPreviewClear}
+            </button>
+          </div>
+        </div>
+
+        <div className={`mt-3 grid gap-2 text-[11px] ${t.textBody} sm:grid-cols-4`}>
+          <div>
+            <div className={`font-bold uppercase tracking-wider ${t.textMuted}`}>{strings.importPreviewSummary}</div>
+            <div className="mt-1">
+              {preview.supportedActorCount} / {preview.actorCount}
+            </div>
+          </div>
+          <div>
+            <div className={`font-bold uppercase tracking-wider ${t.textMuted}`}>{strings.importPreviewSystems}</div>
+            <div className="mt-1">{systemSummary}</div>
+          </div>
+          <div>
+            <div className={`font-bold uppercase tracking-wider ${t.textMuted}`}>{strings.importPreviewLifecycle}</div>
+            <div className="mt-1">{lifecycleSummary}</div>
+          </div>
+          <div>
+            <div className={`font-bold uppercase tracking-wider ${t.textMuted}`}>{strings.importPreviewConflicts}</div>
+            <div className="mt-1">
+              {preview.conflictCount} / {strings.importPreviewUnsupported} {preview.unsupportedActorCount}
+            </div>
+          </div>
+        </div>
+
+        <p className={`mt-3 text-[11px] leading-relaxed ${t.textMuted}`}>
+          {strings.importPreviewNoWrite}
+        </p>
+
+        {(preview.errors.length > 0 || preview.warnings.length > 0) && (
+          <div className={`mt-3 border p-2 text-[11px] ${t.borderLight} ${t.textBody}`}>
+            <div className={`font-bold uppercase tracking-wider ${t.textMuted}`}>{strings.importPreviewWarnings}</div>
+            <ul className="mt-1 list-disc space-y-1 pl-4">
+              {[...preview.errors, ...preview.warnings].slice(0, 8).map((message, index) => (
+                <li key={`${message}-${index}`}>{message}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {visibleActors.length > 0 && (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {visibleActors.map((actor) => (
+              <div key={`${actor.systemId}-${actor.actorId}`} className={`border p-2 text-[11px] ${t.borderLight}`}>
+                <div className={`font-bold ${t.text}`}>{actor.displayName}</div>
+                <div className={`mt-1 ${t.textMuted}`}>
+                  {actor.systemId} / {actor.actorId} / {actor.lifecycleStatus}
+                </div>
+                {actor.conflict !== 'none' && (
+                  <div className="mt-1 font-bold text-amber-700">{strings.importPreviewConflicts}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {remainingActorCount > 0 && (
+          <div className={`mt-2 text-[11px] ${t.textMuted}`}>+{remainingActorCount}</div>
+        )}
+      </div>
     </div>
   );
 }
