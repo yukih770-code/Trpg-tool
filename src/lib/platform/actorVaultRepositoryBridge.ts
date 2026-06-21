@@ -21,6 +21,11 @@ import { useCpStore } from '../../store/cpStore';
 import type { CharacterData } from '../dnd-types';
 import type { CocCharacter } from '../coc-types';
 import type { CpCharacter } from '../cp-types';
+import {
+  getActorVaultLifecycleMeta,
+  getActorVaultLifecycleStatus,
+  type ActorVaultLifecycleStatus,
+} from './actorVaultLifecycleStore';
 
 export type ActorVaultSystemId =
   | 'dnd5e-2024'
@@ -42,6 +47,16 @@ export interface ActorVaultRecord {
   displayName: string;
   subtitle?: string;
   status: ActorVaultRecordStatus;
+  /**
+   * Platform object lifecycle metadata.
+   *
+   * This is separate from the system actor store and separate from campaign
+   * membership/runtime state. Missing metadata is normalized to active.
+   */
+  lifecycleStatus: ActorVaultLifecycleStatus;
+  archivedAt?: string;
+  trashedAt?: string;
+  restoredAt?: string;
   updatedAt?: string;
   source: ActorVaultRecordSource;
   originalRef: {
@@ -207,7 +222,7 @@ function makeDndActorVaultRecord(character: CharacterData): ActorVaultRecord {
     character.background || undefined,
   ].filter(Boolean);
 
-  return {
+  return withActorLifecycle({
     id: character.id,
     systemId: 'dnd5e-2024',
     displayName: character.name?.trim() || 'Unnamed DND Character',
@@ -218,7 +233,7 @@ function makeDndActorVaultRecord(character: CharacterData): ActorVaultRecord {
       store: 'dnd-character-storage',
       id: character.id,
     },
-  };
+  });
 }
 
 function listCocActorVaultRecords(): ActorVaultRecord[] {
@@ -260,7 +275,7 @@ function makeCocActorVaultRecord(character: CocCharacter): ActorVaultRecord {
     character.residence?.trim() || undefined,
   ].filter(Boolean);
 
-  return {
+  return withActorLifecycle({
     id,
     systemId: 'coc7e',
     displayName: character.name?.trim() || 'Unnamed Investigator',
@@ -271,7 +286,7 @@ function makeCocActorVaultRecord(character: CocCharacter): ActorVaultRecord {
       store: 'coc-character-storage',
       id,
     },
-  };
+  });
 }
 
 function listCpActorVaultRecords(): ActorVaultRecord[] {
@@ -318,7 +333,7 @@ function makeCpActorVaultRecord(character: CpCharacter): ActorVaultRecord {
     character.humanity ? `Humanity ${character.humanity.current}/${character.humanity.max}` : undefined,
   ].filter(Boolean);
 
-  return {
+  return withActorLifecycle({
     id,
     systemId: 'cp-red',
     displayName,
@@ -329,6 +344,23 @@ function makeCpActorVaultRecord(character: CpCharacter): ActorVaultRecord {
       store: 'cp-red-character-storage',
       id,
     },
+  });
+}
+
+function withActorLifecycle(
+  record: Omit<
+    ActorVaultRecord,
+    'lifecycleStatus' | 'archivedAt' | 'trashedAt' | 'restoredAt'
+  >,
+): ActorVaultRecord {
+  const meta = getActorVaultLifecycleMeta(record.systemId, record.id);
+  return {
+    ...record,
+    lifecycleStatus: meta?.lifecycleStatus ??
+      getActorVaultLifecycleStatus(record.systemId, record.id),
+    archivedAt: meta?.archivedAt,
+    trashedAt: meta?.trashedAt,
+    restoredAt: meta?.restoredAt,
   };
 }
 

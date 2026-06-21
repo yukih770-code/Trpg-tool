@@ -20,6 +20,8 @@ import type {
   CampaignActorSelectReturnContext,
   CampaignSuggestedActor,
 } from './campaignFlow';
+import type { ActorVaultSystemId } from './actorVaultRepositoryBridge';
+import type { ActorVaultLifecycleStatus } from './actorVaultLifecycleStore';
 
 // ─── Core summary type ─────────────────────────────────────────────────────────
 
@@ -30,8 +32,15 @@ import type {
 export type ActorVaultSummary = {
   /** Stable actor id (from the system store) */
   id: string;
+  /** System id used by platform object-management metadata. */
+  systemId?: ActorVaultSystemId;
   /** Display name. Shown as the card heading. */
   displayName: string;
+  /** Platform lifecycle metadata. Missing means active. */
+  lifecycleStatus?: ActorVaultLifecycleStatus;
+  archivedAt?: string;
+  trashedAt?: string;
+  restoredAt?: string;
   /** Whether this actor is considered "complete" by system criteria. */
   completionStatus: 'complete' | 'incomplete';
   /** Whether this actor is currently active (the one being played / edited). */
@@ -147,7 +156,21 @@ export type ActorVaultAdapter<TActor> = {
  * Call this in a React component where the adapter is constructed from hooks.
  */
 export function deriveVaultSummaries<T>(adapter: ActorVaultAdapter<T>): ActorVaultSummary[] {
-  return adapter.getActors().map((actor, i) => adapter.getSummary(actor, i));
+  return adapter.getActors().map((actor, i) => {
+    const summary = adapter.getSummary(actor, i);
+    const maybeRecord = actor as Partial<Pick<
+      ActorVaultSummary,
+      'systemId' | 'lifecycleStatus' | 'archivedAt' | 'trashedAt' | 'restoredAt'
+    >>;
+    return {
+      ...summary,
+      systemId: summary.systemId ?? maybeRecord.systemId,
+      lifecycleStatus: summary.lifecycleStatus ?? maybeRecord.lifecycleStatus ?? 'active',
+      archivedAt: summary.archivedAt ?? maybeRecord.archivedAt,
+      trashedAt: summary.trashedAt ?? maybeRecord.trashedAt,
+      restoredAt: summary.restoredAt ?? maybeRecord.restoredAt,
+    };
+  });
 }
 
 // ─── Color theme (Tailwind-class strings) ─────────────────────────────────────
@@ -222,4 +245,19 @@ export type ActorVaultShellStrings = {
   returnToCampaignEntry: string;
   selectForCampaignLabel: string;
   selectCampaignLabel: string;
+  lifecycleActive: string;
+  lifecycleArchived: string;
+  lifecycleTrashed: string;
+  lifecycleStatus: string;
+  lifecycleManagementSummary: string;
+  lifecycleFilteredCount: string;
+  archivedStatusLabel: string;
+  trashedStatusLabel: string;
+  archiveActor: string;
+  restoreActor: string;
+  moveToTrash: string;
+  archivedActorNote: string;
+  trashedActorNote: string;
+  exportSnapshot: string;
+  exportSnapshotNote: string;
 };

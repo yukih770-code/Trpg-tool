@@ -27,12 +27,16 @@ import type {
   ActorCreationCompletionContext,
 } from '../../lib/platform/actorVault';
 import type { CampaignActorSelectReturnContext, CampaignSuggestedActor } from '../../lib/platform/campaignFlow';
+import { downloadActorVaultExportSnapshot } from '../../lib/platform/actorVaultExportSnapshot';
+import type { ActorVaultLifecycleStatus } from '../../lib/platform/actorVaultLifecycleStore';
+import { useActorVaultLifecycleStore } from '../../lib/platform/actorVaultLifecycleStore';
 import { ContextBar } from './ContextBar';
 
 // ─── Internal types ────────────────────────────────────────────────────────────
 
 type LibraryMode = 'home' | 'existing';
 type FilterValue = 'all' | 'complete' | 'incomplete';
+type LifecycleFilterValue = 'active' | 'archived' | 'trashed';
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
 
@@ -89,14 +93,21 @@ export function ActorVaultLibraryShell({
   const [mode, setMode] = useState<LibraryMode>('home');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterValue>('all');
+  const [lifecycleFilter, setLifecycleFilter] = useState<LifecycleFilterValue>('active');
   const [sortKey, setSortKey] = useState(defaultSortKey);
+  const lifecycleMetas = useActorVaultLifecycleStore((state) => state.metas);
+  const archiveActor = useActorVaultLifecycleStore((state) => state.archiveActor);
+  const trashActor = useActorVaultLifecycleStore((state) => state.trashActor);
+  const restoreActor = useActorVaultLifecycleStore((state) => state.restoreActor);
 
   const campaignActorSelectContext =
     purpose.kind === 'selectForCampaign' ? purpose.context : null;
   const campaignActorAddContext = purpose.kind === 'addForCampaign' ? purpose.context : null;
+  const isManagePurpose = purpose.kind === 'manage';
 
   useEffect(() => {
     setMode('home');
+    setLifecycleFilter('active');
   }, [
     purpose.kind,
     campaignActorSelectContext?.campaignId,
@@ -105,7 +116,34 @@ export function ActorVaultLibraryShell({
 
   // ── Derived: filtered + sorted summaries ──────────────────────────────────
 
-  const filtered = summaries.filter((s) => {
+  const summariesWithLifecycle = summaries.map((summary) => ({
+    ...summary,
+    lifecycleStatus: getSummaryLifecycleStatus(summary, lifecycleMetas),
+  }));
+
+  const lifecycleCounts = summariesWithLifecycle.reduce(
+    (counts, summary) => {
+      counts[summary.lifecycleStatus] += 1;
+      return counts;
+    },
+    { active: 0, archived: 0, trashed: 0 } satisfies Record<LifecycleFilterValue, number>,
+  );
+  const activeCompleteCount = summariesWithLifecycle.filter(
+    (summary) =>
+      summary.lifecycleStatus === 'active' &&
+      summary.completionStatus === 'complete',
+  ).length;
+  const activeIncompleteCount = lifecycleCounts.active - activeCompleteCount;
+
+  const effectiveLifecycleFilter: LifecycleFilterValue = isManagePurpose
+    ? lifecycleFilter
+    : 'active';
+
+  const lifecycleFiltered = summariesWithLifecycle.filter(
+    (s) => s.lifecycleStatus === effectiveLifecycleFilter,
+  );
+
+  const filtered = lifecycleFiltered.filter((s) => {
     if (filter === 'complete' && s.completionStatus !== 'complete') return false;
     if (filter === 'incomplete' && s.completionStatus !== 'incomplete') return false;
     if (search.trim()) {
@@ -181,15 +219,15 @@ export function ActorVaultLibraryShell({
             <div className="mt-5 grid grid-cols-2 gap-4">
               <div>
                 <div className={`text-[10px] font-bold uppercase tracking-wider ${t.textMuted}`}>{strings.totalCount}</div>
-                <div className={`mt-1 text-3xl font-bold ${t.textBody}`}>{stats.total}</div>
+                <div className={`mt-1 text-3xl font-bold ${t.textBody}`}>{lifecycleCounts.active}</div>
               </div>
               <div>
                 <div className={`text-[10px] font-bold uppercase tracking-wider ${t.textMuted}`}>{strings.completeCount}</div>
-                <div className={`mt-1 text-3xl font-bold ${t.textBody}`}>{stats.complete}</div>
+                <div className={`mt-1 text-3xl font-bold ${t.textBody}`}>{activeCompleteCount}</div>
               </div>
               <div>
                 <div className={`text-[10px] font-bold uppercase tracking-wider ${t.textMuted}`}>{strings.incompleteCount}</div>
-                <div className={`mt-1 text-3xl font-bold ${t.textBody}`}>{stats.incomplete}</div>
+                <div className={`mt-1 text-3xl font-bold ${t.textBody}`}>{activeIncompleteCount}</div>
               </div>
               <div>
                 <div className={`text-[10px] font-bold uppercase tracking-wider ${t.textMuted}`}>{strings.recentUpdate}</div>
@@ -235,6 +273,37 @@ export function ActorVaultLibraryShell({
 
       {/* ── Search / Sort / Filter bar ── */}
       <div className={panelClassName}>
+        {isManagePurpose && (
+          <div className={`mb-3 grid gap-3 border-b pb-3 text-xs ${t.borderLight} ${t.textMuted} sm:grid-cols-4`}>
+            <div>
+              <div className="font-bold uppercase tracking-wider">{strings.lifecycleManagementSummary}</div>
+              <div className={`mt-1 ${t.textBody}`}>{strings.lifecycleFilteredCount}: {filtered.length}</div>
+              <button
+                type="button"
+                onClick={() => downloadActorVaultExportSnapshot()}
+                className={`mt-3 border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${t.borderActive} ${t.text} ${t.bgHover}`}
+              >
+                {strings.exportSnapshot}
+              </button>
+              <p className={`mt-2 text-[11px] leading-relaxed ${t.textMuted}`}>
+                {strings.exportSnapshotNote}
+              </p>
+            </div>
+            <div>
+              <div className="font-bold uppercase tracking-wider">{strings.lifecycleActive}</div>
+              <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{lifecycleCounts.active}</div>
+            </div>
+            <div>
+              <div className="font-bold uppercase tracking-wider">{strings.lifecycleArchived}</div>
+              <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{lifecycleCounts.archived}</div>
+            </div>
+            <div>
+              <div className="font-bold uppercase tracking-wider">{strings.lifecycleTrashed}</div>
+              <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{lifecycleCounts.trashed}</div>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-3">
           {/* Search */}
           <input
@@ -260,6 +329,31 @@ export function ActorVaultLibraryShell({
 
         {/* Filter tabs */}
         <div className="mt-3 flex flex-wrap gap-1.5">
+          {isManagePurpose && (
+            <>
+              {(
+                [
+                  { value: 'active' as LifecycleFilterValue, label: strings.lifecycleActive, count: lifecycleCounts.active },
+                  { value: 'archived' as LifecycleFilterValue, label: strings.lifecycleArchived, count: lifecycleCounts.archived },
+                  { value: 'trashed' as LifecycleFilterValue, label: strings.lifecycleTrashed, count: lifecycleCounts.trashed },
+                ] as const
+              ).map(({ value, label, count }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setLifecycleFilter(value)}
+                  className={`border px-3 py-1 text-[11px] font-bold uppercase tracking-wider transition-colors ${
+                    lifecycleFilter === value
+                      ? `${t.border} ${t.bgAccent} ${t.textInvert}`
+                      : `${t.borderLight} ${t.text} opacity-70 ${t.hoverBorder}`
+                  }`}
+                >
+                  {label} · {count}
+                </button>
+              ))}
+              <span className={`mx-1 hidden h-6 border-l ${t.borderLight} sm:block`} />
+            </>
+          )}
           {(
             [
               { value: 'all' as FilterValue, label: strings.filterAll },
@@ -300,6 +394,16 @@ export function ActorVaultLibraryShell({
                 campaignActorSelectContext={campaignActorSelectContext}
                 onSelectActorForCampaign={onSelectActorForCampaign}
                 onRequestSelectCampaignForActor={onRequestSelectCampaignForActor}
+                onArchiveActor={(actor) => {
+                  if (actor.systemId) archiveActor(actor.systemId, actor.id);
+                }}
+                onTrashActor={(actor) => {
+                  if (actor.systemId) trashActor(actor.systemId, actor.id);
+                }}
+                onRestoreActor={(actor) => {
+                  if (actor.systemId) restoreActor(actor.systemId, actor.id);
+                }}
+                showLifecycleActions={isManagePurpose}
               />
             </div>
           ))}
@@ -413,6 +517,10 @@ type ActorVaultCardProps = {
     context: CampaignActorSelectReturnContext,
   ) => void;
   onRequestSelectCampaignForActor?: (actor: CampaignSuggestedActor) => void;
+  onArchiveActor?: (actor: ActorVaultSummary) => void;
+  onTrashActor?: (actor: ActorVaultSummary) => void;
+  onRestoreActor?: (actor: ActorVaultSummary) => void;
+  showLifecycleActions?: boolean;
 };
 
 function ActorVaultCard({
@@ -423,8 +531,16 @@ function ActorVaultCard({
   campaignActorSelectContext,
   onSelectActorForCampaign,
   onRequestSelectCampaignForActor,
+  onArchiveActor,
+  onTrashActor,
+  onRestoreActor,
+  showLifecycleActions = false,
 }: ActorVaultCardProps) {
   const isComplete = summary.completionStatus === 'complete';
+  const lifecycleStatus = summary.lifecycleStatus ?? 'active';
+  const isArchived = lifecycleStatus === 'archived';
+  const isTrashed = lifecycleStatus === 'trashed';
+  const isSelectable = lifecycleStatus === 'active';
 
   return (
     <div
@@ -455,7 +571,25 @@ function ActorVaultCard({
           >
             {isComplete ? strings.statusComplete : strings.statusIncomplete}
           </span>
+
+          {isArchived && (
+            <span className="border border-slate-500/40 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-600">
+              {strings.archivedStatusLabel}
+            </span>
+          )}
+
+          {isTrashed && (
+            <span className="border border-red-700/40 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-700">
+              {strings.trashedStatusLabel}
+            </span>
+          )}
         </div>
+
+        {(isArchived || isTrashed) && (
+          <p className={`mt-2 text-xs leading-relaxed ${t.textMuted}`}>
+            {isArchived ? strings.archivedActorNote : strings.trashedActorNote}
+          </p>
+        )}
 
         {/* Detail fields grid */}
         {summary.detailFields.length > 0 && (
@@ -489,29 +623,36 @@ function ActorVaultCard({
         {campaignActorSelectContext && onSelectActorForCampaign && (
           <button
             type="button"
+            disabled={!isSelectable}
             onClick={() =>
               onSelectActorForCampaign(
                 { actorId: summary.id, actorName: summary.displayName },
                 campaignActorSelectContext,
               )
             }
-            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${t.border} ${t.bgAccent} ${t.textInvert}`}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${
+              isSelectable
+                ? `${t.border} ${t.bgAccent} ${t.textInvert}`
+                : `${t.borderLight} ${t.text} opacity-35`
+            }`}
           >
             {strings.selectForCampaignLabel}
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => onEnterActor(summary.id)}
-          className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${
-            campaignActorSelectContext
-              ? `${t.borderActive} ${t.text} ${t.bgHover}`
-              : `${t.border} ${t.bgAccent} ${t.textInvert}`
-          }`}
-        >
-          {strings.enterActorLabel}
-        </button>
-        {!campaignActorSelectContext && onRequestSelectCampaignForActor && (
+        {lifecycleStatus === 'active' && (
+          <button
+            type="button"
+            onClick={() => onEnterActor(summary.id)}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${
+              campaignActorSelectContext
+                ? `${t.borderActive} ${t.text} ${t.bgHover}`
+                : `${t.border} ${t.bgAccent} ${t.textInvert}`
+            }`}
+          >
+            {strings.enterActorLabel}
+          </button>
+        )}
+        {!campaignActorSelectContext && lifecycleStatus === 'active' && onRequestSelectCampaignForActor && (
           <button
             type="button"
             onClick={() =>
@@ -525,7 +666,62 @@ function ActorVaultCard({
             {strings.selectCampaignLabel}
           </button>
         )}
+        {showLifecycleActions && lifecycleStatus === 'active' && (
+          <>
+            <button
+              type="button"
+              onClick={() => onArchiveActor?.(summary)}
+              className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${t.borderActive} ${t.text} ${t.bgHover}`}
+            >
+              {strings.archiveActor}
+            </button>
+            <button
+              type="button"
+              onClick={() => onTrashActor?.(summary)}
+              className="border border-red-700/40 px-4 py-2 text-xs font-bold uppercase tracking-wider text-red-700 hover:bg-red-700/10"
+            >
+              {strings.moveToTrash}
+            </button>
+          </>
+        )}
+        {showLifecycleActions && lifecycleStatus === 'archived' && (
+          <>
+            <button
+              type="button"
+              onClick={() => onRestoreActor?.(summary)}
+              className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${t.border} ${t.bgAccent} ${t.textInvert}`}
+            >
+              {strings.restoreActor}
+            </button>
+            <button
+              type="button"
+              onClick={() => onTrashActor?.(summary)}
+              className="border border-red-700/40 px-4 py-2 text-xs font-bold uppercase tracking-wider text-red-700 hover:bg-red-700/10"
+            >
+              {strings.moveToTrash}
+            </button>
+          </>
+        )}
+        {showLifecycleActions && lifecycleStatus === 'trashed' && (
+          <button
+            type="button"
+            onClick={() => onRestoreActor?.(summary)}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${t.border} ${t.bgAccent} ${t.textInvert}`}
+          >
+            {strings.restoreActor}
+          </button>
+        )}
       </div>
     </div>
   );
+}
+
+function getSummaryLifecycleStatus(
+  summary: ActorVaultSummary,
+  metas: ReturnType<typeof useActorVaultLifecycleStore.getState>['metas'],
+): ActorVaultLifecycleStatus {
+  if (!summary.systemId) return summary.lifecycleStatus ?? 'active';
+  return metas.find(
+    (meta) => meta.systemId === summary.systemId && meta.actorId === summary.id,
+  )?.lifecycleStatus ?? summary.lifecycleStatus ?? 'active';
 }

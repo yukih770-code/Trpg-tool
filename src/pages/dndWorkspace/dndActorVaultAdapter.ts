@@ -163,6 +163,21 @@ export function buildDndVaultShellStrings(t: (key: string) => string): ActorVaul
     returnToCampaignEntry:   t('campaignLibrary.returnContext.returnButton'),
     selectForCampaignLabel:  t('campaignLibrary.returnContext.selectActorButton'),
     selectCampaignLabel:     t('multiWorkspace.actorVault.selectCampaign'),
+    lifecycleActive:         t('multiWorkspace.actorVault.lifecycleActive'),
+    lifecycleArchived:       t('multiWorkspace.actorVault.lifecycleArchived'),
+    lifecycleTrashed:        t('multiWorkspace.actorVault.lifecycleTrashed'),
+    lifecycleStatus:         t('multiWorkspace.actorVault.lifecycleStatus'),
+    lifecycleManagementSummary: t('multiWorkspace.actorVault.lifecycleManagementSummary'),
+    lifecycleFilteredCount:  t('multiWorkspace.actorVault.lifecycleFilteredCount'),
+    archivedStatusLabel:     t('multiWorkspace.actorVault.archivedStatusLabel'),
+    trashedStatusLabel:      t('multiWorkspace.actorVault.trashedStatusLabel'),
+    archiveActor:            t('multiWorkspace.actorVault.archiveActor'),
+    restoreActor:            t('multiWorkspace.actorVault.restoreActor'),
+    moveToTrash:             t('multiWorkspace.actorVault.moveToTrash'),
+    archivedActorNote:       t('multiWorkspace.actorVault.archivedActorNote'),
+    trashedActorNote:        t('multiWorkspace.actorVault.trashedActorNote'),
+    exportSnapshot:          t('multiWorkspace.actorVault.exportSnapshot'),
+    exportSnapshotNote:      t('multiWorkspace.actorVault.exportSnapshotNote'),
   };
 }
 
