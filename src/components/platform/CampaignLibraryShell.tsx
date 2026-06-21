@@ -17,11 +17,18 @@ import type {
 import { useCampaignLocalStore } from '../../lib/platform/campaignLocalStore';
 import { getActorVaultRecord } from '../../lib/platform/actorVaultRepositoryBridge';
 import { createTranslator, readStoredLocale } from '../../i18n';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { ContextBar } from './ContextBar';
 
 type CampaignLibraryTone = 'dnd' | 'coc' | 'cp';
 type CampaignLibraryMode = 'home' | 'existing' | 'detail' | 'add';
+type CampaignLifecycleFilter = Extract<LocalCampaignLifecycleStatus, 'active' | 'archived' | 'trashed'>;
+type CampaignEditDraft = {
+  title: string;
+  description: string;
+  roomCode: string;
+  status: LocalCampaignStatus;
+};
 
 type CampaignLibraryShellProps = {
   systemId: LocalCampaignSystemId;
@@ -120,22 +127,34 @@ export function CampaignLibraryShell({
   const [libraryMode, setLibraryMode] = useState<CampaignLibraryMode>(initialMode ?? 'home');
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [selectedEntryRole, setSelectedEntryRole] = useState<CampaignEntryRole>('playerCharacter');
+  const [campaignSearchQuery, setCampaignSearchQuery] = useState('');
+  const [campaignLifecycleFilter, setCampaignLifecycleFilter] = useState<CampaignLifecycleFilter>('active');
+  const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+  const [campaignEditDraft, setCampaignEditDraft] = useState<CampaignEditDraft>({
+    title: '',
+    description: '',
+    roomCode: '',
+    status: 'draft',
+  });
   const theme = toneClasses[tone];
 
   const allCampaigns = useCampaignLocalStore((state) => state.campaigns);
   const createCampaign = useCampaignLocalStore((state) => state.createCampaign);
   const updateCampaign = useCampaignLocalStore((state) => state.updateCampaign);
   const archiveCampaign = useCampaignLocalStore((state) => state.archiveCampaign);
-  const deleteCampaign = useCampaignLocalStore((state) => state.deleteCampaign);
+  const restoreCampaign = useCampaignLocalStore((state) => state.restoreCampaign);
+  const trashCampaign = useCampaignLocalStore((state) => state.trashCampaign);
   const getCampaignById = useCampaignLocalStore((state) => state.getCampaignById);
   const campaignEntryDrafts = useCampaignEntryDraftStore((state) => state.drafts);
   const setCampaignEntryDraftActor = useCampaignEntryDraftStore((state) => state.setCampaignEntryDraftActor);
   const setCampaignEntryDraftRole = useCampaignEntryDraftStore((state) => state.setCampaignEntryDraftRole);
+  const campaignSelectForActorContext =
+    purpose.kind === 'selectForActor' ? purpose.context : null;
 
   const campaigns = useMemo(
     () =>
       allCampaigns
-        .filter((campaign) => campaign.systemId === systemId && campaign.lifecycleStatus !== 'trashed')
+        .filter((campaign) => campaign.systemId === systemId)
         .sort((a, b) => {
           const lifecycleDiff = lifecycleOrder[a.lifecycleStatus] - lifecycleOrder[b.lifecycleStatus];
           if (lifecycleDiff !== 0) return lifecycleDiff;
@@ -145,14 +164,27 @@ export function CampaignLibraryShell({
         }),
     [allCampaigns, systemId],
   );
+  const effectiveLifecycleFilter: CampaignLifecycleFilter = campaignSelectForActorContext ? 'active' : campaignLifecycleFilter;
+  const normalizedSearchQuery = campaignSearchQuery.trim().toLowerCase();
+  const visibleCampaigns = useMemo(
+    () =>
+      campaigns.filter((campaign) => {
+        if (campaign.lifecycleStatus !== effectiveLifecycleFilter) return false;
+        if (!normalizedSearchQuery) return true;
+        return [
+          campaign.title,
+          campaign.description ?? '',
+          campaign.roomCode ?? '',
+        ].some((value) => value.toLowerCase().includes(normalizedSearchQuery));
+      }),
+    [campaigns, effectiveLifecycleFilter, normalizedSearchQuery],
+  );
   const activeCampaigns = campaigns.filter((campaign) => campaign.lifecycleStatus === 'active');
   const draftCampaigns = campaigns.filter((campaign) => campaign.lifecycleStatus === 'active' && campaign.status === 'draft');
-  const campaignSelectForActorContext =
-    purpose.kind === 'selectForActor' ? purpose.context : null;
   const selectedCampaign =
     selectedCampaignId && getCampaignById(selectedCampaignId)?.systemId === systemId
       ? getCampaignById(selectedCampaignId)
-      : campaigns[0];
+      : visibleCampaigns[0] ?? campaigns.find((campaign) => campaign.lifecycleStatus === 'active') ?? campaigns[0];
   const isWaitingForInitialCampaign = Boolean(
     initialCampaignId &&
     campaigns.some((campaign) => campaign.id === initialCampaignId) &&
@@ -210,6 +242,7 @@ export function CampaignLibraryShell({
 
   useEffect(() => {
     if (campaignSelectForActorContext) {
+      setCampaignLifecycleFilter('active');
       setLibraryMode('existing');
       return;
     }
@@ -218,7 +251,9 @@ export function CampaignLibraryShell({
 
   useEffect(() => {
     if (!initialCampaignId) return;
-    if (!campaigns.some((campaign) => campaign.id === initialCampaignId)) return;
+    const initialCampaign = campaigns.find((campaign) => campaign.id === initialCampaignId);
+    if (!initialCampaign) return;
+    setCampaignLifecycleFilter(initialCampaign.lifecycleStatus);
     setSelectedCampaignId(initialCampaignId);
   }, [campaigns, initialCampaignId]);
 
@@ -260,9 +295,9 @@ export function CampaignLibraryShell({
 
   useEffect(() => {
     if (selectedCampaignId && !campaigns.some((campaign) => campaign.id === selectedCampaignId)) {
-      setSelectedCampaignId(campaigns[0]?.id ?? null);
+      setSelectedCampaignId(visibleCampaigns[0]?.id ?? campaigns[0]?.id ?? null);
     }
-  }, [campaigns, selectedCampaignId]);
+  }, [campaigns, selectedCampaignId, visibleCampaigns]);
 
   const contextLabel = campaignSelectForActorContext
     ? `${t('campaignLibrary.returnContext.selectingCampaignPrefix')}「${campaignSelectForActorContext.actorName}」${t('campaignLibrary.returnContext.selectingCampaignSuffix')}`
@@ -351,19 +386,66 @@ export function CampaignLibraryShell({
 
   const handleSelectCampaignForActor = (campaign: LocalCampaign) => {
     if (!campaignSelectForActorContext || !onSelectCampaignForActor) return;
+    if (campaign.lifecycleStatus !== 'active') return;
     setSelectedCampaignId(campaign.id);
     setCampaignEntryDraftActor(campaign.id, systemId, campaignSelectForActorContext.actorId);
     setCampaignEntryDraftRole(campaign.id, systemId, 'player');
     onSelectCampaignForActor(toCampaignInstanceSummary(campaign), campaignSelectForActorContext);
   };
 
-  const handleDeleteCampaign = (campaign: LocalCampaign) => {
-    if (!window.confirm(t('campaignLibrary.actions.deleteConfirm'))) return;
-    deleteCampaign(campaign.id);
+  const startEditingCampaign = (campaign: LocalCampaign) => {
+    setEditingCampaignId(campaign.id);
+    setCampaignEditDraft({
+      title: campaign.title,
+      description: campaign.description ?? '',
+      roomCode: campaign.roomCode ?? '',
+      status: campaign.status,
+    });
+  };
+
+  const cancelEditingCampaign = () => {
+    setEditingCampaignId(null);
+    setCampaignEditDraft({
+      title: '',
+      description: '',
+      roomCode: '',
+      status: 'draft',
+    });
+  };
+
+  const saveEditingCampaign = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingCampaignId || !campaignEditDraft.title.trim()) return;
+    updateCampaign(editingCampaignId, {
+      title: campaignEditDraft.title,
+      description: campaignEditDraft.description.trim() || undefined,
+      roomCode: campaignEditDraft.roomCode.trim() || undefined,
+      status: campaignEditDraft.status,
+    });
+    cancelEditingCampaign();
+  };
+
+  const handleArchiveCampaign = (campaign: LocalCampaign) => {
+    archiveCampaign(campaign.id);
+    setCampaignLifecycleFilter('archived');
+    if (selectedCampaignId === campaign.id) {
+      setLibraryMode('existing');
+    }
+  };
+
+  const handleRestoreCampaign = (campaign: LocalCampaign) => {
+    restoreCampaign(campaign.id);
+    setCampaignLifecycleFilter('active');
+  };
+
+  const handleMoveCampaignToTrash = (campaign: LocalCampaign) => {
+    if (!window.confirm(t('campaignLibrary.actions.moveToTrashConfirm'))) return;
+    trashCampaign(campaign.id);
     if (selectedCampaignId === campaign.id) {
       setSelectedCampaignId(null);
       setLibraryMode('existing');
     }
+    setCampaignLifecycleFilter('trashed');
   };
 
   const showAddFlow = (mode === 'create' || libraryMode === 'add') && libraryMode !== 'detail';
@@ -463,9 +545,10 @@ export function CampaignLibraryShell({
             <div className="flex flex-wrap gap-3">
               <input
                 type="search"
-                disabled
+                value={campaignSearchQuery}
+                onChange={(event) => setCampaignSearchQuery(event.target.value)}
                 placeholder={t('campaignLibrary.existing.searchPlaceholder')}
-                className="min-w-0 flex-1 border bg-transparent px-3 py-1.5 text-sm opacity-60"
+                className="min-w-0 flex-1 border bg-transparent px-3 py-1.5 text-sm"
               />
               <select disabled className="border bg-transparent px-3 py-1.5 text-xs opacity-60">
                 <option>{t('campaignLibrary.existing.sortRecent')}</option>
@@ -473,35 +556,45 @@ export function CampaignLibraryShell({
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {[
-                'campaignLibrary.existing.filterAll',
-                'campaignLibrary.existing.filterActive',
-                'campaignLibrary.existing.filterNeedsAttention',
-              ].map((key) => (
+                ['active', 'campaignLibrary.existing.filterActive'],
+                ['archived', 'campaignLibrary.existing.filterArchived'],
+                ['trashed', 'campaignLibrary.existing.filterTrashed'],
+              ].map(([filter, key]) => (
                 <button
                   key={key}
                   type="button"
-                  disabled
-                  className={`border px-3 py-1 text-[11px] font-bold uppercase tracking-wider opacity-65 ${theme.badge}`}
+                  disabled={Boolean(campaignSelectForActorContext) && filter !== 'active'}
+                  onClick={() => {
+                    setCampaignLifecycleFilter(filter as CampaignLifecycleFilter);
+                    setEditingCampaignId(null);
+                  }}
+                  className={`border px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
+                    effectiveLifecycleFilter === filter ? theme.primary : theme.badge
+                  } ${Boolean(campaignSelectForActorContext) && filter !== 'active' ? 'cursor-default opacity-50' : ''}`}
                 >
                   {t(key)}
                 </button>
               ))}
             </div>
+            <p className={`mt-3 text-xs leading-relaxed ${theme.muted}`}>
+              {t('campaignLibrary.existing.lifecycleNote')}
+            </p>
           </div>
 
-          {campaigns.length === 0 ? (
+          {visibleCampaigns.length === 0 ? (
             <EmptyCampaignState
               theme={theme}
-              title={t('campaignLibrary.empty.title')}
-              note={t('campaignLibrary.empty.note')}
+              title={t(campaigns.length === 0 ? 'campaignLibrary.empty.title' : 'campaignLibrary.empty.noMatchesTitle')}
+              note={t(campaigns.length === 0 ? 'campaignLibrary.empty.note' : 'campaignLibrary.empty.noMatchesNote')}
               addLabel={t('campaignLibrary.actions.add')}
               onAdd={onAddCampaign ?? (() => setLibraryMode('add'))}
             />
           ) : (
-            campaigns.map((campaign) => (
+            visibleCampaigns.map((campaign) => (
               <div key={campaign.id}>
                 <CampaignCard
                   campaign={campaign}
+                  editDraft={editingCampaignId === campaign.id ? campaignEditDraft : null}
                   systemName={systemName}
                   theme={theme}
                   t={t}
@@ -512,8 +605,13 @@ export function CampaignLibraryShell({
                     setLibraryMode('detail');
                   }}
                   onActivate={() => updateCampaign(campaign.id, { status: 'active' })}
-                  onArchive={() => archiveCampaign(campaign.id)}
-                  onDelete={() => handleDeleteCampaign(campaign)}
+                  onArchive={() => handleArchiveCampaign(campaign)}
+                  onRestore={() => handleRestoreCampaign(campaign)}
+                  onMoveToTrash={() => handleMoveCampaignToTrash(campaign)}
+                  onStartEdit={() => startEditingCampaign(campaign)}
+                  onCancelEdit={cancelEditingCampaign}
+                  onSubmitEdit={saveEditingCampaign}
+                  onEditDraftChange={setCampaignEditDraft}
                 />
               </div>
             ))
@@ -563,6 +661,7 @@ export function CampaignLibraryShell({
 
 function CampaignCard({
   campaign,
+  editDraft,
   systemName,
   theme,
   t,
@@ -571,9 +670,15 @@ function CampaignCard({
   onViewDetail,
   onActivate,
   onArchive,
-  onDelete,
+  onRestore,
+  onMoveToTrash,
+  onStartEdit,
+  onCancelEdit,
+  onSubmitEdit,
+  onEditDraftChange,
 }: {
   campaign: LocalCampaign;
+  editDraft: CampaignEditDraft | null;
   systemName: string;
   theme: (typeof toneClasses)[CampaignLibraryTone];
   t: (key: string) => string;
@@ -582,8 +687,15 @@ function CampaignCard({
   onViewDetail: () => void;
   onActivate: () => void;
   onArchive: () => void;
-  onDelete: () => void;
+  onRestore: () => void;
+  onMoveToTrash: () => void;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSubmitEdit: (event: FormEvent<HTMLFormElement>) => void;
+  onEditDraftChange: (draft: CampaignEditDraft) => void;
 }) {
+  const isEditing = Boolean(editDraft);
+  const canManage = !canSelect;
   return (
     <div className={`rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${theme.card}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -616,7 +728,7 @@ function CampaignCard({
         ))}
       </dl>
       <div className="mt-4 flex flex-wrap gap-2">
-        {canSelect && (
+        {canSelect && campaign.lifecycleStatus === 'active' && (
           <button
             type="button"
             onClick={onSelect}
@@ -634,7 +746,16 @@ function CampaignCard({
         >
           {t('campaignLibrary.actions.viewDetail')}
         </button>
-        {campaign.status !== 'active' && (
+        {canManage && campaign.lifecycleStatus === 'active' && (
+          <button
+            type="button"
+            onClick={onStartEdit}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+          >
+            {t('campaignLibrary.actions.edit')}
+          </button>
+        )}
+        {canManage && campaign.lifecycleStatus === 'active' && campaign.status !== 'active' && (
           <button
             type="button"
             onClick={onActivate}
@@ -643,7 +764,7 @@ function CampaignCard({
             {t('campaignLibrary.actions.activate')}
           </button>
         )}
-        {campaign.lifecycleStatus !== 'archived' && (
+        {canManage && campaign.lifecycleStatus === 'active' && (
           <button
             type="button"
             onClick={onArchive}
@@ -652,14 +773,91 @@ function CampaignCard({
             {t('campaignLibrary.actions.archive')}
           </button>
         )}
-        <button
-          type="button"
-          onClick={onDelete}
-          className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.danger}`}
-        >
-          {t('campaignLibrary.actions.delete')}
-        </button>
+        {canManage && campaign.lifecycleStatus !== 'active' && (
+          <button
+            type="button"
+            onClick={onRestore}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+          >
+            {t('campaignLibrary.actions.restore')}
+          </button>
+        )}
+        {canManage && campaign.lifecycleStatus !== 'trashed' && (
+          <button
+            type="button"
+            onClick={onMoveToTrash}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.danger}`}
+          >
+            {t('campaignLibrary.actions.moveToTrash')}
+          </button>
+        )}
       </div>
+      {isEditing && editDraft && (
+        <form onSubmit={onSubmitEdit} className={`mt-4 rounded-lg border p-4 ${theme.card}`}>
+          <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
+            {t('campaignLibrary.edit.title')}
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+            <label className="text-xs font-bold">
+              <span className={theme.muted}>{t('campaignLibrary.edit.fields.title')}</span>
+              <input
+                value={editDraft.title}
+                onChange={(event) => onEditDraftChange({ ...editDraft, title: event.target.value })}
+                className="mt-1 w-full border bg-transparent px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="text-xs font-bold">
+              <span className={theme.muted}>{t('campaignLibrary.edit.fields.roomCode')}</span>
+              <input
+                value={editDraft.roomCode}
+                onChange={(event) => onEditDraftChange({ ...editDraft, roomCode: event.target.value })}
+                className="mt-1 w-full border bg-transparent px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="text-xs font-bold md:col-span-2">
+              <span className={theme.muted}>{t('campaignLibrary.edit.fields.description')}</span>
+              <textarea
+                value={editDraft.description}
+                onChange={(event) => onEditDraftChange({ ...editDraft, description: event.target.value })}
+                rows={3}
+                className="mt-1 w-full border bg-transparent px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="text-xs font-bold">
+              <span className={theme.muted}>{t('campaignLibrary.edit.fields.status')}</span>
+              <select
+                value={editDraft.status}
+                onChange={(event) => onEditDraftChange({ ...editDraft, status: event.target.value as LocalCampaignStatus })}
+                className="mt-1 w-full border bg-transparent px-3 py-2 text-sm"
+              >
+                <option value="draft">{t('campaignLibrary.status.draft')}</option>
+                <option value="active">{t('campaignLibrary.status.active')}</option>
+              </select>
+            </label>
+          </div>
+          <p className={`mt-3 text-xs leading-relaxed ${theme.muted}`}>
+            {t('campaignLibrary.edit.lifecycleNote')}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="submit"
+              disabled={!editDraft.title.trim()}
+              className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${
+                editDraft.title.trim() ? theme.primary : `cursor-default opacity-60 ${theme.secondary}`
+              }`}
+            >
+              {t('campaignLibrary.actions.save')}
+            </button>
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+            >
+              {t('campaignLibrary.actions.cancel')}
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }
