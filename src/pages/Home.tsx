@@ -45,13 +45,43 @@ const systemCards: {
 const pinnedEntries: {
   key: string;
   labelKey: string;
+  noteKey: string;
+  actionLabelKey: string;
   icon: typeof Library;
-  placeholderKey: string;
+  action: 'systemLibrary' | 'currentSystem' | 'disabled';
 }[] = [
-  { key: 'ruleSystems', labelKey: 'home.pinned.ruleSystems', icon: Library,   placeholderKey: 'ruleSystems' },
-  { key: 'campaigns',   labelKey: 'home.pinned.campaigns',   icon: BookOpen,  placeholderKey: 'campaigns'   },
-  { key: 'workshop',    labelKey: 'home.pinned.workshop',    icon: Sparkles,  placeholderKey: 'community'   },
-  { key: 'fanPlaza',    labelKey: 'home.pinned.fanPlaza',    icon: Palette,   placeholderKey: 'fanPlaza'    },
+  {
+    key: 'recentCampaigns',
+    labelKey: 'home.pinned.recentCampaigns',
+    noteKey: 'home.pinned.recentCampaignsNote',
+    actionLabelKey: 'home.pinned.openSystemLibrary',
+    icon: BookOpen,
+    action: 'systemLibrary',
+  },
+  {
+    key: 'recentCharacters',
+    labelKey: 'home.pinned.recentCharacters',
+    noteKey: 'home.pinned.recentCharactersNote',
+    actionLabelKey: 'home.pinned.continueSystem',
+    icon: Library,
+    action: 'currentSystem',
+  },
+  {
+    key: 'drafts',
+    labelKey: 'home.pinned.drafts',
+    noteKey: 'home.pinned.draftsNote',
+    actionLabelKey: 'home.pinned.comingSoon',
+    icon: Sparkles,
+    action: 'disabled',
+  },
+  {
+    key: 'pending',
+    labelKey: 'home.pinned.pending',
+    noteKey: 'home.pinned.pendingNote',
+    actionLabelKey: 'home.pinned.comingSoon',
+    icon: Palette,
+    action: 'disabled',
+  },
 ];
 
 const platformStatusTagKeys = [
@@ -149,23 +179,45 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
           </div>
         </section>
 
-        {/* ── Section 3: 固定入口 ────────────────────────────────────── */}
+        {/* ── Section 3: 我的工作 ────────────────────────────────────── */}
         <section aria-label={t('home.pinned.sectionTitle')}>
           <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
             {t('home.pinned.sectionTitle')}
           </h2>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             {pinnedEntries.map((entry) => {
               const Icon = entry.icon;
+              const disabled = entry.action === 'disabled';
+              const handleClick = () => {
+                if (entry.action === 'systemLibrary') {
+                  onOpenPlaceholder('systemLibrary');
+                  return;
+                }
+                if (entry.action === 'currentSystem') {
+                  onEnterPlay(system);
+                }
+              };
+
               return (
                 <button
                   key={entry.key}
                   type="button"
-                  onClick={() => onOpenPlaceholder(entry.placeholderKey)}
-                  className="flex items-center gap-3 rounded-xl border border-[#2f2a22]/15 bg-white/60 px-4 py-4 text-left transition hover:border-[#2f2a22]/30 hover:bg-white/90"
+                  onClick={disabled ? undefined : handleClick}
+                  disabled={disabled}
+                  className={`flex min-h-[108px] flex-col gap-3 rounded-xl border border-[#2f2a22]/15 bg-white/60 px-4 py-4 text-left transition ${
+                    disabled
+                      ? 'cursor-not-allowed opacity-70'
+                      : 'hover:border-[#2f2a22]/30 hover:bg-white/90'
+                  }`}
                 >
-                  <Icon className="h-5 w-5 shrink-0 text-[#6a5f52]" />
-                  <span className="text-sm font-semibold">{t(entry.labelKey)}</span>
+                  <div className="flex items-center gap-3">
+                    <Icon className="h-5 w-5 shrink-0 text-[#6a5f52]" />
+                    <span className="text-sm font-semibold">{t(entry.labelKey)}</span>
+                  </div>
+                  <span className="text-xs leading-5 text-[#51483d]">{t(entry.noteKey)}</span>
+                  <span className="mt-auto text-[11px] font-semibold text-[#6a3f2a]">
+                    {t(entry.actionLabelKey)}
+                  </span>
                 </button>
               );
             })}
@@ -189,12 +241,16 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
             ))}
             <button
               type="button"
-              onClick={() => onOpenPlaceholder('privateImport')}
-              className="ml-auto flex items-center gap-1.5 rounded-md border border-[#2f2a22]/15 bg-white/50 px-3 py-1.5 text-[11px] text-[#51483d] transition hover:bg-white/90"
+              disabled
+              title={t('home.platformStatus.localImportReserved')}
+              className="ml-auto flex cursor-not-allowed items-center gap-1.5 rounded-md border border-[#2f2a22]/15 bg-white/50 px-3 py-1.5 text-[11px] text-[#51483d] opacity-75"
             >
               <Upload className="h-3 w-3" />
               {t('home.platformStatus.privateImport')}
             </button>
+            <span className="text-[11px] text-[#7a6f63]">
+              {t('home.platformStatus.localImportReserved')}
+            </span>
           </div>
         </section>
 
