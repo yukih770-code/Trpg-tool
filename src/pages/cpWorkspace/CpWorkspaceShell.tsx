@@ -551,6 +551,9 @@ export function CpWorkspaceShell({
 }: CpWorkspaceShellProps) {
   const { t } = createTranslator(readStoredLocale());
   const cpChar = useCpStore((state) => state.character);
+  const cpCharacters = useCpStore((state) => state.characters);
+  const setCpActiveCharacterId = useCpStore((state) => state.setActiveCharacterId);
+  const resetCpCreator = useCpStore((state) => state.resetCreator);
   const hasCurrentCharacter = Boolean(cpChar.name?.trim() || cpChar.lifePath?.handle?.trim());
   const displayName = cpChar.lifePath?.handle?.trim() || cpChar.name?.trim();
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
@@ -567,10 +570,12 @@ export function CpWorkspaceShell({
     useState<CampaignRuntimeContext | null>(null);
   const [actorCreationCompletionContext, setActorCreationCompletionContext] =
     useState<ActorCreationCompletionContext | null>(null);
+  const currentCpActorId =
+    cpChar.id?.trim() || getActiveActorVaultRecord('cp-red')?.id || 'cp-actor-unavailable';
 
   function buildActorCreationCompletionContext(): ActorCreationCompletionContext {
     const actor: CampaignSuggestedActor = {
-      actorId: 'ui-preview-cp-actor',
+      actorId: currentCpActorId,
       actorName: displayName || t('multiWorkspace.actorCreationCompletion.placeholderActorName'),
     };
 
@@ -725,7 +730,7 @@ export function CpWorkspaceShell({
   };
 
   const activeCpActorForCampaign: CampaignSuggestedActor = {
-    actorId: 'ui-preview-cp-actor',
+    actorId: currentCpActorId,
     actorName: displayName || t('multiWorkspace.actorCreationCompletion.placeholderActorName'),
   };
 
@@ -747,16 +752,27 @@ export function CpWorkspaceShell({
 
   // ── CP RED Actor Vault adapter (AI-LANDMARK: CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1) ──
   // AI-LANDMARK: ACTOR_VAULT_REPOSITORY_BRIDGE_UI_INTEGRATION_V1
-  // V1: CP RED remains a single-actor bridge. The workspace reads the platform
-  // ActorVaultRecord first, then maps it to the localized CP RED summary.
+  // CPRED_MULTI_ACTOR_STORE_NORMALIZATION_V1: the platform bridge reads the
+  // multi-edgerunner store; this workspace resolves each ActorVaultRecord into
+  // its concrete edgerunner before building localized summaries.
   const _cpAdapterStrings = buildCpVaultAdapterStrings(t);
   const _cpActorVaultRecords = listActorVaultRecords('cp-red');
   const _cpActiveActorVaultRecordId =
-    getActiveActorVaultRecord('cp-red')?.id ?? cpChar.id?.trim() ?? 'cp-single';
+    getActiveActorVaultRecord('cp-red')?.id ?? cpChar.id?.trim() ?? null;
+  const _cpCharactersById = new Map(
+    [...cpCharacters, cpChar]
+      .filter((character) => Boolean(character.id?.trim()))
+      .map((character) => [character.id.trim(), character]),
+  );
   const _cpVaultAdapter: ActorVaultAdapter<ActorVaultRecord> = {
     getActors:        () => _cpActorVaultRecords,
     getActiveActorId: () => _cpActiveActorVaultRecordId,
-    getSummary:       (_record, index) => buildCpActorSummary(cpChar, index, _cpAdapterStrings),
+    getSummary:       (record, index) => buildCpActorSummary(
+      _cpCharactersById.get(record.id) ?? cpChar,
+      index,
+      _cpActiveActorVaultRecordId,
+      _cpAdapterStrings,
+    ),
     getStats:         (summaries) => buildCpVaultStats(summaries),
     getAddOptions:    () => [],
     getSortOptions:   () => buildCpSortOptions({
@@ -765,7 +781,10 @@ export function CpWorkspaceShell({
       roleLevel: t('cpWorkspace.characterLibrary.sort.roleLevel'),
     }),
     getDefaultSortKey: () => 'default',
-    onEnterActor:      (_id) => { onOpenPlayTab('sheet'); },
+    onEnterActor:      (id) => {
+      setCpActiveCharacterId(id);
+      onOpenPlayTab('sheet');
+    },
   };
   const _cpVaultSummaries = deriveVaultSummaries(_cpVaultAdapter);
   const _cpVaultStats     = _cpVaultAdapter.getStats(_cpVaultSummaries);
@@ -1019,6 +1038,7 @@ export function CpWorkspaceShell({
                         showActorCreationCompletion();
                         return;
                       }
+                      resetCpCreator();
                       onOpenPlayTab('creator');
                     },
                   },

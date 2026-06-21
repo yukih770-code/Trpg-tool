@@ -8,8 +8,9 @@
  * character sheet data into the platform layer.
  *
  * V1 constraints:
- * - DND reads the existing multi-character store.
- * - COC and CP RED wrap their current single-character stores.
+ * - DND, COC, and CP RED read per-system multi-actor local stores.
+ * - COC / CP RED keep legacy single-actor aliases only for old flow/draft
+ *   compatibility; new ActorVaultRecord ids always use real actor ids.
  * - No actor writes, campaign membership, runtime actor, import/export, or
  *   store migration behavior is implemented here.
  */
@@ -87,7 +88,7 @@ export const ACTOR_VAULT_REPOSITORY_BRIDGE_CAPABILITIES: Record<
   coc7e: {
     systemId: 'coc7e',
     source: 'coc-store',
-    mode: 'single-actor',
+    mode: 'multi-actor',
     canList: true,
     canRead: true,
     canReadActive: true,
@@ -95,12 +96,12 @@ export const ACTOR_VAULT_REPOSITORY_BRIDGE_CAPABILITIES: Record<
     canUpdate: false,
     canArchive: false,
     canDelete: false,
-    note: 'COC is a single-actor bridge in MVP. The current investigator store is wrapped as one ActorVaultRecord.',
+    note: 'COC reads the multi-investigator local store. Legacy coc-single remains an alias only for old local flow references.',
   },
   'cp-red': {
     systemId: 'cp-red',
     source: 'cp-store',
-    mode: 'single-actor',
+    mode: 'multi-actor',
     canList: true,
     canRead: true,
     canReadActive: true,
@@ -108,7 +109,7 @@ export const ACTOR_VAULT_REPOSITORY_BRIDGE_CAPABILITIES: Record<
     canUpdate: false,
     canArchive: false,
     canDelete: false,
-    note: 'CP RED is a single-actor bridge in MVP. The current edgerunner store is wrapped as one ActorVaultRecord.',
+    note: 'CP RED reads the multi-edgerunner local store. Legacy cp-single remains an alias only for old local flow references.',
   },
 };
 
@@ -133,7 +134,9 @@ export function getActorVaultRecord(
   systemId: ActorVaultSystemId,
   actorId: string,
 ): ActorVaultRecord | undefined {
-  return listActorVaultRecords(systemId).find((record) => record.id === actorId);
+  const records = listActorVaultRecords(systemId);
+  return records.find((record) => record.id === actorId) ??
+    resolveLegacyActorVaultAlias(systemId, actorId, records);
 }
 
 export function getActiveActorVaultRecord(
@@ -146,9 +149,18 @@ export function getActiveActorVaultRecord(
       const records = listDndActorVaultRecords();
       return records.find((record) => record.id === activeId) ?? records[0];
     }
-    case 'coc7e':
-    case 'cp-red':
-      return listActorVaultRecords(systemId)[0];
+    case 'coc7e': {
+      const state = useCocStore.getState();
+      const activeId = state.activeCharacterId ?? state.character.id;
+      const records = listCocActorVaultRecords();
+      return records.find((record) => record.id === activeId) ?? records[0];
+    }
+    case 'cp-red': {
+      const state = useCpStore.getState();
+      const activeId = state.activeCharacterId ?? state.character.id;
+      const records = listCpActorVaultRecords();
+      return records.find((record) => record.id === activeId) ?? records[0];
+    }
   }
 }
 
@@ -210,12 +222,38 @@ function makeDndActorVaultRecord(character: CharacterData): ActorVaultRecord {
 }
 
 function listCocActorVaultRecords(): ActorVaultRecord[] {
-  const character = useCocStore.getState().character;
-  return [makeCocActorVaultRecord(character)];
+  const state = useCocStore.getState();
+  const characters = mergeCocActiveCharacter(
+    state.characters,
+    state.character,
+    state.activeCharacterId,
+  );
+  return characters
+    .filter((character) => Boolean(character.id?.trim()))
+    .map((character) => makeCocActorVaultRecord(character));
+}
+
+function mergeCocActiveCharacter(
+  characters: CocCharacter[],
+  activeCharacter: CocCharacter,
+  activeCharacterId: string | null,
+): CocCharacter[] {
+  if (!activeCharacter.id) return characters;
+  if (!activeCharacterId) {
+    return characters.some((character) => character.id === activeCharacter.id)
+      ? characters
+      : [...characters, activeCharacter];
+  }
+  if (characters.some((character) => character.id === activeCharacterId)) {
+    return characters.map((character) =>
+      character.id === activeCharacterId ? activeCharacter : character,
+    );
+  }
+  return [...characters, activeCharacter];
 }
 
 function makeCocActorVaultRecord(character: CocCharacter): ActorVaultRecord {
-  const id = character.id?.trim() || 'coc-single';
+  const id = character.id.trim();
   const subtitleParts = [
     character.occupation?.trim() || undefined,
     character.age ? `Age ${character.age}` : undefined,
@@ -237,12 +275,38 @@ function makeCocActorVaultRecord(character: CocCharacter): ActorVaultRecord {
 }
 
 function listCpActorVaultRecords(): ActorVaultRecord[] {
-  const character = useCpStore.getState().character;
-  return [makeCpActorVaultRecord(character)];
+  const state = useCpStore.getState();
+  const characters = mergeCpActiveCharacter(
+    state.characters,
+    state.character,
+    state.activeCharacterId,
+  );
+  return characters
+    .filter((character) => Boolean(character.id?.trim()))
+    .map((character) => makeCpActorVaultRecord(character));
+}
+
+function mergeCpActiveCharacter(
+  characters: CpCharacter[],
+  activeCharacter: CpCharacter,
+  activeCharacterId: string | null,
+): CpCharacter[] {
+  if (!activeCharacter.id) return characters;
+  if (!activeCharacterId) {
+    return characters.some((character) => character.id === activeCharacter.id)
+      ? characters
+      : [...characters, activeCharacter];
+  }
+  if (characters.some((character) => character.id === activeCharacterId)) {
+    return characters.map((character) =>
+      character.id === activeCharacterId ? activeCharacter : character,
+    );
+  }
+  return [...characters, activeCharacter];
 }
 
 function makeCpActorVaultRecord(character: CpCharacter): ActorVaultRecord {
-  const id = character.id?.trim() || 'cp-single';
+  const id = character.id.trim();
   const displayName =
     character.lifePath?.handle?.trim() ||
     character.name?.trim() ||
@@ -266,4 +330,18 @@ function makeCpActorVaultRecord(character: CpCharacter): ActorVaultRecord {
       id,
     },
   };
+}
+
+function resolveLegacyActorVaultAlias(
+  systemId: ActorVaultSystemId,
+  actorId: string,
+  records: ActorVaultRecord[],
+): ActorVaultRecord | undefined {
+  if (systemId === 'coc7e' && actorId === 'coc-single') {
+    return getActiveActorVaultRecord('coc7e') ?? records[0];
+  }
+  if (systemId === 'cp-red' && actorId === 'cp-single') {
+    return getActiveActorVaultRecord('cp-red') ?? records[0];
+  }
+  return undefined;
 }

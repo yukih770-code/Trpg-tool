@@ -6,8 +6,8 @@
  * Maps CpCharacter to the platform ActorVaultSummary format.
  * CP RED implementation of the Actor Vault Library adapter pattern.
  *
- * V1 constraint: CP RED store is single-actor. The adapter wraps the single
- * character as a one-element array. No store schema change is made here.
+ * CP RED now uses the same per-system multi-actor Actor Vault pattern as DND.
+ * The adapter maps the concrete edgerunner for each ActorVaultRecord.
  *
  * See: src/lib/platform/actorVault.ts for type contracts.
  * See: src/components/platform/ActorVaultLibraryShell.tsx for the shell UI.
@@ -76,15 +76,15 @@ export function buildCpVaultAdapterStrings(
 // ─── Summary mapper ───────────────────────────────────────────────────────────
 
 /**
- * V1: CP RED is single-actor. Pass `index = 0`.
  * displayName prefers the street handle (lifePath.handle) then the real name.
  */
 export function buildCpActorSummary(
   char: CpCharacter,
   index: number,
+  activeId: string | null,
   s: CpVaultAdapterStrings,
 ): ActorVaultSummary {
-  const id = char.id?.trim() || 'cp-single';
+  const id = char.id.trim();
   const handle = char.lifePath?.handle?.trim();
   const realName = char.name?.trim();
   const displayName = handle || realName || s.unnamed;
@@ -93,7 +93,7 @@ export function buildCpActorSummary(
     id,
     displayName,
     completionStatus: isCpCharComplete(char) ? 'complete' : 'incomplete',
-    isActive: true, // V1: always the only and active edgerunner
+    isActive: id === activeId,
     insertionOrder: index,
     sortName: displayName.toLowerCase(),
     sortNumeric: char.roleLevel ?? 0,

@@ -162,9 +162,93 @@ function makeDefaultChar(): CpCharacter {
   };
 }
 
+function makeCpCharacterId(): string {
+  const rand = Math.random().toString(36).slice(2, 9);
+  return `cp-${Date.now()}-${rand}`;
+}
+
+function stableLegacyCpCharacterId(character: CpCharacter): string {
+  const seed = [
+    character.name,
+    character.player,
+    character.lifePath?.handle,
+    character.role,
+    character.age,
+    character.lifePath?.hometown,
+  ].join('|');
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  }
+  return `cp-legacy-${Math.abs(hash).toString(36) || 'actor'}`;
+}
+
+export function ensureCpCharacterId(character: CpCharacter): CpCharacter {
+  const id = character.id?.trim();
+  if (id) return { ...character, id };
+  return { ...character, id: stableLegacyCpCharacterId(character) };
+}
+
+function createDefaultCpCharacter(): CpCharacter {
+  const character = makeDefaultChar();
+  return {
+    ...character,
+    id: character.id?.trim() || crypto.randomUUID?.() || makeCpCharacterId(),
+  };
+}
+
+function syncActiveCpCharacter(
+  character: CpCharacter,
+  characters: CpCharacter[],
+  activeCharacterId: string | null,
+): CpCharacter[] {
+  const activeCharacter = ensureCpCharacterId(migrateCpCharacter(character));
+  const targetId = activeCharacterId?.trim() || activeCharacter.id;
+  if (characters.some((item) => item.id === targetId)) {
+    return characters.map((item) => (item.id === targetId ? activeCharacter : item));
+  }
+  return [...characters, activeCharacter];
+}
+
+function normalizeCpCharacterList(
+  rawCharacters: unknown[] | undefined,
+  compatCharacter: unknown,
+  activeCharacterId: string | null | undefined,
+): { character: CpCharacter; characters: CpCharacter[]; activeCharacterId: string } {
+  const compat = ensureCpCharacterId(migrateCpCharacter(compatCharacter ?? {}));
+  const sourceList = Array.isArray(rawCharacters) && rawCharacters.length > 0
+    ? rawCharacters
+    : [compat];
+  const migrated = sourceList.map((item) => ensureCpCharacterId(migrateCpCharacter(item)));
+  const deduped = migrated.reduce<CpCharacter[]>((acc, item) => {
+    if (acc.some((existing) => existing.id === item.id)) return acc;
+    return [...acc, item];
+  }, []);
+  const withCompat = deduped.some((item) => item.id === compat.id)
+    ? deduped.map((item) => (item.id === compat.id ? compat : item))
+    : [...deduped, compat];
+  const requestedActiveId = activeCharacterId?.trim();
+  const active =
+    withCompat.find((item) => item.id === requestedActiveId) ??
+    withCompat.find((item) => item.id === compat.id) ??
+    withCompat[0] ??
+    compat;
+
+  return {
+    character: active,
+    characters: withCompat,
+    activeCharacterId: active.id,
+  };
+}
+
 // ── Store Interface ────────────────────────────────────────
 interface CpState {
   character: CpCharacter;
+  characters: CpCharacter[];
+  activeCharacterId: string | null;
+  setActiveCharacterId: (id: string) => void;
+  addCharacter: (data: CpCharacter) => void;
+  resetCreator: () => void;
   updateField: <K extends keyof CpCharacter>(key: K, value: CpCharacter[K]) => void;
   setStat: (stat: CpStat, value: number) => void;
   setAllStats: (stats: Record<CpStat, number>) => void;
@@ -248,8 +332,12 @@ interface CpState {
 
 export const useCpStore = create<CpState>()(
   persist(
-    (set, get) => ({
-      character: makeDefaultChar(),
+    (set, get) => {
+      const initialCharacter = createDefaultCpCharacter();
+      return {
+      character: initialCharacter,
+      characters: [initialCharacter],
+      activeCharacterId: initialCharacter.id,
 
       updateField: (key, value) => set(state => ({
         character: { ...state.character, [key]: value }
@@ -741,8 +829,40 @@ export const useCpStore = create<CpState>()(
           }
         };
       }),
-      loadCharacter: (data) => set({ character: migrateCpCharacter(data) }),
-      resetCharacter: () => set({ character: makeDefaultChar() }),
+      setActiveCharacterId: (id) => set((state) => {
+        const updatedList = syncActiveCpCharacter(state.character, state.characters, state.activeCharacterId);
+        const target = updatedList.find((item) => item.id === id);
+        if (!target) return { characters: updatedList };
+        return { character: target, characters: updatedList, activeCharacterId: target.id };
+      }),
+
+      addCharacter: (data) => set((state) => {
+        const character = ensureCpCharacterId(migrateCpCharacter(data));
+        const updatedList = syncActiveCpCharacter(state.character, state.characters, state.activeCharacterId);
+        const nextList = updatedList.some((item) => item.id === character.id)
+          ? updatedList.map((item) => (item.id === character.id ? character : item))
+          : [...updatedList, character];
+        return { character, characters: nextList, activeCharacterId: character.id };
+      }),
+
+      loadCharacter: (data) => set((state) => {
+        const character = ensureCpCharacterId(migrateCpCharacter(data));
+        const updatedList = syncActiveCpCharacter(state.character, state.characters, state.activeCharacterId);
+        const nextList = updatedList.some((item) => item.id === character.id)
+          ? updatedList.map((item) => (item.id === character.id ? character : item))
+          : [...updatedList, character];
+        return { character, characters: nextList, activeCharacterId: character.id };
+      }),
+      resetCreator: () => set((state) => {
+        const updatedList = syncActiveCpCharacter(state.character, state.characters, state.activeCharacterId);
+        const character = createDefaultCpCharacter();
+        return { character, characters: [...updatedList, character], activeCharacterId: character.id };
+      }),
+      resetCharacter: () => set((state) => {
+        const updatedList = syncActiveCpCharacter(state.character, state.characters, state.activeCharacterId);
+        const character = createDefaultCpCharacter();
+        return { character, characters: [...updatedList, character], activeCharacterId: character.id };
+      }),
 
       updateLifePath: (fields) => set(state => ({
         character: {
@@ -768,18 +888,24 @@ export const useCpStore = create<CpState>()(
       removeEnemy: (name) => set(state => ({
         character: { ...state.character, enemies: (state.character.enemies ?? []).filter(e => e.name !== name) }
       })),
-    }),
+    };
+    },
     {
       name: 'cp-red-character-storage',
       // On rehydration, route every saved character through the migration
       // pipeline so localStorage data from older schema versions is safely
       // upgraded before it reaches any component.
       merge: (persisted: unknown, current) => {
-        const p = persisted as Partial<{ character: unknown }> | null;
+        const p = persisted as Partial<{
+          character: unknown;
+          characters: unknown[];
+          activeCharacterId: string | null;
+        }> | null;
         if (!p || typeof p !== 'object') return current;
+        const normalized = normalizeCpCharacterList(p.characters, p.character, p.activeCharacterId);
         return {
           ...current,
-          character: migrateCpCharacter(p.character ?? {}),
+          ...normalized,
         };
       },
     }

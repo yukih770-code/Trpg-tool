@@ -6,8 +6,8 @@
  * Maps CocCharacter to the platform ActorVaultSummary format.
  * COC reference implementation of the Actor Vault Library adapter pattern.
  *
- * V1 constraint: COC store is single-actor. The adapter wraps the single
- * character as a one-element array. No store schema change is made here.
+ * COC now uses the same per-system multi-actor Actor Vault pattern as DND.
+ * The adapter maps the concrete investigator for each ActorVaultRecord.
  *
  * See: src/lib/platform/actorVault.ts for type contracts.
  * See: src/components/platform/ActorVaultLibraryShell.tsx for the shell UI.
@@ -76,22 +76,22 @@ export function buildCocVaultAdapterStrings(
 // ─── Summary mapper ───────────────────────────────────────────────────────────
 
 /**
- * V1: COC is single-actor. Pass `index = 0` and `activeId = char.id || 'coc-single'`
- * (always active because there's only one character).
+ * Maps one COC investigator into the platform ActorVault card summary.
  */
 export function buildCocActorSummary(
   char: CocCharacter,
   index: number,
+  activeId: string | null,
   s: CocVaultAdapterStrings,
 ): ActorVaultSummary {
-  const id = char.id?.trim() || 'coc-single';
+  const id = char.id.trim();
   const displayName = char.name?.trim() || s.unnamed;
 
   return {
     id,
     displayName,
     completionStatus: isCocCharComplete(char) ? 'complete' : 'incomplete',
-    isActive: true, // V1: always the only and active investigator
+    isActive: id === activeId,
     insertionOrder: index,
     sortName: displayName.toLowerCase(),
     sortNumeric: 0, // COC has no level

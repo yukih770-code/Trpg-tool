@@ -407,6 +407,9 @@ export function CocWorkspaceShell({
 }: CocWorkspaceShellProps) {
   const { t } = createTranslator(readStoredLocale());
   const cocChar = useCocStore((state) => state.character);
+  const cocCharacters = useCocStore((state) => state.characters);
+  const setCocActiveCharacterId = useCocStore((state) => state.setActiveCharacterId);
+  const resetCocCreator = useCocStore((state) => state.resetCreator);
   const hasCurrentCharacter = Boolean(cocChar.name?.trim() || cocChar.occupation?.trim());
   const displayName = cocChar.name?.trim();
   const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
@@ -423,10 +426,12 @@ export function CocWorkspaceShell({
     useState<CampaignRuntimeContext | null>(null);
   const [actorCreationCompletionContext, setActorCreationCompletionContext] =
     useState<ActorCreationCompletionContext | null>(null);
+  const currentCocActorId =
+    cocChar.id?.trim() || getActiveActorVaultRecord('coc7e')?.id || 'coc-actor-unavailable';
 
   function buildActorCreationCompletionContext(): ActorCreationCompletionContext {
     const actor: CampaignSuggestedActor = {
-      actorId: 'ui-preview-coc-actor',
+      actorId: currentCocActorId,
       actorName: displayName || t('multiWorkspace.actorCreationCompletion.placeholderActorName'),
     };
 
@@ -581,7 +586,7 @@ export function CocWorkspaceShell({
   };
 
   const activeCocActorForCampaign: CampaignSuggestedActor = {
-    actorId: 'ui-preview-coc-actor',
+    actorId: currentCocActorId,
     actorName: displayName || t('multiWorkspace.actorCreationCompletion.placeholderActorName'),
   };
 
@@ -626,17 +631,27 @@ export function CocWorkspaceShell({
   // ── Actor Vault Library (platform shell) ────────────────────────────────────
   // AI-LANDMARK: COC_ACTOR_VAULT_LIBRARY_ADOPTION_V1
   // AI-LANDMARK: ACTOR_VAULT_REPOSITORY_BRIDGE_UI_INTEGRATION_V1
-  // V1: COC is single-actor. The platform bridge wraps the current investigator
-  // as one ActorVaultRecord; this workspace resolves that record into the
-  // localized COC summary projection without changing store schema.
+  // COC_MULTI_ACTOR_STORE_NORMALIZATION_V1: the platform bridge reads the
+  // multi-investigator store; this workspace resolves each ActorVaultRecord
+  // into its concrete investigator before building localized summaries.
   const _cocAdapterStrings = buildCocVaultAdapterStrings(t);
   const _cocActorVaultRecords = listActorVaultRecords('coc7e');
   const _cocActiveActorVaultRecordId =
-    getActiveActorVaultRecord('coc7e')?.id ?? cocChar.id?.trim() ?? 'coc-single';
+    getActiveActorVaultRecord('coc7e')?.id ?? cocChar.id?.trim() ?? null;
+  const _cocCharactersById = new Map(
+    [...cocCharacters, cocChar]
+      .filter((character) => Boolean(character.id?.trim()))
+      .map((character) => [character.id.trim(), character]),
+  );
   const _cocVaultAdapter: ActorVaultAdapter<ActorVaultRecord> = {
     getActors:        () => _cocActorVaultRecords,
     getActiveActorId: () => _cocActiveActorVaultRecordId,
-    getSummary:       (_record, index) => buildCocActorSummary(cocChar, index, _cocAdapterStrings),
+    getSummary:       (record, index) => buildCocActorSummary(
+      _cocCharactersById.get(record.id) ?? cocChar,
+      index,
+      _cocActiveActorVaultRecordId,
+      _cocAdapterStrings,
+    ),
     getStats:         (summaries) => buildCocVaultStats(summaries),
     getAddOptions:    () => [],
     getSortOptions:   () => buildCocSortOptions({
@@ -644,7 +659,10 @@ export function CocWorkspaceShell({
       name:    t('cocWorkspace.characterLibrary.sort.name'),
     }),
     getDefaultSortKey: () => 'default',
-    onEnterActor:      (_id) => { onViewChange('sheet'); },
+    onEnterActor:      (id) => {
+      setCocActiveCharacterId(id);
+      onViewChange('sheet');
+    },
   };
   const _cocVaultSummaries = deriveVaultSummaries(_cocVaultAdapter);
   const _cocVaultStats     = _cocVaultAdapter.getStats(_cocVaultSummaries);
@@ -767,14 +785,15 @@ export function CocWorkspaceShell({
               Previously: ACTOR_VAULT_ACTION_HIERARCHY_CLEANUP_V1 / ACTOR_VAULT_SINGLE_ACTOR_ACTION_CLEANUP_V1 /
               ACTOR_VAULT_EXISTING_ADD_SPLIT_V1 — all landmark contracts still hold; now enforced by the platform shell.
               onEnterActor opens the COC sheet. onRequestAdd navigates to createMethod.
-              V1: COC single-actor — getActors() returns [] or [cocChar]; home card shows stat 0 or 1. */}
+              COC_MULTI_ACTOR_STORE_NORMALIZATION_V1 — getActors() now reads
+              the COC multi-investigator repository bridge. */}
           {!campaignRuntimeContext && view === 'vault' && (
             <ActorVaultLibraryShell
               summaries={_cocVaultSummaries}
               stats={_cocVaultStats}
               sortOptions={_cocVaultSortOpts}
               defaultSortKey="default"
-              onEnterActor={(_id) => onViewChange('sheet')}
+              onEnterActor={_cocVaultAdapter.onEnterActor}
               onRequestAdd={() => {
                 if (campaignActorSelectContext) {
                   setCampaignActorAddContext(makeCampaignActorAddReturnContextFromSelect(campaignActorSelectContext));
@@ -898,6 +917,7 @@ export function CocWorkspaceShell({
                         showActorCreationCompletion();
                         return;
                       }
+                      resetCocCreator();
                       onOpenPlayTab('creator');
                     },
                   },

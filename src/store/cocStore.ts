@@ -4,8 +4,88 @@ import { CocCharacter, CocRuntimeState, COC_BASE_SKILLS, CURRENT_COC_CHARACTER_S
 import { migrateCocCharacter } from '../lib/cocMigration';
 import { applyCocHpDelta } from '../lib/coc-utils';
 
+function makeCocCharacterId(): string {
+  const rand = Math.random().toString(36).slice(2, 9);
+  return `coc-${Date.now()}-${rand}`;
+}
+
+function stableLegacyCocCharacterId(character: CocCharacter): string {
+  const seed = [
+    character.name,
+    character.player,
+    character.occupation,
+    character.age,
+    character.residence,
+    character.birthplace,
+  ].join('|');
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+  }
+  return `coc-legacy-${Math.abs(hash).toString(36) || 'actor'}`;
+}
+
+export function ensureCocCharacterId(character: CocCharacter): CocCharacter {
+  const id = character.id?.trim();
+  if (id) return { ...character, id };
+  return { ...character, id: stableLegacyCocCharacterId(character) };
+}
+
+function createDefaultCocCharacter(): CocCharacter {
+  return { ...defaultCocChar, id: crypto.randomUUID?.() || makeCocCharacterId() };
+}
+
+function syncActiveCocCharacter(
+  character: CocCharacter,
+  characters: CocCharacter[],
+  activeCharacterId: string | null,
+): CocCharacter[] {
+  const activeCharacter = ensureCocCharacterId(migrateCocCharacter(character));
+  const targetId = activeCharacterId?.trim() || activeCharacter.id;
+  if (characters.some((item) => item.id === targetId)) {
+    return characters.map((item) => (item.id === targetId ? activeCharacter : item));
+  }
+  return [...characters, activeCharacter];
+}
+
+function normalizeCocCharacterList(
+  rawCharacters: unknown[] | undefined,
+  compatCharacter: unknown,
+  activeCharacterId: string | null | undefined,
+): { character: CocCharacter; characters: CocCharacter[]; activeCharacterId: string } {
+  const compat = ensureCocCharacterId(migrateCocCharacter(compatCharacter ?? {}));
+  const sourceList = Array.isArray(rawCharacters) && rawCharacters.length > 0
+    ? rawCharacters
+    : [compat];
+  const migrated = sourceList.map((item) => ensureCocCharacterId(migrateCocCharacter(item)));
+  const deduped = migrated.reduce<CocCharacter[]>((acc, item) => {
+    if (acc.some((existing) => existing.id === item.id)) return acc;
+    return [...acc, item];
+  }, []);
+  const withCompat = deduped.some((item) => item.id === compat.id)
+    ? deduped.map((item) => (item.id === compat.id ? compat : item))
+    : [...deduped, compat];
+  const requestedActiveId = activeCharacterId?.trim();
+  const active =
+    withCompat.find((item) => item.id === requestedActiveId) ??
+    withCompat.find((item) => item.id === compat.id) ??
+    withCompat[0] ??
+    compat;
+
+  return {
+    character: active,
+    characters: withCompat,
+    activeCharacterId: active.id,
+  };
+}
+
 interface CocState {
   character: CocCharacter;
+  characters: CocCharacter[];
+  activeCharacterId: string | null;
+  setActiveCharacterId: (id: string) => void;
+  addCharacter: (data: CocCharacter) => void;
+  resetCreator: () => void;
   updateField: <K extends keyof CocCharacter>(key: K, value: CocCharacter[K]) => void;
   updateCharacteristic: (char: keyof CocCharacter['characteristics'], value: number) => void;
   updateSkill: (skillName: string, value: number, isOcc?: boolean, isPer?: boolean) => void;
@@ -81,8 +161,12 @@ const defaultCocChar: CocCharacter = {
 
 export const useCocStore = create<CocState>()(
   persist(
-    (set) => ({
-      character: { ...defaultCocChar, id: crypto.randomUUID?.() || Date.now().toString() },
+    (set) => {
+      const initialCharacter = createDefaultCocCharacter();
+      return {
+      character: initialCharacter,
+      characters: [initialCharacter],
+      activeCharacterId: initialCharacter.id,
       
       updateField: (key, value) => set((state) => ({
         character: { ...state.character, [key]: value }
@@ -123,7 +207,36 @@ export const useCocStore = create<CocState>()(
         return { character: { ...state.character, skills } };
       }),
       
-      loadCharacter: (data) => set({ character: migrateCocCharacter(data) }),
+      setActiveCharacterId: (id) => set((state) => {
+        const updatedList = syncActiveCocCharacter(state.character, state.characters, state.activeCharacterId);
+        const target = updatedList.find((item) => item.id === id);
+        if (!target) return { characters: updatedList };
+        return { character: target, characters: updatedList, activeCharacterId: target.id };
+      }),
+
+      addCharacter: (data) => set((state) => {
+        const character = ensureCocCharacterId(migrateCocCharacter(data));
+        const updatedList = syncActiveCocCharacter(state.character, state.characters, state.activeCharacterId);
+        const nextList = updatedList.some((item) => item.id === character.id)
+          ? updatedList.map((item) => (item.id === character.id ? character : item))
+          : [...updatedList, character];
+        return { character, characters: nextList, activeCharacterId: character.id };
+      }),
+
+      resetCreator: () => set((state) => {
+        const updatedList = syncActiveCocCharacter(state.character, state.characters, state.activeCharacterId);
+        const character = createDefaultCocCharacter();
+        return { character, characters: [...updatedList, character], activeCharacterId: character.id };
+      }),
+
+      loadCharacter: (data) => set((state) => {
+        const character = ensureCocCharacterId(migrateCocCharacter(data));
+        const updatedList = syncActiveCocCharacter(state.character, state.characters, state.activeCharacterId);
+        const nextList = updatedList.some((item) => item.id === character.id)
+          ? updatedList.map((item) => (item.id === character.id ? character : item))
+          : [...updatedList, character];
+        return { character, characters: nextList, activeCharacterId: character.id };
+      }),
 
       initializeRuntime: () => set((state) => ({
         character: migrateCocCharacter(state.character),
@@ -240,18 +353,24 @@ export const useCocStore = create<CocState>()(
           },
         };
       }),
-    }),
+    };
+    },
     {
       name: 'coc-character-storage',
       // On rehydration, run every saved investigator through the migration
       // pipeline so localStorage data from older schema versions is safely
       // upgraded before it reaches any component.
       merge: (persisted: unknown, current) => {
-        const p = persisted as Partial<{ character: unknown }> | null;
+        const p = persisted as Partial<{
+          character: unknown;
+          characters: unknown[];
+          activeCharacterId: string | null;
+        }> | null;
         if (!p || typeof p !== 'object') return current;
+        const normalized = normalizeCocCharacterList(p.characters, p.character, p.activeCharacterId);
         return {
           ...current,
-          character: migrateCocCharacter(p.character ?? {}),
+          ...normalized,
         };
       },
     }
