@@ -1,5 +1,11 @@
 import { ArrowLeft } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import type { CampaignRuntimeContext } from '../../lib/platform/campaignFlow';
+import type { LocalCampaignSystemId } from '../../lib/platform/campaignLocalStore';
+import type {
+  RuntimeLogEventType,
+} from '../../lib/platform/runtimeLogLocalStore';
+import { useRuntimeLogLocalStore } from '../../lib/platform/runtimeLogLocalStore';
 import { createTranslator, readStoredLocale } from '../../i18n';
 
 type CampaignRuntimeTone = 'dnd' | 'coc' | 'cp';
@@ -11,15 +17,6 @@ type CampaignRuntimeShellProps = {
 };
 
 type RuntimeLogCategory = 'roll' | 'action' | 'system' | 'handout' | 'host';
-
-type RuntimeLogEntry = {
-  id: string;
-  category: RuntimeLogCategory;
-  scope: 'public' | 'host';
-  titleKey: string;
-  bodyKey: string;
-  metaKey: string;
-};
 
 const toneClasses: Record<CampaignRuntimeTone, {
   wrapper: string;
@@ -64,17 +61,32 @@ const toneClasses: Record<CampaignRuntimeTone, {
 };
 
 // AI-LANDMARK: CAMPAIGN_RUNTIME_SHELL_UI_V1
-// Minimal CampaignRuntimeShell: UI shell only. No multiplayer, backend, map,
-// handout, runtime log write, store write, permission system, or rule runtime.
+// Minimal CampaignRuntimeShell: local RuntimeLog read/append only. No
+// multiplayer, backend, map, handout publish, permission system, or rule runtime.
 export function CampaignRuntimeShell({
   context,
   tone,
   onExitRuntime,
 }: CampaignRuntimeShellProps) {
   const { t } = createTranslator(readStoredLocale());
+  const [systemNoteDraft, setSystemNoteDraft] = useState('');
   const theme = toneClasses[tone];
   const isHost = context.selectedEntryRole === 'host';
   const currentActor = context.selectedActorName ?? t('campaignRuntime.header.noActor');
+  const runtimeSystemId = toLocalCampaignSystemId(context.systemId);
+  const storedRuntimeLogEvents = useRuntimeLogLocalStore((state) => state.events);
+  const appendRuntimeLogEvent = useRuntimeLogLocalStore((state) => state.appendRuntimeLogEvent);
+  const runtimeLogEvents = useMemo(
+    () =>
+      storedRuntimeLogEvents
+        .filter((event) => event.campaignId === context.campaignId)
+        .sort((a, b) => {
+          const createdAtOrder = a.createdAt.localeCompare(b.createdAt);
+          if (createdAtOrder !== 0) return createdAtOrder;
+          return a.id.localeCompare(b.id);
+        }),
+    [context.campaignId, storedRuntimeLogEvents],
+  );
 
   const participantItems = [
     ['campaignRuntime.participants.host', isHost ? t('campaignRuntime.status.current') : t('campaignRuntime.status.placeholder')],
@@ -151,51 +163,19 @@ export function CampaignRuntimeShell({
     { id: 'host', labelKey: 'campaignRuntime.log.filters.host', hostOnly: true },
   ];
 
-  const runtimeLogEntries: RuntimeLogEntry[] = [
-    {
-      id: 'system-entry',
-      category: 'system',
-      scope: 'public',
-      titleKey: 'campaignRuntime.log.entries.systemEntry.title',
-      bodyKey: 'campaignRuntime.log.entries.systemEntry.body',
-      metaKey: 'campaignRuntime.log.entries.systemEntry.meta',
-    },
-    {
-      id: 'actor-ready',
-      category: 'action',
-      scope: 'public',
-      titleKey: 'campaignRuntime.log.entries.actorReady.title',
-      bodyKey: 'campaignRuntime.log.entries.actorReady.body',
-      metaKey: 'campaignRuntime.log.entries.actorReady.meta',
-    },
-    {
-      id: 'sample-roll',
-      category: 'roll',
-      scope: 'public',
-      titleKey: 'campaignRuntime.log.entries.sampleRoll.title',
-      bodyKey: 'campaignRuntime.log.entries.sampleRoll.body',
-      metaKey: 'campaignRuntime.log.entries.sampleRoll.meta',
-    },
-    {
-      id: 'host-prompt',
-      category: 'host',
-      scope: 'host',
-      titleKey: 'campaignRuntime.log.entries.hostPrompt.title',
-      bodyKey: 'campaignRuntime.log.entries.hostPrompt.body',
-      metaKey: 'campaignRuntime.log.entries.hostPrompt.meta',
-    },
-    {
-      id: 'handout-public',
-      category: 'handout',
-      scope: 'public',
-      titleKey: 'campaignRuntime.log.entries.handoutPublic.title',
-      bodyKey: 'campaignRuntime.log.entries.handoutPublic.body',
-      metaKey: 'campaignRuntime.log.entries.handoutPublic.meta',
-    },
-  ];
-
   const visibleRuntimeLogFilters = runtimeLogFilters.filter((filter) => isHost || !filter.hostOnly);
-  const visibleRuntimeLogEntries = runtimeLogEntries.filter((entry) => isHost || entry.scope === 'public');
+
+  const handleAppendSystemNote = () => {
+    const message = systemNoteDraft.trim();
+    if (!isHost || !runtimeSystemId || !message) return;
+    appendRuntimeLogEvent({
+      campaignId: context.campaignId,
+      systemId: runtimeSystemId,
+      type: 'system.note',
+      message,
+    });
+    setSystemNoteDraft('');
+  };
 
   const renderPlaceholderList = (items: string[]) => (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -233,23 +213,72 @@ export function CampaignRuntimeShell({
       </div>
 
       <div className={`rounded-lg border p-3 text-xs leading-relaxed ${theme.card}`}>
-        <div className={`font-bold ${theme.accent}`}>{t('campaignRuntime.log.shellTitle')}</div>
-        <p className={`mt-1 ${theme.muted}`}>{t('campaignRuntime.log.shellNote')}</p>
+        <div className={`font-bold ${theme.accent}`}>{t('campaignRuntime.log.localTitle')}</div>
+        <p className={`mt-1 ${theme.muted}`}>{t('campaignRuntime.log.localNote')}</p>
       </div>
 
+      {isHost ? (
+        <form
+          className={`rounded-lg border p-3 ${theme.card}`}
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleAppendSystemNote();
+          }}
+        >
+          <label className={`block text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>
+            {t('campaignRuntime.log.addSystemNote')}
+          </label>
+          <textarea
+            value={systemNoteDraft}
+            onChange={(event) => setSystemNoteDraft(event.target.value)}
+            placeholder={t('campaignRuntime.log.systemNotePlaceholder')}
+            rows={3}
+            className={`mt-2 w-full resize-y rounded border bg-transparent px-3 py-2 text-xs outline-none ${theme.border}`}
+          />
+          <button
+            type="submit"
+            disabled={!runtimeSystemId || !systemNoteDraft.trim()}
+            className={`mt-2 border px-3 py-2 text-xs font-bold uppercase tracking-wider ${
+              runtimeSystemId && systemNoteDraft.trim()
+                ? theme.badge
+                : `cursor-default opacity-55 ${theme.action}`
+            }`}
+          >
+            {t('campaignRuntime.log.appendSystemNote')}
+          </button>
+          <p className={`mt-2 text-[11px] leading-relaxed ${theme.muted}`}>
+            {t('campaignRuntime.log.systemNoteScope')}
+          </p>
+        </form>
+      ) : null}
+
       <div className="space-y-2">
-        {visibleRuntimeLogEntries.map((entry) => (
+        {runtimeLogEvents.length === 0 ? (
+          <div className={`rounded-lg border p-3 text-xs leading-relaxed ${theme.card}`}>
+            <div className={`font-bold ${theme.accent}`}>{t('campaignRuntime.log.emptyTitle')}</div>
+            <p className={`mt-1 ${theme.muted}`}>{t('campaignRuntime.log.emptyNote')}</p>
+          </div>
+        ) : runtimeLogEvents.map((entry) => (
           <article key={entry.id} className={`rounded-lg border p-3 ${theme.card}`}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${theme.badge}`}>
-                {t(`campaignRuntime.log.category.${entry.category}`)}
+                {t(`campaignRuntime.log.category.${runtimeLogCategoryForEvent(entry.type)}`)}
               </span>
               <span className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
-                {t(entry.metaKey)}
+                {formatRuntimeLogTimestamp(entry.createdAt)}
               </span>
             </div>
-            <h4 className={`mt-2 text-sm font-bold ${theme.accent}`}>{t(entry.titleKey)}</h4>
-            <p className={`mt-1 text-xs leading-relaxed ${theme.muted}`}>{t(entry.bodyKey)}</p>
+            <h4 className={`mt-2 text-sm font-bold ${theme.accent}`}>
+              {t(runtimeLogEventTypeLabelKey(entry.type))}
+            </h4>
+            <p className={`mt-1 whitespace-pre-wrap text-xs leading-relaxed ${theme.muted}`}>
+              {entry.message}
+            </p>
+            {entry.actorId ? (
+              <p className={`mt-2 text-[11px] ${theme.muted}`}>
+                {t('campaignRuntime.log.actorId')}：{entry.actorId}
+              </p>
+            ) : null}
           </article>
         ))}
       </div>
@@ -400,4 +429,46 @@ export function CampaignRuntimeShell({
       </div>
     </section>
   );
+}
+
+function toLocalCampaignSystemId(systemId: string): LocalCampaignSystemId | null {
+  if (systemId === 'dnd5e-2024' || systemId === 'coc7e' || systemId === 'cp-red') {
+    return systemId;
+  }
+  return null;
+}
+
+function runtimeLogCategoryForEvent(type: RuntimeLogEventType): RuntimeLogCategory {
+  if (type === 'roll.performed') return 'roll';
+  if (type === 'system.note' || type === 'session.started') return 'system';
+  if (type === 'actor.note') return 'action';
+  if (
+    type === 'actor.hpChanged' ||
+    type === 'actor.resourceChanged' ||
+    type === 'actor.sanChanged' ||
+    type === 'actor.humanityChanged'
+  ) {
+    return 'action';
+  }
+  return 'system';
+}
+
+function runtimeLogEventTypeLabelKey(type: RuntimeLogEventType): string {
+  const labels: Record<RuntimeLogEventType, string> = {
+    'session.started': 'campaignRuntime.log.eventTypes.sessionStarted',
+    'roll.performed': 'campaignRuntime.log.eventTypes.rollPerformed',
+    'actor.note': 'campaignRuntime.log.eventTypes.actorNote',
+    'actor.hpChanged': 'campaignRuntime.log.eventTypes.actorHpChanged',
+    'actor.resourceChanged': 'campaignRuntime.log.eventTypes.actorResourceChanged',
+    'actor.sanChanged': 'campaignRuntime.log.eventTypes.actorSanChanged',
+    'actor.humanityChanged': 'campaignRuntime.log.eventTypes.actorHumanityChanged',
+    'system.note': 'campaignRuntime.log.eventTypes.systemNote',
+  };
+  return labels[type];
+}
+
+function formatRuntimeLogTimestamp(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
 }
