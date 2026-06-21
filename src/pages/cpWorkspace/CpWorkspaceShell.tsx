@@ -20,7 +20,11 @@ import { SystemRuleSourcesShell, type SystemRuleSourcesTheme } from '../../compo
 import { CPRED_RULE_SOURCES } from './cpRuleSourcesAdapter';
 import { makeCampaignActorAddReturnContextFromSelect } from '../../lib/platform/campaignFlow';
 import { deriveVaultSummaries, type ActorCreationCompletionContext, type ActorVaultAdapter } from '../../lib/platform/actorVault';
-import type { CpCharacter } from '../../lib/cp-types';
+import {
+  getActiveActorVaultRecord,
+  listActorVaultRecords,
+  type ActorVaultRecord,
+} from '../../lib/platform/actorVaultRepositoryBridge';
 import type {
   CampaignActorAddReturnContext,
   CampaignActorSelectReturnContext,
@@ -558,6 +562,7 @@ export function CpWorkspaceShell({
     useState<CampaignSelectForActorReturnContext | null>(null);
   const [suggestedCampaignActor, setSuggestedCampaignActor] =
     useState<CampaignSuggestedActor | null>(null);
+  const [focusedCampaignId, setFocusedCampaignId] = useState<string | null>(null);
   const [campaignRuntimeContext, setCampaignRuntimeContext] =
     useState<CampaignRuntimeContext | null>(null);
   const [actorCreationCompletionContext, setActorCreationCompletionContext] =
@@ -606,6 +611,7 @@ export function CpWorkspaceShell({
 
   function handleReturnCreatedActorToCampaign(context: Extract<ActorCreationCompletionContext, { kind: 'forCampaign' }>) {
     setSuggestedCampaignActor(context.actor);
+    setFocusedCampaignId(context.campaign.campaignId);
     setActorCreationCompletionContext(null);
     setCampaignActorAddContext(null);
     setCampaignActorSelectContext(null);
@@ -647,8 +653,12 @@ export function CpWorkspaceShell({
     onViewChange('vault');
   };
 
-  const handleSelectActorForCampaign = (actor: CampaignSuggestedActor) => {
+  const handleSelectActorForCampaign = (
+    actor: CampaignSuggestedActor,
+    context?: CampaignActorSelectReturnContext,
+  ) => {
     setSuggestedCampaignActor(actor);
+    setFocusedCampaignId(context?.campaignId ?? context?.returnTo.campaignId ?? null);
     setCampaignActorSelectContext(null);
     setCampaignSelectForActorContext(null);
     setActorCreationCompletionContext(null);
@@ -679,13 +689,14 @@ export function CpWorkspaceShell({
   };
 
   const handleSelectCampaignForActor = (
-    _campaign: CampaignInstanceSummary,
+    campaign: CampaignInstanceSummary,
     context: CampaignSelectForActorReturnContext,
   ) => {
     setSuggestedCampaignActor({
       actorId: context.actorId,
       actorName: context.actorName,
     });
+    setFocusedCampaignId(campaign.campaignId);
     setCampaignSelectForActorContext(null);
     setCampaignActorAddContext(null);
     setCampaignActorSelectContext(null);
@@ -735,11 +746,17 @@ export function CpWorkspaceShell({
   const panelClass = gold.panel;
 
   // ── CP RED Actor Vault adapter (AI-LANDMARK: CPRED_ACTOR_VAULT_LIBRARY_ADOPTION_V1) ──
+  // AI-LANDMARK: ACTOR_VAULT_REPOSITORY_BRIDGE_UI_INTEGRATION_V1
+  // V1: CP RED remains a single-actor bridge. The workspace reads the platform
+  // ActorVaultRecord first, then maps it to the localized CP RED summary.
   const _cpAdapterStrings = buildCpVaultAdapterStrings(t);
-  const _cpVaultAdapter: ActorVaultAdapter<CpCharacter> = {
-    getActors:        () => cpChar.name?.trim() || cpChar.lifePath?.handle?.trim() ? [cpChar] : [],
-    getActiveActorId: () => cpChar.id?.trim() || 'cp-single',
-    getSummary:       (char, index) => buildCpActorSummary(char, index, _cpAdapterStrings),
+  const _cpActorVaultRecords = listActorVaultRecords('cp-red');
+  const _cpActiveActorVaultRecordId =
+    getActiveActorVaultRecord('cp-red')?.id ?? cpChar.id?.trim() ?? 'cp-single';
+  const _cpVaultAdapter: ActorVaultAdapter<ActorVaultRecord> = {
+    getActors:        () => _cpActorVaultRecords,
+    getActiveActorId: () => _cpActiveActorVaultRecordId,
+    getSummary:       (_record, index) => buildCpActorSummary(cpChar, index, _cpAdapterStrings),
     getStats:         (summaries) => buildCpVaultStats(summaries),
     getAddOptions:    () => [],
     getSortOptions:   () => buildCpSortOptions({
@@ -913,6 +930,7 @@ export function CpWorkspaceShell({
               systemName={t('glossary.cyberpunkRed')}
               tone="cp"
               initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
+              initialCampaignId={campaignActorAddContext?.campaignId ?? campaignActorSelectContext?.campaignId ?? focusedCampaignId}
               purpose={
                 campaignSelectForActorContext
                   ? { kind: 'selectForActor', context: campaignSelectForActorContext }

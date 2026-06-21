@@ -7,8 +7,10 @@ import type {
   CampaignRuntimeContext,
   CampaignSuggestedActor,
 } from '../../lib/platform/campaignFlow';
+import { useCampaignEntryDraftStore, type CampaignEntryDraftRole } from '../../lib/platform/campaignEntryDraftStore';
 import type { LocalCampaign, LocalCampaignSystemId, LocalCampaignStatus } from '../../lib/platform/campaignLocalStore';
 import { useCampaignLocalStore } from '../../lib/platform/campaignLocalStore';
+import { getActorVaultRecord } from '../../lib/platform/actorVaultRepositoryBridge';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { ContextBar } from './ContextBar';
@@ -22,6 +24,7 @@ type CampaignLibraryShellProps = {
   tone: CampaignLibraryTone;
   mode?: 'library' | 'create';
   initialMode?: Exclude<CampaignLibraryMode, 'add'>;
+  initialCampaignId?: string | null;
   purpose?: CampaignLibraryPurpose;
   suggestedActor?: CampaignSuggestedActor | null;
   onAddCampaign?: () => void;
@@ -92,6 +95,7 @@ export function CampaignLibraryShell({
   tone,
   mode = 'library',
   initialMode,
+  initialCampaignId,
   purpose = { kind: 'manage' },
   suggestedActor,
   onAddCampaign,
@@ -114,6 +118,9 @@ export function CampaignLibraryShell({
   const archiveCampaign = useCampaignLocalStore((state) => state.archiveCampaign);
   const deleteCampaign = useCampaignLocalStore((state) => state.deleteCampaign);
   const getCampaignById = useCampaignLocalStore((state) => state.getCampaignById);
+  const campaignEntryDrafts = useCampaignEntryDraftStore((state) => state.drafts);
+  const setCampaignEntryDraftActor = useCampaignEntryDraftStore((state) => state.setCampaignEntryDraftActor);
+  const setCampaignEntryDraftRole = useCampaignEntryDraftStore((state) => state.setCampaignEntryDraftRole);
 
   const campaigns = useMemo(
     () =>
@@ -130,6 +137,33 @@ export function CampaignLibraryShell({
   const draftCampaigns = campaigns.filter((campaign) => campaign.status === 'draft');
   const campaignSelectForActorContext =
     purpose.kind === 'selectForActor' ? purpose.context : null;
+  const selectedCampaign =
+    selectedCampaignId && getCampaignById(selectedCampaignId)?.systemId === systemId
+      ? getCampaignById(selectedCampaignId)
+      : campaigns[0];
+  const isWaitingForInitialCampaign = Boolean(
+    initialCampaignId &&
+    campaigns.some((campaign) => campaign.id === initialCampaignId) &&
+    selectedCampaign?.id !== initialCampaignId,
+  );
+  const selectedCampaignDraft = selectedCampaign
+    ? campaignEntryDrafts.find((draft) => draft.campaignId === selectedCampaign.id)
+    : undefined;
+  const draftActorRecord =
+    selectedCampaignDraft?.systemId === systemId && selectedCampaignDraft.selectedActorId
+      ? getActorVaultRecord(systemId, selectedCampaignDraft.selectedActorId)
+      : undefined;
+  const draftSuggestedActor: CampaignSuggestedActor | null = draftActorRecord
+    ? {
+        actorId: draftActorRecord.id,
+        actorName: draftActorRecord.displayName,
+      }
+    : null;
+  const hasStaleDraftActor = Boolean(
+    selectedCampaignDraft?.selectedActorId &&
+    selectedCampaignDraft.systemId === systemId &&
+    !draftActorRecord,
+  );
   const effectiveSuggestedActor =
     suggestedActor ??
     (campaignSelectForActorContext
@@ -137,11 +171,7 @@ export function CampaignLibraryShell({
           actorId: campaignSelectForActorContext.actorId,
           actorName: campaignSelectForActorContext.actorName,
         }
-      : null);
-  const selectedCampaign =
-    selectedCampaignId && getCampaignById(selectedCampaignId)?.systemId === systemId
-      ? getCampaignById(selectedCampaignId)
-      : campaigns[0];
+      : draftSuggestedActor);
 
   const createActions = [
     { key: 'campaignLibrary.create.standard', enabled: true },
@@ -175,10 +205,46 @@ export function CampaignLibraryShell({
   }, [initialMode, campaignSelectForActorContext?.actorId]);
 
   useEffect(() => {
+    if (!initialCampaignId) return;
+    if (!campaigns.some((campaign) => campaign.id === initialCampaignId)) return;
+    setSelectedCampaignId(initialCampaignId);
+  }, [campaigns, initialCampaignId]);
+
+  useEffect(() => {
+    if (isWaitingForInitialCampaign) return;
     if (campaignSelectForActorContext || suggestedActor) {
       setSelectedEntryRole('playerCharacter');
+      if (selectedCampaign) {
+        setCampaignEntryDraftRole(selectedCampaign.id, systemId, 'player');
+      }
+      return;
     }
-  }, [campaignSelectForActorContext?.actorId, suggestedActor?.actorId]);
+    if (selectedCampaignDraft?.selectedEntryRole) {
+      setSelectedEntryRole(fromDraftEntryRole(selectedCampaignDraft.selectedEntryRole));
+    }
+  }, [
+    campaignSelectForActorContext?.actorId,
+    isWaitingForInitialCampaign,
+    selectedCampaign?.id,
+    selectedCampaignDraft?.selectedEntryRole,
+    setCampaignEntryDraftRole,
+    suggestedActor?.actorId,
+    systemId,
+  ]);
+
+  useEffect(() => {
+    if (isWaitingForInitialCampaign) return;
+    if (!selectedCampaign || !suggestedActor) return;
+    setCampaignEntryDraftActor(selectedCampaign.id, systemId, suggestedActor.actorId);
+    setCampaignEntryDraftRole(selectedCampaign.id, systemId, 'player');
+  }, [
+    selectedCampaign?.id,
+    isWaitingForInitialCampaign,
+    setCampaignEntryDraftActor,
+    setCampaignEntryDraftRole,
+    suggestedActor?.actorId,
+    systemId,
+  ]);
 
   useEffect(() => {
     if (selectedCampaignId && !campaigns.some((campaign) => campaign.id === selectedCampaignId)) {
@@ -204,9 +270,16 @@ export function CampaignLibraryShell({
     />
   ) : null;
 
+  const setEntryRoleDraft = (role: CampaignEntryRole) => {
+    setSelectedEntryRole(role);
+    if (selectedCampaign) {
+      setCampaignEntryDraftRole(selectedCampaign.id, systemId, toDraftEntryRole(role));
+    }
+  };
+
   const requestSelectActorForCampaign = () => {
     if (!selectedCampaign) return;
-    setSelectedEntryRole('playerCharacter');
+    setEntryRoleDraft('playerCharacter');
     onRequestSelectActorForCampaign?.({
       campaignId: selectedCampaign.id,
       campaignTitle: selectedCampaign.title,
@@ -267,6 +340,8 @@ export function CampaignLibraryShell({
   const handleSelectCampaignForActor = (campaign: LocalCampaign) => {
     if (!campaignSelectForActorContext || !onSelectCampaignForActor) return;
     setSelectedCampaignId(campaign.id);
+    setCampaignEntryDraftActor(campaign.id, systemId, campaignSelectForActorContext.actorId);
+    setCampaignEntryDraftRole(campaign.id, systemId, 'player');
     onSelectCampaignForActor(toCampaignInstanceSummary(campaign), campaignSelectForActorContext);
   };
 
@@ -443,8 +518,9 @@ export function CampaignLibraryShell({
             theme={theme}
             t={t}
             effectiveSuggestedActor={effectiveSuggestedActor}
+            hasStaleDraftActor={hasStaleDraftActor}
             selectedEntryRole={selectedEntryRole}
-            setSelectedEntryRole={setSelectedEntryRole}
+            setSelectedEntryRole={setEntryRoleDraft}
             requestSelectActorForCampaign={requestSelectActorForCampaign}
             enterCampaignRuntime={enterCampaignRuntime}
             canEnterPlayerRuntime={canEnterPlayerRuntime}
@@ -583,6 +659,7 @@ function CampaignDetail({
   theme,
   t,
   effectiveSuggestedActor,
+  hasStaleDraftActor,
   selectedEntryRole,
   setSelectedEntryRole,
   requestSelectActorForCampaign,
@@ -597,6 +674,7 @@ function CampaignDetail({
   theme: (typeof toneClasses)[CampaignLibraryTone];
   t: (key: string) => string;
   effectiveSuggestedActor: CampaignSuggestedActor | null;
+  hasStaleDraftActor: boolean;
   selectedEntryRole: CampaignEntryRole;
   setSelectedEntryRole: (role: CampaignEntryRole) => void;
   requestSelectActorForCampaign: () => void;
@@ -667,6 +745,11 @@ function CampaignDetail({
                   {t('campaignLibrary.detail.playerPrep.suggestedActorNote')}
                 </p>
               </div>
+            )}
+            {hasStaleDraftActor && (
+              <p className={`mt-3 rounded border p-3 text-xs leading-relaxed ${theme.danger}`}>
+                {t('campaignLibrary.detail.playerPrep.staleDraftActor')}
+              </p>
             )}
             {selectedEntryRole === 'host' && effectiveSuggestedActor && (
               <p className={`mt-3 text-xs leading-relaxed ${theme.muted}`}>
@@ -822,6 +905,14 @@ function toCampaignInstanceSummary(campaign: LocalCampaign): CampaignInstanceSum
     roomCode: campaign.roomCode,
     lastPlayedAt: campaign.updatedAt,
   };
+}
+
+function toDraftEntryRole(role: CampaignEntryRole): CampaignEntryDraftRole {
+  return role === 'host' ? 'host' : 'player';
+}
+
+function fromDraftEntryRole(role: CampaignEntryDraftRole): CampaignEntryRole {
+  return role === 'host' ? 'host' : 'playerCharacter';
 }
 
 function formatCampaignDate(value: string): string {

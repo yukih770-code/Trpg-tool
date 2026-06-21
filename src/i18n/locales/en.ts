@@ -1687,6 +1687,7 @@ export const en = {
         unselected: 'Unselected',
         suggestedActor: 'Suggested Character',
         suggestedActorNote: 'This is the current suggested character; you can still change it before entering, and it does not confirm final selectedActorId.',
+        staleDraftActor: 'The local entry draft points to a character that is no longer available. Select or add a character again; this does not create campaign membership.',
         hostActiveActorNote: 'You are currently entering as Host; the player character will not be confirmed for this entry.',
         switchToPlayer: 'Switch to Player Character',
         changeActor: 'Change Character',

@@ -31,6 +31,11 @@ import {
 } from './dndActorVaultAdapter';
 import { deriveVaultSummaries } from '../../lib/platform/actorVault';
 import type { ActorCreationCompletionContext, ActorVaultAdapter } from '../../lib/platform/actorVault';
+import {
+  getActiveActorVaultRecord,
+  listActorVaultRecords,
+  type ActorVaultRecord,
+} from '../../lib/platform/actorVaultRepositoryBridge';
 import type {
   CampaignActorAddReturnContext,
   CampaignActorSelectReturnContext,
@@ -99,6 +104,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     useState<CampaignSelectForActorReturnContext | null>(null);
   const [suggestedCampaignActor, setSuggestedCampaignActor] =
     useState<CampaignSuggestedActor | null>(null);
+  const [focusedCampaignId, setFocusedCampaignId] = useState<string | null>(null);
   const [campaignRuntimeContext, setCampaignRuntimeContext] =
     useState<CampaignRuntimeContext | null>(null);
   const [actorCreationCompletionContext, setActorCreationCompletionContext] =
@@ -147,6 +153,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
 
   function handleReturnCreatedActorToCampaign(context: Extract<ActorCreationCompletionContext, { kind: 'forCampaign' }>) {
     setSuggestedCampaignActor(context.actor);
+    setFocusedCampaignId(context.campaign.campaignId);
     setActorCreationCompletionContext(null);
     setCampaignActorAddContext(null);
     setCampaignActorSelectContext(null);
@@ -155,15 +162,41 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   }
 
   // AI-LANDMARK: PLATFORM_ACTOR_VAULT_LIBRARY_FRAMEWORK_EXTRACTION_V1
-  // DND Actor Vault adapter: maps CharacterData to platform ActorVaultSummary.
-  // Search / filter / sort state is now owned by ActorVaultLibraryShell.
+  // AI-LANDMARK: ACTOR_VAULT_REPOSITORY_BRIDGE_UI_INTEGRATION_V1
+  // DND Actor Vault now reads the platform ActorVaultRecord bridge first, then
+  // resolves each record into the system-specific summary projection.
+  // Search / filter / sort state is still owned by ActorVaultLibraryShell.
   const _adapterStrings = buildDndVaultAdapterStrings(t);
-  const _dndVaultAdapter: ActorVaultAdapter<typeof dndCharacters[number]> = {
-    getActors: () =>
-      // For the active character always use the live compat field (up-to-date with in-session mutations).
-      dndCharacters.map(c => (c.id === dndActiveCharacterId ? dndChar : c)),
-    getActiveActorId: () => dndActiveCharacterId,
-    getSummary: (char, index) => buildDndActorSummary(char, index, dndActiveCharacterId, _adapterStrings),
+  const _dndActorVaultRecords = listActorVaultRecords('dnd5e-2024');
+  const _dndActiveActorVaultRecordId =
+    getActiveActorVaultRecord('dnd5e-2024')?.id ?? dndActiveCharacterId;
+  const _dndCharactersById = new Map(dndCharacters.map((char) => [char.id, char]));
+  if (dndChar.id) {
+    _dndCharactersById.set(dndChar.id, dndChar);
+  }
+  const _dndVaultAdapter: ActorVaultAdapter<ActorVaultRecord> = {
+    getActors: () => _dndActorVaultRecords,
+    getActiveActorId: () => _dndActiveActorVaultRecordId ?? null,
+    getSummary: (record, index) => {
+      const character = _dndCharactersById.get(record.id);
+      return character
+        ? buildDndActorSummary(character, index, _dndActiveActorVaultRecordId ?? null, _adapterStrings)
+        : {
+            id: record.id,
+            displayName: record.displayName,
+            completionStatus: 'incomplete',
+            isActive: record.id === _dndActiveActorVaultRecordId,
+            insertionOrder: index,
+            sortName: record.displayName.toLowerCase(),
+            sortNumeric: 0,
+            detailFields: record.subtitle
+              ? [{ label: t('multiWorkspace.actorVault.source'), value: record.subtitle }]
+              : [],
+            metaRows: [
+              { label: t('multiWorkspace.actorVault.source'), value: record.source },
+            ],
+          };
+    },
     getStats: (summaries) => buildDndVaultStats(summaries),
     getAddOptions: () => [],
     getSortOptions: () => buildDndSortOptions({
@@ -283,8 +316,12 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
     onViewChange('characters');
   };
 
-  const handleSelectActorForCampaign = (actor: CampaignSuggestedActor) => {
+  const handleSelectActorForCampaign = (
+    actor: CampaignSuggestedActor,
+    context?: CampaignActorSelectReturnContext,
+  ) => {
     setSuggestedCampaignActor(actor);
+    setFocusedCampaignId(context?.campaignId ?? context?.returnTo.campaignId ?? null);
     setCampaignActorSelectContext(null);
     setCampaignSelectForActorContext(null);
     setActorCreationCompletionContext(null);
@@ -315,13 +352,14 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   };
 
   const handleSelectCampaignForActor = (
-    _campaign: CampaignInstanceSummary,
+    campaign: CampaignInstanceSummary,
     context: CampaignSelectForActorReturnContext,
   ) => {
     setSuggestedCampaignActor({
       actorId: context.actorId,
       actorName: context.actorName,
     });
+    setFocusedCampaignId(campaign.campaignId);
     setCampaignSelectForActorContext(null);
     setCampaignActorAddContext(null);
     setCampaignActorSelectContext(null);
@@ -557,6 +595,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
               systemName="DND 2024"
               tone="dnd"
               initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
+              initialCampaignId={campaignActorAddContext?.campaignId ?? campaignActorSelectContext?.campaignId ?? focusedCampaignId}
               purpose={
                 campaignSelectForActorContext
                   ? { kind: 'selectForActor', context: campaignSelectForActorContext }

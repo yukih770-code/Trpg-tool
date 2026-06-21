@@ -28,7 +28,11 @@ import {
 } from './cocActorVaultAdapter';
 import { deriveVaultSummaries } from '../../lib/platform/actorVault';
 import type { ActorCreationCompletionContext, ActorVaultAdapter } from '../../lib/platform/actorVault';
-import type { CocCharacter } from '../../lib/coc-types';
+import {
+  getActiveActorVaultRecord,
+  listActorVaultRecords,
+  type ActorVaultRecord,
+} from '../../lib/platform/actorVaultRepositoryBridge';
 import type {
   CampaignActorAddReturnContext,
   CampaignActorSelectReturnContext,
@@ -414,6 +418,7 @@ export function CocWorkspaceShell({
     useState<CampaignSelectForActorReturnContext | null>(null);
   const [suggestedCampaignActor, setSuggestedCampaignActor] =
     useState<CampaignSuggestedActor | null>(null);
+  const [focusedCampaignId, setFocusedCampaignId] = useState<string | null>(null);
   const [campaignRuntimeContext, setCampaignRuntimeContext] =
     useState<CampaignRuntimeContext | null>(null);
   const [actorCreationCompletionContext, setActorCreationCompletionContext] =
@@ -462,6 +467,7 @@ export function CocWorkspaceShell({
 
   function handleReturnCreatedActorToCampaign(context: Extract<ActorCreationCompletionContext, { kind: 'forCampaign' }>) {
     setSuggestedCampaignActor(context.actor);
+    setFocusedCampaignId(context.campaign.campaignId);
     setActorCreationCompletionContext(null);
     setCampaignActorAddContext(null);
     setCampaignActorSelectContext(null);
@@ -503,8 +509,12 @@ export function CocWorkspaceShell({
     onViewChange('vault');
   };
 
-  const handleSelectActorForCampaign = (actor: CampaignSuggestedActor) => {
+  const handleSelectActorForCampaign = (
+    actor: CampaignSuggestedActor,
+    context?: CampaignActorSelectReturnContext,
+  ) => {
     setSuggestedCampaignActor(actor);
+    setFocusedCampaignId(context?.campaignId ?? context?.returnTo.campaignId ?? null);
     setCampaignActorSelectContext(null);
     setCampaignSelectForActorContext(null);
     setActorCreationCompletionContext(null);
@@ -535,13 +545,14 @@ export function CocWorkspaceShell({
   };
 
   const handleSelectCampaignForActor = (
-    _campaign: CampaignInstanceSummary,
+    campaign: CampaignInstanceSummary,
     context: CampaignSelectForActorReturnContext,
   ) => {
     setSuggestedCampaignActor({
       actorId: context.actorId,
       actorName: context.actorName,
     });
+    setFocusedCampaignId(campaign.campaignId);
     setCampaignSelectForActorContext(null);
     setCampaignActorAddContext(null);
     setCampaignActorSelectContext(null);
@@ -614,13 +625,18 @@ export function CocWorkspaceShell({
 
   // ── Actor Vault Library (platform shell) ────────────────────────────────────
   // AI-LANDMARK: COC_ACTOR_VAULT_LIBRARY_ADOPTION_V1
-  // V1: COC is single-actor. The store holds one CocCharacter; we wrap it as a
-  // one-element array. No store schema / save-format change is made here.
+  // AI-LANDMARK: ACTOR_VAULT_REPOSITORY_BRIDGE_UI_INTEGRATION_V1
+  // V1: COC is single-actor. The platform bridge wraps the current investigator
+  // as one ActorVaultRecord; this workspace resolves that record into the
+  // localized COC summary projection without changing store schema.
   const _cocAdapterStrings = buildCocVaultAdapterStrings(t);
-  const _cocVaultAdapter: ActorVaultAdapter<CocCharacter> = {
-    getActors:        () => cocChar.name?.trim() ? [cocChar] : [],
-    getActiveActorId: () => cocChar.id?.trim() || 'coc-single',
-    getSummary:       (char, index) => buildCocActorSummary(char, index, _cocAdapterStrings),
+  const _cocActorVaultRecords = listActorVaultRecords('coc7e');
+  const _cocActiveActorVaultRecordId =
+    getActiveActorVaultRecord('coc7e')?.id ?? cocChar.id?.trim() ?? 'coc-single';
+  const _cocVaultAdapter: ActorVaultAdapter<ActorVaultRecord> = {
+    getActors:        () => _cocActorVaultRecords,
+    getActiveActorId: () => _cocActiveActorVaultRecordId,
+    getSummary:       (_record, index) => buildCocActorSummary(cocChar, index, _cocAdapterStrings),
     getStats:         (summaries) => buildCocVaultStats(summaries),
     getAddOptions:    () => [],
     getSortOptions:   () => buildCocSortOptions({
@@ -793,6 +809,7 @@ export function CocWorkspaceShell({
               systemName={t('glossary.coc7e')}
               tone="coc"
               initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
+              initialCampaignId={campaignActorAddContext?.campaignId ?? campaignActorSelectContext?.campaignId ?? focusedCampaignId}
               purpose={
                 campaignSelectForActorContext
                   ? { kind: 'selectForActor', context: campaignSelectForActorContext }

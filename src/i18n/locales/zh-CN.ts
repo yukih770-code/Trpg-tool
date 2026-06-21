@@ -1687,6 +1687,7 @@ export const zhCN = {
         unselected: '未选择',
         suggestedActor: '推荐角色',
         suggestedActorNote: '这是当前预选角色；进入战役前仍可更换，且不会确认最终 selectedActorId。',
+        staleDraftActor: '本地入场草稿引用的角色已不可用。请重新选择或添加角色；这不会创建战役成员关系。',
         hostActiveActorNote: '当前以主持人身份入场，玩家角色不会在本次入场中确认。',
         switchToPlayer: '切换为玩家角色',
         changeActor: '更换角色',
