@@ -8,7 +8,15 @@ export type LocalCampaignSystemId =
 
 export type LocalCampaignStatus =
   | 'draft'
+  | 'active';
+
+export type LocalCampaignLifecycleStatus =
   | 'active'
+  | 'archived'
+  | 'trashed';
+
+type LegacyLocalCampaignStatus =
+  | LocalCampaignStatus
   | 'archived';
 
 export interface LocalCampaign {
@@ -18,8 +26,11 @@ export interface LocalCampaign {
   description?: string;
   roomCode?: string;
   status: LocalCampaignStatus;
+  lifecycleStatus: LocalCampaignLifecycleStatus;
   createdAt: string;
   updatedAt: string;
+  archivedAt?: string;
+  trashedAt?: string;
 }
 
 export interface CreateLocalCampaignInput {
@@ -37,6 +48,7 @@ export type UpdateLocalCampaignPatch = Partial<
 export interface ListCampaignsOptions {
   systemId?: LocalCampaignSystemId;
   includeArchived?: boolean;
+  includeTrashed?: boolean;
 }
 
 interface CampaignLocalStoreState {
@@ -44,13 +56,19 @@ interface CampaignLocalStoreState {
   campaigns: LocalCampaign[];
   listCampaigns: (options?: ListCampaignsOptions) => LocalCampaign[];
   listActiveCampaigns: (systemId?: LocalCampaignSystemId) => LocalCampaign[];
+  listArchivedCampaigns: (systemId?: LocalCampaignSystemId) => LocalCampaign[];
+  listTrashedCampaigns: (systemId?: LocalCampaignSystemId) => LocalCampaign[];
   getCampaignById: (id: string) => LocalCampaign | undefined;
   createCampaign: (input: CreateLocalCampaignInput) => LocalCampaign;
   updateCampaign: (id: string, patch: UpdateLocalCampaignPatch) => LocalCampaign | undefined;
   archiveCampaign: (id: string) => LocalCampaign | undefined;
+  restoreCampaign: (id: string) => LocalCampaign | undefined;
+  trashCampaign: (id: string) => LocalCampaign | undefined;
+  purgeCampaign: (id: string) => void;
   /**
-   * Local/dev escape hatch. Product flows should prefer archiveCampaign so
-   * accidental data loss is avoided when a trash model arrives later.
+   * @deprecated Local compatibility alias. Product UI should call explicit
+   * lifecycle actions instead of generic delete. This currently moves a
+   * campaign to trash and does not physically purge it.
    */
   deleteCampaign: (id: string) => void;
   clearCampaignsForDev: () => void;
@@ -62,7 +80,7 @@ interface CampaignLocalStoreState {
   seedDemoCampaignsForDev: () => LocalCampaign[];
 }
 
-export const CAMPAIGN_LOCAL_STORE_SCHEMA_VERSION = 1;
+export const CAMPAIGN_LOCAL_STORE_SCHEMA_VERSION = 2;
 export const CAMPAIGN_LOCAL_STORE_KEY = 'platform-campaign-local-store';
 
 function nowIso(): string {
@@ -90,6 +108,7 @@ function createLocalCampaign(input: CreateLocalCampaignInput): LocalCampaign {
     description: input.description,
     roomCode: input.roomCode,
     status: input.status ?? 'draft',
+    lifecycleStatus: 'active',
     createdAt: timestamp,
     updatedAt: timestamp,
   };
@@ -105,6 +124,7 @@ function createDemoCampaigns(): LocalCampaign[] {
       description: 'Dev-only local campaign seed for testing Campaign Library data flows.',
       roomCode: 'A12F',
       status: 'active',
+      lifecycleStatus: 'active',
       createdAt: timestamp,
       updatedAt: timestamp,
     },
@@ -118,16 +138,32 @@ export const useCampaignLocalStore = create<CampaignLocalStoreState>()(
       campaigns: [],
 
       listCampaigns: (options = {}) => {
-        const { systemId, includeArchived = true } = options;
+        const { systemId, includeArchived = true, includeTrashed = true } = options;
         return get().campaigns.filter((campaign) => {
           if (systemId && campaign.systemId !== systemId) return false;
-          if (!includeArchived && campaign.status === 'archived') return false;
+          if (!includeArchived && campaign.lifecycleStatus === 'archived') return false;
+          if (!includeTrashed && campaign.lifecycleStatus === 'trashed') return false;
           return true;
         });
       },
 
       listActiveCampaigns: (systemId) =>
-        get().listCampaigns({ systemId, includeArchived: false }),
+        get().campaigns.filter((campaign) =>
+          (!systemId || campaign.systemId === systemId) &&
+          campaign.lifecycleStatus === 'active'
+        ),
+
+      listArchivedCampaigns: (systemId) =>
+        get().campaigns.filter((campaign) =>
+          (!systemId || campaign.systemId === systemId) &&
+          campaign.lifecycleStatus === 'archived'
+        ),
+
+      listTrashedCampaigns: (systemId) =>
+        get().campaigns.filter((campaign) =>
+          (!systemId || campaign.systemId === systemId) &&
+          campaign.lifecycleStatus === 'trashed'
+        ),
 
       getCampaignById: (id) =>
         get().campaigns.find((campaign) => campaign.id === id),
@@ -158,11 +194,32 @@ export const useCampaignLocalStore = create<CampaignLocalStoreState>()(
       },
 
       archiveCampaign: (id) =>
-        get().updateCampaign(id, { status: 'archived' }),
+        updateCampaignLifecycle(set, id, {
+          lifecycleStatus: 'archived',
+          archivedAt: nowIso(),
+          trashedAt: undefined,
+        }),
 
-      deleteCampaign: (id) => set((state) => ({
+      restoreCampaign: (id) =>
+        updateCampaignLifecycle(set, id, {
+          lifecycleStatus: 'active',
+          archivedAt: undefined,
+          trashedAt: undefined,
+        }),
+
+      trashCampaign: (id) =>
+        updateCampaignLifecycle(set, id, {
+          lifecycleStatus: 'trashed',
+          trashedAt: nowIso(),
+        }),
+
+      purgeCampaign: (id) => set((state) => ({
         campaigns: state.campaigns.filter((campaign) => campaign.id !== id),
       })),
+
+      deleteCampaign: (id) => {
+        get().trashCampaign(id);
+      },
 
       clearCampaignsForDev: () => set({ campaigns: [] }),
 
@@ -199,30 +256,96 @@ export const useCampaignLocalStore = create<CampaignLocalStoreState>()(
         return {
           ...current,
           schemaVersion: CAMPAIGN_LOCAL_STORE_SCHEMA_VERSION,
-          campaigns: p.campaigns.filter(isLocalCampaign),
+          campaigns: p.campaigns
+            .map(normalizePersistedCampaign)
+            .filter((campaign): campaign is LocalCampaign => Boolean(campaign)),
         };
       },
     },
   ),
 );
 
-function isLocalCampaign(value: unknown): value is LocalCampaign {
-  if (!value || typeof value !== 'object') return false;
-  const campaign = value as Partial<LocalCampaign>;
-  return (
-    typeof campaign.id === 'string' &&
-    isLocalCampaignSystemId(campaign.systemId) &&
-    typeof campaign.title === 'string' &&
-    isLocalCampaignStatus(campaign.status) &&
-    typeof campaign.createdAt === 'string' &&
-    typeof campaign.updatedAt === 'string'
-  );
+type CampaignLocalStoreSet = (
+  partial:
+    | Partial<CampaignLocalStoreState>
+    | ((state: CampaignLocalStoreState) => Partial<CampaignLocalStoreState>),
+  replace?: false,
+) => void;
+
+function updateCampaignLifecycle(
+  set: CampaignLocalStoreSet,
+  id: string,
+  lifecyclePatch: Pick<LocalCampaign, 'lifecycleStatus'> & Partial<Pick<LocalCampaign, 'archivedAt' | 'trashedAt'>>,
+): LocalCampaign | undefined {
+  let updatedCampaign: LocalCampaign | undefined;
+  set((state) => ({
+    campaigns: state.campaigns.map((campaign) => {
+      if (campaign.id !== id) return campaign;
+      updatedCampaign = {
+        ...campaign,
+        ...lifecyclePatch,
+        updatedAt: nowIso(),
+      };
+      return updatedCampaign;
+    }),
+  }));
+  return updatedCampaign;
+}
+
+function normalizePersistedCampaign(value: unknown): LocalCampaign | null {
+  if (!value || typeof value !== 'object') return null;
+  const campaign = value as Omit<Partial<LocalCampaign>, 'status'> & { status?: LegacyLocalCampaignStatus };
+  if (
+    typeof campaign.id !== 'string' ||
+    !isLocalCampaignSystemId(campaign.systemId) ||
+    typeof campaign.title !== 'string' ||
+    !isLegacyLocalCampaignStatus(campaign.status) ||
+    typeof campaign.createdAt !== 'string' ||
+    typeof campaign.updatedAt !== 'string'
+  ) {
+    return null;
+  }
+
+  const lifecycleStatus = isLocalCampaignLifecycleStatus(campaign.lifecycleStatus)
+    ? campaign.lifecycleStatus
+    : campaign.status === 'archived'
+      ? 'archived'
+      : 'active';
+  const status: LocalCampaignStatus = campaign.status === 'draft' ? 'draft' : 'active';
+
+  return {
+    id: campaign.id,
+    systemId: campaign.systemId,
+    title: campaign.title,
+    description: campaign.description,
+    roomCode: campaign.roomCode,
+    status,
+    lifecycleStatus,
+    createdAt: campaign.createdAt,
+    updatedAt: campaign.updatedAt,
+    archivedAt:
+      typeof campaign.archivedAt === 'string'
+        ? campaign.archivedAt
+        : lifecycleStatus === 'archived'
+          ? campaign.updatedAt
+          : undefined,
+    trashedAt:
+      typeof campaign.trashedAt === 'string'
+        ? campaign.trashedAt
+        : lifecycleStatus === 'trashed'
+          ? campaign.updatedAt
+          : undefined,
+  };
 }
 
 function isLocalCampaignSystemId(value: unknown): value is LocalCampaignSystemId {
   return value === 'dnd5e-2024' || value === 'coc7e' || value === 'cp-red';
 }
 
-function isLocalCampaignStatus(value: unknown): value is LocalCampaignStatus {
+function isLegacyLocalCampaignStatus(value: unknown): value is LegacyLocalCampaignStatus {
   return value === 'draft' || value === 'active' || value === 'archived';
+}
+
+function isLocalCampaignLifecycleStatus(value: unknown): value is LocalCampaignLifecycleStatus {
+  return value === 'active' || value === 'archived' || value === 'trashed';
 }

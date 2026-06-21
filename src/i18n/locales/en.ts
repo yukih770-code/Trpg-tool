@@ -1780,6 +1780,7 @@ export const en = {
       draft: 'Draft',
       active: 'Active',
       archived: 'Archived',
+      trashed: 'Trashed',
     },
     concepts: {
       roomInstance: 'A campaign is an actual play-room instance distinguished by a room code.',

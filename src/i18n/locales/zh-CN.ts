@@ -1780,6 +1780,7 @@ export const zhCN = {
       draft: '草稿',
       active: '活跃',
       archived: '已归档',
+      trashed: '已移至回收站',
     },
     concepts: {
       roomInstance: '战役是一个实际游玩的房间实例，由房间号区分。',

@@ -8,7 +8,12 @@ import type {
   CampaignSuggestedActor,
 } from '../../lib/platform/campaignFlow';
 import { useCampaignEntryDraftStore, type CampaignEntryDraftRole } from '../../lib/platform/campaignEntryDraftStore';
-import type { LocalCampaign, LocalCampaignSystemId, LocalCampaignStatus } from '../../lib/platform/campaignLocalStore';
+import type {
+  LocalCampaign,
+  LocalCampaignLifecycleStatus,
+  LocalCampaignSystemId,
+  LocalCampaignStatus,
+} from '../../lib/platform/campaignLocalStore';
 import { useCampaignLocalStore } from '../../lib/platform/campaignLocalStore';
 import { getActorVaultRecord } from '../../lib/platform/actorVaultRepositoryBridge';
 import { createTranslator, readStoredLocale } from '../../i18n';
@@ -81,7 +86,12 @@ const toneClasses: Record<CampaignLibraryTone, {
 const statusOrder: Record<LocalCampaignStatus, number> = {
   active: 0,
   draft: 1,
-  archived: 2,
+};
+
+const lifecycleOrder: Record<LocalCampaignLifecycleStatus, number> = {
+  active: 0,
+  archived: 1,
+  trashed: 2,
 };
 
 // AI-LANDMARK: A11_SYSTEM_WORKSPACE_ENTRY_SHELL_V1
@@ -125,16 +135,18 @@ export function CampaignLibraryShell({
   const campaigns = useMemo(
     () =>
       allCampaigns
-        .filter((campaign) => campaign.systemId === systemId)
+        .filter((campaign) => campaign.systemId === systemId && campaign.lifecycleStatus !== 'trashed')
         .sort((a, b) => {
+          const lifecycleDiff = lifecycleOrder[a.lifecycleStatus] - lifecycleOrder[b.lifecycleStatus];
+          if (lifecycleDiff !== 0) return lifecycleDiff;
           const statusDiff = statusOrder[a.status] - statusOrder[b.status];
           if (statusDiff !== 0) return statusDiff;
           return b.updatedAt.localeCompare(a.updatedAt);
         }),
     [allCampaigns, systemId],
   );
-  const activeCampaigns = campaigns.filter((campaign) => campaign.status !== 'archived');
-  const draftCampaigns = campaigns.filter((campaign) => campaign.status === 'draft');
+  const activeCampaigns = campaigns.filter((campaign) => campaign.lifecycleStatus === 'active');
+  const draftCampaigns = campaigns.filter((campaign) => campaign.lifecycleStatus === 'active' && campaign.status === 'draft');
   const campaignSelectForActorContext =
     purpose.kind === 'selectForActor' ? purpose.context : null;
   const selectedCampaign =
@@ -587,14 +599,14 @@ function CampaignCard({
           </p>
         </div>
         <span className={`border px-2 py-0.5 text-[10px] uppercase tracking-wider ${theme.badge}`}>
-          {t(`campaignLibrary.status.${campaign.status}`)}
+          {t(getCampaignStatusLabelKey(campaign))}
         </span>
       </div>
       <dl className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
         {[
           [t('campaignLibrary.fields.system'), systemName],
           [t('campaignLibrary.detail.fields.roomCode'), campaign.roomCode || '-'],
-          [t('campaignLibrary.fields.status'), t(`campaignLibrary.status.${campaign.status}`)],
+          [t('campaignLibrary.fields.status'), t(getCampaignStatusLabelKey(campaign))],
           [t('campaignLibrary.fields.updatedAt'), formatCampaignDate(campaign.updatedAt)],
         ].map(([label, value]) => (
           <div key={label} className="min-w-0">
@@ -631,7 +643,7 @@ function CampaignCard({
             {t('campaignLibrary.actions.activate')}
           </button>
         )}
-        {campaign.status !== 'archived' && (
+        {campaign.lifecycleStatus !== 'archived' && (
           <button
             type="button"
             onClick={onArchive}
@@ -699,7 +711,7 @@ function CampaignDetail({
             </p>
           </div>
           <span className={`border px-2 py-0.5 text-[10px] uppercase tracking-wider ${theme.badge}`}>
-            {t(`campaignLibrary.status.${campaign.status}`)}
+            {t(getCampaignStatusLabelKey(campaign))}
           </span>
         </div>
 
@@ -707,7 +719,7 @@ function CampaignDetail({
           {[
             [t('campaignLibrary.fields.system'), systemName],
             [t('campaignLibrary.detail.fields.roomCode'), campaign.roomCode ?? '-'],
-            [t('campaignLibrary.fields.status'), t(`campaignLibrary.status.${campaign.status}`)],
+            [t('campaignLibrary.fields.status'), t(getCampaignStatusLabelKey(campaign))],
             [t('campaignLibrary.fields.updatedAt'), formatCampaignDate(campaign.updatedAt)],
             [t('campaignLibrary.detail.fields.identityStatus'), t('campaignLibrary.detail.identityStatus')],
           ].map(([label, value]) => (
@@ -913,6 +925,12 @@ function toDraftEntryRole(role: CampaignEntryRole): CampaignEntryDraftRole {
 
 function fromDraftEntryRole(role: CampaignEntryDraftRole): CampaignEntryRole {
   return role === 'host' ? 'host' : 'playerCharacter';
+}
+
+function getCampaignStatusLabelKey(campaign: LocalCampaign): string {
+  if (campaign.lifecycleStatus === 'archived') return 'campaignLibrary.status.archived';
+  if (campaign.lifecycleStatus === 'trashed') return 'campaignLibrary.status.trashed';
+  return `campaignLibrary.status.${campaign.status}`;
 }
 
 function formatCampaignDate(value: string): string {
