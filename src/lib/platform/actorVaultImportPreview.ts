@@ -7,7 +7,10 @@ import {
   type ActorVaultRecord,
   type ActorVaultSystemId,
 } from './actorVaultRepositoryBridge';
-import type { ActorVaultLifecycleStatus } from './actorVaultLifecycleStore';
+import type {
+  ActorVaultLifecycleMeta,
+  ActorVaultLifecycleStatus,
+} from './actorVaultLifecycleStore';
 
 export type ActorVaultImportPreviewConflict =
   | 'none'
@@ -22,6 +25,8 @@ export type ActorVaultImportPreviewActor = {
   actorId: string;
   displayName: string;
   lifecycleStatus: ActorVaultLifecycleStatus;
+  lifecycleMeta?: ActorVaultLifecycleMeta;
+  actorData: unknown;
   conflict: ActorVaultImportPreviewConflict;
 };
 
@@ -188,8 +193,17 @@ function parsePreviewActor(
   const actorId = readString(value, 'actorId');
   const displayName = readDisplayName(value, actorId);
   const lifecycleStatus = readString(value, 'lifecycleStatus');
+  const actorData = value.actorData;
+  const lifecycleMeta = value.lifecycleMeta;
 
-  if (!systemId || !actorId || !isLifecycleStatus(lifecycleStatus)) {
+  if (
+    !systemId ||
+    !actorId ||
+    !isLifecycleStatus(lifecycleStatus) ||
+    !isRecord(actorData) ||
+    readString(actorData, 'id') !== actorId ||
+    (lifecycleMeta !== undefined && !isLifecycleMeta(lifecycleMeta, systemId, actorId))
+  ) {
     return {
       unsupported: {
         systemId,
@@ -213,12 +227,18 @@ function parsePreviewActor(
     };
   }
 
+  const normalizedLifecycleMeta = isLifecycleMeta(lifecycleMeta, systemId, actorId)
+    ? lifecycleMeta
+    : undefined;
+
   return {
     actor: {
       systemId,
       actorId,
       displayName: displayName ?? actorId,
       lifecycleStatus,
+      lifecycleMeta: normalizedLifecycleMeta,
+      actorData,
       conflict: existingKeys.has(makeActorKey(systemId, actorId))
         ? 'same-id-existing'
         : 'none',
@@ -302,6 +322,18 @@ function readNumber(value: unknown, key: string): number | undefined {
   if (!isRecord(value)) return undefined;
   const raw = value[key];
   return typeof raw === 'number' ? raw : undefined;
+}
+
+function isLifecycleMeta(
+  value: unknown,
+  systemId: string,
+  actorId: string,
+): value is ActorVaultLifecycleMeta {
+  if (!isRecord(value)) return false;
+  return readString(value, 'systemId') === systemId &&
+    readString(value, 'actorId') === actorId &&
+    isLifecycleStatus(value.lifecycleStatus) &&
+    typeof value.updatedAt === 'string';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

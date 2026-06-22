@@ -32,6 +32,11 @@ import {
   parseActorVaultImportPreview,
   type ActorVaultImportPreview,
 } from '../../lib/platform/actorVaultImportPreview';
+import {
+  applyActorVaultSafeAppendImport,
+  buildActorVaultSafeAppendPlan,
+  type ActorVaultSafeAppendResult,
+} from '../../lib/platform/actorVaultImportSafeAppend';
 import type { ActorVaultLifecycleStatus } from '../../lib/platform/actorVaultLifecycleStore';
 import { useActorVaultLifecycleStore } from '../../lib/platform/actorVaultLifecycleStore';
 import { ContextBar } from './ContextBar';
@@ -101,6 +106,9 @@ export function ActorVaultLibraryShell({
   const [sortKey, setSortKey] = useState(defaultSortKey);
   const [importPreview, setImportPreview] = useState<ActorVaultImportPreview | null>(null);
   const [importPreviewFileName, setImportPreviewFileName] = useState('');
+  const [importPreviewText, setImportPreviewText] = useState('');
+  const [importResult, setImportResult] = useState<ActorVaultSafeAppendResult | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
   const lifecycleMetas = useActorVaultLifecycleStore((state) => state.metas);
   const archiveActor = useActorVaultLifecycleStore((state) => state.archiveActor);
   const trashActor = useActorVaultLifecycleStore((state) => state.trashActor);
@@ -212,9 +220,29 @@ export function ActorVaultLibraryShell({
     setImportPreviewFileName(file.name);
     try {
       const fileText = await file.text();
+      setImportPreviewText(fileText);
       setImportPreview(parseActorVaultImportPreview(fileText));
+      setImportResult(null);
     } catch {
+      setImportPreviewText('');
       setImportPreview(parseActorVaultImportPreview(''));
+      setImportResult(null);
+    }
+  };
+
+  const handleSafeAppendImport = () => {
+    if (!importPreview || isImporting) return;
+    setIsImporting(true);
+    try {
+      const result = applyActorVaultSafeAppendImport(
+        buildActorVaultSafeAppendPlan(importPreview),
+      );
+      setImportResult(result);
+      if (importPreviewText) {
+        setImportPreview(parseActorVaultImportPreview(importPreviewText));
+      }
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -291,19 +319,36 @@ export function ActorVaultLibraryShell({
       {/* ── Search / Sort / Filter bar ── */}
       <div className={panelClassName}>
         {isManagePurpose && (
-          <div className={`mb-3 grid gap-3 border-b pb-3 text-xs ${t.borderLight} ${t.textMuted} sm:grid-cols-4`}>
-            <div>
-              <div className="font-bold uppercase tracking-wider">{strings.lifecycleManagementSummary}</div>
-              <div className={`mt-1 ${t.textBody}`}>{strings.lifecycleFilteredCount}: {filtered.length}</div>
-              <div className="mt-3 flex flex-wrap gap-2">
+          <div className={`mb-3 border-b pb-3 text-xs ${t.borderLight} ${t.textMuted}`}>
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div>
+                <div className="font-bold uppercase tracking-wider">{strings.lifecycleManagementSummary}</div>
+                <div className={`mt-1 ${t.textBody}`}>{strings.lifecycleFilteredCount}: {filtered.length}</div>
+              </div>
+              <div>
+                <div className="font-bold uppercase tracking-wider">{strings.lifecycleActive}</div>
+                <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{lifecycleCounts.active}</div>
+              </div>
+              <div>
+                <div className="font-bold uppercase tracking-wider">{strings.lifecycleArchived}</div>
+                <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{lifecycleCounts.archived}</div>
+              </div>
+              <div>
+                <div className="font-bold uppercase tracking-wider">{strings.lifecycleTrashed}</div>
+                <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{lifecycleCounts.trashed}</div>
+              </div>
+            </div>
+            <div className={`mt-3 border-t pt-3 ${t.borderLight}`}>
+              <div className="font-bold uppercase tracking-wider">{strings.dataActions}</div>
+              <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => downloadActorVaultExportSnapshot()}
-                  className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${t.borderActive} ${t.text} ${t.bgHover}`}
+                  className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider opacity-80 ${t.borderLight} ${t.text} ${t.bgHover} ${t.hoverBorder}`}
                 >
                   {strings.exportSnapshot}
                 </button>
-                <label className={`cursor-pointer border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${t.borderActive} ${t.text} ${t.bgHover}`}>
+                <label className={`cursor-pointer border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider opacity-80 ${t.borderLight} ${t.text} ${t.bgHover} ${t.hoverBorder}`}>
                   {strings.importPreview}
                   <input
                     type="file"
@@ -323,18 +368,6 @@ export function ActorVaultLibraryShell({
                 {strings.importPreviewNote}
               </p>
             </div>
-            <div>
-              <div className="font-bold uppercase tracking-wider">{strings.lifecycleActive}</div>
-              <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{lifecycleCounts.active}</div>
-            </div>
-            <div>
-              <div className="font-bold uppercase tracking-wider">{strings.lifecycleArchived}</div>
-              <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{lifecycleCounts.archived}</div>
-            </div>
-            <div>
-              <div className="font-bold uppercase tracking-wider">{strings.lifecycleTrashed}</div>
-              <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{lifecycleCounts.trashed}</div>
-            </div>
           </div>
         )}
 
@@ -342,11 +375,17 @@ export function ActorVaultLibraryShell({
           <ActorVaultImportPreviewPanel
             preview={importPreview}
             fileName={importPreviewFileName}
+            result={importResult}
+            isImporting={isImporting}
             strings={strings}
             colorTheme={t}
+            onSafeAppendImport={handleSafeAppendImport}
             onClear={() => {
               setImportPreview(null);
               setImportPreviewFileName('');
+              setImportPreviewText('');
+              setImportResult(null);
+              setIsImporting(false);
             }}
           />
         )}
@@ -464,14 +503,20 @@ export function ActorVaultLibraryShell({
 function ActorVaultImportPreviewPanel({
   preview,
   fileName,
+  result,
+  isImporting,
   strings,
   colorTheme: t,
+  onSafeAppendImport,
   onClear,
 }: {
   preview: ActorVaultImportPreview;
   fileName: string;
+  result: ActorVaultSafeAppendResult | null;
+  isImporting: boolean;
   strings: ActorVaultShellStrings;
   colorTheme: ActorVaultColorTheme;
+  onSafeAppendImport: () => void;
   onClear: () => void;
 }) {
   const systemSummary = [
@@ -486,6 +531,10 @@ function ActorVaultImportPreviewPanel({
   ].join(' / ');
   const visibleActors = preview.actors.slice(0, 6);
   const remainingActorCount = Math.max(0, preview.actors.length - visibleActors.length);
+  const safeAppendCount = preview.isValidSnapshot
+    ? preview.actors.filter((actor) => actor.conflict === 'none').length
+    : 0;
+  const canSafeAppend = preview.isValidSnapshot && safeAppendCount > 0 && !isImporting;
 
   return (
     <div className={`mb-3 border-b pb-3 ${t.borderLight}`}>
@@ -540,6 +589,56 @@ function ActorVaultImportPreviewPanel({
           {strings.importPreviewNoWrite}
         </p>
 
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={!canSafeAppend}
+            onClick={onSafeAppendImport}
+            className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${
+              canSafeAppend
+                ? `${t.border} ${t.bgAccent} ${t.textInvert}`
+                : `${t.borderLight} ${t.text} opacity-35`
+            }`}
+          >
+            {strings.safeAppendImport}
+          </button>
+          <span className={`text-[11px] leading-relaxed ${t.textMuted}`}>
+            {safeAppendCount > 0 ? strings.safeAppendImportNote : strings.noSafeAppendActors}
+          </span>
+        </div>
+
+        {result && (
+          <div className={`mt-3 border p-2 text-[11px] ${t.borderLight} ${t.textBody}`}>
+            <div className={`font-bold uppercase tracking-wider ${t.textMuted}`}>
+              {strings.importResultTitle}
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-4">
+              <ResultMetric label={strings.importResultImported} value={result.importedActors.length} />
+              <ResultMetric label={strings.importResultSkippedConflicts} value={result.skippedConflictCount} />
+              <ResultMetric label={strings.importResultSkippedUnsupported} value={result.skippedUnsupportedCount} />
+              <ResultMetric label={strings.importResultSkippedInvalid} value={result.skippedInvalidCount} />
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <div>
+                <div className={`font-bold uppercase tracking-wider ${t.textMuted}`}>
+                  {strings.importResultImportedSystems}
+                </div>
+                <div className="mt-1">
+                  DND {result.systemCounts['dnd5e-2024']} / COC {result.systemCounts.coc7e} / CP RED {result.systemCounts['cp-red']}
+                </div>
+              </div>
+              <div>
+                <div className={`font-bold uppercase tracking-wider ${t.textMuted}`}>
+                  {strings.importResultImportedLifecycle}
+                </div>
+                <div className="mt-1">
+                  {strings.lifecycleActive} {result.lifecycleCounts.active} / {strings.lifecycleArchived} {result.lifecycleCounts.archived} / {strings.lifecycleTrashed} {result.lifecycleCounts.trashed}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {(preview.errors.length > 0 || preview.warnings.length > 0) && (
           <div className={`mt-3 border p-2 text-[11px] ${t.borderLight} ${t.textBody}`}>
             <div className={`font-bold uppercase tracking-wider ${t.textMuted}`}>{strings.importPreviewWarnings}</div>
@@ -571,6 +670,15 @@ function ActorVaultImportPreviewPanel({
           <div className={`mt-2 text-[11px] ${t.textMuted}`}>+{remainingActorCount}</div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ResultMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <div className="font-bold uppercase tracking-wider opacity-65">{label}</div>
+      <div className="mt-1 text-base font-bold">{value}</div>
     </div>
   );
 }
@@ -779,8 +887,8 @@ function ActorVaultCard({
         )}
       </div>
 
-      {/* ── Enter CTA ── */}
-      <div className="flex flex-col justify-center gap-2 lg:w-40">
+      {/* ── Action groups ── */}
+      <div className="flex flex-col justify-center gap-3 lg:w-44">
         {campaignActorSelectContext && onSelectActorForCampaign && (
           <button
             type="button"
@@ -800,19 +908,17 @@ function ActorVaultCard({
             {strings.selectForCampaignLabel}
           </button>
         )}
-        {lifecycleStatus === 'active' && (
-          <button
-            type="button"
-            onClick={() => onEnterActor(summary.id)}
-            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${
-              campaignActorSelectContext
-                ? `${t.borderActive} ${t.text} ${t.bgHover}`
-                : `${t.border} ${t.bgAccent} ${t.textInvert}`
-            }`}
-          >
-            {strings.enterActorLabel}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => onEnterActor(summary.id)}
+          className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${
+            campaignActorSelectContext
+              ? `${t.borderActive} ${t.text} ${t.bgHover}`
+              : `${t.border} ${t.bgAccent} ${t.textInvert}`
+          }`}
+        >
+          {strings.enterActorLabel}
+        </button>
         {!campaignActorSelectContext && lifecycleStatus === 'active' && onRequestSelectCampaignForActor && (
           <button
             type="button"
@@ -827,50 +933,59 @@ function ActorVaultCard({
             {strings.selectCampaignLabel}
           </button>
         )}
-        {showLifecycleActions && lifecycleStatus === 'active' && (
-          <>
-            <button
-              type="button"
-              onClick={() => onArchiveActor?.(summary)}
-              className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${t.borderActive} ${t.text} ${t.bgHover}`}
-            >
-              {strings.archiveActor}
-            </button>
-            <button
-              type="button"
-              onClick={() => onTrashActor?.(summary)}
-              className="border border-red-700/40 px-4 py-2 text-xs font-bold uppercase tracking-wider text-red-700 hover:bg-red-700/10"
-            >
-              {strings.moveToTrash}
-            </button>
-          </>
-        )}
-        {showLifecycleActions && lifecycleStatus === 'archived' && (
-          <>
-            <button
-              type="button"
-              onClick={() => onRestoreActor?.(summary)}
-              className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${t.border} ${t.bgAccent} ${t.textInvert}`}
-            >
-              {strings.restoreActor}
-            </button>
-            <button
-              type="button"
-              onClick={() => onTrashActor?.(summary)}
-              className="border border-red-700/40 px-4 py-2 text-xs font-bold uppercase tracking-wider text-red-700 hover:bg-red-700/10"
-            >
-              {strings.moveToTrash}
-            </button>
-          </>
-        )}
-        {showLifecycleActions && lifecycleStatus === 'trashed' && (
-          <button
-            type="button"
-            onClick={() => onRestoreActor?.(summary)}
-            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${t.border} ${t.bgAccent} ${t.textInvert}`}
-          >
-            {strings.restoreActor}
-          </button>
+        {showLifecycleActions && (
+          <div className={`border-t pt-2 ${t.borderLight}`}>
+            <div className={`mb-1 text-[9px] font-bold uppercase tracking-wider ${t.textMuted} opacity-70`}>
+              {strings.managementActions}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              {lifecycleStatus === 'active' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onArchiveActor?.(summary)}
+                    className={`border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider opacity-75 ${t.borderLight} ${t.text} ${t.bgHover} ${t.hoverBorder}`}
+                  >
+                    {strings.archiveActor}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onTrashActor?.(summary)}
+                    className="border border-red-700/30 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700/80 hover:bg-red-700/10"
+                  >
+                    {strings.moveToTrash}
+                  </button>
+                </>
+              )}
+              {lifecycleStatus === 'archived' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onRestoreActor?.(summary)}
+                    className={`border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${t.borderActive} ${t.text} ${t.bgHover}`}
+                  >
+                    {strings.restoreActor}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onTrashActor?.(summary)}
+                    className="border border-red-700/30 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700/80 hover:bg-red-700/10"
+                  >
+                    {strings.moveToTrash}
+                  </button>
+                </>
+              )}
+              {lifecycleStatus === 'trashed' && (
+                <button
+                  type="button"
+                  onClick={() => onRestoreActor?.(summary)}
+                  className={`border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${t.borderActive} ${t.text} ${t.bgHover}`}
+                >
+                  {strings.restoreActor}
+                </button>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

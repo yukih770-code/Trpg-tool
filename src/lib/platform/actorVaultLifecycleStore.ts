@@ -166,6 +166,23 @@ export function getActorVaultLifecycleStatus(
   return useActorVaultLifecycleStore.getState().getActorLifecycleStatus(systemId, actorId);
 }
 
+export function importActorVaultLifecycleMetaForActor(
+  meta: ActorVaultLifecycleMeta,
+): ActorVaultLifecycleMeta {
+  const importedMeta: ActorVaultLifecycleMeta = {
+    ...meta,
+    updatedAt: meta.updatedAt || nowIso(),
+  };
+  useActorVaultLifecycleStore.setState((state) => ({
+    metas: state.metas.some((item) => isSameActorRef(item, meta.systemId, meta.actorId))
+      ? state.metas.map((item) =>
+          isSameActorRef(item, meta.systemId, meta.actorId) ? importedMeta : item,
+        )
+      : [...state.metas, importedMeta],
+  }));
+  return importedMeta;
+}
+
 function upsertLifecycleMeta(
   metas: ActorVaultLifecycleMeta[],
   systemId: ActorVaultSystemId,

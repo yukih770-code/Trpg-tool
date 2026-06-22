@@ -256,10 +256,12 @@ export type ActorVaultShellStrings = {
   archiveActor: string;
   restoreActor: string;
   moveToTrash: string;
+  managementActions: string;
   archivedActorNote: string;
   trashedActorNote: string;
   exportSnapshot: string;
   exportSnapshotNote: string;
+  dataActions: string;
   importPreview: string;
   importPreviewNote: string;
   importPreviewTitle: string;
@@ -275,4 +277,14 @@ export type ActorVaultShellStrings = {
   importPreviewNoWrite: string;
   importPreviewChooseFile: string;
   importPreviewClear: string;
+  safeAppendImport: string;
+  safeAppendImportNote: string;
+  noSafeAppendActors: string;
+  importResultTitle: string;
+  importResultImported: string;
+  importResultSkippedConflicts: string;
+  importResultSkippedUnsupported: string;
+  importResultSkippedInvalid: string;
+  importResultImportedSystems: string;
+  importResultImportedLifecycle: string;
 };
