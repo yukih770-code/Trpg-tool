@@ -15,6 +15,11 @@ import {
 } from './sheet/CharacterSheetSectionTabs';
 import { CharacterSheetPanel } from './sheet/CharacterSheetPanel';
 import { SheetNotesEditor } from './sheet/SheetNotesEditor';
+import { CharacterInventoryPanel } from './sheet/CharacterInventoryPanel';
+import { CharacterProfilePanel } from './sheet/CharacterProfilePanel';
+import { groupInventoryByLocation, makeInventoryItem } from '../lib/platform/characterInventory';
+import { makeCharacterProfileDraft, type CharacterProfileFieldSupport } from '../lib/platform/characterProfile';
+import { getDndCharacterSpellIndex } from '../lib/dnd2024/dndSpellAvailability';
 import { createTranslator, readStoredLocale } from '../i18n';
 import { CharacterCampaignCta, useCharacterCampaignCta } from '../components/platform/CharacterCampaignCta';
 
@@ -145,61 +150,59 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
   const preparedSpells = character.spellbook.prepared || [];
   const spellSlotEntries = Object.entries(character.spellbook.slots || {})
     .sort(([a], [b]) => Number(a) - Number(b));
+  const spellAvailability = getDndCharacterSpellIndex({
+    className: character.jobClass,
+    classLevel: character.level,
+    subclassName: character.subclass,
+    knownSpellIds: character.spellbook.known.map((spell) => spell.id ?? spell.name_en ?? spell.name_cn),
+    preparedSpellIds: preparedSpells,
+    availableSpellLevels: [0, ...spellSlotEntries.map(([level]) => Number(level))],
+  });
   const inventoryItems = character.inventory || [];
   const hasClassResources = character.classResources.length > 0 || Boolean(character.pactMagicState);
   const compactPanelClass = 'rounded-lg border border-[#58180d]/15 bg-white/55 p-3 shadow-sm';
   const compactTitleClass = 'mb-2 border-b border-[#58180d]/12 pb-1 text-[11px] font-black uppercase tracking-[0.16em] text-[#58180d]';
 
+  // Profile / inventory view-models (display only; no store schema change).
+  const dndProfile = makeCharacterProfileDraft({
+    systemId: 'dnd5e-2024',
+    actorId: character.id ?? 'dnd-actor',
+    displayName: character.name || 'Unnamed',
+    biography: character.description,
+  });
+  const dndProfileSupport: CharacterProfileFieldSupport = {
+    appearance: false,
+    biography: true,
+    notes: false,
+    avatarPersistence: false,
+  };
+  const dndInventoryGroups = groupInventoryByLocation([
+    ...inventoryItems.map((item) =>
+      makeInventoryItem({ systemId: 'dnd5e-2024', name: item, category: 'gear', location: 'backpack' }),
+    ),
+    ...(character.coin
+      ? [makeInventoryItem({ systemId: 'dnd5e-2024', name: `${character.coin} gp`, category: 'currency', location: 'carried' })]
+      : []),
+  ]);
+
   return (
     <div className="space-y-4 text-[#2c1810]">
       {/* AI-LANDMARK: DND_SHEET_LAYOUT_COMPACT_V1 */}
-      <header className="border-b-2 border-[#58180d]/70 pb-3">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#58180d]/70">
-              DND 5e 2024 · {t('dndSheet.compact.characterSheet')}
-            </div>
-            <h2 className="mt-1 break-words text-3xl font-black uppercase tracking-tight text-[#2c1810] md:text-4xl">
-              {character.name || 'Unnamed'}
-            </h2>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-sans text-[#2c1810]/75">
-              <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.class')}:</strong> {character.jobClass} {character.subclass || ''} · L{character.level}</span>
-              <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.species')}:</strong> {character.race || '-'} {character.subrace || ''}</span>
-              <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.background')}:</strong> {character.background || '-'}</span>
-              <span><strong className="text-[#58180d]">{t('dndSheet.compact.genderAge')}:</strong> {character.gender || '-'} / {character.age || '-'}</span>
-            </div>
-          </div>
-          {onStartPlaying && (
-            <button
-              type="button"
-              onClick={onStartPlaying}
-              className="w-full border-2 border-[#58180d] bg-[#58180d] px-4 py-2 text-center text-[#fdf6e3] transition hover:bg-[#2c1810] lg:w-56"
-            >
-              <span className="block text-[11px] font-bold uppercase tracking-[0.18em] opacity-80">{t('dndSheet.compact.startPlaying')}</span>
-              <span className="block text-sm font-black uppercase tracking-wider">{t('dndSheet.compact.enterCombatPanel')}</span>
-            </button>
-          )}
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-[#58180d]/40 pb-2">
+        <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#58180d]/70">
+          DND 5e 2024 · {t('dndSheet.compact.characterSheet')}
         </div>
-        {campaignCta && <CharacterCampaignCta {...campaignCta} className="mt-3" />}
+        {onStartPlaying && (
+          <button
+            type="button"
+            onClick={onStartPlaying}
+            className="border-2 border-[#58180d] bg-[#58180d] px-4 py-1.5 text-center text-[#fdf6e3] transition hover:bg-[#2c1810]"
+          >
+            <span className="block text-sm font-black uppercase tracking-wider">{t('dndSheet.compact.startPlaying')}</span>
+          </button>
+        )}
       </header>
-
-      <section className="grid grid-cols-2 gap-2 md:grid-cols-5">
-        {[
-          { label: 'HP', sub: t('dndSheet.compact.hitPoints'), value: `${character.hpCurrent} / ${character.hpMax}` },
-          { label: 'AC', sub: t('dndSheet.compact.armorClass'), value: acTotal },
-          { label: 'INIT', sub: t('dndSheet.compact.initiative'), value: formatMod(initiative) },
-          { label: 'SPD', sub: t('dndSheet.compact.speed'), value: `${character.speed}ft` },
-          { label: 'PB', sub: t('dndSheet.compact.profBonus'), value: `+${profBonus}` },
-        ].map((stat) => (
-          <div key={stat.label} className="rounded-md border border-[#58180d]/25 bg-white/75 px-3 py-2 shadow-sm">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-black uppercase tracking-wider text-[#58180d]">{stat.label}</span>
-              <span className="text-[10px] text-[#58180d]/55">{stat.sub}</span>
-            </div>
-            <div className="mt-1 text-2xl font-black leading-none">{stat.value}</div>
-          </div>
-        ))}
-      </section>
+      {campaignCta && <CharacterCampaignCta {...campaignCta} />}
 
       <CharacterSheetSectionTabs
         sections={DND_SHEET_SECTIONS}
@@ -212,6 +215,35 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
       />
 
       {sheetSection === 'overview' && (
+      <div className="space-y-3">
+        <div className="min-w-0">
+          <h2 className="break-words text-3xl font-black uppercase tracking-tight text-[#2c1810] md:text-4xl">
+            {character.name || 'Unnamed'}
+          </h2>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-sans text-[#2c1810]/75">
+            <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.class')}:</strong> {character.jobClass} {character.subclass || ''} · L{character.level}</span>
+            <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.species')}:</strong> {character.race || '-'} {character.subrace || ''}</span>
+            <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.background')}:</strong> {character.background || '-'}</span>
+            <span><strong className="text-[#58180d]">{t('dndSheet.compact.genderAge')}:</strong> {character.gender || '-'} / {character.age || '-'}</span>
+          </div>
+        </div>
+        <section className="grid grid-cols-2 gap-2 md:grid-cols-5">
+          {[
+            { label: 'HP', sub: t('dndSheet.compact.hitPoints'), value: `${character.hpCurrent} / ${character.hpMax}` },
+            { label: 'AC', sub: t('dndSheet.compact.armorClass'), value: acTotal },
+            { label: 'INIT', sub: t('dndSheet.compact.initiative'), value: formatMod(initiative) },
+            { label: 'SPD', sub: t('dndSheet.compact.speed'), value: `${character.speed}ft` },
+            { label: 'PB', sub: t('dndSheet.compact.profBonus'), value: `+${profBonus}` },
+          ].map((stat) => (
+            <div key={stat.label} className="rounded-md border border-[#58180d]/25 bg-white/75 px-3 py-2 shadow-sm">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#58180d]">{stat.label}</span>
+                <span className="text-[10px] text-[#58180d]/55">{stat.sub}</span>
+              </div>
+              <div className="mt-1 text-2xl font-black leading-none">{stat.value}</div>
+            </div>
+          ))}
+        </section>
       <main className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(16rem,0.85fr)_minmax(22rem,1.1fr)_minmax(20rem,1fr)]">
         <section className="space-y-3">
           <div className={compactPanelClass}>
@@ -287,6 +319,7 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
           </div>
         </section>
       </main>
+      </div>
       )}
 
       {sheetSection === 'features' && (
@@ -397,47 +430,6 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
         </section>
 
         <aside className="space-y-3">
-          <div className={compactPanelClass}>
-            <h3 className={compactTitleClass}>{t('dndSheet.compact.attacksEquipment')}</h3>
-            <div className="space-y-2 text-xs font-sans">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="border border-[#58180d]/20 bg-[#ede1c5]/40 p-2">
-                  <div className="text-[10px] font-bold uppercase text-[#58180d]/70">{t('dndSheet.compact.hitDice')}</div>
-                  <div className="font-black">{character.hitDiceCurrent}d{character.jobClass === '野蛮人' ? '12' : character.jobClass === '护法' ? '10' : character.jobClass === '吟游诗人' ? '8' : '8'}</div>
-                </div>
-                <div className="border border-[#58180d]/20 bg-[#ede1c5]/40 p-2">
-                  <div className="text-[10px] font-bold uppercase text-[#58180d]/70">{t('dndSheet.compact.coin')}</div>
-                  <div className="font-black">{character.coin || 0} gp</div>
-                </div>
-              </div>
-              <p><strong className="text-[#58180d]">{t('dndSheet.compact.inventorySummary')}:</strong> {inventoryItems.length > 0 ? inventoryItems.slice(0, 3).join(' / ') : t('dndSheet.compact.none')}</p>
-              {inventoryItems.length > 3 && <p className="text-[11px] text-[#58180d]/65">+{inventoryItems.length - 3} more</p>}
-              <p className="border border-dashed border-[#58180d]/25 bg-[#ede1c5]/30 p-2 text-[11px] text-[#58180d]/70">{t('dndSheet.compact.equipmentDeferred')}</p>
-            </div>
-          </div>
-
-          <div className={compactPanelClass}>
-            <h3 className={compactTitleClass}>{t('dndSheet.compact.spellSummary')}</h3>
-            <div className="space-y-2 text-xs font-sans">
-              {preparedSpells.length > 0 ? (
-                <p><strong className="text-[#58180d]">{t('dndSheet.compact.preparedSpells')}:</strong> {preparedSpells.slice(0, 5).join(', ')}{preparedSpells.length > 5 ? ` +${preparedSpells.length - 5}` : ''}</p>
-              ) : (
-                <p className="italic text-[#58180d]/65">{t('dndSheet.compact.noPreparedSpells')}</p>
-              )}
-              {spellSlotEntries.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
-                  {spellSlotEntries.map(([level, slot]) => (
-                    <span key={level} className="border border-[#58180d]/30 bg-white/50 px-2 py-1 text-[11px] font-bold">
-                      L{level}: {slot.current}/{slot.max}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[11px] text-[#58180d]/65">{t('dndSheet.compact.noSpellSlots')}</p>
-              )}
-            </div>
-          </div>
-
           <div className={compactPanelClass}>
           <div className="mb-2 flex items-center justify-between gap-2 border-b border-[#58180d]/25 pb-1">
             <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-[#58180d]">{t('dndSheet.compact.classResources')}</h3>
@@ -590,44 +582,89 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
       )}
 
       {sheetSection === 'equipment' && (
-        <section>
+        <section className="space-y-3">
+          <div className={compactPanelClass}>
+            <h3 className={compactTitleClass}>{t('dndSheet.compact.attacksEquipment')}</h3>
+            <div className="space-y-2 text-xs font-sans">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="border border-[#58180d]/20 bg-[#ede1c5]/40 p-2">
+                  <div className="text-[10px] font-bold uppercase text-[#58180d]/70">{t('dndSheet.compact.hitDice')}</div>
+                  <div className="font-black">{character.hitDiceCurrent}d{character.jobClass === '野蛮人' ? '12' : character.jobClass === '护法' ? '10' : character.jobClass === '吟游诗人' ? '8' : '8'}</div>
+                </div>
+                <div className="border border-[#58180d]/20 bg-[#ede1c5]/40 p-2">
+                  <div className="text-[10px] font-bold uppercase text-[#58180d]/70">{t('dndSheet.compact.coin')}</div>
+                  <div className="font-black">{character.coin || 0} gp</div>
+                </div>
+              </div>
+              <p><strong className="text-[#58180d]">{t('dndSheet.compact.inventorySummary')}:</strong> {inventoryItems.length > 0 ? inventoryItems.slice(0, 3).join(' / ') : t('dndSheet.compact.none')}</p>
+              {inventoryItems.length > 3 && <p className="text-[11px] text-[#58180d]/65">+{inventoryItems.length - 3} more</p>}
+              <p className="border border-dashed border-[#58180d]/25 bg-[#ede1c5]/30 p-2 text-[11px] text-[#58180d]/70">{t('dndSheet.compact.equipmentDeferred')}</p>
+            </div>
+          </div>
+          <CharacterInventoryPanel
+            title="背包与已装备 Backpack & Equipped"
+            groups={dndInventoryGroups}
+            emptyText="暂无背包物品。Empty backpack."
+            className="border-[#58180d]/20 bg-white/45 text-[#2c1810]"
+            headerClassName="text-[#58180d]"
+            groupHeaderClassName="text-[#58180d]"
+            chipClassName="bg-[#58180d]/10 text-[#58180d]/80"
+          />
           <DndEquipmentCatalogPanel />
         </section>
       )}
 
       {sheetSection === 'spellbook' && (
-        <section>
-          <DndSpellIndexSearchPanel />
+        <section className="space-y-3">
+          <div className={compactPanelClass}>
+            <h3 className={compactTitleClass}>{t('dndSheet.compact.spellSummary')}</h3>
+            <div className="space-y-2 text-xs font-sans">
+              {preparedSpells.length > 0 ? (
+                <p><strong className="text-[#58180d]">{t('dndSheet.compact.preparedSpells')}:</strong> {preparedSpells.slice(0, 5).join(', ')}{preparedSpells.length > 5 ? ` +${preparedSpells.length - 5}` : ''}</p>
+              ) : (
+                <p className="italic text-[#58180d]/65">{t('dndSheet.compact.noPreparedSpells')}</p>
+              )}
+              {spellSlotEntries.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {spellSlotEntries.map(([level, slot]) => (
+                    <span key={level} className="border border-[#58180d]/30 bg-white/50 px-2 py-1 text-[11px] font-bold">
+                      L{level}: {slot.current}/{slot.max}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-[#58180d]/65">{t('dndSheet.compact.noSpellSlots')}</p>
+              )}
+            </div>
+          </div>
+          <DndSpellIndexSearchPanel
+            entries={spellAvailability.characterSpellIndex}
+            availabilityReason={spellAvailability.reason}
+            limitations={spellAvailability.limitations}
+          />
         </section>
       )}
 
       {sheetSection === 'notes' && (
-      <CharacterSheetPanel
-        eyebrow="DND 5e 2024"
-        title={t('dndSheet.compact.characterDetails')}
-        className="border-[#58180d]/20 bg-[#f3e7c9]/45 text-[#2c1810]"
-        headerClassName="text-[#58180d]"
-      >
-        <div className="space-y-3 font-serif">
-          <SheetNotesEditor
-            title="生平与描述 Background & Description"
-            value={character.description ?? ''}
-            onSave={(next) => updateField('description', next)}
-            emptyText="一位尚未留下传说的冒险者..."
-            accentClassName="text-[#58180d]"
-            textClassName="text-[#2c1810]/90"
-            textareaClassName="w-full resize-y rounded border border-[#58180d]/25 bg-white/60 px-3 py-2 text-sm outline-none text-[#2c1810]"
-          />
-          {character.activeMods && character.activeMods.length > 0 && (
-            <div className="text-xs italic text-[#58180d]/70">
-              * 织网者低语：命运之线已纠缠——此人承载了 <strong>[{character.activeMods.join(', ')}]</strong> 的异世法则。
-            </div>
-          )}
-          <blockquote className="border-l-2 border-[#58180d]/40 bg-white/35 px-3 py-2 text-sm italic leading-relaxed text-[#2c1810]/75">
-            "在这片充满未知的费伦大陆上，众神掷下的不仅是命运的骰子。你的故事，可能成为吟游诗人口中传唱千年的史诗，也可能只是酒馆角落里的一声叹息... 愿知识指引你，冒险者。"
-          </blockquote>
-        </div>
-      </CharacterSheetPanel>
+      <div className="space-y-3">
+        <CharacterProfilePanel
+          profile={dndProfile}
+          support={dndProfileSupport}
+          eyebrow="DND 5e 2024"
+          title="角色档案 Profile"
+          className="border-[#58180d]/20 bg-[#f3e7c9]/45 text-[#2c1810]"
+          headerClassName="text-[#58180d]"
+          accentClassName="text-[#58180d]/70"
+          textClassName="text-[#2c1810]/90"
+          onSaveBiography={(next) => updateField('description', next)}
+          textareaClassName="w-full resize-y rounded border border-[#58180d]/25 bg-white/60 px-3 py-2 text-sm outline-none text-[#2c1810]"
+        />
+        {character.activeMods && character.activeMods.length > 0 && (
+          <div className="rounded-lg border border-[#58180d]/20 bg-[#f3e7c9]/45 p-3 text-xs italic text-[#58180d]/70">
+            * 织网者低语：命运之线已纠缠——此人承载了 <strong>[{character.activeMods.join(', ')}]</strong> 的异世法则。
+          </div>
+        )}
+      </div>
       )}
     </div>
   );

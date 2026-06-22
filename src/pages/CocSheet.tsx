@@ -6,12 +6,17 @@ import {
   CharacterSheetSectionTabs,
   type CharacterSheetSectionDefinition,
 } from './sheet/CharacterSheetSectionTabs';
+import { CharacterInventoryPanel } from './sheet/CharacterInventoryPanel';
+import { CharacterProfilePanel } from './sheet/CharacterProfilePanel';
+import { groupInventoryByLocation, makeInventoryItem } from '../lib/platform/characterInventory';
+import { makeCharacterProfileDraft, type CharacterProfileFieldSupport } from '../lib/platform/characterProfile';
 import { CharacterCampaignCta, useCharacterCampaignCta } from '../components/platform/CharacterCampaignCta';
 
 // Static investigator-sheet sections (display / downtime only; no runtime checks).
-// Skills currently remain inside Overview; weapons/gear live under Notes.
 const COC_SHEET_SECTIONS: CharacterSheetSectionDefinition[] = [
   { id: 'overview', label: '概览 Overview' },
+  { id: 'skills', label: '技能 Skills' },
+  { id: 'combat-gear', label: '战斗与装备 Combat & Gear' },
   { id: 'background', label: '背景 Background' },
   { id: 'notes', label: '记录 Notes' },
 ];
@@ -48,9 +53,40 @@ export function CocSheet() {
     );
   };
 
+  const cocInventoryGroups = groupInventoryByLocation([
+    ...(character.weapons ?? []).map((weapon) =>
+      makeInventoryItem({
+        systemId: 'coc7e',
+        name: weapon.name,
+        category: 'weapon',
+        location: 'carried',
+        notes: [weapon.damage, weapon.range].filter(Boolean).join(' · '),
+      }),
+    ),
+    ...character.inventory.filter(Boolean).map((item) =>
+      makeInventoryItem({ systemId: 'coc7e', name: item, category: 'gear', location: 'backpack' }),
+    ),
+  ]);
+  const cocProfile = makeCharacterProfileDraft({
+    systemId: 'coc7e',
+    actorId: character.id ?? 'coc-actor',
+    displayName: character.name || '未命名',
+    appearanceDescription: character.backstory?.personalDescription,
+  });
+  const cocProfileSupport: CharacterProfileFieldSupport = {
+    appearance: true,
+    biography: false,
+    notes: false,
+    avatarPersistence: false,
+  };
+
   return (
     <div className="space-y-6 text-[#d4d4d8] font-serif">
-      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#059669]/40 pb-2">
+        <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#059669]/70">COC 7E · 调查员档案 Investigator File</div>
+      </div>
+
+      {sheetSection === 'overview' && (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 border-b border-[#059669]/50 pb-6">
         <div className="md:col-span-1 border border-[#059669] p-4 bg-[#111]">
            <h2 className="text-3xl font-bold uppercase tracking-tighter text-[#059669] mb-2">{character.name || '未命名'}</h2>
@@ -83,6 +119,7 @@ export function CocSheet() {
            </div>
         </div>
       </div>
+      )}
       {campaignCta && <CharacterCampaignCta {...campaignCta} />}
 
       <CharacterSheetSectionTabs
@@ -146,8 +183,11 @@ export function CocSheet() {
           </div>
         </div>
 
-        {/* Right Column: Skills */}
-        <div className="md:col-span-9 border border-[#059669]/30 bg-[#111] p-4 text-[#d4d4d8]">
+      </div>
+      )}
+
+      {sheetSection === 'skills' && (
+        <div className="border border-[#059669]/30 bg-[#111] p-4 text-[#d4d4d8]">
            <h3 className="text-[#059669] font-bold uppercase tracking-widest mb-4 border-b border-[#059669]/30 pb-2">调查员技能 (Investigator Skills)</h3>
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
              {[...character.skills].sort((a,b) => a.name.localeCompare(b.name)).map(skill => (
@@ -183,7 +223,33 @@ export function CocSheet() {
              ))}
            </div>
         </div>
-      </div>
+      )}
+
+      {sheetSection === 'combat-gear' && (
+        <CharacterInventoryPanel
+          title="武器与背包 Weapons & Backpack"
+          groups={cocInventoryGroups}
+          emptyText="暂无武器或物品。武器 / 物品在创建 / 游玩中维护。"
+          className="border-[#059669]/30 bg-[#111] text-[#d4d4d8]"
+          headerClassName="text-[#059669]"
+          groupHeaderClassName="text-[#059669]"
+          chipClassName="bg-[#059669]/15 text-[#059669]"
+        />
+      )}
+
+      {sheetSection === 'background' && (
+        <CharacterProfilePanel
+          profile={cocProfile}
+          support={cocProfileSupport}
+          eyebrow="COC 7E"
+          title="调查员档案 Profile"
+          className="border-[#059669]/30 bg-[#111] text-[#d4d4d8]"
+          headerClassName="text-[#059669]"
+          accentClassName="text-[#059669]"
+          textClassName="text-[#d4d4d8]/90"
+          onSaveAppearance={(next) => updateField('backstory', { ...character.backstory, personalDescription: next })}
+          textareaClassName="w-full resize-y rounded border border-[#059669]/25 bg-[#1a1a1a] px-3 py-2 text-sm text-[#d4d4d8] outline-none"
+        />
       )}
 
       {/* Backstory & Inventory Section */}

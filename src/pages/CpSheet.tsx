@@ -5,6 +5,10 @@ import {
   CharacterSheetSectionTabs,
   type CharacterSheetSectionDefinition,
 } from './sheet/CharacterSheetSectionTabs';
+import { CharacterInventoryPanel } from './sheet/CharacterInventoryPanel';
+import { CharacterProfilePanel } from './sheet/CharacterProfilePanel';
+import { groupInventoryByLocation, makeInventoryItem } from '../lib/platform/characterInventory';
+import { makeCharacterProfileDraft, type CharacterProfileFieldSupport } from '../lib/platform/characterProfile';
 import { toast } from 'sonner';
 
 // Static edgerunner-sheet sections (display / downtime only; no runtime actions).
@@ -58,10 +62,39 @@ export function CpSheet() {
   const roleAbility = CP_ROLE_ABILITIES[character.role];
   const [sheetSection, setSheetSection] = useState<string>('overview');
 
+  const cpInventoryGroups = groupInventoryByLocation([
+    ...weapons.map((w) => makeInventoryItem({ systemId: 'cp-red', name: w.name, category: 'weapon', location: 'carried', notes: w.damage })),
+    ...[armorHead, armorBody].filter((a): a is CpArmor => Boolean(a)).map((a) => makeInventoryItem({ systemId: 'cp-red', name: a.name, category: 'armor', location: 'worn' })),
+    ...cyberware.map((c) => makeInventoryItem({ systemId: 'cp-red', name: c.name, category: 'cyberware', location: 'installed' })),
+    ...clothing.map((c) => makeInventoryItem({ systemId: 'cp-red', name: c.name, category: 'fashion', location: 'worn' })),
+    ...character.inventory.weapons.map((w) => makeInventoryItem({ systemId: 'cp-red', name: w.name, category: 'weapon', location: 'backpack' })),
+    ...character.inventory.armor.map((a) => makeInventoryItem({ systemId: 'cp-red', name: a.name, category: 'armor', location: 'backpack' })),
+    ...character.inventory.cyberware.map((c) => makeInventoryItem({ systemId: 'cp-red', name: c.name, category: 'cyberware', location: 'backpack' })),
+    ...character.inventory.fashion.map((f) => makeInventoryItem({ systemId: 'cp-red', name: f.name, category: 'fashion', location: 'backpack' })),
+    ...character.inventory.gear.map((g) => makeInventoryItem({ systemId: 'cp-red', name: g.name, category: 'gear', location: 'backpack' })),
+  ]);
+  const cpProfile = makeCharacterProfileDraft({
+    systemId: 'cp-red',
+    actorId: character.id ?? 'cp-actor',
+    displayName: character.name || '— UNKNOWN —',
+    notes: character.notes,
+  });
+  const cpProfileSupport: CharacterProfileFieldSupport = {
+    appearance: false,
+    biography: false,
+    notes: true,
+    avatarPersistence: false,
+  };
+
   return (
     <div className="space-y-5 text-[#d4d4d8] font-mono">
 
-      {/* ── Header ─────────────────────────────────────── */}
+      <div className={`flex flex-wrap items-center justify-between gap-3 border-b ${T.border} pb-2`}>
+        <div className="font-cp-title text-[10px] uppercase tracking-[0.18em] text-[#d8b954]/70">CP RED · Edgerunner 档案</div>
+      </div>
+
+      {/* ── Header (Overview only) ───────────────────────── */}
+      {sheetSection === 'overview' && (
       <div className={`grid grid-cols-1 md:grid-cols-3 gap-3 border-b ${T.border} pb-4`}>
         <div className="cp-panel hud-panel-gold hud-panel p-4">
           <h2 className="font-cp-title text-2xl neon-gold uppercase leading-tight mb-1">
@@ -92,6 +125,7 @@ export function CpSheet() {
           ))}
         </div>
       </div>
+      )}
 
       <CharacterSheetSectionTabs
         sections={CP_SHEET_SECTIONS}
@@ -177,6 +211,19 @@ export function CpSheet() {
           })}
         </div>
       </div>
+      )}
+
+      {/* ── Inventory / backpack overview ────────────────── */}
+      {sheetSection === 'gear' && (
+        <CharacterInventoryPanel
+          title="背包与已装备 Backpack & Equipped"
+          groups={cpInventoryGroups}
+          emptyText="暂无装备 / 义体 / 物品。"
+          className="border-[#d8b954]/20 bg-[#111] text-[#d4d4d8]"
+          headerClassName="text-[#f5c518]"
+          groupHeaderClassName="text-[#f5c518]"
+          chipClassName="bg-[#d8b954]/15 text-[#f5c518]"
+        />
       )}
 
       {/* ── Equipment row ───────────────────────────────── */}
@@ -285,6 +332,22 @@ export function CpSheet() {
         addEnemy={addEnemy} removeEnemy={removeEnemy}
         T={T}
       />
+      )}
+
+      {/* Profile (avatar / appearance / notes) */}
+      {sheetSection === 'notes' && (
+        <CharacterProfilePanel
+          profile={cpProfile}
+          support={cpProfileSupport}
+          eyebrow="CP RED"
+          title="Edgerunner 档案 Profile"
+          className="border-[#d8b954]/20 bg-[#111] text-[#d4d4d8]"
+          headerClassName="text-[#f5c518]"
+          accentClassName="text-[#f5c518]"
+          textClassName="text-[#d4d4d8]/90"
+          onSaveNotes={(next) => updateField('notes', next)}
+          textareaClassName="w-full resize-y rounded border border-[#d8b954]/25 bg-black/40 px-3 py-2 text-sm text-[#d4d4d8] outline-none"
+        />
       )}
 
       {/* Notes */}
