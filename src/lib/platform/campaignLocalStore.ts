@@ -37,12 +37,11 @@ export interface CreateLocalCampaignInput {
   systemId: LocalCampaignSystemId;
   title: string;
   description?: string;
-  roomCode?: string;
   status?: LocalCampaignStatus;
 }
 
 export type UpdateLocalCampaignPatch = Partial<
-  Pick<LocalCampaign, 'title' | 'description' | 'roomCode' | 'status'>
+  Pick<LocalCampaign, 'title' | 'description' | 'status'>
 >;
 
 export interface ListCampaignsOptions {
@@ -94,19 +93,48 @@ function makeCampaignId(): string {
   return `campaign-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function makeCampaignRoomCode(existingCampaigns: LocalCampaign[]): string {
+  const existingCodes = new Set(
+    existingCampaigns
+      .map((campaign) => campaign.roomCode?.trim().toUpperCase())
+      .filter((code): code is string => Boolean(code)),
+  );
+
+  for (let attempt = 0; attempt < 32; attempt += 1) {
+    const code = randomRoomCode();
+    if (!existingCodes.has(code)) return code;
+  }
+
+  let suffix = existingCampaigns.length + 1;
+  while (existingCodes.has(`C${String(suffix).padStart(5, '0')}`)) {
+    suffix += 1;
+  }
+  return `C${String(suffix).padStart(5, '0')}`;
+}
+
+function randomRoomCode(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i += 1) {
+    const index = Math.floor(Math.random() * alphabet.length);
+    code += alphabet[index];
+  }
+  return code;
+}
+
 function normalizeTitle(title: string): string {
   const trimmed = title.trim();
   return trimmed || 'Untitled Campaign';
 }
 
-function createLocalCampaign(input: CreateLocalCampaignInput): LocalCampaign {
+function createLocalCampaign(input: CreateLocalCampaignInput, existingCampaigns: LocalCampaign[]): LocalCampaign {
   const timestamp = nowIso();
   return {
     id: makeCampaignId(),
     systemId: input.systemId,
     title: normalizeTitle(input.title),
     description: input.description,
-    roomCode: input.roomCode,
+    roomCode: makeCampaignRoomCode(existingCampaigns),
     status: input.status ?? 'draft',
     lifecycleStatus: 'active',
     createdAt: timestamp,
@@ -169,7 +197,7 @@ export const useCampaignLocalStore = create<CampaignLocalStoreState>()(
         get().campaigns.find((campaign) => campaign.id === id),
 
       createCampaign: (input) => {
-        const campaign = createLocalCampaign(input);
+        const campaign = createLocalCampaign(input, get().campaigns);
         set((state) => ({
           campaigns: [...state.campaigns, campaign],
         }));

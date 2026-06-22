@@ -1727,7 +1727,9 @@ export const en = {
       addNote: 'Enter the add flow first, then choose standard creation, quick creation, or import. Standard creation saves a local campaign draft.',
       openMine: 'My Campaigns',
       viewDetail: 'View Detail',
-      edit: 'Edit',
+      edit: 'Edit ▾',
+      collapseEdit: 'Collapse Edit ▴',
+      copyRoomCode: 'Copy Room Code',
       save: 'Save',
       cancel: 'Cancel',
       activate: 'Set Active',
@@ -1766,6 +1768,7 @@ export const en = {
     edit: {
       title: 'Edit Campaign',
       lifecycleNote: 'Business status is separate from lifecycle. Use Archive, Restore, or Move to Trash for lifecycle changes.',
+      generatedMissingRoomCode: 'Legacy campaign has no generated room code yet',
       fields: {
         title: 'Title',
         description: 'Description',

@@ -27,7 +27,6 @@ type CampaignLifecycleFilter = Extract<LocalCampaignLifecycleStatus, 'active' | 
 type CampaignEditDraft = {
   title: string;
   description: string;
-  roomCode: string;
   status: LocalCampaignStatus;
 };
 
@@ -134,7 +133,6 @@ export function CampaignLibraryShell({
   const [campaignEditDraft, setCampaignEditDraft] = useState<CampaignEditDraft>({
     title: '',
     description: '',
-    roomCode: '',
     status: 'draft',
   });
   const theme = toneClasses[tone];
@@ -395,11 +393,14 @@ export function CampaignLibraryShell({
   };
 
   const startEditingCampaign = (campaign: LocalCampaign) => {
+    if (editingCampaignId === campaign.id) {
+      cancelEditingCampaign();
+      return;
+    }
     setEditingCampaignId(campaign.id);
     setCampaignEditDraft({
       title: campaign.title,
       description: campaign.description ?? '',
-      roomCode: campaign.roomCode ?? '',
       status: campaign.status,
     });
   };
@@ -409,7 +410,6 @@ export function CampaignLibraryShell({
     setCampaignEditDraft({
       title: '',
       description: '',
-      roomCode: '',
       status: 'draft',
     });
   };
@@ -420,7 +420,6 @@ export function CampaignLibraryShell({
     updateCampaign(editingCampaignId, {
       title: campaignEditDraft.title,
       description: campaignEditDraft.description.trim() || undefined,
-      roomCode: campaignEditDraft.roomCode.trim() || undefined,
       status: campaignEditDraft.status,
     });
     cancelEditingCampaign();
@@ -451,6 +450,12 @@ export function CampaignLibraryShell({
 
   const handleExportCampaignSnapshot = () => {
     downloadCampaignLibraryExportSnapshot();
+  };
+
+  const handleCopyCampaignRoomCode = (roomCode?: string) => {
+    const code = roomCode?.trim();
+    if (!code || typeof navigator === 'undefined' || !navigator.clipboard) return;
+    void navigator.clipboard.writeText(code);
   };
 
   const showAddFlow = (mode === 'create' || libraryMode === 'add') && libraryMode !== 'detail';
@@ -638,6 +643,7 @@ export function CampaignLibraryShell({
                   onCancelEdit={cancelEditingCampaign}
                   onSubmitEdit={saveEditingCampaign}
                   onEditDraftChange={setCampaignEditDraft}
+                  onCopyRoomCode={() => handleCopyCampaignRoomCode(campaign.roomCode)}
                 />
               </div>
             ))
@@ -702,6 +708,7 @@ function CampaignCard({
   onCancelEdit,
   onSubmitEdit,
   onEditDraftChange,
+  onCopyRoomCode,
 }: {
   campaign: LocalCampaign;
   editDraft: CampaignEditDraft | null;
@@ -719,6 +726,7 @@ function CampaignCard({
   onCancelEdit: () => void;
   onSubmitEdit: (event: FormEvent<HTMLFormElement>) => void;
   onEditDraftChange: (draft: CampaignEditDraft) => void;
+  onCopyRoomCode: () => void;
 }) {
   const isEditing = Boolean(editDraft);
   const canManage = !canSelect;
@@ -775,10 +783,20 @@ function CampaignCard({
         {canManage && campaign.lifecycleStatus === 'active' && (
           <button
             type="button"
+            aria-expanded={isEditing}
             onClick={onStartEdit}
             className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
           >
-            {t('campaignLibrary.actions.edit')}
+            {t(isEditing ? 'campaignLibrary.actions.collapseEdit' : 'campaignLibrary.actions.edit')}
+          </button>
+        )}
+        {campaign.roomCode && (
+          <button
+            type="button"
+            onClick={onCopyRoomCode}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+          >
+            {t('campaignLibrary.actions.copyRoomCode')}
           </button>
         )}
         {canManage && campaign.lifecycleStatus === 'active' && campaign.status !== 'active' && (
@@ -834,11 +852,23 @@ function CampaignCard({
             </label>
             <label className="text-xs font-bold">
               <span className={theme.muted}>{t('campaignLibrary.edit.fields.roomCode')}</span>
-              <input
-                value={editDraft.roomCode}
-                onChange={(event) => onEditDraftChange({ ...editDraft, roomCode: event.target.value })}
-                className="mt-1 w-full border bg-transparent px-3 py-2 text-sm"
-              />
+              <div className="mt-1 flex flex-wrap gap-2">
+                <input
+                  value={campaign.roomCode ?? t('campaignLibrary.edit.generatedMissingRoomCode')}
+                  readOnly
+                  aria-readonly="true"
+                  className="min-w-0 flex-1 border bg-transparent px-3 py-2 text-sm opacity-75"
+                />
+                {campaign.roomCode && (
+                  <button
+                    type="button"
+                    onClick={onCopyRoomCode}
+                    className={`border px-3 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+                  >
+                    {t('campaignLibrary.actions.copyRoomCode')}
+                  </button>
+                )}
+              </div>
             </label>
             <label className="text-xs font-bold md:col-span-2">
               <span className={theme.muted}>{t('campaignLibrary.edit.fields.description')}</span>

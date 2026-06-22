@@ -1727,7 +1727,9 @@ export const zhCN = {
       addNote: '进入添加流程后再选择标准创建、快速创建或导入。标准创建会保存为本地战役草稿。',
       openMine: '我的战役',
       viewDetail: '查看详情',
-      edit: '编辑',
+      edit: '编辑 ▾',
+      collapseEdit: '收起编辑 ▴',
+      copyRoomCode: '复制房间号',
       save: '保存',
       cancel: '取消',
       activate: '设为活跃',
@@ -1766,6 +1768,7 @@ export const zhCN = {
     edit: {
       title: '编辑战役',
       lifecycleNote: '业务状态与生命周期分离。归档、恢复、移入回收站请使用对应生命周期动作。',
+      generatedMissingRoomCode: '旧战役暂无系统房间号',
       fields: {
         title: '标题',
         description: '描述',
