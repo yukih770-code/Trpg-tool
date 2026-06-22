@@ -33,8 +33,11 @@ import {
   type ActorVaultImportPreview,
 } from '../../lib/platform/actorVaultImportPreview';
 import {
+  applyActorVaultCopyAsNewImport,
   applyActorVaultSafeAppendImport,
+  buildActorVaultCopyAsNewPlan,
   buildActorVaultSafeAppendPlan,
+  type ActorVaultCopyAsNewResult,
   type ActorVaultSafeAppendResult,
 } from '../../lib/platform/actorVaultImportSafeAppend';
 import type { ActorVaultLifecycleStatus } from '../../lib/platform/actorVaultLifecycleStore';
@@ -108,6 +111,7 @@ export function ActorVaultLibraryShell({
   const [importPreviewFileName, setImportPreviewFileName] = useState('');
   const [importPreviewText, setImportPreviewText] = useState('');
   const [importResult, setImportResult] = useState<ActorVaultSafeAppendResult | null>(null);
+  const [copyAsNewResult, setCopyAsNewResult] = useState<ActorVaultCopyAsNewResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [expandedMoreActorKey, setExpandedMoreActorKey] = useState<string | null>(null);
   const lifecycleMetas = useActorVaultLifecycleStore((state) => state.metas);
@@ -225,10 +229,12 @@ export function ActorVaultLibraryShell({
       setImportPreviewText(fileText);
       setImportPreview(parseActorVaultImportPreview(fileText));
       setImportResult(null);
+      setCopyAsNewResult(null);
     } catch {
       setImportPreviewText('');
       setImportPreview(parseActorVaultImportPreview(''));
       setImportResult(null);
+      setCopyAsNewResult(null);
     }
   };
 
@@ -240,6 +246,24 @@ export function ActorVaultLibraryShell({
         buildActorVaultSafeAppendPlan(importPreview),
       );
       setImportResult(result);
+      setCopyAsNewResult(null);
+      if (importPreviewText) {
+        setImportPreview(parseActorVaultImportPreview(importPreviewText));
+      }
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleCopyConflictsAsNew = () => {
+    if (!importPreview || isImporting) return;
+    setIsImporting(true);
+    try {
+      const result = applyActorVaultCopyAsNewImport(
+        buildActorVaultCopyAsNewPlan(importPreview),
+      );
+      setCopyAsNewResult(result);
+      setImportResult(null);
       if (importPreviewText) {
         setImportPreview(parseActorVaultImportPreview(importPreviewText));
       }
@@ -383,15 +407,18 @@ export function ActorVaultLibraryShell({
             preview={importPreview}
             fileName={importPreviewFileName}
             result={importResult}
+            copyAsNewResult={copyAsNewResult}
             isImporting={isImporting}
             strings={strings}
             colorTheme={t}
             onSafeAppendImport={handleSafeAppendImport}
+            onCopyConflictsAsNew={handleCopyConflictsAsNew}
             onClear={() => {
               setImportPreview(null);
               setImportPreviewFileName('');
               setImportPreviewText('');
               setImportResult(null);
+              setCopyAsNewResult(null);
               setIsImporting(false);
             }}
           />
@@ -519,19 +546,23 @@ function ActorVaultImportPreviewPanel({
   preview,
   fileName,
   result,
+  copyAsNewResult,
   isImporting,
   strings,
   colorTheme: t,
   onSafeAppendImport,
+  onCopyConflictsAsNew,
   onClear,
 }: {
   preview: ActorVaultImportPreview;
   fileName: string;
   result: ActorVaultSafeAppendResult | null;
+  copyAsNewResult: ActorVaultCopyAsNewResult | null;
   isImporting: boolean;
   strings: ActorVaultShellStrings;
   colorTheme: ActorVaultColorTheme;
   onSafeAppendImport: () => void;
+  onCopyConflictsAsNew: () => void;
   onClear: () => void;
 }) {
   const systemSummary = [
@@ -549,7 +580,11 @@ function ActorVaultImportPreviewPanel({
   const safeAppendCount = preview.isValidSnapshot
     ? preview.actors.filter((actor) => actor.conflict === 'none').length
     : 0;
+  const copyAsNewCount = preview.isValidSnapshot
+    ? preview.actors.filter((actor) => actor.conflict === 'same-id-existing').length
+    : 0;
   const canSafeAppend = preview.isValidSnapshot && safeAppendCount > 0 && !isImporting;
+  const canCopyAsNew = preview.isValidSnapshot && copyAsNewCount > 0 && !isImporting;
 
   return (
     <div className={`mb-3 border-b pb-3 ${t.borderLight}`}>
@@ -604,6 +639,12 @@ function ActorVaultImportPreviewPanel({
           {strings.importPreviewNoWrite}
         </p>
 
+        {copyAsNewCount > 0 && (
+          <p className={`mt-2 text-[11px] leading-relaxed ${t.textBody}`}>
+            {formatCountString(strings.copyAsNewConflictNotice, copyAsNewCount)}
+          </p>
+        )}
+
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -619,6 +660,24 @@ function ActorVaultImportPreviewPanel({
           </button>
           <span className={`text-[11px] leading-relaxed ${t.textMuted}`}>
             {safeAppendCount > 0 ? strings.safeAppendImportNote : strings.noSafeAppendActors}
+          </span>
+        </div>
+
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={!canCopyAsNew}
+            onClick={onCopyConflictsAsNew}
+            className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${
+              canCopyAsNew
+                ? `${t.borderActive} ${t.text} ${t.bgHover}`
+                : `${t.borderLight} ${t.text} opacity-35`
+            }`}
+          >
+            {strings.copyConflictsAsNew}
+          </button>
+          <span className={`text-[11px] leading-relaxed ${t.textMuted}`}>
+            {copyAsNewCount > 0 ? strings.copyConflictsAsNewNote : strings.copyAsNewNoOverwriteNote}
           </span>
         </div>
 
@@ -651,6 +710,58 @@ function ActorVaultImportPreviewPanel({
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {copyAsNewResult && (
+          <div className={`mt-3 border p-2 text-[11px] ${t.borderLight} ${t.textBody}`}>
+            <div className={`font-bold uppercase tracking-wider ${t.textMuted}`}>
+              {strings.copyAsNewResultTitle}
+            </div>
+            <p className={`mt-1 leading-relaxed ${t.textMuted}`}>
+              {strings.copyAsNewNoOverwriteNote}
+            </p>
+            <div className="mt-2 grid gap-2 sm:grid-cols-4">
+              <ResultMetric label={strings.copyAsNewResultCopied} value={copyAsNewResult.copiedActors.length} />
+              <ResultMetric label={strings.copyAsNewResultSkippedFailed} value={copyAsNewResult.skippedFailedCount} />
+              <ResultMetric label={strings.importResultSkippedUnsupported} value={copyAsNewResult.skippedUnsupportedCount} />
+              <ResultMetric label={strings.importResultSkippedInvalid} value={copyAsNewResult.skippedInvalidCount} />
+            </div>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <div>
+                <div className={`font-bold uppercase tracking-wider ${t.textMuted}`}>
+                  {strings.importResultImportedSystems}
+                </div>
+                <div className="mt-1">
+                  DND {copyAsNewResult.systemCounts['dnd5e-2024']} / COC {copyAsNewResult.systemCounts.coc7e} / CP RED {copyAsNewResult.systemCounts['cp-red']}
+                </div>
+              </div>
+              <div>
+                <div className={`font-bold uppercase tracking-wider ${t.textMuted}`}>
+                  {strings.importResultImportedLifecycle}
+                </div>
+                <div className="mt-1">
+                  {strings.lifecycleActive} {copyAsNewResult.lifecycleCounts.active} / {strings.lifecycleArchived} {copyAsNewResult.lifecycleCounts.archived} / {strings.lifecycleTrashed} {copyAsNewResult.lifecycleCounts.trashed}
+                </div>
+              </div>
+            </div>
+            {copyAsNewResult.copiedActors.length > 0 && (
+              <div className="mt-2">
+                <div className={`font-bold uppercase tracking-wider ${t.textMuted}`}>
+                  {strings.copyAsNewResultMappings}
+                </div>
+                <ul className="mt-1 space-y-1">
+                  {copyAsNewResult.copiedActors.map((actor) => (
+                    <li key={`${actor.systemId}-${actor.originalActorId}-${actor.newActorId}`}>
+                      <span className="font-bold">{actor.displayName}</span>{' '}
+                      <span className={t.textMuted}>
+                        {actor.originalActorId} → {actor.newActorId}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 
@@ -687,6 +798,10 @@ function ActorVaultImportPreviewPanel({
       </div>
     </div>
   );
+}
+
+function formatCountString(template: string, count: number): string {
+  return template.replace('{count}', String(count));
 }
 
 function ResultMetric({ label, value }: { label: string; value: number }) {

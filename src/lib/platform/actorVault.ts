@@ -285,6 +285,14 @@ export type ActorVaultShellStrings = {
   safeAppendImport: string;
   safeAppendImportNote: string;
   noSafeAppendActors: string;
+  copyConflictsAsNew: string;
+  copyConflictsAsNewNote: string;
+  copyAsNewConflictNotice: string;
+  copyAsNewResultTitle: string;
+  copyAsNewResultCopied: string;
+  copyAsNewResultSkippedFailed: string;
+  copyAsNewResultMappings: string;
+  copyAsNewNoOverwriteNote: string;
   importResultTitle: string;
   importResultImported: string;
   importResultSkippedConflicts: string;

@@ -33,6 +33,14 @@ export type ActorVaultSafeAppendImportedActor = {
   lifecycleStatus: ActorVaultLifecycleStatus;
 };
 
+export type ActorVaultCopyAsNewImportedActor = {
+  systemId: ActorVaultSystemId;
+  originalActorId: string;
+  newActorId: string;
+  displayName: string;
+  lifecycleStatus: ActorVaultLifecycleStatus;
+};
+
 export type ActorVaultSafeAppendPlan = {
   preview: ActorVaultImportPreview;
   importableActors: ActorVaultImportPreviewActor[];
@@ -41,9 +49,25 @@ export type ActorVaultSafeAppendPlan = {
   skippedInvalidCount: number;
 };
 
+export type ActorVaultCopyAsNewPlan = {
+  preview: ActorVaultImportPreview;
+  copyableActors: ActorVaultImportPreviewActor[];
+  skippedUnsupportedCount: number;
+  skippedInvalidCount: number;
+};
+
 export type ActorVaultSafeAppendResult = {
   importedActors: ActorVaultSafeAppendImportedActor[];
   skippedConflictCount: number;
+  skippedUnsupportedCount: number;
+  skippedInvalidCount: number;
+  systemCounts: Record<ActorVaultSystemId, number>;
+  lifecycleCounts: Record<ActorVaultLifecycleStatus, number>;
+};
+
+export type ActorVaultCopyAsNewResult = {
+  copiedActors: ActorVaultCopyAsNewImportedActor[];
+  skippedFailedCount: number;
   skippedUnsupportedCount: number;
   skippedInvalidCount: number;
   systemCounts: Record<ActorVaultSystemId, number>;
@@ -59,6 +83,23 @@ export function buildActorVaultSafeAppendPlan(
       ? preview.actors.filter((actor) => actor.conflict === 'none')
       : [],
     skippedConflictCount: preview.actors.filter((actor) => actor.conflict === 'same-id-existing').length,
+    skippedUnsupportedCount: preview.unsupportedActors.filter(
+      (actor) => actor.reason === 'unsupported-system',
+    ).length,
+    skippedInvalidCount: preview.unsupportedActors.filter(
+      (actor) => actor.reason === 'invalid-record',
+    ).length,
+  };
+}
+
+export function buildActorVaultCopyAsNewPlan(
+  preview: ActorVaultImportPreview,
+): ActorVaultCopyAsNewPlan {
+  return {
+    preview,
+    copyableActors: preview.isValidSnapshot
+      ? preview.actors.filter((actor) => actor.conflict === 'same-id-existing')
+      : [],
     skippedUnsupportedCount: preview.unsupportedActors.filter(
       (actor) => actor.reason === 'unsupported-system',
     ).length,
@@ -101,6 +142,61 @@ export function applyActorVaultSafeAppendImport(
     });
     result.systemCounts[actor.systemId] += 1;
     result.lifecycleCounts[actor.lifecycleStatus] += 1;
+  }
+
+  return result;
+}
+
+export function applyActorVaultCopyAsNewImport(
+  plan: ActorVaultCopyAsNewPlan,
+): ActorVaultCopyAsNewResult {
+  const result: ActorVaultCopyAsNewResult = {
+    copiedActors: [],
+    skippedFailedCount: 0,
+    skippedUnsupportedCount: plan.skippedUnsupportedCount,
+    skippedInvalidCount: plan.skippedInvalidCount,
+    systemCounts: createSystemCounts(),
+    lifecycleCounts: createLifecycleCounts(),
+  };
+
+  for (const actor of plan.copyableActors) {
+    const newActorId = generateUniqueImportedActorId(actor.systemId);
+    const copiedActor: ActorVaultImportPreviewActor = {
+      ...actor,
+      actorId: newActorId,
+      actorData: cloneActorDataWithId(actor.actorData, newActorId),
+      conflict: 'none',
+      lifecycleMeta: actor.lifecycleMeta
+        ? {
+            ...actor.lifecycleMeta,
+            actorId: newActorId,
+            systemId: actor.systemId,
+            lifecycleStatus: actor.lifecycleStatus,
+          }
+        : undefined,
+    };
+
+    if (hasExistingActor(copiedActor.systemId, copiedActor.actorId)) {
+      result.skippedFailedCount += 1;
+      continue;
+    }
+
+    const didAppend = appendActorToSystemStore(copiedActor);
+    if (!didAppend) {
+      result.skippedFailedCount += 1;
+      continue;
+    }
+
+    applyLifecycleForImportedActor(copiedActor);
+    result.copiedActors.push({
+      systemId: copiedActor.systemId,
+      originalActorId: actor.actorId,
+      newActorId: copiedActor.actorId,
+      displayName: copiedActor.displayName,
+      lifecycleStatus: copiedActor.lifecycleStatus,
+    });
+    result.systemCounts[copiedActor.systemId] += 1;
+    result.lifecycleCounts[copiedActor.lifecycleStatus] += 1;
   }
 
   return result;
@@ -203,6 +299,57 @@ function applyLifecycleForImportedActor(actor: ActorVaultImportPreviewActor): vo
 
 function hasExistingActor(systemId: ActorVaultSystemId, actorId: string): boolean {
   return listActorVaultRecords(systemId).some((record) => record.id === actorId);
+}
+
+function cloneActorDataWithId(actorData: unknown, actorId: string): unknown {
+  const cloned = cloneJsonLikeValue(actorData);
+  if (!cloned || typeof cloned !== 'object' || Array.isArray(cloned)) {
+    return cloned;
+  }
+  return {
+    ...(cloned as Record<string, unknown>),
+    id: actorId,
+  };
+}
+
+function cloneJsonLikeValue<T>(value: T): T {
+  if (typeof structuredClone === 'function') {
+    return structuredClone(value);
+  }
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function generateUniqueImportedActorId(systemId: ActorVaultSystemId): string {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const actorId = createImportedActorId(systemId);
+    if (!hasExistingActor(systemId, actorId)) {
+      return actorId;
+    }
+  }
+  return `${getImportedActorIdPrefix(systemId)}-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
+}
+
+function createImportedActorId(systemId: ActorVaultSystemId): string {
+  const randomId =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${getImportedActorIdPrefix(systemId)}-${randomId}`;
+}
+
+function getImportedActorIdPrefix(systemId: ActorVaultSystemId): string {
+  switch (systemId) {
+    case 'dnd5e-2024':
+      return 'dnd-import';
+    case 'coc7e':
+      return 'coc-import';
+    case 'cp-red':
+      return 'cp-import';
+    default:
+      return 'actor-import';
+  }
 }
 
 function syncActiveActorForImport<T extends { id?: string }>(
