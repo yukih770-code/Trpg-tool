@@ -19,8 +19,11 @@ import { getActorVaultRecord } from '../../lib/platform/actorVaultRepositoryBrid
 import { downloadCampaignLibraryExportSnapshot } from '../../lib/platform/campaignExportSnapshot';
 import { parseCampaignImportPreview, type CampaignImportPreview } from '../../lib/platform/campaignImportPreview';
 import {
+  applyCampaignCopyAsNewImport,
   applyCampaignSafeAppendImport,
+  buildCampaignCopyAsNewPlan,
   buildCampaignSafeAppendPlan,
+  type CampaignCopyAsNewResult,
   type CampaignSafeAppendResult,
 } from '../../lib/platform/campaignImportSafeAppend';
 import { createTranslator, readStoredLocale } from '../../i18n';
@@ -141,6 +144,7 @@ export function CampaignLibraryShell({
   const [campaignImportPreview, setCampaignImportPreview] = useState<CampaignImportPreview | null>(null);
   const [campaignImportPreviewError, setCampaignImportPreviewError] = useState('');
   const [campaignSafeAppendResult, setCampaignSafeAppendResult] = useState<CampaignSafeAppendResult | null>(null);
+  const [campaignCopyAsNewResult, setCampaignCopyAsNewResult] = useState<CampaignCopyAsNewResult | null>(null);
   const [isImportingCampaigns, setIsImportingCampaigns] = useState(false);
   const [campaignEditDraft, setCampaignEditDraft] = useState<CampaignEditDraft>({
     title: '',
@@ -229,6 +233,10 @@ export function CampaignLibraryShell({
       : draftSuggestedActor);
   const campaignSafeAppendPlan = useMemo(
     () => (campaignImportPreview ? buildCampaignSafeAppendPlan(campaignImportPreview) : null),
+    [campaignImportPreview],
+  );
+  const campaignCopyAsNewPlan = useMemo(
+    () => (campaignImportPreview ? buildCampaignCopyAsNewPlan(campaignImportPreview) : null),
     [campaignImportPreview],
   );
 
@@ -481,6 +489,7 @@ export function CampaignLibraryShell({
     setCampaignImportPreview(null);
     setCampaignImportPreviewError('');
     setCampaignSafeAppendResult(null);
+    setCampaignCopyAsNewResult(null);
 
     void file.text()
       .then((text) => {
@@ -496,6 +505,18 @@ export function CampaignLibraryShell({
     setIsImportingCampaigns(true);
     try {
       setCampaignSafeAppendResult(applyCampaignSafeAppendImport(campaignSafeAppendPlan));
+      setCampaignCopyAsNewResult(null);
+    } finally {
+      setIsImportingCampaigns(false);
+    }
+  };
+
+  const handleCopyCampaignConflictsAsNew = () => {
+    if (!campaignCopyAsNewPlan || campaignCopyAsNewPlan.copyableCampaigns.length === 0 || isImportingCampaigns) return;
+    setIsImportingCampaigns(true);
+    try {
+      setCampaignCopyAsNewResult(applyCampaignCopyAsNewImport(campaignCopyAsNewPlan));
+      setCampaignSafeAppendResult(null);
     } finally {
       setIsImportingCampaigns(false);
     }
@@ -683,12 +704,15 @@ export function CampaignLibraryShell({
                     fileName={campaignImportPreviewFileName}
                     preview={campaignImportPreview}
                     safeAppendPlan={campaignSafeAppendPlan}
+                    copyAsNewPlan={campaignCopyAsNewPlan}
                     safeAppendResult={campaignSafeAppendResult}
+                    copyAsNewResult={campaignCopyAsNewResult}
                     isImporting={isImportingCampaigns}
                     error={campaignImportPreviewError}
                     theme={theme}
                     t={t}
                     onSafeAppend={handleSafeAppendCampaignImport}
+                    onCopyAsNew={handleCopyCampaignConflictsAsNew}
                   />
                 )}
               </div>
@@ -1042,28 +1066,40 @@ function CampaignImportPreviewPanel({
   fileName,
   preview,
   safeAppendPlan,
+  copyAsNewPlan,
   safeAppendResult,
+  copyAsNewResult,
   isImporting,
   error,
   theme,
   t,
   onSafeAppend,
+  onCopyAsNew,
 }: {
   fileName: string;
   preview: CampaignImportPreview | null;
   safeAppendPlan: ReturnType<typeof buildCampaignSafeAppendPlan> | null;
+  copyAsNewPlan: ReturnType<typeof buildCampaignCopyAsNewPlan> | null;
   safeAppendResult: CampaignSafeAppendResult | null;
+  copyAsNewResult: CampaignCopyAsNewResult | null;
   isImporting: boolean;
   error: string;
   theme: (typeof toneClasses)[CampaignLibraryTone];
   t: (key: string) => string;
   onSafeAppend: () => void;
+  onCopyAsNew: () => void;
 }) {
   const summary = preview?.summary;
   const canSafeAppend = Boolean(
     preview?.isRecognizedSnapshot &&
     safeAppendPlan &&
     safeAppendPlan.importableCampaigns.length > 0 &&
+    !isImporting,
+  );
+  const canCopyAsNew = Boolean(
+    preview?.isRecognizedSnapshot &&
+    copyAsNewPlan &&
+    copyAsNewPlan.copyableCampaigns.length > 0 &&
     !isImporting,
   );
   return (
@@ -1093,6 +1129,19 @@ function CampaignImportPreviewPanel({
           </button>
           <p className={`max-w-2xl text-xs leading-relaxed ${theme.muted}`}>
             {t('campaignLibrary.importPreview.safeAppendNote')}
+          </p>
+          <button
+            type="button"
+            disabled={!canCopyAsNew}
+            onClick={onCopyAsNew}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${
+              canCopyAsNew ? theme.primary : `cursor-default opacity-55 ${theme.secondary}`
+            }`}
+          >
+            {t('campaignLibrary.importPreview.copyAsNewAction')}
+          </button>
+          <p className={`max-w-2xl text-xs leading-relaxed ${theme.muted}`}>
+            {t('campaignLibrary.importPreview.copyAsNewNote')}
           </p>
         </div>
       )}
@@ -1194,6 +1243,71 @@ function CampaignImportPreviewPanel({
                   theme={theme}
                 />
               </div>
+            </div>
+          )}
+          {copyAsNewResult && (
+            <div className={`mt-3 rounded-lg border p-3 ${theme.badge}`}>
+              <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
+                {t('campaignLibrary.importPreview.copyAsNewResultTitle')}
+              </div>
+              <p className={`mt-2 leading-relaxed ${theme.muted}`}>
+                {t('campaignLibrary.importPreview.copyAsNewResultNote')}
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+                {[
+                  ['campaignLibrary.importPreview.resultMetrics.copiedAsNew', copyAsNewResult.copiedCampaigns.length],
+                  ['campaignLibrary.importPreview.resultMetrics.skippedFailed', copyAsNewResult.skippedFailedCount],
+                  ['campaignLibrary.importPreview.resultMetrics.skippedInvalid', copyAsNewResult.skippedInvalidCount],
+                  ['campaignLibrary.importPreview.resultMetrics.skippedNoConflict', copyAsNewResult.skippedNoConflictCount],
+                ].map(([labelKey, value]) => (
+                  <div key={labelKey} className={`border p-2 ${theme.card}`}>
+                    <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
+                      {t(String(labelKey))}
+                    </div>
+                    <div className="mt-1 text-lg font-bold">{value}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <PreviewCountGroup
+                  title={t('campaignLibrary.importPreview.systemCounts')}
+                  rows={[
+                    ['DND', copyAsNewResult.systemCounts['dnd5e-2024']],
+                    ['COC', copyAsNewResult.systemCounts.coc7e],
+                    ['CP RED', copyAsNewResult.systemCounts['cp-red']],
+                  ]}
+                  theme={theme}
+                />
+                <PreviewCountGroup
+                  title={t('campaignLibrary.importPreview.lifecycleCounts')}
+                  rows={[
+                    [t('campaignLibrary.status.active'), copyAsNewResult.lifecycleCounts.active],
+                    [t('campaignLibrary.status.archived'), copyAsNewResult.lifecycleCounts.archived],
+                    [t('campaignLibrary.status.trashed'), copyAsNewResult.lifecycleCounts.trashed],
+                  ]}
+                  theme={theme}
+                />
+              </div>
+              {copyAsNewResult.mappings.length > 0 && (
+                <div className={`mt-3 border p-3 ${theme.card}`}>
+                  <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
+                    {t('campaignLibrary.importPreview.copyAsNewMappings')}
+                  </div>
+                  <ul className="mt-2 space-y-2">
+                    {copyAsNewResult.mappings.map((mapping) => (
+                      <li key={`${mapping.originalCampaignId}-${mapping.newCampaignId}`} className="leading-relaxed">
+                        <span className="font-bold">{mapping.title}</span>
+                        <span className={`block ${theme.muted}`}>
+                          {mapping.originalCampaignId} → {mapping.newCampaignId}
+                        </span>
+                        <span className={`block ${theme.muted}`}>
+                          {mapping.originalRoomCode} → {mapping.newRoomCode}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </>
