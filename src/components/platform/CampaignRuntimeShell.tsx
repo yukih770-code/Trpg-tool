@@ -1,4 +1,3 @@
-import { ArrowLeft } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { CampaignRuntimeContext } from '../../lib/platform/campaignFlow';
 import type { LocalCampaignSystemId } from '../../lib/platform/campaignLocalStore';
@@ -392,15 +391,7 @@ export function CampaignRuntimeShell({
       <header className={`rounded-lg border p-4 ${theme.panel}`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex min-w-0 items-start gap-3">
-            <button
-              type="button"
-              onClick={onExitRuntime}
-              aria-label={t('campaignRuntime.header.backToCampaignDetail')}
-              title={t('campaignRuntime.header.backToCampaignDetail')}
-              className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-transparent transition hover:opacity-80 ${theme.border} ${theme.accent}`}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
+            {/* Duplicate runtime back arrow removed; page-level/global back arrow is the single back entry. */}
             <div className="min-w-0">
               <div className={`text-[10px] font-bold uppercase tracking-[0.22em] ${theme.muted}`}>
                 {t('campaignRuntime.eyebrow')}

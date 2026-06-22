@@ -1,7 +1,20 @@
 import { useState, type ReactNode } from 'react';
 import { useCpStore } from '../store/cpStore';
 import { CP_STAT_ORDER, CP_STAT_LABELS, CP_ROLE_LABELS, CP_SKILLS, CP_ROLE_ABILITIES, CpRelation, CpEnemy, CpLifePath, makeEmptyInventory, type CpInventory, type CpArmor, type CpCyberware, type CpWeapon, type CpClothing } from '../lib/cp-types';
+import {
+  CharacterSheetSectionTabs,
+  type CharacterSheetSectionDefinition,
+} from './sheet/CharacterSheetSectionTabs';
 import { toast } from 'sonner';
+
+// Static edgerunner-sheet sections (display / downtime only; no runtime actions).
+const CP_SHEET_SECTIONS: CharacterSheetSectionDefinition[] = [
+  { id: 'overview', label: '概览 Overview' },
+  { id: 'skills', label: '技能 Skills' },
+  { id: 'gear', label: '装备与义体 Gear & Cyberware' },
+  { id: 'role', label: '职业与人生 Role & Lifepath' },
+  { id: 'notes', label: '记录 Notes' },
+];
 
 const T = {
   border: 'border-[#d8b954]/20',
@@ -43,6 +56,7 @@ export function CpSheet() {
   const wound = woundState();
 
   const roleAbility = CP_ROLE_ABILITIES[character.role];
+  const [sheetSection, setSheetSection] = useState<string>('overview');
 
   return (
     <div className="space-y-5 text-[#d4d4d8] font-mono">
@@ -79,7 +93,18 @@ export function CpSheet() {
         </div>
       </div>
 
+      <CharacterSheetSectionTabs
+        sections={CP_SHEET_SECTIONS}
+        activeId={sheetSection}
+        onChange={setSheetSection}
+        ariaLabel="CP RED character sheet sections"
+        className={`border-b ${T.border} pb-2`}
+        activeTabClassName="border-[#f5c518] bg-[#f5c518] text-[#0d0d0d]"
+        inactiveTabClassName="border-[#d8b954]/30 text-[#d8b954]/70 hover:text-[#f5c518]"
+      />
+
       {/* ── Stats ──────────────────────────────────────── */}
+      {sheetSection === 'overview' && (
       <div>
         <div className="font-cp-title text-[9px] uppercase tracking-widest text-[#d8b954]/60 mb-1.5">// CORE STATS</div>
         <div className="grid grid-cols-5 md:grid-cols-10 gap-1">
@@ -101,8 +126,10 @@ export function CpSheet() {
         </div>
         {armorPenalty > 0 && <div className="text-[10px] text-orange-400/70 mt-1">⚠ 护甲惩罚: REF/DEX/MOVE −{armorPenalty}</div>}
       </div>
+      )}
 
       {/* ── Role Ability Panel ──────────────────────────── */}
+      {sheetSection === 'role' && (
       <div className="cp-panel hud-panel-gold hud-panel p-4">
         <div className="flex items-center gap-2 mb-2">
           <div className="font-cp-title text-[9px] tracking-widest text-[#f5c518]/55 uppercase">// ROLE ABILITY</div>
@@ -124,8 +151,10 @@ export function CpSheet() {
           ))}
         </div>
       </div>
+      )}
 
       {/* ── Skills (non-zero only) ──────────────────────── */}
+      {sheetSection === 'skills' && (
       <div>
         <div className="font-cp-title text-[9px] uppercase tracking-widest text-[#f5c518]/55 mb-1.5">// SKILLS · 只读展示</div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-px">
@@ -148,8 +177,10 @@ export function CpSheet() {
           })}
         </div>
       </div>
+      )}
 
       {/* ── Equipment row ───────────────────────────────── */}
+      {sheetSection === 'gear' && (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
         {/* Weapons */}
@@ -205,8 +236,10 @@ export function CpSheet() {
           ))}
         </div>
       </div>
+      )}
 
       {/* ── Inventory (owned but not equipped) ─────────── */}
+      {sheetSection === 'gear' && (
       <InventoryPanel
         inv={character.inventory ?? makeEmptyInventory()}
         cyberwareInstalled={character.cyberware}
@@ -224,9 +257,10 @@ export function CpSheet() {
         onRemoveCyberware={(idOrName) => { removeCyberware(idOrName); toast.success(`// 已卸除义体 → 存入背包`); }}
         T={T}
       />
+      )}
 
       {/* ── Injuries ───────────────────────────────────── */}
-      {(injuries ?? []).length > 0 && (
+      {sheetSection === 'notes' && (injuries ?? []).length > 0 && (
         <div className={`border border-orange-500/50 bg-orange-900/10 p-3`}>
           <div className="text-[10px] uppercase font-bold text-orange-400 mb-2">⚠ 当前伤势记录</div>
           {(injuries ?? []).map((inj, i) => (
@@ -236,9 +270,12 @@ export function CpSheet() {
       )}
 
       {/* ── Life Path ──────────────────────────────────── */}
+      {sheetSection === 'role' && (
       <LifePathSection lp={character.lifePath} onChange={updateLifePath} T={T} />
+      )}
 
       {/* ── Relationships ───────────────────────────────── */}
+      {sheetSection === 'role' && (
       <RelationshipsSection
         friends={character.friends ?? []}
         romances={character.romances ?? []}
@@ -248,8 +285,10 @@ export function CpSheet() {
         addEnemy={addEnemy} removeEnemy={removeEnemy}
         T={T}
       />
+      )}
 
       {/* Notes */}
+      {sheetSection === 'notes' && (
       <div className="cp-panel p-3">
         <div className="font-cp-title text-[9px] uppercase tracking-widest text-[#f5c518]/55 mb-2">// NOTES</div>
         <textarea
@@ -260,6 +299,7 @@ export function CpSheet() {
           placeholder="自由记录..."
         />
       </div>
+      )}
     </div>
   );
 }

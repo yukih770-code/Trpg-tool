@@ -1,11 +1,25 @@
+import { useState } from 'react';
 import { useCocStore } from '../store/cocStore';
 import { getCocDerivedStats } from '../lib/coc-utils';
 import { Input } from '../../components/ui/input';
+import {
+  CharacterSheetSectionTabs,
+  type CharacterSheetSectionDefinition,
+} from './sheet/CharacterSheetSectionTabs';
 import { CharacterCampaignCta, useCharacterCampaignCta } from '../components/platform/CharacterCampaignCta';
+
+// Static investigator-sheet sections (display / downtime only; no runtime checks).
+// Skills currently remain inside Overview; weapons/gear live under Notes.
+const COC_SHEET_SECTIONS: CharacterSheetSectionDefinition[] = [
+  { id: 'overview', label: '概览 Overview' },
+  { id: 'background', label: '背景 Background' },
+  { id: 'notes', label: '记录 Notes' },
+];
 
 export function CocSheet() {
   const { character, updateField, toggleSkillGrowthMark } = useCocStore();
   const campaignCta = useCharacterCampaignCta();
+  const [sheetSection, setSheetSection] = useState<string>('overview');
 
   const { db, build, move } = getCocDerivedStats(character.characteristics);
   const runtime = character.runtime;
@@ -71,6 +85,17 @@ export function CocSheet() {
       </div>
       {campaignCta && <CharacterCampaignCta {...campaignCta} />}
 
+      <CharacterSheetSectionTabs
+        sections={COC_SHEET_SECTIONS}
+        activeId={sheetSection}
+        onChange={setSheetSection}
+        ariaLabel="COC investigator sheet sections"
+        className="border-b border-[#059669]/40 pb-2"
+        activeTabClassName="border-[#059669] bg-[#059669] text-[#06100d]"
+        inactiveTabClassName="border-[#059669]/30 text-[#059669]/70 hover:text-[#059669]"
+      />
+
+      {sheetSection === 'overview' && (
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Left Column: Stats & Derived */}
         <div className="md:col-span-3 space-y-4">
@@ -159,9 +184,12 @@ export function CocSheet() {
            </div>
         </div>
       </div>
+      )}
 
       {/* Backstory & Inventory Section */}
+      {(sheetSection === 'background' || sheetSection === 'notes') && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {sheetSection === 'background' && (
         <div className="border border-[#059669]/30 bg-[#111] p-4 text-[#d4d4d8]">
           <h3 className="text-[#059669] font-bold uppercase tracking-widest mb-4 border-b border-[#059669]/30 pb-2">背景故事 (Backstory)</h3>
           <div className="space-y-4 text-xs font-mono">
@@ -188,7 +216,9 @@ export function CocSheet() {
             ))}
           </div>
         </div>
+        )}
 
+        {sheetSection === 'notes' && (
         <div className="space-y-6">
           <div className="border border-[#059669]/30 bg-[#111] p-4 text-[#d4d4d8]">
             <div className="flex justify-between items-center mb-4 border-b border-[#059669]/30 pb-2">
@@ -220,7 +250,9 @@ export function CocSheet() {
             </div>
           </div>
         </div>
+        )}
       </div>
+      )}
     </div>
   );
 }

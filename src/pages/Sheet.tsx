@@ -8,6 +8,13 @@ import { BACKGROUND_DATA, LEGACY_BACKGROUND_DATA } from '../data/backgrounds';
 import { LEGACY_RACE_DATA } from '../data/races';
 import { getAvailableClasses, getAvailableRaces, getAvailableFeats } from '../lib/mod-utils';
 import { DndEquipmentCatalogPanel } from './sheet/DndEquipmentCatalogPanel';
+import { DndSpellIndexSearchPanel } from './sheet/DndSpellIndexSearchPanel';
+import {
+  CharacterSheetSectionTabs,
+  type CharacterSheetSectionDefinition,
+} from './sheet/CharacterSheetSectionTabs';
+import { CharacterSheetPanel } from './sheet/CharacterSheetPanel';
+import { SheetNotesEditor } from './sheet/SheetNotesEditor';
 import { createTranslator, readStoredLocale } from '../i18n';
 import { CharacterCampaignCta, useCharacterCampaignCta } from '../components/platform/CharacterCampaignCta';
 
@@ -15,9 +22,20 @@ type SheetProps = {
   onStartPlaying?: () => void;
 };
 
+// Static character-sheet sections (display/management only; no runtime actions).
+// Features / class resources currently remain inside Overview's main panel.
+const DND_SHEET_SECTIONS: CharacterSheetSectionDefinition[] = [
+  { id: 'overview', label: '概览 Overview' },
+  { id: 'features', label: '特性 Features' },
+  { id: 'equipment', label: '装备 Equipment' },
+  { id: 'spellbook', label: '法术书 Spellbook' },
+  { id: 'notes', label: '记录 Notes' },
+];
+
 export function Sheet({ onStartPlaying }: SheetProps = {}) {
   const { t } = createTranslator(readStoredLocale());
   const campaignCta = useCharacterCampaignCta();
+  const [sheetSection, setSheetSection] = useState<string>('overview');
   const {
     character,
     updateField,
@@ -129,8 +147,8 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
     .sort(([a], [b]) => Number(a) - Number(b));
   const inventoryItems = character.inventory || [];
   const hasClassResources = character.classResources.length > 0 || Boolean(character.pactMagicState);
-  const compactPanelClass = 'border border-[#58180d]/35 bg-white/45 p-3';
-  const compactTitleClass = 'mb-2 border-b border-[#58180d]/25 pb-1 text-[11px] font-black uppercase tracking-[0.16em] text-[#58180d]';
+  const compactPanelClass = 'rounded-lg border border-[#58180d]/15 bg-white/55 p-3 shadow-sm';
+  const compactTitleClass = 'mb-2 border-b border-[#58180d]/12 pb-1 text-[11px] font-black uppercase tracking-[0.16em] text-[#58180d]';
 
   return (
     <div className="space-y-4 text-[#2c1810]">
@@ -173,7 +191,7 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
           { label: 'SPD', sub: t('dndSheet.compact.speed'), value: `${character.speed}ft` },
           { label: 'PB', sub: t('dndSheet.compact.profBonus'), value: `+${profBonus}` },
         ].map((stat) => (
-          <div key={stat.label} className="border-2 border-[#58180d]/60 bg-white/70 px-3 py-2">
+          <div key={stat.label} className="rounded-md border border-[#58180d]/25 bg-white/75 px-3 py-2 shadow-sm">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] font-black uppercase tracking-wider text-[#58180d]">{stat.label}</span>
               <span className="text-[10px] text-[#58180d]/55">{stat.sub}</span>
@@ -183,6 +201,17 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
         ))}
       </section>
 
+      <CharacterSheetSectionTabs
+        sections={DND_SHEET_SECTIONS}
+        activeId={sheetSection}
+        onChange={setSheetSection}
+        ariaLabel="DND character sheet sections"
+        className="border-b-2 border-[#58180d]/40 pb-2"
+        activeTabClassName="border-[#58180d] bg-[#58180d] text-[#fdf6e3]"
+        inactiveTabClassName="border-[#58180d]/30 text-[#58180d]/70 hover:text-[#58180d]"
+      />
+
+      {sheetSection === 'overview' && (
       <main className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(16rem,0.85fr)_minmax(22rem,1.1fr)_minmax(20rem,1fr)]">
         <section className="space-y-3">
           <div className={compactPanelClass}>
@@ -256,7 +285,13 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
               })}
             </div>
           </div>
+        </section>
+      </main>
+      )}
 
+      {sheetSection === 'features' && (
+      <div className="space-y-3 xl:grid xl:grid-cols-2 xl:items-start xl:gap-3 xl:space-y-0">
+        <section className="space-y-3">
           <div className={compactPanelClass}>
             <h3 className={compactTitleClass}>{t('dndSheet.compact.features')}</h3>
             <div className="space-y-3 text-sm font-sans leading-relaxed">
@@ -406,13 +441,6 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
           <div className={compactPanelClass}>
           <div className="mb-2 flex items-center justify-between gap-2 border-b border-[#58180d]/25 pb-1">
             <h3 className="text-[11px] font-black uppercase tracking-[0.16em] text-[#58180d]">{t('dndSheet.compact.classResources')}</h3>
-            <Button
-              size="sm"
-              className="h-6 rounded-none bg-[#58180d] hover:bg-[#2c1810] text-[10px] px-2"
-              onClick={initializeRuntimeResources}
-            >
-              {t('dndSheet.compact.initializeClassResources')}
-            </Button>
           </div>
           <div className="text-xs font-sans space-y-2">
             {character.classResources.length > 0 ? (
@@ -430,15 +458,6 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
                     {resource.dice && <span>骰面: {resource.dice}</span>}
                   </div>
                   <div className="mt-2 flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-6 px-2 rounded-none border-[#58180d] text-[#58180d] text-[10px]"
-                      disabled={resource.current <= 0}
-                      onClick={() => consumeClassResource(resource.id, 1)}
-                    >
-                      -
-                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -475,15 +494,6 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
                   <span>恢复: {character.pactMagicState.recoveryType}</span>
                 </div>
                 <div className="mt-2 flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-6 px-2 rounded-none border-[#58180d] text-[#58180d] text-[10px]"
-                    disabled={character.pactMagicState.current <= 0}
-                    onClick={() => consumeSpellcastingResource(character.pactMagicState!.slotLevel)}
-                  >
-                    -
-                  </Button>
                   <Button
                     size="sm"
                     variant="outline"
@@ -576,33 +586,49 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
           </div>
         </div>
         </aside>
-      </main>
+      </div>
+      )}
 
-      {/* Equipment Catalog — read-only data layer v1 */}
-      <section>
-        <DndEquipmentCatalogPanel />
-      </section>
+      {sheetSection === 'equipment' && (
+        <section>
+          <DndEquipmentCatalogPanel />
+        </section>
+      )}
 
-      {/* Detail Text Column */}
-      <section className="border-t-2 border-[#58180d]/60 pt-4">
-        <h3 className="text-sm font-bold uppercase text-[#58180d] mb-3">{t('dndSheet.compact.characterDetails')}</h3>
-        <div className="bg-[#1a0f0a] border border-[#58180d] p-4 text-[#d5c4a1] font-serif flex flex-col md:flex-row gap-6">
-          <div className="flex-1 space-y-2">
-            <h4 className="text-xs uppercase tracking-widest text-[#a68a56] border-b border-[#58180d]/50 pb-1 mb-2">生平与描述</h4>
-            <div className="text-sm mt-2 whitespace-pre-wrap leading-relaxed">
-              {character.description || '一位尚未留下传说的冒险者...'}
+      {sheetSection === 'spellbook' && (
+        <section>
+          <DndSpellIndexSearchPanel />
+        </section>
+      )}
+
+      {sheetSection === 'notes' && (
+      <CharacterSheetPanel
+        eyebrow="DND 5e 2024"
+        title={t('dndSheet.compact.characterDetails')}
+        className="border-[#58180d]/20 bg-[#f3e7c9]/45 text-[#2c1810]"
+        headerClassName="text-[#58180d]"
+      >
+        <div className="space-y-3 font-serif">
+          <SheetNotesEditor
+            title="生平与描述 Background & Description"
+            value={character.description ?? ''}
+            onSave={(next) => updateField('description', next)}
+            emptyText="一位尚未留下传说的冒险者..."
+            accentClassName="text-[#58180d]"
+            textClassName="text-[#2c1810]/90"
+            textareaClassName="w-full resize-y rounded border border-[#58180d]/25 bg-white/60 px-3 py-2 text-sm outline-none text-[#2c1810]"
+          />
+          {character.activeMods && character.activeMods.length > 0 && (
+            <div className="text-xs italic text-[#58180d]/70">
+              * 织网者低语：命运之线已纠缠——此人承载了 <strong>[{character.activeMods.join(', ')}]</strong> 的异世法则。
             </div>
-            {character.activeMods && character.activeMods.length > 0 && (
-              <div className="mt-4 text-xs italic text-[#a68a56]">
-                * 织网者低语：命运之线已纠缠——此人承载了 <strong>[{character.activeMods.join(', ')}]</strong> 的异世法则。
-              </div>
-            )}
-            <div className="mt-6 pt-4 border-t border-[#58180d]/50 text-sm leading-relaxed text-[#a68a56] italic">
-               "在这片充满未知的费伦大陆上，众神掷下的不仅是命运的骰子。你的故事，可能成为吟游诗人口中传唱千年的史诗，也可能只是酒馆角落里的一声叹息... 愿知识指引你，冒险者。"
-            </div>
-          </div>
+          )}
+          <blockquote className="border-l-2 border-[#58180d]/40 bg-white/35 px-3 py-2 text-sm italic leading-relaxed text-[#2c1810]/75">
+            "在这片充满未知的费伦大陆上，众神掷下的不仅是命运的骰子。你的故事，可能成为吟游诗人口中传唱千年的史诗，也可能只是酒馆角落里的一声叹息... 愿知识指引你，冒险者。"
+          </blockquote>
         </div>
-      </section>
+      </CharacterSheetPanel>
+      )}
     </div>
   );
 }

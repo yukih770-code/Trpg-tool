@@ -54,10 +54,10 @@ function MetaRow({ parts }: { parts: (string | false | undefined)[] }) {
 
 function WeaponRow({ item }: { item: DndWeaponItem }) {
   return (
-    <div className="border border-[#58180d]/20 bg-white/40 p-2">
+    <div className="rounded border border-[#58180d]/10 bg-white/50 p-2">
       <div className="flex justify-between gap-2">
         <p className="font-bold text-[#58180d]">{itemTitle(item)}</p>
-        <span className="shrink-0 text-[10px] text-[#2c1810]/70">{WEAPON_CATEGORY_LABELS[item.weaponCategory]}</span>
+        <span className="shrink-0 rounded-full bg-[#58180d]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#58180d]/80">{WEAPON_CATEGORY_LABELS[item.weaponCategory]}</span>
       </div>
       <MetaRow
         parts={[
@@ -74,10 +74,10 @@ function WeaponRow({ item }: { item: DndWeaponItem }) {
 
 function ArmorRow({ item }: { item: DndArmorItem }) {
   return (
-    <div className="border border-[#58180d]/20 bg-white/40 p-2">
+    <div className="rounded border border-[#58180d]/10 bg-white/50 p-2">
       <div className="flex justify-between gap-2">
         <p className="font-bold text-[#58180d]">{itemTitle(item)}</p>
-        <span className="shrink-0 text-[10px] text-[#2c1810]/70">{ARMOR_CATEGORY_LABELS[item.armorCategory]}</span>
+        <span className="shrink-0 rounded-full bg-[#58180d]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#58180d]/80">{ARMOR_CATEGORY_LABELS[item.armorCategory]}</span>
       </div>
       <MetaRow
         parts={[
@@ -95,10 +95,10 @@ function ArmorRow({ item }: { item: DndArmorItem }) {
 
 function GearRow({ item }: { item: DndGearItem }) {
   return (
-    <div className="border border-[#58180d]/20 bg-white/40 p-2">
+    <div className="rounded border border-[#58180d]/10 bg-white/50 p-2">
       <div className="flex justify-between gap-2">
         <p className="font-bold text-[#58180d]">{itemTitle(item)}</p>
-        <span className="shrink-0 text-[10px] text-[#2c1810]/70">{item.category === 'tool' ? '工具' : '冒险装备'}</span>
+        <span className="shrink-0 rounded-full bg-[#58180d]/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#58180d]/80">{item.category === 'tool' ? '工具' : '冒险装备'}</span>
       </div>
       <MetaRow
         parts={[
@@ -113,16 +113,19 @@ function GearRow({ item }: { item: DndGearItem }) {
 
 export function DndEquipmentCatalogPanel() {
   return (
-    <div className="border border-[#58180d] p-3 bg-white/30">
-      <div className="border-b border-[#58180d] mb-2 pb-1 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-xs font-bold uppercase">装备资料 Equipment Catalog</h3>
-        <span className="text-[10px] text-[#2c1810]/60">只读资料层 v1 · 不写入角色，不影响 AC / 攻击 / 背包</span>
+    <div className="rounded-lg border border-[#58180d]/20 bg-white/45 p-4 shadow-sm">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-b border-[#58180d]/12 pb-2">
+        <h3 className="text-sm font-black uppercase tracking-wide text-[#58180d]">装备资料 Equipment Catalog</h3>
+        <span className="rounded-full bg-[#58180d]/8 px-2 py-0.5 text-[10px] text-[#2c1810]/55">只读资料层 v1 · 不写入角色，不影响 AC / 攻击 / 背包</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-sans">
         <div>
-          <h4 className="mb-1 text-[10px] font-bold uppercase text-[#58180d]">武器 Weapons</h4>
-          <div className="space-y-2">
+          <h4 className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[#58180d]">
+            武器 Weapons
+            <span className="rounded-full bg-[#58180d]/10 px-1.5 py-0.5 text-[9px] font-bold text-[#58180d]/70">{DND_BASIC_WEAPONS.length}</span>
+          </h4>
+          <div className="space-y-1.5">
             {DND_BASIC_WEAPONS.map(item => (
               <div key={item.id}>
                 <WeaponRow item={item} />
@@ -132,8 +135,11 @@ export function DndEquipmentCatalogPanel() {
         </div>
 
         <div>
-          <h4 className="mb-1 text-[10px] font-bold uppercase text-[#58180d]">护甲与盾牌 Armor &amp; Shield</h4>
-          <div className="space-y-2">
+          <h4 className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[#58180d]">
+            护甲与盾牌 Armor &amp; Shield
+            <span className="rounded-full bg-[#58180d]/10 px-1.5 py-0.5 text-[9px] font-bold text-[#58180d]/70">{DND_BASIC_ARMOR.length}</span>
+          </h4>
+          <div className="space-y-1.5">
             {DND_BASIC_ARMOR.map(item => (
               <div key={item.id}>
                 <ArmorRow item={item} />
@@ -143,8 +149,11 @@ export function DndEquipmentCatalogPanel() {
         </div>
 
         <div>
-          <h4 className="mb-1 text-[10px] font-bold uppercase text-[#58180d]">工具与冒险装备 Gear &amp; Tools</h4>
-          <div className="space-y-2">
+          <h4 className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[#58180d]">
+            工具与冒险装备 Gear &amp; Tools
+            <span className="rounded-full bg-[#58180d]/10 px-1.5 py-0.5 text-[9px] font-bold text-[#58180d]/70">{DND_BASIC_GEAR.length}</span>
+          </h4>
+          <div className="space-y-1.5">
             {DND_BASIC_GEAR.map(item => (
               <div key={item.id}>
                 <GearRow item={item} />
