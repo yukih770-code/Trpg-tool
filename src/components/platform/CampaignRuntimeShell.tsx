@@ -6,6 +6,7 @@ import type {
   RuntimeLogEventType,
 } from '../../lib/platform/runtimeLogLocalStore';
 import { useRuntimeLogLocalStore } from '../../lib/platform/runtimeLogLocalStore';
+import { useRuntimeLogEventsForCampaign } from '../../lib/platform/runtimeLogRepository';
 import { createTranslator, readStoredLocale } from '../../i18n';
 
 type CampaignRuntimeTone = 'dnd' | 'coc' | 'cp';
@@ -86,19 +87,8 @@ export function CampaignRuntimeShell({
   const isHost = context.selectedEntryRole === 'host';
   const currentActor = context.selectedActorName ?? t('campaignRuntime.header.noActor');
   const runtimeSystemId = toLocalCampaignSystemId(context.systemId);
-  const storedRuntimeLogEvents = useRuntimeLogLocalStore((state) => state.events);
   const appendRuntimeLogEvent = useRuntimeLogLocalStore((state) => state.appendRuntimeLogEvent);
-  const runtimeLogEvents = useMemo(
-    () =>
-      storedRuntimeLogEvents
-        .filter((event) => event.campaignId === context.campaignId)
-        .sort((a, b) => {
-          const createdAtOrder = a.createdAt.localeCompare(b.createdAt);
-          if (createdAtOrder !== 0) return createdAtOrder;
-          return a.id.localeCompare(b.id);
-        }),
-    [context.campaignId, storedRuntimeLogEvents],
-  );
+  const runtimeLogEvents = useRuntimeLogEventsForCampaign(context.campaignId);
 
   const participantItems = [
     ['campaignRuntime.participants.host', isHost ? t('campaignRuntime.status.current') : t('campaignRuntime.status.placeholder')],
