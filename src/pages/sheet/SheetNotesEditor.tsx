@@ -66,13 +66,11 @@ export function SheetNotesEditor({
 
   return (
     <div className={className}>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        {title ? (
+      <div className="mb-1.5 flex items-center gap-2">
+        {title && (
           <h4 className={`text-[11px] font-bold uppercase tracking-[0.16em] ${accentClassName ?? ''}`}>
             {title}
           </h4>
-        ) : (
-          <span />
         )}
         {canEdit && !editing && (
           <button
@@ -80,7 +78,7 @@ export function SheetNotesEditor({
             onClick={startEdit}
             aria-label={editLabel}
             title={editLabel}
-            className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border border-current/30 text-[12px] opacity-70 transition hover:opacity-100 ${accentClassName ?? ''}`}
+            className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-current/30 text-[13px] leading-none opacity-70 transition hover:opacity-100 ${accentClassName ?? ''}`}
           >
             <span aria-hidden="true">✎</span>
           </button>
@@ -94,6 +92,7 @@ export function SheetNotesEditor({
             onChange={(event) => setDraft(event.target.value)}
             rows={rows}
             placeholder={placeholder}
+            style={{ minHeight: '4.5rem', maxHeight: '11.25rem', overflowY: 'auto' }}
             className={
               textareaClassName ??
               'w-full resize-y rounded border border-current/25 bg-white/60 px-3 py-2 text-sm outline-none'

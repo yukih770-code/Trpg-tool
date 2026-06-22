@@ -13,12 +13,11 @@ import {
   CharacterSheetSectionTabs,
   type CharacterSheetSectionDefinition,
 } from './sheet/CharacterSheetSectionTabs';
-import { CharacterSheetPanel } from './sheet/CharacterSheetPanel';
 import { SheetNotesEditor } from './sheet/SheetNotesEditor';
+import { AvatarPickerSlot } from './sheet/AvatarPickerSlot';
 import { CharacterInventoryPanel } from './sheet/CharacterInventoryPanel';
-import { CharacterProfilePanel } from './sheet/CharacterProfilePanel';
 import { groupInventoryByLocation, makeInventoryItem } from '../lib/platform/characterInventory';
-import { makeCharacterProfileDraft, type CharacterProfileFieldSupport } from '../lib/platform/characterProfile';
+import { makeCharacterProfileDraft, resolveAvatarImageUrl, type CharacterProfileFieldSupport } from '../lib/platform/characterProfile';
 import { getDndCharacterSpellIndex } from '../lib/dnd2024/dndSpellAvailability';
 import { createTranslator, readStoredLocale } from '../i18n';
 import { CharacterCampaignCta, useCharacterCampaignCta } from '../components/platform/CharacterCampaignCta';
@@ -34,7 +33,6 @@ const DND_SHEET_SECTIONS: CharacterSheetSectionDefinition[] = [
   { id: 'features', label: '特性 Features' },
   { id: 'equipment', label: '装备 Equipment' },
   { id: 'spellbook', label: '法术书 Spellbook' },
-  { id: 'notes', label: '记录 Notes' },
 ];
 
 export function Sheet({ onStartPlaying }: SheetProps = {}) {
@@ -202,7 +200,6 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
           </button>
         )}
       </header>
-      {campaignCta && <CharacterCampaignCta {...campaignCta} />}
 
       <CharacterSheetSectionTabs
         sections={DND_SHEET_SECTIONS}
@@ -216,15 +213,48 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
 
       {sheetSection === 'overview' && (
       <div className="space-y-3">
-        <div className="min-w-0">
-          <h2 className="break-words text-3xl font-black uppercase tracking-tight text-[#2c1810] md:text-4xl">
-            {character.name || 'Unnamed'}
-          </h2>
-          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-sans text-[#2c1810]/75">
-            <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.class')}:</strong> {character.jobClass} {character.subclass || ''} · L{character.level}</span>
-            <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.species')}:</strong> {character.race || '-'} {character.subrace || ''}</span>
-            <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.background')}:</strong> {character.background || '-'}</span>
-            <span><strong className="text-[#58180d]">{t('dndSheet.compact.genderAge')}:</strong> {character.gender || '-'} / {character.age || '-'}</span>
+        {/* Profile Hero — portrait + identity + appearance + biography */}
+        <div className="rounded-lg border border-[#58180d]/20 bg-[#f3e7c9]/40 p-4 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <AvatarPickerSlot
+              label="立绘 / 头像 Portrait"
+              imageUrl={resolveAvatarImageUrl(dndProfile.avatar)}
+              altText={character.name || 'Unnamed'}
+              mode="character"
+              readOnly
+              className="shrink-0 text-[#2c1810]"
+              accentClassName="text-[#58180d]/70"
+            />
+            <div className="min-w-0 flex-1 space-y-2">
+              <h2 className="break-words text-3xl font-black uppercase tracking-tight text-[#2c1810] md:text-4xl">
+                {character.name || 'Unnamed'}
+              </h2>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-sans text-[#2c1810]/75">
+                <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.class')}:</strong> {character.jobClass} {character.subclass || ''} · L{character.level}</span>
+                <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.species')}:</strong> {character.race || '-'} {character.subrace || ''}</span>
+                <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.background')}:</strong> {character.background || '-'}</span>
+                <span><strong className="text-[#58180d]">{t('dndSheet.compact.genderAge')}:</strong> {character.gender || '-'} / {character.age || '-'}</span>
+              </div>
+              <div className="space-y-2 border-t border-[#58180d]/15 pt-2">
+                <SheetNotesEditor
+                  title="外貌 Appearance"
+                  value=""
+                  emptyText="尚未填写外貌。"
+                  accentClassName="text-[#58180d]/70"
+                  textClassName="text-[#2c1810]/85"
+                />
+                <SheetNotesEditor
+                  title="生平 / 描述 Biography"
+                  value={character.description ?? ''}
+                  onSave={(next) => updateField('description', next)}
+                  emptyText="尚未记录生平。"
+                  rows={5}
+                  accentClassName="text-[#58180d]/70"
+                  textClassName="text-[#2c1810]/85"
+                  textareaClassName="w-full resize-y rounded border border-[#58180d]/25 bg-white/60 px-3 py-2 text-sm outline-none text-[#2c1810]"
+                />
+              </div>
+            </div>
           </div>
         </div>
         <section className="grid grid-cols-2 gap-2 md:grid-cols-5">
@@ -244,7 +274,7 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
             </div>
           ))}
         </section>
-      <main className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(16rem,0.85fr)_minmax(22rem,1.1fr)_minmax(20rem,1fr)]">
+      <main className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <section className="space-y-3">
           <div className={compactPanelClass}>
             <h3 className={compactTitleClass}>{t('dndSheet.compact.abilities')}</h3>
@@ -319,6 +349,15 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
           </div>
         </section>
       </main>
+
+      <div className="rounded-lg border border-[#58180d]/15 bg-white/45 p-3 shadow-sm">
+        <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#58180d]/55">战役关联 Campaign Context</div>
+        {campaignCta ? (
+          <CharacterCampaignCta {...campaignCta} />
+        ) : (
+          <p className="text-[11px] italic text-[#58180d]/55">当前未关联战役。可在战役库中选择战役。</p>
+        )}
+      </div>
       </div>
       )}
 
@@ -643,28 +682,6 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
             limitations={spellAvailability.limitations}
           />
         </section>
-      )}
-
-      {sheetSection === 'notes' && (
-      <div className="space-y-3">
-        <CharacterProfilePanel
-          profile={dndProfile}
-          support={dndProfileSupport}
-          eyebrow="DND 5e 2024"
-          title="角色档案 Profile"
-          className="border-[#58180d]/20 bg-[#f3e7c9]/45 text-[#2c1810]"
-          headerClassName="text-[#58180d]"
-          accentClassName="text-[#58180d]/70"
-          textClassName="text-[#2c1810]/90"
-          onSaveBiography={(next) => updateField('description', next)}
-          textareaClassName="w-full resize-y rounded border border-[#58180d]/25 bg-white/60 px-3 py-2 text-sm outline-none text-[#2c1810]"
-        />
-        {character.activeMods && character.activeMods.length > 0 && (
-          <div className="rounded-lg border border-[#58180d]/20 bg-[#f3e7c9]/45 p-3 text-xs italic text-[#58180d]/70">
-            * 织网者低语：命运之线已纠缠——此人承载了 <strong>[{character.activeMods.join(', ')}]</strong> 的异世法则。
-          </div>
-        )}
-      </div>
       )}
     </div>
   );
