@@ -1729,6 +1729,11 @@ export const en = {
       viewDetail: 'View Detail',
       edit: 'Edit ▾',
       collapseEdit: 'Collapse Edit ▴',
+      moreCollapsed: 'More ▾',
+      moreExpanded: 'More ▴',
+      moreExpandLabel: 'Expand more campaign actions',
+      moreCollapseLabel: 'Collapse more campaign actions',
+      lifecycleActions: 'Lifecycle Actions',
       copyRoomCode: 'Copy Room Code',
       save: 'Save',
       cancel: 'Cancel',
@@ -1768,6 +1773,7 @@ export const en = {
     edit: {
       title: 'Edit Campaign',
       lifecycleNote: 'Business status is separate from lifecycle. Use Archive, Restore, or Move to Trash for lifecycle changes.',
+      roomCodeNote: 'The room code is system-generated to distinguish same-name campaigns and support future invitations. It cannot be edited manually.',
       generatedMissingRoomCode: 'Legacy campaign has no generated room code yet',
       fields: {
         title: 'Title',

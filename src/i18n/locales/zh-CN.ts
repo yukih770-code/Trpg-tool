@@ -1729,6 +1729,11 @@ export const zhCN = {
       viewDetail: '查看详情',
       edit: '编辑 ▾',
       collapseEdit: '收起编辑 ▴',
+      moreCollapsed: '更多 ▾',
+      moreExpanded: '更多 ▴',
+      moreExpandLabel: '展开更多战役操作',
+      moreCollapseLabel: '收起更多战役操作',
+      lifecycleActions: '生命周期操作',
       copyRoomCode: '复制房间号',
       save: '保存',
       cancel: '取消',
@@ -1768,6 +1773,7 @@ export const zhCN = {
     edit: {
       title: '编辑战役',
       lifecycleNote: '业务状态与生命周期分离。归档、恢复、移入回收站请使用对应生命周期动作。',
+      roomCodeNote: '房间号由系统生成，用于区分同名战役和未来邀请；不可手动编辑。',
       generatedMissingRoomCode: '旧战役暂无系统房间号',
       fields: {
         title: '标题',

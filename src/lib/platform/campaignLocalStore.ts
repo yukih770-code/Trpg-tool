@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { generateInternalId, generatePublicCode } from './platformObjectIdentity';
 
 export type LocalCampaignSystemId =
   | 'dnd5e-2024'
@@ -87,39 +88,16 @@ function nowIso(): string {
 }
 
 function makeCampaignId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `campaign-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  return generateInternalId('campaign');
 }
 
 function makeCampaignRoomCode(existingCampaigns: LocalCampaign[]): string {
-  const existingCodes = new Set(
+  return generatePublicCode(
+    'campaign',
     existingCampaigns
-      .map((campaign) => campaign.roomCode?.trim().toUpperCase())
+      .map((campaign) => campaign.roomCode)
       .filter((code): code is string => Boolean(code)),
   );
-
-  for (let attempt = 0; attempt < 32; attempt += 1) {
-    const code = randomRoomCode();
-    if (!existingCodes.has(code)) return code;
-  }
-
-  let suffix = existingCampaigns.length + 1;
-  while (existingCodes.has(`C${String(suffix).padStart(5, '0')}`)) {
-    suffix += 1;
-  }
-  return `C${String(suffix).padStart(5, '0')}`;
-}
-
-function randomRoomCode(): string {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 6; i += 1) {
-    const index = Math.floor(Math.random() * alphabet.length);
-    code += alphabet[index];
-  }
-  return code;
 }
 
 function normalizeTitle(title: string): string {
@@ -206,13 +184,15 @@ export const useCampaignLocalStore = create<CampaignLocalStoreState>()(
 
       updateCampaign: (id, patch) => {
         let updatedCampaign: LocalCampaign | undefined;
+        const { roomCode: _ignoredRoomCode, ...safePatch } =
+          patch as UpdateLocalCampaignPatch & { roomCode?: unknown };
         set((state) => ({
           campaigns: state.campaigns.map((campaign) => {
             if (campaign.id !== id) return campaign;
             updatedCampaign = {
               ...campaign,
-              ...patch,
-              title: patch.title !== undefined ? normalizeTitle(patch.title) : campaign.title,
+              ...safePatch,
+              title: safePatch.title !== undefined ? normalizeTitle(safePatch.title) : campaign.title,
               updatedAt: nowIso(),
             };
             return updatedCampaign;

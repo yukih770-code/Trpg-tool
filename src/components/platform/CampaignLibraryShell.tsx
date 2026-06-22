@@ -130,6 +130,7 @@ export function CampaignLibraryShell({
   const [campaignSearchQuery, setCampaignSearchQuery] = useState('');
   const [campaignLifecycleFilter, setCampaignLifecycleFilter] = useState<CampaignLifecycleFilter>('active');
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+  const [expandedMoreCampaignId, setExpandedMoreCampaignId] = useState<string | null>(null);
   const [campaignEditDraft, setCampaignEditDraft] = useState<CampaignEditDraft>({
     title: '',
     description: '',
@@ -397,6 +398,7 @@ export function CampaignLibraryShell({
       cancelEditingCampaign();
       return;
     }
+    setExpandedMoreCampaignId(null);
     setEditingCampaignId(campaign.id);
     setCampaignEditDraft({
       title: campaign.title,
@@ -427,6 +429,7 @@ export function CampaignLibraryShell({
 
   const handleArchiveCampaign = (campaign: LocalCampaign) => {
     archiveCampaign(campaign.id);
+    setExpandedMoreCampaignId(null);
     setCampaignLifecycleFilter('archived');
     if (selectedCampaignId === campaign.id) {
       setLibraryMode('existing');
@@ -435,12 +438,14 @@ export function CampaignLibraryShell({
 
   const handleRestoreCampaign = (campaign: LocalCampaign) => {
     restoreCampaign(campaign.id);
+    setExpandedMoreCampaignId(null);
     setCampaignLifecycleFilter('active');
   };
 
   const handleMoveCampaignToTrash = (campaign: LocalCampaign) => {
     if (!window.confirm(t('campaignLibrary.actions.moveToTrashConfirm'))) return;
     trashCampaign(campaign.id);
+    setExpandedMoreCampaignId(null);
     if (selectedCampaignId === campaign.id) {
       setSelectedCampaignId(null);
       setLibraryMode('existing');
@@ -632,10 +637,14 @@ export function CampaignLibraryShell({
                   canSelect={Boolean(campaignSelectForActorContext && onSelectCampaignForActor)}
                   onSelect={() => handleSelectCampaignForActor(campaign)}
                   onViewDetail={() => {
+                    setExpandedMoreCampaignId(null);
                     setSelectedCampaignId(campaign.id);
                     setLibraryMode('detail');
                   }}
-                  onActivate={() => updateCampaign(campaign.id, { status: 'active' })}
+                  onActivate={() => {
+                    updateCampaign(campaign.id, { status: 'active' });
+                    setExpandedMoreCampaignId(null);
+                  }}
                   onArchive={() => handleArchiveCampaign(campaign)}
                   onRestore={() => handleRestoreCampaign(campaign)}
                   onMoveToTrash={() => handleMoveCampaignToTrash(campaign)}
@@ -644,6 +653,11 @@ export function CampaignLibraryShell({
                   onSubmitEdit={saveEditingCampaign}
                   onEditDraftChange={setCampaignEditDraft}
                   onCopyRoomCode={() => handleCopyCampaignRoomCode(campaign.roomCode)}
+                  isMoreActionsExpanded={expandedMoreCampaignId === campaign.id}
+                  onToggleMoreActions={() => {
+                    setEditingCampaignId(null);
+                    setExpandedMoreCampaignId((current) => (current === campaign.id ? null : campaign.id));
+                  }}
                 />
               </div>
             ))
@@ -709,6 +723,8 @@ function CampaignCard({
   onSubmitEdit,
   onEditDraftChange,
   onCopyRoomCode,
+  isMoreActionsExpanded,
+  onToggleMoreActions,
 }: {
   campaign: LocalCampaign;
   editDraft: CampaignEditDraft | null;
@@ -727,9 +743,12 @@ function CampaignCard({
   onSubmitEdit: (event: FormEvent<HTMLFormElement>) => void;
   onEditDraftChange: (draft: CampaignEditDraft) => void;
   onCopyRoomCode: () => void;
+  isMoreActionsExpanded: boolean;
+  onToggleMoreActions: () => void;
 }) {
   const isEditing = Boolean(editDraft);
   const canManage = !canSelect;
+  const hasMoreActions = canManage;
   return (
     <div className={`rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${theme.card}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -799,43 +818,63 @@ function CampaignCard({
             {t('campaignLibrary.actions.copyRoomCode')}
           </button>
         )}
-        {canManage && campaign.lifecycleStatus === 'active' && campaign.status !== 'active' && (
+        {hasMoreActions && (
           <button
             type="button"
-            onClick={onActivate}
+            aria-expanded={isMoreActionsExpanded}
+            aria-label={t(isMoreActionsExpanded ? 'campaignLibrary.actions.moreCollapseLabel' : 'campaignLibrary.actions.moreExpandLabel')}
+            onClick={onToggleMoreActions}
             className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
           >
-            {t('campaignLibrary.actions.activate')}
-          </button>
-        )}
-        {canManage && campaign.lifecycleStatus === 'active' && (
-          <button
-            type="button"
-            onClick={onArchive}
-            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
-          >
-            {t('campaignLibrary.actions.archive')}
-          </button>
-        )}
-        {canManage && campaign.lifecycleStatus !== 'active' && (
-          <button
-            type="button"
-            onClick={onRestore}
-            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
-          >
-            {t('campaignLibrary.actions.restore')}
-          </button>
-        )}
-        {canManage && campaign.lifecycleStatus !== 'trashed' && (
-          <button
-            type="button"
-            onClick={onMoveToTrash}
-            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.danger}`}
-          >
-            {t('campaignLibrary.actions.moveToTrash')}
+            {t(isMoreActionsExpanded ? 'campaignLibrary.actions.moreExpanded' : 'campaignLibrary.actions.moreCollapsed')}
           </button>
         )}
       </div>
+      {hasMoreActions && isMoreActionsExpanded && (
+        <div className={`mt-3 flex flex-col gap-2 rounded-lg border p-3 ${theme.card}`}>
+          <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
+            {t('campaignLibrary.actions.lifecycleActions')}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {campaign.lifecycleStatus === 'active' && campaign.status !== 'active' && (
+              <button
+                type="button"
+                onClick={onActivate}
+                className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+              >
+                {t('campaignLibrary.actions.activate')}
+              </button>
+            )}
+            {campaign.lifecycleStatus === 'active' && (
+              <button
+                type="button"
+                onClick={onArchive}
+                className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+              >
+                {t('campaignLibrary.actions.archive')}
+              </button>
+            )}
+            {campaign.lifecycleStatus !== 'active' && (
+              <button
+                type="button"
+                onClick={onRestore}
+                className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+              >
+                {t('campaignLibrary.actions.restore')}
+              </button>
+            )}
+            {campaign.lifecycleStatus !== 'trashed' && (
+              <button
+                type="button"
+                onClick={onMoveToTrash}
+                className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.danger}`}
+              >
+                {t('campaignLibrary.actions.moveToTrash')}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {isEditing && editDraft && (
         <form onSubmit={onSubmitEdit} className={`mt-4 rounded-lg border p-4 ${theme.card}`}>
           <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
@@ -869,6 +908,9 @@ function CampaignCard({
                   </button>
                 )}
               </div>
+              <span className={`mt-1 block text-[11px] font-normal leading-relaxed ${theme.muted}`}>
+                {t('campaignLibrary.edit.roomCodeNote')}
+              </span>
             </label>
             <label className="text-xs font-bold md:col-span-2">
               <span className={theme.muted}>{t('campaignLibrary.edit.fields.description')}</span>
