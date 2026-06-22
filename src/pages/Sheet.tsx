@@ -16,7 +16,7 @@ import {
 import { SheetNotesEditor } from './sheet/SheetNotesEditor';
 import { AvatarPickerSlot } from './sheet/AvatarPickerSlot';
 import { CharacterInventoryPanel } from './sheet/CharacterInventoryPanel';
-import { groupInventoryByLocation, makeInventoryItem } from '../lib/platform/characterInventory';
+import { groupInventoryByLocation, makeInventoryItem, makeActorInventoryKey } from '../lib/platform/characterInventory';
 import { makeCharacterProfileDraft, resolveAvatarImageUrl, type CharacterProfileFieldSupport } from '../lib/platform/characterProfile';
 import { getDndCharacterSpellIndex } from '../lib/dnd2024/dndSpellAvailability';
 import { createTranslator, readStoredLocale } from '../i18n';
@@ -643,7 +643,9 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
           <CharacterInventoryPanel
             title="背包与已装备 Backpack & Equipped"
             groups={dndInventoryGroups}
-            emptyText="暂无背包物品。Empty backpack."
+            actorKey={makeActorInventoryKey('dnd5e-2024', character.id ?? 'dnd-actor')}
+            systemId="dnd5e-2024"
+            emptyText="暂无系统装备。System equipment is empty."
             className="border-[#58180d]/20 bg-white/45 text-[#2c1810]"
             headerClassName="text-[#58180d]"
             groupHeaderClassName="text-[#58180d]"

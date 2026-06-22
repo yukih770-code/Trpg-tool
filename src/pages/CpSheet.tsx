@@ -7,7 +7,7 @@ import {
 } from './sheet/CharacterSheetSectionTabs';
 import { CharacterInventoryPanel } from './sheet/CharacterInventoryPanel';
 import { CharacterProfilePanel } from './sheet/CharacterProfilePanel';
-import { groupInventoryByLocation, makeInventoryItem } from '../lib/platform/characterInventory';
+import { groupInventoryByLocation, makeInventoryItem, makeActorInventoryKey } from '../lib/platform/characterInventory';
 import { makeCharacterProfileDraft, type CharacterProfileFieldSupport } from '../lib/platform/characterProfile';
 import { toast } from 'sonner';
 
@@ -218,11 +218,14 @@ export function CpSheet() {
         <CharacterInventoryPanel
           title="背包与已装备 Backpack & Equipped"
           groups={cpInventoryGroups}
-          emptyText="暂无装备 / 义体 / 物品。"
+          actorKey={makeActorInventoryKey('cp-red', character.id ?? 'cp-actor')}
+          systemId="cp-red"
+          emptyText="暂无系统装备 / 义体。"
           className="border-[#d8b954]/20 bg-[#111] text-[#d4d4d8]"
           headerClassName="text-[#f5c518]"
           groupHeaderClassName="text-[#f5c518]"
           chipClassName="bg-[#d8b954]/15 text-[#f5c518]"
+          controlClassName="rounded border border-[#d8b954]/30 bg-black/40 px-1.5 py-0.5 text-[11px] text-[#d4d4d8] outline-none"
         />
       )}
 

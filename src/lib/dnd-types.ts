@@ -204,6 +204,8 @@ export interface CharacterData {
   subclass: string;
   background: string;
   description: string;
+  /** Optional physical appearance text (v-append; backward compatible, defaults to ''). */
+  appearanceDescription?: string;
   level: number;
   hpMax: number;
   hpCurrent: number;

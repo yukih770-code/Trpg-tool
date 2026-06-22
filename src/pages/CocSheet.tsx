@@ -8,7 +8,7 @@ import {
 } from './sheet/CharacterSheetSectionTabs';
 import { CharacterInventoryPanel } from './sheet/CharacterInventoryPanel';
 import { CharacterProfilePanel } from './sheet/CharacterProfilePanel';
-import { groupInventoryByLocation, makeInventoryItem } from '../lib/platform/characterInventory';
+import { groupInventoryByLocation, makeInventoryItem, makeActorInventoryKey } from '../lib/platform/characterInventory';
 import { makeCharacterProfileDraft, type CharacterProfileFieldSupport } from '../lib/platform/characterProfile';
 import { CharacterCampaignCta, useCharacterCampaignCta } from '../components/platform/CharacterCampaignCta';
 
@@ -229,11 +229,14 @@ export function CocSheet() {
         <CharacterInventoryPanel
           title="武器与背包 Weapons & Backpack"
           groups={cocInventoryGroups}
-          emptyText="暂无武器或物品。武器 / 物品在创建 / 游玩中维护。"
+          actorKey={makeActorInventoryKey('coc7e', character.id ?? 'coc-actor')}
+          systemId="coc7e"
+          emptyText="暂无系统武器 / 物品。"
           className="border-[#059669]/30 bg-[#111] text-[#d4d4d8]"
           headerClassName="text-[#059669]"
           groupHeaderClassName="text-[#059669]"
           chipClassName="bg-[#059669]/15 text-[#059669]"
+          controlClassName="rounded border border-[#059669]/30 bg-[#1a1a1a] px-1.5 py-0.5 text-[11px] text-[#d4d4d8] outline-none"
         />
       )}
 

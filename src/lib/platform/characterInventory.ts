@@ -157,3 +157,36 @@ export function groupInventoryByLocation(items: CharacterInventoryItem[]): Chara
     }))
     .filter((group) => group.items.length > 0);
 }
+
+/** Ordered locations for selection controls. */
+export const INVENTORY_LOCATION_ORDER: InventoryItemLocation[] = [
+  'backpack',
+  'carried',
+  'equipped',
+  'worn',
+  'installed',
+  'stored',
+];
+
+/** Ordered categories for selection controls. */
+export const INVENTORY_CATEGORY_ORDER: InventoryItemCategory[] = [
+  'weapon',
+  'armor',
+  'shield',
+  'gear',
+  'tool',
+  'consumable',
+  'container',
+  'cyberware',
+  'fashion',
+  'currency',
+  'misc',
+];
+
+/**
+ * Stable persistence key for a character's owned platform inventory.
+ * Combines system + actor so different systems / characters stay separate.
+ */
+export function makeActorInventoryKey(systemId: InventorySystemId, actorId: string): string {
+  return `${systemId}:${actorId}`;
+}
