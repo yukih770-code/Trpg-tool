@@ -18,6 +18,11 @@ import { useCampaignLocalStore } from '../../lib/platform/campaignLocalStore';
 import { getActorVaultRecord } from '../../lib/platform/actorVaultRepositoryBridge';
 import { downloadCampaignLibraryExportSnapshot } from '../../lib/platform/campaignExportSnapshot';
 import { parseCampaignImportPreview, type CampaignImportPreview } from '../../lib/platform/campaignImportPreview';
+import {
+  applyCampaignSafeAppendImport,
+  buildCampaignSafeAppendPlan,
+  type CampaignSafeAppendResult,
+} from '../../lib/platform/campaignImportSafeAppend';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { ContextBar } from './ContextBar';
@@ -135,6 +140,8 @@ export function CampaignLibraryShell({
   const [campaignImportPreviewFileName, setCampaignImportPreviewFileName] = useState('');
   const [campaignImportPreview, setCampaignImportPreview] = useState<CampaignImportPreview | null>(null);
   const [campaignImportPreviewError, setCampaignImportPreviewError] = useState('');
+  const [campaignSafeAppendResult, setCampaignSafeAppendResult] = useState<CampaignSafeAppendResult | null>(null);
+  const [isImportingCampaigns, setIsImportingCampaigns] = useState(false);
   const [campaignEditDraft, setCampaignEditDraft] = useState<CampaignEditDraft>({
     title: '',
     description: '',
@@ -220,6 +227,10 @@ export function CampaignLibraryShell({
           actorName: campaignSelectForActorContext.actorName,
         }
       : draftSuggestedActor);
+  const campaignSafeAppendPlan = useMemo(
+    () => (campaignImportPreview ? buildCampaignSafeAppendPlan(campaignImportPreview) : null),
+    [campaignImportPreview],
+  );
 
   const createActions = [
     { key: 'campaignLibrary.create.standard', enabled: true },
@@ -469,6 +480,7 @@ export function CampaignLibraryShell({
     setCampaignImportPreviewFileName(file.name);
     setCampaignImportPreview(null);
     setCampaignImportPreviewError('');
+    setCampaignSafeAppendResult(null);
 
     void file.text()
       .then((text) => {
@@ -477,6 +489,16 @@ export function CampaignLibraryShell({
       .catch(() => {
         setCampaignImportPreviewError(t('campaignLibrary.importPreview.readError'));
       });
+  };
+
+  const handleSafeAppendCampaignImport = () => {
+    if (!campaignSafeAppendPlan || campaignSafeAppendPlan.importableCampaigns.length === 0 || isImportingCampaigns) return;
+    setIsImportingCampaigns(true);
+    try {
+      setCampaignSafeAppendResult(applyCampaignSafeAppendImport(campaignSafeAppendPlan));
+    } finally {
+      setIsImportingCampaigns(false);
+    }
   };
 
   const handleCopyCampaignRoomCode = (roomCode?: string) => {
@@ -660,9 +682,13 @@ export function CampaignLibraryShell({
                   <CampaignImportPreviewPanel
                     fileName={campaignImportPreviewFileName}
                     preview={campaignImportPreview}
+                    safeAppendPlan={campaignSafeAppendPlan}
+                    safeAppendResult={campaignSafeAppendResult}
+                    isImporting={isImportingCampaigns}
                     error={campaignImportPreviewError}
                     theme={theme}
                     t={t}
+                    onSafeAppend={handleSafeAppendCampaignImport}
                   />
                 )}
               </div>
@@ -1015,17 +1041,31 @@ function CampaignCard({
 function CampaignImportPreviewPanel({
   fileName,
   preview,
+  safeAppendPlan,
+  safeAppendResult,
+  isImporting,
   error,
   theme,
   t,
+  onSafeAppend,
 }: {
   fileName: string;
   preview: CampaignImportPreview | null;
+  safeAppendPlan: ReturnType<typeof buildCampaignSafeAppendPlan> | null;
+  safeAppendResult: CampaignSafeAppendResult | null;
+  isImporting: boolean;
   error: string;
   theme: (typeof toneClasses)[CampaignLibraryTone];
   t: (key: string) => string;
+  onSafeAppend: () => void;
 }) {
   const summary = preview?.summary;
+  const canSafeAppend = Boolean(
+    preview?.isRecognizedSnapshot &&
+    safeAppendPlan &&
+    safeAppendPlan.importableCampaigns.length > 0 &&
+    !isImporting,
+  );
   return (
     <div className={`mt-4 rounded-lg border p-4 text-xs ${theme.card}`}>
       <div className={`font-bold uppercase tracking-wider ${theme.accent}`}>
@@ -1039,6 +1079,23 @@ function CampaignImportPreviewPanel({
       <p className={`mt-2 leading-relaxed ${theme.muted}`}>
         {t('campaignLibrary.importPreview.dryRunNotice')}
       </p>
+      {preview?.isRecognizedSnapshot && (
+        <div className="mt-3 flex flex-wrap items-start gap-3">
+          <button
+            type="button"
+            disabled={!canSafeAppend}
+            onClick={onSafeAppend}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${
+              canSafeAppend ? theme.primary : `cursor-default opacity-55 ${theme.secondary}`
+            }`}
+          >
+            {t('campaignLibrary.importPreview.safeAppendAction')}
+          </button>
+          <p className={`max-w-2xl text-xs leading-relaxed ${theme.muted}`}>
+            {t('campaignLibrary.importPreview.safeAppendNote')}
+          </p>
+        </div>
+      )}
       {error && (
         <p className={`mt-3 rounded border p-3 leading-relaxed ${theme.danger}`}>
           {error}
@@ -1092,6 +1149,51 @@ function CampaignImportPreviewPanel({
                 ]}
                 theme={theme}
               />
+            </div>
+          )}
+          {safeAppendResult && (
+            <div className={`mt-3 rounded-lg border p-3 ${theme.badge}`}>
+              <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
+                {t('campaignLibrary.importPreview.safeAppendResultTitle')}
+              </div>
+              <p className={`mt-2 leading-relaxed ${theme.muted}`}>
+                {t('campaignLibrary.importPreview.safeAppendResultNote')}
+              </p>
+              <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+                {[
+                  ['campaignLibrary.importPreview.resultMetrics.imported', safeAppendResult.importedCampaigns.length],
+                  ['campaignLibrary.importPreview.resultMetrics.skippedSameId', safeAppendResult.skippedSameIdExistingCount],
+                  ['campaignLibrary.importPreview.resultMetrics.skippedSameRoomCode', safeAppendResult.skippedSameRoomCodeExistingCount],
+                  ['campaignLibrary.importPreview.resultMetrics.skippedInvalid', safeAppendResult.skippedInvalidCount],
+                ].map(([labelKey, value]) => (
+                  <div key={labelKey} className={`border p-2 ${theme.card}`}>
+                    <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
+                      {t(String(labelKey))}
+                    </div>
+                    <div className="mt-1 text-lg font-bold">{value}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                <PreviewCountGroup
+                  title={t('campaignLibrary.importPreview.systemCounts')}
+                  rows={[
+                    ['DND', safeAppendResult.systemCounts['dnd5e-2024']],
+                    ['COC', safeAppendResult.systemCounts.coc7e],
+                    ['CP RED', safeAppendResult.systemCounts['cp-red']],
+                  ]}
+                  theme={theme}
+                />
+                <PreviewCountGroup
+                  title={t('campaignLibrary.importPreview.lifecycleCounts')}
+                  rows={[
+                    [t('campaignLibrary.status.active'), safeAppendResult.lifecycleCounts.active],
+                    [t('campaignLibrary.status.archived'), safeAppendResult.lifecycleCounts.archived],
+                    [t('campaignLibrary.status.trashed'), safeAppendResult.lifecycleCounts.trashed],
+                  ]}
+                  theme={theme}
+                />
+              </div>
             </div>
           )}
         </>

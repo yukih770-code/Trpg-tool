@@ -1770,6 +1770,10 @@ export const en = {
       resultTitle: 'Import Preview Result',
       fileName: 'File name',
       dryRunNotice: 'This is a dry-run preview. It will not write, restore, overwrite, merge, or delete any campaigns.',
+      safeAppendAction: 'Safe Append Campaigns',
+      safeAppendNote: 'Only campaigns without conflicts will be imported. Existing IDs or room codes will be skipped. Nothing will be overwritten or merged.',
+      safeAppendResultTitle: 'Safe Append Import Result',
+      safeAppendResultNote: 'This result comes from the actual append loop. Same-ID, same-room-code, and invalid records were not written.',
       readError: 'Unable to read the selected file.',
       systemCounts: 'System Distribution',
       lifecycleCounts: 'Lifecycle Distribution',
@@ -1780,6 +1784,12 @@ export const en = {
         sameId: 'Same ID Conflicts',
         sameRoomCode: 'Same Room Code Conflicts',
         unsupportedMalformed: 'Unsupported / Malformed',
+      },
+      resultMetrics: {
+        imported: 'Imported',
+        skippedSameId: 'Skipped Same ID',
+        skippedSameRoomCode: 'Skipped Same Room Code',
+        skippedInvalid: 'Skipped Invalid',
       },
     },
     empty: {

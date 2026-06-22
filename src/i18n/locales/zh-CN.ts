@@ -1770,6 +1770,10 @@ export const zhCN = {
       resultTitle: '导入预览结果',
       fileName: '文件名',
       dryRunNotice: '这只是导入预览，不会写入、恢复、覆盖、合并或删除任何战役。',
+      safeAppendAction: '安全追加导入战役',
+      safeAppendNote: '只导入无冲突战役。已存在的 ID 或房间号会被跳过，不会覆盖或合并。',
+      safeAppendResultTitle: '安全追加导入结果',
+      safeAppendResultNote: '结果来自实际追加写入循环；同 ID、同房间号或无效记录均未写入。',
       readError: '无法读取所选文件。',
       systemCounts: '系统分布',
       lifecycleCounts: '生命周期分布',
@@ -1780,6 +1784,12 @@ export const zhCN = {
         sameId: '同 ID 冲突',
         sameRoomCode: '同房间号冲突',
         unsupportedMalformed: '不支持 / 格式错误',
+      },
+      resultMetrics: {
+        imported: '成功导入',
+        skippedSameId: '跳过同 ID',
+        skippedSameRoomCode: '跳过同房间号',
+        skippedInvalid: '跳过无效',
       },
     },
     empty: {

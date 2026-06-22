@@ -45,6 +45,12 @@ export type UpdateLocalCampaignPatch = Partial<
   Pick<LocalCampaign, 'title' | 'description' | 'status'>
 >;
 
+export type AppendImportedCampaignsResult = {
+  appendedCampaigns: LocalCampaign[];
+  skippedSameIdCount: number;
+  skippedSameRoomCodeCount: number;
+};
+
 export interface ListCampaignsOptions {
   systemId?: LocalCampaignSystemId;
   includeArchived?: boolean;
@@ -61,6 +67,7 @@ interface CampaignLocalStoreState {
   getCampaignById: (id: string) => LocalCampaign | undefined;
   createCampaign: (input: CreateLocalCampaignInput) => LocalCampaign;
   updateCampaign: (id: string, patch: UpdateLocalCampaignPatch) => LocalCampaign | undefined;
+  appendImportedCampaigns: (campaigns: LocalCampaign[]) => AppendImportedCampaignsResult;
   archiveCampaign: (id: string) => LocalCampaign | undefined;
   restoreCampaign: (id: string) => LocalCampaign | undefined;
   trashCampaign: (id: string) => LocalCampaign | undefined;
@@ -199,6 +206,48 @@ export const useCampaignLocalStore = create<CampaignLocalStoreState>()(
           }),
         }));
         return updatedCampaign;
+      },
+
+      appendImportedCampaigns: (campaigns) => {
+        const result: AppendImportedCampaignsResult = {
+          appendedCampaigns: [],
+          skippedSameIdCount: 0,
+          skippedSameRoomCodeCount: 0,
+        };
+
+        set((state) => {
+          const existingIds = new Set(state.campaigns.map((campaign) => campaign.id));
+          const existingRoomCodes = new Set(
+            state.campaigns
+              .map((campaign) => campaign.roomCode?.trim().toUpperCase())
+              .filter((code): code is string => Boolean(code)),
+          );
+
+          for (const campaign of campaigns) {
+            if (existingIds.has(campaign.id)) {
+              result.skippedSameIdCount += 1;
+              continue;
+            }
+
+            const normalizedRoomCode = campaign.roomCode?.trim().toUpperCase();
+            if (normalizedRoomCode && existingRoomCodes.has(normalizedRoomCode)) {
+              result.skippedSameRoomCodeCount += 1;
+              continue;
+            }
+
+            const importedCampaign = { ...campaign };
+            result.appendedCampaigns.push(importedCampaign);
+            existingIds.add(importedCampaign.id);
+            if (normalizedRoomCode) existingRoomCodes.add(normalizedRoomCode);
+          }
+
+          if (result.appendedCampaigns.length === 0) return state;
+          return {
+            campaigns: [...state.campaigns, ...result.appendedCampaigns],
+          };
+        });
+
+        return result;
       },
 
       archiveCampaign: (id) =>
