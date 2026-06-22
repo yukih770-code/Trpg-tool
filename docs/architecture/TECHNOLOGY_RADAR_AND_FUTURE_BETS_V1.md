@@ -12,6 +12,20 @@ contracts, data lifecycle policy, repository boundaries, or object ownership
 boundaries. A future task must still state its scope explicitly before any
 technology here can become implementation work.
 
+Local-first backend is the first deployment mode, not the final architecture.
+本地后端先行是第一部署形态，不是最终架构。 The platform should preserve room,
+identity, repository, permission, import/export, and runtime boundaries so that
+future deployment modes can share core data model and protocol concepts instead
+of fragmenting into unrelated products.
+
+Long-term deployment topology may include:
+
+1. Local single-user mode / 本地单机.
+2. LAN host mode / 局域网主持人开房.
+3. Self-hosted dedicated server / 玩家或社群自托管服务器.
+4. Official cloud service / 官方云端远程跑团服务.
+5. Community or third-party servers / 第三方社区服务器.
+
 ## Categories
 
 - Adopt: already adopted or worth continuing as a platform principle.
@@ -40,6 +54,13 @@ continue to guide implementation:
   embedded media blobs.
 - `WorkshopPackageManifest`, Source Settings, and dependency boundaries stay
   explicit.
+- Multi-deployment topology boundary: the platform should preserve object,
+  repository, room, identity, and permission boundaries so that local, LAN,
+  self-hosted, official cloud, and future community servers can share the same
+  core data model and protocol concepts.
+- 多部署拓扑边界：平台不应被写死为纯本地工具或纯官方 SaaS。对象模型、
+  Repository、房间、身份与权限边界应允许未来在本地、局域网、自托管、
+  官方云和第三方社区服务器之间复用。
 
 ## Trial
 
@@ -51,6 +72,10 @@ promotes them into scoped implementation:
 - Content hash for export package / Workshop package integrity.
 - MCP-style AI tool interface mock.
 - Map data model prepared for a Canvas / WebGPU renderer.
+- LAN room discovery PoC.
+- Self-hosted backend skeleton PoC.
+- Repository backend adapter PoC.
+- Local backend + official cloud compatibility boundary.
 
 Trial work must be reversible, isolated, and explicitly labeled as a PoC. It
 must not mutate production stores, schema, lifecycle behavior, or import/export
@@ -67,6 +92,12 @@ These areas are worth monitoring, but should not be implemented yet:
 - ActivityPub / ATProto for future community federation.
 - Passkey support for a future account system.
 - Browser-side local AI.
+- NAT traversal.
+- WebRTC data channel.
+- Reverse proxy deployment.
+- Server federation.
+- Community server registry.
+- Cloud sync / local sync convergence.
 
 Observation means research and architectural awareness only. It is not approval
 to add dependencies or product surfaces.
@@ -83,6 +114,10 @@ These should not be implemented now:
 - Formal MCP server.
 - Web3 / NFT asset system.
 - Overwrite / Merge import as default behavior.
+- Full official cloud service.
+- Full third-party server ecosystem.
+- Complex federation protocol.
+- Global server marketplace.
 
 Hold items may be revisited only through an explicit architecture proposal and
 implementation task. They must not arrive as incidental scope while working on a
@@ -110,6 +145,22 @@ Future technology must not bypass existing object boundaries:
 - Import flows must not make overwrite / merge the default behavior. Preview,
   dry-run, safe append, copy-as-new, and explicit confirmation remain the safer
   default direction.
+- Future cloud or server deployment must not collapse object boundaries.
+- `roomCode` / `publicCode` is not a permission system.
+- A local campaign is not automatically a cloud campaign.
+- A LAN room is not automatically an official cloud room.
+- `RuntimeActor` must not be persisted back into Campaign Library records.
+- Official cloud support must not remove local export/import ownership.
+- Self-hosted and community servers must not bypass visibility / projection /
+  permission boundaries.
+- 未来云端或服务器部署不得压平对象边界。
+- `roomCode` / `publicCode` 不是权限系统。
+- 本地战役不自动等于云端战役。
+- 局域网房间不自动等于官方云房间。
+- `selectedActorId` 不得直接升级成 `CampaignMembership`。
+- `RuntimeActor` 不得写回 Campaign Library record。
+- 官方云支持不得取消用户本地导出 / 导入与数据所有权。
+- 自托管和第三方服务器不得绕过 visibility / projection / permission 边界。
 
 ## How To Use This Note
 
