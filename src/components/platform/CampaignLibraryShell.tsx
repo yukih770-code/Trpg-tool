@@ -17,8 +17,9 @@ import type {
 import { useCampaignLocalStore } from '../../lib/platform/campaignLocalStore';
 import { getActorVaultRecord } from '../../lib/platform/actorVaultRepositoryBridge';
 import { downloadCampaignLibraryExportSnapshot } from '../../lib/platform/campaignExportSnapshot';
+import { parseCampaignImportPreview, type CampaignImportPreview } from '../../lib/platform/campaignImportPreview';
 import { createTranslator, readStoredLocale } from '../../i18n';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { ContextBar } from './ContextBar';
 
 type CampaignLibraryTone = 'dnd' | 'coc' | 'cp';
@@ -131,6 +132,9 @@ export function CampaignLibraryShell({
   const [campaignLifecycleFilter, setCampaignLifecycleFilter] = useState<CampaignLifecycleFilter>('active');
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
   const [expandedMoreCampaignId, setExpandedMoreCampaignId] = useState<string | null>(null);
+  const [campaignImportPreviewFileName, setCampaignImportPreviewFileName] = useState('');
+  const [campaignImportPreview, setCampaignImportPreview] = useState<CampaignImportPreview | null>(null);
+  const [campaignImportPreviewError, setCampaignImportPreviewError] = useState('');
   const [campaignEditDraft, setCampaignEditDraft] = useState<CampaignEditDraft>({
     title: '',
     description: '',
@@ -457,6 +461,24 @@ export function CampaignLibraryShell({
     downloadCampaignLibraryExportSnapshot();
   };
 
+  const handlePreviewCampaignSnapshotImport = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+    if (!file) return;
+
+    setCampaignImportPreviewFileName(file.name);
+    setCampaignImportPreview(null);
+    setCampaignImportPreviewError('');
+
+    void file.text()
+      .then((text) => {
+        setCampaignImportPreview(parseCampaignImportPreview(text, allCampaigns));
+      })
+      .catch(() => {
+        setCampaignImportPreviewError(t('campaignLibrary.importPreview.readError'));
+      });
+  };
+
   const handleCopyCampaignRoomCode = (roomCode?: string) => {
     const code = roomCode?.trim();
     if (!code || typeof navigator === 'undefined' || !navigator.clipboard) return;
@@ -596,23 +618,53 @@ export function CampaignLibraryShell({
             </p>
             {!campaignSelectForActorContext && (
               <div className="mt-4 border-t pt-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className={`text-xs font-bold ${theme.accent}`}>
-                      {t('campaignLibrary.export.title')}
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className={`text-xs font-bold ${theme.accent}`}>
+                          {t('campaignLibrary.export.title')}
+                        </div>
+                        <p className={`mt-1 text-xs leading-relaxed ${theme.muted}`}>
+                          {t('campaignLibrary.export.note')}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleExportCampaignSnapshot}
+                        className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+                      >
+                        {t('campaignLibrary.export.action')}
+                      </button>
                     </div>
-                    <p className={`mt-1 max-w-3xl text-xs leading-relaxed ${theme.muted}`}>
-                      {t('campaignLibrary.export.note')}
-                    </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleExportCampaignSnapshot}
-                    className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
-                  >
-                    {t('campaignLibrary.export.action')}
-                  </button>
+                  <div className="min-w-0">
+                    <div className={`text-xs font-bold ${theme.accent}`}>
+                      {t('campaignLibrary.importPreview.title')}
+                    </div>
+                    <p className={`mt-1 text-xs leading-relaxed ${theme.muted}`}>
+                      {t('campaignLibrary.importPreview.note')}
+                    </p>
+                    <label className={`mt-3 inline-flex cursor-pointer border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}>
+                      <span>{t('campaignLibrary.importPreview.action')}</span>
+                      <input
+                        type="file"
+                        accept="application/json,.json"
+                        onChange={handlePreviewCampaignSnapshotImport}
+                        className="sr-only"
+                      />
+                    </label>
+                  </div>
                 </div>
+                {(campaignImportPreview || campaignImportPreviewError || campaignImportPreviewFileName) && (
+                  <CampaignImportPreviewPanel
+                    fileName={campaignImportPreviewFileName}
+                    preview={campaignImportPreview}
+                    error={campaignImportPreviewError}
+                    theme={theme}
+                    t={t}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -956,6 +1008,118 @@ function CampaignCard({
           </div>
         </form>
       )}
+    </div>
+  );
+}
+
+function CampaignImportPreviewPanel({
+  fileName,
+  preview,
+  error,
+  theme,
+  t,
+}: {
+  fileName: string;
+  preview: CampaignImportPreview | null;
+  error: string;
+  theme: (typeof toneClasses)[CampaignLibraryTone];
+  t: (key: string) => string;
+}) {
+  const summary = preview?.summary;
+  return (
+    <div className={`mt-4 rounded-lg border p-4 text-xs ${theme.card}`}>
+      <div className={`font-bold uppercase tracking-wider ${theme.accent}`}>
+        {t('campaignLibrary.importPreview.resultTitle')}
+      </div>
+      {fileName && (
+        <div className={`mt-2 ${theme.muted}`}>
+          {t('campaignLibrary.importPreview.fileName')}：<span className="font-semibold">{fileName}</span>
+        </div>
+      )}
+      <p className={`mt-2 leading-relaxed ${theme.muted}`}>
+        {t('campaignLibrary.importPreview.dryRunNotice')}
+      </p>
+      {error && (
+        <p className={`mt-3 rounded border p-3 leading-relaxed ${theme.danger}`}>
+          {error}
+        </p>
+      )}
+      {preview && (
+        <>
+          {!preview.isRecognizedSnapshot && preview.errors.length > 0 && (
+            <div className={`mt-3 rounded border p-3 leading-relaxed ${theme.danger}`}>
+              {preview.errors.map((message) => (
+                <div key={message}>{message}</div>
+              ))}
+            </div>
+          )}
+          {summary && (
+            <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+              {[
+                ['campaignLibrary.importPreview.metrics.total', summary.totalCampaigns],
+                ['campaignLibrary.importPreview.metrics.valid', summary.validCampaigns],
+                ['campaignLibrary.importPreview.metrics.invalid', summary.invalidCampaigns],
+                ['campaignLibrary.importPreview.metrics.sameId', summary.sameIdExistingConflicts],
+                ['campaignLibrary.importPreview.metrics.sameRoomCode', summary.sameRoomCodeExistingConflicts],
+                ['campaignLibrary.importPreview.metrics.unsupportedMalformed', summary.unsupportedMalformedCount],
+              ].map(([labelKey, value]) => (
+                <div key={labelKey} className={`border p-2 ${theme.badge}`}>
+                  <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
+                    {t(String(labelKey))}
+                  </div>
+                  <div className="mt-1 text-lg font-bold">{value}</div>
+                </div>
+              ))}
+            </div>
+          )}
+          {summary && (
+            <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+              <PreviewCountGroup
+                title={t('campaignLibrary.importPreview.systemCounts')}
+                rows={[
+                  ['DND', summary.systemCounts['dnd5e-2024']],
+                  ['COC', summary.systemCounts.coc7e],
+                  ['CP RED', summary.systemCounts['cp-red']],
+                ]}
+                theme={theme}
+              />
+              <PreviewCountGroup
+                title={t('campaignLibrary.importPreview.lifecycleCounts')}
+                rows={[
+                  [t('campaignLibrary.status.active'), summary.lifecycleCounts.active],
+                  [t('campaignLibrary.status.archived'), summary.lifecycleCounts.archived],
+                  [t('campaignLibrary.status.trashed'), summary.lifecycleCounts.trashed],
+                ]}
+                theme={theme}
+              />
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function PreviewCountGroup({
+  title,
+  rows,
+  theme,
+}: {
+  title: string;
+  rows: Array<[string, number]>;
+  theme: (typeof toneClasses)[CampaignLibraryTone];
+}) {
+  return (
+    <div className={`border p-3 ${theme.badge}`}>
+      <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>{title}</div>
+      <dl className="mt-2 grid grid-cols-1 gap-1">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center justify-between gap-3">
+            <dt>{label}</dt>
+            <dd className="font-bold">{value}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }
