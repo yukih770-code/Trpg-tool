@@ -12,7 +12,7 @@ export const DND_SPELL_DATA_ACCURACY: RuleDataMetadata = {
 const DND_SPELL_MANIFEST_REF =
   'docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md';
 const DND_LOCAL_CHM_SPELL_DETAIL_REF =
-  'C:/TRPG_CHM_WORK/extracted/玩家手册2024/法术详述';
+  'dnd-local-chm-primary:玩家手册2024/法术详述';
 
 const toSpellId = (nameEn: string) =>
   `spell.srd52.${nameEn.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
@@ -65,10 +65,10 @@ const SPELL_METADATA_BY_EN: Record<string, RuleDataMetadata> = {
   Invisibility: spellLocalChmMeta('Invisibility', '2环.htm', 'Invisibility'),
   'Misty Step': spellLocalChmMeta('Misty Step', '2环.htm', 'Misty_Step'),
   Shatter: spellLocalChmMeta('Shatter', '2环.htm', 'Shatter'),
-  Revivify: spellTranslationNeedsCheckMeta(
-    'Revivify',
-    'Owner manifest confirms Revivify as a level 3 DND 2024 spell, but Chinese name is recorded as needs-human-check. Existing app name_cn 苍白复原感 is treated as an unverified translation anomaly and retained only for saved-character compatibility.',
-  ),
+  Counterspell: spellLocalChmMeta('Counterspell', '3环.htm', 'Counterspell'),
+  'Dispel Magic': spellLocalChmMeta('Dispel Magic', '3环.htm', 'Dispel_Magic'),
+  Fireball: spellLocalChmMeta('Fireball', '3环.htm', 'Fireball'),
+  Revivify: spellLocalChmMeta('Revivify', '3环.htm', 'Revivify'),
 };
 
 export const DND_SPELL_MANIFEST_GAP_REPORT = {
@@ -83,9 +83,9 @@ export const DND_SPELL_MANIFEST_GAP_REPORT = {
 export const DND_SPELL_TRANSLATION_ANOMALY_REPORT = {
   checked: ['Revivify', 'True Strike', 'Hold Person'],
   resolvedBy:
-    'True Strike and Hold Person were resolved from the user-local DND 2024 CHM source in Batch 1. Revivify remains needs-human-check.',
+    'True Strike and Hold Person were resolved from the user-local DND 2024 CHM source in Batch 1. Revivify was resolved from the same source in Batch 2.',
   note:
-    'Owner manifest confirms spell identity and level. Entries with dnd-local-chm-primary metadata have checked Chinese names; remaining anomalies keep compatibility labels until extracted from source.',
+    'Owner manifest confirms spell identity and level. Entries with dnd-local-chm-primary metadata have checked Chinese names and per-entry source references.',
 };
 
 // AI-LANDMARK: DND_SPELL_MANIFEST_CORRECTION
@@ -199,22 +199,24 @@ export const SPELL_DATA: SpellInfo[] = applyDndSpellMetadata([
   // L3
   {
     name_cn: '火球术', name_en: 'Fireball', level: 3, school: '塑能', is_ritual: false, classes: ['法师', '术士'],
-    cast_time: '动作', range: '150尺', component: { v: true, s: true, m: true, comp_m: '蝙蝠粪+硫磺' }, duration: '立即',
-    desc: '20尺半径爆炸，8d6 火焰伤害，敏捷豁免减半。'
+    cast_time: '动作', range: '150尺', component: { v: true, s: true, m: true, comp_m: '一颗蝙蝠粪和硫磺搓成的小球' }, duration: '立即',
+    desc: '明亮的闪光从你的指间飞驰向施法距离内你指定的一点，并随着一声低吼迸成一片烈焰。目标点周围半径20尺球状区域内的每个生物必须进行一次敏捷豁免。豁免失败者将受到8d6点火焰伤害，豁免成功则伤害减半。区域内所有未被着装或携带的可燃物件会开始燃烧。',
+    upcast: '升环施法。使用的法术位每比三环高一环，此伤害就增加1d6。'
   },
   {
     name_cn: '反制法术', name_en: 'Counterspell', level: 3, school: '防护', is_ritual: false, classes: ['法师', '术士', '邪术师'],
-    cast_time: '反应', range: '60尺', component: { v: false, s: true, m: false }, duration: '立即',
-    desc: '2024版：目标进行属性豁免，失败则法术失效。'
+    cast_time: '反应，当你看见60尺内一名生物施展一道具有言语、姿势或材料成分的法术时可用', range: '60尺', component: { v: false, s: true, m: false }, duration: '立即',
+    desc: '你试图打断一名正在施法的生物。该生物进行一次体质豁免。豁免失败则法术消散且毫无效果，并且用于施展法术的动作、附赠动作或反应随之浪费。如果那道法术是使用法术位施展的，则法术位并不会被消耗。'
   },
   {
-    name_cn: '解除魔法', name_en: 'Dispel Magic', level: 3, school: '防护', is_ritual: false, classes: ['法师', '吟游诗人', '牧师', '德鲁伊', '术士', '邪术师'],
+    name_cn: '解除魔法', name_en: 'Dispel Magic', level: 3, school: '防护', is_ritual: false, classes: ['吟游诗人', '牧师', '德鲁伊', '圣武士', '游侠', '术士', '邪术师', '法师'],
     cast_time: '动作', range: '120尺', component: { v: true, s: true, m: false }, duration: '立即',
-    desc: '终止目标上的法术效应。'
+    desc: '在施法距离内指定一名生物、一个物件或一处魔法效应。所有影响该目标的三环或更低环阶法术即告终止。每个影响目标的四环或更高环阶法术都需要以你的施法属性进行一次属性检定（DC 10+目标法术环阶），检定成功时目标法术终止。',
+    upcast: '升环施法。你直接终止影响目标的小于等于该施法环阶的法术效应。'
   },
   {
-    name_cn: '苍白复原感', name_en: 'Revivify', level: 3, school: '咒法', is_ritual: false, classes: ['牧师', '圣武士'],
-    cast_time: '动作', range: '触碰', component: { v: true, s: true, m: true, comp_m: '300gp钻石' }, duration: '立即',
-    desc: '复活死于 1 分钟内的生物。'
+    name_cn: '回生术', name_en: 'Revivify', level: 3, school: '死灵', is_ritual: false, classes: ['牧师', '德鲁伊', '圣武士', '游侠'],
+    cast_time: '动作', range: '触碰', component: { v: true, s: true, m: true, comp_m: '一颗价值300+GP的钻石，作为法术耗材' }, duration: '立即',
+    desc: '你接触在前一分钟内刚刚死亡的一名生物。该生物以1点生命值回生。该法术不能复活老死的生物，也不能恢复失去的身体部位。'
   }
 ]);

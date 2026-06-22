@@ -10,7 +10,8 @@
  * Index contract:
  * - This file lists entry EXISTENCE only: English name (from source HTML
  *   anchors), spell level (环), and scope. Chinese names, schools, class
- *   lists, and ALL rule effects remain needs-human-check and are NOT here.
+ *   lists, and ALL rule effects remain needs-human-check unless a row carries
+ *   owner-source-matched index metadata.
  * - This index is SEPARATE from runtime `SPELL_DATA` (src/data/spells.ts)
  *   and must not be wired into Gameplay/spellbook runtime until entries
  *   are individually verified and promoted.
@@ -24,11 +25,13 @@ export type DndSpellIndexScope = 'dnd2024' | 'xgte' | 'tcoe';
 export interface DndSpellIndexEntry {
   id: string;
   nameEn: string;
-  nameCn: 'needs-human-check';
+  nameCn: string;
   level: number;
-  school: 'needs-human-check';
+  school: string;
   scope: DndSpellIndexScope;
   desc: string;
+  classes?: string[];
+  ruleMeta?: RuleDataMetadata;
 }
 
 export const DND_SPELL_INDEX_ACCURACY: RuleDataMetadata = {
@@ -41,6 +44,9 @@ export const DND_SPELL_INDEX_ACCURACY: RuleDataMetadata = {
 };
 
 const INDEX_DESC = '该法术条目已定位来源，具体规则效果待核对。';
+const VERIFIED_INDEX_DESC = '该法术索引 metadata 已按本地资料核对，具体规则效果仍以 runtime SPELL_DATA 或后续详情抽取为准。';
+const DND_LOCAL_CHM_SPELL_DETAIL_REF =
+  'dnd-local-chm-primary:玩家手册2024/法术详述';
 
 function slugify(nameEn: string): string {
   return nameEn
@@ -50,19 +56,59 @@ function slugify(nameEn: string): string {
     .replace(/(^-|-$)/g, '');
 }
 
-function spellRow(nameEn: string, level: number, scope: DndSpellIndexScope): DndSpellIndexEntry {
+interface DndSpellIndexVerifiedMetadata {
+  nameCn: string;
+  school: string;
+  classes: string[];
+  sourceRef: string;
+}
+
+function verifiedSpellIndex(
+  nameCn: string,
+  school: string,
+  classes: string[],
+  fileName: string,
+  sectionId: string,
+): DndSpellIndexVerifiedMetadata {
   return {
-    id: `spell-index.${scope}.${slugify(nameEn)}`,
-    nameEn,
-    nameCn: 'needs-human-check',
-    level,
-    school: 'needs-human-check',
-    scope,
-    desc: INDEX_DESC,
+    nameCn,
+    school,
+    classes,
+    sourceRef: `${DND_LOCAL_CHM_SPELL_DETAIL_REF}/${fileName}#${sectionId}`,
   };
 }
 
-type Row = [nameEn: string, level: number];
+function spellRow(
+  nameEn: string,
+  level: number,
+  scope: DndSpellIndexScope,
+  verified?: DndSpellIndexVerifiedMetadata,
+): DndSpellIndexEntry {
+  return {
+    id: `spell-index.${scope}.${slugify(nameEn)}`,
+    nameEn,
+    nameCn: verified?.nameCn ?? 'needs-human-check',
+    level,
+    school: verified?.school ?? 'needs-human-check',
+    scope,
+    desc: verified ? VERIFIED_INDEX_DESC : INDEX_DESC,
+    ...(verified
+      ? {
+          classes: verified.classes,
+          ruleMeta: {
+            source: 'dnd-local-chm-primary',
+            trustLevel: 'owner-source-matched',
+            usagePolicy: 'display-only',
+            sourceRef: verified.sourceRef,
+            sourceNote:
+              'Spell index Chinese name, school, and class availability were extracted from the user-local DND 2024 CHM spell detail source. Class labels keep existing app terminology where the source uses 魔契师 for the app label 邪术师.',
+          } satisfies RuleDataMetadata,
+        }
+      : {}),
+  };
+}
+
+type Row = [nameEn: string, level: number, verified?: DndSpellIndexVerifiedMetadata];
 
 // ── SRD5.2 玩家手册2024/法术详述 (sourceId: dnd5echm-srd52-primary) ──────────
 const SRD52_SPELL_ROWS: Row[] = [
@@ -70,10 +116,10 @@ const SRD52_SPELL_ROWS: Row[] = [
   ['Animal Messenger', 2], ['Animal Shapes', 8], ['Animate Dead', 3], ['Animate Objects', 5], ['Antilife Shell', 5],
   ['Antimagic Field', 8], ['AntipathySympathy', 8], ['Arcane Eye', 4], ['Arcane Gate', 6], ['Arcane Lock', 2],
   ['Arcane Vigor', 2], ['Armor of Agathys', 1], ['Arms of Hadar', 1], ['Astral Projection', 9], ['Augury', 2],
-  ['Aura of Life', 4], ['Aura of Purity', 4], ['Aura of Vitality', 3], ['Awaken', 5], ['Bane', 1],
+  ['Aura of Life', 4], ['Aura of Purity', 4], ['Aura of Vitality', 3], ['Awaken', 5], ['Bane', 1, verifiedSpellIndex('灾祸术', '惑控', ['吟游诗人', '牧师', '邪术师'], '1环.htm', 'Bane')],
   ['Banishing Smite', 5], ['Banishment', 4], ['Barkskin', 2], ['Beacon of Hope', 3], ['Beast Sense', 2],
   ['Befuddlement', 8], ['Bestow Curse', 3], ["Bigby's Hand", 5], ['Blade Barrier', 6], ['Blade Ward', 0],
-  ['Bless', 1], ['Blight', 4], ['Blinding Smite', 3], ['BlindnessDeafness', 2], ['Blink', 3],
+  ['Bless', 1, verifiedSpellIndex('祝福术', '惑控', ['牧师', '圣武士'], '1环.htm', 'Bless')], ['Blight', 4], ['Blinding Smite', 3], ['BlindnessDeafness', 2], ['Blink', 3],
   ['Blur', 2], ['Burning Hands', 1], ['Call Lightning', 3], ['Calm Emotions', 2], ['Chain Lightning', 6],
   ['Charm Monster', 4], ['Charm Person', 1], ['Chill Touch', 0], ['Chromatic Orb', 1], ['Circle of Death', 6],
   ['Circle of Power', 5], ['Clairvoyance', 3], ['Clone', 8], ['Cloud of Daggers', 2], ['Cloudkill', 5],
@@ -81,12 +127,12 @@ const SRD52_SPELL_ROWS: Row[] = [
   ['Comprehend Languages', 1], ['Compulsion', 4], ['Cone of Cold', 5], ['Confusion', 4], ['Conjure Animals', 3],
   ['Conjure Barrage', 3], ['Conjure Celestial', 7], ['Conjure Elemental', 5], ['Conjure Fey', 6], ['Conjure Minor Elementals', 4],
   ['Conjure Volley', 5], ['Conjure Woodland Beings', 4], ['Contact Other Plane', 5], ['Contagion', 5], ['Contingency', 6],
-  ['Continual Flame', 2], ['Control Water', 4], ['Control Weather', 8], ['Cordon of Arrows', 2], ['Counterspell', 3],
+  ['Continual Flame', 2], ['Control Water', 4], ['Control Weather', 8], ['Cordon of Arrows', 2], ['Counterspell', 3, verifiedSpellIndex('法术反制', '防护', ['术士', '邪术师', '法师'], '3环.htm', 'Counterspell')],
   ['Create Food and Water', 3], ['Create or Destroy Water', 1], ['Create Undead', 6], ['Creation', 5], ['Crown of Madness', 2],
   ["Crusader's Mantle", 3], ['Cure Wounds', 1], ['Dancing Lights', 0], ['Darkness', 2], ['Darkvision', 2],
   ['Daylight', 3], ['Death Ward', 4], ['Delayed Blast Fireball', 7], ['Demiplane', 8], ['Destructive Wave', 5],
   ['Detect Evil and Good', 1], ['Detect Magic', 1], ['Detect Poison and Disease', 1], ['Detect Thoughts', 2], ['Dimension Door', 4],
-  ['Disguise Self', 1], ['Disintegrate', 6], ['Dispel Evil and Good', 5], ['Dispel Magic', 3], ['Dissonant Whispers', 1],
+  ['Disguise Self', 1], ['Disintegrate', 6], ['Dispel Evil and Good', 5], ['Dispel Magic', 3, verifiedSpellIndex('解除魔法', '防护', ['吟游诗人', '牧师', '德鲁伊', '圣武士', '游侠', '术士', '邪术师', '法师'], '3环.htm', 'Dispel_Magic')], ['Dissonant Whispers', 1],
   ['Divination', 4], ['Divine Favor', 1], ['Divine Smite', 1], ['Divine Word', 7], ['Dominate Beast', 4],
   ['Dominate Monster', 8], ['Dominate Person', 5], ["Dragon's Breath", 2], ["Drawmij's Instant Summons", 6], ['Dream', 5],
   ['Druidcraft', 0], ['Earthquake', 8], ['Eldritch Blast', 0], ['Elemental Weapon', 3], ['Elementalism', 0],
@@ -94,27 +140,27 @@ const SRD52_SPELL_ROWS: Row[] = [
   ['Etherealness', 7], ["Evard's Black Tentacles", 4], ['Expeditious Retreat', 1], ['Eyebite', 6], ['Fabricate', 4],
   ['Faerie Fire', 1], ['False Life', 1], ['Fear', 3], ['Feather Fall', 1], ['Feign Death', 3],
   ['Find Familiar', 1], ['Find Steed', 2], ['Find the Path', 6], ['Find Traps', 2], ['Finger of Death', 7],
-  ['Fire Bolt', 0], ['Fire Shield', 4], ['Fire Storm', 7], ['Fireball', 3], ['Flame Blade', 2],
+  ['Fire Bolt', 0, verifiedSpellIndex('火焰箭', '塑能', ['术士', '法师'], '0环.htm', 'Fire_Bolt')], ['Fire Shield', 4], ['Fire Storm', 7], ['Fireball', 3, verifiedSpellIndex('火球术', '塑能', ['术士', '法师'], '3环.htm', 'Fireball')], ['Flame Blade', 2],
   ['Flame Strike', 5], ['Flaming Sphere', 2], ['Flesh to Stone', 6], ['Fly', 3], ['Fog Cloud', 1],
   ['Forbiddance', 6], ['Forcecage', 7], ['Foresight', 9], ['Fount of Moonlight', 4], ['Freedom of Movement', 4],
   ['Friends', 0], ['Gaseous Form', 3], ['Gate', 9], ['Geas', 5], ['Gentle Repose', 2],
   ['Giant Insect', 4], ['Glibness', 8], ['Globe of Invulnerability', 6], ['Glyph of Warding', 3], ['Goodberry', 1],
   ['Grasping Vine', 4], ['Grease', 1], ['Greater Invisibility', 4], ['Greater Restoration', 5], ['Guardian of Faith', 4],
-  ['Guards and Wards', 6], ['Guidance', 0], ['Guiding Bolt', 1], ['Gust of Wind', 2], ['Hail of Thorns', 1],
+  ['Guards and Wards', 6], ['Guidance', 0, verifiedSpellIndex('神导术', '预言', ['牧师', '德鲁伊'], '0环.htm', 'Guidance')], ['Guiding Bolt', 1], ['Gust of Wind', 2], ['Hail of Thorns', 1],
   ['Hallow', 5], ['Hallucinatory Terrain', 4], ['Harm', 6], ['Haste', 3], ['Heal', 6],
-  ['Healing Word', 1], ['Heat Metal', 2], ['Hellish Rebuke', 1], ["Heroes' Feast", 6], ['Heroism', 1],
-  ['Hex', 1], ['Hold Monster', 5], ['Hold Person', 2], ['Holy Aura', 8], ['Hunger of Hadar', 3],
+  ['Healing Word', 1, verifiedSpellIndex('治愈真言', '防护', ['吟游诗人', '牧师', '德鲁伊'], '1环.htm', 'Healing_Word')], ['Heat Metal', 2], ['Hellish Rebuke', 1], ["Heroes' Feast", 6], ['Heroism', 1],
+  ['Hex', 1], ['Hold Monster', 5], ['Hold Person', 2, verifiedSpellIndex('定身类人', '惑控', ['吟游诗人', '牧师', '德鲁伊', '术士', '邪术师', '法师'], '2环.htm', 'Hold_Person')], ['Holy Aura', 8], ['Hunger of Hadar', 3],
   ["Hunter's Mark", 1], ['Hypnotic Pattern', 3], ['Ice Knife', 1], ['Ice Storm', 4], ['Identify', 1],
   ['Illusory Script', 1], ['Imprisonment', 9], ['Incendiary Cloud', 8], ['Inflict Wounds', 1], ['Insect Plague', 5],
-  ['Invisibility', 2], ["Jailarzi's Storm of Radiance", 5], ['Jump', 1], ['Knock', 2], ['Legend Lore', 5],
+  ['Invisibility', 2, verifiedSpellIndex('隐形术', '幻术', ['吟游诗人', '术士', '邪术师', '法师'], '2环.htm', 'Invisibility')], ["Jailarzi's Storm of Radiance", 5], ['Jump', 1], ['Knock', 2], ['Legend Lore', 5],
   ["Leomund's Secret Chest", 4], ["Leomund's Tiny Hut", 3], ['Lesser Restoration', 2], ['Levitate', 2], ['Light', 0],
   ['Lightning Arrows', 3], ['Lightning Bolt', 3], ['Locate Animals or Plants', 2], ['Locate Creature', 4], ['Locate Object', 2],
-  ['Longstrider', 1], ['Mage Armor', 1], ['Mage Hand', 0], ['Magic Circle', 3], ['Magic Jar', 6],
-  ['Magic Missile', 1], ['Magic Mouth', 2], ['Magic Weapon', 2], ['Major Image', 3], ['Mass Cure Wounds', 5],
+  ['Longstrider', 1], ['Mage Armor', 1], ['Mage Hand', 0, verifiedSpellIndex('法师之手', '咒法', ['吟游诗人', '术士', '邪术师', '法师'], '0环.htm', 'Mage_Hand')], ['Magic Circle', 3], ['Magic Jar', 6],
+  ['Magic Missile', 1, verifiedSpellIndex('魔法飞弹', '塑能', ['术士', '法师'], '1环.htm', 'Magic_Missile')], ['Magic Mouth', 2], ['Magic Weapon', 2], ['Major Image', 3], ['Mass Cure Wounds', 5],
   ['Mass Heal', 9], ['Mass Healing Word', 3], ['Mass Suggestion', 6], ['Maze', 8], ['Meld Into Stone', 3],
   ["Melf's Acid Arrow", 2], ['Mending', 0], ['Message', 0], ['Meteor Swarm', 9], ['Mind Blank', 8],
   ['Mind Sliver', 0], ['Mind Spike', 2], ['Minor Illusion', 0], ['Mirage Arcane', 7], ['Mirror Image', 2],
-  ['Mislead', 5], ['Misty Step', 2], ['Modify Memory', 5], ['Moonbeam', 2], ["Mordenkainen's Faithful Hound", 4],
+  ['Mislead', 5], ['Misty Step', 2, verifiedSpellIndex('迷踪步', '咒法', ['术士', '邪术师', '法师'], '2环.htm', 'Misty_Step')], ['Modify Memory', 5], ['Moonbeam', 2], ["Mordenkainen's Faithful Hound", 4],
   ["Mordenkainen's Magnificent Mansion", 7], ["Mordenkainen's Private Sanctum", 4], ["Mordenkainen's Sword", 7], ['Move Earth', 6], ['Nondetection', 3],
   ["Nystul's Magic Aura", 2], ["Otiluke's Freezing Sphere", 6], ["Otiluke's Resilient Sphere", 4], ["Otto's Irresistible Dance", 6], ['Pass without Trace', 2],
   ['Passwall', 5], ['Phantasmal Force', 2], ['Phantasmal Killer', 4], ['Phantom Steed', 3], ['Planar Ally', 6],
@@ -124,9 +170,9 @@ const SRD52_SPELL_ROWS: Row[] = [
   ['Project Image', 7], ['Protection from Energy', 3], ['Protection from Evil and Good', 1], ['Protection from Poison', 2], ['Purify Food and Drink', 1],
   ['Raise Dead', 5], ["Rary's Telepathic Bond", 5], ['Ray of Enfeeblement', 2], ['Ray of Frost', 0], ['Ray of Sickness', 1],
   ['Regenerate', 7], ['Reincarnate', 5], ['Remove Curse', 3], ['Resistance', 0], ['Resurrection', 7],
-  ['Reverse Gravity', 7], ['Revivify', 3], ['Rope Trick', 2], ['Sacred Flame', 0], ['Sanctuary', 1],
+  ['Reverse Gravity', 7], ['Revivify', 3, verifiedSpellIndex('回生术', '死灵', ['牧师', '德鲁伊', '圣武士', '游侠'], '3环.htm', 'Revivify')], ['Rope Trick', 2], ['Sacred Flame', 0], ['Sanctuary', 1],
   ['Scorching Ray', 2], ['Scrying', 5], ['Searing Smite', 1], ['See Invisibility', 2], ['Seeming', 5],
-  ['Sending', 3], ['Sequester', 7], ['Shapechange', 9], ['Shatter', 2], ['Shield', 1],
+  ['Sending', 3], ['Sequester', 7], ['Shapechange', 9], ['Shatter', 2, verifiedSpellIndex('粉碎音波', '塑能', ['吟游诗人', '术士', '法师'], '2环.htm', 'Shatter')], ['Shield', 1, verifiedSpellIndex('护盾术', '防护', ['术士', '法师'], '1环.htm', 'Shield')],
   ['Shield of Faith', 1], ['Shillelagh', 0], ['Shining Smite', 2], ['Shocking Grasp', 0], ['Silence', 2],
   ['Silent Image', 1], ['Simulacrum', 7], ['Sleep', 1], ['Sleet Storm', 3], ['Slow', 3],
   ['Sorcerous Burst', 0], ['Spare the Dying', 0], ['Speak with Animals', 1], ['Speak with Dead', 3], ['Speak with Plants', 3],
@@ -135,12 +181,12 @@ const SRD52_SPELL_ROWS: Row[] = [
   ['Storm of Vengeance', 9], ['Suggestion', 2], ['Summon Aberration', 4], ['Summon Beast', 2], ['Summon Celestial', 5],
   ['Summon Construct', 4], ['Summon Dragon', 5], ['Summon Elemental', 4], ['Summon Fey', 3], ['Summon Fiend', 6],
   ['Summon Undead', 3], ['Sunbeam', 6], ['Sunburst', 8], ['Swift Quiver', 5], ['Symbol', 7],
-  ['Synaptic Static', 5], ["Tasha's Bubbling Cauldron", 6], ["Tasha's Hideous Laughter", 1], ['Telekinesis', 5], ['Telepathy', 8],
-  ['Teleport', 7], ['Teleportation Circle', 5], ["Tenser's Floating Disk", 1], ['Thaumaturgy', 0], ['Thorn Whip', 0],
+  ['Synaptic Static', 5], ["Tasha's Bubbling Cauldron", 6], ["Tasha's Hideous Laughter", 1, verifiedSpellIndex('塔莎狂笑术', '惑控', ['吟游诗人', '邪术师', '法师'], '1环.htm', "Tasha's_Hideous_Laughter")], ['Telekinesis', 5], ['Telepathy', 8],
+  ['Teleport', 7], ['Teleportation Circle', 5], ["Tenser's Floating Disk", 1], ['Thaumaturgy', 0, verifiedSpellIndex('奇术', '变化', ['牧师'], '0环.htm', 'Thaumaturgy')], ['Thorn Whip', 0],
   ['Thunderclap', 0], ['Thunderous Smite', 1], ['Thunderwave', 1], ['Time Stop', 9], ['Toll the Dead', 0],
   ['Tongues', 3], ['Transport via Plants', 6], ['Tree Stride', 5], ['True Polymorph', 9], ['True Resurrection', 9],
-  ['True Seeing', 6], ['True Strike', 0], ['Tsunami', 8], ['Unseen Servant', 1], ['Vampiric Touch', 3],
-  ['Vicious Mockery', 0], ['Vitriolic Sphere', 4], ['Wall of Fire', 4], ['Wall of Force', 5], ['Wall of Ice', 6],
+  ['True Seeing', 6], ['True Strike', 0, verifiedSpellIndex('克敌先击', '预言', ['吟游诗人', '术士', '邪术师', '法师'], '0环.htm', 'True_Strike')], ['Tsunami', 8], ['Unseen Servant', 1], ['Vampiric Touch', 3],
+  ['Vicious Mockery', 0, verifiedSpellIndex('恶言相加', '惑控', ['吟游诗人'], '0环.htm', 'Vicious_Mockery')], ['Vitriolic Sphere', 4], ['Wall of Fire', 4], ['Wall of Force', 5], ['Wall of Ice', 6],
   ['Wall of Stone', 5], ['Wall of Thorns', 6], ['Warding Bond', 2], ['Water Breathing', 3], ['Water Walk', 3],
   ['Web', 2], ['Weird', 9], ['Wind Walk', 6], ['Wind Wall', 3], ['Wish', 9],
   ['Witch Bolt', 1], ['Word of Radiance', 0], ['Word of Recall', 6], ['Wrathful Smite', 1], ["Yolande's Regal Presence", 5],
@@ -180,9 +226,9 @@ const XGTE_SPELL_ROWS: Row[] = [
 ];
 
 export const DND_2024_SPELL_INDEX_DATA: DndSpellIndexEntry[] = [
-  ...SRD52_SPELL_ROWS.map(([name, level]) => spellRow(name, level, 'dnd2024')),
-  ...TCOE_SPELL_ROWS.map(([name, level]) => spellRow(name, level, 'tcoe')),
-  ...XGTE_SPELL_ROWS.map(([name, level]) => spellRow(name, level, 'xgte')),
+  ...SRD52_SPELL_ROWS.map(([name, level, verified]) => spellRow(name, level, 'dnd2024', verified)),
+  ...TCOE_SPELL_ROWS.map(([name, level, verified]) => spellRow(name, level, 'tcoe', verified)),
+  ...XGTE_SPELL_ROWS.map(([name, level, verified]) => spellRow(name, level, 'xgte', verified)),
 ];
 
 export const DND_SPELL_INDEX_COUNTS = {
