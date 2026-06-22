@@ -7,15 +7,22 @@ import type {
   CampaignRuntimeContext,
   CampaignSuggestedActor,
 } from '../../lib/platform/campaignFlow';
-import { useCampaignEntryDraftStore, type CampaignEntryDraftRole } from '../../lib/platform/campaignEntryDraftStore';
+import type { CampaignEntryDraftRole } from '../../lib/platform/campaignEntryDraftStore';
 import type {
   LocalCampaign,
   LocalCampaignLifecycleStatus,
   LocalCampaignSystemId,
   LocalCampaignStatus,
 } from '../../lib/platform/campaignLocalStore';
-import { useCampaignLocalStore } from '../../lib/platform/campaignLocalStore';
-import { getActorVaultRecord } from '../../lib/platform/actorVaultRepositoryBridge';
+import {
+  createCampaignLibraryActions,
+  filterVisibleCampaigns,
+  findCampaignById,
+  getCampaignEntryDraftSummary,
+  toCampaignInstanceSummary,
+  useCampaignEntryDrafts,
+  useCampaignLibraryData,
+} from '../../lib/platform/campaignLibraryRepository';
 import { downloadCampaignLibraryExportSnapshot } from '../../lib/platform/campaignExportSnapshot';
 import { parseCampaignImportPreview, type CampaignImportPreview } from '../../lib/platform/campaignImportPreview';
 import {
@@ -99,17 +106,6 @@ const toneClasses: Record<CampaignLibraryTone, {
   },
 };
 
-const statusOrder: Record<LocalCampaignStatus, number> = {
-  active: 0,
-  draft: 1,
-};
-
-const lifecycleOrder: Record<LocalCampaignLifecycleStatus, number> = {
-  active: 0,
-  archived: 1,
-  trashed: 2,
-};
-
 // AI-LANDMARK: A11_SYSTEM_WORKSPACE_ENTRY_SHELL_V1
 // Campaign Library now reads/writes LocalCampaign records only.
 // No CampaignMembership, CampaignActorInstance, RuntimeSession, multiplayer,
@@ -153,76 +149,36 @@ export function CampaignLibraryShell({
   });
   const theme = toneClasses[tone];
 
-  const allCampaigns = useCampaignLocalStore((state) => state.campaigns);
-  const createCampaign = useCampaignLocalStore((state) => state.createCampaign);
-  const updateCampaign = useCampaignLocalStore((state) => state.updateCampaign);
-  const archiveCampaign = useCampaignLocalStore((state) => state.archiveCampaign);
-  const restoreCampaign = useCampaignLocalStore((state) => state.restoreCampaign);
-  const trashCampaign = useCampaignLocalStore((state) => state.trashCampaign);
-  const getCampaignById = useCampaignLocalStore((state) => state.getCampaignById);
-  const campaignEntryDrafts = useCampaignEntryDraftStore((state) => state.drafts);
-  const setCampaignEntryDraftActor = useCampaignEntryDraftStore((state) => state.setCampaignEntryDraftActor);
-  const setCampaignEntryDraftRole = useCampaignEntryDraftStore((state) => state.setCampaignEntryDraftRole);
+  const { allCampaigns, campaigns } = useCampaignLibraryData(systemId);
+  const campaignEntryDrafts = useCampaignEntryDrafts();
+  const actions = useMemo(() => createCampaignLibraryActions(), []);
   const campaignSelectForActorContext =
     purpose.kind === 'selectForActor' ? purpose.context : null;
 
-  const campaigns = useMemo(
-    () =>
-      allCampaigns
-        .filter((campaign) => campaign.systemId === systemId)
-        .sort((a, b) => {
-          const lifecycleDiff = lifecycleOrder[a.lifecycleStatus] - lifecycleOrder[b.lifecycleStatus];
-          if (lifecycleDiff !== 0) return lifecycleDiff;
-          const statusDiff = statusOrder[a.status] - statusOrder[b.status];
-          if (statusDiff !== 0) return statusDiff;
-          return b.updatedAt.localeCompare(a.updatedAt);
-        }),
-    [allCampaigns, systemId],
-  );
   const effectiveLifecycleFilter: CampaignLifecycleFilter = campaignSelectForActorContext ? 'active' : campaignLifecycleFilter;
-  const normalizedSearchQuery = campaignSearchQuery.trim().toLowerCase();
   const visibleCampaigns = useMemo(
-    () =>
-      campaigns.filter((campaign) => {
-        if (campaign.lifecycleStatus !== effectiveLifecycleFilter) return false;
-        if (!normalizedSearchQuery) return true;
-        return [
-          campaign.title,
-          campaign.description ?? '',
-          campaign.roomCode ?? '',
-        ].some((value) => value.toLowerCase().includes(normalizedSearchQuery));
-      }),
-    [campaigns, effectiveLifecycleFilter, normalizedSearchQuery],
+    () => filterVisibleCampaigns(campaigns, effectiveLifecycleFilter, campaignSearchQuery),
+    [campaigns, effectiveLifecycleFilter, campaignSearchQuery],
   );
   const activeCampaigns = campaigns.filter((campaign) => campaign.lifecycleStatus === 'active');
   const draftCampaigns = campaigns.filter((campaign) => campaign.lifecycleStatus === 'active' && campaign.status === 'draft');
+  const selectedCampaignById = findCampaignById(allCampaigns, selectedCampaignId);
   const selectedCampaign =
-    selectedCampaignId && getCampaignById(selectedCampaignId)?.systemId === systemId
-      ? getCampaignById(selectedCampaignId)
+    selectedCampaignById?.systemId === systemId
+      ? selectedCampaignById
       : visibleCampaigns[0] ?? campaigns.find((campaign) => campaign.lifecycleStatus === 'active') ?? campaigns[0];
   const isWaitingForInitialCampaign = Boolean(
     initialCampaignId &&
     campaigns.some((campaign) => campaign.id === initialCampaignId) &&
     selectedCampaign?.id !== initialCampaignId,
   );
-  const selectedCampaignDraft = selectedCampaign
-    ? campaignEntryDrafts.find((draft) => draft.campaignId === selectedCampaign.id)
-    : undefined;
-  const draftActorRecord =
-    selectedCampaignDraft?.systemId === systemId && selectedCampaignDraft.selectedActorId
-      ? getActorVaultRecord(systemId, selectedCampaignDraft.selectedActorId)
-      : undefined;
-  const draftSuggestedActor: CampaignSuggestedActor | null = draftActorRecord
-    ? {
-        actorId: draftActorRecord.id,
-        actorName: draftActorRecord.displayName,
-      }
-    : null;
-  const hasStaleDraftActor = Boolean(
-    selectedCampaignDraft?.selectedActorId &&
-    selectedCampaignDraft.systemId === systemId &&
-    !draftActorRecord,
-  );
+  const draftSummary = getCampaignEntryDraftSummary({
+    drafts: campaignEntryDrafts,
+    campaign: selectedCampaign,
+    systemId,
+  });
+  const selectedCampaignDraft = draftSummary.draft;
+  const hasStaleDraftActor = draftSummary.hasStaleDraftActor;
   const effectiveSuggestedActor =
     suggestedActor ??
     (campaignSelectForActorContext
@@ -230,7 +186,7 @@ export function CampaignLibraryShell({
           actorId: campaignSelectForActorContext.actorId,
           actorName: campaignSelectForActorContext.actorName,
         }
-      : draftSuggestedActor);
+      : draftSummary.suggestedActor);
   const campaignSafeAppendPlan = useMemo(
     () => (campaignImportPreview ? buildCampaignSafeAppendPlan(campaignImportPreview) : null),
     [campaignImportPreview],
@@ -285,7 +241,7 @@ export function CampaignLibraryShell({
     if (campaignSelectForActorContext || suggestedActor) {
       setSelectedEntryRole('playerCharacter');
       if (selectedCampaign) {
-        setCampaignEntryDraftRole(selectedCampaign.id, systemId, 'player');
+        actions.setEntryDraftRole(selectedCampaign.id, systemId, 'player');
       }
       return;
     }
@@ -293,11 +249,11 @@ export function CampaignLibraryShell({
       setSelectedEntryRole(fromDraftEntryRole(selectedCampaignDraft.selectedEntryRole));
     }
   }, [
+    actions,
     campaignSelectForActorContext?.actorId,
     isWaitingForInitialCampaign,
     selectedCampaign?.id,
     selectedCampaignDraft?.selectedEntryRole,
-    setCampaignEntryDraftRole,
     suggestedActor?.actorId,
     systemId,
   ]);
@@ -305,13 +261,12 @@ export function CampaignLibraryShell({
   useEffect(() => {
     if (isWaitingForInitialCampaign) return;
     if (!selectedCampaign || !suggestedActor) return;
-    setCampaignEntryDraftActor(selectedCampaign.id, systemId, suggestedActor.actorId);
-    setCampaignEntryDraftRole(selectedCampaign.id, systemId, 'player');
+    actions.setEntryDraftActor(selectedCampaign.id, systemId, suggestedActor.actorId);
+    actions.setEntryDraftRole(selectedCampaign.id, systemId, 'player');
   }, [
+    actions,
     selectedCampaign?.id,
     isWaitingForInitialCampaign,
-    setCampaignEntryDraftActor,
-    setCampaignEntryDraftRole,
     suggestedActor?.actorId,
     systemId,
   ]);
@@ -343,7 +298,7 @@ export function CampaignLibraryShell({
   const setEntryRoleDraft = (role: CampaignEntryRole) => {
     setSelectedEntryRole(role);
     if (selectedCampaign) {
-      setCampaignEntryDraftRole(selectedCampaign.id, systemId, toDraftEntryRole(role));
+      actions.setEntryDraftRole(selectedCampaign.id, systemId, toDraftEntryRole(role));
     }
   };
 
@@ -397,7 +352,7 @@ export function CampaignLibraryShell({
   };
 
   const handleCreateCampaign = () => {
-    const campaign = createCampaign({
+    const campaign = actions.createCampaign({
       systemId,
       title: t('campaignLibrary.create.defaultTitle'),
       description: t('campaignLibrary.create.defaultDescription'),
@@ -411,8 +366,8 @@ export function CampaignLibraryShell({
     if (!campaignSelectForActorContext || !onSelectCampaignForActor) return;
     if (campaign.lifecycleStatus !== 'active') return;
     setSelectedCampaignId(campaign.id);
-    setCampaignEntryDraftActor(campaign.id, systemId, campaignSelectForActorContext.actorId);
-    setCampaignEntryDraftRole(campaign.id, systemId, 'player');
+    actions.setEntryDraftActor(campaign.id, systemId, campaignSelectForActorContext.actorId);
+    actions.setEntryDraftRole(campaign.id, systemId, 'player');
     onSelectCampaignForActor(toCampaignInstanceSummary(campaign), campaignSelectForActorContext);
   };
 
@@ -442,7 +397,7 @@ export function CampaignLibraryShell({
   const saveEditingCampaign = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!editingCampaignId || !campaignEditDraft.title.trim()) return;
-    updateCampaign(editingCampaignId, {
+    actions.updateCampaign(editingCampaignId, {
       title: campaignEditDraft.title,
       description: campaignEditDraft.description.trim() || undefined,
       status: campaignEditDraft.status,
@@ -451,7 +406,7 @@ export function CampaignLibraryShell({
   };
 
   const handleArchiveCampaign = (campaign: LocalCampaign) => {
-    archiveCampaign(campaign.id);
+    actions.archiveCampaign(campaign.id);
     setExpandedMoreCampaignId(null);
     setCampaignLifecycleFilter('archived');
     if (selectedCampaignId === campaign.id) {
@@ -460,14 +415,14 @@ export function CampaignLibraryShell({
   };
 
   const handleRestoreCampaign = (campaign: LocalCampaign) => {
-    restoreCampaign(campaign.id);
+    actions.restoreCampaign(campaign.id);
     setExpandedMoreCampaignId(null);
     setCampaignLifecycleFilter('active');
   };
 
   const handleMoveCampaignToTrash = (campaign: LocalCampaign) => {
     if (!window.confirm(t('campaignLibrary.actions.moveToTrashConfirm'))) return;
-    trashCampaign(campaign.id);
+    actions.trashCampaign(campaign.id);
     setExpandedMoreCampaignId(null);
     if (selectedCampaignId === campaign.id) {
       setSelectedCampaignId(null);
@@ -744,7 +699,7 @@ export function CampaignLibraryShell({
                     setLibraryMode('detail');
                   }}
                   onActivate={() => {
-                    updateCampaign(campaign.id, { status: 'active' });
+                    actions.updateCampaign(campaign.id, { status: 'active' });
                     setExpandedMoreCampaignId(null);
                   }}
                   onArchive={() => handleArchiveCampaign(campaign)}
@@ -1583,16 +1538,6 @@ function EmptyCampaignState({
       </button>
     </div>
   );
-}
-
-function toCampaignInstanceSummary(campaign: LocalCampaign): CampaignInstanceSummary {
-  return {
-    campaignId: campaign.id,
-    systemId: campaign.systemId,
-    title: campaign.title,
-    roomCode: campaign.roomCode,
-    lastPlayedAt: campaign.updatedAt,
-  };
 }
 
 function toDraftEntryRole(role: CampaignEntryRole): CampaignEntryDraftRole {
