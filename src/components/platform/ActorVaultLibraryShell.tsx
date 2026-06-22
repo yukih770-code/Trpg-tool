@@ -109,6 +109,7 @@ export function ActorVaultLibraryShell({
   const [importPreviewText, setImportPreviewText] = useState('');
   const [importResult, setImportResult] = useState<ActorVaultSafeAppendResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [expandedMoreActorKey, setExpandedMoreActorKey] = useState<string | null>(null);
   const lifecycleMetas = useActorVaultLifecycleStore((state) => state.metas);
   const archiveActor = useActorVaultLifecycleStore((state) => state.archiveActor);
   const trashActor = useActorVaultLifecycleStore((state) => state.trashActor);
@@ -122,6 +123,7 @@ export function ActorVaultLibraryShell({
   useEffect(() => {
     setMode('home');
     setLifecycleFilter('active');
+    setExpandedMoreActorKey(null);
   }, [
     purpose.kind,
     campaignActorSelectContext?.campaignId,
@@ -338,6 +340,11 @@ export function ActorVaultLibraryShell({
                 <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{lifecycleCounts.trashed}</div>
               </div>
             </div>
+            {lifecycleFilter === 'trashed' && (
+              <p className={`mt-3 text-[11px] leading-relaxed ${t.textMuted}`}>
+                {strings.trashHoldingAreaNote}
+              </p>
+            )}
             <div className={`mt-3 border-t pt-3 ${t.borderLight}`}>
               <div className="font-bold uppercase tracking-wider">{strings.dataActions}</div>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -471,7 +478,7 @@ export function ActorVaultLibraryShell({
       ) : (
         <div className="flex flex-col gap-3">
           {sorted.map((summary) => (
-            <div key={summary.id}>
+            <div key={getActorActionKey(summary)}>
               <ActorVaultCard
                 summary={summary}
                 strings={strings}
@@ -482,14 +489,22 @@ export function ActorVaultLibraryShell({
                 onRequestSelectCampaignForActor={onRequestSelectCampaignForActor}
                 onArchiveActor={(actor) => {
                   if (actor.systemId) archiveActor(actor.systemId, actor.id);
+                  setExpandedMoreActorKey(null);
                 }}
                 onTrashActor={(actor) => {
                   if (actor.systemId) trashActor(actor.systemId, actor.id);
+                  setExpandedMoreActorKey(null);
                 }}
                 onRestoreActor={(actor) => {
                   if (actor.systemId) restoreActor(actor.systemId, actor.id);
+                  setExpandedMoreActorKey(null);
                 }}
                 showLifecycleActions={isManagePurpose}
+                isMoreActionsExpanded={expandedMoreActorKey === getActorActionKey(summary)}
+                onToggleMoreActions={() => {
+                  const key = getActorActionKey(summary);
+                  setExpandedMoreActorKey((current) => (current === key ? null : key));
+                }}
               />
             </div>
           ))}
@@ -790,6 +805,8 @@ type ActorVaultCardProps = {
   onTrashActor?: (actor: ActorVaultSummary) => void;
   onRestoreActor?: (actor: ActorVaultSummary) => void;
   showLifecycleActions?: boolean;
+  isMoreActionsExpanded?: boolean;
+  onToggleMoreActions?: () => void;
 };
 
 function ActorVaultCard({
@@ -804,6 +821,8 @@ function ActorVaultCard({
   onTrashActor,
   onRestoreActor,
   showLifecycleActions = false,
+  isMoreActionsExpanded = false,
+  onToggleMoreActions,
 }: ActorVaultCardProps) {
   const isComplete = summary.completionStatus === 'complete';
   const lifecycleStatus = summary.lifecycleStatus ?? 'active';
@@ -943,18 +962,37 @@ function ActorVaultCard({
                 <>
                   <button
                     type="button"
-                    onClick={() => onArchiveActor?.(summary)}
-                    className={`border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider opacity-75 ${t.borderLight} ${t.text} ${t.bgHover} ${t.hoverBorder}`}
+                    aria-expanded={isMoreActionsExpanded}
+                    aria-label={
+                      isMoreActionsExpanded
+                        ? strings.moreActionsCollapseLabel
+                        : strings.moreActionsExpandLabel
+                    }
+                    onClick={onToggleMoreActions}
+                    className={`border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${t.borderLight} ${t.text} ${t.bgHover} ${t.hoverBorder}`}
                   >
-                    {strings.archiveActor}
+                    {isMoreActionsExpanded
+                      ? strings.moreActionsExpanded
+                      : strings.moreActionsCollapsed}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => onTrashActor?.(summary)}
-                    className="border border-red-700/30 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700/80 hover:bg-red-700/10"
-                  >
-                    {strings.moveToTrash}
-                  </button>
+                  {isMoreActionsExpanded && (
+                    <div className={`flex flex-col gap-1.5 border px-2 py-2 ${t.borderLight}`}>
+                      <button
+                        type="button"
+                        onClick={() => onArchiveActor?.(summary)}
+                        className={`border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider opacity-75 ${t.borderLight} ${t.text} ${t.bgHover} ${t.hoverBorder}`}
+                      >
+                        {strings.archiveActor}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onTrashActor?.(summary)}
+                        className="border border-red-700/30 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700/80 hover:bg-red-700/10"
+                      >
+                        {strings.moveToTrash}
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
               {lifecycleStatus === 'archived' && (
@@ -968,11 +1006,30 @@ function ActorVaultCard({
                   </button>
                   <button
                     type="button"
-                    onClick={() => onTrashActor?.(summary)}
-                    className="border border-red-700/30 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700/80 hover:bg-red-700/10"
+                    aria-expanded={isMoreActionsExpanded}
+                    aria-label={
+                      isMoreActionsExpanded
+                        ? strings.moreActionsCollapseLabel
+                        : strings.moreActionsExpandLabel
+                    }
+                    onClick={onToggleMoreActions}
+                    className={`border px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider ${t.borderLight} ${t.text} ${t.bgHover} ${t.hoverBorder}`}
                   >
-                    {strings.moveToTrash}
+                    {isMoreActionsExpanded
+                      ? strings.moreActionsExpanded
+                      : strings.moreActionsCollapsed}
                   </button>
+                  {isMoreActionsExpanded && (
+                    <div className={`flex flex-col gap-1.5 border px-2 py-2 ${t.borderLight}`}>
+                      <button
+                        type="button"
+                        onClick={() => onTrashActor?.(summary)}
+                        className="border border-red-700/30 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-red-700/80 hover:bg-red-700/10"
+                      >
+                        {strings.moveToTrash}
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
               {lifecycleStatus === 'trashed' && (
@@ -990,6 +1047,10 @@ function ActorVaultCard({
       </div>
     </div>
   );
+}
+
+function getActorActionKey(summary: ActorVaultSummary): string {
+  return `${summary.systemId ?? 'unknown'}:${summary.id}`;
 }
 
 function getSummaryLifecycleStatus(

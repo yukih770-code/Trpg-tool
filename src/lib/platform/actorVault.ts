@@ -257,6 +257,11 @@ export type ActorVaultShellStrings = {
   restoreActor: string;
   moveToTrash: string;
   managementActions: string;
+  moreActionsCollapsed: string;
+  moreActionsExpanded: string;
+  moreActionsExpandLabel: string;
+  moreActionsCollapseLabel: string;
+  trashHoldingAreaNote: string;
   archivedActorNote: string;
   trashedActorNote: string;
   exportSnapshot: string;
