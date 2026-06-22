@@ -1751,6 +1751,11 @@ export const zhCN = {
       filterNeedsAttention: '需要处理',
       lifecycleNote: '归档和回收站是生命周期状态；本视图不提供永久删除。',
     },
+    export: {
+      title: '战役库快照',
+      action: '导出战役快照',
+      note: '导出本地战役库快照，包括当前、已归档和回收站中的战役。不包含角色库、战役入场草稿、运行时日志或成员关系。',
+    },
     empty: {
       title: '还没有战役',
       note: '添加一个本地战役后，它会出现在当前系统的我的战役列表中。',

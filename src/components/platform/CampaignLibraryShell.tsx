@@ -16,6 +16,7 @@ import type {
 } from '../../lib/platform/campaignLocalStore';
 import { useCampaignLocalStore } from '../../lib/platform/campaignLocalStore';
 import { getActorVaultRecord } from '../../lib/platform/actorVaultRepositoryBridge';
+import { downloadCampaignLibraryExportSnapshot } from '../../lib/platform/campaignExportSnapshot';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { ContextBar } from './ContextBar';
@@ -448,6 +449,10 @@ export function CampaignLibraryShell({
     setCampaignLifecycleFilter('trashed');
   };
 
+  const handleExportCampaignSnapshot = () => {
+    downloadCampaignLibraryExportSnapshot();
+  };
+
   const showAddFlow = (mode === 'create' || libraryMode === 'add') && libraryMode !== 'detail';
   const showDetail = (mode === 'library' || mode === 'create') && libraryMode === 'detail';
 
@@ -579,6 +584,27 @@ export function CampaignLibraryShell({
             <p className={`mt-3 text-xs leading-relaxed ${theme.muted}`}>
               {t('campaignLibrary.existing.lifecycleNote')}
             </p>
+            {!campaignSelectForActorContext && (
+              <div className="mt-4 border-t pt-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className={`text-xs font-bold ${theme.accent}`}>
+                      {t('campaignLibrary.export.title')}
+                    </div>
+                    <p className={`mt-1 max-w-3xl text-xs leading-relaxed ${theme.muted}`}>
+                      {t('campaignLibrary.export.note')}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleExportCampaignSnapshot}
+                    className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+                  >
+                    {t('campaignLibrary.export.action')}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {visibleCampaigns.length === 0 ? (

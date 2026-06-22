@@ -1751,6 +1751,11 @@ export const en = {
       filterNeedsAttention: 'Needs Attention',
       lifecycleNote: 'Archive and trash are lifecycle states. Permanent delete is not exposed in this view.',
     },
+    export: {
+      title: 'Campaign Library Snapshot',
+      action: 'Export Campaign Snapshot',
+      note: 'Export a local campaign library snapshot, including active, archived, and trashed campaigns. Actor vault data, campaign entry drafts, runtime logs, and membership data are not included.',
+    },
     empty: {
       title: 'No campaigns yet',
       note: 'Add a local campaign and it will appear in My Campaigns for this system.',
