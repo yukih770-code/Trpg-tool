@@ -1,0 +1,198 @@
+/**
+ * DND 2024 Item Definitions (v1).
+ *
+ * AI-LANDMARK: DND_ITEM_DEFINITIONS
+ *
+ * Promotes the read-only `DND_EQUIPMENT_CATALOG` sample rows into the long-term
+ * `DndItemDefinition` shape and adds a small set of pending-source stubs for
+ * items that the class starter strings reference but that are not yet in the
+ * sourced catalog (Rapier, Diplomat's / Entertainer's Pack, Musical Instrument).
+ *
+ * No official numeric values are invented here: stubs carry
+ * `sourceStatus: 'pending-source'` and omit damage / weight / value / contents.
+ * Only structural facts that do not require a source (a rapier is a weapon that
+ * can be held in a hand; a pack is a container) are encoded.
+ */
+
+import { DND_EQUIPMENT_CATALOG } from '../../data/dnd2024/equipment';
+import type {
+  DndEquipmentItem,
+  DndItemCategory,
+  DndItemDefinition,
+} from './equipment-types';
+import type { EquipmentSlot } from '../platform/characterInventory';
+
+function isPackName(name: string | undefined, id: string): boolean {
+  if (id.includes('pack')) return true;
+  if (!name) return false;
+  return /套件|背包|包$|pack/i.test(name);
+}
+
+function mapWeaponCategory(raw: string | undefined): 'simple' | 'martial' | undefined {
+  if (!raw) return undefined;
+  if (raw.startsWith('simple')) return 'simple';
+  if (raw.startsWith('martial')) return 'martial';
+  return undefined;
+}
+
+function mapDexModifier(raw: string | undefined): boolean | 'max2' | undefined {
+  if (raw === 'full') return true;
+  if (raw === 'none') return false;
+  if (raw === 'max2') return 'max2';
+  return undefined;
+}
+
+/** Convert one legacy catalog row into a sourced DndItemDefinition. */
+function fromCatalog(row: DndEquipmentItem): DndItemDefinition {
+  const anyRow = row as DndEquipmentItem & Record<string, unknown>;
+  const id = row.id;
+  const nameCn = row.nameCn ?? row.name;
+  const base: DndItemDefinition = {
+    id,
+    system: 'dnd5e-2024',
+    source: row.source,
+    sourceStatus: 'sourced',
+    nameCn,
+    nameEn: row.name,
+    category: 'adventuringGear',
+    weight: row.weight,
+    value: row.cost,
+    description: row.description,
+  };
+
+  if (row.category === 'weapon') {
+    base.category = 'weapon';
+    base.equipSlots = ['mainHand', 'offHand'];
+    base.weapon = {
+      damage: typeof anyRow.damageDice === 'string' ? anyRow.damageDice : undefined,
+      damageType: typeof anyRow.damageType === 'string' ? anyRow.damageType : undefined,
+      properties: Array.isArray(anyRow.properties) ? (anyRow.properties as string[]) : undefined,
+      range: typeof anyRow.range === 'string' ? anyRow.range : undefined,
+      weaponCategory: mapWeaponCategory(anyRow.weaponCategory as string | undefined),
+    };
+    base.tags = Array.isArray(anyRow.properties) ? (anyRow.properties as string[]) : undefined;
+    return base;
+  }
+
+  if (row.category === 'armor') {
+    base.category = 'armor';
+    base.equipSlots = ['armor'];
+    base.armor = {
+      baseAc: typeof anyRow.baseAc === 'number' ? anyRow.baseAc : undefined,
+      armorCategory: anyRow.armorCategory as 'light' | 'medium' | 'heavy' | undefined,
+      dexModifier: mapDexModifier(anyRow.dexModifier as string | undefined),
+      strengthRequirement: typeof anyRow.strengthRequirement === 'number' ? anyRow.strengthRequirement : undefined,
+      stealthDisadvantage: anyRow.stealthDisadvantage === true || undefined,
+    };
+    return base;
+  }
+
+  if (row.category === 'shield') {
+    base.category = 'shield';
+    base.equipSlots = ['offHand'];
+    base.shield = { acBonus: typeof anyRow.baseAc === 'number' ? anyRow.baseAc : undefined };
+    return base;
+  }
+
+  if (row.category === 'tool') {
+    base.category = 'tool';
+    return base;
+  }
+
+  // adventuringGear: split packs (containers) from loose gear / light sources.
+  if (isPackName(nameCn, id)) {
+    base.category = 'pack';
+    base.pack = { isContainer: true };
+    base.platformExtension = false;
+    return base;
+  }
+  base.category = 'adventuringGear';
+  if (/torch|火把|lantern|灯/i.test(nameCn)) base.equipSlots = ['utility'];
+  return base;
+}
+
+const SOURCED: DndItemDefinition[] = (DND_EQUIPMENT_CATALOG as DndEquipmentItem[]).map(fromCatalog);
+
+/**
+ * Pending-source stubs for starter items missing from the sourced catalog.
+ * Structural facts only — NO fabricated damage / weight / value / contents.
+ */
+const PENDING_STUBS: DndItemDefinition[] = [
+  {
+    id: 'weapon.rapier',
+    system: 'dnd5e-2024',
+    sourceStatus: 'pending-source',
+    nameCn: '细剑',
+    nameEn: 'Rapier',
+    aliases: ['Rapier', '刺剑'],
+    category: 'weapon',
+    equipSlots: ['mainHand', 'offHand'],
+    notes: '数值 / 来源待核对（damage / weight / value 需读取 owner source）。',
+  },
+  {
+    id: 'pack.diplomats-pack',
+    system: 'dnd5e-2024',
+    sourceStatus: 'pending-source',
+    nameCn: '外交官套件',
+    nameEn: "Diplomat's Pack",
+    aliases: ["Diplomat's Pack", 'Diplomat Pack', '外交官包'],
+    category: 'pack',
+    pack: { isContainer: true },
+    notes: '内容物 / 重量 / 价值待核对（contents 需读取 owner source）。',
+  },
+  {
+    id: 'pack.entertainers-pack',
+    system: 'dnd5e-2024',
+    sourceStatus: 'pending-source',
+    nameCn: '艺人套件',
+    nameEn: "Entertainer's Pack",
+    aliases: ["Entertainer's Pack", 'Entertainer Pack', '艺人包', '表演者套件'],
+    category: 'pack',
+    pack: { isContainer: true },
+    notes: '内容物 / 重量 / 价值待核对（contents 需读取 owner source）。',
+  },
+  {
+    id: 'tool.musical-instrument',
+    system: 'dnd5e-2024',
+    sourceStatus: 'pending-source',
+    nameCn: '乐器',
+    nameEn: 'Musical Instrument',
+    aliases: ['Musical Instrument', 'Instrument', '乐器(任意)'],
+    category: 'musicalInstrument',
+    subCategory: 'musicalInstrument',
+    equipSlots: ['instrument'],
+    tool: { toolCategory: 'musicalInstrument', proficiencyType: 'tool' },
+    notes: '具体乐器 / 数值 / 来源待核对。',
+  },
+];
+
+export const DND_ITEM_DEFINITIONS: DndItemDefinition[] = [...SOURCED, ...PENDING_STUBS];
+
+/** Map a definition category onto the inventory view-model category. */
+export function inventoryCategoryForDefinition(category: DndItemCategory): string {
+  switch (category) {
+    case 'weapon': return 'weapon';
+    case 'armor': return 'armor';
+    case 'shield': return 'shield';
+    case 'tool':
+    case 'artisanTool':
+    case 'gamingSet':
+    case 'musicalInstrument':
+    case 'spellcastingFocus': return 'tool';
+    case 'pack':
+    case 'container': return 'container';
+    case 'consumable':
+    case 'foodAndDrink': return 'consumable';
+    case 'currency': return 'currency';
+    case 'clothing': return 'fashion';
+    case 'adventuringGear':
+    case 'ammunition':
+    case 'tackAndHarness': return 'gear';
+    default: return 'misc';
+  }
+}
+
+/** First eligible slot for a definition (auto-equip default). */
+export function primaryEquipSlot(def: DndItemDefinition): EquipmentSlot | undefined {
+  return def.equipSlots && def.equipSlots.length > 0 ? def.equipSlots[0] : undefined;
+}

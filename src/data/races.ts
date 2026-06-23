@@ -20,19 +20,27 @@ export const DND_SPECIES_2024_DATA_ACCURACY: RuleDataMetadata = {
   usagePolicy: 'needs-human-verification',
   sourceRef: `${LOCAL_CHM_SPECIES_REF}#item-entries`,
   sourceNote:
-    `Species entry names and source paths are matched to the local CHM owner source (${LOCAL_CHM_SPECIES_REF}); secondary manifest reference: ${SPECIES_MANIFEST_REF}. Traits, size, speed, and languages are intentionally NOT filled: they require human-checked extraction from the owner source. Entries carry zero ability bonuses by the DND 2024 species model.`,
+    `Species entry names and source paths are matched to the local CHM owner source (${LOCAL_CHM_SPECIES_REF}); secondary manifest reference: ${SPECIES_MANIFEST_REF}. Shallow desc, fixed size/speed, and trait prose are extracted where the current schema can safely carry them. Variable size, languages, trait choices, spellcasting, resistances, movement modes, and runtime effects remain needs-human-check. Entries carry zero ability bonuses by the DND 2024 species model.`,
 };
 
-function makeSpecies2024(id: string, name: string, sourceFile: string): RaceDef {
+function makeSpecies2024(
+  id: string,
+  name: string,
+  sourceFile: string,
+  desc: string,
+  size: string,
+  speed: number,
+  features: string[],
+): RaceDef {
   return {
     id,
     name,
-    desc: '条目已在 owner source（SRD5.2 玩家手册2024/角色起源/种族）中确认；物种特性待人工核对后提取。',
+    desc,
     strBonus: 0, dexBonus: 0, conBonus: 0, intBonus: 0, wisBonus: 0, chaBonus: 0,
-    size: '',
-    speed: 0,
+    size,
+    speed,
     baseLanguages: [],
-    features: ['物种特性 / 体型 / 速度待从 owner source 核对提取（needs-human-check）'],
+    features,
     subraces: [],
     ruleMeta: {
       source: 'dnd-local-chm-primary',
@@ -45,15 +53,64 @@ function makeSpecies2024(id: string, name: string, sourceFile: string): RaceDef 
 }
 
 export const DND_2024_SPECIES_DATA: RaceDef[] = [
-  makeSpecies2024('species.human', '人类', '人类.htm'),
-  makeSpecies2024('species.dwarf', '矮人', '矮人.htm'),
-  makeSpecies2024('species.elf', '精灵', '精灵.htm'),
-  makeSpecies2024('species.halfling', '半身人', '半身人.htm'),
-  makeSpecies2024('species.gnome', '侏儒', '侏儒.htm'),
-  makeSpecies2024('species.dragonborn', '龙裔', '龙裔.htm'),
-  makeSpecies2024('species.tiefling', '提夫林', '提夫林.htm'),
-  makeSpecies2024('species.orc', '兽人', '兽人.htm'),
-  makeSpecies2024('species.goliath', '歌利亚', '歌利亚.htm'),
+  makeSpecies2024('species.aasimar', '阿斯莫', '阿斯莫.htm', '灵魂承载上层位面火花的凡命者，可以引来光明、治疗或天怒。', '', 30, [
+    '体型：中型或小型，需创建时选择（当前 schema 暂不承载该选择）。',
+    '天界抗性：光耀与暗蚀相关抗性，效果待自动化。',
+    '黑暗视觉：60尺。',
+    '治愈之手、光辉掌者、天启：来源已定位，治疗、戏法与变身选择待专用 schema。',
+  ]),
+  makeSpecies2024('species.human', '人类', '人类.htm', '数量庞大且各具特色，常以雄心与足智多谋在有限岁月中追求成就。', '', 30, [
+    '体型：中型或小型，需创建时选择（当前 schema 暂不承载该选择）。',
+    '适应力：长休后获得英雄激励，效果待自动化。',
+    '技能：获得一项自选技能熟练，选择流程待 schema。',
+    '多才多艺：获得一项自选起源专长，选择流程待 schema。',
+  ]),
+  makeSpecies2024('species.dwarf', '矮人', '矮人.htm', '由锻造之神从大地中唤醒，对石头、金属和地下生活有亲和力。', '中型', 30, [
+    '黑暗视觉：120尺。',
+    '矮人体魄：毒素相关抗性/豁免优势，效果待自动化。',
+    '矮人刚毅：生命值上限提升，效果待自动化。',
+    '石中精妙：震颤感知相关能力，使用次数与动作流程待 schema。',
+  ]),
+  makeSpecies2024('species.elf', '精灵', '精灵.htm', '源自科瑞隆与妖精荒野的长寿族裔，常受环境影响形成不同血系。', '中型', 30, [
+    '黑暗视觉：60尺。',
+    '精灵血系：卓尔、高等精灵或木精灵选择待专用 schema。',
+    '妖精血统：避免或结束魅惑相关豁免优势，效果待自动化。',
+    '敏锐感官与出神：技能选择和长休特殊规则待 schema。',
+  ]),
+  makeSpecies2024('species.halfling', '半身人', '半身人.htm', '受生命、家园与壁炉之神引导的小型族裔，重视家庭、社区与好运。', '小型', 30, [
+    '勇气：避免或结束恐慌相关豁免优势，效果待自动化。',
+    '半身人灵巧：穿越较大生物空间相关规则待移动/场景层。',
+    '幸运：d20 掷出 1 时重掷，效果待自动化。',
+    '天生善匿：躲藏动作条件待场景层。',
+  ]),
+  makeSpecies2024('species.gnome', '侏儒', '侏儒.htm', '由发明、幻影与地下生命之神创造的魔法族裔，机敏而好奇。', '小型', 30, [
+    '黑暗视觉：60尺。',
+    '侏儒狡黠：智力、感知、魅力豁免相关优势，效果待自动化。',
+    '侏儒血系：森林侏儒或岩石侏儒选择待专用 schema。',
+    '血系法术/装置能力为 prose-only，暂不接入施法或物品自动化。',
+  ]),
+  makeSpecies2024('species.dragonborn', '龙裔', '龙裔.htm', '承载金属龙或色彩龙血统的族裔，外貌彰显其龙类先祖。', '中型', 30, [
+    '龙族血统：龙种与伤害类型选择待专用 schema。',
+    '吐息武器：范围、伤害与使用次数待动作/资源自动化。',
+    '伤害抗性：由龙族血统决定，效果待自动化。',
+    '黑暗视觉与龙族飞翼：飞行/持续时间规则待运行时效果层。',
+  ]),
+  makeSpecies2024('species.tiefling', '提夫林', '提夫林.htm', '承继下层位面邪魔遗赠的族裔，可选择深渊、幽冥或炼狱遗赠。', '', 30, [
+    '体型：中型或小型，需创建时选择（当前 schema 暂不承载该选择）。',
+    '黑暗视觉：60尺。',
+    '邪魔遗赠：深渊、幽冥或炼狱选择待专用 schema。',
+    '异界存在与遗赠法术为 prose-only，暂不接入施法自动化。',
+  ]),
+  makeSpecies2024('species.orc', '兽人', '兽人.htm', '追溯至独眼之神格乌什的族裔，强壮坚韧并能在黑暗中视物。', '中型', 30, [
+    '激昂冲锋：附赠动作疾走与临时生命值，动作/资源流程待 schema。',
+    '黑暗视觉：120尺。',
+    '坚韧不屈：生命值降至 0 时的特殊处理待运行时自动化。',
+  ]),
+  makeSpecies2024('species.goliath', '歌利亚', '歌利亚.htm', '承载巨人先祖祝福的高大族裔，拥有来自不同巨人血系的超自然恩惠。', '中型', 35, [
+    '巨人先祖：云、火、霜、山、石、岚等恩惠选择待专用 schema。',
+    '大型形态：5级后体型与速度变化，效果待自动化。',
+    '身强力壮：受擒检定与载重相关规则待运行时支持。',
+  ]),
 ];
 
 // TCoE 定制血统 (Custom Lineage) exists in the owner source

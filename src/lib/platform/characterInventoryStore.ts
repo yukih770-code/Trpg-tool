@@ -2,7 +2,10 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 import type {
+  CharacterCoinPurse,
+  CharacterInventoryContainer,
   CharacterInventoryItem,
+  EquipmentSlot,
   InventoryItemLocation,
 } from './characterInventory';
 
@@ -27,19 +30,42 @@ export const CHARACTER_INVENTORY_STORE_KEY = 'platform-character-inventory-store
 export const CHARACTER_INVENTORY_STORE_SCHEMA_VERSION = 1;
 
 export type CharacterInventoryItemPatch = Partial<
-  Pick<CharacterInventoryItem, 'name' | 'quantity' | 'location' | 'notes' | 'category' | 'cost'>
+  Pick<
+    CharacterInventoryItem,
+    'name' | 'quantity' | 'location' | 'notes' | 'category' | 'cost' | 'weight' | 'weightUnit' | 'containerId' | 'tags' | 'equipSlot'
+  >
+>;
+
+export type CharacterInventoryContainerPatch = Partial<
+  Pick<
+    CharacterInventoryContainer,
+    'name' | 'type' | 'location' | 'capacityWeight' | 'weight' | 'weightUnit' | 'ignoresContentWeightForCarrier' | 'notes'
+  >
 >;
 
 interface CharacterInventoryStoreState {
   schemaVersion: number;
   /** Owned items keyed by `${systemId}:${actorId}`. */
   itemsByActor: Record<string, CharacterInventoryItem[]>;
+  /** Owned containers keyed by `${systemId}:${actorId}`. */
+  containersByActor: Record<string, CharacterInventoryContainer[]>;
+  /** Per-actor coin purse keyed by `${systemId}:${actorId}`. */
+  walletByActor: Record<string, CharacterCoinPurse>;
+  getActorWallet: (actorKey: string) => CharacterCoinPurse;
+  setActorWalletCoin: (actorKey: string, coin: string, amount: number) => void;
   getActorInventory: (actorKey: string) => CharacterInventoryItem[];
   setActorInventory: (actorKey: string, items: CharacterInventoryItem[]) => void;
   addInventoryItem: (actorKey: string, item: CharacterInventoryItem) => void;
   updateInventoryItem: (actorKey: string, instanceId: string, patch: CharacterInventoryItemPatch) => void;
   removeInventoryItem: (actorKey: string, instanceId: string) => void;
   setInventoryItemLocation: (actorKey: string, instanceId: string, location: InventoryItemLocation) => void;
+  setInventoryItemContainer: (actorKey: string, instanceId: string, containerId: string | undefined) => void;
+  /** Equip to a slot (clears containerId), or unequip when slot is undefined. */
+  setInventoryItemSlot: (actorKey: string, instanceId: string, slot: EquipmentSlot | undefined) => void;
+  getActorContainers: (actorKey: string) => CharacterInventoryContainer[];
+  addInventoryContainer: (actorKey: string, container: CharacterInventoryContainer) => void;
+  updateInventoryContainer: (actorKey: string, containerId: string, patch: CharacterInventoryContainerPatch) => void;
+  removeInventoryContainer: (actorKey: string, containerId: string) => void;
   clearActorInventoryForDev: (actorKey: string) => void;
 }
 
@@ -52,11 +78,32 @@ function mapActorItems(
   return { ...state.itemsByActor, [actorKey]: mapper(current) };
 }
 
+function mapActorContainers(
+  state: CharacterInventoryStoreState,
+  actorKey: string,
+  mapper: (containers: CharacterInventoryContainer[]) => CharacterInventoryContainer[],
+): Record<string, CharacterInventoryContainer[]> {
+  const current = state.containersByActor[actorKey] ?? [];
+  return { ...state.containersByActor, [actorKey]: mapper(current) };
+}
+
 export const useCharacterInventoryStore = create<CharacterInventoryStoreState>()(
   persist(
     (set, get) => ({
       schemaVersion: CHARACTER_INVENTORY_STORE_SCHEMA_VERSION,
       itemsByActor: {},
+      containersByActor: {},
+      walletByActor: {},
+
+      getActorWallet: (actorKey) => get().walletByActor[actorKey] ?? {},
+
+      setActorWalletCoin: (actorKey, coin, amount) =>
+        set((state) => ({
+          walletByActor: {
+            ...state.walletByActor,
+            [actorKey]: { ...(state.walletByActor[actorKey] ?? {}), [coin]: Math.max(0, Math.floor(amount) || 0) },
+          },
+        })),
 
       getActorInventory: (actorKey) => get().itemsByActor[actorKey] ?? [],
 
@@ -92,15 +139,78 @@ export const useCharacterInventoryStore = create<CharacterInventoryStoreState>()
       setInventoryItemLocation: (actorKey, instanceId, location) =>
         set((state) => ({
           itemsByActor: mapActorItems(state, actorKey, (items) =>
-            items.map((item) => (item.instanceId === instanceId ? { ...item, location } : item)),
+            items.map((item) =>
+              item.instanceId === instanceId
+                ? { ...item, location, containerId: location === 'container' ? item.containerId : undefined }
+                : item,
+            ),
+          ),
+        })),
+
+      setInventoryItemContainer: (actorKey, instanceId, containerId) =>
+        set((state) => ({
+          itemsByActor: mapActorItems(state, actorKey, (items) =>
+            items.map((item) =>
+              item.instanceId === instanceId
+                ? {
+                    ...item,
+                    containerId,
+                    location: containerId ? 'container' : item.location === 'container' ? 'backpack' : item.location,
+                  }
+                : item,
+            ),
+          ),
+        })),
+
+      setInventoryItemSlot: (actorKey, instanceId, slot) =>
+        set((state) => ({
+          itemsByActor: mapActorItems(state, actorKey, (items) =>
+            items.map((item) =>
+              item.instanceId === instanceId
+                ? { ...item, equipSlot: slot, containerId: slot ? undefined : item.containerId }
+                : item,
+            ),
+          ),
+        })),
+
+      getActorContainers: (actorKey) => get().containersByActor[actorKey] ?? [],
+
+      addInventoryContainer: (actorKey, container) =>
+        set((state) => ({
+          containersByActor: mapActorContainers(state, actorKey, (containers) => [...containers, container]),
+        })),
+
+      updateInventoryContainer: (actorKey, containerId, patch) =>
+        set((state) => ({
+          containersByActor: mapActorContainers(state, actorKey, (containers) =>
+            containers.map((container) =>
+              container.containerId === containerId ? { ...container, ...patch } : container,
+            ),
+          ),
+        })),
+
+      removeInventoryContainer: (actorKey, containerId) =>
+        set((state) => ({
+          containersByActor: mapActorContainers(state, actorKey, (containers) =>
+            containers.filter((container) => container.containerId !== containerId),
+          ),
+          // Detach items from the removed container (move back to backpack).
+          itemsByActor: mapActorItems(state, actorKey, (items) =>
+            items.map((item) =>
+              item.containerId === containerId
+                ? { ...item, containerId: undefined, location: 'backpack' as const }
+                : item,
+            ),
           ),
         })),
 
       clearActorInventoryForDev: (actorKey) =>
         set((state) => {
-          const next = { ...state.itemsByActor };
-          delete next[actorKey];
-          return { itemsByActor: next };
+          const nextItems = { ...state.itemsByActor };
+          const nextContainers = { ...state.containersByActor };
+          delete nextItems[actorKey];
+          delete nextContainers[actorKey];
+          return { itemsByActor: nextItems, containersByActor: nextContainers };
         }),
     }),
     {
@@ -108,9 +218,16 @@ export const useCharacterInventoryStore = create<CharacterInventoryStoreState>()
       partialize: (state) => ({
         schemaVersion: state.schemaVersion,
         itemsByActor: state.itemsByActor,
+        containersByActor: state.containersByActor,
+        walletByActor: state.walletByActor,
       }),
       merge: (persisted: unknown, current) => {
-        const p = persisted as Partial<{ schemaVersion: unknown; itemsByActor: unknown }> | null;
+        const p = persisted as Partial<{
+          schemaVersion: unknown;
+          itemsByActor: unknown;
+          containersByActor: unknown;
+          walletByActor: unknown;
+        }> | null;
         if (!p || typeof p !== 'object' || !p.itemsByActor || typeof p.itemsByActor !== 'object') {
           return current;
         }
@@ -118,6 +235,14 @@ export const useCharacterInventoryStore = create<CharacterInventoryStoreState>()
           ...current,
           schemaVersion: CHARACTER_INVENTORY_STORE_SCHEMA_VERSION,
           itemsByActor: p.itemsByActor as Record<string, CharacterInventoryItem[]>,
+          containersByActor:
+            p.containersByActor && typeof p.containersByActor === 'object'
+              ? (p.containersByActor as Record<string, CharacterInventoryContainer[]>)
+              : {},
+          walletByActor:
+            p.walletByActor && typeof p.walletByActor === 'object'
+              ? (p.walletByActor as Record<string, CharacterCoinPurse>)
+              : {},
         };
       },
     },

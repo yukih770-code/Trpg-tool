@@ -97,7 +97,12 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
       updateField('weaponProficiencies', cls.weaponProficiencies);
       updateField('armorTraining', cls.armorProficiencies);
       updateField('savingThrowProficiencies', cls.savingThrows as AttributeName[]);
-      updateField('inventory', [cls.startingEquipment]);
+      // Do NOT write the class starting-equipment summary into character.inventory:
+      // that summary is a selection PLAN (e.g. "细剑 或 长剑 …，皮甲，匕首"), not an
+      // item. The Equipment page derives a StarterEquipmentPlan from the class
+      // definition's startingEquipment and materializes real items on Generate.
+      // (Legacy characters that already stored the summary are quarantined by the
+      // isLegacyStarterSummary detectors in the inventory view-model.)
     }
 
     const bg = BACKGROUND_DATA.find(b => b.name === character.background);

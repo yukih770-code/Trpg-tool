@@ -17,7 +17,7 @@ const LOCAL_CHM_BACKGROUND_REF =
   'dnd-local-chm-primary:玩家手册2024/角色起源/背景';
 
 const LOCAL_CHM_BACKGROUND_NOTE =
-  'Local CHM confirmed standard DND 2024 background. Detailed skills, origin feat, ability options, equipment, and feature mechanics remain needs-human-check.';
+  'Local CHM confirmed standard DND 2024 background. Shallow skills, tools, and origin feat were extracted from the owner source; ability options, equipment choices, starting gold, and feature mechanics remain needs-human-check.';
 
 export const DND_BACKGROUND_2024_DATA_ACCURACY: RuleDataMetadata = {
   source: 'dnd-local-chm-primary',
@@ -25,7 +25,7 @@ export const DND_BACKGROUND_2024_DATA_ACCURACY: RuleDataMetadata = {
   usagePolicy: 'needs-human-verification',
   sourceRef: `${LOCAL_CHM_BACKGROUND_REF}#item-entries`,
   sourceNote:
-    'Runtime background list follows the local CHM primary source baseline: 16 standard DND 2024 backgrounds under 玩家手册2024/角色起源/背景. Detailed mechanics remain needs-human-check.',
+    'Runtime background list follows the local CHM primary source baseline: 16 standard DND 2024 backgrounds under 玩家手册2024/角色起源/背景. Shallow skills/tools/origin feats are extracted; ability options, equipment choices, starting gold, and feature mechanics remain needs-human-check.',
 };
 
 function background2024Meta(name: string, sourceFile: string): RuleDataMetadata {
@@ -50,6 +50,7 @@ function makeChmBackground(
   sourceFile: string,
   desc: string,
   skillProficiencies: SkillName[] = [],
+  toolProficiencies: string[] = [],
   originFeat?: string,
 ): BackgroundDef {
   return {
@@ -59,28 +60,29 @@ function makeChmBackground(
     ruleMeta: background2024Meta(nameCn, sourceFile),
     desc,
     skillProficiencies,
+    toolProficiencies,
     originFeat,
     feature: PENDING_BACKGROUND_FEATURE,
   };
 }
 
 export const DND_2024_BACKGROUND_DATA: BackgroundDef[] = [
-  makeChmBackground('background.acolyte', '侍僧', 'Acolyte', '侍僧.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。', ["洞察", "宗教"] as SkillName[], "魔法学徒 (Magic Initiate)"),
-  makeChmBackground('background.artisan', '工匠', 'Artisan', '工匠.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
-  makeChmBackground('background.charlatan', '骗子', 'Charlatan', '骗子.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
-  makeChmBackground('background.criminal', '罪犯', 'Criminal', '罪犯.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。', ["欺瞒", "隐匿"] as SkillName[], "警觉 (Alert)"),
-  makeChmBackground('background.entertainer', '艺人', 'Entertainer', '艺人.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
-  makeChmBackground('background.farmer', '农民', 'Farmer', '农民.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
-  makeChmBackground('background.guard', '警卫', 'Guard', '警卫.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
-  makeChmBackground('background.guide', '向导', 'Guide', '向导.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
-  makeChmBackground('background.hermit', '隐士', 'Hermit', '隐士.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
-  makeChmBackground('background.merchant', '商人', 'Merchant', '商人.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
-  makeChmBackground('background.noble', '贵族', 'Noble', '贵族.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
-  makeChmBackground('background.sage', '智者', 'Sage', '智者.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。', ["奥秘", "历史"] as SkillName[], "魔法学徒 (Magic Initiate)"),
-  makeChmBackground('background.sailor', '水手', 'Sailor', '水手.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
-  makeChmBackground('background.scribe', '抄写员', 'Scribe', '抄写员.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
-  makeChmBackground('background.soldier', '士兵', 'Soldier', '士兵.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。', ["运动", "威吓"] as SkillName[], "野蛮打击者 (Savage Attacker)"),
-  makeChmBackground('background.wayfarer', '流浪者', 'Wayfarer', '流浪者.htm', '本地 CHM 确认的 DND 2024 标准背景；详细说明待核对。'),
+  makeChmBackground('background.acolyte', '侍僧', 'Acolyte', '侍僧.htm', '在寺庙或圣所侍奉，学习祭仪与祈祷。', ["洞察", "宗教"] as SkillName[], ["书法工具"], "魔法学徒 (Magic Initiate)"),
+  makeChmBackground('background.artisan', '工匠', 'Artisan', '工匠.htm', '在工坊成长，熟悉手艺和市井消息。', ["调查", "游说"] as SkillName[], ["工匠工具（任选一种）"], "巧匠"),
+  makeChmBackground('background.charlatan', '骗子', 'Charlatan', '骗子.htm', '游走酒馆与市井，擅长话术和伪装。', ["欺瞒", "巧手"] as SkillName[], ["文书伪造工具"], "熟练 (Skilled)"),
+  makeChmBackground('background.criminal', '罪犯', 'Criminal', '罪犯.htm', '在阴暗街巷求生，熟悉盗贼行当。', ["巧手", "隐匿"] as SkillName[], ["盗贼工具"], "警觉 (Alert)"),
+  makeChmBackground('background.entertainer', '艺人', 'Entertainer', '艺人.htm', '在巡演与嘉年华中磨炼表演技艺。', ["特技", "表演"] as SkillName[], ["乐器（任选一种）"], "音乐家 (Musician)"),
+  makeChmBackground('background.farmer', '农民', 'Farmer', '农民.htm', '在农地和牲畜间长大，熟悉自然劳作。', ["驯兽", "自然"] as SkillName[], ["木匠工具"], "健壮 (Tough)"),
+  makeChmBackground('background.guard', '警卫', 'Guard', '警卫.htm', '长期站岗巡守，习惯观察威胁。', ["运动", "察觉"] as SkillName[], ["赌具（任选一种）"], "警觉 (Alert)"),
+  makeChmBackground('background.guide', '向导', 'Guide', '向导.htm', '在荒野中成长，熟悉野外探索。', ["隐匿", "生存"] as SkillName[], ["制图工具"], "魔法学徒 (Magic Initiate)"),
+  makeChmBackground('background.hermit', '隐士', 'Hermit', '隐士.htm', '远离聚居地生活，沉思自然与信仰。', ["医药", "宗教"] as SkillName[], ["草药工具"], "医疗师"),
+  makeChmBackground('background.merchant', '商人', 'Merchant', '商人.htm', '随商队和货物流动，熟悉交易往来。', ["驯兽", "游说"] as SkillName[], ["领航工具"], "幸运 (Lucky)"),
+  makeChmBackground('background.noble', '贵族', 'Noble', '贵族.htm', '在权势与礼仪中成长，受过良好教育。', ["历史", "游说"] as SkillName[], ["赌具（任选一种）"], "熟练 (Skilled)"),
+  makeChmBackground('background.sage', '智者', 'Sage', '智者.htm', '在书籍与图书馆之间求知探索。', ["奥秘", "历史"] as SkillName[], ["书法工具"], "魔法学徒 (Magic Initiate)"),
+  makeChmBackground('background.sailor', '水手', 'Sailor', '水手.htm', '以海员身份生活，熟悉甲板和港口。', ["特技", "察觉"] as SkillName[], ["领航工具"], "酒馆斗士 (Tavern Brawler)"),
+  makeChmBackground('background.scribe', '抄写员', 'Scribe', '抄写员.htm', '在缮写室或机关中学习誊写与文书。', ["调查", "察觉"] as SkillName[], ["书法工具"], "熟练 (Skilled)"),
+  makeChmBackground('background.soldier', '士兵', 'Soldier', '士兵.htm', '自成年起接受战阵训练并经历军旅。', ["运动", "威吓"] as SkillName[], ["赌具（任选一种）"], "野蛮打击者 (Savage Attacker)"),
+  makeChmBackground('background.wayfarer', '流浪者', 'Wayfarer', '流浪者.htm', '在街头求生，学会隐忍与自保。', ["洞察", "隐匿"] as SkillName[], ["盗贼工具"], "幸运 (Lucky)"),
 ];
 
 export const DND_BACKGROUND_DATA_ACCURACY: RuleDataMetadata = {

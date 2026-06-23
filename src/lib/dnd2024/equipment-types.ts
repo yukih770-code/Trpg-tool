@@ -16,6 +16,8 @@
  * equipment shapes.
  */
 
+import type { EquipmentSlot } from '../platform/characterInventory';
+
 export type DndEquipmentCategory =
   | 'weapon'
   | 'armor'
@@ -83,3 +85,131 @@ export interface DndGearItem extends DndEquipmentItemBase {
 }
 
 export type DndEquipmentItem = DndWeaponItem | DndArmorItem | DndGearItem;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Long-term Item Definition layer (v1)
+//
+// AI-LANDMARK: DND_ITEM_DEFINITION_LAYER
+//
+// `DndItemDefinition` is the IDENTITY of an item (keyed by `id`, never by name).
+// Owned copies (`CharacterInventoryItem`) reference it via `definitionId`. This
+// layer is intentionally a superset of the legacy `DndEquipmentItem` catalog so
+// existing data can be promoted without a rewrite. No rule values are invented:
+// items whose stats are not yet sourced carry `sourceStatus: 'pending-source'`
+// and omit numeric fields rather than guessing.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type DndItemSourceStatus = 'sourced' | 'pending-source' | 'platform';
+
+export type DndItemCategory =
+  | 'weapon'
+  | 'ammunition'
+  | 'armor'
+  | 'shield'
+  | 'tool'
+  | 'artisanTool'
+  | 'gamingSet'
+  | 'musicalInstrument'
+  | 'spellcastingFocus'
+  | 'adventuringGear'
+  | 'pack'
+  | 'container'
+  | 'consumable'
+  | 'foodAndDrink'
+  | 'mount'
+  | 'vehicle'
+  | 'tackAndHarness'
+  | 'tradeGood'
+  | 'treasure'
+  | 'currency'
+  | 'clothing'
+  | 'magicItem'
+  | 'customItem';
+
+export interface DndWeaponDefData {
+  damage?: string;
+  damageType?: string;
+  properties?: string[];
+  range?: string;
+  weaponCategory?: 'simple' | 'martial';
+  mastery?: string;
+  ammunitionType?: string;
+}
+
+export interface DndArmorDefData {
+  baseAc?: number;
+  armorCategory?: 'light' | 'medium' | 'heavy';
+  dexModifier?: boolean | 'max2';
+  strengthRequirement?: number;
+  stealthDisadvantage?: boolean;
+}
+
+export interface DndShieldDefData {
+  acBonus?: number;
+}
+
+export interface DndToolDefData {
+  toolCategory?: string;
+  proficiencyType?: string;
+  associatedAbility?: string;
+}
+
+export interface DndPackDefData {
+  contents?: Array<{ definitionId: string; quantity: number }>;
+  isContainer?: boolean;
+}
+
+export interface DndContainerDefData {
+  capacityWeight?: number;
+  containerType?: string;
+}
+
+export interface DndConsumableDefData {
+  uses?: number;
+  consumedOnUse?: boolean;
+  effectText?: string;
+}
+
+export interface DndItemDefinition {
+  /** Stable identity. Never rename once published, e.g. `weapon.rapier`. */
+  id: string;
+  system: 'dnd5e-2024';
+  /** Data-provenance tag (e.g. `dnd2024-basic`). */
+  source?: string;
+  sourceRef?: string;
+  sourceStatus: DndItemSourceStatus;
+
+  nameCn: string;
+  nameEn?: string;
+  aliases?: string[];
+
+  category: DndItemCategory;
+  subCategory?: string;
+  tags?: string[];
+
+  rarity?: string;
+  stackable?: boolean;
+  quantityUnit?: string;
+  /** Pounds. Omitted when not sourced. */
+  weight?: number;
+  /** Display cost string, e.g. `15 GP`. Omitted when not sourced. */
+  value?: string;
+
+  /** Which slots this item is ELIGIBLE for. Auto-equip reads this, never the name. */
+  equipSlots?: EquipmentSlot[];
+
+  description?: string;
+  rulesText?: string;
+  notes?: string;
+  /** True when the category/item is a platform extension, not an official catalog category. */
+  platformExtension?: boolean;
+
+  // Category-specific data bags (populate only the relevant one).
+  weapon?: DndWeaponDefData;
+  armor?: DndArmorDefData;
+  shield?: DndShieldDefData;
+  tool?: DndToolDefData;
+  pack?: DndPackDefData;
+  container?: DndContainerDefData;
+  consumable?: DndConsumableDefData;
+}

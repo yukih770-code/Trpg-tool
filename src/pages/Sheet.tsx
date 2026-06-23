@@ -16,7 +16,10 @@ import {
 import { SheetNotesEditor } from './sheet/SheetNotesEditor';
 import { AvatarPickerSlot } from './sheet/AvatarPickerSlot';
 import { CharacterInventoryPanel } from './sheet/CharacterInventoryPanel';
-import { groupInventoryByLocation, makeInventoryItem, makeActorInventoryKey } from '../lib/platform/characterInventory';
+import { groupInventoryByLocation, makeInventoryItem, makeActorInventoryKey, parseStarterEquipment, isLegacyStarterSummaryText } from '../lib/platform/characterInventory';
+import { resolveDndStarterItem } from '../lib/dnd2024/dndStarterEquipment';
+import { buildStarterEquipmentPlan } from '../lib/dnd2024/dndStarterEquipmentPlan';
+import { getDndCasualOutfit } from '../lib/dnd2024/dndCasualOutfits';
 import { makeCharacterProfileDraft, resolveAvatarImageUrl, type CharacterProfileFieldSupport } from '../lib/platform/characterProfile';
 import { getDndCharacterSpellIndex } from '../lib/dnd2024/dndSpellAvailability';
 import { createTranslator, readStoredLocale } from '../i18n';
@@ -174,14 +177,37 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
     notes: false,
     avatarPersistence: false,
   };
+  // Legacy starter-equipment summary strings must NOT become item-like rows.
+  const legacyInventoryStrings = inventoryItems.filter((s) => !isLegacyStarterSummaryText(s));
+  const legacyStarterSummary = inventoryItems.find((s) => isLegacyStarterSummaryText(s));
   const dndInventoryGroups = groupInventoryByLocation([
-    ...inventoryItems.map((item) =>
+    ...legacyInventoryStrings.map((item) =>
       makeInventoryItem({ systemId: 'dnd5e-2024', name: item, category: 'gear', location: 'backpack' }),
     ),
     ...(character.coin
       ? [makeInventoryItem({ systemId: 'dnd5e-2024', name: `${character.coin} gp`, category: 'currency', location: 'carried' })]
       : []),
   ]);
+  // Starter plan source: the class definition's startingEquipment (preferred),
+  // falling back to a legacy summary string migrated from older inventory data.
+  const starterSourceText = classDef?.startingEquipment ?? legacyStarterSummary ?? '';
+  const dndStarter = parseStarterEquipment(starterSourceText);
+  const dndStarterPlan = buildStarterEquipmentPlan(
+    starterSourceText,
+    classDef ? `classes.ts#${classDef.name}` : undefined,
+  );
+  const dndStatPreview = (
+    <div className="space-y-1 text-[11px]">
+      <div>AC: {acTotal} · 先攻 INIT: {formatMod(initiative)} · PB: +{profBonus}</div>
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+        {attrList.map((a) => {
+          const { score, mod } = getAttrData(a.key);
+          return <span key={a.key}>{a.key} {score} ({formatMod(mod)})</span>;
+        })}
+      </div>
+      <div className="text-[10px] opacity-60">属性 / 豁免 / 技能：装备不自动改写，仅本地预览。</div>
+    </div>
+  );
 
   return (
     <div className="space-y-4 text-[#2c1810]">
@@ -625,36 +651,26 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
 
       {sheetSection === 'equipment' && (
         <section className="space-y-3">
-          <div className={compactPanelClass}>
-            <h3 className={compactTitleClass}>{t('dndSheet.compact.attacksEquipment')}</h3>
-            <div className="space-y-2 text-xs font-sans">
-              <div className="grid grid-cols-2 gap-2">
-                <div className="border border-[#58180d]/20 bg-[#ede1c5]/40 p-2">
-                  <div className="text-[10px] font-bold uppercase text-[#58180d]/70">{t('dndSheet.compact.hitDice')}</div>
-                  <div className="font-black">{character.hitDiceCurrent}d{character.jobClass === '野蛮人' ? '12' : character.jobClass === '护法' ? '10' : character.jobClass === '吟游诗人' ? '8' : '8'}</div>
-                </div>
-                <div className="border border-[#58180d]/20 bg-[#ede1c5]/40 p-2">
-                  <div className="text-[10px] font-bold uppercase text-[#58180d]/70">{t('dndSheet.compact.coin')}</div>
-                  <div className="font-black">{character.coin || 0} gp</div>
-                </div>
-              </div>
-              <p><strong className="text-[#58180d]">{t('dndSheet.compact.inventorySummary')}:</strong> {inventoryItems.length > 0 ? inventoryItems.slice(0, 3).join(' / ') : t('dndSheet.compact.none')}</p>
-              {inventoryItems.length > 3 && <p className="text-[11px] text-[#58180d]/65">+{inventoryItems.length - 3} more</p>}
-              <p className="border border-dashed border-[#58180d]/25 bg-[#ede1c5]/30 p-2 text-[11px] text-[#58180d]/70">{t('dndSheet.compact.equipmentDeferred')}</p>
-            </div>
-          </div>
           <CharacterInventoryPanel
-            title="背包与已装备 Backpack & Equipped"
+            title="装备与背包 Equipment & Backpack"
             groups={dndInventoryGroups}
             actorKey={makeActorInventoryKey('dnd5e-2024', character.id ?? 'dnd-actor')}
             systemId="dnd5e-2024"
-            emptyText="暂无系统装备。System equipment is empty."
+            encumbranceMode="dnd"
+            currencyMode="dnd"
+            legacyGroupsMode="import"
+            legacyGoldGp={character.coin || 0}
+            showEquipmentSlots
+            starter={dndStarter}
+            starterPlan={dndStarterPlan}
+            resolveStarterItem={resolveDndStarterItem}
+            casualOutfit={getDndCasualOutfit(character.background)}
+            statPreview={dndStatPreview}
             className="border-[#58180d]/20 bg-white/45 text-[#2c1810]"
             headerClassName="text-[#58180d]"
             groupHeaderClassName="text-[#58180d]"
             chipClassName="bg-[#58180d]/10 text-[#58180d]/80"
           />
-          <DndEquipmentCatalogPanel />
         </section>
       )}
 
