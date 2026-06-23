@@ -82,6 +82,7 @@ const defaultChar: CharacterData = {
   subclass: '',
   background: '',
   description: '',
+  appearanceDescription: '',
   level: 1,
   hpMax: 10,
   hpCurrent: 10,

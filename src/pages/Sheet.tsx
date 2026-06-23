@@ -238,10 +238,13 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
               <div className="space-y-2 border-t border-[#58180d]/15 pt-2">
                 <SheetNotesEditor
                   title="外貌 Appearance"
-                  value=""
+                  value={character.appearanceDescription ?? ''}
+                  onSave={(next) => updateField('appearanceDescription', next)}
                   emptyText="尚未填写外貌。"
+                  rows={4}
                   accentClassName="text-[#58180d]/70"
                   textClassName="text-[#2c1810]/85"
+                  textareaClassName="w-full resize-y rounded border border-[#58180d]/25 bg-white/60 px-3 py-2 text-sm outline-none text-[#2c1810]"
                 />
                 <SheetNotesEditor
                   title="生平 / 描述 Biography"
