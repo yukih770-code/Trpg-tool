@@ -62,6 +62,26 @@ const FEAT_METADATA_BY_NAME: Record<string, RuleDataMetadata> = {
   '心力觉醒 (Telepathic)': tcoeFeatMeta(),
 };
 
+const FEAT_IDENTITY_BY_NAME: Record<string, { id: string; nameCn: string }> = {
+  '警觉 (Alert)': { id: 'feat.origin.alert', nameCn: '警觉' },
+  '音乐家 (Musician)': { id: 'feat.origin.musician', nameCn: '音乐家' },
+  '魔法学徒 (Magic Initiate)': { id: 'feat.origin.magic-initiate', nameCn: '魔法学徒' },
+  '酒馆斗士 (Tavern Brawler)': { id: 'feat.origin.tavern-brawler', nameCn: '酒馆斗士' },
+  '幸运 (Lucky)': { id: 'feat.origin.lucky', nameCn: '幸运' },
+  '熟练 (Skilled)': { id: 'feat.origin.skilled', nameCn: '熟练' },
+  '健壮 (Tough)': { id: 'feat.origin.tough', nameCn: '健壮' },
+  '野蛮打击者 (Savage Attacker)': { id: 'feat.origin.savage-attacker', nameCn: '野蛮打击者' },
+  '运动员 (Athlete)': { id: 'feat.general.athlete', nameCn: '运动员' },
+  '防御式决斗者 (Defensive Duelist)': { id: 'feat.general.defensive-duelist', nameCn: '防御式决斗者' },
+  '战地施法者 (War Caster)': { id: 'feat.general.war-caster', nameCn: '战地施法者' },
+  '重甲大师 (Heavy Armor Master)': { id: 'feat.general.heavy-armor-master', nameCn: '重甲大师' },
+  '神射手 (Sharpshooter)': { id: 'feat.general.sharpshooter', nameCn: '神射手' },
+  '巨武器大师 (Great Weapon Master)': { id: 'feat.general.great-weapon-master', nameCn: '巨武器大师' },
+  '长柄武器大师 (Polearm Master)': { id: 'feat.general.polearm-master', nameCn: '长柄武器大师' },
+  '观察者 (Observant)': { id: 'feat.general.observant', nameCn: '观察者' },
+  '心力觉醒 (Telepathic)': { id: 'feat.tcoe.telepathic', nameCn: '心力觉醒' },
+};
+
 export const DND_BACKGROUND_ORIGIN_FEAT_LINK_REPORT = {
   originFeatReferences: [
     '魔法学徒 (Magic Initiate)',
@@ -79,10 +99,16 @@ export const DND_BACKGROUND_ORIGIN_FEAT_LINK_REPORT = {
 
 // AI-LANDMARK: DND_FEAT_BACKGROUND_LINK_CORRECTION
 const applyDndFeatMetadata = (feats: FeatDef[]): FeatDef[] =>
-  feats.map((feat) => ({
-    ...feat,
-    ruleMeta: FEAT_METADATA_BY_NAME[feat.name] ?? DND_FEAT_DATA_ACCURACY,
-  }));
+  feats.map((feat) => {
+    const identity = FEAT_IDENTITY_BY_NAME[feat.name];
+
+    return {
+      ...feat,
+      id: feat.id ?? identity?.id,
+      nameCn: feat.nameCn ?? identity?.nameCn,
+      ruleMeta: FEAT_METADATA_BY_NAME[feat.name] ?? DND_FEAT_DATA_ACCURACY,
+    };
+  });
 
 const getAttrTotal = (char: CharacterData, attr: AttributeName) => {
   const a = char.attrs[attr];

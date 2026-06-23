@@ -62,10 +62,27 @@ const CLASS_METADATA_BY_NAME: Record<string, RuleDataMetadata> = {
   游荡者: classSourceMeta(),
   圣武士: classSourceMeta(),
   游侠: classSourceMeta(),
-  邪术师: classSourceMeta('魔契师；existing app name 邪术师 needs owner-source naming confirmation.'),
+  邪术师: classSourceMeta(
+    'canonical id warlock; platform display name 邪术师; source terminology 魔契师. Do not create a second class entity for 魔契师.',
+  ),
   武僧: classSourceMeta(),
   德鲁伊: classSourceMeta(),
   术士: classSourceMeta(),
+};
+
+const CLASS_CANONICAL_IDS_BY_NAME: Record<string, string> = {
+  野蛮人: 'barbarian',
+  吟游诗人: 'bard',
+  法师: 'wizard',
+  牧师: 'cleric',
+  战士: 'fighter',
+  游荡者: 'rogue',
+  圣武士: 'paladin',
+  游侠: 'ranger',
+  邪术师: 'warlock',
+  武僧: 'monk',
+  德鲁伊: 'druid',
+  术士: 'sorcerer',
 };
 
 const SUBCLASS_METADATA_BY_CLASS: Record<string, Record<string, RuleDataMetadata>> = {
@@ -159,6 +176,7 @@ export const DND_CLASS_SOURCE_GAP_REPORT = {
 const applyDndClassSubclassMetadata = (classes: ClassDef[]): ClassDef[] =>
   classes.map((cls) => ({
     ...cls,
+    id: cls.id ?? CLASS_CANONICAL_IDS_BY_NAME[cls.name],
     ruleMeta: CLASS_METADATA_BY_NAME[cls.name] ?? DND_CLASS_DATA_ACCURACY,
     subclasses: cls.subclasses.map((subclass) => ({
       ...subclass,

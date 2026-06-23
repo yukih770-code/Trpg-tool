@@ -11,14 +11,16 @@ import type { RuleDataMetadata } from '../lib/rules/rule-data-metadata';
 
 const SPECIES_MANIFEST_REF =
   'docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md';
+const LOCAL_CHM_SPECIES_REF =
+  'dnd-local-chm-primary:玩家手册2024/角色起源/种族';
 
 export const DND_SPECIES_2024_DATA_ACCURACY: RuleDataMetadata = {
-  source: 'dnd5echm-srd52-primary',
+  source: 'dnd-local-chm-primary',
   trustLevel: 'owner-source-matched',
   usagePolicy: 'needs-human-verification',
-  sourceRef: `${SPECIES_MANIFEST_REF}#item-entries`,
+  sourceRef: `${LOCAL_CHM_SPECIES_REF}#item-entries`,
   sourceNote:
-    'Species entry names and source paths are matched to the owner source manifest (玩家手册2024/角色起源/种族). Traits, size, speed, and languages are intentionally NOT filled: they require human-checked extraction from the owner source. Entries carry zero ability bonuses by the DND 2024 species model.',
+    `Species entry names and source paths are matched to the local CHM owner source (${LOCAL_CHM_SPECIES_REF}); secondary manifest reference: ${SPECIES_MANIFEST_REF}. Traits, size, speed, and languages are intentionally NOT filled: they require human-checked extraction from the owner source. Entries carry zero ability bonuses by the DND 2024 species model.`,
 };
 
 function makeSpecies2024(id: string, name: string, sourceFile: string): RaceDef {
@@ -33,11 +35,11 @@ function makeSpecies2024(id: string, name: string, sourceFile: string): RaceDef 
     features: ['物种特性 / 体型 / 速度待从 owner source 核对提取（needs-human-check）'],
     subraces: [],
     ruleMeta: {
-      source: 'dnd5echm-srd52-primary',
+      source: 'dnd-local-chm-primary',
       trustLevel: 'owner-source-matched',
       usagePolicy: 'needs-human-verification',
-      sourceRef: `${SPECIES_MANIFEST_REF}#item-${name}`,
-      sourceNote: `玩家手册2024/角色起源/种族/${sourceFile}`,
+      sourceRef: `${LOCAL_CHM_SPECIES_REF}/${sourceFile}`,
+      sourceNote: `Local CHM source entry ${name}; secondary manifest reference: ${SPECIES_MANIFEST_REF}#item-${name}.`,
     },
   };
 }

@@ -13,8 +13,8 @@ import type { RuleDataMetadata } from '../lib/rules/rule-data-metadata';
 // - skill / origin-feat mappings are pre-existing app values pending human
 //   verification against the owner source; they are NOT source-confirmed yet.
 
-const LOCAL_CHM_BACKGROUND_ROOT =
-  'C:\\TRPG_CHM_WORK\\extracted\\玩家手册2024\\角色起源\\背景';
+const LOCAL_CHM_BACKGROUND_REF =
+  'dnd-local-chm-primary:玩家手册2024/角色起源/背景';
 
 const LOCAL_CHM_BACKGROUND_NOTE =
   'Local CHM confirmed standard DND 2024 background. Detailed skills, origin feat, ability options, equipment, and feature mechanics remain needs-human-check.';
@@ -23,7 +23,7 @@ export const DND_BACKGROUND_2024_DATA_ACCURACY: RuleDataMetadata = {
   source: 'dnd-local-chm-primary',
   trustLevel: 'source-labeled',
   usagePolicy: 'needs-human-verification',
-  sourceRef: LOCAL_CHM_BACKGROUND_ROOT,
+  sourceRef: `${LOCAL_CHM_BACKGROUND_REF}#item-entries`,
   sourceNote:
     'Runtime background list follows the local CHM primary source baseline: 16 standard DND 2024 backgrounds under 玩家手册2024/角色起源/背景. Detailed mechanics remain needs-human-check.',
 };
@@ -33,7 +33,7 @@ function background2024Meta(name: string, sourceFile: string): RuleDataMetadata 
     source: 'dnd-local-chm-primary',
     trustLevel: 'source-labeled',
     usagePolicy: 'needs-human-verification',
-    sourceRef: `${LOCAL_CHM_BACKGROUND_ROOT}\\${sourceFile}`,
+    sourceRef: `${LOCAL_CHM_BACKGROUND_REF}/${sourceFile}`,
     sourceNote: `${LOCAL_CHM_BACKGROUND_NOTE} Source entry: ${name}.`,
   };
 }
