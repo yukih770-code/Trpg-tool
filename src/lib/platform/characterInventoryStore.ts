@@ -8,6 +8,8 @@ import type {
   EquipmentSlot,
   InventoryItemLocation,
 } from './characterInventory';
+import { equipItem, unequipItem, type EquipMode, type EquipResult } from './loadoutService';
+import { getDndItemDefinition } from '../dnd2024/dndItemRegistry';
 
 /**
  * Character Inventory persistence (platform-local store).
@@ -60,8 +62,16 @@ interface CharacterInventoryStoreState {
   removeInventoryItem: (actorKey: string, instanceId: string) => void;
   setInventoryItemLocation: (actorKey: string, instanceId: string, location: InventoryItemLocation) => void;
   setInventoryItemContainer: (actorKey: string, instanceId: string, containerId: string | undefined) => void;
-  /** Equip to a slot (clears containerId), or unequip when slot is undefined. */
+  /**
+   * Low-level escape hatch: directly writes equipSlot with NO occupancy/legality
+   * check. Prefer equipInventoryItem / unequipInventoryItem for UI — those route
+   * through the Loadout Equip Service and prevent double slot occupancy.
+   */
   setInventoryItemSlot: (actorKey: string, instanceId: string, slot: EquipmentSlot | undefined) => void;
+  /** Equip via the Loadout Equip Service (slot occupancy + replace flow). Returns the result. */
+  equipInventoryItem: (actorKey: string, instanceId: string, targetSlot: EquipmentSlot, mode?: EquipMode) => EquipResult;
+  /** Unequip via the Loadout Equip Service (returns the item to the backpack). */
+  unequipInventoryItem: (actorKey: string, instanceId: string) => EquipResult;
   getActorContainers: (actorKey: string) => CharacterInventoryContainer[];
   addInventoryContainer: (actorKey: string, container: CharacterInventoryContainer) => void;
   updateInventoryContainer: (actorKey: string, containerId: string, patch: CharacterInventoryContainerPatch) => void;
@@ -172,6 +182,24 @@ export const useCharacterInventoryStore = create<CharacterInventoryStoreState>()
             ),
           ),
         })),
+
+      equipInventoryItem: (actorKey, instanceId, targetSlot, mode) => {
+        const items = get().itemsByActor[actorKey] ?? [];
+        const result = equipItem({ items, resolveDef: getDndItemDefinition, instanceId, targetSlot, mode });
+        if (result.ok) {
+          set((state) => ({ itemsByActor: { ...state.itemsByActor, [actorKey]: result.items } }));
+        }
+        return result;
+      },
+
+      unequipInventoryItem: (actorKey, instanceId) => {
+        const items = get().itemsByActor[actorKey] ?? [];
+        const result = unequipItem({ items, instanceId });
+        if (result.ok) {
+          set((state) => ({ itemsByActor: { ...state.itemsByActor, [actorKey]: result.items } }));
+        }
+        return result;
+      },
 
       getActorContainers: (actorKey) => get().containersByActor[actorKey] ?? [],
 

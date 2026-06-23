@@ -63,20 +63,26 @@ function fromCatalog(row: DndEquipmentItem): DndItemDefinition {
   if (row.category === 'weapon') {
     base.category = 'weapon';
     base.equipSlots = ['mainHand', 'offHand'];
+    const props = Array.isArray(anyRow.properties) ? (anyRow.properties as string[]) : [];
+    const twoHanded = props.some((p) => /two-?hand/i.test(p));
+    base.equipProfile = twoHanded
+      ? { allowedSlots: ['mainHand'], defaultSlot: 'mainHand', occupiedSlots: ['mainHand', 'offHand'], slotUsage: 'twoHands' }
+      : { allowedSlots: ['mainHand', 'offHand'], defaultSlot: 'mainHand', slotUsage: 'oneHand' };
     base.weapon = {
       damage: typeof anyRow.damageDice === 'string' ? anyRow.damageDice : undefined,
       damageType: typeof anyRow.damageType === 'string' ? anyRow.damageType : undefined,
-      properties: Array.isArray(anyRow.properties) ? (anyRow.properties as string[]) : undefined,
+      properties: props.length > 0 ? props : undefined,
       range: typeof anyRow.range === 'string' ? anyRow.range : undefined,
       weaponCategory: mapWeaponCategory(anyRow.weaponCategory as string | undefined),
     };
-    base.tags = Array.isArray(anyRow.properties) ? (anyRow.properties as string[]) : undefined;
+    base.tags = props.length > 0 ? props : undefined;
     return base;
   }
 
   if (row.category === 'armor') {
     base.category = 'armor';
     base.equipSlots = ['armor'];
+    base.equipProfile = { allowedSlots: ['armor'], defaultSlot: 'armor', slotUsage: 'worn' };
     base.armor = {
       baseAc: typeof anyRow.baseAc === 'number' ? anyRow.baseAc : undefined,
       armorCategory: anyRow.armorCategory as 'light' | 'medium' | 'heavy' | undefined,
@@ -90,6 +96,7 @@ function fromCatalog(row: DndEquipmentItem): DndItemDefinition {
   if (row.category === 'shield') {
     base.category = 'shield';
     base.equipSlots = ['offHand'];
+    base.equipProfile = { allowedSlots: ['offHand'], defaultSlot: 'offHand', occupiedSlots: ['offHand'], slotUsage: 'offHandOnly' };
     base.shield = { acBonus: typeof anyRow.baseAc === 'number' ? anyRow.baseAc : undefined };
     return base;
   }
@@ -107,7 +114,10 @@ function fromCatalog(row: DndEquipmentItem): DndItemDefinition {
     return base;
   }
   base.category = 'adventuringGear';
-  if (/torch|火把|lantern|灯/i.test(nameCn)) base.equipSlots = ['utility'];
+  if (/torch|火把|lantern|灯/i.test(nameCn)) {
+    base.equipSlots = ['utility'];
+    base.equipProfile = { allowedSlots: ['utility'], defaultSlot: 'utility', slotUsage: 'utility' };
+  }
   return base;
 }
 
@@ -127,6 +137,7 @@ const PENDING_STUBS: DndItemDefinition[] = [
     aliases: ['Rapier', '刺剑'],
     category: 'weapon',
     equipSlots: ['mainHand', 'offHand'],
+    equipProfile: { allowedSlots: ['mainHand', 'offHand'], defaultSlot: 'mainHand', slotUsage: 'oneHand' },
     notes: '数值 / 来源待核对（damage / weight / value 需读取 owner source）。',
   },
   {
@@ -161,6 +172,7 @@ const PENDING_STUBS: DndItemDefinition[] = [
     category: 'musicalInstrument',
     subCategory: 'musicalInstrument',
     equipSlots: ['instrument'],
+    equipProfile: { allowedSlots: ['instrument'], defaultSlot: 'instrument', slotUsage: 'utility' },
     tool: { toolCategory: 'musicalInstrument', proficiencyType: 'tool' },
     notes: '具体乐器 / 数值 / 来源待核对。',
   },
@@ -192,7 +204,9 @@ export function inventoryCategoryForDefinition(category: DndItemCategory): strin
   }
 }
 
-/** First eligible slot for a definition (auto-equip default). */
+/** First eligible slot for a definition (auto-equip default). Prefers the equip profile. */
 export function primaryEquipSlot(def: DndItemDefinition): EquipmentSlot | undefined {
+  if (def.equipProfile?.defaultSlot) return def.equipProfile.defaultSlot;
+  if (def.equipProfile?.allowedSlots && def.equipProfile.allowedSlots.length > 0) return def.equipProfile.allowedSlots[0];
   return def.equipSlots && def.equipSlots.length > 0 ? def.equipSlots[0] : undefined;
 }

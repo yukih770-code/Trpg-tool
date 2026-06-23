@@ -26,6 +26,7 @@ import {
 } from '../../lib/dnd2024/dndCasualOutfits';
 import { getDndItemDefinition } from '../../lib/dnd2024/dndItemRegistry';
 import { autoSlotForDefinition, type StarterEquipmentPlan } from '../../lib/dnd2024/dndStarterEquipmentPlan';
+import { deriveStarterEquipmentLifecycle } from '../../lib/dnd2024/dndStarterEquipmentLifecycle';
 
 /**
  * CharacterInventoryPanel — character-library equipment view (v9: two-zone).
@@ -112,6 +113,8 @@ export interface CharacterInventoryPanelProps {
   starter?: ParsedStarterEquipment;
   /** Definition-enriched starter plan (preferred over `starter` when provided). */
   starterPlan?: StarterEquipmentPlan;
+  /** True when a legacy starter-summary string still lives in character.inventory (drives the breakdown prompt). */
+  legacyStarterSummaryPresent?: boolean;
   /** Resolves a chosen starter name + quantity (+ optional definitionId) into a real item instance. */
   resolveStarterItem?: (name: string, quantity: number, sourceText?: string, definitionId?: string) => CharacterInventoryItem;
   /** DND: the background's starter casual-outfit template (world-flavor only). */
@@ -138,6 +141,7 @@ export function CharacterInventoryPanel({
   showEquipmentSlots = false,
   starter,
   starterPlan,
+  legacyStarterSummaryPresent,
   resolveStarterItem,
   casualOutfit,
   statPreview,
@@ -149,7 +153,8 @@ export function CharacterInventoryPanel({
 }: CharacterInventoryPanelProps) {
   const allOwnedItems = useCharacterInventoryStore((s) => (actorKey ? s.itemsByActor[actorKey] ?? EMPTY_ITEMS : EMPTY_ITEMS));
   const wallet = useCharacterInventoryStore((s) => (actorKey ? s.walletByActor[actorKey] ?? EMPTY_WALLET : EMPTY_WALLET));
-  const setInventoryItemSlot = useCharacterInventoryStore((s) => s.setInventoryItemSlot);
+  const equipInventoryItem = useCharacterInventoryStore((s) => s.equipInventoryItem);
+  const unequipInventoryItem = useCharacterInventoryStore((s) => s.unequipInventoryItem);
   const addInventoryItem = useCharacterInventoryStore((s) => s.addInventoryItem);
 
   const [query, setQuery] = useState('');
@@ -159,6 +164,7 @@ export function CharacterInventoryPanel({
   const [tagFilter, setTagFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortBy>('name');
   const [pop, setPop] = useState<PopState | null>(null);
+  const [equipError, setEquipError] = useState<string | null>(null);
 
   const chip = chipClassName ?? 'bg-current/10';
   const showWallet = currencyMode === 'dnd';
@@ -234,11 +240,22 @@ export function CharacterInventoryPanel({
     : starter?.fixed.map((f) => ({ name: f.name, quantity: f.quantity })) ?? [];
   const starterSourceText = starterPlan?.sourceText ?? starter?.raw ?? '';
 
+  // Starter-equipment lifecycle (derived; no CharacterData change). Decides
+  // whether to offer "生成初始装备" (pending-selection), "拆解旧版装备摘要"
+  // (legacy-quarantined), or nothing (materialized / not-needed).
+  const lifecycle = deriveStarterEquipmentLifecycle({
+    ownedItems,
+    quarantinedItems,
+    starterPlan: starterPlan ?? null,
+    hasLegacySummaryText: legacyStarterSummaryPresent,
+  });
+  const hasPickerContent = pickerGroups.length > 0 || pickerFixed.length > 0;
   const showStarterPicker =
     legacyGroupsMode === 'import' &&
-    ownedItems.length === 0 &&
     Boolean(resolveStarterItem) &&
-    (pickerGroups.length > 0 || pickerFixed.length > 0);
+    hasPickerContent &&
+    (lifecycle.shouldShowGenerate || lifecycle.shouldShowLegacyBreakdown);
+  const isLegacyBreakdown = lifecycle.shouldShowLegacyBreakdown;
 
   const defaultSlotForCategory = (category: InventoryItemCategory): EquipmentSlot => {
     switch (category) {
@@ -253,11 +270,26 @@ export function CharacterInventoryPanel({
     }
   };
 
+  // Default equip slot for the one-click "装备" button: prefer the definition's
+  // equipProfile.defaultSlot / allowedSlots, fall back to a category guess only
+  // when no definition is available.
+  const defaultSlotForItem = (it: CharacterInventoryItem): EquipmentSlot => {
+    const def = it.definitionId ? getDndItemDefinition(it.definitionId) : undefined;
+    return (
+      def?.equipProfile?.defaultSlot ??
+      def?.equipProfile?.allowedSlots?.[0] ??
+      def?.equipSlots?.[0] ??
+      defaultSlotForCategory(it.category)
+    );
+  };
+
   // Materialize the plan into real instances. Auto-equip is driven by the
   // resolved definition's equipSlots (autoSlotForDefinition), never the name;
   // fixed spare weapons (e.g. daggers) stay in the backpack.
   const generateStarter = () => {
     if (!actorKey || !resolveStarterItem) return;
+    // Re-generation guard: once starter items exist, never generate a second batch.
+    if (lifecycle.state === 'materialized') return;
     const used = new Set<EquipmentSlot>(equippedItems.map((i) => i.equipSlot).filter(Boolean) as EquipmentSlot[]);
     const place = (item: CharacterInventoryItem, isChoice: boolean) => {
       addInventoryItem(actorKey, item);
@@ -265,7 +297,7 @@ export function CharacterInventoryPanel({
       const slot = autoSlotForDefinition(def, isChoice);
       if (slot && !used.has(slot)) {
         used.add(slot);
-        setInventoryItemSlot(actorKey, item.instanceId, slot);
+        equipInventoryItem(actorKey, item.instanceId, slot);
       }
     };
     pickerGroups.forEach((g) => {
@@ -287,6 +319,37 @@ export function CharacterInventoryPanel({
   };
   const leave = () => setPop((p) => (p && !p.pinned ? null : p));
   const closeItemPopover = () => setPop(null);
+
+  // All equip / unequip goes through the Loadout Equip Service (via the store).
+  // The UI never writes equipSlot directly. Failures surface as a light notice.
+  const REASON_LABEL: Record<string, string> = {
+    'item-not-found': '物品不存在',
+    'missing-definition': '缺少装备定义，无法判断槽位',
+    'invalid-slot': '该物品不能装备到此槽位',
+    'slot-occupied': '槽位已被占用',
+    'two-hand-conflict': '与双手武器冲突',
+    'legacy-summary-item': '这是未拆解的初始装备摘要，不能装备',
+  };
+  const doEquip = (instanceId: string, slot: EquipmentSlot) => {
+    if (!actorKey) return;
+    const res = equipInventoryItem(actorKey, instanceId, slot);
+    if (!res.ok) {
+      console.warn('[loadout] equip failed:', res.reason, instanceId, slot);
+      setEquipError(REASON_LABEL[res.reason] ?? res.reason);
+    } else {
+      setEquipError(null);
+    }
+  };
+  const doUnequip = (instanceId: string) => {
+    if (!actorKey) return;
+    const res = unequipInventoryItem(actorKey, instanceId);
+    if (!res.ok) {
+      console.warn('[loadout] unequip failed:', res.reason, instanceId);
+      setEquipError(REASON_LABEL[res.reason] ?? res.reason);
+    } else {
+      setEquipError(null);
+    }
+  };
   const popHandlers = (item: CharacterInventoryItem) => ({
     onMouseEnter: (e: ReactMouseEvent) => open(item, e, false),
     onMouseLeave: leave,
@@ -315,7 +378,7 @@ export function CharacterInventoryPanel({
         {item && canEquip && (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); closeItemPopover(); if (actorKey) setInventoryItemSlot(actorKey, item.instanceId, undefined); }}
+            onClick={(e) => { e.stopPropagation(); closeItemPopover(); doUnequip(item.instanceId); }}
             className="shrink-0 text-[9px] opacity-50 hover:opacity-100"
             title="卸下 Unequip"
           >卸下</button>
@@ -375,7 +438,7 @@ export function CharacterInventoryPanel({
         {canEquip ? (
           <select
             value={item.equipSlot ?? ''}
-            onChange={(e) => { const v = e.target.value; closeItemPopover(); if (actorKey) setInventoryItemSlot(actorKey, item.instanceId, (v || undefined) as EquipmentSlot | undefined); }}
+            onChange={(e) => { const v = e.target.value; closeItemPopover(); if (v) doEquip(item.instanceId, v as EquipmentSlot); else doUnequip(item.instanceId); }}
             className="mt-1 w-full rounded border border-current/25 bg-white/60 px-1.5 py-1 text-[11px] outline-none"
             aria-label="装备槽位 Equip slot"
           >
@@ -464,6 +527,13 @@ export function CharacterInventoryPanel({
         <span className="opacity-60">总计 Total: {weight.total} lb</span>
         {encumbranceMode === 'dnd' && <span className="opacity-60">负重上限: 规则待接入 unknown</span>}
       </div>
+
+      {equipError && (
+        <div className="mb-2 rounded border border-red-400/40 bg-red-500/10 px-2 py-1 text-[10px] text-red-700">
+          装备操作未完成：{equipError}
+          <button type="button" onClick={() => setEquipError(null)} className="ml-2 underline opacity-70 hover:opacity-100">关闭</button>
+        </div>
+      )}
 
       {/* Two zones: LEFT equipment (~45%) · RIGHT backpack (~55%) */}
       <div className={`grid grid-cols-1 gap-4 ${showEquipmentSlots ? 'lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)]' : ''}`}>
@@ -556,7 +626,11 @@ export function CharacterInventoryPanel({
           {/* Starter equipment picker (DND, when inventory is empty) */}
           {showStarterPicker && starter && (
             <div className="mb-3 space-y-2 rounded border border-current/20 p-2 text-[11px]">
-              <p className="opacity-75">检测到初始装备摘要，包含待选择装备。请选择实际装备后生成真实物品（武器自动装到主手、护甲到盔甲槽，匕首等留在背包）。</p>
+              <p className="opacity-75">
+                {isLegacyBreakdown
+                  ? '检测到旧版初始装备摘要。它不是一个真实物品，需要拆解为单独物品后才能装备、计重和管理。请选择实际装备后拆解。'
+                  : '根据职业初始装备选项生成真实物品实例。请选择实际装备后生成（武器自动装到主手、护甲到盔甲槽，匕首等留在背包）。'}
+              </p>
               {starter.groups.map((g) => (
                 <div key={g.id}>
                   <div className="mb-1 text-[10px] font-bold uppercase opacity-60">选择 Choose</div>
@@ -580,7 +654,7 @@ export function CharacterInventoryPanel({
                   <div className="text-[10px] opacity-75">{starter.fixed.map((f) => `${f.name}${f.quantity > 1 ? ` ×${f.quantity}` : ''}`).join(' · ')}</div>
                 </div>
               )}
-              <button type="button" onClick={generateStarter} className="rounded border border-current/40 px-2.5 py-1 text-[11px] font-bold uppercase opacity-90 hover:opacity-100">确认生成初始装备 Generate</button>
+              <button type="button" onClick={generateStarter} className="rounded border border-current/40 px-2.5 py-1 text-[11px] font-bold uppercase opacity-90 hover:opacity-100">{isLegacyBreakdown ? '拆解旧版装备摘要 Break down' : '确认生成初始装备 Generate'}</button>
             </div>
           )}
           {!showStarterPicker && legacyGroupsMode === 'import' && ownedItems.length === 0 && legacyItems.length > 0 && (
@@ -606,7 +680,7 @@ export function CharacterInventoryPanel({
                       </div>
                     </span>
                     {canEquip && (
-                      <button type="button" onClick={(e) => { e.stopPropagation(); closeItemPopover(); if (actorKey) setInventoryItemSlot(actorKey, rep.instanceId, defaultSlotForCategory(rep.category)); }} className="shrink-0 rounded border border-current/30 px-1.5 py-0.5 text-[9px] font-bold opacity-70 hover:opacity-100" title="装备到默认槽位 Equip">装备</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); closeItemPopover(); doEquip(rep.instanceId, defaultSlotForItem(rep)); }} className="shrink-0 rounded border border-current/30 px-1.5 py-0.5 text-[9px] font-bold opacity-70 hover:opacity-100" title="装备到默认槽位 Equip">装备</button>
                     )}
                   </div>
                 );

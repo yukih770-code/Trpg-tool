@@ -663,6 +663,7 @@ export function Sheet({ onStartPlaying }: SheetProps = {}) {
             showEquipmentSlots
             starter={dndStarter}
             starterPlan={dndStarterPlan}
+            legacyStarterSummaryPresent={Boolean(legacyStarterSummary)}
             resolveStarterItem={resolveDndStarterItem}
             casualOutfit={getDndCasualOutfit(character.background)}
             statPreview={dndStatPreview}

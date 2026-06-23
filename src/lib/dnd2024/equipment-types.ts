@@ -101,6 +101,24 @@ export type DndEquipmentItem = DndWeaponItem | DndArmorItem | DndGearItem;
 
 export type DndItemSourceStatus = 'sourced' | 'pending-source' | 'platform';
 
+/**
+ * How an item occupies equipment slots. Drives the Loadout Equip Service: which
+ * slots the item is eligible for, what it actually consumes when equipped, and a
+ * preferred default. Definition-driven — equip legality is NEVER inferred from
+ * the item name or category.
+ */
+export interface DndEquipProfile {
+  /** Slots this item may be equipped into. */
+  allowedSlots: EquipmentSlot[];
+  /** Preferred slot for one-click / auto equip. */
+  defaultSlot?: EquipmentSlot;
+  /** Slots actually consumed when equipped (e.g. two-handed = mainHand + offHand). Defaults to the chosen target slot. */
+  occupiedSlots?: EquipmentSlot[];
+  slotUsage?: 'oneHand' | 'twoHands' | 'offHandOnly' | 'utility' | 'worn';
+  /** Reserved for future dual-wield rules; unused in v1. */
+  canDualWield?: boolean;
+}
+
 export type DndItemCategory =
   | 'weapon'
   | 'ammunition'
@@ -197,6 +215,8 @@ export interface DndItemDefinition {
 
   /** Which slots this item is ELIGIBLE for. Auto-equip reads this, never the name. */
   equipSlots?: EquipmentSlot[];
+  /** Full equip rules (slot occupancy, default, two-hand). Preferred over `equipSlots`. */
+  equipProfile?: DndEquipProfile;
 
   description?: string;
   rulesText?: string;
