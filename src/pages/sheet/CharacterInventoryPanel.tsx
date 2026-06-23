@@ -1,4 +1,4 @@
-import { useState, type ReactNode, type FocusEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import { useState, useEffect, type ReactNode, type FocusEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import {
   CASUAL_SLOT_ORDER,
   DND_CURRENCY_LABELS,
@@ -27,6 +27,10 @@ import {
 import { getDndItemDefinition } from '../../lib/dnd2024/dndItemRegistry';
 import { autoSlotForDefinition, type StarterEquipmentPlan } from '../../lib/dnd2024/dndStarterEquipmentPlan';
 import { deriveStarterEquipmentLifecycle } from '../../lib/dnd2024/dndStarterEquipmentLifecycle';
+import { useCharacterWardrobeStore } from '../../lib/platform/characterWardrobeStore';
+import { buildOutfitSnapshot } from '../../lib/dnd2024/dndOutfitService';
+import { getOutfitPieceDefinition, getOutfitTemplateByBackground } from '../../lib/dnd2024/dndOutfitDefinitions';
+import { OUTFIT_SLOT_LABELS, OUTFIT_SLOT_ORDER, type OutfitSlotKey } from '../../lib/dnd2024/dndOutfitTypes';
 
 /**
  * CharacterInventoryPanel — character-library equipment view (v9: two-zone).
@@ -157,6 +161,12 @@ export function CharacterInventoryPanel({
   const unequipInventoryItem = useCharacterInventoryStore((s) => s.unequipInventoryItem);
   const addInventoryItem = useCharacterInventoryStore((s) => s.addInventoryItem);
 
+  // Casual-outfit wardrobe (separate store; never touches the backpack).
+  const wardrobe = useCharacterWardrobeStore((s) => (actorKey ? s.wardrobeByActor[actorKey] : undefined));
+  const outfitLoadout = useCharacterWardrobeStore((s) => (actorKey ? s.loadoutByActor[actorKey] : undefined));
+  const initializeOutfitFromTemplate = useCharacterWardrobeStore((s) => s.initializeOutfitFromTemplate);
+  const outfitTemplate = casualOutfit ? getOutfitTemplateByBackground(casualOutfit.backgroundCn) : undefined;
+
   const [query, setQuery] = useState('');
   const [starterChoices, setStarterChoices] = useState<Record<string, number>>({});
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
@@ -165,6 +175,24 @@ export function CharacterInventoryPanel({
   const [sortBy, setSortBy] = useState<SortBy>('name');
   const [pop, setPop] = useState<PopState | null>(null);
   const [equipError, setEquipError] = useState<string | null>(null);
+
+  // Seed the wardrobe + initial outfit loadout from the background template once.
+  useEffect(() => {
+    if (actorKey && outfitTemplate && (!wardrobe || wardrobe.pieces.length === 0)) {
+      initializeOutfitFromTemplate(actorKey, outfitTemplate);
+    }
+  }, [actorKey, outfitTemplate, wardrobe, initializeOutfitFromTemplate]);
+
+  const outfitSnapshot =
+    outfitTemplate && wardrobe && outfitLoadout
+      ? buildOutfitSnapshot({ template: outfitTemplate, wardrobe, loadout: outfitLoadout, resolvePiece: getOutfitPieceDefinition })
+      : undefined;
+  const outfitPieceName = (slot: OutfitSlotKey): string | undefined => {
+    const id = outfitLoadout?.slots[slot];
+    if (!id) return undefined;
+    const piece = wardrobe?.pieces.find((p) => p.instanceId === id);
+    return piece ? getOutfitPieceDefinition(piece.definitionId)?.name : undefined;
+  };
 
   const chip = chipClassName ?? 'bg-current/10';
   const showWallet = currencyMode === 'dnd';
@@ -560,7 +588,12 @@ export function CharacterInventoryPanel({
               </div>
               {casualOutfit ? (
                 <div className="rounded border border-current/15 p-2.5 text-[11px]">
-                  <div className="text-xs font-bold">{casualOutfit.name}</div>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="text-xs font-bold">{outfitSnapshot?.displayName ?? casualOutfit.name}</div>
+                    {outfitSnapshot && outfitSnapshot.totalCoreSlots > 0 && (
+                      <span className="shrink-0 text-[9px] opacity-50">保留核心部件 {outfitSnapshot.retainedCoreSlots}/{outfitSnapshot.totalCoreSlots}</span>
+                    )}
+                  </div>
                   <div className="mt-0.5 text-[10px] opacity-60">身份印象：{casualOutfit.identity}</div>
                   <div className="mt-1.5 flex flex-wrap gap-1">
                     {outfitChip('场合', casualOutfit.occasions)}
@@ -571,15 +604,22 @@ export function CharacterInventoryPanel({
                     {outfitChip('规则影响', casualOutfit.ruleImpact)}
                   </div>
                   <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1">
-                    {CASUAL_OUTFIT_SLOT_ORDER.filter((s) => casualOutfit.slots[s]).map((s) => (
-                      <div key={s} className="text-[10px]">
-                        <span className="font-bold opacity-55">{CASUAL_OUTFIT_SLOT_LABELS[s]}：</span>
-                        <span className="opacity-80">{casualOutfit.slots[s]}</span>
-                      </div>
-                    ))}
+                    {outfitSnapshot
+                      ? OUTFIT_SLOT_ORDER.filter((s) => outfitPieceName(s)).map((s) => (
+                          <div key={s} className="text-[10px]">
+                            <span className="font-bold opacity-55">{OUTFIT_SLOT_LABELS[s]}：</span>
+                            <span className="opacity-80">{outfitPieceName(s)}</span>
+                          </div>
+                        ))
+                      : CASUAL_OUTFIT_SLOT_ORDER.filter((s) => casualOutfit.slots[s]).map((s) => (
+                          <div key={s} className="text-[10px]">
+                            <span className="font-bold opacity-55">{CASUAL_OUTFIT_SLOT_LABELS[s]}：</span>
+                            <span className="opacity-80">{casualOutfit.slots[s]}</span>
+                          </div>
+                        ))}
                   </div>
-                  <p className="mt-2 whitespace-pre-wrap text-[10px] opacity-70">{casualOutfit.description}</p>
-                  <p className="mt-1.5 text-[9px] italic opacity-45">由背景生成的初始套装模板。仅为世界内描述，不提供任何规则加成。</p>
+                  <p className="mt-2 whitespace-pre-wrap text-[10px] opacity-70">{outfitSnapshot?.description ?? casualOutfit.description}</p>
+                  <p className="mt-1.5 text-[9px] italic opacity-45">由背景生成的初始衣柜与当前穿搭。仅为世界内描述，不提供任何规则加成。</p>
                 </div>
               ) : (
                 <p className="text-[11px] italic opacity-55">未匹配到背景常服模板。</p>

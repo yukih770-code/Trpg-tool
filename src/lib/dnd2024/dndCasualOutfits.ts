@@ -274,43 +274,7 @@ export const CASUAL_OUTFIT_SLOT_ORDER: (keyof CasualOutfitSlots)[] = [
   'head', 'outer', 'top', 'bottom', 'shoes', 'accessory', 'undergarment', 'special',
 ];
 
-// ── Outfit system boundary types (v1, read-only) ────────────────────────────
-// An OutfitTemplate / OutfitSnapshot is world-flavor appearance data. It is NOT
-// an ItemDefinition and NOT an InventoryItem, and it never enters the backpack.
-// v1 is a read-only snapshot derived from the background template.
-
-export type OutfitSlotKey = keyof CasualOutfitSlots;
-
-/** A single descriptive outfit slot (read-only). */
-export interface OutfitSlot {
-  key: OutfitSlotKey;
-  label: string;
-  value?: string;
-}
-
-/** The per-background starter outfit template (alias of the casual outfit data). */
-export type OutfitTemplate = DndCasualOutfit;
-
-/** A character's current outfit, derived from a template (no item instances). */
-export interface OutfitSnapshot {
-  templateBackground: string;
-  name: string;
-  identity: string;
-  ruleImpact: string;
-  slots: OutfitSlot[];
-}
-
-/** Build a read-only snapshot from a template. Does NOT create inventory items. */
-export function buildOutfitSnapshot(template: OutfitTemplate): OutfitSnapshot {
-  return {
-    templateBackground: template.backgroundCn,
-    name: template.name,
-    identity: template.identity,
-    ruleImpact: template.ruleImpact,
-    slots: CASUAL_OUTFIT_SLOT_ORDER.filter((k) => template.slots[k]).map((k) => ({
-      key: k,
-      label: CASUAL_OUTFIT_SLOT_LABELS[k],
-      value: template.slots[k],
-    })),
-  };
-}
+// The long-term Outfit / Wardrobe model (OutfitTemplate, OutfitPieceDefinition,
+// OutfitSnapshot, etc.) now lives in dndOutfitTypes.ts / dndOutfitDefinitions.ts /
+// dndOutfitService.ts. This file remains the raw per-background data source plus
+// the legacy display labels used by the existing casual-outfit card.
