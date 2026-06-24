@@ -26,3 +26,8 @@ export * from './runtimeLogDraftAdapter';
 export * from './daggerAttackFlow';
 export * from './daggerAttackFlowSmoke';
 export * from './runtimeCombatStoreTypes';
+
+// Local in-memory runtime combat store (no persistence, no UI, no log append).
+export * from './runtimeCombatStore';
+export * from './runtimeCombatStoreSmoke';
+export * from './runtimeLogDraftMapper';
