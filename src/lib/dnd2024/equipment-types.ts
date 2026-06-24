@@ -17,6 +17,12 @@
  */
 
 import type { EquipmentSlot } from '../platform/characterInventory';
+import type {
+  DndArmorProfile,
+  DndConsumableProfile,
+  DndContainerProfile,
+  DndWeaponProfile,
+} from './gameplay/itemGameplayTypes';
 
 export type DndEquipmentCategory =
   | 'weapon'
@@ -232,4 +238,17 @@ export interface DndItemDefinition {
   pack?: DndPackDefData;
   container?: DndContainerDefData;
   consumable?: DndConsumableDefData;
+
+  // ── v2 gameplay-facing layer (additive; consumed by a FUTURE Action Generator
+  // / Resolver — nothing reads these yet). Declares which actions an item will
+  // generate and which passive effects it grants. The legacy data bags above are
+  // intentionally kept for back-compat; migration is a later task. ──
+  /** Ids of actions this item grants when equipped/used (see gameplay/actionTypes). */
+  actionRefs?: string[];
+  /** Ids of passive effects active while equipped (see gameplay/effectTypes). */
+  passiveEffectRefs?: string[];
+  weaponProfile?: DndWeaponProfile;
+  armorProfile?: DndArmorProfile;
+  consumableProfile?: DndConsumableProfile;
+  containerProfile?: DndContainerProfile;
 }
