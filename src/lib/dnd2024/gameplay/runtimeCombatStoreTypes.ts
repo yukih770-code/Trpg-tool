@@ -86,6 +86,19 @@ export interface DndRuntimeCombatDaggerAttackResult {
   warnings: DndRuntimeCombatWarning[];
 }
 
+export interface DndRuntimeCombatFlushLogDraftsInput {
+  campaignId: string;
+  sessionId?: string;
+  actorId?: string;
+  targetId?: string;
+}
+
+export interface DndRuntimeCombatFlushLogDraftsResult {
+  appendedCount: number;
+  skippedCount: number;
+  warnings: DndRuntimeCombatWarning[];
+}
+
 export interface DndRuntimeCombatStoreActions {
   startEncounter(input: DndRuntimeCombatStartEncounterInput): void;
   setEncounter(encounter: DndRuntimeEncounterState): void;
@@ -103,6 +116,16 @@ export interface DndRuntimeCombatStoreActions {
   runDaggerAttack(
     input: DndRuntimeCombatDaggerAttackInput,
   ): DndRuntimeCombatDaggerAttackResult;
+
+  /**
+   * Map buffered RuntimeLogEntry drafts to persistence append inputs and append
+   * them via the existing local RuntimeLog store. Clears drafts on full success;
+   * on append failure keeps drafts and records a warning. Never appends here on
+   * its own — only when explicitly called.
+   */
+  flushPendingLogDrafts(
+    input: DndRuntimeCombatFlushLogDraftsInput,
+  ): DndRuntimeCombatFlushLogDraftsResult;
 
   clearPendingLogDrafts(): void;
   clearWarnings(): void;

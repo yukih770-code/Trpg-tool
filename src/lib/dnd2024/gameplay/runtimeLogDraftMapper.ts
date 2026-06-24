@@ -27,8 +27,17 @@ export interface DndRuntimeLogDraftMapInput {
   targetId?: string;
 }
 
+/** Pairs each mapped draft with its produced append input (for retry tracking). */
+export interface DndRuntimeLogDraftAppendMapping {
+  draft: RuntimeLogEntry;
+  appendInput: AppendRuntimeLogEventInput;
+}
+
 export interface DndRuntimeLogDraftMapResult {
+  /** Convenience flat list; equals `mappings.map(m => m.appendInput)`. */
   appendInputs: AppendRuntimeLogEventInput[];
+  /** Per-draft mapping so callers can correlate append results to source drafts. */
+  mappings: DndRuntimeLogDraftAppendMapping[];
   warnings: string[];
 }
 
@@ -64,6 +73,7 @@ export function mapRuntimeLogDraftsToAppendInputsV0(
   }
 
   const appendInputs: AppendRuntimeLogEventInput[] = [];
+  const mappings: DndRuntimeLogDraftAppendMapping[] = [];
   const warnings: string[] = [];
 
   for (const draft of input.drafts) {
@@ -80,7 +90,7 @@ export function mapRuntimeLogDraftsToAppendInputsV0(
 
     const message = draft.summary || draft.title || 'Runtime log event';
 
-    appendInputs.push({
+    const appendInput: AppendRuntimeLogEventInput = {
       campaignId,
       sessionId: input.sessionId,
       actorId: draft.actorId ?? input.actorId,
@@ -102,8 +112,10 @@ export function mapRuntimeLogDraftsToAppendInputsV0(
         originalDraftId: draft.id,
         originalDraftTimestamp: draft.timestamp,
       },
-    });
+    };
+    appendInputs.push(appendInput);
+    mappings.push({ draft, appendInput });
   }
 
-  return { appendInputs, warnings };
+  return { appendInputs, mappings, warnings };
 }
