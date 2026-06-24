@@ -12,4 +12,5 @@ export * from './resourceTypes';
 export * from './effectTypes';
 export * from './conditionTypes';
 export * from './runtimeChangeTypes';
+export * from './runtimeStateTypes';
 export * from './actionTypes';
