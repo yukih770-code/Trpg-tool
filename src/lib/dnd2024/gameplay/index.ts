@@ -22,3 +22,4 @@ export * from './dndEffectDefinitions';
 // Pure resolvers (no store / no UI / no RuntimeLog).
 export * from './weaponAttackResolver';
 export * from './runtimeChangeApplier';
+export * from './runtimeLogDraftAdapter';
