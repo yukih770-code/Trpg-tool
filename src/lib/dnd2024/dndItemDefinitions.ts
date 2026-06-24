@@ -115,8 +115,12 @@ function fromCatalog(row: DndEquipmentItem): DndItemDefinition {
   }
   base.category = 'adventuringGear';
   if (/torch|火把|lantern|灯/i.test(nameCn)) {
-    base.equipSlots = ['utility'];
-    base.equipProfile = { allowedSlots: ['utility'], defaultSlot: 'utility', slotUsage: 'utility' };
+    // A light source can be held in the off hand OR clipped to a utility slot.
+    // It occupies only the chosen slot (no two-hand), and being in offHand does
+    // NOT grant any off-hand ATTACK eligibility — that is a later combat-rules
+    // concern, separate from physical slot occupancy.
+    base.equipSlots = ['utility', 'offHand'];
+    base.equipProfile = { allowedSlots: ['utility', 'offHand'], defaultSlot: 'utility', slotUsage: 'utility' };
   }
   return base;
 }

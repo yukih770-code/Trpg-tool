@@ -311,6 +311,13 @@ export function CharacterInventoryPanel({
     );
   };
 
+  // The slots an item may legally occupy (definition-driven). Returns null when
+  // no definition is known, so the detail select falls back to the full list.
+  const allowedSlotsForItem = (it: CharacterInventoryItem): EquipmentSlot[] | null => {
+    const def = it.definitionId ? getDndItemDefinition(it.definitionId) : undefined;
+    return def?.equipProfile?.allowedSlots ?? def?.equipSlots ?? null;
+  };
+
   // Materialize the plan into real instances. Auto-equip is driven by the
   // resolved definition's equipSlots (autoSlotForDefinition), never the name;
   // fixed spare weapons (e.g. daggers) stay in the backpack.
@@ -471,16 +478,34 @@ export function CharacterInventoryPanel({
             aria-label="装备槽位 Equip slot"
           >
             <option value="">未装备 / 卸下 Unequipped</option>
-            <optgroup label="战斗装备 Combat">
-              {[...COMBAT_COL_LEFT, ...COMBAT_COL_RIGHT, 'mainHand', 'offHand'].map((slot) => (
-                <option key={slot} value={slot}>{EQUIPMENT_SLOT_LABELS[slot as EquipmentSlot]}</option>
-              ))}
-            </optgroup>
-            <optgroup label="常服 Casual">
-              {CASUAL_SLOT_ORDER.map((slot) => (
-                <option key={slot} value={slot}>{EQUIPMENT_SLOT_LABELS[slot]}</option>
-              ))}
-            </optgroup>
+            {(() => {
+              const allowed = allowedSlotsForItem(item);
+              if (allowed && allowed.length > 0) {
+                // Only offer slots this item may legally occupy (e.g. dagger →
+                // 主手/副手, torch → 工具/副手, shield → 副手, greatsword → 主手).
+                return (
+                  <optgroup label="可用槽位 Slots">
+                    {allowed.map((slot) => (
+                      <option key={slot} value={slot}>{EQUIPMENT_SLOT_LABELS[slot]}</option>
+                    ))}
+                  </optgroup>
+                );
+              }
+              return (
+                <>
+                  <optgroup label="战斗装备 Combat">
+                    {[...COMBAT_COL_LEFT, ...COMBAT_COL_RIGHT, 'mainHand', 'offHand'].map((slot) => (
+                      <option key={slot} value={slot}>{EQUIPMENT_SLOT_LABELS[slot as EquipmentSlot]}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="常服 Casual">
+                    {CASUAL_SLOT_ORDER.map((slot) => (
+                      <option key={slot} value={slot}>{EQUIPMENT_SLOT_LABELS[slot]}</option>
+                    ))}
+                  </optgroup>
+                </>
+              );
+            })()}
           </select>
         ) : (
           <p className="mt-1 text-[10px] italic opacity-45">装备 / 卸下需在角色上下文中操作。</p>
