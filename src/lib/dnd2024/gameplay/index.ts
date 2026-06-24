@@ -23,3 +23,6 @@ export * from './dndEffectDefinitions';
 export * from './weaponAttackResolver';
 export * from './runtimeChangeApplier';
 export * from './runtimeLogDraftAdapter';
+export * from './daggerAttackFlow';
+export * from './daggerAttackFlowSmoke';
+export * from './runtimeCombatStoreTypes';
