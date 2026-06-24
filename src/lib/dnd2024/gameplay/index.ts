@@ -18,3 +18,7 @@ export * from './actionTypes';
 // Data definitions (source-backed bridge; data only, no resolver).
 export * from './dndActionDefinitions';
 export * from './dndEffectDefinitions';
+
+// Pure resolvers (no store / no UI / no RuntimeLog).
+export * from './weaponAttackResolver';
+export * from './runtimeChangeApplier';
