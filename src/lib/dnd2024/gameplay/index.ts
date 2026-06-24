@@ -14,3 +14,7 @@ export * from './conditionTypes';
 export * from './runtimeChangeTypes';
 export * from './runtimeStateTypes';
 export * from './actionTypes';
+
+// Data definitions (source-backed bridge; data only, no resolver).
+export * from './dndActionDefinitions';
+export * from './dndEffectDefinitions';

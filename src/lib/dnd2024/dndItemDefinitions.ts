@@ -127,6 +127,39 @@ function fromCatalog(row: DndEquipmentItem): DndItemDefinition {
 
 const SOURCED: DndItemDefinition[] = (DND_EQUIPMENT_CATALOG as DndEquipmentItem[]).map(fromCatalog);
 
+// ── Dagger source-backed gameplay bridge (data only) ────────────────────────
+// `weapon.dagger` is generated from the catalog above; here we project its
+// already-sourced data onto the v2 gameplay-facing fields so it can later
+// generate a melee + thrown attack referencing a shared piercing-damage effect.
+// Nothing reads these yet (no resolver). Only the dagger is touched; no rule
+// values are invented (all from the owner-source weapon table).
+const DAGGER_GAMEPLAY: Pick<DndItemDefinition, 'actionRefs' | 'weaponProfile'> = {
+  actionRefs: [
+    'action.item.dagger.melee-weapon-attack',
+    'action.item.dagger.thrown-weapon-attack',
+  ],
+  weaponProfile: {
+    properties: ['finesse', 'light', 'thrown'],
+    damage: {
+      dice: [{ count: 1, faces: 4 }],
+      damageType: 'piercing',
+    },
+    range: { normal: 20, long: 60, unit: 'ft' },
+    abilityOptions: ['str', 'dex'],
+    generatedActionRefs: [
+      'action.item.dagger.melee-weapon-attack',
+      'action.item.dagger.thrown-weapon-attack',
+    ],
+    masteryRef: 'mastery.nick',
+    sourceStatus: 'sourced',
+    note: 'Dagger source-backed data bridge. Nick mastery mechanics are deferred to a future resolver.',
+  },
+};
+
+const SOURCED_WITH_GAMEPLAY: DndItemDefinition[] = SOURCED.map((def) =>
+  def.id === 'weapon.dagger' ? { ...def, ...DAGGER_GAMEPLAY } : def,
+);
+
 /**
  * Pending-source stubs for starter items missing from the sourced catalog.
  * Structural facts only — NO fabricated damage / weight / value / contents.
@@ -182,7 +215,7 @@ const PENDING_STUBS: DndItemDefinition[] = [
   },
 ];
 
-export const DND_ITEM_DEFINITIONS: DndItemDefinition[] = [...SOURCED, ...PENDING_STUBS];
+export const DND_ITEM_DEFINITIONS: DndItemDefinition[] = [...SOURCED_WITH_GAMEPLAY, ...PENDING_STUBS];
 
 /** Map a definition category onto the inventory view-model category. */
 export function inventoryCategoryForDefinition(category: DndItemCategory): string {
