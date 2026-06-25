@@ -7,6 +7,8 @@ import type {
 import { useRuntimeLogLocalStore } from '../../lib/platform/runtimeLogLocalStore';
 import { useRuntimeLogEventsForCampaign } from '../../lib/platform/runtimeLogRepository';
 import { createTranslator, readStoredLocale } from '../../i18n';
+import { DndRuntimeCombatDevPanel } from './DndRuntimeCombatDevPanel';
+import { RuntimeSlotShell } from './RuntimeSlotShell';
 
 type CampaignRuntimeTone = 'dnd' | 'coc' | 'cp';
 
@@ -511,6 +513,15 @@ export function CampaignRuntimeShell({
             {t(isHost ? 'campaignRuntime.actions.hostNote' : 'campaignRuntime.actions.playerNote')}
           </p>
           <div className="mt-3">{renderPlaceholderList(isHost ? hostActionDockItems : playerActionDockItems)}</div>
+          {tone === 'dnd' && isHost && (
+            <RuntimeSlotShell
+              mode="tacticalMap"
+              role="host"
+              tone={tone}
+              title="Runtime Layout Shell Preview"
+              slotContent={{ devPanel: <DndRuntimeCombatDevPanel /> }}
+            />
+          )}
         </section>
       </div>
     </section>

@@ -461,26 +461,49 @@ export default function App() {
   );
   const renderSettingsCategory = (cat: string) => {
     if (cat === '语言') {
+      const isZh = locale === 'zh-CN';
+      const isEn = locale === 'en';
       return (
-        <div className="flex flex-wrap gap-2" role="group" aria-label={t('shell.settings.language.aria')}>
-          <span className="flex items-center gap-1 rounded-md border border-dashed border-[#2f2a22]/25 px-2.5 py-1 text-xs font-bold text-[#51483d]/55">
-            自动检测
-            <span className="text-[9px] uppercase tracking-wider text-[#51483d]/45">{t('shell.more.reserved')}</span>
-          </span>
+        <div className="flex max-w-md flex-col gap-2" role="group" aria-label={t('shell.settings.language.aria')}>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-[#51483d]/55">
+            {isEn ? 'Interface language' : '当前界面语言'}
+          </div>
+
+          {/* 中文 — recommended / active */}
           <button
             type="button"
             onClick={() => setLocalePreference('zh-CN')}
-            className={`rounded-md border px-2.5 py-1 text-xs font-bold ${locale === 'zh-CN' ? 'border-[#17130f] bg-[#17130f] text-white' : 'border-[#2f2a22]/20 text-[#51483d]'}`}
+            aria-pressed={isZh}
+            className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left transition ${isZh ? 'border-[#17130f] bg-[#17130f] text-white' : 'border-[#2f2a22]/20 text-[#51483d] hover:border-[#2f2a22]/40'}`}
           >
-            {t('shell.settings.language.zhCN')}
+            <span className="text-sm font-bold">{t('shell.settings.language.zhCN')}</span>
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${isZh ? 'text-white/80' : 'text-[#51483d]/55'}`}>
+              {isZh ? (isEn ? 'Active' : '已启用') : (isEn ? 'Recommended' : '推荐')}
+            </span>
           </button>
+
+          {/* English — still switchable, but flagged incomplete (Beta) */}
           <button
             type="button"
             onClick={() => setLocalePreference('en')}
-            className={`rounded-md border px-2.5 py-1 text-xs font-bold ${locale === 'en' ? 'border-[#17130f] bg-[#17130f] text-white' : 'border-[#2f2a22]/20 text-[#51483d]'}`}
+            aria-pressed={isEn}
+            className={`flex flex-col gap-0.5 rounded-lg border px-3 py-2 text-left transition ${isEn ? 'border-[#17130f] bg-[#17130f] text-white' : 'border-[#2f2a22]/20 text-[#51483d] hover:border-[#2f2a22]/40'}`}
           >
-            {t('shell.settings.language.en')}
+            <span className="flex items-center justify-between gap-2">
+              <span className="text-sm font-bold">{t('shell.settings.language.en')}</span>
+              <span className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${isEn ? 'border-white/40 text-white/80' : 'border-[#2f2a22]/30 text-[#51483d]/55'}`}>Beta</span>
+            </span>
+            <span className={`text-[10px] ${isEn ? 'text-white/70' : 'text-[#51483d]/55'}`}>
+              {isEn ? 'Translation incomplete — some UI may still show Chinese.' : '暂未完整翻译，部分界面仍可能显示中文。'}
+            </span>
           </button>
+
+          {/* Auto-follow is a future note, not a selectable language. */}
+          <div className="mt-1 rounded-lg border border-dashed border-[#2f2a22]/25 px-3 py-2 text-[11px] text-[#51483d]/55">
+            {isEn
+              ? 'Auto-follow language: coming later (based on browser / system language; may be inaccurate).'
+              : '语言自动跟随：后续支持（将基于浏览器 / 系统语言等信息推断，可能不准确）。'}
+          </div>
         </div>
       );
     }
@@ -535,18 +558,8 @@ export default function App() {
               </button>
             );
           })}
-          {/* Settings is inline only on wide desktops; otherwise it lives in More. */}
-          <button
-            type="button"
-            onClick={() => handleNavClick('settings')}
-            aria-current={isNavActive('settings') ? 'page' : undefined}
-            className={`hidden xl:flex ${desktopNavBtn(isNavActive('settings'))}`}
-          >
-            <Settings className="h-4 w-4 shrink-0" />
-            <span>{t('shell.nav.settings')}</span>
-          </button>
         </nav>
-        {/* Top-right: avatar = account menu entry (not "··· 更多"). */}
+        {/* Top-right: account menu only. Settings lives inside this menu (not as a separate gear or a main nav tab). */}
         <div className="ml-auto flex items-center gap-1">
           <button
             type="button"

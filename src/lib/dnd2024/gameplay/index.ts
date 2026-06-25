@@ -31,3 +31,4 @@ export * from './runtimeCombatStoreTypes';
 export * from './runtimeCombatStore';
 export * from './runtimeCombatStoreSmoke';
 export * from './runtimeLogDraftMapper';
+export * from './runtimeCombatStoreFlushSmoke';
