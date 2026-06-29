@@ -48,8 +48,35 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
   const socketRooms = new WeakMap<WebSocket, Set<string>>();
   let serverSeq = 0;
 
+  // Error-isolated send: a single failing client must never throw into a caller
+  // (HTTP mutation handler or another client's loop). On failure we drop the
+  // socket from all subscriptions and best-effort terminate it.
+  const safeSend = (ws: WebSocket, text: string): boolean => {
+    if (ws.readyState !== WebSocket.OPEN) return false;
+    try {
+      ws.send(text);
+      return true;
+    } catch {
+      dropSocket(ws);
+      return false;
+    }
+  };
+
+  const dropSocket = (ws: WebSocket): void => {
+    const rooms = socketRooms.get(ws);
+    if (rooms) {
+      for (const roomId of rooms) subscriptions.get(roomId)?.delete(ws);
+    }
+    socketRooms.delete(ws);
+    try {
+      ws.terminate();
+    } catch {
+      // ignore — socket already gone
+    }
+  };
+
   const send = (ws: WebSocket, message: RoomSocketServerMessage): void => {
-    if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
+    safeSend(ws, JSON.stringify(message));
   };
 
   const handleMessage = (ws: WebSocket, raw: { type?: string; roomId?: string }): void => {
@@ -134,8 +161,10 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
         payload: { room },
       };
       const text = JSON.stringify(message);
-      for (const ws of set) {
-        if (ws.readyState === WebSocket.OPEN) ws.send(text);
+      // Snapshot the subscriber set first: safeSend may mutate `set` (dropSocket)
+      // when a send throws, so iterating the live set would be unsafe.
+      for (const ws of [...set]) {
+        safeSend(ws, text);
       }
     },
   };

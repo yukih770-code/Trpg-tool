@@ -14,7 +14,8 @@ import {
   canDisplayDiscoveredRoomForSystem,
   mapRoomServerRoomsToDiscovered,
 } from '../../lib/platform/roomDiscoveryMapper';
-import type { RoomJoinResult, RoomSystemId } from '../../lib/platform/roomTypes';
+import type { RoomJoinResult, RoomMemberRole, RoomSnapshot, RoomSystemId } from '../../lib/platform/roomTypes';
+import { RoomLobbyShell } from './RoomLobbyShell';
 
 /**
  * JoinCampaignPanel (v0) — "加入战役" surface.
@@ -53,6 +54,14 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
   const [joinCode, setJoinCode] = useState('');
   const [joinName, setJoinName] = useState('玩家');
   const [joinResult, setJoinResult] = useState<RoomJoinResult | null>(null);
+  // After create/join, enter the Room Lobby (NOT Runtime).
+  const [lobby, setLobby] = useState<{
+    baseUrl: string;
+    roomId: string;
+    currentMemberId?: string;
+    currentRole?: RoomMemberRole;
+    initialRoom?: RoomSnapshot;
+  } | null>(null);
 
   const config: RoomServerHttpClientConfig = { baseUrl };
 
@@ -71,12 +80,30 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
   const checkConnection = () => run(async () => { await fetchRoomServerHealth(config); setHealthOk(true); });
   const refreshRooms = () => run(async () => { setRooms(await listRoomServerRooms(config)); setHealthOk(true); });
   const createTestRoom = () => run(async () => {
-    await createRoomOnServer(config, { hostDisplayName: hostName.trim() || 'GM', systemId });
+    const { room } = await createRoomOnServer(config, { hostDisplayName: hostName.trim() || 'GM', systemId });
     setRooms(await listRoomServerRooms(config));
+    const host = room.members.find((m) => m.role === 'host');
+    setLobby({
+      baseUrl,
+      roomId: room.identity.roomId,
+      currentMemberId: host?.memberId,
+      currentRole: 'host',
+      initialRoom: room,
+    });
   });
   const doJoin = (code: string) => run(async () => {
     const result = await joinRoomOnServer(config, { inviteCodeOrRoomCode: code.trim(), requestedDisplayName: joinName.trim() || 'Player' });
     setJoinResult(result);
+    // Enter the lobby once we have a room to subscribe to (accepted or pending).
+    if (result.roomId && (result.decision === 'accepted' || result.decision === 'pendingHostApproval')) {
+      setLobby({
+        baseUrl,
+        roomId: result.roomId,
+        currentMemberId: result.memberId,
+        currentRole: result.assignedRole,
+        // No initialRoom for joins: RoomLobbyShell pulls a snapshot over HTTP/WS.
+      });
+    }
   });
 
   // Boundary: never render the raw Room Server list. Map to DiscoveredRoomSummary,
@@ -97,6 +124,22 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
 
   const input = 'rounded border border-slate-400/40 bg-white/70 px-2 py-1 text-[12px] outline-none';
   const btn = 'rounded border border-slate-500/40 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide disabled:opacity-40';
+
+  if (lobby) {
+    return (
+      <div className={panelClassName ?? 'rounded-lg border border-slate-400/30 bg-slate-50/60 p-4'}>
+        <RoomLobbyShell
+          baseUrl={lobby.baseUrl}
+          roomId={lobby.roomId}
+          currentMemberId={lobby.currentMemberId}
+          currentRole={lobby.currentRole}
+          initialRoom={lobby.initialRoom}
+          serverLabel={LOCAL_SERVER_LABEL}
+          onLeaveLobby={() => setLobby(null)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={panelClassName ?? 'rounded-lg border border-slate-400/30 bg-slate-50/60 p-4'}>
