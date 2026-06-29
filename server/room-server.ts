@@ -23,9 +23,12 @@ import { submitActorBinding } from './services/submitActorBinding.js';
 import { approveActorBinding } from './services/approveActorBinding.js';
 import { rejectActorBinding } from './services/rejectActorBinding.js';
 import { setMemberReady } from './services/setMemberReady.js';
+import { appendRuntimeLogEvent } from './services/appendRuntimeLogEvent.js';
+import { listRuntimeLogEvents } from './services/listRuntimeLogEvents.js';
+import { createInMemoryRuntimeLogRegistry } from './runtime-log-registry.js';
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
 import { createRoomSocketServer } from './transport/roomSocketServer.js';
-import type { RoomJoinRequest } from './protocol/room-protocol.js';
+import type { AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol/room-protocol.js';
 
 const app = express();
 
@@ -44,6 +47,8 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 const registry = createInMemoryRoomRegistry();
+// Separate, memory-only RuntimeLog store — NOT part of RoomSnapshot (M21).
+const runtimeLogRegistry = createInMemoryRuntimeLogRegistry();
 const PORT = Number(process.env.PORT ?? 8787);
 
 // HTTP server + WebSocket transport scaffold (room snapshot broadcast only).
@@ -208,6 +213,57 @@ app.post('/rooms/:roomId/members/:memberId/ready', (req, res) => {
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'memberReadyChanged');
   }
   res.status(result.decision === 'roomNotFound' || result.decision === 'memberNotFound' ? 404 : result.decision === 'updated' ? 200 : 400).json(result);
+});
+
+// ── RuntimeLog server v0 (M21) ──────────────────────────────────────────────
+// Append-only per-room event stream. NOT in RoomSnapshot, NOT formal Runtime, NO
+// real auth/projection. Only public events are broadcast / listed in v0.
+
+app.get('/rooms/:roomId/runtime-log', (req, res) => {
+  const afterSeqRaw = req.query.afterSeq;
+  let afterSeq: number | undefined;
+  if (afterSeqRaw !== undefined) {
+    // afterSeq must be a non-negative integer string: '' / NaN / decimals / signs
+    // / negatives are rejected (double-checked again in the list service).
+    if (typeof afterSeqRaw !== 'string' || !/^\d+$/.test(afterSeqRaw)) {
+      res.status(400).json({ error: 'invalidAfterSeq' });
+      return;
+    }
+    afterSeq = Number(afterSeqRaw);
+  }
+  const result = listRuntimeLogEvents(registry, runtimeLogRegistry, { roomId: req.params.roomId, afterSeq });
+  if (result.decision === 'roomNotFound') {
+    res.status(404).json({ error: 'roomNotFound' });
+    return;
+  }
+  if (result.decision === 'invalidAfterSeq') {
+    res.status(400).json({ error: 'invalidAfterSeq', message: result.message });
+    return;
+  }
+  res.json(result.result);
+});
+
+app.post('/rooms/:roomId/runtime-log/events', (req, res) => {
+  const body = (req.body ?? {}) as AppendRoomRuntimeLogEventInput;
+  const result = appendRuntimeLogEvent(registry, runtimeLogRegistry, {
+    roomId: req.params.roomId,
+    authorMemberId: body.authorMemberId,
+    actorBindingId: body.actorBindingId,
+    kind: body.kind,
+    visibility: body.visibility,
+    text: body.text,
+    payload: body.payload,
+  });
+  if (result.decision !== 'appended') {
+    const status = result.decision === 'roomNotFound' || result.decision === 'memberNotFound' ? 404 : 400;
+    res.status(status).json({ error: result.decision, message: result.message });
+    return;
+  }
+  // Broadcast public events only; hostOnly is stored but withheld (NOT secure).
+  if (result.event && result.event.visibility === 'public') {
+    roomSocketServer.broadcastRuntimeLogAppended(result.event.roomId, [result.event]);
+  }
+  res.json({ event: result.event });
 });
 
 httpServer.listen(PORT, () => {

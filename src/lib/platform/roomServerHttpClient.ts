@@ -16,6 +16,11 @@ import type {
   RoomSnapshot,
   RoomSystemId,
 } from './roomTypes';
+import type {
+  AppendRoomRuntimeLogEventInput,
+  RoomRuntimeLogEvent,
+  RoomRuntimeLogListResult,
+} from './roomRuntimeLogTypes';
 
 export interface RoomServerHttpClientConfig {
   baseUrl: string;
@@ -186,5 +191,30 @@ export async function setRoomMemberReadyOnServer(
   return request<unknown>(config, `/rooms/${encodeURIComponent(roomId)}/members/${encodeURIComponent(memberId)}/ready`, {
     method: 'POST',
     body: JSON.stringify({ ready }),
+  });
+}
+
+// ── RuntimeLog server v0 (M21) ──────────────────────────────────────────────
+// Append-only per-room event stream. v0 lists/broadcasts public events only.
+
+/** List a room's RuntimeLog events; afterSeq returns only events with seq > afterSeq. */
+export async function listRoomRuntimeLog(
+  config: RoomServerHttpClientConfig,
+  roomId: string,
+  options?: { afterSeq?: number },
+): Promise<RoomRuntimeLogListResult> {
+  const query = options?.afterSeq !== undefined ? `?afterSeq=${encodeURIComponent(String(options.afterSeq))}` : '';
+  return request<RoomRuntimeLogListResult>(config, `/rooms/${encodeURIComponent(roomId)}/runtime-log${query}`);
+}
+
+/** Append a RuntimeLog event. campaignRef / seq / eventId / createdAt are server-assigned. */
+export async function appendRoomRuntimeLogEvent(
+  config: RoomServerHttpClientConfig,
+  roomId: string,
+  input: AppendRoomRuntimeLogEventInput,
+): Promise<{ event: RoomRuntimeLogEvent }> {
+  return request<{ event: RoomRuntimeLogEvent }>(config, `/rooms/${encodeURIComponent(roomId)}/runtime-log/events`, {
+    method: 'POST',
+    body: JSON.stringify(input),
   });
 }

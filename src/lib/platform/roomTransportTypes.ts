@@ -12,6 +12,7 @@
  */
 
 import type { RoomSnapshot } from './roomTypes';
+import type { RoomRuntimeLogEvent } from './roomRuntimeLogTypes';
 
 export type RoomTransportProtocolVersion = 'room-ws-v0';
 
@@ -85,6 +86,17 @@ export interface RoomSocketRoomSnapshotMessage extends RoomSocketEnvelopeBase {
   };
 }
 
+/**
+ * RuntimeLog delta (M21). A growing event stream rides in its OWN message, never
+ * inside RoomSnapshot. v0 carries public events only.
+ */
+export interface RoomSocketRuntimeLogAppendedMessage extends RoomSocketEnvelopeBase {
+  type: 'runtimeLogAppended';
+  roomId: string;
+  serverSeq: number;
+  events: RoomRuntimeLogEvent[];
+}
+
 export type RoomSocketErrorCode = 'invalidMessage' | 'roomNotFound' | 'notSubscribed' | 'internalError';
 
 export interface RoomSocketErrorMessage extends RoomSocketEnvelopeBase {
@@ -100,4 +112,5 @@ export type RoomSocketServerMessage =
   | RoomSocketUnsubscribedMessage
   | RoomSocketPongMessage
   | RoomSocketRoomSnapshotMessage
+  | RoomSocketRuntimeLogAppendedMessage
   | RoomSocketErrorMessage;

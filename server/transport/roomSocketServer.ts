@@ -23,6 +23,7 @@ import type {
   RoomSocketRoomSnapshotReason,
   RoomSocketServerMessage,
 } from '../../src/lib/platform/roomTransportTypes.js';
+import type { RoomRuntimeLogEvent } from '../protocol/room-protocol.js';
 
 export interface CreateRoomSocketServerOptions {
   server: HttpServer;
@@ -32,6 +33,7 @@ export interface CreateRoomSocketServerOptions {
 
 export interface RoomSocketServerHandle {
   broadcastRoomSnapshot(roomId: string, room: RoomSnapshot, reason: RoomSocketRoomSnapshotReason): void;
+  broadcastRuntimeLogAppended(roomId: string, events: RoomRuntimeLogEvent[]): void;
 }
 
 function envelope(): RoomSocketEnvelopeBase {
@@ -163,6 +165,24 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
       const text = JSON.stringify(message);
       // Snapshot the subscriber set first: safeSend may mutate `set` (dropSocket)
       // when a send throws, so iterating the live set would be unsafe.
+      for (const ws of [...set]) {
+        safeSend(ws, text);
+      }
+    },
+
+    broadcastRuntimeLogAppended(roomId, events) {
+      if (events.length === 0) return;
+      const set = subscriptions.get(roomId);
+      if (!set || set.size === 0) return; // no subscribers -> no-op
+      serverSeq += 1;
+      const message: RoomSocketServerMessage = {
+        ...envelope(),
+        type: 'runtimeLogAppended',
+        roomId,
+        serverSeq,
+        events,
+      };
+      const text = JSON.stringify(message);
       for (const ws of [...set]) {
         safeSend(ws, text);
       }

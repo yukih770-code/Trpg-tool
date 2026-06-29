@@ -25,6 +25,14 @@ export type {
   RoomCampaignRefSource,
 } from '../../src/lib/platform/roomTypes.js';
 
+export type {
+  RoomRuntimeLogEvent,
+  RoomRuntimeLogEventKind,
+  RoomRuntimeLogVisibility,
+  AppendRoomRuntimeLogEventInput,
+  RoomRuntimeLogListResult,
+} from '../../src/lib/platform/roomRuntimeLogTypes.js';
+
 export type { BackendDeploymentProfile } from '../../src/lib/platform/backendDeploymentTypes.js';
 
 export type { StorageAdapterCapabilitySummary } from '../../src/lib/platform/storageAdapterBoundaryTypes.js';

@@ -15,6 +15,7 @@ import type {
   RoomSocketEnvelopeBase,
   RoomSocketErrorMessage,
   RoomSocketRoomSnapshotMessage,
+  RoomSocketRuntimeLogAppendedMessage,
   RoomSocketServerMessage,
 } from './roomTransportTypes';
 
@@ -25,6 +26,7 @@ export interface RoomSocketClientOptions {
   path?: string;
   onMessage?: (message: RoomSocketServerMessage) => void;
   onRoomSnapshot?: (message: RoomSocketRoomSnapshotMessage) => void;
+  onRuntimeLogAppended?: (message: RoomSocketRuntimeLogAppendedMessage) => void;
   onErrorMessage?: (message: RoomSocketErrorMessage) => void;
   onConnectionStateChange?: (state: RoomSocketConnectionState) => void;
 }
@@ -84,6 +86,7 @@ export function createRoomSocketClient(options: RoomSocketClientOptions): RoomSo
         }
         options.onMessage?.(message);
         if (message.type === 'roomSnapshot') options.onRoomSnapshot?.(message);
+        else if (message.type === 'runtimeLogAppended') options.onRuntimeLogAppended?.(message);
         else if (message.type === 'error') options.onErrorMessage?.(message);
       };
     },
