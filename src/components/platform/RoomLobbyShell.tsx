@@ -30,6 +30,8 @@ import type {
   RoomRuntimeEntryContext,
 } from '../../lib/platform/roomRuntimeEntryTypes';
 import { evaluateRoomRuntimeEntryEligibility } from '../../lib/platform/roomRuntimeEntryGuard';
+import type { RoomRuntimeLogEvent } from '../../lib/platform/roomRuntimeLogTypes';
+import { RoomRuntimeLogPreviewPanel } from './RoomRuntimeLogPreviewPanel';
 
 /**
  * RoomLobbyShell (v0) — platform Room Lobby surface.
@@ -178,6 +180,8 @@ export function RoomLobbyShell({
   // Ready toggle state.
   const [readyBusy, setReadyBusy] = useState(false);
   const [readyError, setReadyError] = useState<string | null>(null);
+  // Live RuntimeLog events from the shared socket, buffered for the preview panel.
+  const [logLiveEvents, setLogLiveEvents] = useState<RoomRuntimeLogEvent[]>([]);
 
   const config = useMemo<RoomServerHttpClientConfig>(() => ({ baseUrl }), [baseUrl]);
 
@@ -194,6 +198,12 @@ export function RoomLobbyShell({
         if (message.roomId !== roomId) return;
         setRoom(message.payload.room);
         setSnapshotMeta({ serverSeq: message.serverSeq, reason: message.reason, sentAt: message.sentAt });
+      },
+      onRuntimeLogAppended: (message) => {
+        if (message.roomId !== roomId) return;
+        // Buffer public events for the preview panel (reuse this single socket).
+        const publicEvents = message.events.filter((e) => e.visibility === 'public');
+        if (publicEvents.length > 0) setLogLiveEvents((prev) => [...prev, ...publicEvents]);
       },
       onErrorMessage: (message) => {
         setWsError(`${message.code}: ${message.message}`);
@@ -645,6 +655,17 @@ export function RoomLobbyShell({
           <div className="mt-2 text-[10px] text-slate-500">下一步：进入正式 Runtime 桌面（后续）。</div>
         </section>
       )}
+
+      {/* Server-side RuntimeLog preview (reuses this lobby's WebSocket). */}
+      <RoomRuntimeLogPreviewPanel
+        roomId={roomId}
+        baseUrl={baseUrl}
+        currentMemberId={currentMemberId}
+        currentMemberLabel={currentMember?.displayName}
+        canAppend={iAmActive}
+        liveEvents={logLiveEvents}
+        onConsumedLiveEvents={() => setLogLiveEvents([])}
+      />
 
       {/* Host scaffold note */}
       {isHostScaffold && (
