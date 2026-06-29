@@ -23,10 +23,12 @@ import { RoomLobbyShell } from './RoomLobbyShell';
  * AI-LANDMARK: JOIN_CAMPAIGN_PANEL_V0
  *
  * Frontend shell to discover/join rooms from a portable Room Server (HTTP), then
- * hand off to RoomLobbyShell (which subscribes over WebSocket for live member
- * status). Currently only LAN / local Room Server is real; official & third-party
- * sources are placeholders. No LAN discovery, no runtime entry, no actor binding.
- * System-agnostic (uses systemId, not DND-specific concepts).
+ * hand off to RoomLobbyShell. This panel itself is HTTP-only (discover / create /
+ * join); RoomLobbyShell owns the WebSocket live member status, the lobby-level
+ * actor-binding drafts, and the ready check. Currently only LAN / local Room
+ * Server is real; official & third-party sources are placeholders. No LAN
+ * discovery, and no Runtime / RuntimeLog / map-token yet. System-agnostic (uses
+ * systemId, not DND-specific concepts).
  */
 
 const DEFAULT_BASE_URL = 'http://localhost:8787';
@@ -263,7 +265,7 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
       )}
 
       {error && <div className="mt-3 rounded border border-red-400/40 bg-red-500/10 px-2 py-1 text-[11px] text-red-700">{error}</div>}
-      <p className="mt-3 text-[10px] italic text-slate-400">本地 Room Server 调试入口，不是正式线上联机。房间大厅已支持 WebSocket 实时成员状态；正式 Runtime、角色绑定、准备状态、日志与地图同步仍未实现。</p>
+      <p className="mt-3 text-[10px] italic text-slate-400">本地 Room Server 调试入口，不是正式线上联机。房间大厅已支持 WebSocket 实时成员状态、大厅级角色绑定草稿与准备检查；正式 Runtime、日志与地图同步仍未实现。</p>
     </div>
   );
 }

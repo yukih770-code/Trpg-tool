@@ -19,7 +19,7 @@ export interface ApproveActorBindingInput {
 }
 
 export interface ApproveActorBindingResult {
-  decision: 'approved' | 'roomNotFound' | 'bindingNotFound';
+  decision: 'approved' | 'roomNotFound' | 'bindingNotFound' | 'memberNotFound' | 'memberNotActive';
   room?: RoomSnapshot;
   bindingId?: string;
   message?: string;
@@ -31,6 +31,14 @@ export function approveActorBinding(registry: RoomRegistry, input: ApproveActorB
 
   const binding = room.lobby?.actorBindings.find((b) => b.bindingId === input.bindingId);
   if (!binding) return { decision: 'bindingNotFound', message: `No binding "${input.bindingId}".` };
+
+  // The binding's member must still be active — never approve a binding for a
+  // kicked / left / disconnected / pendingApproval / invited member.
+  const member = room.members.find((m) => m.memberId === binding.memberId);
+  if (!member) return { decision: 'memberNotFound', message: `No member "${binding.memberId}".` };
+  if (member.status !== 'active') {
+    return { decision: 'memberNotActive', message: `Member status is "${member.status}".` };
+  }
 
   const now = new Date().toISOString();
   const updated = registry.update(input.roomId, (current) => {

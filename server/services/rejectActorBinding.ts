@@ -20,7 +20,7 @@ export interface RejectActorBindingInput {
 }
 
 export interface RejectActorBindingResult {
-  decision: 'rejected' | 'roomNotFound' | 'bindingNotFound';
+  decision: 'rejected' | 'roomNotFound' | 'bindingNotFound' | 'memberNotFound';
   room?: RoomSnapshot;
   bindingId?: string;
   message?: string;
@@ -32,6 +32,12 @@ export function rejectActorBinding(registry: RoomRegistry, input: RejectActorBin
 
   const binding = room.lobby?.actorBindings.find((b) => b.bindingId === input.bindingId);
   if (!binding) return { decision: 'bindingNotFound', message: `No binding "${input.bindingId}".` };
+
+  // The binding's member must exist. Reject is intentionally lenient on member
+  // STATUS (it doubles as cleanup, e.g. for a member who has since
+  // disconnected/left) — and it always clears ready, so no invariant breaks.
+  const member = room.members.find((m) => m.memberId === binding.memberId);
+  if (!member) return { decision: 'memberNotFound', message: `No member "${binding.memberId}".` };
 
   const now = new Date().toISOString();
   const memberId = binding.memberId;

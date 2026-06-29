@@ -240,7 +240,16 @@ export function RoomLobbyShell({
     (currentMemberId ? readyStates.find((r) => r.memberId === currentMemberId)?.status : undefined) ?? 'notReady';
   const activeCount = members.filter((m) => m.status === 'active').length;
   const approvedCount = actorBindings.filter((b) => b.status === 'approved').length;
-  const readyCount = readyStates.filter((r) => r.status === 'ready').length;
+  // A ready member only counts when the invariant holds: active + an approved
+  // actor binding + readyState 'ready'. Never trust readyStates alone (a stale
+  // 'ready' without an approved binding must not inflate the count).
+  const isMemberFullyReady = (memberId: string): boolean => {
+    const m = members.find((x) => x.memberId === memberId);
+    const b = actorBindings.find((x) => x.memberId === memberId);
+    const r = readyStates.find((x) => x.memberId === memberId)?.status;
+    return m?.status === 'active' && b?.status === 'approved' && r === 'ready';
+  };
+  const readyCount = members.filter((m) => isMemberFullyReady(m.memberId)).length;
   const memberName = (id: string) => members.find((m) => m.memberId === id)?.displayName ?? shortId(id);
 
   // Authoritative updates arrive via the WS roomSnapshot broadcast. This HTTP
