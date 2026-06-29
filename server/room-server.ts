@@ -5,12 +5,13 @@
  *
  * Minimal Express HTTP scaffold for the portable Room Server. Provides health +
  * room create/join/list over an in-memory registry, plus a minimal
- * dependency-free CORS middleware for the Vite dev frontend. NO WebSocket, NO
- * Runtime / RuntimeLog / map sync, NO database, NO auth. Same server application
- * runs LAN-hosted / official / third-party — LAN is just where it runs (see
- * backendDeploymentTypes).
+ * dependency-free CORS middleware and a WebSocket transport scaffold at /ws
+ * (room snapshot broadcast only). NO Runtime / RuntimeLog / map sync, NO
+ * database, NO auth, NO projection. Same server application runs LAN-hosted /
+ * official / third-party — LAN is just where it runs (see backendDeploymentTypes).
  */
 
+import { createServer } from 'node:http';
 import express from 'express';
 
 import { createInMemoryRoomRegistry } from './room-registry.js';
@@ -19,6 +20,7 @@ import { joinRoom } from './services/joinRoom.js';
 import { approveMember } from './services/approveMember.js';
 import { rejectMember } from './services/rejectMember.js';
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
+import { createRoomSocketServer } from './transport/roomSocketServer.js';
 import type { RoomJoinRequest } from './protocol/room-protocol.js';
 
 const app = express();
@@ -39,6 +41,10 @@ app.use(express.json());
 
 const registry = createInMemoryRoomRegistry();
 const PORT = Number(process.env.PORT ?? 8787);
+
+// HTTP server + WebSocket transport scaffold (room snapshot broadcast only).
+const httpServer = createServer(app);
+const roomSocketServer = createRoomSocketServer({ server: httpServer, registry, path: '/ws' });
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'room-server', storage: MEMORY_STORAGE_CAPABILITY.adapterKind });
@@ -64,6 +70,7 @@ app.post('/rooms/create', (req, res) => {
   }
   const result = createRoom(body);
   registry.create(result.room);
+  roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'roomCreated');
   res.json(result);
 });
 
@@ -78,6 +85,10 @@ app.post('/rooms/join', (req, res) => {
     return;
   }
   const result = joinRoom(registry, body);
+  if (result.roomId) {
+    const room = registry.get(result.roomId);
+    if (room) roomSocketServer.broadcastRoomSnapshot(room.identity.roomId, room, 'memberJoined');
+  }
   res.json(result);
 });
 
@@ -98,6 +109,9 @@ app.post('/rooms/:roomId/members/:memberId/approve', (req, res) => {
     memberId: req.params.memberId,
     decidedByMemberId: body.decidedByMemberId,
   });
+  if (result.room) {
+    roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'memberApproved');
+  }
   res.status(result.decision === 'roomNotFound' ? 404 : 200).json(result);
 });
 
@@ -109,10 +123,13 @@ app.post('/rooms/:roomId/members/:memberId/reject', (req, res) => {
     decidedByMemberId: body.decidedByMemberId,
     reason: body.reason,
   });
+  if (result.room) {
+    roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'memberRejected');
+  }
   res.status(result.decision === 'roomNotFound' ? 404 : 200).json(result);
 });
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   // eslint-disable-next-line no-console
-  console.log(`[room-server] scaffold listening on http://localhost:${PORT}`);
+  console.log(`[room-server] scaffold listening on http://localhost:${PORT} (HTTP + WS /ws)`);
 });
