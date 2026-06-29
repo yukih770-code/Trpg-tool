@@ -21,6 +21,19 @@ import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
 import type { RoomJoinRequest } from './protocol/room-protocol.js';
 
 const app = express();
+
+// Minimal dependency-free CORS for the Vite dev frontend (scaffold only).
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
+
 app.use(express.json());
 
 const registry = createInMemoryRoomRegistry();

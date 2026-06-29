@@ -14,6 +14,7 @@ import {
   ActorVaultLibraryShell,
 } from '../../components/platform/ActorVaultLibraryShell';
 import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
+import { JoinCampaignPanel } from '../../components/platform/JoinCampaignPanel';
 import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
 import { CharacterCampaignCtaProvider } from '../../components/platform/CharacterCampaignCta';
 import { ContextBar } from '../../components/platform/ContextBar';
@@ -105,6 +106,8 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   const [suggestedCampaignActor, setSuggestedCampaignActor] =
     useState<CampaignSuggestedActor | null>(null);
   const [focusedCampaignId, setFocusedCampaignId] = useState<string | null>(null);
+  // "进入战役" top-level tab: 我的战役 (local library) | 加入战役 (room server).
+  const [campaignEntryTab, setCampaignEntryTab] = useState<'mine' | 'join'>('mine');
   const [campaignRuntimeContext, setCampaignRuntimeContext] =
     useState<CampaignRuntimeContext | null>(null);
   const [actorCreationCompletionContext, setActorCreationCompletionContext] =
@@ -590,26 +593,50 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
           )}
 
           {!campaignRuntimeContext && view === 'campaigns' && (
-            <CampaignLibraryShell
-              systemId="dnd5e-2024"
-              systemName="DND 2024"
-              tone="dnd"
-              initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
-              initialCampaignId={campaignActorAddContext?.campaignId ?? campaignActorSelectContext?.campaignId ?? focusedCampaignId}
-              purpose={
-                campaignSelectForActorContext
-                  ? { kind: 'selectForActor', context: campaignSelectForActorContext }
-                  : { kind: 'manage' }
-              }
-              suggestedActor={suggestedCampaignActor}
-              onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
-              onRequestSelectActorForCampaign={handleRequestSelectActorForCampaign}
-              onSelectCampaignForActor={handleSelectCampaignForActor}
-              onReturnToActorContext={handleReturnToActorContext}
-              onEnterCampaignRuntime={handleEnterCampaignRuntime}
-              onAddCampaign={() => onViewChange('createCampaign')}
-              panelClassName={panelClass}
-            />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 border-b border-[#58180d]/15 pb-1">
+                <span className="text-sm font-black uppercase tracking-wider text-[#58180d]">进入战役</span>
+                <div className="ml-2 flex gap-1">
+                  {([['mine', '我的战役'], ['join', '加入战役']] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setCampaignEntryTab(key)}
+                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold transition ${
+                        campaignEntryTab === key ? 'bg-[#58180d] text-white' : 'text-[#58180d]/70 hover:bg-[#58180d]/10'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {campaignEntryTab === 'mine' ? (
+                <CampaignLibraryShell
+                  systemId="dnd5e-2024"
+                  systemName="DND 2024"
+                  tone="dnd"
+                  initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
+                  initialCampaignId={campaignActorAddContext?.campaignId ?? campaignActorSelectContext?.campaignId ?? focusedCampaignId}
+                  purpose={
+                    campaignSelectForActorContext
+                      ? { kind: 'selectForActor', context: campaignSelectForActorContext }
+                      : { kind: 'manage' }
+                  }
+                  suggestedActor={suggestedCampaignActor}
+                  onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
+                  onRequestSelectActorForCampaign={handleRequestSelectActorForCampaign}
+                  onSelectCampaignForActor={handleSelectCampaignForActor}
+                  onReturnToActorContext={handleReturnToActorContext}
+                  onEnterCampaignRuntime={handleEnterCampaignRuntime}
+                  onAddCampaign={() => onViewChange('createCampaign')}
+                  panelClassName={panelClass}
+                />
+              ) : (
+                <JoinCampaignPanel systemId="dnd5e-2024" tone="dnd" panelClassName={panelClass} />
+              )}
+            </div>
           )}
 
           {!campaignRuntimeContext && view === 'createCampaign' && (
