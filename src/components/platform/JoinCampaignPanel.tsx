@@ -66,6 +66,7 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
     currentMemberId?: string;
     currentRole?: RoomMemberRole;
     initialRoom?: RoomSnapshot;
+    origin: 'joinCampaign' | 'testRoom';
   } | null>(null);
   // Read-only Runtime Entry Preview (bridge), entered from the lobby.
   const [runtimeEntry, setRuntimeEntry] = useState<{ context: RoomRuntimeEntryContext; room: RoomSnapshot } | null>(null);
@@ -96,6 +97,7 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
       currentMemberId: host?.memberId,
       currentRole: 'host',
       initialRoom: room,
+      origin: 'testRoom',
     });
   });
   const doJoin = (code: string) => run(async () => {
@@ -109,6 +111,7 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
         currentMemberId: result.memberId,
         currentRole: result.assignedRole,
         // No initialRoom for joins: RoomLobbyShell pulls a snapshot over HTTP/WS.
+        origin: 'joinCampaign',
       });
     }
   });
@@ -146,6 +149,7 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
   }
 
   if (lobby) {
+    const isTestRoom = lobby.origin === 'testRoom';
     return (
       <div className={panelClassName ?? 'rounded-lg border border-slate-400/30 bg-slate-50/60 p-4'}>
         <RoomLobbyShell
@@ -155,7 +159,12 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
           currentRole={lobby.currentRole}
           initialRoom={lobby.initialRoom}
           serverLabel={LOCAL_SERVER_LABEL}
-          onLeaveLobby={() => setLobby(null)}
+          backLabel={isTestRoom ? '返回测试入口' : '返回加入战役'}
+          onBackToOrigin={() => setLobby(null)}
+          exitLabel="离开房间视图"
+          onExitRoom={() => setLobby(null)}
+          originLabel={isTestRoom ? '测试房间' : '加入战役'}
+          originDetail={isTestRoom ? '无战役关联' : '手动加入 / 房间发现'}
           onEnterRuntime={(payload) => setRuntimeEntry(payload)}
         />
       </div>

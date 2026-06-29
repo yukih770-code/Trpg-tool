@@ -55,6 +55,16 @@ export interface RoomLobbyShellProps {
   currentRole?: RoomMemberRole;
   initialRoom?: RoomSnapshot;
   serverLabel?: string;
+  /** Back = return to the page the user opened the room from (source-aware label). */
+  backLabel?: string;
+  onBackToOrigin?: () => void;
+  /** Exit = close this lobby view (v0 does NOT call a server-side leave). */
+  exitLabel?: string;
+  onExitRoom?: () => void;
+  /** Origin context shown as a lightweight banner (NOT a permission). */
+  originLabel?: string;
+  originDetail?: string;
+  /** @deprecated Back-compat: used as onBackToOrigin if the new props are absent. */
   onLeaveLobby?: () => void;
   /** Emitted when an eligible member opens the read-only Runtime Entry Preview. */
   onEnterRuntime?: (payload: { context: RoomRuntimeEntryContext; room: RoomSnapshot }) => void;
@@ -158,9 +168,18 @@ export function RoomLobbyShell({
   currentRole,
   initialRoom,
   serverLabel,
+  backLabel,
+  onBackToOrigin,
+  exitLabel,
+  onExitRoom,
+  originLabel,
+  originDetail,
   onLeaveLobby,
   onEnterRuntime,
 }: RoomLobbyShellProps) {
+  // Back-compat: fall back to onLeaveLobby when the new back/exit props are absent.
+  const backHandler = onBackToOrigin ?? onLeaveLobby;
+  const exitHandler = onExitRoom;
   const [room, setRoom] = useState<RoomSnapshot | null>(initialRoom ?? null);
   const [connState, setConnState] = useState<RoomSocketConnectionState>('idle');
   const [snapshotMeta, setSnapshotMeta] = useState<SnapshotMeta | null>(null);
@@ -396,15 +415,30 @@ export function RoomLobbyShell({
 
   return (
     <div className="space-y-4 rounded-lg border border-slate-400/30 bg-slate-50/60 p-4 text-[12px] text-slate-700">
-      {/* Header */}
+      {/* Header: source-aware Back (left) + title/roomCode, Exit room view (right) */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <div className="text-sm font-black text-slate-800">战役房间大厅 · Room Lobby</div>
-          <div className="text-[10px] text-slate-500">这是房间大厅，不是正式跑团桌面（Runtime）。角色绑定 / 准备状态为大厅草稿阶段；进入正式跑团桌面是后续功能。</div>
+        <div className="flex min-w-0 items-center gap-2">
+          {backHandler && (
+            <button type="button" className={btn} onClick={backHandler}>← {backLabel ?? '返回'}</button>
+          )}
+          <div className="min-w-0">
+            <div className="text-sm font-black text-slate-800">
+              战役房间大厅 · Room Lobby
+              {identity?.roomCode ? <span className="ml-2 text-slate-500">#{identity.roomCode}</span> : null}
+            </div>
+            <div className="text-[10px] text-slate-500">这是房间大厅，不是正式跑团桌面（Runtime）。角色绑定 / 准备状态为大厅草稿阶段；进入正式跑团桌面是后续功能。</div>
+          </div>
         </div>
-        {onLeaveLobby && (
-          <button type="button" className={btn} onClick={onLeaveLobby}>返回加入战役</button>
+        {exitHandler && (
+          <button type="button" className={btn} onClick={exitHandler}>{exitLabel ?? '离开房间视图'}</button>
         )}
+      </div>
+
+      {/* Origin banner (lightweight context, NOT a permission). */}
+      <div className="rounded border border-slate-300/40 bg-white/50 px-2 py-1 text-[10px] text-slate-500">
+        来源：<span className="font-bold text-slate-600">{originLabel ?? (room?.campaignRef ? '我的战役' : '房间')}</span>
+        {(originDetail ?? room?.campaignRef?.displayName) ? ` / ${originDetail ?? room?.campaignRef?.displayName}` : ''}
+        <span className="ml-1 italic">（仅为来源上下文，不是权限）</span>
       </div>
 
       {/* Connection state */}

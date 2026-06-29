@@ -58,7 +58,12 @@ export function HostedRoomLaunchPanel({
         currentRole="host"
         initialRoom={room}
         serverLabel={serverLabel}
-        onLeaveLobby={onClose}
+        backLabel="返回我的战役"
+        onBackToOrigin={onClose}
+        exitLabel="离开房间视图"
+        onExitRoom={onClose}
+        originLabel="我的战役"
+        originDetail={room.campaignRef?.displayName}
         onEnterRuntime={(payload) => setRuntimeEntry(payload)}
       />
     </div>

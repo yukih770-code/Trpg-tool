@@ -35,6 +35,8 @@ export interface RoomRuntimeLogPreviewPanelProps {
   /** Live public events from the lobby's shared socket; consumed then cleared. */
   liveEvents?: RoomRuntimeLogEvent[];
   onConsumedLiveEvents?: () => void;
+  /** Start collapsed so the lobby's first screen stays light (default true). */
+  defaultCollapsed?: boolean;
 }
 
 const KIND_LABEL: Record<RoomRuntimeLogEventKind, string> = {
@@ -88,16 +90,21 @@ export function RoomRuntimeLogPreviewPanel({
   canAppend,
   liveEvents,
   onConsumedLiveEvents,
+  defaultCollapsed,
 }: RoomRuntimeLogPreviewPanelProps) {
   const config = useMemo<RoomServerHttpClientConfig>(() => ({ baseUrl }), [baseUrl]);
   const [events, setEvents] = useState<RoomRuntimeLogEvent[]>([]);
   // Cursor: ALWAYS the server's true latestSeq, never max(events.seq) (M21.2).
   const latestSeqRef = useRef(0);
+  const [latestSeqDisplay, setLatestSeqDisplay] = useState(0);
   const [loading, setLoading] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  // Collapsed by default to keep the lobby's first screen light.
+  const [collapsed, setCollapsed] = useState(defaultCollapsed ?? true);
+  const [seenCount, setSeenCount] = useState(0);
 
   // Initial load (and on room/server change): full public list.
   useEffect(() => {
@@ -111,6 +118,7 @@ export function RoomRuntimeLogPreviewPanel({
         if (cancelled) return;
         setEvents(mergeEvents([], result.events));
         latestSeqRef.current = result.latestSeq;
+        setLatestSeqDisplay(result.latestSeq);
       })
       .catch((e) => {
         if (!cancelled) setListError(errMsg(e));
@@ -129,6 +137,7 @@ export function RoomRuntimeLogPreviewPanel({
     setEvents((prev) => mergeEvents(prev, liveEvents));
     const maxLive = liveEvents.reduce((m, e) => Math.max(m, e.seq), 0);
     latestSeqRef.current = Math.max(latestSeqRef.current, maxLive);
+    setLatestSeqDisplay(latestSeqRef.current);
     onConsumedLiveEvents?.();
     // onConsumedLiveEvents intentionally omitted from deps (parent re-creates it).
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -141,9 +150,23 @@ export function RoomRuntimeLogPreviewPanel({
       .then((result) => {
         setEvents((prev) => mergeEvents(prev, result.events));
         latestSeqRef.current = Math.max(latestSeqRef.current, result.latestSeq);
+        setLatestSeqDisplay(latestSeqRef.current);
       })
       .catch((e) => setListError(errMsg(e)))
       .finally(() => setLoading(false));
+  };
+
+  // Keep "seen" in sync while expanded so the collapsed badge shows only truly new events.
+  useEffect(() => {
+    if (!collapsed) setSeenCount(events.length);
+  }, [collapsed, events.length]);
+  const unread = collapsed ? Math.max(0, events.length - seenCount) : 0;
+  const toggleCollapsed = () => {
+    setCollapsed((c) => {
+      const next = !c;
+      if (!next) setSeenCount(events.length); // expanding -> mark all seen
+      return next;
+    });
   };
 
   const canSend = canAppend !== false && !!currentMemberId && draft.trim().length > 0 && !sending;
@@ -174,13 +197,26 @@ export function RoomRuntimeLogPreviewPanel({
 
   return (
     <section className={card}>
-      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-        <div className={label}>RuntimeLog 预览</div>
-        <button type="button" className={btn} disabled={loading} onClick={refresh}>
-          {loading ? '刷新中…' : '刷新日志'}
+      {/* Collapsible header: title + counts + (new) badge; expand to see list/input. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button type="button" className="flex items-center gap-2 text-left" onClick={toggleCollapsed} aria-expanded={!collapsed}>
+          <span className="text-[10px] text-slate-400">{collapsed ? '▶' : '▼'}</span>
+          <span className={label}>RuntimeLog 预览</span>
+          <span className="text-[10px] text-slate-500">{events.length} 条 · seq {latestSeqDisplay}</span>
+          {unread > 0 && (
+            <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">有新日志 {unread}</span>
+          )}
         </button>
+        {!collapsed && (
+          <button type="button" className={btn} disabled={loading} onClick={refresh}>
+            {loading ? '刷新中…' : '刷新日志'}
+          </button>
+        )}
       </div>
-      <p className="mb-2 text-[10px] text-slate-500">
+
+      {collapsed ? null : (
+        <>
+      <p className="mb-2 mt-1.5 text-[10px] text-slate-500">
         这是 server-side RuntimeLog 的只读预览（v0 仅显示公开事件），不是正式 Runtime / 战斗 / 地图 / 日志写入桌面。
       </p>
 
@@ -225,6 +261,8 @@ export function RoomRuntimeLogPreviewPanel({
         {sendError && <div className="mt-1 text-[10px] font-bold text-red-700">发送失败：{sendError}</div>}
         <p className="mt-1 text-[10px] italic text-slate-400">v0 仅支持发送公开聊天消息；主持人记录 / 骰子 / 状态记录为后续功能。</p>
       </div>
+        </>
+      )}
     </section>
   );
 }
