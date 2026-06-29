@@ -15,7 +15,9 @@ import {
   mapRoomServerRoomsToDiscovered,
 } from '../../lib/platform/roomDiscoveryMapper';
 import type { RoomJoinResult, RoomMemberRole, RoomSnapshot, RoomSystemId } from '../../lib/platform/roomTypes';
+import type { RoomRuntimeEntryContext } from '../../lib/platform/roomRuntimeEntryTypes';
 import { RoomLobbyShell } from './RoomLobbyShell';
+import { RoomRuntimeEntryBridge } from './RoomRuntimeEntryBridge';
 
 /**
  * JoinCampaignPanel (v0) — "加入战役" surface.
@@ -65,6 +67,8 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
     currentRole?: RoomMemberRole;
     initialRoom?: RoomSnapshot;
   } | null>(null);
+  // Read-only Runtime Entry Preview (bridge), entered from the lobby.
+  const [runtimeEntry, setRuntimeEntry] = useState<{ context: RoomRuntimeEntryContext; room: RoomSnapshot } | null>(null);
 
   const config: RoomServerHttpClientConfig = { baseUrl };
 
@@ -128,6 +132,19 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
   const input = 'rounded border border-slate-400/40 bg-white/70 px-2 py-1 text-[12px] outline-none';
   const btn = 'rounded border border-slate-500/40 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide disabled:opacity-40';
 
+  if (runtimeEntry) {
+    return (
+      <div className={panelClassName ?? 'rounded-lg border border-slate-400/30 bg-slate-50/60 p-4'}>
+        <RoomRuntimeEntryBridge
+          context={runtimeEntry.context}
+          room={runtimeEntry.room}
+          serverLabel={LOCAL_SERVER_LABEL}
+          onBackToLobby={() => setRuntimeEntry(null)}
+        />
+      </div>
+    );
+  }
+
   if (lobby) {
     return (
       <div className={panelClassName ?? 'rounded-lg border border-slate-400/30 bg-slate-50/60 p-4'}>
@@ -139,6 +156,7 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
           initialRoom={lobby.initialRoom}
           serverLabel={LOCAL_SERVER_LABEL}
           onLeaveLobby={() => setLobby(null)}
+          onEnterRuntime={(payload) => setRuntimeEntry(payload)}
         />
       </div>
     );
@@ -189,13 +207,13 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
 
           {/* Dev/test: create local room */}
           <section className="rounded border border-amber-500/30 bg-amber-50/50 p-3">
-            <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-amber-800">本地 Room Server 测试入口 · 开发 / 局域网草稿</div>
-            <p className="mb-1.5 text-[10px] text-amber-700/80">仅用于本地开发 / 局域网联调，不是正式“创建线上战役”。创建的房间会带当前系统 systemId。</p>
+            <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-amber-800">测试房间（无战役关联）· 开发 / 局域网草稿</div>
+            <p className="mb-1.5 text-[10px] text-amber-700/80">仅用于本地开发 / 局域网联调，创建的是无战役关联的测试房间。正式主持房间请从「我的战役」进入某个战役后点「开启局域网房间」。</p>
             <div className="flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-1">主持人显示名
                 <input className={input} value={hostName} onChange={(e) => setHostName(e.target.value)} />
               </label>
-              <button type="button" className={btn} disabled={busy} onClick={createTestRoom}>创建本地测试房间（开发）</button>
+              <button type="button" className={btn} disabled={busy} onClick={createTestRoom}>创建测试房间（无战役关联）</button>
             </div>
           </section>
 

@@ -13,6 +13,9 @@ import type {
   RoomSnapshot,
   RoomSystemId,
 } from '../protocol/room-protocol.js';
+// Campaign linkage type lives in the platform layer; imported directly (same
+// pattern the transport layer uses) so room-protocol.ts stays untouched.
+import type { RoomCampaignRef } from '../../src/lib/platform/roomTypes.js';
 
 export interface CreateRoomInput {
   displayName?: string;
@@ -21,6 +24,8 @@ export interface CreateRoomInput {
   campaignId?: string;
   sessionId?: string;
   systemId?: RoomSystemId;
+  /** Optional campaign linkage (M19). Validated by the HTTP handler. */
+  campaignRef?: RoomCampaignRef;
 }
 
 export interface CreateRoomResult {
@@ -41,6 +46,9 @@ function makeRoomCode(): string {
 export function createRoom(input: CreateRoomInput): CreateRoomResult {
   const now = new Date().toISOString();
   const systemId: RoomSystemId = input.systemId ?? 'dnd5e-2024';
+  // campaignRef.campaignId takes precedence; fall back to the legacy campaignId
+  // input for backward compatibility.
+  const campaignId = input.campaignRef?.campaignId ?? input.campaignId;
 
   const hostMember: RoomMemberIdentity = {
     memberId: `member_${randomUUID()}`,
@@ -57,7 +65,7 @@ export function createRoom(input: CreateRoomInput): CreateRoomResult {
       roomId: `room_${randomUUID()}`,
       roomCode: makeRoomCode(),
       serverId: 'room-server',
-      campaignId: input.campaignId,
+      campaignId,
       sessionId: input.sessionId,
       systemId,
       lifecycleStatus: 'open',
@@ -69,6 +77,7 @@ export function createRoom(input: CreateRoomInput): CreateRoomResult {
     members: [hostMember],
     actorBindings: [],
     invites: [],
+    campaignRef: input.campaignRef,
   };
 
   return { room };

@@ -17,6 +17,7 @@ import {
 } from '../../lib/platform/roomSocketClient';
 import type {
   RoomActorBindingSource,
+  RoomCampaignRefSource,
   RoomLobbyActorBindingStatus,
   RoomMemberIdentity,
   RoomMemberRole,
@@ -24,6 +25,11 @@ import type {
   RoomReadyStatus,
   RoomSnapshot,
 } from '../../lib/platform/roomTypes';
+import type {
+  RoomRuntimeEntryBlockedReason,
+  RoomRuntimeEntryContext,
+} from '../../lib/platform/roomRuntimeEntryTypes';
+import { evaluateRoomRuntimeEntryEligibility } from '../../lib/platform/roomRuntimeEntryGuard';
 
 /**
  * RoomLobbyShell (v0) — platform Room Lobby surface.
@@ -48,6 +54,8 @@ export interface RoomLobbyShellProps {
   initialRoom?: RoomSnapshot;
   serverLabel?: string;
   onLeaveLobby?: () => void;
+  /** Emitted when an eligible member opens the read-only Runtime Entry Preview. */
+  onEnterRuntime?: (payload: { context: RoomRuntimeEntryContext; room: RoomSnapshot }) => void;
 }
 
 interface SnapshotMeta {
@@ -115,6 +123,24 @@ const READY_LABEL: Record<RoomReadyStatus, string> = {
   notReady: '未准备',
 };
 
+const CAMPAIGN_SOURCE_LABEL: Record<RoomCampaignRefSource, string> = {
+  localCampaignLibrary: '本地战役库',
+  imported: '导入战役',
+  workshop: '工坊',
+  unknown: '未知来源',
+};
+
+const ENTRY_BLOCKED_LABEL: Record<RoomRuntimeEntryBlockedReason, string> = {
+  roomMissing: '房间快照未就绪。',
+  memberMissing: '未匹配当前成员。',
+  memberNotActive: '需先成为在线成员（被主持人批准）。',
+  actorBindingMissing: '请先提交角色绑定草稿。',
+  actorBindingNotApproved: '角色绑定等待主持人批准。',
+  memberNotReady: '请先点击「我已准备」。',
+  spectatorPreviewOnly: '旁观仅可进入只读预览。',
+  unknown: '暂不可进入跑团桌面预览。',
+};
+
 function shortId(id: string): string {
   return id.length <= 8 ? id : `…${id.slice(-6)}`;
 }
@@ -131,6 +157,7 @@ export function RoomLobbyShell({
   initialRoom,
   serverLabel,
   onLeaveLobby,
+  onEnterRuntime,
 }: RoomLobbyShellProps) {
   const [room, setRoom] = useState<RoomSnapshot | null>(initialRoom ?? null);
   const [connState, setConnState] = useState<RoomSocketConnectionState>('idle');
@@ -251,6 +278,27 @@ export function RoomLobbyShell({
   };
   const readyCount = members.filter((m) => isMemberFullyReady(m.memberId)).length;
   const memberName = (id: string) => members.find((m) => m.memberId === id)?.displayName ?? shortId(id);
+
+  // Runtime Entry Bridge eligibility (read-only preview; NOT real runtime).
+  const entryEligibility = evaluateRoomRuntimeEntryEligibility(room ?? undefined, currentMemberId);
+  const handleEnterRuntime = () => {
+    if (!room || !currentMember || !currentMemberId || !entryEligibility.canEnter || !entryEligibility.entryMode) return;
+    const context: RoomRuntimeEntryContext = {
+      roomId,
+      roomCode: room.identity.roomCode,
+      systemId: room.identity.systemId,
+      serverBaseUrl: baseUrl,
+      currentMemberId,
+      currentRole: currentMember.role,
+      approvedActorBindingId: entryEligibility.approvedActorBindingId,
+      actorRef: entryEligibility.actorRef,
+      readyState: entryEligibility.readyState,
+      entryMode: entryEligibility.entryMode,
+      campaignRef: room.campaignRef,
+      serverSeqAtEntry: snapshotMeta?.serverSeq,
+    };
+    onEnterRuntime?.({ context, room });
+  };
 
   // Authoritative updates arrive via the WS roomSnapshot broadcast. This HTTP
   // refresh is only a fallback so the UI doesn't appear stuck if the socket is
@@ -376,6 +424,21 @@ export function RoomLobbyShell({
           </div>
         ) : (
           <div className="text-[11px] italic text-slate-500">正在获取房间快照…</div>
+        )}
+        {/* Campaign linkage (read-only; not a permission). */}
+        {identity && (
+          room?.campaignRef ? (
+            <div className="mt-2 border-t border-slate-300/40 pt-2">
+              <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+                <Info k="战役名称" v={room.campaignRef.displayName} strong />
+                <Info k="战役来源" v={CAMPAIGN_SOURCE_LABEL[room.campaignRef.source]} />
+                {room.campaignRef.campaignId && <Info k="campaignId" v={shortId(room.campaignRef.campaignId)} />}
+                <Info k="战役系统" v={room.campaignRef.systemId} />
+              </div>
+            </div>
+          ) : (
+            <div className="mt-2 border-t border-slate-300/40 pt-2 text-[11px] italic text-slate-500">无战役关联 / 测试房间</div>
+          )
         )}
       </section>
 
@@ -531,8 +594,27 @@ export function RoomLobbyShell({
           <p className="text-[11px] italic text-slate-500">成为在线成员后才能设置准备状态。</p>
         )}
         {readyError && <div className="mt-1 text-[10px] font-bold text-red-700">操作失败：{readyError}</div>}
-        <div className="mt-2 text-[10px] text-slate-500">下一步：进入正式 Runtime 桌面（后续）。</div>
+        <div className="mt-2 text-[10px] text-slate-500">下一步：进入跑团桌面预览（只读，非正式 Runtime）。</div>
       </section>
+
+      {/* Runtime Entry Bridge (read-only preview) */}
+      {onEnterRuntime && (
+        <section className={card}>
+          <div className={`mb-1.5 ${label}`}>跑团桌面预览入口</div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className={btn} disabled={!entryEligibility.canEnter} onClick={handleEnterRuntime}>
+              进入跑团桌面预览
+            </button>
+            {!entryEligibility.canEnter && entryEligibility.reason && (
+              <span className="text-[10px] text-slate-500">{ENTRY_BLOCKED_LABEL[entryEligibility.reason]}</span>
+            )}
+          </div>
+          <div className="mt-2 text-[10px] text-amber-700">
+            这是只读的 Runtime Entry Bridge 预览，未接入正式 Runtime / 权限 / 日志 / 地图。
+            {currentMember?.role === 'host' && '主持人可直接进入主持人预览，但同样未接入正式 Runtime。'}
+          </div>
+        </section>
+      )}
 
       {/* Host: ready overview (scaffold) */}
       {isHostScaffold && (

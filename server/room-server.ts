@@ -72,6 +72,20 @@ app.post('/rooms/create', (req, res) => {
     res.status(400).json({ error: 'hostDisplayName is required.' });
     return;
   }
+  // Optional campaign linkage (M19): if present, displayName must be non-empty
+  // and systemId must match the room's resolved system. NOT a permission check.
+  if (body.campaignRef) {
+    const ref = body.campaignRef;
+    if (typeof ref.displayName !== 'string' || ref.displayName.trim() === '') {
+      res.status(400).json({ error: 'invalidCampaignRef' });
+      return;
+    }
+    const effectiveSystemId = body.systemId ?? 'dnd5e-2024';
+    if (ref.systemId !== effectiveSystemId) {
+      res.status(400).json({ error: 'campaignSystemMismatch' });
+      return;
+    }
+  }
   const result = createRoom(body);
   registry.create(result.room);
   roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'roomCreated');

@@ -174,6 +174,22 @@ export interface RoomLobbyState {
   readyStates: RoomMemberReadyState[];
 }
 
+// ── Campaign linkage (M19) ──────────────────────────────────────────────────
+//
+// Optional, read-only descriptive link from a room to the campaign it was hosted
+// from. NOT a permission, NOT a CampaignMembership, NOT a CampaignActorInstance.
+// Absent for ad-hoc / test rooms and for external rooms with no campaign. The
+// room-local roomCode and the campaign-local roomCode are intentionally separate.
+
+export type RoomCampaignRefSource = 'localCampaignLibrary' | 'imported' | 'workshop' | 'unknown';
+
+export interface RoomCampaignRef {
+  source: RoomCampaignRefSource;
+  campaignId?: string;
+  displayName: string;
+  systemId: RoomSystemId;
+}
+
 /** Room state description — NOT RuntimeEncounterState (no map/log/combat here). */
 export interface RoomSnapshot {
   identity: RoomIdentity;
@@ -185,6 +201,8 @@ export interface RoomSnapshot {
   notes?: string[];
   /** Room Lobby pre-session state (actor binding drafts + ready check). */
   lobby?: RoomLobbyState;
+  /** Optional read-only link to the campaign this room was hosted from. */
+  campaignRef?: RoomCampaignRef;
 }
 
 export interface RoomJoinRequest {

@@ -10,6 +10,7 @@
  */
 
 import type {
+  RoomCampaignRef,
   RoomJoinRequest,
   RoomJoinResult,
   RoomSnapshot,
@@ -91,7 +92,7 @@ export async function getRoomServerRoom(
 
 export async function createRoomOnServer(
   config: RoomServerHttpClientConfig,
-  input: { hostDisplayName: string; systemId?: RoomSystemId; displayName?: string },
+  input: { hostDisplayName: string; systemId?: RoomSystemId; displayName?: string; campaignRef?: RoomCampaignRef },
 ): Promise<{ room: RoomSnapshot }> {
   return request<{ room: RoomSnapshot }>(config, '/rooms/create', {
     method: 'POST',

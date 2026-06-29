@@ -16,6 +16,10 @@ import {
 import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
 import { JoinCampaignPanel } from '../../components/platform/JoinCampaignPanel';
 import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
+import { HostedRoomLaunchPanel } from '../../components/platform/HostedRoomLaunchPanel';
+import { createRoomOnServer } from '../../lib/platform/roomServerHttpClient';
+import type { RoomSnapshot } from '../../lib/platform/roomTypes';
+import type { LocalCampaign } from '../../lib/platform/campaignLocalStore';
 import { CharacterCampaignCtaProvider } from '../../components/platform/CharacterCampaignCta';
 import { ContextBar } from '../../components/platform/ContextBar';
 import { SystemWorkspaceEntryShell } from '../../components/platform/SystemWorkspaceEntryShell';
@@ -45,6 +49,10 @@ import type {
   CampaignRuntimeContext,
   CampaignSuggestedActor,
 } from '../../lib/platform/campaignFlow';
+
+// Hosted Room Launch v0: local Room Server address. NOT a long-term server
+// config — replaced when official/third-party server selection lands.
+const HOSTED_ROOM_BASE_URL_V0 = 'http://localhost:8787';
 
 /**
  * DndWorkspaceShell
@@ -110,8 +118,38 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
   const [campaignEntryTab, setCampaignEntryTab] = useState<'mine' | 'join'>('mine');
   const [campaignRuntimeContext, setCampaignRuntimeContext] =
     useState<CampaignRuntimeContext | null>(null);
+  // Hosted LAN room launched from a campaign (M19). v0 uses the local Room Server.
+  const [hostedRoomSession, setHostedRoomSession] =
+    useState<{ baseUrl: string; room: RoomSnapshot; hostMemberId: string } | null>(null);
+  const [hostLaunchError, setHostLaunchError] = useState<string | null>(null);
   const [actorCreationCompletionContext, setActorCreationCompletionContext] =
     useState<ActorCreationCompletionContext | null>(null);
+
+  const handleHostLaunchRoom = (campaign: LocalCampaign) => {
+    setHostLaunchError(null);
+    const baseUrl = HOSTED_ROOM_BASE_URL_V0;
+    void (async () => {
+      try {
+        const { room } = await createRoomOnServer(
+          { baseUrl },
+          {
+            hostDisplayName: 'GM',
+            systemId: 'dnd5e-2024',
+            campaignRef: {
+              source: 'localCampaignLibrary',
+              campaignId: campaign.id,
+              displayName: campaign.title,
+              systemId: 'dnd5e-2024',
+            },
+          },
+        );
+        const host = room.members.find((m) => m.role === 'host');
+        setHostedRoomSession({ baseUrl, room, hostMemberId: host?.memberId ?? '' });
+      } catch (e) {
+        setHostLaunchError(e instanceof Error ? e.message : String(e));
+      }
+    })();
+  };
 
   function buildActorCreationCompletionContext(): ActorCreationCompletionContext {
     const actor: CampaignSuggestedActor = {
@@ -592,8 +630,24 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
             />
           )}
 
-          {!campaignRuntimeContext && view === 'campaigns' && (
+          {!campaignRuntimeContext && view === 'campaigns' && hostedRoomSession && (
+            <HostedRoomLaunchPanel
+              baseUrl={hostedRoomSession.baseUrl}
+              room={hostedRoomSession.room}
+              hostMemberId={hostedRoomSession.hostMemberId}
+              serverLabel="本地 Room Server（局域网 v0）"
+              onClose={() => setHostedRoomSession(null)}
+              panelClassName={panelClass}
+            />
+          )}
+
+          {!campaignRuntimeContext && view === 'campaigns' && !hostedRoomSession && (
             <div className="space-y-3">
+              {hostLaunchError && (
+                <div className="rounded border border-red-400/40 bg-red-500/10 px-2 py-1 text-[11px] text-red-700">
+                  开启房间失败：{hostLaunchError}
+                </div>
+              )}
               <div className="flex items-center gap-2 border-b border-[#58180d]/15 pb-1">
                 <span className="text-sm font-black uppercase tracking-wider text-[#58180d]">进入战役</span>
                 <div className="ml-2 flex gap-1">
@@ -630,6 +684,7 @@ export function DndWorkspaceShell({ view, onViewChange, onOpenPlayTab, children 
                   onSelectCampaignForActor={handleSelectCampaignForActor}
                   onReturnToActorContext={handleReturnToActorContext}
                   onEnterCampaignRuntime={handleEnterCampaignRuntime}
+                  onHostLaunchRoom={handleHostLaunchRoom}
                   onAddCampaign={() => onViewChange('createCampaign')}
                   panelClassName={panelClass}
                 />

@@ -64,6 +64,8 @@ type CampaignLibraryShellProps = {
   ) => void;
   onReturnToActorContext?: (context: Extract<CampaignLibraryPurpose, { kind: 'selectForActor' }>['context']) => void;
   onEnterCampaignRuntime?: (context: CampaignRuntimeContext) => void;
+  /** Hand the selected campaign to the parent to host a LAN Room Server room (M19). */
+  onHostLaunchRoom?: (campaign: LocalCampaign) => void;
   panelClassName?: string;
   contextBarClassName?: string;
 };
@@ -125,6 +127,7 @@ export function CampaignLibraryShell({
   onSelectCampaignForActor,
   onReturnToActorContext,
   onEnterCampaignRuntime,
+  onHostLaunchRoom,
   panelClassName,
   contextBarClassName,
 }: CampaignLibraryShellProps) {
@@ -739,6 +742,7 @@ export function CampaignLibraryShell({
             canEnterPlayerRuntime={canEnterPlayerRuntime}
             canEnterHostRuntime={canEnterHostRuntime}
             hostPrepItems={hostPrepItems}
+            onHostLaunchRoom={selectedCampaign && onHostLaunchRoom ? () => onHostLaunchRoom(selectedCampaign) : undefined}
           />
         ) : (
           <div className="mt-5">
@@ -1310,6 +1314,7 @@ function CampaignDetail({
   canEnterPlayerRuntime,
   canEnterHostRuntime,
   hostPrepItems,
+  onHostLaunchRoom,
 }: {
   campaign: LocalCampaign;
   systemId: LocalCampaignSystemId;
@@ -1325,6 +1330,7 @@ function CampaignDetail({
   canEnterPlayerRuntime: boolean;
   canEnterHostRuntime: boolean;
   hostPrepItems: string[];
+  onHostLaunchRoom?: () => void;
 }) {
   return (
     <div className="mt-5 flex flex-col gap-4">
@@ -1462,7 +1468,7 @@ function CampaignDetail({
                       : `cursor-default opacity-65 ${theme.secondary}`
                   }`}
                 >
-                  {t('campaignLibrary.detail.playerPrep.enterCampaign')}
+                  {t('campaignLibrary.detail.playerPrep.enterCampaign')}（本地预览）
                 </button>
               ) : (
                 <button
@@ -1473,7 +1479,21 @@ function CampaignDetail({
                   {t('campaignLibrary.detail.entry.switchToHost')}
                 </button>
               )}
+              {selectedEntryRole === 'host' && onHostLaunchRoom && (
+                <button
+                  type="button"
+                  onClick={onHostLaunchRoom}
+                  className={`border px-3 py-2 text-xs font-bold ${theme.primary}`}
+                >
+                  开启局域网房间
+                </button>
+              )}
             </div>
+            {selectedEntryRole === 'host' && onHostLaunchRoom && (
+              <p className={`mt-2 text-[11px] leading-relaxed ${theme.muted}`}>
+                从当前战役创建一个 Room Server 房间（本地 / 局域网 v0），玩家可通过房间码加入。这不是进入正式 Runtime。
+              </p>
+            )}
           </div>
         </div>
       </div>
