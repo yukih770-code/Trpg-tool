@@ -9,7 +9,11 @@ import {
   type RoomServerHttpClientConfig,
   type RoomServerRoomListItem,
 } from '../../lib/platform/roomServerHttpClient';
-import type { RoomDiscoverySource } from '../../lib/platform/roomDiscoveryTypes';
+import type { DiscoveredRoomSummary, RoomDiscoverySource, RoomJoinRequirement } from '../../lib/platform/roomDiscoveryTypes';
+import {
+  canDisplayDiscoveredRoomForSystem,
+  mapRoomServerRoomsToDiscovered,
+} from '../../lib/platform/roomDiscoveryMapper';
 import type { RoomJoinResult, RoomSystemId } from '../../lib/platform/roomTypes';
 
 /**
@@ -75,6 +79,22 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
     setJoinResult(result);
   });
 
+  // Boundary: never render the raw Room Server list. Map to DiscoveredRoomSummary,
+  // then filter to the CURRENT system only (exact match v0).
+  const LOCAL_SERVER_LABEL = '本地 Room Server';
+  const discoveredRooms = mapRoomServerRoomsToDiscovered(rooms, {
+    source: 'lan',
+    serverBaseUrl: baseUrl,
+    serverLabel: LOCAL_SERVER_LABEL,
+  }).filter((room) => !systemId || canDisplayDiscoveredRoomForSystem(room, systemId));
+
+  const JOIN_REQUIREMENT_LABEL: Record<RoomJoinRequirement, string> = {
+    open: '开放加入',
+    roomCodeRequired: '需要房间码',
+    hostApprovalRequired: '需要主持人审批',
+    inviteOnly: '仅邀请',
+  };
+
   const input = 'rounded border border-slate-400/40 bg-white/70 px-2 py-1 text-[12px] outline-none';
   const btn = 'rounded border border-slate-500/40 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide disabled:opacity-40';
 
@@ -94,6 +114,10 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
             {tab.label}
           </button>
         ))}
+      </div>
+
+      <div className="mb-3 text-[10px] text-slate-500">
+        仅显示当前系统（{systemId ?? '未指定'}）的房间。「全部」= 当前系统下所有来源；「局域网联机」= 当前系统的本地 / LAN Room Server。
       </div>
 
       {(source === 'official' || source === 'thirdParty') && (
@@ -119,33 +143,45 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
 
           {/* Dev/test: create local room */}
           <section className="rounded border border-amber-500/30 bg-amber-50/50 p-3">
-            <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-amber-800">本地 Room Server 测试入口</div>
+            <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-amber-800">本地 Room Server 测试入口 · 开发 / 局域网草稿</div>
+            <p className="mb-1.5 text-[10px] text-amber-700/80">仅用于本地开发 / 局域网联调，不是正式“创建线上战役”。创建的房间会带当前系统 systemId。</p>
             <div className="flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-1">主持人显示名
                 <input className={input} value={hostName} onChange={(e) => setHostName(e.target.value)} />
               </label>
-              <button type="button" className={btn} disabled={busy} onClick={createTestRoom}>创建本地测试房间</button>
+              <button type="button" className={btn} disabled={busy} onClick={createTestRoom}>创建本地测试房间（开发）</button>
             </div>
           </section>
 
-          {/* Room list */}
+          {/* Room list — from mapped + system-filtered DiscoveredRoomSummary */}
           <section>
-            <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-600">房间列表（{rooms.length}）</div>
-            {rooms.length === 0 ? (
+            <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-600">
+              房间列表（{discoveredRooms.length}）· 当前系统 · 来源：局域网 / 本地（官方 / 第三方：后续支持）
+            </div>
+            {rooms.length > 0 && discoveredRooms.length === 0 ? (
+              <p className="text-[11px] italic text-slate-500">服务器上有房间，但没有匹配当前系统（{systemId ?? '未指定'}）的房间。</p>
+            ) : discoveredRooms.length === 0 ? (
               <p className="text-[11px] italic text-slate-500">暂无房间。先“刷新房间”，或创建一个本地测试房间。</p>
             ) : (
               <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                {rooms.map((room) => (
+                {discoveredRooms.map((room) => (
                   <div key={room.roomId} className="rounded border border-slate-400/30 bg-white/60 p-2.5">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-black">房间码 {room.roomCode}</span>
+                      <span className="text-sm font-black">房间码 {room.roomCode ?? '—'}</span>
                       <span className="rounded-full bg-slate-500/15 px-1.5 py-0.5 text-[9px] font-bold">{room.lifecycleStatus}</span>
                     </div>
                     <div className="mt-1 text-[10px] text-slate-500">
-                      系统 {room.systemId} · 成员 {room.memberCount} · 来源 局域网联机 / 本地 Room Server
+                      系统 {room.systemId} · 成员 {room.memberCount} · 来源 局域网联机 / {room.serverLabel ?? '本地 Room Server'}
                     </div>
-                    <div className="mt-0.5 text-[10px] text-slate-500">加入方式：需要房间码 · 需要主持人审批</div>
-                    <button type="button" className={`${btn} mt-1.5`} disabled={busy} onClick={() => { setJoinCode(room.roomCode); doJoin(room.roomCode); }}>申请加入</button>
+                    <div className="mt-0.5 text-[10px] text-slate-500">加入方式：{JOIN_REQUIREMENT_LABEL[room.joinRequirement]}</div>
+                    <button
+                      type="button"
+                      className={`${btn} mt-1.5`}
+                      disabled={busy || !room.roomCode}
+                      onClick={() => { if (room.roomCode) { setJoinCode(room.roomCode); doJoin(room.roomCode); } }}
+                    >
+                      申请加入
+                    </button>
                   </div>
                 ))}
               </div>

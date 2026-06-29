@@ -4,10 +4,11 @@
  * AI-LANDMARK: ROOM_SERVER_ENTRY_V0
  *
  * Minimal Express HTTP scaffold for the portable Room Server. Provides health +
- * room create/join/list over an in-memory registry. NO WebSocket, NO Runtime /
- * RuntimeLog / map sync, NO database, NO auth, NO CORS (deferred). Same server
- * application runs LAN-hosted / official / third-party — LAN is just where it
- * runs (see backendDeploymentTypes).
+ * room create/join/list over an in-memory registry, plus a minimal
+ * dependency-free CORS middleware for the Vite dev frontend. NO WebSocket, NO
+ * Runtime / RuntimeLog / map sync, NO database, NO auth. Same server application
+ * runs LAN-hosted / official / third-party — LAN is just where it runs (see
+ * backendDeploymentTypes).
  */
 
 import express from 'express';
