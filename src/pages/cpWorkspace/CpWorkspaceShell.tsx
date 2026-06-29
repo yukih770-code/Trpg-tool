@@ -8,6 +8,7 @@ import {
   ActorVaultLibraryShell,
 } from '../../components/platform/ActorVaultLibraryShell';
 import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryShell';
+import { JoinCampaignPanel } from '../../components/platform/JoinCampaignPanel';
 import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
 import {
   CharacterCampaignCta,
@@ -566,6 +567,8 @@ export function CpWorkspaceShell({
   const [suggestedCampaignActor, setSuggestedCampaignActor] =
     useState<CampaignSuggestedActor | null>(null);
   const [focusedCampaignId, setFocusedCampaignId] = useState<string | null>(null);
+  // "进入战役" top-level tab: 我的战役 (local library) | 加入战役 (room server).
+  const [campaignEntryTab, setCampaignEntryTab] = useState<'mine' | 'join'>('mine');
   const [campaignRuntimeContext, setCampaignRuntimeContext] =
     useState<CampaignRuntimeContext | null>(null);
   const [actorCreationCompletionContext, setActorCreationCompletionContext] =
@@ -944,26 +947,50 @@ export function CpWorkspaceShell({
           )}
 
           {!campaignRuntimeContext && view === 'campaigns' && (
-            <CampaignLibraryShell
-              systemId="cp-red"
-              systemName={t('glossary.cyberpunkRed')}
-              tone="cp"
-              initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
-              initialCampaignId={campaignActorAddContext?.campaignId ?? campaignActorSelectContext?.campaignId ?? focusedCampaignId}
-              purpose={
-                campaignSelectForActorContext
-                  ? { kind: 'selectForActor', context: campaignSelectForActorContext }
-                  : { kind: 'manage' }
-              }
-              suggestedActor={suggestedCampaignActor}
-              onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
-              onRequestSelectActorForCampaign={handleRequestSelectActorForCampaign}
-              onSelectCampaignForActor={handleSelectCampaignForActor}
-              onReturnToActorContext={handleReturnToActorContext}
-              onEnterCampaignRuntime={handleEnterCampaignRuntime}
-              onAddCampaign={() => onViewChange('createCampaign')}
-              panelClassName={panelClass}
-            />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 border-b border-[#d8b954]/25 pb-1">
+                <span className="text-sm font-black uppercase tracking-wider text-[#d8b954]">进入战役</span>
+                <div className="ml-2 flex gap-1">
+                  {([['mine', '我的战役'], ['join', '加入战役']] as const).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setCampaignEntryTab(key)}
+                      className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold transition ${
+                        campaignEntryTab === key ? 'bg-[#d8b954] text-black' : 'text-[#d8b954]/70 hover:bg-[#d8b954]/10'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {campaignEntryTab === 'mine' ? (
+                <CampaignLibraryShell
+                  systemId="cp-red"
+                  systemName={t('glossary.cyberpunkRed')}
+                  tone="cp"
+                  initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
+                  initialCampaignId={campaignActorAddContext?.campaignId ?? campaignActorSelectContext?.campaignId ?? focusedCampaignId}
+                  purpose={
+                    campaignSelectForActorContext
+                      ? { kind: 'selectForActor', context: campaignSelectForActorContext }
+                      : { kind: 'manage' }
+                  }
+                  suggestedActor={suggestedCampaignActor}
+                  onRequestAddActorForCampaign={handleRequestAddActorForCampaign}
+                  onRequestSelectActorForCampaign={handleRequestSelectActorForCampaign}
+                  onSelectCampaignForActor={handleSelectCampaignForActor}
+                  onReturnToActorContext={handleReturnToActorContext}
+                  onEnterCampaignRuntime={handleEnterCampaignRuntime}
+                  onAddCampaign={() => onViewChange('createCampaign')}
+                  panelClassName={panelClass}
+                />
+              ) : (
+                <JoinCampaignPanel systemId="cp-red" tone="cp" panelClassName={panelClass} />
+              )}
+            </div>
           )}
 
           {!campaignRuntimeContext && view === 'createCampaign' && (
