@@ -1458,18 +1458,29 @@ function CampaignDetail({
             </p>
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {selectedEntryRole === 'host' ? (
-                <button
-                  type="button"
-                  onClick={enterCampaignRuntime}
-                  disabled={!canEnterHostRuntime}
-                  className={`border px-3 py-2 text-xs font-bold ${
-                    canEnterHostRuntime
-                      ? theme.primary
-                      : `cursor-default opacity-65 ${theme.secondary}`
-                  }`}
-                >
-                  {t('campaignLibrary.detail.playerPrep.enterCampaign')}（本地预览）
-                </button>
+                <>
+                  {/* Primary CTA: launch a LAN Room Server room (NOT formal Runtime). */}
+                  {onHostLaunchRoom && (
+                    <button
+                      type="button"
+                      onClick={onHostLaunchRoom}
+                      className={`border px-3 py-2 text-xs font-bold ${theme.primary}`}
+                    >
+                      开启局域网房间
+                    </button>
+                  )}
+                  {/* Secondary CTA: local single-machine preview of the runtime shell. */}
+                  <button
+                    type="button"
+                    onClick={enterCampaignRuntime}
+                    disabled={!canEnterHostRuntime}
+                    className={`border px-3 py-2 text-xs font-bold ${
+                      canEnterHostRuntime ? theme.secondary : `cursor-default opacity-65 ${theme.secondary}`
+                    }`}
+                  >
+                    {t('campaignLibrary.detail.playerPrep.enterCampaign')}（本地预览）
+                  </button>
+                </>
               ) : (
                 <button
                   type="button"
@@ -1477,15 +1488,6 @@ function CampaignDetail({
                   className={`border px-3 py-2 text-xs font-bold ${theme.secondary}`}
                 >
                   {t('campaignLibrary.detail.entry.switchToHost')}
-                </button>
-              )}
-              {selectedEntryRole === 'host' && onHostLaunchRoom && (
-                <button
-                  type="button"
-                  onClick={onHostLaunchRoom}
-                  className={`border px-3 py-2 text-xs font-bold ${theme.primary}`}
-                >
-                  开启局域网房间
                 </button>
               )}
             </div>

@@ -12,10 +12,9 @@ import type {
   RoomMemberIdentity,
   RoomSnapshot,
   RoomSystemId,
+  RoomCampaignRef,
+  RoomCampaignRefSource,
 } from '../protocol/room-protocol.js';
-// Campaign linkage type lives in the platform layer; imported directly (same
-// pattern the transport layer uses) so room-protocol.ts stays untouched.
-import type { RoomCampaignRef } from '../../src/lib/platform/roomTypes.js';
 
 export interface CreateRoomInput {
   displayName?: string;
@@ -32,6 +31,35 @@ export interface CreateRoomResult {
   room: RoomSnapshot;
 }
 
+// Allowed enums for runtime validation of a campaign linkage (M19.2). Shared so
+// the HTTP handler and this service apply the same rules.
+export const VALID_ROOM_CAMPAIGN_SOURCES: readonly RoomCampaignRefSource[] = [
+  'localCampaignLibrary',
+  'imported',
+  'workshop',
+  'unknown',
+];
+export const VALID_ROOM_SYSTEM_IDS: readonly RoomSystemId[] = ['dnd5e-2024', 'coc7e', 'cp-red', 'custom'];
+
+export type CampaignRefValidationError = 'invalidCampaignRef' | 'campaignSystemMismatch';
+
+/**
+ * Validate an optional campaignRef against the room's resolved system. Returns an
+ * error code (for the HTTP handler to map to 400) or null when valid/absent.
+ * NOT a permission check.
+ */
+export function validateCampaignRef(
+  ref: RoomCampaignRef | undefined,
+  resolvedSystemId: RoomSystemId,
+): CampaignRefValidationError | null {
+  if (!ref) return null;
+  if (typeof ref.displayName !== 'string' || ref.displayName.trim() === '') return 'invalidCampaignRef';
+  if (!VALID_ROOM_CAMPAIGN_SOURCES.includes(ref.source)) return 'invalidCampaignRef';
+  if (!VALID_ROOM_SYSTEM_IDS.includes(ref.systemId)) return 'invalidCampaignRef';
+  if (ref.systemId !== resolvedSystemId) return 'campaignSystemMismatch';
+  return null;
+}
+
 const ROOM_CODE_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
 /** Simple, low-stakes 6-char room code (scaffold only). */
@@ -46,6 +74,12 @@ function makeRoomCode(): string {
 export function createRoom(input: CreateRoomInput): CreateRoomResult {
   const now = new Date().toISOString();
   const systemId: RoomSystemId = input.systemId ?? 'dnd5e-2024';
+  // Defensive validation so a direct service call (test/future code) cannot
+  // bypass the HTTP handler and write an invalid campaignRef into a room.
+  const campaignRefError = validateCampaignRef(input.campaignRef, systemId);
+  if (campaignRefError) {
+    throw new Error(`createRoom: ${campaignRefError}`);
+  }
   // campaignRef.campaignId takes precedence; fall back to the legacy campaignId
   // input for backward compatibility.
   const campaignId = input.campaignRef?.campaignId ?? input.campaignId;

@@ -21,6 +21,8 @@ export type {
   RoomJoinApprovalMode,
   RoomLifecycleStatus,
   RoomSystemId,
+  RoomCampaignRef,
+  RoomCampaignRefSource,
 } from '../../src/lib/platform/roomTypes.js';
 
 export type { BackendDeploymentProfile } from '../../src/lib/platform/backendDeploymentTypes.js';

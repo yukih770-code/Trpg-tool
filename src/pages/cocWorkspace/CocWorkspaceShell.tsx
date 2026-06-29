@@ -618,7 +618,11 @@ export function CocWorkspaceShell({
           },
         );
         const host = room.members.find((m) => m.role === 'host');
-        setHostedRoomSession({ baseUrl, room, hostMemberId: host?.memberId ?? '' });
+        if (!host) {
+          setHostLaunchError('Room created but host member was not returned.');
+          return;
+        }
+        setHostedRoomSession({ baseUrl, room, hostMemberId: host.memberId });
       } catch (e) {
         setHostLaunchError(e instanceof Error ? e.message : String(e));
       }

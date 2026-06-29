@@ -15,7 +15,7 @@ import { createServer } from 'node:http';
 import express from 'express';
 
 import { createInMemoryRoomRegistry } from './room-registry.js';
-import { createRoom, type CreateRoomInput } from './services/createRoom.js';
+import { createRoom, validateCampaignRef, type CreateRoomInput } from './services/createRoom.js';
 import { joinRoom } from './services/joinRoom.js';
 import { approveMember } from './services/approveMember.js';
 import { rejectMember } from './services/rejectMember.js';
@@ -72,19 +72,12 @@ app.post('/rooms/create', (req, res) => {
     res.status(400).json({ error: 'hostDisplayName is required.' });
     return;
   }
-  // Optional campaign linkage (M19): if present, displayName must be non-empty
-  // and systemId must match the room's resolved system. NOT a permission check.
-  if (body.campaignRef) {
-    const ref = body.campaignRef;
-    if (typeof ref.displayName !== 'string' || ref.displayName.trim() === '') {
-      res.status(400).json({ error: 'invalidCampaignRef' });
-      return;
-    }
-    const effectiveSystemId = body.systemId ?? 'dnd5e-2024';
-    if (ref.systemId !== effectiveSystemId) {
-      res.status(400).json({ error: 'campaignSystemMismatch' });
-      return;
-    }
+  // Optional campaign linkage (M19 / M19.2): validate displayName, source enum,
+  // systemId enum, and system match. NOT a permission check.
+  const campaignRefError = validateCampaignRef(body.campaignRef, body.systemId ?? 'dnd5e-2024');
+  if (campaignRefError) {
+    res.status(400).json({ error: campaignRefError });
+    return;
   }
   const result = createRoom(body);
   registry.create(result.room);
