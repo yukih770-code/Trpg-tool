@@ -125,6 +125,55 @@ export interface RoomMemberPermissionSummary {
   canManageRuntimeState: boolean;
 }
 
+// ── Room Lobby pre-session state (M15) ──────────────────────────────────────
+//
+// Lightweight, pre-Runtime lobby state: a player submits an actor binding
+// SUMMARY (not a real RuntimeActor / CampaignActorInstance) and toggles a ready
+// flag. System-agnostic — no DND/COC/CP RED rule fields. This is intentionally
+// separate from the older `RoomActorBinding` (M2) contract above; the lobby
+// summary describes a pre-session draft, not a runtime actor instance.
+
+export type RoomLobbyActorBindingStatus =
+  | 'notSubmitted'
+  | 'pendingHostApproval'
+  | 'approved'
+  | 'rejected';
+
+export type RoomActorBindingSource = 'localActorVault' | 'manualScaffold' | 'imported' | 'unknown';
+
+/** A pre-session reference to whatever the player intends to play (any system). */
+export interface RoomActorRefSummary {
+  systemId: RoomSystemId;
+  actorId?: string;
+  displayName: string;
+  source: RoomActorBindingSource;
+}
+
+export interface RoomActorBindingSummary {
+  bindingId: string;
+  memberId: string;
+  actorRef: RoomActorRefSummary;
+  status: RoomLobbyActorBindingStatus;
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewerMemberId?: string;
+  rejectionReason?: string;
+}
+
+export type RoomReadyStatus = 'notReady' | 'ready';
+
+export interface RoomMemberReadyState {
+  memberId: string;
+  status: RoomReadyStatus;
+  updatedAt: string;
+}
+
+/** Pre-session lobby state. NOT Runtime — no map/log/combat/actor instances. */
+export interface RoomLobbyState {
+  actorBindings: RoomActorBindingSummary[];
+  readyStates: RoomMemberReadyState[];
+}
+
 /** Room state description — NOT RuntimeEncounterState (no map/log/combat here). */
 export interface RoomSnapshot {
   identity: RoomIdentity;
@@ -134,6 +183,8 @@ export interface RoomSnapshot {
   invites: RoomInviteDescriptor[];
   permissions?: RoomMemberPermissionSummary[];
   notes?: string[];
+  /** Room Lobby pre-session state (actor binding drafts + ready check). */
+  lobby?: RoomLobbyState;
 }
 
 export interface RoomJoinRequest {

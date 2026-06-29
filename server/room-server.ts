@@ -19,6 +19,10 @@ import { createRoom, type CreateRoomInput } from './services/createRoom.js';
 import { joinRoom } from './services/joinRoom.js';
 import { approveMember } from './services/approveMember.js';
 import { rejectMember } from './services/rejectMember.js';
+import { submitActorBinding } from './services/submitActorBinding.js';
+import { approveActorBinding } from './services/approveActorBinding.js';
+import { rejectActorBinding } from './services/rejectActorBinding.js';
+import { setMemberReady } from './services/setMemberReady.js';
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
 import { createRoomSocketServer } from './transport/roomSocketServer.js';
 import type { RoomJoinRequest } from './protocol/room-protocol.js';
@@ -127,6 +131,76 @@ app.post('/rooms/:roomId/members/:memberId/reject', (req, res) => {
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'memberRejected');
   }
   res.status(result.decision === 'roomNotFound' ? 404 : 200).json(result);
+});
+
+// ── Room Lobby: actor binding + ready check (M15 scaffold) ──────────────────
+// Pre-session lobby state only. Host approve/reject here are SCAFFOLD actions,
+// NOT a real permission system. No Runtime / actor instance creation.
+
+app.post('/rooms/:roomId/actor-bindings/submit', (req, res) => {
+  const body = (req.body ?? {}) as { memberId?: string; actorRef?: { systemId?: string; actorId?: string; displayName?: string; source?: unknown } };
+  if (typeof body.memberId !== 'string' || !body.actorRef || typeof body.actorRef.displayName !== 'string') {
+    res.status(400).json({ error: 'memberId and actorRef.displayName are required.' });
+    return;
+  }
+  const result = submitActorBinding(registry, {
+    roomId: req.params.roomId,
+    memberId: body.memberId,
+    actorRef: {
+      systemId: body.actorRef.systemId,
+      actorId: body.actorRef.actorId,
+      displayName: body.actorRef.displayName,
+      source: body.actorRef.source as never,
+    },
+  });
+  if (result.room) {
+    roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'actorBindingSubmitted');
+  }
+  res.status(result.decision === 'roomNotFound' ? 404 : result.decision === 'submitted' ? 200 : 400).json(result);
+});
+
+app.post('/rooms/:roomId/actor-bindings/:bindingId/approve', (req, res) => {
+  const body = (req.body ?? {}) as { reviewerMemberId?: string };
+  const result = approveActorBinding(registry, {
+    roomId: req.params.roomId,
+    bindingId: req.params.bindingId,
+    reviewerMemberId: body.reviewerMemberId,
+  });
+  if (result.room) {
+    roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'actorBindingApproved');
+  }
+  res.status(result.decision === 'roomNotFound' || result.decision === 'bindingNotFound' ? 404 : 200).json(result);
+});
+
+app.post('/rooms/:roomId/actor-bindings/:bindingId/reject', (req, res) => {
+  const body = (req.body ?? {}) as { reviewerMemberId?: string; rejectionReason?: string };
+  const result = rejectActorBinding(registry, {
+    roomId: req.params.roomId,
+    bindingId: req.params.bindingId,
+    reviewerMemberId: body.reviewerMemberId,
+    rejectionReason: body.rejectionReason,
+  });
+  if (result.room) {
+    roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'actorBindingRejected');
+  }
+  res.status(result.decision === 'roomNotFound' || result.decision === 'bindingNotFound' ? 404 : 200).json(result);
+});
+
+app.post('/rooms/:roomId/members/:memberId/ready', (req, res) => {
+  const body = (req.body ?? {}) as { ready?: unknown };
+  if (typeof body.ready !== 'boolean') {
+    res.status(400).json({ error: 'ready (boolean) is required.' });
+    return;
+  }
+  const result = setMemberReady(registry, {
+    roomId: req.params.roomId,
+    memberId: req.params.memberId,
+    ready: body.ready,
+  });
+  if (result.room) {
+    roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'memberReadyChanged');
+  }
+  res.status(result.decision === 'roomNotFound' || result.decision === 'memberNotFound' ? 404 : result.decision === 'updated' ? 200 : 400).json(result);
 });
 
 httpServer.listen(PORT, () => {

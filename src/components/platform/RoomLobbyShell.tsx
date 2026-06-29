@@ -1,21 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
+  approveActorBindingOnRoomServer,
   approveRoomMemberOnServer,
   getRoomServerRoom,
+  rejectActorBindingOnRoomServer,
   rejectRoomMemberOnServer,
+  setRoomMemberReadyOnServer,
+  submitActorBindingToRoomServer,
   RoomServerHttpError,
   type RoomServerHttpClientConfig,
 } from '../../lib/platform/roomServerHttpClient';
 import {
   createRoomSocketClient,
-  type RoomSocketClient,
   type RoomSocketConnectionState,
 } from '../../lib/platform/roomSocketClient';
 import type {
+  RoomActorBindingSource,
+  RoomLobbyActorBindingStatus,
   RoomMemberIdentity,
   RoomMemberRole,
   RoomMemberStatus,
+  RoomReadyStatus,
   RoomSnapshot,
 } from '../../lib/platform/roomTypes';
 
@@ -25,9 +31,11 @@ import type {
  * AI-LANDMARK: ROOM_LOBBY_SHELL_V0
  *
  * The screen a player/host lands on AFTER joining/creating a room: it subscribes
- * to the room over WebSocket and shows live room + member status. This is a LOBBY,
- * NOT Runtime — no actor binding, no ready check, no map/log/combat, no real
- * permission/auth. Host approve/reject are SCAFFOLD operations against the local
+ * to the room over WebSocket and shows live room + member status, plus pre-session
+ * actor-binding DRAFTS and a ready check. This is a LOBBY, NOT Runtime — the actor
+ * binding is a lightweight SUMMARY (no RuntimeActor / CampaignActorInstance), there
+ * is no map/log/combat/action intent, and no real permission/auth. Host
+ * approve/reject (members and bindings) are SCAFFOLD operations against the local
  * Room Server (the backend has no real auth yet). No global store, no
  * RuntimeCombatStore / RuntimeLogLocalStore. System-agnostic (uses systemId only).
  */
@@ -81,8 +89,38 @@ const CONN_TONE: Record<RoomSocketConnectionState, string> = {
   error: 'text-red-700',
 };
 
+const BINDING_LABEL: Record<RoomLobbyActorBindingStatus, string> = {
+  notSubmitted: '未提交',
+  pendingHostApproval: '等待审批',
+  approved: '已批准',
+  rejected: '已拒绝',
+};
+
+const BINDING_TONE: Record<RoomLobbyActorBindingStatus, string> = {
+  notSubmitted: 'bg-slate-500/10 text-slate-600',
+  pendingHostApproval: 'bg-amber-500/15 text-amber-700',
+  approved: 'bg-emerald-500/15 text-emerald-700',
+  rejected: 'bg-red-500/15 text-red-700',
+};
+
+const SOURCE_LABEL: Record<RoomActorBindingSource, string> = {
+  localActorVault: '本地角色库',
+  manualScaffold: '手动草稿',
+  imported: '导入',
+  unknown: '未知',
+};
+
+const READY_LABEL: Record<RoomReadyStatus, string> = {
+  ready: '已准备',
+  notReady: '未准备',
+};
+
 function shortId(id: string): string {
   return id.length <= 8 ? id : `…${id.slice(-6)}`;
+}
+
+function errMsg(e: unknown): string {
+  return e instanceof RoomServerHttpError ? `(${e.status}) ${e.message}` : e instanceof Error ? e.message : String(e);
 }
 
 export function RoomLobbyShell({
@@ -99,12 +137,22 @@ export function RoomLobbyShell({
   const [snapshotMeta, setSnapshotMeta] = useState<SnapshotMeta | null>(null);
   const [wsError, setWsError] = useState<string | null>(null);
   const [httpError, setHttpError] = useState<string | null>(null);
-  // Per-member host action state.
+  // Per-member host approval action state.
   const [pendingMemberId, setPendingMemberId] = useState<string | null>(null);
   const [memberActionError, setMemberActionError] = useState<string | null>(null);
+  // Actor binding draft form + submit state.
+  const [bindingName, setBindingName] = useState('');
+  const [bindingActorId, setBindingActorId] = useState('');
+  const [bindingBusy, setBindingBusy] = useState(false);
+  const [bindingError, setBindingError] = useState<string | null>(null);
+  // Host binding review (per-binding) state.
+  const [reviewBindingId, setReviewBindingId] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  // Ready toggle state.
+  const [readyBusy, setReadyBusy] = useState(false);
+  const [readyError, setReadyError] = useState<string | null>(null);
 
   const config = useMemo<RoomServerHttpClientConfig>(() => ({ baseUrl }), [baseUrl]);
-  const clientRef = useRef<RoomSocketClient | null>(null);
 
   // WebSocket: connect + subscribe to this room; clean up on unmount.
   useEffect(() => {
@@ -124,12 +172,10 @@ export function RoomLobbyShell({
         setWsError(`${message.code}: ${message.message}`);
       },
     });
-    clientRef.current = client;
     client.connect();
 
     return () => {
       client.close();
-      clientRef.current = null;
     };
   }, [baseUrl, roomId]);
 
@@ -184,26 +230,92 @@ export function RoomLobbyShell({
     return { host, active, pending, inactive };
   }, [members]);
 
+  // Lobby (pre-session) state derived from the room snapshot.
+  const actorBindings = room?.lobby?.actorBindings ?? [];
+  const readyStates = room?.lobby?.readyStates ?? [];
+  const iAmActive = currentMember?.status === 'active';
+  const myBinding = currentMemberId ? actorBindings.find((b) => b.memberId === currentMemberId) : undefined;
+  const myBindingStatus: RoomLobbyActorBindingStatus = myBinding?.status ?? 'notSubmitted';
+  const myReady: RoomReadyStatus =
+    (currentMemberId ? readyStates.find((r) => r.memberId === currentMemberId)?.status : undefined) ?? 'notReady';
+  const activeCount = members.filter((m) => m.status === 'active').length;
+  const approvedCount = actorBindings.filter((b) => b.status === 'approved').length;
+  const readyCount = readyStates.filter((r) => r.status === 'ready').length;
+  const memberName = (id: string) => members.find((m) => m.memberId === id)?.displayName ?? shortId(id);
+
+  // Authoritative updates arrive via the WS roomSnapshot broadcast. This HTTP
+  // refresh is only a fallback so the UI doesn't appear stuck if the socket is
+  // slow or a dev-mode message is dropped — it re-reads the SERVER snapshot
+  // (GET /rooms/:roomId); it never fabricates local state.
+  const refreshSnapshot = async () => {
+    try {
+      setRoom(await getRoomServerRoom(config, roomId));
+    } catch {
+      // non-fatal: WS broadcast remains the source of truth
+    }
+  };
+
   const runMemberAction = async (memberId: string, action: 'approve' | 'reject') => {
     setPendingMemberId(memberId);
     setMemberActionError(null);
     try {
       if (action === 'approve') await approveRoomMemberOnServer(config, roomId, memberId);
       else await rejectRoomMemberOnServer(config, roomId, memberId);
-      // Prefer the WS roomSnapshot for the update; refresh HTTP as a fallback in
-      // case the socket is slow/closed.
-      try {
-        const snapshot = await getRoomServerRoom(config, roomId);
-        setRoom(snapshot);
-      } catch {
-        // non-fatal: WS broadcast should still update us
-      }
+      await refreshSnapshot();
     } catch (e) {
-      setMemberActionError(
-        e instanceof RoomServerHttpError ? `(${e.status}) ${e.message}` : e instanceof Error ? e.message : String(e),
-      );
+      setMemberActionError(errMsg(e));
     } finally {
       setPendingMemberId(null);
+    }
+  };
+
+  const submitBinding = async () => {
+    if (!currentMemberId) return;
+    setBindingBusy(true);
+    setBindingError(null);
+    try {
+      await submitActorBindingToRoomServer(config, roomId, {
+        memberId: currentMemberId,
+        actorRef: {
+          displayName: bindingName.trim(),
+          actorId: bindingActorId.trim() || undefined,
+          systemId: room?.identity.systemId,
+          source: 'manualScaffold',
+        },
+      });
+      await refreshSnapshot();
+    } catch (e) {
+      setBindingError(errMsg(e));
+    } finally {
+      setBindingBusy(false);
+    }
+  };
+
+  const reviewBinding = async (bindingId: string, action: 'approve' | 'reject') => {
+    setReviewBindingId(bindingId);
+    setReviewError(null);
+    try {
+      if (action === 'approve') await approveActorBindingOnRoomServer(config, roomId, bindingId, currentMemberId);
+      else await rejectActorBindingOnRoomServer(config, roomId, bindingId, currentMemberId);
+      await refreshSnapshot();
+    } catch (e) {
+      setReviewError(errMsg(e));
+    } finally {
+      setReviewBindingId(null);
+    }
+  };
+
+  const toggleReady = async (ready: boolean) => {
+    if (!currentMemberId) return;
+    setReadyBusy(true);
+    setReadyError(null);
+    try {
+      await setRoomMemberReadyOnServer(config, roomId, currentMemberId, ready);
+      await refreshSnapshot();
+    } catch (e) {
+      setReadyError(errMsg(e));
+    } finally {
+      setReadyBusy(false);
     }
   };
 
@@ -212,6 +324,8 @@ export function RoomLobbyShell({
   const card = 'rounded border border-slate-400/30 bg-white/60 p-3';
   const label = 'text-[11px] font-bold uppercase tracking-wide text-slate-600';
   const btn = 'rounded border border-slate-500/40 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide disabled:opacity-40';
+  const input = 'rounded border border-slate-400/40 bg-white/70 px-2 py-1 text-[12px] outline-none';
+  const reviewBtn = 'rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide disabled:opacity-40';
 
   return (
     <div className="space-y-4 rounded-lg border border-slate-400/30 bg-slate-50/60 p-4 text-[12px] text-slate-700">
@@ -219,7 +333,7 @@ export function RoomLobbyShell({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-sm font-black text-slate-800">战役房间大厅 · Room Lobby</div>
-          <div className="text-[10px] text-slate-500">这是房间大厅，不是正式跑团桌面（Runtime）。角色绑定 / 准备状态 / 进入正式跑团桌面是后续功能。</div>
+          <div className="text-[10px] text-slate-500">这是房间大厅，不是正式跑团桌面（Runtime）。角色绑定 / 准备状态为大厅草稿阶段；进入正式跑团桌面是后续功能。</div>
         </div>
         {onLeaveLobby && (
           <button type="button" className={btn} onClick={onLeaveLobby}>返回加入战役</button>
@@ -294,6 +408,153 @@ export function RoomLobbyShell({
         {members.length === 0 && <div className="text-[11px] italic text-slate-500">暂无成员信息。</div>}
       </section>
 
+      {/* Actor binding (pre-session draft) */}
+      <section className={card}>
+        <div className={`mb-1.5 ${label}`}>角色绑定</div>
+        <p className="mb-2 text-[10px] text-slate-500">
+          这是角色绑定草稿，不是正式角色导入。后续会连接真实角色库与角色安检。当前系统：{identity?.systemId ?? '—'}（角色 / 调查员 / Solo / Actor）。
+        </p>
+
+        <div className="mb-2 text-[11px]">
+          {myBindingStatus === 'notSubmitted' && <span className="font-bold text-slate-600">未提交角色。</span>}
+          {myBindingStatus === 'pendingHostApproval' && <span className="font-bold text-amber-700">已提交角色草稿，等待 Host 审批。</span>}
+          {myBindingStatus === 'approved' && <span className="font-bold text-emerald-700">角色绑定草稿已批准。</span>}
+          {myBindingStatus === 'rejected' && (
+            <span className="font-bold text-red-700">
+              角色绑定被拒绝{myBinding?.rejectionReason ? `：${myBinding.rejectionReason}` : ''}。可修改后重新提交。
+            </span>
+          )}
+          {myBinding && (
+            <span className="ml-2 text-[10px] text-slate-500">
+              当前：{myBinding.actorRef.displayName}{myBinding.actorRef.actorId ? ` · ${myBinding.actorRef.actorId}` : ''}
+            </span>
+          )}
+        </div>
+
+        {iAmActive ? (
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="flex flex-col gap-0.5 text-[10px] text-slate-500">角色显示名
+              <input className={input} value={bindingName} onChange={(e) => setBindingName(e.target.value)} placeholder="例如 Elaria / 调查员 / Solo" />
+            </label>
+            <label className="flex flex-col gap-0.5 text-[10px] text-slate-500">角色 ID（可选）
+              <input className={input} value={bindingActorId} onChange={(e) => setBindingActorId(e.target.value)} placeholder="可留空" />
+            </label>
+            <button type="button" className={btn} disabled={bindingBusy || !bindingName.trim()} onClick={submitBinding}>
+              {bindingBusy ? '提交中…' : myBinding ? '更新角色绑定草稿' : '提交角色绑定草稿'}
+            </button>
+          </div>
+        ) : (
+          <p className="text-[10px] italic text-slate-500">成为在线成员后才能提交角色绑定草稿。</p>
+        )}
+        {bindingError && <div className="mt-1 text-[10px] font-bold text-red-700">提交失败：{bindingError}</div>}
+      </section>
+
+      {/* Host: actor binding review (scaffold) */}
+      {isHostScaffold && (
+        <section className={card}>
+          <div className={`mb-1.5 ${label}`}>角色绑定审批（主持人）</div>
+          <p className="mb-2 text-[10px] text-amber-700">
+            主持人审批为本地 Room Server / scaffold 阶段操作，不是正式权限系统。批准不会创建正式角色实例或写回角色库。
+          </p>
+          {actorBindings.length === 0 ? (
+            <p className="text-[11px] italic text-slate-500">暂无角色绑定提交。</p>
+          ) : (
+            <div className="space-y-1">
+              {actorBindings.map((b) => (
+                <div key={b.bindingId} className="flex flex-wrap items-center gap-2 rounded border border-slate-300/40 bg-white/70 px-2 py-1 text-[11px]">
+                  <span className="font-bold text-slate-800">{memberName(b.memberId)}</span>
+                  <span className="text-slate-600">→ {b.actorRef.displayName}</span>
+                  {b.actorRef.actorId && <span className="text-[9px] text-slate-400">{b.actorRef.actorId}</span>}
+                  <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{b.actorRef.systemId}</span>
+                  <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{SOURCE_LABEL[b.actorRef.source]}</span>
+                  <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${BINDING_TONE[b.status]}`}>{BINDING_LABEL[b.status]}</span>
+                  <span className="text-[9px] text-slate-400">{b.submittedAt}</span>
+                  {b.status === 'pendingHostApproval' && (
+                    <span className="ml-auto flex items-center gap-1">
+                      <button
+                        type="button"
+                        className={`${reviewBtn} border-emerald-500/50 text-emerald-700`}
+                        disabled={reviewBindingId === b.bindingId}
+                        onClick={() => reviewBinding(b.bindingId, 'approve')}
+                      >
+                        {reviewBindingId === b.bindingId ? '处理中…' : '批准'}
+                      </button>
+                      <button
+                        type="button"
+                        className={`${reviewBtn} border-red-500/50 text-red-700`}
+                        disabled={reviewBindingId === b.bindingId}
+                        onClick={() => reviewBinding(b.bindingId, 'reject')}
+                      >
+                        拒绝
+                      </button>
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {reviewError && <div className="mt-1 text-[10px] font-bold text-red-700">操作失败：{reviewError}</div>}
+        </section>
+      )}
+
+      {/* Ready check */}
+      <section className={card}>
+        <div className={`mb-1.5 ${label}`}>准备状态</div>
+        {iAmActive ? (
+          myBindingStatus === 'approved' ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`text-[11px] font-bold ${myReady === 'ready' ? 'text-emerald-700' : 'text-slate-600'}`}>
+                {myReady === 'ready' ? '我已准备。' : '尚未准备。'}
+              </span>
+              <button
+                type="button"
+                className={btn}
+                disabled={readyBusy}
+                onClick={() => toggleReady(myReady !== 'ready')}
+              >
+                {readyBusy ? '处理中…' : myReady === 'ready' ? '取消准备' : '我已准备'}
+              </button>
+            </div>
+          ) : (
+            <p className="text-[11px] italic text-slate-500">请先提交角色并等待 Host 批准，之后才能准备。</p>
+          )
+        ) : (
+          <p className="text-[11px] italic text-slate-500">成为在线成员后才能设置准备状态。</p>
+        )}
+        {readyError && <div className="mt-1 text-[10px] font-bold text-red-700">操作失败：{readyError}</div>}
+        <div className="mt-2 text-[10px] text-slate-500">下一步：进入正式 Runtime 桌面（后续）。</div>
+      </section>
+
+      {/* Host: ready overview (scaffold) */}
+      {isHostScaffold && (
+        <section className={card}>
+          <div className={`mb-1.5 ${label}`}>准备概览（主持人）</div>
+          <div className="mb-2 flex flex-wrap gap-4 text-[11px]">
+            <span>在线成员 <b className="text-slate-800">{activeCount}</b></span>
+            <span>已批准角色 <b className="text-slate-800">{approvedCount}</b></span>
+            <span>已准备 <b className="text-slate-800">{readyCount}</b></span>
+          </div>
+          {groups.active.length > 0 && (
+            <div className="space-y-1">
+              {groups.active.map((m) => {
+                const b = actorBindings.find((x) => x.memberId === m.memberId);
+                const r = readyStates.find((x) => x.memberId === m.memberId)?.status ?? 'notReady';
+                const cell = b?.status === 'approved' ? READY_LABEL[r] : '无已批准角色';
+                const tone = b?.status === 'approved' ? (r === 'ready' ? 'text-emerald-700' : 'text-slate-600') : 'text-amber-700';
+                return (
+                  <div key={m.memberId} className="flex items-center gap-2 text-[11px]">
+                    <span className="font-bold text-slate-800">{m.displayName}</span>
+                    <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{ROLE_LABEL[m.role]}</span>
+                    <span className={`ml-auto font-bold ${tone}`}>{cell}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <div className="mt-2 text-[10px] text-slate-500">下一步：进入正式 Runtime 桌面（后续）。</div>
+        </section>
+      )}
+
       {/* Host scaffold note */}
       {isHostScaffold && (
         <div className="rounded border border-amber-500/30 bg-amber-50/50 px-2 py-1.5 text-[10px] text-amber-700">
@@ -302,7 +563,7 @@ export function RoomLobbyShell({
         </div>
       )}
 
-      <p className="text-[10px] italic text-slate-400">Room Lobby · 未进入 Runtime · 未绑定角色 · 未实现准备状态 / 地图 / 战斗日志。</p>
+      <p className="text-[10px] italic text-slate-400">Room Lobby · 未进入 Runtime · 角色绑定 / 准备为大厅草稿（非正式角色实例）· 未实现地图 / 战斗日志 / action intent。</p>
     </div>
   );
 }

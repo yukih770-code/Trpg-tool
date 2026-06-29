@@ -131,3 +131,59 @@ export async function rejectRoomMemberOnServer(
     body: JSON.stringify({ reason }),
   });
 }
+
+// ── Room Lobby: actor binding + ready check (M15) ───────────────────────────
+// Pre-session lobby mutations. Updates arrive via the WS roomSnapshot broadcast;
+// these return the service result and do not require the UI to read the room.
+
+/** Submit a lightweight pre-session actor binding SUMMARY (not a real actor). */
+export async function submitActorBindingToRoomServer(
+  config: RoomServerHttpClientConfig,
+  roomId: string,
+  input: { memberId: string; actorRef: { systemId?: string; actorId?: string; displayName: string; source?: string } },
+): Promise<unknown> {
+  return request<unknown>(config, `/rooms/${encodeURIComponent(roomId)}/actor-bindings/submit`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+/** Host scaffold approval of an actor binding (NOT a real permission system). */
+export async function approveActorBindingOnRoomServer(
+  config: RoomServerHttpClientConfig,
+  roomId: string,
+  bindingId: string,
+  reviewerMemberId?: string,
+): Promise<unknown> {
+  return request<unknown>(config, `/rooms/${encodeURIComponent(roomId)}/actor-bindings/${encodeURIComponent(bindingId)}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ reviewerMemberId }),
+  });
+}
+
+/** Host scaffold rejection of an actor binding (NOT a real permission system). */
+export async function rejectActorBindingOnRoomServer(
+  config: RoomServerHttpClientConfig,
+  roomId: string,
+  bindingId: string,
+  reviewerMemberId?: string,
+  rejectionReason?: string,
+): Promise<unknown> {
+  return request<unknown>(config, `/rooms/${encodeURIComponent(roomId)}/actor-bindings/${encodeURIComponent(bindingId)}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ reviewerMemberId, rejectionReason }),
+  });
+}
+
+/** Toggle a member's pre-session ready flag. */
+export async function setRoomMemberReadyOnServer(
+  config: RoomServerHttpClientConfig,
+  roomId: string,
+  memberId: string,
+  ready: boolean,
+): Promise<unknown> {
+  return request<unknown>(config, `/rooms/${encodeURIComponent(roomId)}/members/${encodeURIComponent(memberId)}/ready`, {
+    method: 'POST',
+    body: JSON.stringify({ ready }),
+  });
+}

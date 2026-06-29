@@ -69,6 +69,10 @@ export type RoomSocketRoomSnapshotReason =
   | 'memberJoined'
   | 'memberApproved'
   | 'memberRejected'
+  | 'actorBindingSubmitted'
+  | 'actorBindingApproved'
+  | 'actorBindingRejected'
+  | 'memberReadyChanged'
   | 'manualBroadcast';
 
 export interface RoomSocketRoomSnapshotMessage extends RoomSocketEnvelopeBase {
