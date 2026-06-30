@@ -9,6 +9,7 @@ import { useRuntimeLogEventsForCampaign } from '../../lib/platform/runtimeLogRep
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { DndRuntimeCombatDevPanel } from './DndRuntimeCombatDevPanel';
 import { RuntimeSlotShell } from './RuntimeSlotShell';
+import { RuntimeFullscreenShell, type RuntimeShellMode } from './RuntimeFullscreenShell';
 
 type CampaignRuntimeTone = 'dnd' | 'coc' | 'cp';
 
@@ -388,143 +389,115 @@ export function CampaignRuntimeShell({
     </div>
   );
 
-  return (
-    <section className={`min-h-[calc(100vh-8rem)] rounded-lg border p-4 shadow-sm md:p-5 ${theme.wrapper} ${theme.border}`}>
-      <header className={`rounded-lg border p-4 ${theme.panel}`}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex min-w-0 items-start gap-3">
-            {/* Duplicate runtime back arrow removed; page-level/global back arrow is the single back entry. */}
-            <div className="min-w-0">
-              <div className={`text-[10px] font-bold uppercase tracking-[0.22em] ${theme.muted}`}>
-                {t('campaignRuntime.eyebrow')}
-              </div>
-              <h2 className={`mt-1 break-words text-2xl font-bold ${theme.accent}`}>
-                {context.campaignTitle}
-                {context.campaignRoomCode ? ` #${context.campaignRoomCode}` : ''}
-              </h2>
-            </div>
-          </div>
-          <span className={`border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${theme.badge}`}>
-            {t('campaignRuntime.header.connectionPlaceholder')}
-          </span>
+  const shellMode: RuntimeShellMode = isHost ? 'host' : 'player';
+
+  const actorRail = (
+    <div className="space-y-2">
+      <div className={`rounded border p-2 ${theme.card}`}>
+        <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>{t('campaignRuntime.header.actor')}</div>
+        <div className={`mt-0.5 text-sm font-bold ${theme.accent}`}>{currentActor}</div>
+      </div>
+      {participantItems.map(([labelKey, value]) => (
+        <div key={labelKey} className={`rounded border p-2 text-xs ${theme.card}`}>
+          <div className={`font-bold ${theme.muted}`}>{t(labelKey)}</div>
+          <div className="mt-1 font-semibold">{value}</div>
         </div>
+      ))}
+    </div>
+  );
 
-        <dl className="mt-4 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2 lg:grid-cols-5">
-          {[
-            [t('campaignRuntime.header.system'), context.systemId],
-            [t('campaignRuntime.header.roomCode'), context.campaignRoomCode ?? '-'],
-            [t('campaignRuntime.header.role'), t(isHost ? 'campaignRuntime.role.host' : 'campaignRuntime.role.player')],
-            [t('campaignRuntime.header.actor'), currentActor],
-            [t('campaignRuntime.header.source'), t('campaignRuntime.header.sourceCampaignEntry')],
-          ].map(([label, value]) => (
-            <div key={label} className="min-w-0">
-              <dt className={`font-bold uppercase tracking-wider ${theme.muted}`}>{label}</dt>
-              <dd className="mt-1 break-words font-semibold">{value}</dd>
-            </div>
-          ))}
-        </dl>
-      </header>
-
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[14rem_minmax(0,1fr)_18rem]">
-        <aside className={`rounded-lg border p-4 ${theme.panel}`}>
-          <h3 className={`text-sm font-bold ${theme.accent}`}>{t('campaignRuntime.participants.title')}</h3>
-          <div className="mt-3 flex flex-col gap-2">
-            {participantItems.map(([labelKey, value]) => (
-              <div key={labelKey} className={`rounded border p-2 text-xs ${theme.card}`}>
-                <div className={`font-bold ${theme.muted}`}>{t(labelKey)}</div>
-                <div className="mt-1 font-semibold">{value}</div>
-              </div>
-            ))}
-          </div>
-        </aside>
-
-        <main className={`rounded-lg border p-4 ${theme.panel}`}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <h3 className={`text-lg font-bold ${theme.accent}`}>{t('campaignRuntime.mainStage.title')}</h3>
-              <p className={`mt-1 text-xs leading-relaxed ${theme.muted}`}>
-                {t('campaignRuntime.mainStage.note')}
-              </p>
-            </div>
-            <span className={`border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${theme.badge}`}>
-              {t('campaignRuntime.status.shellOnly')}
-            </span>
-          </div>
-          <div className={`mt-4 min-h-64 rounded-lg border p-4 ${theme.card}`}>
-            {renderPlaceholderList(mainStageItems)}
-          </div>
-        </main>
-
-        <aside className={`rounded-lg border p-4 ${theme.panel}`}>
-          <h3 className={`text-sm font-bold ${theme.accent}`}>
-            {t(isHost ? 'campaignRuntime.host.title' : 'campaignRuntime.player.title')}
-          </h3>
-          <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
-            {t(isHost ? 'campaignRuntime.host.note' : 'campaignRuntime.player.note')}
-          </p>
-
-          {isHost ? (
-            <div className="mt-4 space-y-4">
-              <section>
-                <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>
-                  {t('campaignRuntime.host.consoleTitle')}
-                </h4>
-                <div className="mt-2">{renderPlaceholderList(hostConsoleItems)}</div>
-              </section>
-              <section>
-                <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>
-                  {t('campaignRuntime.sidePanel.publicInfo')}
-                </h4>
-                <div className="mt-2">{renderPlaceholderList(publicSidePanelItems)}</div>
-              </section>
-            </div>
-          ) : (
-            <div className="mt-4 space-y-4">
-              <section>
-                <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>
-                  {t('campaignRuntime.player.publicViewTitle')}
-                </h4>
-                <div className="mt-2">{renderPlaceholderList(playerPanelItems)}</div>
-              </section>
-              <section className={`rounded border p-3 ${theme.card}`}>
-                <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>
-                  {t('campaignRuntime.host.lockedHostTools')}
-                </h4>
-                <p className={`mt-1 text-xs leading-relaxed ${theme.muted}`}>
-                  {t('campaignRuntime.player.hostToolsLockedNote')}
-                </p>
-                <div className="mt-2">{renderPlaceholderList(playerLockedHostItems)}</div>
-              </section>
-            </div>
-          )}
-        </aside>
+  const mainStage = (
+    // Map / Scene canvas fills the whole stage; scene items are light centered chips
+    // (no full-width banner), so nothing compresses the tabletop.
+    <div className={`flex h-full flex-col items-center justify-center rounded-lg border p-4 text-center ${theme.card}`}>
+      <div className={`text-base font-bold ${theme.accent}`}>地图 / 场景桌面 · Map / Scene Canvas</div>
+      <p className={`mx-auto mt-2 max-w-md text-[11px] leading-relaxed ${theme.muted}`}>{t('campaignRuntime.mainStage.note')}</p>
+      <div className="mt-3 flex max-w-xl flex-wrap justify-center gap-1.5">
+        {mainStageItems.map((key) => (
+          <span key={key} className={`cursor-default rounded-full border px-2 py-0.5 text-[10px] font-bold opacity-70 ${theme.action}`}>
+            {t(key)}
+          </span>
+        ))}
       </div>
+    </div>
+  );
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <section className={`rounded-lg border p-4 ${theme.panel}`}>
-          <h3 className={`text-sm font-bold ${theme.accent}`}>{t('campaignRuntime.log.title')}</h3>
-          <p className={`mt-1 text-xs ${theme.muted}`}>{t('campaignRuntime.log.note')}</p>
-          {renderRuntimeLogPanel()}
-        </section>
+  const inspector = (
+    <div className="space-y-3">
+      <p className={`text-xs leading-relaxed ${theme.muted}`}>
+        {t(isHost ? 'campaignRuntime.host.note' : 'campaignRuntime.player.note')}
+      </p>
+      {isHost ? (
+        <div className="space-y-4">
+          <section>
+            <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>{t('campaignRuntime.host.consoleTitle')}</h4>
+            <div className="mt-2">{renderPlaceholderList(hostConsoleItems)}</div>
+          </section>
+          <section>
+            <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>{t('campaignRuntime.sidePanel.publicInfo')}</h4>
+            <div className="mt-2">{renderPlaceholderList(publicSidePanelItems)}</div>
+          </section>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <section>
+            <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>{t('campaignRuntime.player.publicViewTitle')}</h4>
+            <div className="mt-2">{renderPlaceholderList(playerPanelItems)}</div>
+          </section>
+          <section className={`rounded border p-3 ${theme.card}`}>
+            <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>{t('campaignRuntime.host.lockedHostTools')}</h4>
+            <p className={`mt-1 text-xs leading-relaxed ${theme.muted}`}>{t('campaignRuntime.player.hostToolsLockedNote')}</p>
+            <div className="mt-2">{renderPlaceholderList(playerLockedHostItems)}</div>
+          </section>
+        </div>
+      )}
+      {tone === 'dnd' && isHost && (
+        <RuntimeSlotShell
+          mode="tacticalMap"
+          role="host"
+          tone={tone}
+          title="Runtime Layout Shell Preview"
+          slotContent={{ devPanel: <DndRuntimeCombatDevPanel /> }}
+        />
+      )}
+    </div>
+  );
 
-        <section className={`rounded-lg border p-4 ${theme.panel}`}>
-          <h3 className={`text-sm font-bold ${theme.accent}`}>{t('campaignRuntime.actions.title')}</h3>
-          <p className={`mt-1 text-xs ${theme.muted}`}>
-            {t(isHost ? 'campaignRuntime.actions.hostNote' : 'campaignRuntime.actions.playerNote')}
-          </p>
-          <div className="mt-3">{renderPlaceholderList(isHost ? hostActionDockItems : playerActionDockItems)}</div>
-          {tone === 'dnd' && isHost && (
-            <RuntimeSlotShell
-              mode="tacticalMap"
-              role="host"
-              tone={tone}
-              title="Runtime Layout Shell Preview"
-              slotContent={{ devPanel: <DndRuntimeCombatDevPanel /> }}
-            />
-          )}
-        </section>
-      </div>
-    </section>
+  const actionDock = (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className={`text-[10px] font-bold uppercase tracking-wide ${theme.muted}`}>{t('campaignRuntime.actions.title')}</span>
+      {(isHost ? hostActionDockItems : playerActionDockItems).map((key) => (
+        <button key={key} type="button" disabled className={`cursor-default border px-2 py-1 text-[10px] font-bold opacity-70 ${theme.action}`}>
+          {t(key)}
+        </button>
+      ))}
+    </div>
+  );
+
+  const logDrawer = (
+    <div>
+      <div className={`text-sm font-bold ${theme.accent}`}>{t('campaignRuntime.log.title')}</div>
+      <p className={`mt-1 text-xs ${theme.muted}`}>{t('campaignRuntime.log.note')}</p>
+      {renderRuntimeLogPanel()}
+    </div>
+  );
+
+  return (
+    <RuntimeFullscreenShell
+      title={context.campaignTitle}
+      systemId={context.systemId}
+      mode={shellMode}
+      tone={tone}
+      roomCode={context.campaignRoomCode}
+      connectionLabel={t('campaignRuntime.header.connectionPlaceholder')}
+      onExit={onExitRuntime}
+      exitLabel="返回战役"
+      mainStage={mainStage}
+      actorRail={actorRail}
+      inspector={inspector}
+      actionDock={actionDock}
+      logDrawer={logDrawer}
+    />
   );
 }
 
