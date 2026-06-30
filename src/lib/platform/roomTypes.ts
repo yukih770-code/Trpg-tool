@@ -11,9 +11,12 @@
  *
  * Continues the principle: LAN is a deployment target, not a different
  * architecture. `host` is a ROOM role; authoritative state always belongs to the
- * Room Server even when the host runs it on a LAN computer. This module imports
- * nothing and stays platform-neutral (no DND/COC/CP RED rules).
+ * Room Server even when the host runs it on a LAN computer. This module is
+ * platform-neutral (no DND/COC/CP RED rules) and has only a single type-only
+ * import: ActorSnapshotHash, used by the OPTIONAL clearance summary (M24.2a).
  */
+
+import type { ActorSnapshotHash } from './characterClearanceTypes';
 
 export type RoomMemberRole = 'host' | 'player' | 'spectator';
 
@@ -149,15 +152,44 @@ export interface RoomActorRefSummary {
   source: RoomActorBindingSource;
 }
 
+// ── Clearance summary (M24.2a, OPTIONAL future layer) ───────────────────────
+//
+// IMPORTANT: this is a SEPARATE layer from `status: RoomLobbyActorBindingStatus`.
+// `RoomActorBinding` remains the v0 LOBBY BINDING DRAFT — i.e. "did the player
+// submit an actor reference, and did the host accept that draft?". Character
+// Clearance / admission (whether a specific actor snapshot passed the campaign's
+// rules) is a different concern carried here. The two statuses must NOT be merged,
+// and the existing binding.status enum is unchanged. Nothing currently populates
+// `clearance` — server / RoomLobby are not required to provide it yet.
+
+export type RoomActorBindingClearanceStatus =
+  | 'notSubmitted'
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'stale';
+
+export interface RoomActorBindingClearanceSummary {
+  admissionId?: string;
+  status: RoomActorBindingClearanceStatus;
+  snapshotId?: string;
+  snapshotHash?: ActorSnapshotHash;
+  inspectionResultId?: string;
+  updatedAt: string;
+}
+
 export interface RoomActorBindingSummary {
   bindingId: string;
   memberId: string;
   actorRef: RoomActorRefSummary;
+  /** Lobby binding-draft status (unchanged). NOT the clearance status. */
   status: RoomLobbyActorBindingStatus;
   submittedAt: string;
   reviewedAt?: string;
   reviewerMemberId?: string;
   rejectionReason?: string;
+  /** Optional future clearance/admission layer (M24.2a). Separate from `status`. */
+  clearance?: RoomActorBindingClearanceSummary;
 }
 
 export type RoomReadyStatus = 'notReady' | 'ready';

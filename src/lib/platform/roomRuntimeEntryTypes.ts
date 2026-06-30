@@ -33,6 +33,12 @@ export interface RoomRuntimeEntryContext {
   entryMode: RoomRuntimeEntryMode;
   /** Optional read-only campaign linkage carried from the room snapshot. */
   campaignRef?: RoomCampaignRef;
+  /**
+   * Optional actor admission id (M24.2a). A future clearance-aware runtime entry
+   * will carry the admission that cleared this actor. Optional — the current entry
+   * guard does not produce or require it, and existing callers need not pass it.
+   */
+  admissionId?: string;
   /** serverSeq of the snapshot the entry was computed from (provenance only). */
   serverSeqAtEntry?: number;
 }
