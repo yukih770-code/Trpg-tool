@@ -16,6 +16,7 @@ import {
   type RoomSocketConnectionState,
 } from '../../lib/platform/roomSocketClient';
 import type {
+  RoomActorBindingClearanceStatus,
   RoomActorBindingSource,
   RoomCampaignRefSource,
   RoomLobbyActorBindingStatus,
@@ -148,10 +149,37 @@ const ENTRY_BLOCKED_LABEL: Record<RoomRuntimeEntryBlockedReason, string> = {
   memberNotActive: '需先成为在线成员（被主持人批准）。',
   actorBindingMissing: '请先提交角色绑定草稿。',
   actorBindingNotApproved: '角色绑定等待主持人批准。',
+  actorNotAdmitted: '角色尚未通过准入。',
+  actorAdmissionRejected: '角色准入已被拒绝。',
+  actorAdmissionStale: '角色准入已过期，需要重新提交。',
   memberNotReady: '请先点击「我已准备」。',
   spectatorPreviewOnly: '旁观仅可进入只读预览。',
   unknown: '暂不可进入跑团桌面预览。',
 };
+
+const CLEARANCE_LABEL: Record<RoomActorBindingClearanceStatus, string> = {
+  notSubmitted: '未准入',
+  pending: '等待准入',
+  approved: '已准入',
+  rejected: '准入已拒绝',
+  stale: '准入已过期',
+};
+
+const CLEARANCE_TONE: Record<RoomActorBindingClearanceStatus, string> = {
+  notSubmitted: 'bg-slate-500/10 text-slate-600',
+  pending: 'bg-amber-500/15 text-amber-700',
+  approved: 'bg-emerald-500/15 text-emerald-700',
+  rejected: 'bg-red-500/15 text-red-700',
+  stale: 'bg-orange-500/15 text-orange-700',
+};
+
+/** Small badge for a binding's clearance summary (undefined = not yet wired). */
+function ClearanceBadge({ status }: { status?: RoomActorBindingClearanceStatus }) {
+  if (!status) {
+    return <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">未接入准入</span>;
+  }
+  return <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${CLEARANCE_TONE[status]}`}>{CLEARANCE_LABEL[status]}</span>;
+}
 
 function shortId(id: string): string {
   return id.length <= 8 ? id : `…${id.slice(-6)}`;
@@ -292,6 +320,7 @@ export function RoomLobbyShell({
   const iAmActive = currentMember?.status === 'active';
   const myBinding = currentMemberId ? actorBindings.find((b) => b.memberId === currentMemberId) : undefined;
   const myBindingStatus: RoomLobbyActorBindingStatus = myBinding?.status ?? 'notSubmitted';
+  const myClearanceStatus = myBinding?.clearance?.status;
   const myReady: RoomReadyStatus =
     (currentMemberId ? readyStates.find((r) => r.memberId === currentMemberId)?.status : undefined) ?? 'notReady';
   const activeCount = members.filter((m) => m.status === 'active').length;
@@ -320,6 +349,7 @@ export function RoomLobbyShell({
       currentMemberId,
       currentRole: currentMember.role,
       approvedActorBindingId: entryEligibility.approvedActorBindingId,
+      admissionId: entryEligibility.admissionId,
       actorRef: entryEligibility.actorRef,
       readyState: entryEligibility.readyState,
       entryMode: entryEligibility.entryMode,
@@ -545,6 +575,7 @@ export function RoomLobbyShell({
               当前：{myBinding.actorRef.displayName}{myBinding.actorRef.actorId ? ` · ${myBinding.actorRef.actorId}` : ''}
             </span>
           )}
+          {myBinding && <span className="ml-2 inline-flex"><ClearanceBadge status={myClearanceStatus} /></span>}
         </div>
 
         {iAmActive ? (
@@ -584,6 +615,7 @@ export function RoomLobbyShell({
                   <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{b.actorRef.systemId}</span>
                   <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{SOURCE_LABEL[b.actorRef.source]}</span>
                   <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${BINDING_TONE[b.status]}`}>{BINDING_LABEL[b.status]}</span>
+                  <ClearanceBadge status={b.clearance?.status} />
                   <span className="text-[9px] text-slate-400">{b.submittedAt}</span>
                   {b.status === 'pendingHostApproval' && (
                     <span className="ml-auto flex items-center gap-1">
@@ -593,7 +625,7 @@ export function RoomLobbyShell({
                         disabled={reviewBindingId === b.bindingId}
                         onClick={() => reviewBinding(b.bindingId, 'approve')}
                       >
-                        {reviewBindingId === b.bindingId ? '处理中…' : '批准'}
+                        {reviewBindingId === b.bindingId ? '处理中…' : '安检并批准'}
                       </button>
                       <button
                         type="button"
@@ -618,19 +650,23 @@ export function RoomLobbyShell({
         <div className={`mb-1.5 ${label}`}>准备状态</div>
         {iAmActive ? (
           myBindingStatus === 'approved' ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`text-[11px] font-bold ${myReady === 'ready' ? 'text-emerald-700' : 'text-slate-600'}`}>
-                {myReady === 'ready' ? '我已准备。' : '尚未准备。'}
-              </span>
-              <button
-                type="button"
-                className={btn}
-                disabled={readyBusy}
-                onClick={() => toggleReady(myReady !== 'ready')}
-              >
-                {readyBusy ? '处理中…' : myReady === 'ready' ? '取消准备' : '我已准备'}
-              </button>
-            </div>
+            myClearanceStatus === 'approved' ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`text-[11px] font-bold ${myReady === 'ready' ? 'text-emerald-700' : 'text-slate-600'}`}>
+                  {myReady === 'ready' ? '我已准备。' : '尚未准备。'}
+                </span>
+                <button
+                  type="button"
+                  className={btn}
+                  disabled={readyBusy}
+                  onClick={() => toggleReady(myReady !== 'ready')}
+                >
+                  {readyBusy ? '处理中…' : myReady === 'ready' ? '取消准备' : '我已准备'}
+                </button>
+              </div>
+            ) : (
+              <p className="text-[11px] italic text-amber-700">角色尚未通过准入，暂不能准备。</p>
+            )
           ) : (
             <p className="text-[11px] italic text-slate-500">请先提交角色并等待 Host 批准，之后才能准备。</p>
           )

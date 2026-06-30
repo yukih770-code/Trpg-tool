@@ -127,7 +127,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         <div className={`mb-1.5 ${label}`}>房间概览</div>
         <div className="flex flex-wrap gap-4 text-[11px]">
           <span>在线成员 <b className="text-slate-800">{activeCount}</b></span>
-          <span>已批准角色 <b className="text-slate-800">{approvedCount}</b></span>
+          <span>已准入角色 <b className="text-slate-800">{approvedCount}</b></span>
           <span>已准备 <b className="text-slate-800">{readyCount}</b></span>
         </div>
       </section>

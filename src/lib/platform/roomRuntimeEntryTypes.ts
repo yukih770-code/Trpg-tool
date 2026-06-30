@@ -49,6 +49,9 @@ export type RoomRuntimeEntryBlockedReason =
   | 'memberNotActive'
   | 'actorBindingMissing'
   | 'actorBindingNotApproved'
+  | 'actorNotAdmitted'
+  | 'actorAdmissionRejected'
+  | 'actorAdmissionStale'
   | 'memberNotReady'
   | 'spectatorPreviewOnly'
   | 'unknown';
@@ -57,6 +60,8 @@ export interface RoomRuntimeEntryEligibility {
   canEnter: boolean;
   reason?: RoomRuntimeEntryBlockedReason;
   approvedActorBindingId?: string;
+  /** Set when the binding's clearance is approved with an admission (M24.2c). */
+  admissionId?: string;
   actorRef?: RoomActorRefSummary;
   readyState?: RoomReadyStatus;
   entryMode?: RoomRuntimeEntryMode;

@@ -37,26 +37,42 @@ export function evaluateRoomRuntimeEntryEligibility(
   }
 
   // Host (v0): an active host may open hostPreview without an actor binding of
-  // their own; include binding/ready info opportunistically if present.
+  // their own; include binding/ready/admission info opportunistically if present.
   if (member.role === 'host') {
+    const hostClearance = approvedBinding?.clearance;
     return {
       canEnter: true,
       entryMode: 'hostPreview',
       approvedActorBindingId: approvedBinding?.bindingId,
+      admissionId: hostClearance?.status === 'approved' ? hostClearance.admissionId : undefined,
       actorRef: approvedBinding?.actorRef,
       readyState,
     };
   }
 
-  // Player (v0): requires an approved actor binding AND ready.
+  // Player (v0): requires an approved binding, an approved clearance/admission,
+  // AND ready. This is the client/entry display gate; the authoritative ready
+  // gate already runs server-side (M24.2b). Judged only from the RoomSnapshot's
+  // clearance summary — no server admission registry call here.
   if (!binding) return { canEnter: false, reason: 'actorBindingMissing' };
   if (binding.status !== 'approved') return { canEnter: false, reason: 'actorBindingNotApproved' };
+
+  const clearance = binding.clearance;
+  if (!clearance || clearance.status === 'notSubmitted' || clearance.status === 'pending') {
+    return { canEnter: false, reason: 'actorNotAdmitted' };
+  }
+  if (clearance.status === 'rejected') return { canEnter: false, reason: 'actorAdmissionRejected' };
+  if (clearance.status === 'stale') return { canEnter: false, reason: 'actorAdmissionStale' };
+  // status === 'approved'
+  if (!clearance.admissionId) return { canEnter: false, reason: 'actorNotAdmitted' };
+
   if (readyState !== 'ready') return { canEnter: false, reason: 'memberNotReady' };
 
   return {
     canEnter: true,
     entryMode: 'playerReady',
     approvedActorBindingId: binding.bindingId,
+    admissionId: clearance.admissionId,
     actorRef: binding.actorRef,
     readyState,
   };
