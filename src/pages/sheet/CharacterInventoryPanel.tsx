@@ -368,7 +368,7 @@ export function CharacterInventoryPanel({
   const doEquip = (instanceId: string, slot: EquipmentSlot) => {
     if (!actorKey) return;
     const res = equipInventoryItem(actorKey, instanceId, slot);
-    if (!res.ok) {
+    if (res.ok === false) {
       console.warn('[loadout] equip failed:', res.reason, instanceId, slot);
       setEquipError(REASON_LABEL[res.reason] ?? res.reason);
     } else {
@@ -378,7 +378,7 @@ export function CharacterInventoryPanel({
   const doUnequip = (instanceId: string) => {
     if (!actorKey) return;
     const res = unequipInventoryItem(actorKey, instanceId);
-    if (!res.ok) {
+    if (res.ok === false) {
       console.warn('[loadout] unequip failed:', res.reason, instanceId);
       setEquipError(REASON_LABEL[res.reason] ?? res.reason);
     } else {
