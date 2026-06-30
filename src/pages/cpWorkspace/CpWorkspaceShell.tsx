@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ArrowLeft, BookOpen } from 'lucide-react';
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useCpStore } from '../../store/cpStore';
@@ -86,6 +86,7 @@ type CpWorkspaceShellProps = {
   onOpenPlayTab: (tab: string) => void;
   onBack?: () => void;
   canGoBack?: boolean;
+  onGlobalBackOverrideChange?: (override: { label?: string; onBack: () => void } | null) => void;
   children: ReactNode;
 };
 
@@ -555,6 +556,7 @@ export function CpWorkspaceShell({
   onOpenPlayTab,
   onBack,
   canGoBack = false,
+  onGlobalBackOverrideChange,
   children,
 }: CpWorkspaceShellProps) {
   const { t } = createTranslator(readStoredLocale());
@@ -574,13 +576,13 @@ export function CpWorkspaceShell({
   const [suggestedCampaignActor, setSuggestedCampaignActor] =
     useState<CampaignSuggestedActor | null>(null);
   const [focusedCampaignId, setFocusedCampaignId] = useState<string | null>(null);
-  // "进入战役" top-level tab: 我的战役 (local library) | 加入战役 (room server).
+  // "进入战役" top-level tab: 主持战役 (local library) | 加入战役 (room server).
   const [campaignEntryTab, setCampaignEntryTab] = useState<'mine' | 'join'>('mine');
   const [campaignRuntimeContext, setCampaignRuntimeContext] =
     useState<CampaignRuntimeContext | null>(null);
   // Hosted LAN room launched from a campaign (M19). v0 uses the local Room Server.
   const [hostedRoomSession, setHostedRoomSession] =
-    useState<{ baseUrl: string; room: RoomSnapshot; hostMemberId: string } | null>(null);
+    useState<{ baseUrl: string; room: RoomSnapshot; hostMemberId: string; sourceCampaignId: string } | null>(null);
   const [hostLaunchError, setHostLaunchError] = useState<string | null>(null);
   const [actorCreationCompletionContext, setActorCreationCompletionContext] =
     useState<ActorCreationCompletionContext | null>(null);
@@ -733,18 +735,46 @@ export function CpWorkspaceShell({
     onViewChange('vault');
   };
 
+  const openCampaignDetail = (campaignId: string) => {
+    setFocusedCampaignId(campaignId);
+    setCampaignEntryTab('mine');
+    onViewChange('campaigns');
+  };
+
   const handleReturnToCampaignEntry = () => {
+    const returnCampaignId = campaignRuntimeContext?.campaignId;
     setCampaignRuntimeContext(null);
     setActorCreationCompletionContext(null);
+    if (returnCampaignId) {
+      openCampaignDetail(returnCampaignId);
+      return;
+    }
+    setCampaignEntryTab('mine');
     onViewChange('campaigns');
   };
 
   const handleEnterCampaignRuntime = (context: CampaignRuntimeContext) => {
+    setFocusedCampaignId(context.campaignId);
+    setCampaignEntryTab('mine');
     setCampaignRuntimeContext(context);
   };
 
+  useEffect(() => {
+    if (!onGlobalBackOverrideChange) return;
+    if (!campaignRuntimeContext) {
+      onGlobalBackOverrideChange(null);
+      return;
+    }
+    onGlobalBackOverrideChange({
+      label: '返回战役详情',
+      onBack: handleReturnToCampaignEntry,
+    });
+    return () => onGlobalBackOverrideChange(null);
+  }, [campaignRuntimeContext, onGlobalBackOverrideChange]);
+
   const handleHostLaunchRoom = (campaign: LocalCampaign) => {
     setHostLaunchError(null);
+    openCampaignDetail(campaign.id);
     const baseUrl = HOSTED_ROOM_BASE_URL_V0;
     void (async () => {
       try {
@@ -766,11 +796,32 @@ export function CpWorkspaceShell({
           setHostLaunchError('Room created but host member was not returned.');
           return;
         }
-        setHostedRoomSession({ baseUrl, room, hostMemberId: host.memberId });
+        setHostedRoomSession({ baseUrl, room, hostMemberId: host.memberId, sourceCampaignId: campaign.id });
       } catch (e) {
         setHostLaunchError(e instanceof Error ? e.message : String(e));
       }
     })();
+  };
+
+  const handleCloseHostedRoom = () => {
+    const returnCampaignId = hostedRoomSession?.sourceCampaignId ?? hostedRoomSession?.room.campaignRef?.campaignId;
+    setHostedRoomSession(null);
+    if (returnCampaignId) {
+      openCampaignDetail(returnCampaignId);
+      return;
+    }
+    setCampaignEntryTab('mine');
+    onViewChange('campaigns');
+  };
+
+  const handleCampaignCreatedOrImported = (campaign: LocalCampaign) => {
+    setSuggestedCampaignActor(null);
+    setCampaignActorAddContext(null);
+    setCampaignActorSelectContext(null);
+    setCampaignSelectForActorContext(null);
+    setActorCreationCompletionContext(null);
+    setHostedRoomSession(null);
+    openCampaignDetail(campaign.id);
   };
 
   const activeCpActorForCampaign: CampaignSuggestedActor = {
@@ -993,7 +1044,7 @@ export function CpWorkspaceShell({
               room={hostedRoomSession.room}
               hostMemberId={hostedRoomSession.hostMemberId}
               serverLabel="本地 Room Server（局域网 v0）"
-              onClose={() => setHostedRoomSession(null)}
+              onClose={handleCloseHostedRoom}
               panelClassName={panelClass}
             />
           )}
@@ -1008,7 +1059,7 @@ export function CpWorkspaceShell({
               <div className="flex items-center gap-2 border-b border-[#d8b954]/25 pb-1">
                 <span className="text-sm font-black uppercase tracking-wider text-[#d8b954]">进入战役</span>
                 <div className="ml-2 flex gap-1">
-                  {([['mine', '我的战役'], ['join', '加入战役']] as const).map(([key, label]) => (
+                  {([['mine', '主持战役'], ['join', '加入战役']] as const).map(([key, label]) => (
                     <button
                       key={key}
                       type="button"
@@ -1028,7 +1079,7 @@ export function CpWorkspaceShell({
                   systemId="cp-red"
                   systemName={t('glossary.cyberpunkRed')}
                   tone="cp"
-                  initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor ? 'detail' : undefined}
+                  initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor || focusedCampaignId ? 'detail' : undefined}
                   initialCampaignId={campaignActorAddContext?.campaignId ?? campaignActorSelectContext?.campaignId ?? focusedCampaignId}
                   purpose={
                     campaignSelectForActorContext
@@ -1042,7 +1093,8 @@ export function CpWorkspaceShell({
                   onReturnToActorContext={handleReturnToActorContext}
                   onEnterCampaignRuntime={handleEnterCampaignRuntime}
                   onHostLaunchRoom={handleHostLaunchRoom}
-                  onAddCampaign={() => onViewChange('createCampaign')}
+                  onCampaignCreated={handleCampaignCreatedOrImported}
+                  onCampaignImported={handleCampaignCreatedOrImported}
                   panelClassName={panelClass}
                 />
               ) : (
@@ -1057,6 +1109,8 @@ export function CpWorkspaceShell({
               systemName={t('glossary.cyberpunkRed')}
               tone="cp"
               mode="create"
+              onCampaignCreated={handleCampaignCreatedOrImported}
+              onCampaignImported={handleCampaignCreatedOrImported}
               panelClassName={panelClass}
             />
           )}

@@ -56,6 +56,8 @@ type CampaignLibraryShellProps = {
   purpose?: CampaignLibraryPurpose;
   suggestedActor?: CampaignSuggestedActor | null;
   onAddCampaign?: () => void;
+  onCampaignCreated?: (campaign: LocalCampaign) => void;
+  onCampaignImported?: (campaign: LocalCampaign) => void;
   onRequestAddActorForCampaign?: (context: CampaignActorAddReturnContext) => void;
   onRequestSelectActorForCampaign?: (context: CampaignActorSelectReturnContext) => void;
   onSelectCampaignForActor?: (
@@ -123,6 +125,8 @@ export function CampaignLibraryShell({
   purpose = { kind: 'manage' },
   suggestedActor,
   onAddCampaign,
+  onCampaignCreated,
+  onCampaignImported,
   onRequestSelectActorForCampaign,
   onSelectCampaignForActor,
   onReturnToActorContext,
@@ -205,10 +209,11 @@ export function CampaignLibraryShell({
     { key: 'campaignLibrary.create.importCampaign', enabled: false },
   ];
   const stats = [
+    // M23.1: host-only workbench — the "joined / 我参与的" stat is removed (joining
+    // lives under 加入战役).
     ['campaignLibrary.stats.total', String(campaigns.length)],
     ['campaignLibrary.stats.active', String(activeCampaigns.filter((campaign) => campaign.status === 'active').length)],
     ['campaignLibrary.stats.hosted', String(campaigns.length)],
-    ['campaignLibrary.stats.joined', '0'],
     ['campaignLibrary.stats.needsAttention', String(draftCampaigns.length)],
     ['campaignLibrary.stats.recentPlayed', campaigns[0] ? formatCampaignDate(campaigns[0].updatedAt) : '-'],
   ];
@@ -305,6 +310,12 @@ export function CampaignLibraryShell({
     }
   };
 
+  const openCampaignDetail = (campaign: LocalCampaign) => {
+    setSelectedCampaignId(campaign.id);
+    setCampaignLifecycleFilter(campaign.lifecycleStatus);
+    setLibraryMode('detail');
+  };
+
   const requestSelectActorForCampaign = () => {
     if (!selectedCampaign) return;
     setEntryRoleDraft('playerCharacter');
@@ -333,11 +344,22 @@ export function CampaignLibraryShell({
     selectedEntryRole === 'playerCharacter' &&
     effectiveSuggestedActor,
   );
-  const canEnterHostRuntime = Boolean(
-    selectedCampaign &&
-    onEnterCampaignRuntime &&
-    selectedEntryRole === 'host',
-  );
+  // M23.1: host workbench — entering a campaign is always as host here; the
+  // player path now lives under 加入战役, so this no longer depends on the
+  // host/player role toggle.
+  const canEnterHostRuntime = Boolean(selectedCampaign && onEnterCampaignRuntime);
+
+  const enterCampaignRuntimeAsHost = () => {
+    if (!selectedCampaign || !onEnterCampaignRuntime) return;
+    onEnterCampaignRuntime({
+      campaignId: selectedCampaign.id,
+      campaignTitle: selectedCampaign.title,
+      campaignRoomCode: selectedCampaign.roomCode,
+      systemId,
+      selectedEntryRole: 'host',
+      source: 'campaignEntry',
+    });
+  };
 
   const enterCampaignRuntime = () => {
     if (!selectedCampaign || !canEnterRuntime || !onEnterCampaignRuntime) return;
@@ -361,8 +383,8 @@ export function CampaignLibraryShell({
       description: t('campaignLibrary.create.defaultDescription'),
       status: 'draft',
     });
-    setSelectedCampaignId(campaign.id);
-    setLibraryMode('detail');
+    openCampaignDetail(campaign);
+    onCampaignCreated?.(campaign);
   };
 
   const handleSelectCampaignForActor = (campaign: LocalCampaign) => {
@@ -462,8 +484,14 @@ export function CampaignLibraryShell({
     if (!campaignSafeAppendPlan || campaignSafeAppendPlan.importableCampaigns.length === 0 || isImportingCampaigns) return;
     setIsImportingCampaigns(true);
     try {
-      setCampaignSafeAppendResult(applyCampaignSafeAppendImport(campaignSafeAppendPlan));
+      const result = applyCampaignSafeAppendImport(campaignSafeAppendPlan);
+      setCampaignSafeAppendResult(result);
       setCampaignCopyAsNewResult(null);
+      const importedCampaign = result.importedCampaigns.find((campaign) => campaign.systemId === systemId);
+      if (importedCampaign) {
+        openCampaignDetail(importedCampaign);
+        onCampaignImported?.(importedCampaign);
+      }
     } finally {
       setIsImportingCampaigns(false);
     }
@@ -473,8 +501,14 @@ export function CampaignLibraryShell({
     if (!campaignCopyAsNewPlan || campaignCopyAsNewPlan.copyableCampaigns.length === 0 || isImportingCampaigns) return;
     setIsImportingCampaigns(true);
     try {
-      setCampaignCopyAsNewResult(applyCampaignCopyAsNewImport(campaignCopyAsNewPlan));
+      const result = applyCampaignCopyAsNewImport(campaignCopyAsNewPlan);
+      setCampaignCopyAsNewResult(result);
       setCampaignSafeAppendResult(null);
+      const importedCampaign = result.copiedCampaigns.find((campaign) => campaign.systemId === systemId);
+      if (importedCampaign) {
+        openCampaignDetail(importedCampaign);
+        onCampaignImported?.(importedCampaign);
+      }
     } finally {
       setIsImportingCampaigns(false);
     }
@@ -494,13 +528,13 @@ export function CampaignLibraryShell({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <div className={`text-xs font-bold uppercase tracking-[0.22em] ${theme.muted}`}>
-            {t(showAddFlow ? 'campaignLibrary.create.eyebrow' : 'campaignLibrary.eyebrow')}
+            {showAddFlow ? t('campaignLibrary.create.eyebrow') : '战役中心'}
           </div>
           <h2 className={`mt-2 text-2xl font-bold ${theme.accent}`}>
-            {t(showAddFlow ? 'campaignLibrary.create.title' : 'campaignLibrary.title')}
+            {showAddFlow ? t('campaignLibrary.create.title') : '主持战役'}
           </h2>
           <p className={`mt-2 max-w-3xl text-sm leading-relaxed ${theme.muted}`}>
-            {t(showAddFlow ? 'campaignLibrary.create.subtitle' : 'campaignLibrary.subtitle')}
+            {showAddFlow ? t('campaignLibrary.create.subtitle') : '创建、管理、准备并开启你主持的战役。新建 / 导入战役在此进行；加入他人的战役请使用「加入战役」。'}
           </p>
         </div>
         <span className={`border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${theme.badge}`}>
@@ -536,7 +570,7 @@ export function CampaignLibraryShell({
             onClick={() => setLibraryMode('existing')}
             className={`min-h-48 border p-6 text-left transition hover:-translate-y-0.5 hover:shadow-md ${theme.card}`}
           >
-            <h3 className={`text-lg font-bold ${theme.accent}`}>{t('campaignLibrary.title')}</h3>
+            <h3 className={`text-lg font-bold ${theme.accent}`}>我主持的战役</h3>
             <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3">
               {stats.map(([labelKey, value]) => (
                 <div key={labelKey}>
@@ -554,7 +588,7 @@ export function CampaignLibraryShell({
             onClick={onAddCampaign ?? (() => setLibraryMode('add'))}
             className={`min-h-48 border p-6 text-left transition hover:-translate-y-0.5 hover:shadow-md ${theme.card}`}
           >
-            <h3 className={`text-lg font-bold ${theme.accent}`}>{t('campaignLibrary.actions.add')}</h3>
+            <h3 className={`text-lg font-bold ${theme.accent}`}>新建 / 导入战役</h3>
             <p className={`mt-3 text-sm leading-relaxed ${theme.muted}`}>
               {t('campaignLibrary.actions.addNote')}
             </p>
@@ -739,6 +773,7 @@ export function CampaignLibraryShell({
             setSelectedEntryRole={setEntryRoleDraft}
             requestSelectActorForCampaign={requestSelectActorForCampaign}
             enterCampaignRuntime={enterCampaignRuntime}
+            enterCampaignRuntimeAsHost={enterCampaignRuntimeAsHost}
             canEnterPlayerRuntime={canEnterPlayerRuntime}
             canEnterHostRuntime={canEnterHostRuntime}
             hostPrepItems={hostPrepItems}
@@ -1311,6 +1346,7 @@ function CampaignDetail({
   setSelectedEntryRole,
   requestSelectActorForCampaign,
   enterCampaignRuntime,
+  enterCampaignRuntimeAsHost,
   canEnterPlayerRuntime,
   canEnterHostRuntime,
   hostPrepItems,
@@ -1327,11 +1363,15 @@ function CampaignDetail({
   setSelectedEntryRole: (role: CampaignEntryRole) => void;
   requestSelectActorForCampaign: () => void;
   enterCampaignRuntime: () => void;
+  enterCampaignRuntimeAsHost: () => void;
   canEnterPlayerRuntime: boolean;
   canEnterHostRuntime: boolean;
   hostPrepItems: string[];
   onHostLaunchRoom?: () => void;
 }) {
+  // M23.1: this is the HOST workbench detail. The player-prep path now lives under
+  // 加入战役, so it is hidden here (kept in code for the player flow / types).
+  const SHOW_PLAYER_PREP = false;
   return (
     <div className="mt-5 flex flex-col gap-4">
       <div className={`rounded-lg border p-5 ${theme.card}`}>
@@ -1366,14 +1406,33 @@ function CampaignDetail({
             </div>
           ))}
         </dl>
+
+        {(effectiveSuggestedActor || hasStaleDraftActor) && (
+          <div className={`mt-4 rounded-lg border p-3 text-xs leading-relaxed ${theme.badge}`}>
+            <div className={`font-bold ${theme.accent}`}>
+              {effectiveSuggestedActor
+                ? `已带入角色：${effectiveSuggestedActor.actorName}`
+                : '已带入一个角色上下文'}
+            </div>
+            <p className="mt-1 opacity-80">
+              该角色来自角色库选择战役流程。当前主持战役详情仅保留主持人工作台；玩家入场请走“加入战役”。正式角色准入、安检与绑定将在 Character Clearance 阶段实现。
+            </p>
+            {hasStaleDraftActor && (
+              <p className={`mt-2 ${theme.muted}`}>
+                之前保存的预选角色已无法解析，请在后续准入流程中重新选择。
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className={`rounded-lg border p-5 ${theme.card}`}>
-        <h4 className={`text-lg font-bold ${theme.accent}`}>{t('campaignLibrary.detail.entry.title')}</h4>
+        <h4 className={`text-lg font-bold ${theme.accent}`}>进入与开启</h4>
         <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
-          {t('campaignLibrary.detail.entry.suggestedActorNote')}
+          开启局域网房间让玩家加入，或进入当前战役的运行界面。玩家加入请走「加入战役」。
         </p>
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-4">
+          {SHOW_PLAYER_PREP && (
           <div className={`rounded-lg border p-4 ${theme.card}`}>
             <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
               {t('campaignLibrary.detail.entry.playerPath')}
@@ -1443,6 +1502,7 @@ function CampaignDetail({
               )}
             </div>
           </div>
+          )}
 
           <div className={`rounded-lg border p-4 ${theme.card}`}>
             <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
@@ -1452,46 +1512,35 @@ function CampaignDetail({
               {t('campaignLibrary.detail.hostPrep.title')}
             </h5>
             <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
-              {selectedEntryRole === 'host'
-                ? t('campaignLibrary.detail.entry.hostActiveNote')
-                : t('campaignLibrary.detail.entry.hostEntryNote')}
+              {t('campaignLibrary.detail.entry.hostActiveNote')}
             </p>
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {selectedEntryRole === 'host' ? (
-                <>
-                  {/* Primary CTA: launch a LAN Room Server room (NOT formal Runtime). */}
-                  {onHostLaunchRoom && (
-                    <button
-                      type="button"
-                      onClick={onHostLaunchRoom}
-                      className={`border px-3 py-2 text-xs font-bold ${theme.primary}`}
-                    >
-                      开启局域网房间
-                    </button>
-                  )}
-                  {/* Secondary CTA: local single-machine preview of the runtime shell. */}
-                  <button
-                    type="button"
-                    onClick={enterCampaignRuntime}
-                    disabled={!canEnterHostRuntime}
-                    className={`border px-3 py-2 text-xs font-bold ${
-                      canEnterHostRuntime ? theme.secondary : `cursor-default opacity-65 ${theme.secondary}`
-                    }`}
-                  >
-                    {t('campaignLibrary.detail.playerPrep.enterCampaign')}（本地预览）
-                  </button>
-                </>
-              ) : (
+              {/* Primary CTA: launch a LAN Room Server room (NOT formal Runtime). */}
+              {onHostLaunchRoom && (
                 <button
                   type="button"
-                  onClick={() => setSelectedEntryRole('host')}
-                  className={`border px-3 py-2 text-xs font-bold ${theme.secondary}`}
+                  onClick={onHostLaunchRoom}
+                  className={`border px-3 py-2 text-xs font-bold ${theme.primary}`}
                 >
-                  {t('campaignLibrary.detail.entry.switchToHost')}
+                  开启局域网房间
                 </button>
               )}
+              {/* Secondary CTA: enter the current campaign's run surface (local shell v0). */}
+              <button
+                type="button"
+                onClick={enterCampaignRuntimeAsHost}
+                disabled={!canEnterHostRuntime}
+                className={`border px-3 py-2 text-xs font-bold ${
+                  canEnterHostRuntime ? theme.secondary : `cursor-default opacity-65 ${theme.secondary}`
+                }`}
+              >
+                进入战役
+              </button>
             </div>
-            {selectedEntryRole === 'host' && onHostLaunchRoom && (
+            <p className={`mt-2 text-[11px] leading-relaxed ${theme.muted}`}>
+              进入战役：进入当前战役的运行界面（当前为本地运行壳，后续会与联机 Runtime 合流）。
+            </p>
+            {onHostLaunchRoom && (
               <p className={`mt-2 text-[11px] leading-relaxed ${theme.muted}`}>
                 从当前战役创建一个 Room Server 房间（本地 / 局域网 v0），玩家可通过房间码加入。这不是进入正式 Runtime。
               </p>
@@ -1501,14 +1550,12 @@ function CampaignDetail({
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        <div className={`rounded-lg border p-5 ${theme.card} ${selectedEntryRole === 'host' ? '' : 'opacity-55'}`}>
+        <div className={`rounded-lg border p-5 ${theme.card}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h4 className={`text-lg font-bold ${theme.accent}`}>{t('campaignLibrary.detail.hostPrep.title')}</h4>
               <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
-                {selectedEntryRole === 'host'
-                  ? t('campaignLibrary.detail.hostPrep.activeNote')
-                  : t('campaignLibrary.detail.hostPrep.disabledNote')}
+                {t('campaignLibrary.detail.hostPrep.activeNote')}
               </p>
             </div>
             <span className={`border px-2 py-0.5 text-[10px] uppercase tracking-wider ${theme.badge}`}>

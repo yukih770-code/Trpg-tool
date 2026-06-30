@@ -407,12 +407,18 @@ export type PlayWorkspaceNavigationState = {
   plannedSlotTitleKey: string;
 };
 
+export type PlayWorkspaceBackOverride = {
+  label?: string;
+  onBack: () => void;
+};
+
 type PlayWorkspaceProps = {
   navigationState?: PlayWorkspaceNavigationState;
   onNavigationChange?: (state: PlayWorkspaceNavigationState) => void;
   onBeforeNavigate?: () => void;
   onBack?: () => void;
   canGoBack?: boolean;
+  onBackOverrideChange?: (override: PlayWorkspaceBackOverride | null) => void;
 };
 
 export const defaultPlayWorkspaceNavigationState: PlayWorkspaceNavigationState = {
@@ -428,6 +434,7 @@ export function PlayWorkspace({
   onBeforeNavigate,
   onBack,
   canGoBack = false,
+  onBackOverrideChange,
 }: PlayWorkspaceProps) {
   const [tab, setTab] = useState(navigationState?.tab ?? defaultPlayWorkspaceNavigationState.tab);
   // AI-LANDMARK: DND_PRODUCT_SHELL_PHASE_1
@@ -529,6 +536,7 @@ export function PlayWorkspace({
           })
         }
         onOpenPlayTab={openDndPlayTab}
+        onGlobalBackOverrideChange={onBackOverrideChange}
       >
         {dndPlayBody}
       </DndWorkspaceShell>
@@ -588,6 +596,7 @@ export function PlayWorkspace({
         onOpenPlayTab={openWorkspaceTab}
         onBack={navigateBackOrVault}
         canGoBack={canGoBack}
+        onGlobalBackOverrideChange={onBackOverrideChange}
       >
         {embeddedPlayBody}
       </CocWorkspaceShell>
@@ -602,6 +611,7 @@ export function PlayWorkspace({
       onOpenPlayTab={openWorkspaceTab}
       onBack={navigateBackOrVault}
       canGoBack={canGoBack}
+      onGlobalBackOverrideChange={onBackOverrideChange}
     >
       {embeddedPlayBody}
     </CpWorkspaceShell>

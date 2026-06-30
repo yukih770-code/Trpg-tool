@@ -12,7 +12,7 @@ import { RoomRuntimeEntryBridge } from './RoomRuntimeEntryBridge';
  * AI-LANDMARK: HOSTED_ROOM_LAUNCH_PANEL_V0
  *
  * Thin wrapper that owns the lobby ↔ entry-preview switch for a host who launched
- * a room from "我的战役" (mirrors JoinCampaignPanel's lobby/bridge branches so the
+ * a room from the host campaign detail (mirrors JoinCampaignPanel's lobby/bridge branches so the
  * three workspace shells don't duplicate it). NOT formal Runtime: no
  * CampaignRuntimeShell, no RuntimeLog / map / token / action intent, no
  * RuntimeActor. campaignRef shown by the lobby/bridge is read-only, not a
@@ -58,11 +58,11 @@ export function HostedRoomLaunchPanel({
         currentRole="host"
         initialRoom={room}
         serverLabel={serverLabel}
-        backLabel="返回我的战役"
+        backLabel="返回战役详情"
         onBackToOrigin={onClose}
         exitLabel="离开房间视图"
         onExitRoom={onClose}
-        originLabel="我的战役"
+        originLabel="主持战役"
         originDetail={room.campaignRef?.displayName}
         onEnterRuntime={(payload) => setRuntimeEntry(payload)}
       />

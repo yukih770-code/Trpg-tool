@@ -14,6 +14,7 @@ import { UserProfileSpace } from './components/platform/UserProfileSpace';
 import {
   PlayWorkspace,
   defaultPlayWorkspaceNavigationState,
+  type PlayWorkspaceBackOverride,
   type PlayWorkspaceNavigationState,
 } from './pages/PlayWorkspace';
 import { useAppStore } from './store/appStore';
@@ -91,6 +92,8 @@ export default function App() {
     defaultPlayWorkspaceNavigationState,
   );
   const [navigationStack, setNavigationStack] = useState<NavigationState[]>([]);
+  const [playWorkspaceBackOverride, setPlayWorkspaceBackOverride] =
+    useState<PlayWorkspaceBackOverride | null>(null);
   const system = useAppStore((state) => state.system as System);
   const setSystem = useAppStore((state) => state.setSystem);
 
@@ -143,6 +146,18 @@ export default function App() {
 
     restoreNavigation(previous);
     setNavigationStack((prev) => prev.slice(0, -1));
+  };
+
+  const handlePlayWorkspaceBack = () => {
+    if (playWorkspaceBackOverride) {
+      playWorkspaceBackOverride.onBack();
+      return;
+    }
+    if (navigationStack.length > 0) {
+      goBack();
+      return;
+    }
+    fallbackNavigation();
   };
 
   // AI-LANDMARK: NAVIGATION_UP_BREADCRUMB_MINIMAL_IMPLEMENTATION_V1
@@ -639,9 +654,9 @@ export default function App() {
                 <Button
                   variant="outline"
                   size="icon-sm"
-                  onClick={navigationStack.length > 0 ? goBack : fallbackNavigation}
-                  aria-label={navigationStack.length > 0 ? t('navigation.backOneLevel') : t('navigation.noPreviousBackToSystemSelect')}
-                  title={navigationStack.length > 0 ? t('navigation.backOneLevel') : t('navigation.noPreviousBackToSystemSelect')}
+                  onClick={handlePlayWorkspaceBack}
+                  aria-label={playWorkspaceBackOverride?.label ?? (navigationStack.length > 0 ? t('navigation.backOneLevel') : t('navigation.noPreviousBackToSystemSelect'))}
+                  title={playWorkspaceBackOverride?.label ?? (navigationStack.length > 0 ? t('navigation.backOneLevel') : t('navigation.noPreviousBackToSystemSelect'))}
                   className="rounded-md border-[#2f2a22]/20"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -654,6 +669,7 @@ export default function App() {
               onBeforeNavigate={pushNavigation}
               onBack={goBack}
               canGoBack={navigationStack.length > 0}
+              onBackOverrideChange={setPlayWorkspaceBackOverride}
             />
           </div>
         )}
