@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import type { RoomSnapshot } from '../../lib/platform/roomTypes';
 import type { RoomRuntimeEntryContext } from '../../lib/platform/roomRuntimeEntryTypes';
@@ -26,6 +26,7 @@ export interface HostedRoomLaunchPanelProps {
   serverLabel?: string;
   onClose?: () => void;
   panelClassName?: string;
+  onBackOverrideChange?: (override: { label?: string; onBack: () => void } | null) => void;
 }
 
 export function HostedRoomLaunchPanel({
@@ -35,8 +36,32 @@ export function HostedRoomLaunchPanel({
   serverLabel,
   onClose,
   panelClassName,
+  onBackOverrideChange,
 }: HostedRoomLaunchPanelProps) {
   const [runtimeEntry, setRuntimeEntry] = useState<{ context: RoomRuntimeEntryContext; room: RoomSnapshot } | null>(null);
+
+  useEffect(() => {
+    if (!onBackOverrideChange) return;
+
+    if (runtimeEntry) {
+      onBackOverrideChange({
+        label: '返回房间大厅',
+        onBack: () => setRuntimeEntry(null),
+      });
+      return () => onBackOverrideChange(null);
+    }
+
+    if (onClose) {
+      onBackOverrideChange({
+        label: '返回战役详情',
+        onBack: onClose,
+      });
+      return () => onBackOverrideChange(null);
+    }
+
+    onBackOverrideChange(null);
+    return () => onBackOverrideChange(null);
+  }, [runtimeEntry, onBackOverrideChange]);
 
   if (runtimeEntry) {
     return (

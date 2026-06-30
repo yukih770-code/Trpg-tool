@@ -68,6 +68,7 @@ type CampaignLibraryShellProps = {
   onEnterCampaignRuntime?: (context: CampaignRuntimeContext) => void;
   /** Hand the selected campaign to the parent to host a LAN Room Server room (M19). */
   onHostLaunchRoom?: (campaign: LocalCampaign) => void;
+  onBackOverrideChange?: (override: { label?: string; onBack: () => void } | null) => void;
   panelClassName?: string;
   contextBarClassName?: string;
 };
@@ -132,6 +133,7 @@ export function CampaignLibraryShell({
   onReturnToActorContext,
   onEnterCampaignRuntime,
   onHostLaunchRoom,
+  onBackOverrideChange,
   panelClassName,
   contextBarClassName,
 }: CampaignLibraryShellProps) {
@@ -315,6 +317,37 @@ export function CampaignLibraryShell({
     setCampaignLifecycleFilter(campaign.lifecycleStatus);
     setLibraryMode('detail');
   };
+
+  useEffect(() => {
+    if (!onBackOverrideChange || mode !== 'library') return;
+
+    if (campaignSelectForActorContext) {
+      onBackOverrideChange({
+        label: campaignSelectForActorContext.returnLabel,
+        onBack: () => onReturnToActorContext?.(campaignSelectForActorContext),
+      });
+      return () => onBackOverrideChange(null);
+    }
+
+    if (libraryMode === 'detail') {
+      onBackOverrideChange({
+        label: '返回战役列表',
+        onBack: () => setLibraryMode('existing'),
+      });
+      return () => onBackOverrideChange(null);
+    }
+
+    if (libraryMode === 'existing' || libraryMode === 'add') {
+      onBackOverrideChange({
+        label: '返回主持战役',
+        onBack: () => setLibraryMode('home'),
+      });
+      return () => onBackOverrideChange(null);
+    }
+
+    onBackOverrideChange(null);
+    return () => onBackOverrideChange(null);
+  }, [campaignSelectForActorContext, libraryMode, mode, onBackOverrideChange]);
 
   const requestSelectActorForCampaign = () => {
     if (!selectedCampaign) return;

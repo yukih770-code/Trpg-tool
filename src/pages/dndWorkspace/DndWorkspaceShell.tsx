@@ -697,6 +697,7 @@ export function DndWorkspaceShell({
               hostMemberId={hostedRoomSession.hostMemberId}
               serverLabel="本地 Room Server（局域网 v0）"
               onClose={handleCloseHostedRoom}
+              onBackOverrideChange={onGlobalBackOverrideChange}
               panelClassName={panelClass}
             />
           )}
@@ -747,10 +748,16 @@ export function DndWorkspaceShell({
                   onHostLaunchRoom={handleHostLaunchRoom}
                   onCampaignCreated={handleCampaignCreatedOrImported}
                   onCampaignImported={handleCampaignCreatedOrImported}
+                  onBackOverrideChange={onGlobalBackOverrideChange}
                   panelClassName={panelClass}
                 />
               ) : (
-                <JoinCampaignPanel systemId="dnd5e-2024" tone="dnd" panelClassName={panelClass} />
+                <JoinCampaignPanel
+                  systemId="dnd5e-2024"
+                  tone="dnd"
+                  panelClassName={panelClass}
+                  onBackOverrideChange={onGlobalBackOverrideChange}
+                />
               )}
             </div>
           )}
@@ -763,6 +770,7 @@ export function DndWorkspaceShell({
               mode="create"
               onCampaignCreated={handleCampaignCreatedOrImported}
               onCampaignImported={handleCampaignCreatedOrImported}
+              onBackOverrideChange={onGlobalBackOverrideChange}
               panelClassName={panelClass}
             />
           )}

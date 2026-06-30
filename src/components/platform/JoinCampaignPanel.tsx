@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   createRoomOnServer,
@@ -46,9 +46,10 @@ export interface JoinCampaignPanelProps {
   systemId?: RoomSystemId;
   tone?: string;
   panelClassName?: string;
+  onBackOverrideChange?: (override: { label?: string; onBack: () => void } | null) => void;
 }
 
-export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPanelProps) {
+export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChange }: JoinCampaignPanelProps) {
   const [source, setSource] = useState<RoomDiscoverySource>('lan');
   const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
   const [rooms, setRooms] = useState<RoomServerRoomListItem[]>([]);
@@ -70,6 +71,30 @@ export function JoinCampaignPanel({ systemId, panelClassName }: JoinCampaignPane
   } | null>(null);
   // Read-only Runtime Entry Preview (bridge), entered from the lobby.
   const [runtimeEntry, setRuntimeEntry] = useState<{ context: RoomRuntimeEntryContext; room: RoomSnapshot } | null>(null);
+
+  useEffect(() => {
+    if (!onBackOverrideChange) return;
+
+    if (runtimeEntry) {
+      onBackOverrideChange({
+        label: '返回房间大厅',
+        onBack: () => setRuntimeEntry(null),
+      });
+      return () => onBackOverrideChange(null);
+    }
+
+    if (lobby) {
+      const isTestRoom = lobby.origin === 'testRoom';
+      onBackOverrideChange({
+        label: isTestRoom ? '返回测试入口' : '返回加入战役',
+        onBack: () => setLobby(null),
+      });
+      return () => onBackOverrideChange(null);
+    }
+
+    onBackOverrideChange(null);
+    return () => onBackOverrideChange(null);
+  }, [lobby, runtimeEntry, onBackOverrideChange]);
 
   const config: RoomServerHttpClientConfig = { baseUrl };
 

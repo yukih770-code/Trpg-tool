@@ -1045,6 +1045,7 @@ export function CpWorkspaceShell({
               hostMemberId={hostedRoomSession.hostMemberId}
               serverLabel="本地 Room Server（局域网 v0）"
               onClose={handleCloseHostedRoom}
+              onBackOverrideChange={onGlobalBackOverrideChange}
               panelClassName={panelClass}
             />
           )}
@@ -1095,10 +1096,16 @@ export function CpWorkspaceShell({
                   onHostLaunchRoom={handleHostLaunchRoom}
                   onCampaignCreated={handleCampaignCreatedOrImported}
                   onCampaignImported={handleCampaignCreatedOrImported}
+                  onBackOverrideChange={onGlobalBackOverrideChange}
                   panelClassName={panelClass}
                 />
               ) : (
-                <JoinCampaignPanel systemId="cp-red" tone="cp" panelClassName={panelClass} />
+                <JoinCampaignPanel
+                  systemId="cp-red"
+                  tone="cp"
+                  panelClassName={panelClass}
+                  onBackOverrideChange={onGlobalBackOverrideChange}
+                />
               )}
             </div>
           )}
@@ -1111,6 +1118,7 @@ export function CpWorkspaceShell({
               mode="create"
               onCampaignCreated={handleCampaignCreatedOrImported}
               onCampaignImported={handleCampaignCreatedOrImported}
+              onBackOverrideChange={onGlobalBackOverrideChange}
               panelClassName={panelClass}
             />
           )}
