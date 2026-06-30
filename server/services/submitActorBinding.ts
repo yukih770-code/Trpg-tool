@@ -100,6 +100,9 @@ export function submitActorBinding(registry: RoomRegistry, input: SubmitActorBin
       actorRef: { systemId, actorId: input.actorRef.actorId, displayName, source },
       status: 'pendingHostApproval',
       submittedAt: now,
+      // Reset clearance on (re)submit: a stale prior approval must NOT let the
+      // member ready-up until this new submission is cleared again (M24.2b).
+      clearance: { status: 'notSubmitted', updatedAt: now },
     };
     const actorBindings = existing
       ? lobby.actorBindings.map((b) => (b.memberId === input.memberId ? nextBinding : b))

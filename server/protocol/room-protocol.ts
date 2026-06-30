@@ -23,7 +23,18 @@ export type {
   RoomSystemId,
   RoomCampaignRef,
   RoomCampaignRefSource,
+  RoomActorRefSummary,
+  RoomActorBindingClearanceSummary,
+  RoomActorBindingClearanceStatus,
 } from '../../src/lib/platform/roomTypes.js';
+
+export type {
+  ActorSnapshot,
+  ActorSnapshotHash,
+  ActorAdmissionRecord,
+  ActorAdmissionStatus,
+  InspectionResult,
+} from '../../src/lib/platform/characterClearanceTypes.js';
 
 export type {
   RoomRuntimeLogEvent,

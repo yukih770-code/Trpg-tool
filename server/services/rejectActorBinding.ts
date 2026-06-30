@@ -10,6 +10,7 @@
  */
 
 import type { RoomRegistry } from '../room-registry.js';
+import type { ActorAdmissionRegistry } from '../actor-admission-registry.js';
 import type { RoomSnapshot } from '../protocol/room-protocol.js';
 
 export interface RejectActorBindingInput {
@@ -26,7 +27,11 @@ export interface RejectActorBindingResult {
   message?: string;
 }
 
-export function rejectActorBinding(registry: RoomRegistry, input: RejectActorBindingInput): RejectActorBindingResult {
+export function rejectActorBinding(
+  registry: RoomRegistry,
+  admissions: ActorAdmissionRegistry,
+  input: RejectActorBindingInput,
+): RejectActorBindingResult {
   const room = registry.get(input.roomId);
   if (!room) return { decision: 'roomNotFound', message: `No room "${input.roomId}".` };
 
@@ -41,6 +46,11 @@ export function rejectActorBinding(registry: RoomRegistry, input: RejectActorBin
 
   const now = new Date().toISOString();
   const memberId = binding.memberId;
+  // Preserve audit trail: mark any existing admission rejected rather than delete.
+  const existingAdmissionId = binding.clearance?.admissionId;
+  if (existingAdmissionId) {
+    admissions.update(existingAdmissionId, (rec) => ({ ...rec, status: 'rejected', reason: input.rejectionReason, updatedAt: now }));
+  }
   const updated = registry.update(input.roomId, (current) => {
     const lobby = current.lobby ?? { actorBindings: [], readyStates: [] };
     return {
@@ -49,7 +59,21 @@ export function rejectActorBinding(registry: RoomRegistry, input: RejectActorBin
         ...lobby,
         actorBindings: lobby.actorBindings.map((b) =>
           b.bindingId === input.bindingId
-            ? { ...b, status: 'rejected' as const, reviewedAt: now, reviewerMemberId: input.reviewerMemberId, rejectionReason: input.rejectionReason }
+            ? {
+                ...b,
+                status: 'rejected' as const,
+                reviewedAt: now,
+                reviewerMemberId: input.reviewerMemberId,
+                rejectionReason: input.rejectionReason,
+                clearance: {
+                  admissionId: existingAdmissionId,
+                  status: 'rejected' as const,
+                  snapshotId: b.clearance?.snapshotId,
+                  snapshotHash: b.clearance?.snapshotHash,
+                  inspectionResultId: b.clearance?.inspectionResultId,
+                  updatedAt: now,
+                },
+              }
             : b,
         ),
         // Consistency guard: a rejected binding can no longer be "ready".

@@ -26,6 +26,7 @@ import { setMemberReady } from './services/setMemberReady.js';
 import { appendRuntimeLogEvent } from './services/appendRuntimeLogEvent.js';
 import { listRuntimeLogEvents } from './services/listRuntimeLogEvents.js';
 import { createInMemoryRuntimeLogRegistry } from './runtime-log-registry.js';
+import { createInMemoryActorAdmissionRegistry } from './actor-admission-registry.js';
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
 import { createRoomSocketServer } from './transport/roomSocketServer.js';
 import type { AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol/room-protocol.js';
@@ -49,6 +50,8 @@ app.use(express.json());
 const registry = createInMemoryRoomRegistry();
 // Separate, memory-only RuntimeLog store — NOT part of RoomSnapshot (M21).
 const runtimeLogRegistry = createInMemoryRuntimeLogRegistry();
+// Memory-only ActorAdmission store for Character Clearance (M24.2b).
+const actorAdmissionRegistry = createInMemoryActorAdmissionRegistry();
 const PORT = Number(process.env.PORT ?? 8787);
 
 // HTTP server + WebSocket transport scaffold (room snapshot broadcast only).
@@ -173,7 +176,7 @@ app.post('/rooms/:roomId/actor-bindings/submit', (req, res) => {
 
 app.post('/rooms/:roomId/actor-bindings/:bindingId/approve', (req, res) => {
   const body = (req.body ?? {}) as { reviewerMemberId?: string };
-  const result = approveActorBinding(registry, {
+  const result = approveActorBinding(registry, actorAdmissionRegistry, {
     roomId: req.params.roomId,
     bindingId: req.params.bindingId,
     reviewerMemberId: body.reviewerMemberId,
@@ -181,12 +184,20 @@ app.post('/rooms/:roomId/actor-bindings/:bindingId/approve', (req, res) => {
   if (result.room) {
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'actorBindingApproved');
   }
-  res.status(result.decision === 'roomNotFound' || result.decision === 'bindingNotFound' ? 404 : 200).json(result);
+  const status =
+    result.decision === 'approved'
+      ? 200
+      : result.decision === 'roomNotFound' || result.decision === 'bindingNotFound' || result.decision === 'memberNotFound' || result.decision === 'reviewerNotFound'
+        ? 404
+        : result.decision === 'reviewerNotHost' || result.decision === 'reviewerNotActive'
+          ? 403
+          : 400;
+  res.status(status).json(result);
 });
 
 app.post('/rooms/:roomId/actor-bindings/:bindingId/reject', (req, res) => {
   const body = (req.body ?? {}) as { reviewerMemberId?: string; rejectionReason?: string };
-  const result = rejectActorBinding(registry, {
+  const result = rejectActorBinding(registry, actorAdmissionRegistry, {
     roomId: req.params.roomId,
     bindingId: req.params.bindingId,
     reviewerMemberId: body.reviewerMemberId,
@@ -204,7 +215,7 @@ app.post('/rooms/:roomId/members/:memberId/ready', (req, res) => {
     res.status(400).json({ error: 'ready (boolean) is required.' });
     return;
   }
-  const result = setMemberReady(registry, {
+  const result = setMemberReady(registry, actorAdmissionRegistry, {
     roomId: req.params.roomId,
     memberId: req.params.memberId,
     ready: body.ready,

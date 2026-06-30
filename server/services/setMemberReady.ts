@@ -9,6 +9,7 @@
  */
 
 import type { RoomRegistry } from '../room-registry.js';
+import type { ActorAdmissionRegistry } from '../actor-admission-registry.js';
 import type { RoomSnapshot } from '../protocol/room-protocol.js';
 import type { RoomMemberReadyState } from '../../src/lib/platform/roomTypes.js';
 
@@ -19,13 +20,17 @@ export interface SetMemberReadyInput {
 }
 
 export interface SetMemberReadyResult {
-  decision: 'updated' | 'roomNotFound' | 'memberNotFound' | 'memberNotActive' | 'actorNotApproved';
+  decision: 'updated' | 'roomNotFound' | 'memberNotFound' | 'memberNotActive' | 'actorNotApproved' | 'actorNotAdmitted';
   room?: RoomSnapshot;
   memberId?: string;
   message?: string;
 }
 
-export function setMemberReady(registry: RoomRegistry, input: SetMemberReadyInput): SetMemberReadyResult {
+export function setMemberReady(
+  registry: RoomRegistry,
+  admissions: ActorAdmissionRegistry,
+  input: SetMemberReadyInput,
+): SetMemberReadyResult {
   const room = registry.get(input.roomId);
   if (!room) return { decision: 'roomNotFound', message: `No room "${input.roomId}".` };
 
@@ -35,11 +40,17 @@ export function setMemberReady(registry: RoomRegistry, input: SetMemberReadyInpu
     return { decision: 'memberNotActive', message: `Member status is "${member.status}".` };
   }
 
-  // Readying-up requires an approved actor binding; clearing ready is always ok.
+  // Readying-up requires (a) an approved binding draft AND (b) an approved
+  // clearance/admission. Clearing ready is always ok.
   if (input.ready) {
     const binding = room.lobby?.actorBindings.find((b) => b.memberId === input.memberId);
     if (!binding || binding.status !== 'approved') {
       return { decision: 'actorNotApproved', message: 'An approved actor binding is required before ready.' };
+    }
+    const admissionId = binding.clearance?.admissionId;
+    const admission = admissionId ? admissions.get(admissionId) : undefined;
+    if (binding.clearance?.status !== 'approved' || !admission || admission.status !== 'approved') {
+      return { decision: 'actorNotAdmitted', message: 'Actor admission is not approved.' };
     }
   }
 
