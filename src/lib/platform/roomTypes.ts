@@ -16,7 +16,7 @@
  * import: ActorSnapshotHash, used by the OPTIONAL clearance summary (M24.2a).
  */
 
-import type { ActorSnapshotHash } from './characterClearanceTypes';
+import type { ActorSnapshotHash } from './characterClearanceTypes.js';
 
 export type RoomMemberRole = 'host' | 'player' | 'spectator';
 

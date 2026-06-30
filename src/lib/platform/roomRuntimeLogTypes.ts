@@ -11,7 +11,7 @@
  * stays `unknown` — no DND/COC/CP RED rule schema is frozen here.
  */
 
-import type { RoomCampaignRef } from './roomTypes';
+import type { RoomCampaignRef } from './roomTypes.js';
 
 export type RoomRuntimeLogEventKind =
   | 'system.note'

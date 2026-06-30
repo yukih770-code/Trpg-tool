@@ -11,8 +11,8 @@
  * intent payloads here.
  */
 
-import type { RoomSnapshot } from './roomTypes';
-import type { RoomRuntimeLogEvent } from './roomRuntimeLogTypes';
+import type { RoomSnapshot } from './roomTypes.js';
+import type { RoomRuntimeLogEvent } from './roomRuntimeLogTypes.js';
 
 export type RoomTransportProtocolVersion = 'room-ws-v0';
 
