@@ -11,6 +11,7 @@ import type {
   RoomRuntimeLogEventKind,
   RoomRuntimeLogVisibility,
 } from '../../lib/platform/roomRuntimeLogTypes';
+import type { SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
 
 /**
  * RoomRuntimeLogPreviewPanel (v0).
@@ -80,6 +81,31 @@ function mergeEvents(prev: RoomRuntimeLogEvent[], incoming: RoomRuntimeLogEvent[
 
 function errMsg(e: unknown): string {
   return e instanceof RoomServerHttpError ? `(${e.status}) ${e.message}` : e instanceof Error ? e.message : String(e);
+}
+
+/** Narrow a log event payload to a SharedDiceRollResult for structured display. */
+function asDiceRoll(payload: unknown): SharedDiceRollResult | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const p = payload as Partial<SharedDiceRollResult>;
+  if (typeof p.total !== 'number' || !Array.isArray(p.terms) || typeof p.normalizedExpression !== 'string') return null;
+  return p as SharedDiceRollResult;
+}
+
+function DiceResultLine({ roll }: { roll: SharedDiceRollResult }) {
+  return (
+    <div className="mt-0.5 flex flex-wrap items-baseline gap-1.5 text-[11px]">
+      <span className="text-slate-500">掷骰</span>
+      <span className="font-bold text-slate-700">{roll.normalizedExpression}</span>
+      {roll.label && <span className="text-[10px] text-slate-400">· {roll.label}</span>}
+      <span className="text-slate-500">
+        {roll.terms.map((t, i) => (
+          <span key={i}>{i > 0 ? ' + ' : ''}[{t.rolls.join(', ')}]</span>
+        ))}
+        {roll.modifier !== 0 && <span>{roll.modifier > 0 ? ` + ${roll.modifier}` : ` - ${Math.abs(roll.modifier)}`}</span>}
+      </span>
+      <span className="text-base font-black leading-none text-emerald-700">= {roll.total}</span>
+    </div>
+  );
 }
 
 export function RoomRuntimeLogPreviewPanel({
@@ -236,8 +262,14 @@ export function RoomRuntimeLogPreviewPanel({
                 {e.actorBindingId && <span className="text-[9px] text-slate-400">角色 {shortId(e.actorBindingId)}</span>}
                 <span className="ml-auto text-[9px] text-slate-400">{e.createdAt}</span>
               </div>
-              {e.text && <div className="mt-0.5 whitespace-pre-wrap text-[12px] text-slate-700">{e.text}</div>}
-              {briefPayload(e.payload) && <div className="mt-0.5 break-all text-[9px] text-slate-400">{briefPayload(e.payload)}</div>}
+              {e.kind === 'dice.roll' && asDiceRoll(e.payload) ? (
+                <DiceResultLine roll={asDiceRoll(e.payload)!} />
+              ) : (
+                <>
+                  {e.text && <div className="mt-0.5 whitespace-pre-wrap text-[12px] text-slate-700">{e.text}</div>}
+                  {briefPayload(e.payload) && <div className="mt-0.5 break-all text-[9px] text-slate-400">{briefPayload(e.payload)}</div>}
+                </>
+              )}
             </div>
           ))
         )}

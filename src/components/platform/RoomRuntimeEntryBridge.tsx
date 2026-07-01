@@ -1,6 +1,13 @@
+import { useState } from 'react';
+
 import type { RoomRuntimeEntryContext, RoomRuntimeEntryMode } from '../../lib/platform/roomRuntimeEntryTypes';
 import type { RoomCampaignRefSource, RoomReadyStatus, RoomSnapshot } from '../../lib/platform/roomTypes';
+import type { RoomRuntimeLogEvent } from '../../lib/platform/roomRuntimeLogTypes';
+import { rollSharedDice, type RoomServerHttpClientConfig } from '../../lib/platform/roomServerHttpClient';
 import { RuntimeFullscreenShell, type RuntimeShellMode } from './RuntimeFullscreenShell';
+import { SharedDiceDock } from './SharedDiceDock';
+import { RuntimeActionDock, buildRuntimeDockActions } from './RuntimeActionDock';
+import { RoomRuntimeLogPreviewPanel } from './RoomRuntimeLogPreviewPanel';
 
 /**
  * RoomRuntimeEntryBridge (v0 / UI1a) — read-only Runtime Entry Preview.
@@ -52,6 +59,25 @@ function shortId(id: string): string {
 }
 
 export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLobby }: RoomRuntimeEntryBridgeProps) {
+  // Bridge has no WebSocket of its own; a member's own dice roll returns the event
+  // and is fed to the log panel as a live event (other windows get it via WS).
+  const [logLiveEvents, setLogLiveEvents] = useState<RoomRuntimeLogEvent[]>([]);
+
+  // Room mode: the SERVER rolls (crypto) and writes the room RuntimeLog; we feed
+  // the returned event into the log panel and return the roll to the dock.
+  const diceConfig: RoomServerHttpClientConfig = { baseUrl: context.serverBaseUrl };
+  const handleRoomDiceRoll = async (input: { expression: string; label?: string }) => {
+    if (!context.currentMemberId) throw new Error('需要成员身份才能掷骰。');
+    const resp = await rollSharedDice(diceConfig, context.roomId, {
+      memberId: context.currentMemberId,
+      expression: input.expression,
+      label: input.label,
+    });
+    if (!resp.ok) throw new Error(resp.message || resp.error);
+    setLogLiveEvents((prev) => [...prev, resp.event]);
+    return resp.roll;
+  };
+
   const members = room?.members ?? [];
   const actorBindings = room?.lobby?.actorBindings ?? [];
   const readyStates = room?.lobby?.readyStates ?? [];
@@ -167,6 +193,22 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       mainStage={mainStage}
       actorRail={actorRail}
       inspector={inspector}
+      actionDock={
+        <RuntimeActionDock
+          actions={buildRuntimeDockActions(shellMode, <SharedDiceDock canRoll={!!context.currentMemberId} onRoll={handleRoomDiceRoll} />)}
+        />
+      }
+      logDrawer={
+        <RoomRuntimeLogPreviewPanel
+          roomId={context.roomId}
+          baseUrl={context.serverBaseUrl}
+          currentMemberId={context.currentMemberId}
+          canAppend={!!context.currentMemberId}
+          liveEvents={logLiveEvents}
+          onConsumedLiveEvents={() => setLogLiveEvents([])}
+          defaultCollapsed={false}
+        />
+      }
     />
   );
 }

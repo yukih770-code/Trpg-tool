@@ -25,6 +25,7 @@ import { rejectActorBinding } from './services/rejectActorBinding.js';
 import { setMemberReady } from './services/setMemberReady.js';
 import { appendRuntimeLogEvent } from './services/appendRuntimeLogEvent.js';
 import { listRuntimeLogEvents } from './services/listRuntimeLogEvents.js';
+import { rollSharedDice } from './services/rollSharedDice.js';
 import { createInMemoryRuntimeLogRegistry } from './runtime-log-registry.js';
 import { createInMemoryActorAdmissionRegistry } from './actor-admission-registry.js';
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
@@ -275,6 +276,37 @@ app.post('/rooms/:roomId/runtime-log/events', (req, res) => {
     roomSocketServer.broadcastRuntimeLogAppended(result.event.roomId, [result.event]);
   }
   res.json({ event: result.event });
+});
+
+// ── Shared Dice v0 (M25) ────────────────────────────────────────────────────
+// Server-authoritative manual dice: server parses + rolls, appends a public
+// dice.roll RuntimeLog event, and broadcasts it via the existing runtimeLogAppended.
+app.post('/rooms/:roomId/runtime/dice-roll', (req, res) => {
+  const body = (req.body ?? {}) as { memberId?: unknown; expression?: unknown; label?: unknown };
+  if (typeof body.memberId !== 'string' || body.memberId.trim() === '') {
+    res.status(400).json({ ok: false, error: 'invalidRequest', message: 'memberId is required.' });
+    return;
+  }
+  if (typeof body.expression !== 'string' || body.expression.trim() === '') {
+    res.status(400).json({ ok: false, error: 'invalidExpression', message: 'expression is required.' });
+    return;
+  }
+  const result = rollSharedDice(registry, runtimeLogRegistry, {
+    roomId: req.params.roomId,
+    memberId: body.memberId,
+    expression: body.expression,
+    label: typeof body.label === 'string' ? body.label : undefined,
+  });
+  if (result.decision !== 'rolled' || !result.event || !result.roll) {
+    const status = result.decision === 'roomNotFound' || result.decision === 'memberNotFound' ? 404 : 400;
+    res.status(status).json({ ok: false, error: result.decision, message: result.message });
+    return;
+  }
+  // Only public events are broadcast (dice.roll is public in v0).
+  if (result.event.visibility === 'public') {
+    roomSocketServer.broadcastRuntimeLogAppended(result.event.roomId, [result.event]);
+  }
+  res.json({ ok: true, event: result.event, roll: result.roll });
 });
 
 httpServer.listen(PORT, () => {

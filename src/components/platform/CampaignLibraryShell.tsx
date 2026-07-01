@@ -684,64 +684,6 @@ export function CampaignLibraryShell({
             <p className={`mt-3 text-xs leading-relaxed ${theme.muted}`}>
               {t('campaignLibrary.existing.lifecycleNote')}
             </p>
-            {!campaignSelectForActorContext && (
-              <div className="mt-4 border-t pt-4">
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className={`text-xs font-bold ${theme.accent}`}>
-                          {t('campaignLibrary.export.title')}
-                        </div>
-                        <p className={`mt-1 text-xs leading-relaxed ${theme.muted}`}>
-                          {t('campaignLibrary.export.note')}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleExportCampaignSnapshot}
-                        className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
-                      >
-                        {t('campaignLibrary.export.action')}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className={`text-xs font-bold ${theme.accent}`}>
-                      {t('campaignLibrary.importPreview.title')}
-                    </div>
-                    <p className={`mt-1 text-xs leading-relaxed ${theme.muted}`}>
-                      {t('campaignLibrary.importPreview.note')}
-                    </p>
-                    <label className={`mt-3 inline-flex cursor-pointer border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}>
-                      <span>{t('campaignLibrary.importPreview.action')}</span>
-                      <input
-                        type="file"
-                        accept="application/json,.json"
-                        onChange={handlePreviewCampaignSnapshotImport}
-                        className="sr-only"
-                      />
-                    </label>
-                  </div>
-                </div>
-                {(campaignImportPreview || campaignImportPreviewError || campaignImportPreviewFileName) && (
-                  <CampaignImportPreviewPanel
-                    fileName={campaignImportPreviewFileName}
-                    preview={campaignImportPreview}
-                    safeAppendPlan={campaignSafeAppendPlan}
-                    copyAsNewPlan={campaignCopyAsNewPlan}
-                    safeAppendResult={campaignSafeAppendResult}
-                    copyAsNewResult={campaignCopyAsNewResult}
-                    isImporting={isImportingCampaigns}
-                    error={campaignImportPreviewError}
-                    theme={theme}
-                    t={t}
-                    onSafeAppend={handleSafeAppendCampaignImport}
-                    onCopyAsNew={handleCopyCampaignConflictsAsNew}
-                  />
-                )}
-              </div>
-            )}
           </div>
 
           {visibleCampaigns.length === 0 ? (
@@ -788,6 +730,55 @@ export function CampaignLibraryShell({
                 />
               </div>
             ))
+          )}
+
+          {!campaignSelectForActorContext && (
+            <div className={`rounded-lg border px-3 py-2 text-xs ${theme.badge}`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`font-bold ${theme.accent}`}>{t('campaignLibrary.export.title')}</span>
+                <span className={`min-w-40 flex-1 leading-relaxed ${theme.muted}`}>
+                  {t('campaignLibrary.export.note')}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleExportCampaignSnapshot}
+                  className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${theme.secondary}`}
+                >
+                  {t('campaignLibrary.export.action')}
+                </button>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 border-t pt-2">
+                <span className={`font-bold ${theme.accent}`}>{t('campaignLibrary.importPreview.title')}</span>
+                <span className={`min-w-40 flex-1 leading-relaxed ${theme.muted}`}>
+                  {t('campaignLibrary.importPreview.note')}
+                </span>
+                <label className={`inline-flex cursor-pointer border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${theme.secondary}`}>
+                  <span>{t('campaignLibrary.importPreview.action')}</span>
+                  <input
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={handlePreviewCampaignSnapshotImport}
+                    className="sr-only"
+                  />
+                </label>
+              </div>
+              {(campaignImportPreview || campaignImportPreviewError || campaignImportPreviewFileName) && (
+                <CampaignImportPreviewPanel
+                  fileName={campaignImportPreviewFileName}
+                  preview={campaignImportPreview}
+                  safeAppendPlan={campaignSafeAppendPlan}
+                  copyAsNewPlan={campaignCopyAsNewPlan}
+                  safeAppendResult={campaignSafeAppendResult}
+                  copyAsNewResult={campaignCopyAsNewResult}
+                  isImporting={isImportingCampaigns}
+                  error={campaignImportPreviewError}
+                  theme={theme}
+                  t={t}
+                  onSafeAppend={handleSafeAppendCampaignImport}
+                  onCopyAsNew={handleCopyCampaignConflictsAsNew}
+                />
+              )}
+            </div>
           )}
         </div>
       )}

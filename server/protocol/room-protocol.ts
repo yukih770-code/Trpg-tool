@@ -37,6 +37,18 @@ export type {
 } from '../../src/lib/platform/characterClearanceTypes.js';
 
 export type {
+  SharedDiceTermResult,
+  SharedDiceRollResult,
+  SharedDiceRollRequest,
+  SharedDiceRollResponse,
+} from '../../src/lib/platform/sharedDiceTypes.js';
+
+export type {
+  SharedDiceRollRequest,
+  SharedDiceRollResult,
+} from '../../src/lib/platform/sharedDiceTypes.js';
+
+export type {
   RoomRuntimeLogEvent,
   RoomRuntimeLogEventKind,
   RoomRuntimeLogVisibility,

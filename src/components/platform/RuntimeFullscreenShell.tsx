@@ -174,9 +174,15 @@ export function RuntimeFullscreenShell({
           </button>
         )}
 
-        {/* Bottom Action Dock — floating, centered, safe-area padded, above log */}
-        <div className={`absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-20 -translate-x-1/2 ${panel} rounded-full px-3 py-1.5`}>
-          {actionDock ?? (
+        {/* Bottom Action Dock — floating, centered, safe-area padded, above log.
+            A provided actionDock brings its own container (e.g. RuntimeActionDock,
+            which floats its own expanding panel); only the default fallback uses a pill. */}
+        {actionDock ? (
+          <div className="absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-20 flex max-w-[96vw] -translate-x-1/2 justify-center">
+            {actionDock}
+          </div>
+        ) : (
+          <div className={`absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-20 -translate-x-1/2 ${panel} rounded-full px-3 py-1.5`}>
             <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
               <span className="font-bold uppercase tracking-wide text-slate-500">行动坞</span>
               <button type="button" className={btn} disabled>骰子（M25）</button>
@@ -184,8 +190,8 @@ export function RuntimeFullscreenShell({
               <button type="button" className={btn} disabled>状态修改（M27）</button>
               <button type="button" className={btn} disabled>主持人操作</button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Log Drawer — bottom-left, collapsed by default, clears the rail; safe-area padded */}
         {logDrawer && (

@@ -10,6 +10,29 @@ import { createTranslator, readStoredLocale } from '../../i18n';
 import { DndRuntimeCombatDevPanel } from './DndRuntimeCombatDevPanel';
 import { RuntimeSlotShell } from './RuntimeSlotShell';
 import { RuntimeFullscreenShell, type RuntimeShellMode } from './RuntimeFullscreenShell';
+import { SharedDiceDock } from './SharedDiceDock';
+import { RuntimeActionDock, buildRuntimeDockActions } from './RuntimeActionDock';
+import { rollSharedDiceExpression, formatSharedDiceRoll } from '../../lib/platform/sharedDiceExpression';
+
+// Dev-only: the Runtime Layout Shell Preview (RuntimeSlotShell + DND combat dev
+// panel) is hidden from normal Runtime; flip to true only for layout debugging.
+const SHOW_RUNTIME_LAYOUT_DEV_PREVIEW = false;
+
+/** Unbiased in-browser RNG in [1, sides] (crypto if available; Math.random fallback). */
+function browserDiceRng(sides: number): number {
+  const c = (globalThis as { crypto?: Crypto }).crypto;
+  if (c && typeof c.getRandomValues === 'function') {
+    const limit = Math.floor(0x100000000 / sides) * sides;
+    const buf = new Uint32Array(1);
+    let x = 0;
+    do {
+      c.getRandomValues(buf);
+      x = buf[0];
+    } while (x >= limit);
+    return (x % sides) + 1;
+  }
+  return Math.floor(Math.random() * sides) + 1;
+}
 
 type CampaignRuntimeTone = 'dnd' | 'coc' | 'cp';
 
@@ -109,54 +132,10 @@ export function CampaignRuntimeShell({
     'campaignRuntime.mainStage.investigation',
   ];
 
-  const publicSidePanelItems = [
-    'campaignRuntime.sidePanel.actorSummary',
-    'campaignRuntime.sidePanel.handout',
-    'campaignRuntime.sidePanel.sceneInfo',
-  ];
-
-  const hostConsoleItems = [
-      'campaignRuntime.host.npcManagement',
-      'campaignRuntime.host.mapManagement',
-      'campaignRuntime.host.handoutManagement',
-      'campaignRuntime.host.packageEnablement',
-      'campaignRuntime.host.playerManagement',
-      'campaignRuntime.host.campaignSettings',
-      'campaignRuntime.host.gmNotes',
-  ];
-
-  const playerPanelItems = [
-      'campaignRuntime.player.ownActor',
-      'campaignRuntime.player.publicScene',
-      'campaignRuntime.player.publicHandout',
-      'campaignRuntime.player.publicMap',
-      'campaignRuntime.player.publicLog',
-      'campaignRuntime.player.diceArea',
-  ];
-
-  const playerLockedHostItems = [
-    'campaignRuntime.host.npcManagement',
-    'campaignRuntime.host.handoutManagement',
-    'campaignRuntime.host.packageEnablement',
-    'campaignRuntime.host.campaignSettings',
-  ];
-
-  const hostActionDockItems = [
-    'campaignRuntime.actions.rollDice',
-    'campaignRuntime.actions.addScene',
-    'campaignRuntime.actions.publishHandout',
-    'campaignRuntime.actions.manageNpc',
-    'campaignRuntime.actions.openMap',
-    'campaignRuntime.actions.campaignSettings',
-  ];
-
-  const playerActionDockItems = [
-    'campaignRuntime.actions.rollDice',
-    'campaignRuntime.actions.openActorSheet',
-    'campaignRuntime.actions.openMap',
-    'campaignRuntime.actions.viewHandouts',
-    'campaignRuntime.actions.viewPublicLog',
-  ];
+  // M25.1a: the old per-role dock item arrays were replaced by the unified
+  // RuntimeActionDock. M25.1b: the heavy Inspector placeholder lists (host console /
+  // side panel / player panel / locked host tools) were removed in favor of a light
+  // role summary; their tool semantics now live in the role-scoped action dock.
 
   const runtimeLogFilters = [
     { id: 'all', labelKey: 'campaignRuntime.log.filters.all' },
@@ -213,21 +192,6 @@ export function CampaignRuntimeShell({
     setManualStateLabel('');
     setManualStateNote('');
   };
-
-  const renderPlaceholderList = (items: string[]) => (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      {items.map((key) => (
-        <button
-          key={key}
-          type="button"
-          disabled
-          className={`cursor-default border px-3 py-2 text-left text-xs font-bold opacity-70 ${theme.action}`}
-        >
-          {t(key)}
-        </button>
-      ))}
-    </div>
-  );
 
   const renderRuntimeLogPanel = () => (
     <div className="mt-3 space-y-3">
@@ -422,36 +386,23 @@ export function CampaignRuntimeShell({
     </div>
   );
 
-  const inspector = (
-    <div className="space-y-3">
-      <p className={`text-xs leading-relaxed ${theme.muted}`}>
-        {t(isHost ? 'campaignRuntime.host.note' : 'campaignRuntime.player.note')}
+  const summaryRow = (k: string, v: string) => (
+    <div className={`rounded border p-2 ${theme.card}`}>
+      <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>{k}</div>
+      <div className="mt-0.5 font-semibold">{v}</div>
+    </div>
+  );
+
+  // M25.1b: light role summary — no big placeholder lists / dev preview by default.
+  const inspector = isHost ? (
+    <div className="space-y-2">
+      {summaryRow('当前场景', '未设置')}
+      {summaryRow('在场角色', currentActor)}
+      {summaryRow('待处理事项', '—')}
+      <p className={`text-[10px] leading-relaxed ${theme.muted}`}>
+        主持人工具（场景 / Handout / NPC / 设置）在底部行动坞，后续接入。
       </p>
-      {isHost ? (
-        <div className="space-y-4">
-          <section>
-            <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>{t('campaignRuntime.host.consoleTitle')}</h4>
-            <div className="mt-2">{renderPlaceholderList(hostConsoleItems)}</div>
-          </section>
-          <section>
-            <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>{t('campaignRuntime.sidePanel.publicInfo')}</h4>
-            <div className="mt-2">{renderPlaceholderList(publicSidePanelItems)}</div>
-          </section>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <section>
-            <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>{t('campaignRuntime.player.publicViewTitle')}</h4>
-            <div className="mt-2">{renderPlaceholderList(playerPanelItems)}</div>
-          </section>
-          <section className={`rounded border p-3 ${theme.card}`}>
-            <h4 className={`text-[11px] font-bold uppercase tracking-wider ${theme.muted}`}>{t('campaignRuntime.host.lockedHostTools')}</h4>
-            <p className={`mt-1 text-xs leading-relaxed ${theme.muted}`}>{t('campaignRuntime.player.hostToolsLockedNote')}</p>
-            <div className="mt-2">{renderPlaceholderList(playerLockedHostItems)}</div>
-          </section>
-        </div>
-      )}
-      {tone === 'dnd' && isHost && (
+      {SHOW_RUNTIME_LAYOUT_DEV_PREVIEW && tone === 'dnd' && (
         <RuntimeSlotShell
           mode="tacticalMap"
           role="host"
@@ -461,17 +412,36 @@ export function CampaignRuntimeShell({
         />
       )}
     </div>
+  ) : (
+    <div className="space-y-2">
+      {summaryRow('当前角色', currentActor)}
+      <p className={`text-[10px] leading-relaxed ${theme.muted}`}>角色状态 / 公开信息后续接入。</p>
+    </div>
   );
 
+  // Local mode: roll in-browser (local authority) and write the LOCAL RuntimeLog.
+  // The local store has no 'dice.roll' kind (M25.1 keeps its schema), so we use the
+  // equivalent 'roll.performed' with the SharedDiceRollResult as payload.
+  const handleLocalDiceRoll = async (input: { expression: string; label?: string }) => {
+    const outcome = rollSharedDiceExpression(input.expression, browserDiceRng, input.label);
+    if (!outcome.ok) throw new Error(outcome.message);
+    const roll = outcome.roll;
+    if (runtimeSystemId) {
+      appendRuntimeLogEvent({
+        campaignId: context.campaignId,
+        systemId: runtimeSystemId,
+        type: 'roll.performed',
+        message: formatSharedDiceRoll(roll),
+        payload: roll,
+      });
+    }
+    return roll;
+  };
+
+  // Unified Runtime Action Dock: 投骰 (local roll) + placeholder tools. Same dock
+  // as multiplayer; the dice tray is one same-weight tool, not a resident panel.
   const actionDock = (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className={`text-[10px] font-bold uppercase tracking-wide ${theme.muted}`}>{t('campaignRuntime.actions.title')}</span>
-      {(isHost ? hostActionDockItems : playerActionDockItems).map((key) => (
-        <button key={key} type="button" disabled className={`cursor-default border px-2 py-1 text-[10px] font-bold opacity-70 ${theme.action}`}>
-          {t(key)}
-        </button>
-      ))}
-    </div>
+    <RuntimeActionDock actions={buildRuntimeDockActions(shellMode, <SharedDiceDock onRoll={handleLocalDiceRoll} />)} />
   );
 
   const logDrawer = (

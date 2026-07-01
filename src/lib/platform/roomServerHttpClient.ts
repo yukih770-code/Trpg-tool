@@ -21,6 +21,7 @@ import type {
   RoomRuntimeLogEvent,
   RoomRuntimeLogListResult,
 } from './roomRuntimeLogTypes';
+import type { SharedDiceRollResponse } from './sharedDiceTypes';
 
 export interface RoomServerHttpClientConfig {
   baseUrl: string;
@@ -214,6 +215,23 @@ export async function appendRoomRuntimeLogEvent(
   input: AppendRoomRuntimeLogEventInput,
 ): Promise<{ event: RoomRuntimeLogEvent }> {
   return request<{ event: RoomRuntimeLogEvent }>(config, `/rooms/${encodeURIComponent(roomId)}/runtime-log/events`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Shared Dice v0 (M25): submit an expression; the SERVER parses + rolls and
+ * returns the dice.roll event + roll. The client never computes randomness, and
+ * never optimistically inserts the log event (it arrives via runtimeLogAppended
+ * or the response here).
+ */
+export async function rollSharedDice(
+  config: RoomServerHttpClientConfig,
+  roomId: string,
+  input: { memberId: string; expression: string; label?: string },
+): Promise<SharedDiceRollResponse> {
+  return request<SharedDiceRollResponse>(config, `/rooms/${encodeURIComponent(roomId)}/runtime/dice-roll`, {
     method: 'POST',
     body: JSON.stringify(input),
   });
