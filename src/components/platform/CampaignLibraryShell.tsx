@@ -36,6 +36,8 @@ import {
 import { createTranslator, readStoredLocale } from '../../i18n';
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { ContextBar } from './ContextBar';
+// M26: Room Server reachability chip shown next to the host launch CTA.
+import { RoomServerStatusBanner } from './RoomServerStatusBanner';
 
 type CampaignLibraryTone = 'dnd' | 'coc' | 'cp';
 type CampaignLibraryMode = 'home' | 'existing' | 'detail' | 'add';
@@ -1538,6 +1540,8 @@ function CampaignDetail({
             <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
               {t('campaignLibrary.detail.entry.hostActiveNote')}
             </p>
+            {/* M26: host-side Room Server reachability (join side lives in JoinCampaignPanel). */}
+            {onHostLaunchRoom && <RoomServerStatusBanner className="mt-3" />}
             <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {/* Primary CTA: launch a LAN Room Server room (NOT formal Runtime). */}
               {onHostLaunchRoom && (

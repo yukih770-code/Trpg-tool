@@ -16,8 +16,10 @@ import {
 } from '../../lib/platform/roomDiscoveryMapper';
 import type { RoomJoinResult, RoomMemberRole, RoomSnapshot, RoomSystemId } from '../../lib/platform/roomTypes';
 import type { RoomRuntimeEntryContext } from '../../lib/platform/roomRuntimeEntryTypes';
+import { roomServerHttpUrl } from '../../lib/platform/roomServerConfig';
 import { RoomLobbyShell } from './RoomLobbyShell';
 import { RoomRuntimeEntryBridge } from './RoomRuntimeEntryBridge';
+import { RoomServerStatusBanner } from './RoomServerStatusBanner';
 
 /**
  * JoinCampaignPanel (v0) — "加入战役" surface.
@@ -33,7 +35,10 @@ import { RoomRuntimeEntryBridge } from './RoomRuntimeEntryBridge';
  * systemId, not DND-specific concepts).
  */
 
-const DEFAULT_BASE_URL = 'http://localhost:8787';
+// Default Room Server address comes from env (roomServerConfig): localhost for
+// local dev, or the deployed cloud Room Server on Netlify. The user can still
+// override it in the address input below.
+const DEFAULT_BASE_URL = roomServerHttpUrl;
 
 const SOURCE_TABS: { key: RoomDiscoverySource; label: string }[] = [
   { key: 'all', label: '全部' },
@@ -226,6 +231,9 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
 
       {(source === 'all' || source === 'lan') && (
         <div className="space-y-4 text-[12px] text-slate-700">
+          {/* Room Server reachability (M26): reflects the address being edited. */}
+          <RoomServerStatusBanner baseUrl={baseUrl} />
+
           {/* Local Room Server connection */}
           <section className="rounded border border-slate-400/30 bg-white/50 p-3">
             <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-slate-600">局域网联机 / 本地 Room Server</div>

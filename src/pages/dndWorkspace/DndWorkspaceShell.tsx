@@ -50,9 +50,12 @@ import type {
   CampaignSuggestedActor,
 } from '../../lib/platform/campaignFlow';
 
-// Hosted Room Launch v0: local Room Server address. NOT a long-term server
-// config — replaced when official/third-party server selection lands.
-const HOSTED_ROOM_BASE_URL_V0 = 'http://localhost:8787';
+// Hosted Room Launch v0: Room Server address now comes from roomServerConfig
+// (VITE_ROOM_SERVER_HTTP_URL, localhost fallback) so Netlify hosts reach the
+// cloud Room Server. NOT a long-term server-selection UI — replaced when
+// official/third-party server selection lands.
+import { roomServerHttpUrl } from '../../lib/platform/roomServerConfig';
+const HOSTED_ROOM_BASE_URL_V0 = roomServerHttpUrl;
 
 /**
  * DndWorkspaceShell

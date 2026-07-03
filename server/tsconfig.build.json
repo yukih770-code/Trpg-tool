@@ -1,0 +1,15 @@
+{
+  // Build-only variant of tsconfig.server.json used by `npm run server:build`.
+  // tsconfig.server.json is type-check-only (noEmit:true) for `--noEmit` gating;
+  // this config inherits everything and flips emit ON so the Room Server can be
+  // compiled to plain Node JS for cloud deployment (Render / Railway / Fly.io).
+  // Emit tree mirrors rootDir "..": server/*.ts -> dist-server/server/*.js
+  // (and imported src/lib/platform/*.ts -> dist-server/src/lib/platform/*.js),
+  // so the start entry is dist-server/server/room-server.js.
+  "extends": "./tsconfig.server.json",
+  "compilerOptions": {
+    "noEmit": false
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["../node_modules", "../dist-server", "../src/**/*.tsx"]
+}

@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "server:dev": "tsx server/room-server.ts"
+    "server:dev": "tsx server/room-server.ts",
+    "server:build": "tsc -p server/tsconfig.build.json",
+    "server:start": "node dist-server/server/room-server.js"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

@@ -34,9 +34,37 @@ import type { AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol
 
 const app = express();
 
-// Minimal dependency-free CORS for the Vite dev frontend (scaffold only).
+// ── CORS allowlist (M26) ────────────────────────────────────────────────────
+// Deployable variant: origins come from ROOM_SERVER_ALLOWED_ORIGINS (comma-
+// separated). When unset (local dev) we default to the Vite dev origins. In
+// production set the env to the Netlify site URL(s). A literal "*" entry opts
+// into wildcard (echoed as Access-Control-Allow-Origin: *) — used only if the
+// operator explicitly asks for it; the default is NOT wildcard.
+const DEFAULT_DEV_ORIGINS = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+];
+const configuredOrigins = (process.env.ROOM_SERVER_ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter((s) => s !== '');
+const ALLOWED_ORIGINS = configuredOrigins.length > 0 ? configuredOrigins : DEFAULT_DEV_ORIGINS;
+const ALLOW_ALL_ORIGINS = ALLOWED_ORIGINS.includes('*');
+
+// Minimal dependency-free CORS. Reflects an allowlisted Origin (or "*" when the
+// operator opted in). Non-allowlisted origins simply get no CORS header (the
+// browser then blocks the cross-origin read) — the server does not hard-reject,
+// so same-origin/non-browser callers (curl, health probes) keep working.
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  if (ALLOW_ALL_ORIGINS) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  } else if (typeof origin === 'string' && ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') {
@@ -60,7 +88,7 @@ const httpServer = createServer(app);
 const roomSocketServer = createRoomSocketServer({ server: httpServer, registry, path: '/ws' });
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'room-server', storage: MEMORY_STORAGE_CAPABILITY.adapterKind });
+  res.json({ ok: true, service: 'room-server', version: 'm26', storage: MEMORY_STORAGE_CAPABILITY.adapterKind });
 });
 
 app.get('/rooms', (_req, res) => {
@@ -311,5 +339,11 @@ app.post('/rooms/:roomId/runtime/dice-roll', (req, res) => {
 
 httpServer.listen(PORT, () => {
   // eslint-disable-next-line no-console
-  console.log(`[room-server] scaffold listening on http://localhost:${PORT} (HTTP + WS /ws)`);
+  console.log(`Room server listening on http://localhost:${PORT} (HTTP + WS /ws)`);
+  // eslint-disable-next-line no-console
+  console.log(
+    ALLOW_ALL_ORIGINS
+      ? '[room-server] CORS: all origins (*) — set ROOM_SERVER_ALLOWED_ORIGINS to restrict.'
+      : `[room-server] CORS allowlist: ${ALLOWED_ORIGINS.join(', ')}`,
+  );
 });
