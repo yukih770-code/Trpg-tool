@@ -59,7 +59,7 @@ export function rollSharedDice(
   }
 
   const outcome = rollSharedDiceExpression(input.expression, cryptoDiceRng, input.label);
-  if (!outcome.ok) return { decision: outcome.code, message: outcome.message };
+  if (outcome.ok === false) return { decision: outcome.code, message: outcome.message };
   const roll = outcome.roll;
 
   const appended = appendRuntimeLogEvent(roomRegistry, logRegistry, {

@@ -12,6 +12,8 @@ import { RuntimeSlotShell } from './RuntimeSlotShell';
 import { RuntimeFullscreenShell, type RuntimeShellMode } from './RuntimeFullscreenShell';
 import { SharedDiceDock } from './SharedDiceDock';
 import { RuntimeActionDock, buildRuntimeDockActions } from './RuntimeActionDock';
+import { RuntimePublicInfoPanel, type RuntimePublicInfoItem } from './RuntimePublicInfoPanel';
+import { RuntimeManualStateLogPanel, type RuntimeStateLogItem } from './RuntimeManualStateLogPanel';
 import { rollSharedDiceExpression, formatSharedDiceRoll } from '../../lib/platform/sharedDiceExpression';
 
 // Dev-only: the Runtime Layout Shell Preview (RuntimeSlotShell + DND combat dev
@@ -192,6 +194,58 @@ export function CampaignRuntimeShell({
     setManualStateLabel('');
     setManualStateNote('');
   };
+
+  // ── Public info / manual state records (M29, local authority) ──────────────
+  // Local Runtime writes the LOCAL RuntimeLog through the existing local store:
+  // public info = system.note + payload.noteKind 'publicInfo' (no local schema
+  // change); dock-recorded state changes = actor.note + payload.noteKind
+  // 'manualState'. The existing detailed forms in the log panel are unchanged.
+  const handleLocalPublishPublicInfo = (input: { title?: string; body: string }) => {
+    if (!isHost || !runtimeSystemId) return;
+    appendRuntimeLogEvent({
+      campaignId: context.campaignId,
+      systemId: runtimeSystemId,
+      type: 'system.note',
+      message: input.title ? `【${input.title}】${input.body}` : input.body,
+      payload: { noteKind: 'publicInfo', title: input.title, body: input.body },
+    });
+  };
+
+  const handleLocalRecordStateChange = (input: { targetName?: string; body: string }) => {
+    if (!isHost || !runtimeSystemId) return;
+    appendRuntimeLogEvent({
+      campaignId: context.campaignId,
+      systemId: runtimeSystemId,
+      type: 'actor.note',
+      message: input.targetName ? `${input.targetName}：${input.body}` : input.body,
+      payload: { noteKind: 'manualState', targetName: input.targetName, body: input.body },
+    });
+  };
+
+  const activeEvents = runtimeLogEvents.filter((e) => e.lifecycleStatus !== 'tombstoned');
+
+  const publicInfoItems: RuntimePublicInfoItem[] = activeEvents
+    .filter((e) => e.type === 'system.note' && (e.payload as { noteKind?: string } | undefined)?.noteKind === 'publicInfo')
+    .map((e) => {
+      const p = (e.payload ?? {}) as { title?: string; body?: string };
+      return { id: e.id, title: p.title, body: p.body ?? e.message, createdAt: e.createdAt, authorLabel: '主持人' };
+    });
+
+  const stateLogItems: RuntimeStateLogItem[] = activeEvents
+    .filter((e) => {
+      const noteKind = (e.payload as { noteKind?: string } | undefined)?.noteKind;
+      if (noteKind === 'manualState') return true;
+      return (
+        e.type === 'actor.hpChanged' ||
+        e.type === 'actor.resourceChanged' ||
+        e.type === 'actor.sanChanged' ||
+        e.type === 'actor.humanityChanged'
+      );
+    })
+    .map((e) => {
+      const p = (e.payload ?? {}) as { targetName?: string; body?: string };
+      return { id: e.id, targetName: p.targetName, body: p.body ?? e.message, createdAt: e.createdAt };
+    });
 
   const renderRuntimeLogPanel = () => (
     <div className="mt-3 space-y-3">
@@ -398,9 +452,10 @@ export function CampaignRuntimeShell({
     <div className="space-y-2">
       {summaryRow('当前场景', '未设置')}
       {summaryRow('在场角色', currentActor)}
-      {summaryRow('待处理事项', '—')}
+      {summaryRow('公开信息', `${publicInfoItems.length} 条`)}
+      {summaryRow('状态记录', `${stateLogItems.length} 条`)}
       <p className={`text-[10px] leading-relaxed ${theme.muted}`}>
-        主持人工具（场景 / Handout / NPC / 设置）在底部行动坞，后续接入。
+        下一步：用底部「公开信息」发布场景与线索，用「状态记录」记下伤害和关键变化，日志抽屉可回看全程。
       </p>
       {SHOW_RUNTIME_LAYOUT_DEV_PREVIEW && tone === 'dnd' && (
         <RuntimeSlotShell
@@ -415,7 +470,9 @@ export function CampaignRuntimeShell({
   ) : (
     <div className="space-y-2">
       {summaryRow('当前角色', currentActor)}
-      <p className={`text-[10px] leading-relaxed ${theme.muted}`}>角色状态 / 公开信息后续接入。</p>
+      <p className={`text-[10px] leading-relaxed ${theme.muted}`}>
+        你可以：投骰、在底部「公开信息」查看主持人发布的内容、在日志抽屉回看全程。
+      </p>
     </div>
   );
 
@@ -424,7 +481,7 @@ export function CampaignRuntimeShell({
   // equivalent 'roll.performed' with the SharedDiceRollResult as payload.
   const handleLocalDiceRoll = async (input: { expression: string; label?: string }) => {
     const outcome = rollSharedDiceExpression(input.expression, browserDiceRng, input.label);
-    if (!outcome.ok) throw new Error(outcome.message);
+    if (outcome.ok === false) throw new Error(outcome.message);
     const roll = outcome.roll;
     if (runtimeSystemId) {
       appendRuntimeLogEvent({
@@ -438,10 +495,28 @@ export function CampaignRuntimeShell({
     return roll;
   };
 
-  // Unified Runtime Action Dock: 投骰 (local roll) + placeholder tools. Same dock
-  // as multiplayer; the dice tray is one same-weight tool, not a resident panel.
+  // Unified Runtime Action Dock: 投骰 (local roll) + real 公开信息 / 状态记录
+  // panels (M29). Same dock as multiplayer; only the authority differs (local
+  // store here, server append in the room bridge).
   const actionDock = (
-    <RuntimeActionDock actions={buildRuntimeDockActions(shellMode, <SharedDiceDock onRoll={handleLocalDiceRoll} />)} />
+    <RuntimeActionDock
+      actions={buildRuntimeDockActions(shellMode, <SharedDiceDock onRoll={handleLocalDiceRoll} />, {
+        publicInfoPanel: (
+          <RuntimePublicInfoPanel
+            canPublish={isHost && !!runtimeSystemId}
+            items={publicInfoItems}
+            onPublish={handleLocalPublishPublicInfo}
+          />
+        ),
+        stateLogPanel: isHost ? (
+          <RuntimeManualStateLogPanel
+            canEdit={!!runtimeSystemId}
+            items={stateLogItems}
+            onRecord={handleLocalRecordStateChange}
+          />
+        ) : undefined,
+      })}
+    />
   );
 
   const logDrawer = (

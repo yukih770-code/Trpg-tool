@@ -18,7 +18,8 @@
  * does NOT import this module → no cycle).
  */
 
-import type { RoomRuntimeLogEvent } from './roomRuntimeLogTypes';
+// NodeNext note: shared with the Room Server program — keep the .js suffix.
+import type { RoomRuntimeLogEvent } from './roomRuntimeLogTypes.js';
 
 export interface SharedDiceTermResult {
   count: number;

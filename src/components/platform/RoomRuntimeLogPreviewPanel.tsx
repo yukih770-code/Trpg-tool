@@ -44,7 +44,7 @@ const KIND_LABEL: Record<RoomRuntimeLogEventKind, string> = {
   'chat.message': '聊天',
   'system.note': '系统',
   'dice.roll': '骰子',
-  'host.note': '主持人记录',
+  'host.note': '公开信息',
   'state.manualChange': '状态记录',
 };
 
@@ -89,6 +89,39 @@ function asDiceRoll(payload: unknown): SharedDiceRollResult | null {
   const p = payload as Partial<SharedDiceRollResult>;
   if (typeof p.total !== 'number' || !Array.isArray(p.terms) || typeof p.normalizedExpression !== 'string') return null;
   return p as SharedDiceRollResult;
+}
+
+/** Narrow a payload written by the M29 public-info / state-log panels. */
+function asRunNote(payload: unknown): { title?: string; targetName?: string; body?: string } | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const p = payload as { noteKind?: unknown; title?: unknown; targetName?: unknown; body?: unknown };
+  if (p.noteKind !== 'publicInfo' && p.noteKind !== 'manualState') return null;
+  return {
+    title: typeof p.title === 'string' ? p.title : undefined,
+    targetName: typeof p.targetName === 'string' ? p.targetName : undefined,
+    body: typeof p.body === 'string' ? p.body : undefined,
+  };
+}
+
+/** 公开信息：主持人发布的信息，标题加粗；状态记录：目标 + 说明。 */
+function RunNoteLine({ e }: { e: RoomRuntimeLogEvent }) {
+  const note = asRunNote(e.payload);
+  const body = note?.body ?? e.text ?? '';
+  if (e.kind === 'host.note') {
+    return (
+      <div className="mt-0.5 text-[12px] leading-relaxed">
+        {note?.title && <span className="mr-1.5 font-bold text-slate-800">{note.title}</span>}
+        <span className="whitespace-pre-wrap text-slate-700">{body}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-0.5 text-[12px] leading-relaxed">
+      {note?.targetName && <span className="mr-1.5 font-bold text-slate-800">{note.targetName}</span>}
+      <span className="whitespace-pre-wrap text-slate-700">{body}</span>
+      <span className="ml-1.5 text-[9px] text-slate-400">（手动记录，不影响角色卡）</span>
+    </div>
+  );
 }
 
 function DiceResultLine({ roll }: { roll: SharedDiceRollResult }) {
@@ -264,6 +297,8 @@ export function RoomRuntimeLogPreviewPanel({
               </div>
               {e.kind === 'dice.roll' && asDiceRoll(e.payload) ? (
                 <DiceResultLine roll={asDiceRoll(e.payload)!} />
+              ) : e.kind === 'host.note' || e.kind === 'state.manualChange' ? (
+                <RunNoteLine e={e} />
               ) : (
                 <>
                   {e.text && <div className="mt-0.5 whitespace-pre-wrap text-[12px] text-slate-700">{e.text}</div>}
@@ -291,7 +326,7 @@ export function RoomRuntimeLogPreviewPanel({
           </button>
         </div>
         {sendError && <div className="mt-1 text-[10px] font-bold text-red-700">发送失败：{sendError}</div>}
-        <p className="mt-1 text-[10px] italic text-slate-400">v0 仅支持发送公开聊天消息；主持人记录 / 骰子 / 状态记录为后续功能。</p>
+        <p className="mt-1 text-[10px] italic text-slate-400">这里发送公开聊天；投骰、发布公开信息和状态记录请使用底部行动坞。</p>
       </div>
         </>
       )}

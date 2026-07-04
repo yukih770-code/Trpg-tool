@@ -1,13 +1,20 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import type { RoomRuntimeEntryContext, RoomRuntimeEntryMode } from '../../lib/platform/roomRuntimeEntryTypes';
 import type { RoomCampaignRefSource, RoomReadyStatus, RoomSnapshot } from '../../lib/platform/roomTypes';
 import type { RoomRuntimeLogEvent } from '../../lib/platform/roomRuntimeLogTypes';
-import { rollSharedDice, type RoomServerHttpClientConfig } from '../../lib/platform/roomServerHttpClient';
+import {
+  appendRoomRuntimeLogEvent,
+  listRoomRuntimeLog,
+  rollSharedDice,
+  type RoomServerHttpClientConfig,
+} from '../../lib/platform/roomServerHttpClient';
 import { RuntimeFullscreenShell, type RuntimeShellMode } from './RuntimeFullscreenShell';
 import { SharedDiceDock } from './SharedDiceDock';
 import { RuntimeActionDock, buildRuntimeDockActions } from './RuntimeActionDock';
 import { RoomRuntimeLogPreviewPanel } from './RoomRuntimeLogPreviewPanel';
+import { RuntimePublicInfoPanel, type RuntimePublicInfoItem } from './RuntimePublicInfoPanel';
+import { RuntimeManualStateLogPanel, type RuntimeStateLogItem } from './RuntimeManualStateLogPanel';
 
 /**
  * RoomRuntimeEntryBridge (v0 / UI1a) — read-only Runtime Entry Preview.
@@ -73,10 +80,87 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       expression: input.expression,
       label: input.label,
     });
-    if (!resp.ok) throw new Error(resp.message || resp.error);
+    if (resp.ok === false) throw new Error(resp.message || resp.error);
     setLogLiveEvents((prev) => [...prev, resp.event]);
     return resp.roll;
   };
+
+  // ── Public info / manual state records (M29) ──────────────────────────────
+  // Server-authoritative: published/recorded through the room RuntimeLog append
+  // endpoint (host.note / state.manualChange, public). The bridge keeps a small
+  // filtered mirror for the dock panels; the full log stays in the log drawer.
+  const isNoteKind = (e: RoomRuntimeLogEvent) => e.kind === 'host.note' || e.kind === 'state.manualChange';
+  const [noteEvents, setNoteEvents] = useState<RoomRuntimeLogEvent[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
+
+  const loadNotes = useCallback(() => {
+    setNotesLoading(true);
+    setNotesError(null);
+    listRoomRuntimeLog({ baseUrl: context.serverBaseUrl }, context.roomId)
+      .then((result) => setNoteEvents(result.events.filter(isNoteKind)))
+      .catch((e) => setNotesError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setNotesLoading(false));
+  }, [context.serverBaseUrl, context.roomId]);
+
+  useEffect(() => {
+    loadNotes();
+  }, [loadNotes]);
+
+  const mergeNoteEvent = (event: RoomRuntimeLogEvent) => {
+    if (!isNoteKind(event)) return;
+    setNoteEvents((prev) =>
+      prev.some((e) => e.eventId === event.eventId) ? prev : [...prev, event].sort((a, b) => a.seq - b.seq),
+    );
+  };
+
+  const appendNote = async (input: {
+    kind: 'host.note' | 'state.manualChange';
+    text: string;
+    payload: unknown;
+  }) => {
+    if (!context.currentMemberId) throw new Error('需要成员身份才能发布。');
+    const { event } = await appendRoomRuntimeLogEvent({ baseUrl: context.serverBaseUrl }, context.roomId, {
+      kind: input.kind,
+      visibility: 'public',
+      text: input.text,
+      payload: input.payload,
+      authorMemberId: context.currentMemberId,
+    });
+    mergeNoteEvent(event);
+    // Feed the shared log panel too (same live-event path as own dice rolls).
+    setLogLiveEvents((prev) => [...prev, event]);
+  };
+
+  const handlePublishPublicInfo = async (input: { title?: string; body: string }) => {
+    await appendNote({
+      kind: 'host.note',
+      text: input.title ? `【${input.title}】${input.body}` : input.body,
+      payload: { noteKind: 'publicInfo', title: input.title, body: input.body },
+    });
+  };
+
+  const handleRecordStateChange = async (input: { targetName?: string; body: string }) => {
+    await appendNote({
+      kind: 'state.manualChange',
+      text: input.targetName ? `${input.targetName}：${input.body}` : input.body,
+      payload: { noteKind: 'manualState', targetName: input.targetName, body: input.body },
+    });
+  };
+
+  const publicInfoItems: RuntimePublicInfoItem[] = noteEvents
+    .filter((e) => e.kind === 'host.note')
+    .map((e) => {
+      const p = (e.payload ?? {}) as { title?: string; body?: string };
+      return { id: e.eventId, title: p.title, body: p.body ?? e.text ?? '', createdAt: e.createdAt, authorLabel: '主持人' };
+    });
+
+  const stateLogItems: RuntimeStateLogItem[] = noteEvents
+    .filter((e) => e.kind === 'state.manualChange')
+    .map((e) => {
+      const p = (e.payload ?? {}) as { targetName?: string; body?: string };
+      return { id: e.eventId, targetName: p.targetName, body: p.body ?? e.text ?? '', createdAt: e.createdAt };
+    });
 
   const members = room?.members ?? [];
   const actorBindings = room?.lobby?.actorBindings ?? [];
@@ -123,6 +207,11 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   // ── Right inspector: mode-differentiated ───────────────────────────────────
   const inspector = (
     <div className="space-y-2">
+      {notesError && (
+        <div className="rounded border border-amber-500/40 bg-amber-50/80 px-2 py-1.5 text-[10px] leading-relaxed text-amber-800">
+          房间服务连接异常，实时同步可能不可用。已有内容仍可查看；可点击面板中的「刷新」重试，或确认房间服务在线。
+        </div>
+      )}
       <div className={card}>
         <div className={`mb-1 ${label}`}>房间概览</div>
         <div className="flex flex-wrap gap-3 text-[11px]">
@@ -133,20 +222,36 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       </div>
       {shellMode === 'host' && (
         <div className={card}>
-          <div className={`mb-1 ${label}`}>主持人工具（占位）</div>
-          <p className="text-[10px] text-slate-500">准入队列 / NPC / Handout / Notes 后续接入；局内开启联机为后续功能。</p>
+          <div className={`mb-1 ${label}`}>主持台</div>
+          <div className="space-y-0.5 text-[11px] text-slate-700">
+            <div>身份：<b>主持人</b></div>
+            <div>当前场景：<span className="text-slate-500">未设置</span></div>
+            <div>公开信息 <b>{publicInfoItems.length}</b> 条 · 状态记录 <b>{stateLogItems.length}</b> 条</div>
+          </div>
+          <p className="mt-1.5 border-t border-slate-300/40 pt-1.5 text-[10px] leading-relaxed text-slate-500">
+            下一步：用底部「公开信息」发布场景与线索，用「状态记录」记下伤害和关键变化，日志抽屉可回看全程。
+          </p>
         </div>
       )}
       {shellMode === 'player' && (
         <div className={card}>
           <div className={`mb-1 ${label}`}>我的信息</div>
-          <p className="text-[10px] text-slate-500">已准入并准备就绪。角色卡 / 可见信息后续接入。</p>
+          <div className="space-y-0.5 text-[11px] text-slate-700">
+            <div>身份：<b>玩家</b></div>
+            <div>角色：<b>{context.actorRef?.displayName ?? '未绑定'}</b></div>
+          </div>
+          <p className="mt-1.5 border-t border-slate-300/40 pt-1.5 text-[10px] leading-relaxed text-slate-500">
+            你可以：投骰、查看主持人发布的公开信息、在日志抽屉回看全程。
+          </p>
         </div>
       )}
       {shellMode === 'spectator' && (
         <div className={card}>
-          <div className={`mb-1 ${label}`}>旁观</div>
-          <p className="text-[10px] text-slate-500">旁观只读预览，无角色绑定与行动。</p>
+          <div className={`mb-1 ${label}`}>旁观视角</div>
+          <div className="text-[11px] text-slate-700">身份：<b>旁观者</b>（只读）</div>
+          <p className="mt-1.5 border-t border-slate-300/40 pt-1.5 text-[10px] leading-relaxed text-slate-500">
+            你可以查看公开信息和日志，但不能投骰或修改任何内容。
+          </p>
         </div>
       )}
       {context.campaignRef && (
@@ -195,7 +300,33 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       inspector={inspector}
       actionDock={
         <RuntimeActionDock
-          actions={buildRuntimeDockActions(shellMode, <SharedDiceDock canRoll={!!context.currentMemberId} onRoll={handleRoomDiceRoll} />)}
+          actions={buildRuntimeDockActions(
+            shellMode,
+            <SharedDiceDock canRoll={!!context.currentMemberId} onRoll={handleRoomDiceRoll} />,
+            {
+              publicInfoPanel: (
+                <RuntimePublicInfoPanel
+                  canPublish={shellMode === 'host' && !!context.currentMemberId}
+                  items={publicInfoItems}
+                  onPublish={handlePublishPublicInfo}
+                  onRefresh={loadNotes}
+                  loading={notesLoading}
+                  feedError={notesError}
+                />
+              ),
+              stateLogPanel:
+                shellMode === 'host' ? (
+                  <RuntimeManualStateLogPanel
+                    canEdit={!!context.currentMemberId}
+                    items={stateLogItems}
+                    onRecord={handleRecordStateChange}
+                    onRefresh={loadNotes}
+                    loading={notesLoading}
+                    feedError={notesError}
+                  />
+                ) : undefined,
+            },
+          )}
         />
       }
       logDrawer={

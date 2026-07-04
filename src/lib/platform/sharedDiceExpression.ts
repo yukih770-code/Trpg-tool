@@ -12,7 +12,10 @@
  * No parentheses / * / kh / kl / advantage / exploding.
  */
 
-import type { SharedDiceRollResult, SharedDiceTermResult } from './sharedDiceTypes';
+// NodeNext note: this module is compiled into BOTH the Vite frontend and the
+// Room Server program (server tsconfig uses moduleResolution NodeNext), so the
+// relative import must carry an explicit .js suffix.
+import type { SharedDiceRollResult, SharedDiceTermResult } from './sharedDiceTypes.js';
 
 export const ALLOWED_DICE_SIDES = [4, 6, 8, 10, 12, 20, 100] as const;
 export type AllowedDiceSides = (typeof ALLOWED_DICE_SIDES)[number];
@@ -100,7 +103,9 @@ export function parseSharedDiceExpression(raw: string): ParseDiceOutcome {
 /** Parse then roll with the injected RNG. Randomness comes ONLY from `rng`. */
 export function rollSharedDiceExpression(raw: string, rng: DiceRng, label?: string): RollDiceOutcome {
   const parsed = parseSharedDiceExpression(raw);
-  if (!parsed.ok) return parsed;
+  if (parsed.ok === false) {
+    return { ok: false, code: parsed.code, message: parsed.message };
+  }
 
   const terms: SharedDiceTermResult[] = parsed.parsed.terms.map((t) => {
     const rolls: number[] = [];
