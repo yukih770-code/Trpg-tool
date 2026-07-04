@@ -38,7 +38,10 @@ export interface RuntimeCharacterSummary {
   skillHighlights: RuntimeCharacterStat[];
   resourceHighlights: RuntimeCharacterStat[];
   equipmentHighlights: string[];
+  featureHighlights: RuntimeCharacterStat[];
   notes: string[];
+  /** Non-fatal notes about what data was / wasn't available (adapter). */
+  sourceWarnings: string[];
 }
 
 export interface RuntimeCharacterSheetPanelProps {
@@ -153,6 +156,7 @@ export function RuntimeCharacterSheetPanel({ summary, role }: RuntimeCharacterSh
     summary.skillHighlights.length > 0 ||
     summary.resourceHighlights.length > 0 ||
     summary.equipmentHighlights.length > 0 ||
+    summary.featureHighlights.length > 0 ||
     summary.notes.length > 0;
 
   return (
@@ -173,6 +177,12 @@ export function RuntimeCharacterSheetPanel({ summary, role }: RuntimeCharacterSh
         </div>
       </div>
 
+      {summary.sourceWarnings.length > 0 && (
+        <div className="rounded border border-amber-500/30 bg-amber-50/60 px-2 py-1.5 text-[10px] leading-relaxed text-amber-800">
+          {summary.sourceWarnings.map((w, i) => <div key={i}>{w}</div>)}
+        </div>
+      )}
+
       {/* Character data sections (safe reads; empty states when no data). */}
       {!hasAnyStats ? (
         <div className="rounded border border-slate-300/50 bg-white/60 p-2 text-[10px] leading-relaxed text-slate-500">
@@ -183,6 +193,7 @@ export function RuntimeCharacterSheetPanel({ summary, role }: RuntimeCharacterSh
           <StatGrid title="核心状态" stats={summary.coreStats} />
           <StatGrid title="常用检定 / 技能" stats={summary.skillHighlights} />
           <StatGrid title="资源" stats={summary.resourceHighlights} />
+          <StatGrid title="特性 / 能力" stats={summary.featureHighlights} />
           <div className="rounded border border-slate-300/50 bg-white/70 p-2">
             <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">装备</div>
             {summary.equipmentHighlights.length === 0 ? (

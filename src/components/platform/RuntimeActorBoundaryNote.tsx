@@ -1,20 +1,21 @@
+import {
+  RUNTIME_ACTOR_BOUNDARY_TIERS,
+  RUNTIME_ACTOR_INSTANCE_FUTURE_NOTE,
+  RUNTIME_STATE_LOG_CAVEAT,
+} from './runtimeActorInstanceBoundary';
+
 /**
- * RuntimeActorBoundaryNote (M48) — actor instance boundary explainer.
+ * RuntimeActorBoundaryNote (M48 → M51 contract-driven) — actor boundary explainer.
  *
  * AI-LANDMARK: RUNTIME_ACTOR_BOUNDARY_NOTE_V0
  *
- * A tiny, honest UI block that separates three concepts so the interface never
- * pretends to do more than it does:
- *   - 角色库角色: the player's saved original, maintained in the character library.
- *   - 当前房间角色: the snapshot/reference bound & admitted for THIS runtime.
- *   - 战役内角色实例: the FUTURE authoritative instance that will persist in-campaign
- *     HP / resources / growth. Not implemented yet.
- * It also states that this session's manual state log stays in the log/recap and
- * does NOT rewrite the character library original. Pure presentational text.
+ * Renders the four-tier actor boundary (角色库 / 房间绑定 / Runtime 快照 / 战役内实例)
+ * and the state-log caveat straight from the boundary contract module, so the copy
+ * has ONE source of truth. Pure presentational text — no storage, no write-back.
  */
 
 export interface RuntimeActorBoundaryNoteProps {
-  /** 'full' shows the three tiers; 'compact' shows only the one-line caveat. */
+  /** 'full' shows the tiers + future note; 'compact' shows only the caveat line. */
   variant?: 'full' | 'compact';
 }
 
@@ -22,8 +23,8 @@ export function RuntimeActorBoundaryNote({ variant = 'full' }: RuntimeActorBound
   if (variant === 'compact') {
     return (
       <p className="text-[10px] leading-relaxed text-slate-500">
-        这是跑团中的只读角色视图。本场的手动状态记录会进入日志与回顾，
-        <span className="font-bold">不会自动修改角色库原件</span>；战役内角色实例与成长回流将在后续版本接入。
+        这是跑团中的只读角色视图。{RUNTIME_STATE_LOG_CAVEAT}
+        <span className="ml-1 text-slate-400">战役内角色实例与成长回流将在后续版本接入。</span>
       </p>
     );
   }
@@ -32,22 +33,23 @@ export function RuntimeActorBoundaryNote({ variant = 'full' }: RuntimeActorBound
     <div className="rounded border border-slate-300/50 bg-white/60 p-2 text-left">
       <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">角色数据边界</div>
       <dl className="space-y-1 text-[10px] leading-relaxed text-slate-600">
-        <div>
-          <dt className="inline font-bold text-slate-700">角色库角色：</dt>
-          <dd className="inline"> 你保存的原始角色，在角色库中维护。</dd>
-        </div>
-        <div>
-          <dt className="inline font-bold text-slate-700">当前房间角色：</dt>
-          <dd className="inline"> 本次进入 Runtime 时绑定 / 准入的角色快照。</dd>
-        </div>
-        <div>
-          <dt className="inline font-bold text-slate-700">战役内角色实例：</dt>
-          <dd className="inline"> 未来用于保存战役内 HP、资源、成长与结算的权威实例（后续版本接入）。</dd>
-        </div>
+        {RUNTIME_ACTOR_BOUNDARY_TIERS.map((tier) => (
+          <div key={tier.id}>
+            <dt className="inline font-bold text-slate-700">
+              {tier.label}
+              {tier.status === 'future' && (
+                <span className="ml-1 rounded-full bg-slate-500/10 px-1 py-0.5 text-[8px] font-bold text-slate-500">后续</span>
+              )}
+              ：
+            </dt>
+            <dd className="inline"> {tier.description}</dd>
+          </div>
+        ))}
       </dl>
       <p className="mt-1.5 border-t border-slate-300/40 pt-1.5 text-[10px] leading-relaxed text-slate-500">
-        本场的手动状态记录会进入日志与回顾，<span className="font-bold">不会自动改写角色库原件</span>。
+        {RUNTIME_STATE_LOG_CAVEAT}
       </p>
+      <p className="mt-1 text-[10px] leading-relaxed text-slate-400">{RUNTIME_ACTOR_INSTANCE_FUTURE_NOTE}</p>
     </div>
   );
 }

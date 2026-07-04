@@ -32,6 +32,9 @@ export interface RuntimeManualStateLogPanelProps {
   justUpdated?: boolean;
   /** Extra context line, e.g. offline hint (M37, mirrors public-info panel). */
   contextHint?: string | null;
+  /** Optional actor/target name suggestions from the roster (M52). Read-only aid;
+   * picking one only fills the free-text target — it never touches a character. */
+  candidateTargets?: string[];
 }
 
 function formatTime(value?: string): string {
@@ -49,6 +52,7 @@ export function RuntimeManualStateLogPanel({
   feedError,
   justUpdated,
   contextHint,
+  candidateTargets,
 }: RuntimeManualStateLogPanelProps) {
   const [targetName, setTargetName] = useState('');
   const [body, setBody] = useState('');
@@ -89,7 +93,13 @@ export function RuntimeManualStateLogPanel({
             onChange={(e) => setTargetName(e.target.value)}
             placeholder="对象 / 角色名（可选），例如：阿尔文"
             disabled={saving}
+            list={candidateTargets && candidateTargets.length > 0 ? 'runtime-state-log-targets' : undefined}
           />
+          {candidateTargets && candidateTargets.length > 0 && (
+            <datalist id="runtime-state-log-targets">
+              {candidateTargets.map((t) => <option key={t} value={t} />)}
+            </datalist>
+          )}
           <textarea
             className={`${input} mt-1.5 min-h-[52px] resize-y`}
             value={body}

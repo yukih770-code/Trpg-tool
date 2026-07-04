@@ -16,8 +16,9 @@ import { RuntimeActionDock, buildRuntimeDockActions } from './RuntimeActionDock'
 import { RoomRuntimeLogPreviewPanel } from './RoomRuntimeLogPreviewPanel';
 import { RuntimePublicInfoPanel, type RuntimePublicInfoItem } from './RuntimePublicInfoPanel';
 import { RuntimeManualStateLogPanel, type RuntimeStateLogItem } from './RuntimeManualStateLogPanel';
-import { RuntimeCharacterSheetPanel, type RuntimeCharacterSummary } from './RuntimeCharacterSheetPanel';
+import { RuntimeCharacterSheetPanel } from './RuntimeCharacterSheetPanel';
 import { RuntimeActorRosterPanel, type RuntimeActorRosterEntry } from './RuntimeActorRosterPanel';
+import { buildRuntimeCharacterSummary } from './runtimeActorSnapshotAdapter';
 import { RuntimeSceneFocusPanel, type RuntimeSceneFocus } from './RuntimeSceneFocusPanel';
 import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSceneBoardPanel';
 import { RuntimeMapStage } from './RuntimeMapStage';
@@ -315,26 +316,27 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const myBinding = actorBindings.find((b) => b.memberId === context.currentMemberId);
   const myMember = members.find((m) => m.memberId === context.currentMemberId);
 
-  // M46 read-only Runtime Character Sheet summary. Safe adapter: reuse actorRef /
-  // binding / clearance / ready. No stat sources exist yet, so the stat arrays are
-  // empty and the sheet shows product empty states (never fabricated numbers).
-  const characterSummary: RuntimeCharacterSummary | null =
-    context.actorRef || myBinding
+  // M46/M49 read-only Runtime Character Sheet summary — built by the safe snapshot
+  // adapter. No rich snapshot source is wired in yet (snapshot: undefined), so the
+  // adapter returns identity + a sourceWarning and empty stat sections; once a real
+  // actor snapshot is available it will populate system-aware fields with no UI change.
+  const characterSummary = buildRuntimeCharacterSummary({
+    actorRef: context.actorRef,
+    binding: myBinding
       ? {
-          displayName: context.actorRef?.displayName ?? myBinding?.actorRef.displayName,
-          system: context.actorRef?.systemId ?? myBinding?.actorRef.systemId ?? context.systemId,
-          source: context.actorRef?.source ?? myBinding?.actorRef.source,
-          playerLabel: myMember?.displayName ?? context.currentRole,
-          admissionStatus: myBinding?.clearance?.status,
-          readyState: myReadyState,
-          bindingStatus: myBinding?.status,
-          coreStats: [],
-          skillHighlights: [],
-          resourceHighlights: [],
-          equipmentHighlights: [],
-          notes: [],
+          displayName: myBinding.actorRef.displayName,
+          systemId: myBinding.actorRef.systemId,
+          actorId: myBinding.actorRef.actorId,
+          source: myBinding.actorRef.source,
+          status: myBinding.status,
+          clearanceStatus: myBinding.clearance?.status,
         }
-      : null;
+      : undefined,
+    snapshot: undefined,
+    playerLabel: myMember?.displayName ?? context.currentRole,
+    readyState: myReadyState,
+    fallbackSystemId: context.systemId,
+  });
 
   const activeCount = members.filter((m) => m.status === 'active').length;
   const approvedCount = actorBindings.filter((b) => b.status === 'approved').length;
@@ -373,6 +375,16 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         hasActor: !!b,
       };
     });
+
+  // M52 state-log target suggestions: bound actor names + player names (read-only
+  // aid). Selecting one only fills the free-text target; it never edits a character.
+  const stateLogTargets = Array.from(
+    new Set(
+      rosterEntries
+        .flatMap((e) => [e.actorName, e.role === 'player' ? e.name : undefined])
+        .filter((x): x is string => !!x && x.trim() !== ''),
+    ),
+  );
 
   const card = 'rounded border border-slate-400/30 bg-white/60 p-3';
   const label = 'text-[11px] font-bold uppercase tracking-wide text-slate-600';
@@ -543,6 +555,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                     feedError={notesError}
                     justUpdated={feedJustUpdated}
                     contextHint={syncDown ? '实时同步暂不可用，此列表可能不是最新。' : null}
+                    candidateTargets={stateLogTargets}
                   />
                 ) : undefined,
               actorPanel:
