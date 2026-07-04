@@ -114,6 +114,8 @@ export interface RuntimeDockExtraPanels {
   stateLogPanel?: ReactNode;
   /** 我的角色 read-only summary (M37) — player dock only. */
   actorPanel?: ReactNode;
+  /** 当前场景 focus editor (M42) — host dock only. */
+  scenePanel?: ReactNode;
 }
 
 const PUBLIC_INFO_FALLBACK = (
@@ -163,6 +165,14 @@ export function buildRuntimeDockActions(
   // host
   return [
     { id: 'dice', label: '投骰', panel: dicePanel },
+    {
+      id: 'scene',
+      label: '当前场景',
+      shortLabel: '场景',
+      panel: extras?.scenePanel ?? (
+        <RuntimeActionPlaceholder body="当前场景：设置本场的地点、氛围与参考图，同步给所有人。" />
+      ),
+    },
     publicInfo,
     {
       id: 'stateLog',
@@ -172,7 +182,6 @@ export function buildRuntimeDockActions(
         <RuntimeActionPlaceholder body="状态记录：随手记下伤害、线索与重要变化，全桌可见。" />
       ),
     },
-    { id: 'scene', label: '场景', disabled: true, panel: <RuntimeActionPlaceholder body="场景：创建和切换场景，向玩家展示当前舞台。" /> },
     LOG_ACTION,
     { id: 'more', label: '更多', disabled: true, panel: <RuntimeActionPlaceholder body="更多：局内设置、联机管理、结束本次会话。" /> },
   ];

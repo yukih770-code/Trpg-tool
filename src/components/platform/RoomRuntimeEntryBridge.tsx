@@ -16,7 +16,11 @@ import { RuntimeActionDock, buildRuntimeDockActions } from './RuntimeActionDock'
 import { RoomRuntimeLogPreviewPanel } from './RoomRuntimeLogPreviewPanel';
 import { RuntimePublicInfoPanel, type RuntimePublicInfoItem } from './RuntimePublicInfoPanel';
 import { RuntimeManualStateLogPanel, type RuntimeStateLogItem } from './RuntimeManualStateLogPanel';
-import { RuntimeActorReadPanel, type RuntimeActorReadSummary } from './RuntimeActorReadPanel';
+import { RuntimeCharacterSheetPanel, type RuntimeCharacterSummary } from './RuntimeCharacterSheetPanel';
+import { RuntimeActorRosterPanel, type RuntimeActorRosterEntry } from './RuntimeActorRosterPanel';
+import { RuntimeSceneFocusPanel, type RuntimeSceneFocus } from './RuntimeSceneFocusPanel';
+import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSceneBoardPanel';
+import { RuntimeMapStage } from './RuntimeMapStage';
 
 /**
  * RoomRuntimeEntryBridge (v0 / UI1a) — read-only Runtime Entry Preview.
@@ -67,6 +71,34 @@ function shortId(id: string): string {
   return id.length <= 8 ? id : `…${id.slice(-6)}`;
 }
 
+/** Read the scene-focus fields off a host.note payload (noteKind==='sceneFocus'). */
+function sceneFromPayload(payload: unknown): { title?: string; body?: string; mapUrl?: string } | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const p = payload as { noteKind?: unknown; title?: unknown; body?: unknown; mapUrl?: unknown };
+  if (p.noteKind !== 'sceneFocus') return null;
+  return {
+    title: typeof p.title === 'string' ? p.title : undefined,
+    body: typeof p.body === 'string' ? p.body : undefined,
+    mapUrl: typeof p.mapUrl === 'string' ? p.mapUrl : undefined,
+  };
+}
+
+/** Narrow a dice.roll payload for the Scene Board's recent-rolls list. */
+function diceForBoard(payload: unknown): { expression: string; total: number; label?: string } | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const p = payload as { normalizedExpression?: unknown; total?: unknown; label?: unknown };
+  if (typeof p.normalizedExpression !== 'string' || typeof p.total !== 'number') return null;
+  return { expression: p.normalizedExpression, total: p.total, label: typeof p.label === 'string' ? p.label : undefined };
+}
+
+const CLEARANCE_LABEL: Record<string, string> = {
+  notSubmitted: '未提交',
+  pending: '审核中',
+  approved: '已准入',
+  rejected: '未通过',
+  stale: '需重新确认',
+};
+
 export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLobby }: RoomRuntimeEntryBridgeProps) {
   // M32: the bridge owns a live socket while mounted (the lobby's socket closes
   // when the lobby unmounts). runtimeLogAppended feeds the log drawer AND the
@@ -100,6 +132,8 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   // filtered mirror for the dock panels; the full log stays in the log drawer.
   const isNoteKind = (e: RoomRuntimeLogEvent) => e.kind === 'host.note' || e.kind === 'state.manualChange';
   const [noteEvents, setNoteEvents] = useState<RoomRuntimeLogEvent[]>([]);
+  // All public events (any kind) kept for the Scene Board's recent-activity mix.
+  const [recentEvents, setRecentEvents] = useState<RoomRuntimeLogEvent[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
 
@@ -107,7 +141,10 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     setNotesLoading(true);
     setNotesError(null);
     listRoomRuntimeLog({ baseUrl: context.serverBaseUrl }, context.roomId)
-      .then((result) => setNoteEvents(result.events.filter(isNoteKind)))
+      .then((result) => {
+        setNoteEvents(result.events.filter(isNoteKind));
+        setRecentEvents(result.events);
+      })
       .catch((e) => setNotesError(e instanceof Error ? e.message : String(e)))
       .finally(() => setNotesLoading(false));
   }, [context.serverBaseUrl, context.roomId]);
@@ -151,6 +188,12 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
             touchedFeeds = true;
           }
         }
+        // Scene Board recent-activity mix (all public kinds, eventId-deduped).
+        setRecentEvents((prev) => {
+          const seen = new Set(prev.map((e) => e.eventId));
+          const added = publicEvents.filter((e) => !seen.has(e.eventId));
+          return added.length === 0 ? prev : [...prev, ...added].sort((a, b) => a.seq - b.seq);
+        });
         if (touchedFeeds) setFeedJustUpdated(true);
         setLastSyncAt(new Date().toISOString());
       },
@@ -213,12 +256,44 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     });
   };
 
+  // M42 scene focus: server-authoritative, written as a public host.note with
+  // noteKind='sceneFocus' so it live-syncs and restores from the memory log.
+  const handleSetSceneFocus = async (input: { title?: string; body: string; mapUrl?: string }) => {
+    await appendNote({
+      kind: 'host.note',
+      text: input.title ? `【场景】${input.title}` : `【场景】${input.body}`,
+      payload: { noteKind: 'sceneFocus', title: input.title, body: input.body, mapUrl: input.mapUrl },
+    });
+  };
+
+  // Public info feed excludes scene-focus host.notes (those drive the Scene Board,
+  // not the 公开信息 list) so the two surfaces stay clean.
   const publicInfoItems: RuntimePublicInfoItem[] = noteEvents
-    .filter((e) => e.kind === 'host.note')
+    .filter((e) => e.kind === 'host.note' && sceneFromPayload(e.payload) === null)
     .map((e) => {
       const p = (e.payload ?? {}) as { title?: string; body?: string };
       return { id: e.eventId, title: p.title, body: p.body ?? e.text ?? '', createdAt: e.createdAt, authorLabel: '主持人' };
     });
+
+  // Current scene = latest public host.note with noteKind==='sceneFocus'.
+  const sceneEvents = noteEvents.filter((e) => e.kind === 'host.note' && sceneFromPayload(e.payload) !== null);
+  const latestSceneEvent = sceneEvents.length > 0 ? sceneEvents[sceneEvents.length - 1] : undefined;
+  const currentScene: RuntimeSceneFocus | null = latestSceneEvent
+    ? {
+        ...(sceneFromPayload(latestSceneEvent.payload) ?? {}),
+        body: sceneFromPayload(latestSceneEvent.payload)?.body ?? latestSceneEvent.text ?? '',
+        createdAt: latestSceneEvent.createdAt,
+      }
+    : null;
+
+  // Recent dice for the Scene Board (from the all-kinds public mirror).
+  const recentDice: RuntimeSceneBoardDice[] = recentEvents
+    .filter((e) => e.kind === 'dice.roll')
+    .map((e): RuntimeSceneBoardDice | null => {
+      const roll = diceForBoard(e.payload);
+      return roll ? { id: e.eventId, label: roll.label, expression: roll.expression, total: roll.total, createdAt: e.createdAt } : null;
+    })
+    .filter((x): x is RuntimeSceneBoardDice => x !== null);
 
   const stateLogItems: RuntimeStateLogItem[] = noteEvents
     .filter((e) => e.kind === 'state.manualChange')
@@ -238,18 +313,26 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   // source) and fall back to the entry context's actorRef. Read-only; no edits.
   const myReadyState = readyStates.find((r) => r.memberId === context.currentMemberId)?.status ?? context.readyState;
   const myBinding = actorBindings.find((b) => b.memberId === context.currentMemberId);
-  const actorSummary: RuntimeActorReadSummary | null =
+  const myMember = members.find((m) => m.memberId === context.currentMemberId);
+
+  // M46 read-only Runtime Character Sheet summary. Safe adapter: reuse actorRef /
+  // binding / clearance / ready. No stat sources exist yet, so the stat arrays are
+  // empty and the sheet shows product empty states (never fabricated numbers).
+  const characterSummary: RuntimeCharacterSummary | null =
     context.actorRef || myBinding
       ? {
           displayName: context.actorRef?.displayName ?? myBinding?.actorRef.displayName,
-          systemId: context.actorRef?.systemId ?? myBinding?.actorRef.systemId ?? context.systemId,
-          actorId: context.actorRef?.actorId ?? myBinding?.actorRef.actorId,
+          system: context.actorRef?.systemId ?? myBinding?.actorRef.systemId ?? context.systemId,
           source: context.actorRef?.source ?? myBinding?.actorRef.source,
-          bindingId: context.approvedActorBindingId ?? myBinding?.bindingId,
-          admissionId: context.admissionId ?? myBinding?.clearance?.admissionId,
-          bindingStatus: myBinding?.status,
-          clearanceStatus: myBinding?.clearance?.status,
+          playerLabel: myMember?.displayName ?? context.currentRole,
+          admissionStatus: myBinding?.clearance?.status,
           readyState: myReadyState,
+          bindingStatus: myBinding?.status,
+          coreStats: [],
+          skillHighlights: [],
+          resourceHighlights: [],
+          equipmentHighlights: [],
+          notes: [],
         }
       : null;
 
@@ -261,19 +344,33 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     return m.status === 'active' && b?.status === 'approved' && r === 'ready';
   }).length;
 
-  // M37 host summary: per-player actor + ready snapshot (read-only, no writes).
-  const playerStatuses = members
-    .filter((m) => m.role === 'player' && m.status !== 'left' && m.status !== 'kicked')
+  // M47 host actor roster: player → actor mapping + ready/admission (read-only).
+  const rosterEntries: RuntimeActorRosterEntry[] = members
+    .filter((m) => m.status !== 'left' && m.status !== 'kicked')
     .map((m) => {
       const b = actorBindings.find((x) => x.memberId === m.memberId);
       const r = readyStates.find((x) => x.memberId === m.memberId)?.status;
+      const clearance = b?.clearance?.status;
+      const bindingApproved = b?.status === 'approved';
+      const admitted = clearance ? clearance === 'approved' : bindingApproved;
+      const admissionLabel = b
+        ? clearance
+          ? CLEARANCE_LABEL[clearance] ?? clearance
+          : bindingApproved
+            ? '已通过'
+            : '待处理'
+        : undefined;
       return {
         memberId: m.memberId,
         name: m.displayName,
-        actorName: b?.actorRef.displayName,
-        approved: b?.status === 'approved',
-        ready: r === 'ready',
+        role: m.role,
         online: m.status === 'active',
+        ready: r === 'ready',
+        admissionLabel,
+        admitted,
+        actorName: b?.actorRef.displayName,
+        system: b?.actorRef.systemId,
+        hasActor: !!b,
       };
     });
 
@@ -332,7 +429,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
           <div className={`mb-1 ${label}`}>主持台</div>
           <div className="space-y-0.5 text-[11px] text-slate-700">
             <div>身份：<b>主持人</b></div>
-            <div>当前场景：<span className="text-slate-500">未设置</span></div>
+            <div>当前场景：<span className="text-slate-700">{currentScene ? (currentScene.title?.trim() || '（未命名场景）') : '未设置'}</span></div>
             <div>公开信息 <b>{publicInfoItems.length}</b> 条 · 状态记录 <b>{stateLogItems.length}</b> 条</div>
             <div>
               同步：<b className={syncDown ? 'text-amber-700' : 'text-emerald-700'}>{syncLabel}</b>
@@ -342,32 +439,11 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
             </div>
           </div>
           <div className="mt-1.5 border-t border-slate-300/40 pt-1.5">
-            <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">玩家状态（{playerStatuses.length}）</div>
-            {playerStatuses.length === 0 ? (
-              <p className="text-[10px] italic text-slate-500">还没有玩家加入。分享房间码邀请玩家加入。</p>
-            ) : (
-              <div className="space-y-0.5">
-                {playerStatuses.map((p) => (
-                  <div key={p.memberId} className="flex items-center gap-1.5 text-[10px]">
-                    <span
-                      className={`inline-block h-1.5 w-1.5 rounded-full ${p.online ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                      title={p.online ? '在线' : '离线'}
-                      aria-hidden
-                    />
-                    <span className="font-bold text-slate-700">{p.name}</span>
-                    <span className="text-slate-500">{p.actorName ?? '未绑定角色'}</span>
-                    <span className="ml-auto flex items-center gap-1">
-                      <span className={p.approved ? 'text-emerald-700' : 'text-amber-700'}>{p.approved ? '已准入' : '未准入'}</span>
-                      <span className="text-slate-300">·</span>
-                      <span className={p.ready ? 'text-emerald-700' : 'text-slate-400'}>{p.ready ? '已准备' : '未准备'}</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">玩家 · 角色名单</div>
+            <RuntimeActorRosterPanel entries={rosterEntries} />
           </div>
           <p className="mt-1.5 text-[10px] leading-relaxed text-slate-500">
-            下一步：用底部「公开信息」发布场景与线索，用「状态记录」记下伤害和关键变化，日志抽屉可回看全程。
+            下一步：用底部「当前场景」设置场景，用「公开信息」发布线索，用「状态记录」记下关键变化；日志抽屉可回看全程。
           </p>
         </div>
       )}
@@ -405,28 +481,24 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
           </div>
         </div>
       )}
+      {/* Scene Board as a compact overlay (M47): current scene + recent activity. */}
+      <div className={card}>
+        <div className={`mb-1 ${label}`}>桌面动态</div>
+        <RuntimeSceneBoardPanel
+          scene={currentScene}
+          publicInfo={publicInfoItems}
+          stateLog={stateLogItems}
+          recentDice={recentDice}
+          role={shellMode}
+          meta={{ roomCode: context.roomCode, systemId: context.systemId, serverLabel: serverLabel ?? context.serverBaseUrl }}
+          loading={notesLoading}
+        />
+      </div>
     </div>
   );
 
-  // ── Main stage: entry context + not-yet-runtime notice ─────────────────────
-  const mainStage = (
-    // Preview canvas fills the stage; notice + entry context are light centered
-    // content (no full-width banner, no absolute corner that collides with overlays).
-    <div className="flex h-full flex-col items-center justify-center rounded-lg border border-dashed border-slate-400/50 bg-white/30 p-4 text-center">
-      <div className="text-base font-bold text-slate-600">地图 / 场景桌面（预览）· Map / Scene Canvas</div>
-      <p className="mx-auto mt-2 max-w-md text-[11px] leading-relaxed text-slate-500">进入正式 Runtime 后显示地图与 token。当前为入口预览。</p>
-      <div className="mt-3 inline-block rounded border border-amber-500/30 bg-amber-50/70 px-2 py-1 text-[9px] text-amber-700">
-        只读预览 · 未接入正式 Runtime / 地图 / 日志
-      </div>
-      <div className="mt-3 grid max-w-sm grid-cols-2 gap-x-4 gap-y-0.5 text-left">
-        <Info k="房间码" v={context.roomCode} strong />
-        <Info k="系统" v={context.systemId} />
-        <Info k="roomId" v={shortId(context.roomId)} />
-        <Info k="服务器" v={serverLabel ?? context.serverBaseUrl} />
-        {typeof context.serverSeqAtEntry === 'number' && <Info k="快照 seq" v={String(context.serverSeqAtEntry)} />}
-      </div>
-    </div>
-  );
+  // ── Main stage: map-first tabletop (scene image fills it; HUD floats) ──────
+  const mainStage = <RuntimeMapStage scene={currentScene} role={shellMode} loading={notesLoading} />;
 
   return (
     <RuntimeFullscreenShell
@@ -475,7 +547,19 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                 ) : undefined,
               actorPanel:
                 shellMode === 'player' ? (
-                  <RuntimeActorReadPanel summary={actorSummary} role="player" />
+                  <RuntimeCharacterSheetPanel summary={characterSummary} role="player" />
+                ) : undefined,
+              scenePanel:
+                shellMode === 'host' ? (
+                  <RuntimeSceneFocusPanel
+                    canEdit={!!context.currentMemberId}
+                    scene={currentScene}
+                    onSet={handleSetSceneFocus}
+                    loading={notesLoading}
+                    feedError={notesError}
+                    justUpdated={feedJustUpdated}
+                    contextHint={syncDown ? '实时同步暂不可用，此场景可能不是最新。' : null}
+                  />
                 ) : undefined,
             },
           )}
@@ -493,14 +577,5 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         />
       }
     />
-  );
-}
-
-function Info({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
-  return (
-    <div className="flex items-baseline gap-2">
-      <span className="min-w-[64px] text-[10px] text-slate-500">{k}</span>
-      <span className={strong ? 'text-sm font-black text-slate-800' : 'text-[12px] text-slate-700'}>{v}</span>
-    </div>
   );
 }

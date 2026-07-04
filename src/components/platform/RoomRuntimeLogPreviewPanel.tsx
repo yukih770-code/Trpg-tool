@@ -101,20 +101,29 @@ function matchesLogFilter(e: RoomRuntimeLogEvent, filter: LogFilterId): boolean 
 
 // ── M36 Session Recap v0 (pure derivation, no AI, no persistence) ────────────
 function buildSessionRecap(events: RoomRuntimeLogEvent[]): string {
-  const infos = events.filter((e) => e.kind === 'host.note');
+  const scenes = events.filter(isSceneFocusEvent);
+  const infos = events.filter((e) => e.kind === 'host.note' && !isSceneFocusEvent(e));
   const states = events.filter((e) => e.kind === 'state.manualChange');
   const dice = events.filter((e) => e.kind === 'dice.roll');
   const others = events.filter((e) => e.kind === 'system.note' || e.kind === 'chat.message');
 
-  const isEmpty = infos.length === 0 && states.length === 0 && dice.length === 0 && others.length === 0;
+  const isEmpty =
+    scenes.length === 0 && infos.length === 0 && states.length === 0 && dice.length === 0 && others.length === 0;
 
   const lines: string[] = [
     '# 本场回顾（草稿）',
     '',
     '> 根据本场日志自动整理的回顾草稿，可复制后自行编辑。',
     ...(isEmpty
-      ? ['', '_本场还没有可回顾的内容。发布公开信息、记录状态或投骰后，这里会自动汇总。_']
+      ? ['', '_本场还没有可回顾的内容。设置当前场景、发布公开信息、记录状态或投骰后，这里会自动汇总。_']
       : []),
+    '',
+    `## 场景（${scenes.length}）`,
+    ...(scenes.length === 0 ? ['- （无）'] : scenes.map((e) => {
+      const p = (e.payload ?? {}) as { title?: string; body?: string };
+      const body = p.body ?? e.text ?? '';
+      return p.title ? `- 【${p.title}】${body}` : `- ${body}`;
+    })),
     '',
     `## 公开信息（${infos.length}）`,
     ...(infos.length === 0 ? ['- （无）'] : infos.map((e) => {
@@ -165,16 +174,23 @@ function asDiceRoll(payload: unknown): SharedDiceRollResult | null {
   return p as SharedDiceRollResult;
 }
 
-/** Narrow a payload written by the M29 public-info / state-log panels. */
-function asRunNote(payload: unknown): { title?: string; targetName?: string; body?: string } | null {
+/** Narrow a payload written by the M29 public-info / state-log / M42 scene panels. */
+function asRunNote(payload: unknown): { noteKind?: string; title?: string; targetName?: string; body?: string; mapUrl?: string } | null {
   if (!payload || typeof payload !== 'object') return null;
-  const p = payload as { noteKind?: unknown; title?: unknown; targetName?: unknown; body?: unknown };
-  if (p.noteKind !== 'publicInfo' && p.noteKind !== 'manualState') return null;
+  const p = payload as { noteKind?: unknown; title?: unknown; targetName?: unknown; body?: unknown; mapUrl?: unknown };
+  if (p.noteKind !== 'publicInfo' && p.noteKind !== 'manualState' && p.noteKind !== 'sceneFocus') return null;
   return {
+    noteKind: typeof p.noteKind === 'string' ? p.noteKind : undefined,
     title: typeof p.title === 'string' ? p.title : undefined,
     targetName: typeof p.targetName === 'string' ? p.targetName : undefined,
     body: typeof p.body === 'string' ? p.body : undefined,
+    mapUrl: typeof p.mapUrl === 'string' ? p.mapUrl : undefined,
   };
+}
+
+/** True for a public host.note that sets the current scene focus (M42). */
+function isSceneFocusEvent(e: RoomRuntimeLogEvent): boolean {
+  return e.kind === 'host.note' && asRunNote(e.payload)?.noteKind === 'sceneFocus';
 }
 
 /** 公开信息：主持人发布的信息，标题加粗；状态记录：目标 + 说明。 */
@@ -182,10 +198,13 @@ function RunNoteLine({ e }: { e: RoomRuntimeLogEvent }) {
   const note = asRunNote(e.payload);
   const body = note?.body ?? e.text ?? '';
   if (e.kind === 'host.note') {
+    const isScene = note?.noteKind === 'sceneFocus';
     return (
       <div className="mt-0.5 text-[12px] leading-relaxed">
+        {isScene && <span className="mr-1" aria-hidden>📍</span>}
         {note?.title && <span className="mr-1.5 font-bold text-slate-800">{note.title}</span>}
         <span className="whitespace-pre-wrap text-slate-700">{body}</span>
+        {isScene && note?.mapUrl && <span className="ml-1.5 text-[9px] text-teal-600">· 含场景图</span>}
       </div>
     );
   }
@@ -433,7 +452,7 @@ export function RoomRuntimeLogPreviewPanel({
             <div key={e.eventId} className="rounded border border-slate-300/40 bg-white/70 px-2 py-1 text-[11px]">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[9px] font-bold text-slate-400">#{e.seq}</span>
-                <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${KIND_TONE[e.kind] ?? 'bg-slate-500/10 text-slate-600'}`}>{KIND_LABEL[e.kind] ?? e.kind}</span>
+                <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${isSceneFocusEvent(e) ? 'bg-teal-500/10 text-teal-700' : (KIND_TONE[e.kind] ?? 'bg-slate-500/10 text-slate-600')}`}>{isSceneFocusEvent(e) ? '场景焦点' : (KIND_LABEL[e.kind] ?? e.kind)}</span>
                 <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{VISIBILITY_LABEL[e.visibility] ?? e.visibility}</span>
                 {e.authorMemberId && <span className="text-[9px] text-slate-400">作者 {shortId(e.authorMemberId)}</span>}
                 {e.actorBindingId && <span className="text-[9px] text-slate-400">角色 {shortId(e.actorBindingId)}</span>}
