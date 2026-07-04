@@ -25,8 +25,8 @@ export interface RuntimeFullscreenShellProps {
   tone?: RuntimeShellTone;
   roomCode?: string;
   connectionLabel?: string;
-  /** Tone for the header connection dot: ok (live) / warn (down) / idle (connecting). */
-  connectionTone?: 'ok' | 'warn' | 'idle';
+  /** Tone for the header connection dot: ok (live) / warn (down) / idle (connecting) / local (offline single-player). */
+  connectionTone?: 'ok' | 'warn' | 'idle' | 'local';
   sceneLabel?: string;
   onExit?: () => void;
   exitLabel?: string;
@@ -59,10 +59,11 @@ const MODE_TONE: Record<RuntimeShellMode, string> = {
   spectator: 'border-slate-400/50 bg-slate-400/10 text-slate-600',
 };
 
-const CONN_DOT: Record<'ok' | 'warn' | 'idle', string> = {
+const CONN_DOT: Record<'ok' | 'warn' | 'idle' | 'local', string> = {
   ok: 'bg-emerald-500',
   warn: 'bg-amber-500',
   idle: 'bg-slate-400 animate-pulse',
+  local: 'bg-sky-500',
 };
 
 export function RuntimeFullscreenShell({

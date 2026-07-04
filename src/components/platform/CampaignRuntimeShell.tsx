@@ -14,6 +14,13 @@ import { SharedDiceDock } from './SharedDiceDock';
 import { RuntimeActionDock, buildRuntimeDockActions } from './RuntimeActionDock';
 import { RuntimePublicInfoPanel, type RuntimePublicInfoItem } from './RuntimePublicInfoPanel';
 import { RuntimeManualStateLogPanel, type RuntimeStateLogItem } from './RuntimeManualStateLogPanel';
+import { RuntimeCharacterSheetPanel } from './RuntimeCharacterSheetPanel';
+import { RuntimeMapStage } from './RuntimeMapStage';
+import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSceneBoardPanel';
+import { RuntimeSceneFocusPanel, type RuntimeSceneFocus } from './RuntimeSceneFocusPanel';
+import { resolveRuntimeActorSnapshot } from './runtimeActorSnapshotSource';
+import { buildRuntimeCharacterSummary } from './runtimeActorSnapshotAdapter';
+import { buildRuntimeInventorySummary } from './runtimeInventoryAdapter';
 import { rollSharedDiceExpression, formatSharedDiceRoll } from '../../lib/platform/sharedDiceExpression';
 
 // Dev-only: the Runtime Layout Shell Preview (RuntimeSlotShell + DND combat dev
@@ -112,6 +119,7 @@ export function CampaignRuntimeShell({
   const [manualStateNote, setManualStateNote] = useState('');
   const theme = toneClasses[tone];
   const isHost = context.selectedEntryRole === 'host';
+  const shellMode: RuntimeShellMode = isHost ? 'host' : 'player';
   const currentActor = context.selectedActorName ?? t('campaignRuntime.header.noActor');
   const runtimeSystemId = toLocalCampaignSystemId(context.systemId);
   const appendRuntimeLogEvent = useRuntimeLogLocalStore((state) => state.appendRuntimeLogEvent);
@@ -246,6 +254,67 @@ export function CampaignRuntimeShell({
       const p = (e.payload ?? {}) as { targetName?: string; body?: string };
       return { id: e.id, targetName: p.targetName, body: p.body ?? e.message, createdAt: e.createdAt };
     });
+
+  // ── M65B/M66 local actor context + read-only character sheet ───────────────
+  // Local Runtime is a real Runtime: derive an actorRef from the campaign entry
+  // selection and reuse the SAME (mode-agnostic) resolver + adapters + sheet as
+  // the room bridge. No store writes, no character edits.
+  const localActorRef = context.selectedActorId || context.selectedActorName
+    ? { actorId: context.selectedActorId, displayName: context.selectedActorName, systemId: context.systemId }
+    : undefined;
+  const hasLocalActor = !!localActorRef;
+  const snapshotResult = resolveRuntimeActorSnapshot({
+    systemId: context.systemId,
+    actorId: context.selectedActorId,
+    displayName: context.selectedActorName,
+  });
+  const characterSummary = buildRuntimeCharacterSummary({
+    actorRef: localActorRef,
+    snapshot: snapshotResult.snapshot,
+    playerLabel: context.selectedActorName ?? (isHost ? '主持人' : '玩家'),
+    fallbackSystemId: context.systemId,
+    sourceLabel: snapshotResult.sourceKind === 'characterVault' ? snapshotResult.sourceLabel : undefined,
+    extraWarnings: snapshotResult.warnings,
+    matchConfidence: snapshotResult.matchConfidence,
+  });
+  const inventorySummary = buildRuntimeInventorySummary({ snapshot: snapshotResult.snapshot, systemId: context.systemId });
+
+  // ── M67 local scene focus (local RuntimeLog, no server) ────────────────────
+  const handleLocalSetScene = (input: { title?: string; body: string; mapUrl?: string }) => {
+    if (!isHost || !runtimeSystemId) return;
+    appendRuntimeLogEvent({
+      campaignId: context.campaignId,
+      systemId: runtimeSystemId,
+      type: 'system.note',
+      message: input.title ? `【场景】${input.title}` : `【场景】${input.body}`,
+      payload: { noteKind: 'sceneFocus', title: input.title, body: input.body, mapUrl: input.mapUrl },
+    });
+  };
+  const sceneEvents = activeEvents.filter(
+    (e) => e.type === 'system.note' && (e.payload as { noteKind?: string } | undefined)?.noteKind === 'sceneFocus',
+  );
+  const latestSceneEvent = sceneEvents.length > 0 ? sceneEvents[sceneEvents.length - 1] : undefined;
+  const currentScene: RuntimeSceneFocus | null = latestSceneEvent
+    ? (() => {
+        const p = (latestSceneEvent.payload ?? {}) as { title?: string; body?: string; mapUrl?: string };
+        return { title: p.title, body: p.body ?? latestSceneEvent.message, mapUrl: p.mapUrl, createdAt: latestSceneEvent.createdAt };
+      })()
+    : null;
+
+  // Recent dice for the local Scene Board (from local roll.performed events).
+  const recentDice: RuntimeSceneBoardDice[] = activeEvents
+    .filter((e) => e.type === 'roll.performed')
+    .map((e): RuntimeSceneBoardDice | null => {
+      const p = (e.payload ?? {}) as { normalizedExpression?: unknown; total?: unknown; label?: unknown };
+      return typeof p.normalizedExpression === 'string' && typeof p.total === 'number'
+        ? { id: e.id, label: typeof p.label === 'string' ? p.label : undefined, expression: p.normalizedExpression, total: p.total, createdAt: e.createdAt }
+        : null;
+    })
+    .filter((x): x is RuntimeSceneBoardDice => x !== null);
+
+  const actorPanelNode = (
+    <RuntimeCharacterSheetPanel summary={characterSummary} inventory={inventorySummary} role={isHost ? 'host' : 'player'} />
+  );
 
   const renderRuntimeLogPanel = () => (
     <div className="mt-3 space-y-3">
@@ -407,8 +476,6 @@ export function CampaignRuntimeShell({
     </div>
   );
 
-  const shellMode: RuntimeShellMode = isHost ? 'host' : 'player';
-
   const actorRail = (
     <div className="space-y-2">
       <div className={`rounded border p-2 ${theme.card}`}>
@@ -424,21 +491,9 @@ export function CampaignRuntimeShell({
     </div>
   );
 
-  const mainStage = (
-    // Map / Scene canvas fills the whole stage; scene items are light centered chips
-    // (no full-width banner), so nothing compresses the tabletop.
-    <div className={`flex h-full flex-col items-center justify-center rounded-lg border p-4 text-center ${theme.card}`}>
-      <div className={`text-base font-bold ${theme.accent}`}>地图 / 场景桌面 · Map / Scene Canvas</div>
-      <p className={`mx-auto mt-2 max-w-md text-[11px] leading-relaxed ${theme.muted}`}>{t('campaignRuntime.mainStage.note')}</p>
-      <div className="mt-3 flex max-w-xl flex-wrap justify-center gap-1.5">
-        {mainStageItems.map((key) => (
-          <span key={key} className={`cursor-default rounded-full border px-2 py-0.5 text-[10px] font-bold opacity-70 ${theme.action}`}>
-            {t(key)}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
+  // M67: the local main stage is now the shared map-first tabletop (local scene
+  // focus drives it), replacing the old static placeholder.
+  const mainStage = <RuntimeMapStage scene={currentScene} role={shellMode} />;
 
   const summaryRow = (k: string, v: string) => (
     <div className={`rounded border p-2 ${theme.card}`}>
@@ -447,15 +502,35 @@ export function CampaignRuntimeShell({
     </div>
   );
 
+  // M68 local-mode indicator — a calm "local runtime" note, NOT an error/missing state.
+  const modeNote = (
+    <div className="rounded border border-slate-300/50 bg-white/70 px-2 py-1.5 text-[10px] leading-relaxed text-slate-600">
+      <span className="font-bold text-slate-700">本地运行中 · 未开启多人同步。</span>{' '}
+      本地 Runtime 也是完整 Runtime；联机只是可选的同步层。当前角色卡来自本地角色库，状态记录不会自动修改角色卡。
+    </div>
+  );
+
+  // M67 shared Scene Board overlay (local data): current scene + recent activity.
+  const sceneBoardNode = (
+    <RuntimeSceneBoardPanel
+      scene={currentScene}
+      publicInfo={publicInfoItems}
+      stateLog={stateLogItems}
+      recentDice={recentDice}
+      role={shellMode}
+      meta={{ roomCode: context.campaignRoomCode, systemId: context.systemId }}
+    />
+  );
+
   // M25.1b: light role summary — no big placeholder lists / dev preview by default.
   const inspector = isHost ? (
     <div className="space-y-2">
-      {summaryRow('当前场景', '未设置')}
+      {modeNote}
+      {summaryRow('当前场景', currentScene ? (currentScene.title?.trim() || '（未命名场景）') : '未设置')}
       {summaryRow('在场角色', currentActor)}
-      {summaryRow('公开信息', `${publicInfoItems.length} 条`)}
-      {summaryRow('状态记录', `${stateLogItems.length} 条`)}
+      <div className="rounded border border-slate-300/40 bg-white/60 p-2">{sceneBoardNode}</div>
       <p className={`text-[10px] leading-relaxed ${theme.muted}`}>
-        下一步：用底部「公开信息」发布场景与线索，用「状态记录」记下伤害和关键变化，日志抽屉可回看全程。
+        下一步：用底部「当前场景」设置场景，用「公开信息」发布线索，用「状态记录」记下关键变化；日志抽屉可回看全程。
       </p>
       {SHOW_RUNTIME_LAYOUT_DEV_PREVIEW && tone === 'dnd' && (
         <RuntimeSlotShell
@@ -469,9 +544,11 @@ export function CampaignRuntimeShell({
     </div>
   ) : (
     <div className="space-y-2">
+      {modeNote}
       {summaryRow('当前角色', currentActor)}
+      <div className="rounded border border-slate-300/40 bg-white/60 p-2">{sceneBoardNode}</div>
       <p className={`text-[10px] leading-relaxed ${theme.muted}`}>
-        你可以：投骰、在底部「公开信息」查看主持人发布的内容、在日志抽屉回看全程。
+        你可以：投骰、打开「我的角色」查看角色卡、在「公开信息」查看主持人发布的内容、在日志抽屉回看全程。
       </p>
     </div>
   );
@@ -498,26 +575,33 @@ export function CampaignRuntimeShell({
   // Unified Runtime Action Dock: 投骰 (local roll) + real 公开信息 / 状态记录
   // panels (M29). Same dock as multiplayer; only the authority differs (local
   // store here, server append in the room bridge).
-  const actionDock = (
-    <RuntimeActionDock
-      actions={buildRuntimeDockActions(shellMode, <SharedDiceDock onRoll={handleLocalDiceRoll} />, {
-        publicInfoPanel: (
-          <RuntimePublicInfoPanel
-            canPublish={isHost && !!runtimeSystemId}
-            items={publicInfoItems}
-            onPublish={handleLocalPublishPublicInfo}
-          />
-        ),
-        stateLogPanel: isHost ? (
-          <RuntimeManualStateLogPanel
-            canEdit={!!runtimeSystemId}
-            items={stateLogItems}
-            onRecord={handleLocalRecordStateChange}
-          />
-        ) : undefined,
-      })}
-    />
-  );
+  const dockActions = buildRuntimeDockActions(shellMode, <SharedDiceDock onRoll={handleLocalDiceRoll} />, {
+    publicInfoPanel: (
+      <RuntimePublicInfoPanel
+        canPublish={isHost && !!runtimeSystemId}
+        items={publicInfoItems}
+        onPublish={handleLocalPublishPublicInfo}
+      />
+    ),
+    stateLogPanel: isHost ? (
+      <RuntimeManualStateLogPanel
+        canEdit={!!runtimeSystemId}
+        items={stateLogItems}
+        onRecord={handleLocalRecordStateChange}
+      />
+    ) : undefined,
+    scenePanel: isHost ? (
+      <RuntimeSceneFocusPanel canEdit={isHost} scene={currentScene} onSet={handleLocalSetScene} />
+    ) : undefined,
+    // Player branch uses actorPanel; host (solo) gets it appended below.
+    actorPanel: !isHost ? actorPanelNode : undefined,
+  });
+  // Solo host (host role WITH a selected actor) can view their own character
+  // without losing host tools — append 我的角色 to the host dock.
+  if (isHost && hasLocalActor) {
+    dockActions.push({ id: 'actor', label: '我的角色', shortLabel: '角色', panel: actorPanelNode });
+  }
+  const actionDock = <RuntimeActionDock actions={dockActions} />;
 
   const logDrawer = (
     <div>
@@ -534,7 +618,8 @@ export function CampaignRuntimeShell({
       mode={shellMode}
       tone={tone}
       roomCode={context.campaignRoomCode}
-      connectionLabel={t('campaignRuntime.header.connectionPlaceholder')}
+      connectionLabel="本地运行中 · 未开启多人同步"
+      connectionTone="local"
       onExit={onExitRuntime}
       exitLabel="返回战役"
       mainStage={mainStage}
