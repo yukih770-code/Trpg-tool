@@ -24,6 +24,10 @@ export interface RuntimeActorRosterEntry {
   actorName?: string;
   system?: string;
   hasActor: boolean;
+  /** M60: whether a full character snapshot was resolved (only known for self). */
+  hasSnapshot?: boolean;
+  /** M60: provenance label when a snapshot was resolved (self only). */
+  sourceLabel?: string;
 }
 
 export interface RuntimeActorRosterPanelProps {
@@ -79,6 +83,11 @@ export function RuntimeActorRosterPanel({ entries }: RuntimeActorRosterPanelProp
                       {e.system && <span>· {e.system}</span>}
                       {e.admissionLabel && (
                         <span className={e.admitted ? 'text-emerald-700' : 'text-amber-700'}>· {e.admissionLabel}</span>
+                      )}
+                      {e.hasSnapshot ? (
+                        <span className="rounded-full bg-emerald-500/10 px-1.5 text-[9px] font-bold text-emerald-700" title={e.sourceLabel}>已连接角色卡</span>
+                      ) : (
+                        <span className="rounded-full bg-slate-500/10 px-1.5 text-[9px] font-bold text-slate-500" title="完整角色快照保存在该玩家本地">仅房间绑定</span>
                       )}
                     </>
                   ) : (

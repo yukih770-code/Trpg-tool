@@ -20,6 +20,7 @@ import { RuntimeCharacterSheetPanel } from './RuntimeCharacterSheetPanel';
 import { RuntimeActorRosterPanel, type RuntimeActorRosterEntry } from './RuntimeActorRosterPanel';
 import { buildRuntimeCharacterSummary } from './runtimeActorSnapshotAdapter';
 import { buildRuntimeInventorySummary } from './runtimeInventoryAdapter';
+import { resolveRuntimeActorSnapshot } from './runtimeActorSnapshotSource';
 import { RuntimeSceneFocusPanel, type RuntimeSceneFocus } from './RuntimeSceneFocusPanel';
 import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSceneBoardPanel';
 import { RuntimeMapStage } from './RuntimeMapStage';
@@ -346,10 +347,18 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const myBinding = actorBindings.find((b) => b.memberId === context.currentMemberId);
   const myMember = members.find((m) => m.memberId === context.currentMemberId);
 
-  // M46/M49 read-only Runtime Character Sheet summary — built by the safe snapshot
-  // adapter. No rich snapshot source is wired in yet (snapshot: undefined), so the
-  // adapter returns identity + a sourceWarning and empty stat sections; once a real
-  // actor snapshot is available it will populate system-aware fields with no UI change.
+  // M57 resolve a REAL character snapshot for the current player from the local
+  // character stores (DND / COC / CP-RED), matched by actor id then name. This is
+  // the current user's own vault, so it resolves the player's own "我的角色";
+  // other players' snapshots live on their machines (roster reflects that).
+  const snapshotResult = resolveRuntimeActorSnapshot({
+    systemId: context.actorRef?.systemId ?? context.systemId,
+    actorId: context.actorRef?.actorId,
+    displayName: context.actorRef?.displayName,
+  });
+
+  // M46/M49/M57 read-only Runtime Character Sheet summary — built by the safe
+  // snapshot adapter from the resolved snapshot (or identity-only when none).
   const characterSummary = buildRuntimeCharacterSummary({
     actorRef: context.actorRef,
     binding: myBinding
@@ -362,16 +371,17 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
           clearanceStatus: myBinding.clearance?.status,
         }
       : undefined,
-    snapshot: undefined,
+    snapshot: snapshotResult.snapshot,
     playerLabel: myMember?.displayName ?? context.currentRole,
     readyState: myReadyState,
     fallbackSystemId: context.systemId,
+    sourceLabel: snapshotResult.sourceKind === 'characterVault' ? snapshotResult.sourceLabel : undefined,
+    extraWarnings: snapshotResult.warnings,
   });
 
-  // M55 read-only inventory summary. Same story: no rich snapshot source yet, so
-  // it returns empty sections + a sourceWarning; wiring a snapshot later fills it.
+  // M55/M57 read-only inventory summary from the same resolved snapshot.
   const inventorySummary = buildRuntimeInventorySummary({
-    snapshot: undefined,
+    snapshot: snapshotResult.snapshot,
     systemId: characterSummary?.system ?? context.actorRef?.systemId ?? context.systemId,
   });
 
@@ -399,6 +409,9 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
             ? '已通过'
             : '待处理'
         : undefined;
+      // Snapshot availability is only known for the current user (self) — other
+      // players' full character data lives on their own machines.
+      const isSelf = m.memberId === context.currentMemberId;
       return {
         memberId: m.memberId,
         name: m.displayName,
@@ -410,6 +423,8 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         actorName: b?.actorRef.displayName,
         system: b?.actorRef.systemId,
         hasActor: !!b,
+        hasSnapshot: isSelf && snapshotResult.sourceKind === 'characterVault',
+        sourceLabel: isSelf && snapshotResult.sourceKind === 'characterVault' ? snapshotResult.sourceLabel : undefined,
       };
     });
 

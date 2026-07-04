@@ -36,6 +36,8 @@ export interface RuntimeCharacterSummary {
   readyState?: string;
   /** Lobby binding-draft status. */
   bindingStatus?: string;
+  /** Human-facing provenance of the character data (M57/M60), e.g. 本地角色库 · DND 5E. */
+  dataSourceLabel?: string;
   coreStats: RuntimeCharacterStat[];
   skillHighlights: RuntimeCharacterStat[];
   resourceHighlights: RuntimeCharacterStat[];
@@ -187,7 +189,12 @@ export function RuntimeCharacterSheetPanel({ summary, role, inventory }: Runtime
           <span className="text-[15px] font-black text-slate-800">{summary.displayName}</span>
           <span className="rounded-full border border-slate-400/40 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">只读角色卡</span>
         </div>
-        <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">{systemLabel}</div>
+        <div className="mt-0.5 flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-700">{systemLabel}</span>
+          {summary.dataSourceLabel && (
+            <span className="text-[9px] text-slate-400">数据来源：{summary.dataSourceLabel}</span>
+          )}
+        </div>
         <div className="mt-2 space-y-0">
           {summary.playerLabel && <IdRow k="玩家 / 席位" v={summary.playerLabel} />}
           <IdRow k="来源" v={sourceLabel ?? '当前房间绑定角色'} />

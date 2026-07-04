@@ -36,6 +36,10 @@ export interface RuntimeActorSnapshotInput {
   playerLabel?: string;
   readyState?: string;
   fallbackSystemId?: string;
+  /** Human-facing provenance label for the resolved snapshot (M57/M60). */
+  sourceLabel?: string;
+  /** Extra source warnings from the resolver (shown before the generic one). */
+  extraWarnings?: string[];
 }
 
 type SystemFamily = 'dnd5e' | 'coc7e' | 'cpred' | 'other';
@@ -61,19 +65,48 @@ function toText(v: unknown): string | undefined {
   return undefined;
 }
 
+/** Text from a scalar OR a nested {current,max}/{value} object (COC/CP shapes). */
+function flexText(v: unknown): string | undefined {
+  const t = toText(v);
+  if (t !== undefined) return t;
+  const r = asRecord(v);
+  if (r) {
+    const cur = toText(firstDefined(r, ['current', 'value', 'val', 'points']));
+    const max = toText(firstDefined(r, ['max', 'maximum', 'maxValue']));
+    if (cur !== undefined && max !== undefined) return `${cur} / ${max}`;
+    if (cur !== undefined) return cur;
+  }
+  return undefined;
+}
+
 function pushStat(out: RuntimeCharacterStat[], label: string, rec: Record<string, unknown> | null, keys: string[]): void {
   if (!rec) return;
-  const text = toText(firstDefined(rec, keys));
+  const text = flexText(firstDefined(rec, keys));
   if (text !== undefined) out.push({ label, value: text });
 }
 
-/** Combine "current / max" style pairs into one stat when present. */
+/** Combine "current / max" style pairs into one stat when present (flat fields). */
 function pushRatioStat(out: RuntimeCharacterStat[], label: string, rec: Record<string, unknown> | null, curKeys: string[], maxKeys: string[]): void {
   if (!rec) return;
-  const cur = toText(firstDefined(rec, curKeys));
+  const cur = flexText(firstDefined(rec, curKeys));
   const max = toText(firstDefined(rec, maxKeys));
   if (cur !== undefined && max !== undefined) out.push({ label, value: `${cur} / ${max}` });
   else if (cur !== undefined) out.push({ label, value: cur });
+}
+
+/** Read a string[] (or [{name}]) of names into stats with a fixed value (e.g. proficiencies). */
+function readNameStats(rec: Record<string, unknown> | null, keys: string[], value: string, max = 12): RuntimeCharacterStat[] {
+  if (!rec) return [];
+  const v = firstDefined(rec, keys);
+  if (!Array.isArray(v)) return [];
+  const out: RuntimeCharacterStat[] = [];
+  for (const item of v) {
+    if (out.length >= max) break;
+    const rec = asRecord(item);
+    const name = typeof item === 'string' ? item.trim() : rec ? toText(rec.name) : undefined;
+    if (name) out.push({ label: name, value });
+  }
+  return out;
 }
 
 /** Read an array of strings or {name,label,title} objects into a bounded string list. */
@@ -148,31 +181,35 @@ function emptySections(): Sections {
 
 function extractDnd(rec: Record<string, unknown> | null): Sections {
   const s = emptySections();
-  pushStat(s.coreStats, '护甲等级 (AC)', rec, ['ac', 'armorClass', 'armor_class']);
-  pushRatioStat(s.coreStats, '生命值 (HP)', rec, ['hp', 'currentHp', 'hitPoints'], ['maxHp', 'hpMax', 'maxHitPoints']);
+  // Real DND characterStore fields: acMod / hpCurrent / hpMax / tempHp / level /
+  // jobClass / subclass / skillProficiencies / inventory / feats.
+  pushStat(s.coreStats, '护甲等级 (AC)', rec, ['acMod', 'ac', 'armorClass', 'armor_class']);
+  pushRatioStat(s.coreStats, '生命值 (HP)', rec, ['hpCurrent', 'hp', 'currentHp', 'hitPoints'], ['hpMax', 'maxHp', 'maxHitPoints']);
   pushStat(s.coreStats, '临时 HP', rec, ['tempHp', 'temporaryHp', 'temp_hp']);
-  pushStat(s.coreStats, '熟练加值', rec, ['proficiencyBonus', 'profBonus', 'proficiency']);
-  pushStat(s.coreStats, '被动感知', rec, ['passivePerception', 'passiveWisdom']);
-  pushStat(s.coreStats, '职业 / 等级', rec, ['classLevel', 'classAndLevel']);
+  pushStat(s.coreStats, '职业', rec, ['jobClass', 'class', 'className']);
+  pushStat(s.coreStats, '等级', rec, ['level', 'characterLevel']);
   pushStat(s.coreStats, '子职业', rec, ['subclass', 'archetype']);
-  s.skillHighlights = readStatList(rec, ['savingThrows', 'saves', 'skills', 'skillHighlights']);
-  s.resourceHighlights = readStatList(rec, ['spellSlots', 'pactMagic', 'resources', 'spellcasting']);
-  s.equipmentHighlights = readStringList(rec, ['equipment', 'gear', 'items', 'inventory']);
-  s.featureHighlights = readStatList(rec, ['features', 'traits', 'featureHighlights', 'preparedSpells']);
+  pushStat(s.coreStats, '背景', rec, ['background']);
+  pushStat(s.coreStats, '种族', rec, ['race']);
+  s.skillHighlights = readNameStats(rec, ['skillProficiencies', 'savingThrows', 'saves'], '熟练');
+  if (s.skillHighlights.length === 0) s.skillHighlights = readStatList(rec, ['skills', 'skillHighlights']);
+  s.resourceHighlights = readStatList(rec, ['classResources', 'spellSlots', 'pactMagic', 'resources']);
+  s.equipmentHighlights = readStringList(rec, ['inventory', 'equipment', 'gear', 'items']);
+  s.featureHighlights = readNameStats(rec, ['feats', 'features', 'traits'], '·');
   return s;
 }
 
 function extractCoc(rec: Record<string, unknown> | null): Sections {
   const s = emptySections();
-  pushRatioStat(s.coreStats, '生命值 (HP)', rec, ['hp', 'currentHp'], ['maxHp', 'hpMax']);
-  pushRatioStat(s.coreStats, '魔法值 (MP)', rec, ['mp', 'currentMp'], ['maxMp', 'mpMax']);
-  pushStat(s.coreStats, '理智 (SAN)', rec, ['san', 'sanity', 'currentSan']);
-  pushStat(s.coreStats, '幸运 (Luck)', rec, ['luck', 'luckPoints']);
+  // Real CocCharacter: hp/mp/sanity/luck are nested {current,max}; flexText handles it.
+  pushStat(s.coreStats, '生命值 (HP)', rec, ['hp']);
+  pushStat(s.coreStats, '魔法值 (MP)', rec, ['mp']);
+  pushStat(s.coreStats, '理智 (SAN)', rec, ['sanity', 'san']);
+  pushStat(s.coreStats, '幸运 (Luck)', rec, ['luck']);
   pushStat(s.coreStats, '职业', rec, ['occupation', 'profession', 'job']);
-  pushStat(s.coreStats, '年龄', rec, ['age']);
-  pushStat(s.coreStats, '状态', rec, ['status', 'condition', 'injuries', 'temporaryInsanity']);
+  pushStat(s.coreStats, '出生地', rec, ['birthplace']);
   s.skillHighlights = readStatList(rec, ['skills', 'mainSkills', 'skillHighlights']);
-  s.equipmentHighlights = readStringList(rec, ['weapons', 'gear', 'belongings', 'items', 'inventory']);
+  s.equipmentHighlights = readStringList(rec, ['weapons', 'inventory', 'gear', 'belongings', 'items']);
   s.featureHighlights = readStatList(rec, ['weaponsDetail', 'features']);
   s.notes = readStringList(rec, ['backstory', 'notes', 'background']);
   return s;
@@ -180,14 +217,14 @@ function extractCoc(rec: Record<string, unknown> | null): Sections {
 
 function extractCpred(rec: Record<string, unknown> | null): Sections {
   const s = emptySections();
-  pushRatioStat(s.coreStats, '生命值 (HP)', rec, ['hp', 'currentHp'], ['maxHp', 'hpMax']);
+  pushStat(s.coreStats, '生命值 (HP)', rec, ['hp', 'currentHp']);
   pushStat(s.coreStats, '人性 (Humanity)', rec, ['humanity', 'currentHumanity']);
-  pushStat(s.coreStats, '共情 (EMP)', rec, ['emp', 'empathy']);
+  pushStat(s.coreStats, '共情 (EMP)', rec, ['emp', 'empathy', 'EMP']);
   pushStat(s.coreStats, '护甲 (Armor)', rec, ['armor', 'armorSp', 'sp']);
   pushStat(s.coreStats, '角色能力', rec, ['roleAbility', 'role']);
   s.skillHighlights = readStatList(rec, ['skills', 'skillHighlights']);
   s.resourceHighlights = readStatList(rec, ['stats', 'attributes', 'resources']);
-  s.equipmentHighlights = readStringList(rec, ['weapons', 'gear', 'equipment', 'inventory']);
+  s.equipmentHighlights = readStringList(rec, ['weapons', 'gear', 'equipment', 'inventory', 'fashion']);
   s.featureHighlights = readStatList(rec, ['cyberware', 'implants', 'features']);
   return s;
 }
@@ -222,7 +259,8 @@ export function buildRuntimeCharacterSummary(input: RuntimeActorSnapshotInput): 
   const sections = extractByFamily(systemFamily(system), snapshotRec);
 
   const sourceWarnings: string[] = [];
-  if (!snapshotRec) {
+  if (input.extraWarnings && input.extraWarnings.length > 0) sourceWarnings.push(...input.extraWarnings);
+  if (!snapshotRec && sourceWarnings.length === 0) {
     sourceWarnings.push('未获取到完整角色快照，当前仅显示轻量信息（角色名 / 系统 / 准入状态）。角色卡数值将在接入角色快照后自动显示。');
   }
 
@@ -234,6 +272,7 @@ export function buildRuntimeCharacterSummary(input: RuntimeActorSnapshotInput): 
     admissionStatus: input.binding?.clearanceStatus,
     readyState: input.readyState,
     bindingStatus: input.binding?.status,
+    dataSourceLabel: input.sourceLabel,
     coreStats: sections.coreStats,
     skillHighlights: sections.skillHighlights,
     resourceHighlights: sections.resourceHighlights,

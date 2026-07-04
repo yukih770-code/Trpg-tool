@@ -157,7 +157,7 @@ function extractDnd(rec: Record<string, unknown> | null): InventorySections {
   const currency = dedupeConcat(
     readItemList(rec, ['currency', 'coins', 'money']),
     readScalarItems(rec, [
-      { keys: ['gp', 'gold'], label: '金币 (GP)' },
+      { keys: ['coin', 'gp', 'gold'], label: '金币' },
       { keys: ['sp', 'silver'], label: '银币 (SP)' },
       { keys: ['cp', 'copper'], label: '铜币 (CP)' },
     ]),
