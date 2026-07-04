@@ -48,6 +48,15 @@ const KIND_LABEL: Record<RoomRuntimeLogEventKind, string> = {
   'state.manualChange': '状态记录',
 };
 
+// Per-kind badge tone so 投骰 / 公开信息 / 状态记录 / 系统 read apart at a glance.
+const KIND_TONE: Record<RoomRuntimeLogEventKind, string> = {
+  'chat.message': 'bg-slate-500/10 text-slate-600',
+  'system.note': 'bg-slate-500/10 text-slate-500',
+  'dice.roll': 'bg-indigo-500/10 text-indigo-700',
+  'host.note': 'bg-emerald-500/10 text-emerald-700',
+  'state.manualChange': 'bg-amber-500/10 text-amber-700',
+};
+
 const VISIBILITY_LABEL: Record<RoomRuntimeLogVisibility, string> = {
   public: '公开',
   hostOnly: '主持人可见（v0 不投递）',
@@ -424,7 +433,7 @@ export function RoomRuntimeLogPreviewPanel({
             <div key={e.eventId} className="rounded border border-slate-300/40 bg-white/70 px-2 py-1 text-[11px]">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[9px] font-bold text-slate-400">#{e.seq}</span>
-                <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{KIND_LABEL[e.kind] ?? e.kind}</span>
+                <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${KIND_TONE[e.kind] ?? 'bg-slate-500/10 text-slate-600'}`}>{KIND_LABEL[e.kind] ?? e.kind}</span>
                 <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{VISIBILITY_LABEL[e.visibility] ?? e.visibility}</span>
                 {e.authorMemberId && <span className="text-[9px] text-slate-400">作者 {shortId(e.authorMemberId)}</span>}
                 {e.actorBindingId && <span className="text-[9px] text-slate-400">角色 {shortId(e.actorBindingId)}</span>}

@@ -435,6 +435,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       mode={shellMode}
       roomCode={context.roomCode}
       connectionLabel={syncLabel}
+      connectionTone={connState === 'open' ? 'ok' : syncDown ? 'warn' : 'idle'}
       sceneLabel="入口预览"
       onExit={onBackToLobby}
       exitLabel="返回房间大厅"

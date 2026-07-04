@@ -25,6 +25,8 @@ export interface RuntimeFullscreenShellProps {
   tone?: RuntimeShellTone;
   roomCode?: string;
   connectionLabel?: string;
+  /** Tone for the header connection dot: ok (live) / warn (down) / idle (connecting). */
+  connectionTone?: 'ok' | 'warn' | 'idle';
   sceneLabel?: string;
   onExit?: () => void;
   exitLabel?: string;
@@ -50,6 +52,19 @@ const TONE_ACCENT: Record<RuntimeShellTone, string> = {
   neutral: 'text-slate-700',
 };
 
+// Role identity badge tone — so "who am I" reads at a glance in the header.
+const MODE_TONE: Record<RuntimeShellMode, string> = {
+  host: 'border-amber-500/50 bg-amber-500/15 text-amber-800',
+  player: 'border-emerald-500/50 bg-emerald-500/15 text-emerald-800',
+  spectator: 'border-slate-400/50 bg-slate-400/10 text-slate-600',
+};
+
+const CONN_DOT: Record<'ok' | 'warn' | 'idle', string> = {
+  ok: 'bg-emerald-500',
+  warn: 'bg-amber-500',
+  idle: 'bg-slate-400 animate-pulse',
+};
+
 export function RuntimeFullscreenShell({
   title,
   systemId,
@@ -57,6 +72,7 @@ export function RuntimeFullscreenShell({
   tone = 'neutral',
   roomCode,
   connectionLabel,
+  connectionTone = 'idle',
   sceneLabel,
   onExit,
   exitLabel,
@@ -97,12 +113,19 @@ export function RuntimeFullscreenShell({
           {title}
           {roomCode ? <span className="ml-1.5 font-bold text-slate-400">#{roomCode}</span> : null}
         </div>
-        <span className={chip}>{MODE_LABEL[mode]}</span>
+        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${MODE_TONE[mode]}`}>
+          {MODE_LABEL[mode]}
+        </span>
         {systemId && <span className={`${chip} hidden sm:inline`}>{systemId}</span>}
         {sceneLabel && <span className={`${chip} hidden md:inline`}>场景：{sceneLabel}</span>}
-        {connectionLabel && <span className={`${chip} hidden md:inline`}>{connectionLabel}</span>}
+        {connectionLabel && (
+          <span className={`${chip} hidden items-center gap-1.5 sm:inline-flex`}>
+            <span className={`inline-block h-1.5 w-1.5 rounded-full ${CONN_DOT[connectionTone]}`} aria-hidden />
+            {connectionLabel}
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-1.5">
-          <button type="button" className={btn} disabled onClick={onSettings} title="设置 / 联机设置（后续）">设置</button>
+          <button type="button" className={btn} disabled onClick={onSettings} title="设置（即将推出）">设置</button>
           {onExit && <button type="button" className={btn} onClick={onExit}>{exitLabel ?? '离开'}</button>}
         </div>
       </header>
@@ -117,9 +140,9 @@ export function RuntimeFullscreenShell({
             {mainStage ?? (
               <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-400/50 bg-white/30 p-8 text-center">
                 <div>
-                  <div className="text-sm font-bold text-slate-600">主舞台 · Main Stage</div>
+                  <div className="text-sm font-bold text-slate-600">主舞台</div>
                   <p className="mx-auto mt-2 max-w-md text-[11px] leading-relaxed text-slate-500">
-                    地图 / token / 迷雾（fog）/ 测距将在后续里程碑接入。当前为 stage-first runtime 布局骨架。
+                    这里是跑团桌面。地图、场景与角色标记将在后续版本开放。
                   </p>
                 </div>
               </div>
@@ -184,11 +207,11 @@ export function RuntimeFullscreenShell({
         ) : (
           <div className={`absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-20 -translate-x-1/2 ${panel} rounded-full px-3 py-1.5`}>
             <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
-              <span className="font-bold uppercase tracking-wide text-slate-500">行动坞</span>
-              <button type="button" className={btn} disabled>骰子（M25）</button>
-              <button type="button" className={btn} disabled>聊天</button>
-              <button type="button" className={btn} disabled>状态修改（M27）</button>
-              <button type="button" className={btn} disabled>主持人操作</button>
+              <span className="font-bold uppercase tracking-wide text-slate-500">行动区</span>
+              <button type="button" className={btn} disabled>投骰</button>
+              <button type="button" className={btn} disabled>公开信息</button>
+              <button type="button" className={btn} disabled>状态记录</button>
+              <button type="button" className={btn} disabled>日志</button>
             </div>
           </div>
         )}

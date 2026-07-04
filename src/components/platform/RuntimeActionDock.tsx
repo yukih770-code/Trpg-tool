@@ -45,9 +45,11 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
 
   const toggle = (id: string) => setActiveId((cur) => (cur === id ? null : id));
 
-  const baseBtn = 'rounded border px-2 py-1 text-[11px] font-bold';
+  const baseBtn = 'rounded border px-2 py-1 text-[11px] font-bold transition';
   const idle = 'border-slate-400/50 bg-white/70 text-slate-700 hover:bg-white';
   const activeCls = 'border-emerald-500/60 bg-emerald-500/15 text-emerald-800';
+  // "即将推出" tools read as secondary so the real, usable tools lead.
+  const comingSoon = 'border-slate-300/50 bg-white/40 text-slate-400 hover:bg-white/60';
 
   const panelActions = actions.filter((a) => a.panel !== undefined || a.disabledReason);
 
@@ -83,8 +85,8 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
             type="button"
             onClick={() => toggle(a.id)}
             aria-pressed={activeId === a.id}
-            title={a.disabledReason}
-            className={`${baseBtn} ${activeId === a.id ? activeCls : idle}`}
+            title={a.disabledReason ?? (a.disabled ? '即将推出' : undefined)}
+            className={`${baseBtn} ${activeId === a.id ? activeCls : a.disabled ? comingSoon : idle}`}
           >
             {a.shortLabel ?? a.label}
           </button>
