@@ -28,6 +28,10 @@ export interface RuntimeManualStateLogPanelProps {
   onRefresh?: () => void;
   loading?: boolean;
   feedError?: string | null;
+  /** Brief live-sync perception: shows a "刚刚更新" chip (M33). */
+  justUpdated?: boolean;
+  /** Extra context line, e.g. offline hint (M37, mirrors public-info panel). */
+  contextHint?: string | null;
 }
 
 function formatTime(value?: string): string {
@@ -43,6 +47,8 @@ export function RuntimeManualStateLogPanel({
   onRefresh,
   loading,
   feedError,
+  justUpdated,
+  contextHint,
 }: RuntimeManualStateLogPanelProps) {
   const [targetName, setTargetName] = useState('');
   const [body, setBody] = useState('');
@@ -107,7 +113,12 @@ export function RuntimeManualStateLogPanel({
       )}
 
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-bold text-slate-600">状态记录（{items.length}）</span>
+        <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
+          状态记录（{items.length}）
+          {justUpdated && (
+            <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">刚刚更新</span>
+          )}
+        </span>
         {onRefresh && (
           <button
             type="button"
@@ -119,6 +130,7 @@ export function RuntimeManualStateLogPanel({
           </button>
         )}
       </div>
+      {contextHint && <div className="text-[10px] text-amber-700">{contextHint}</div>}
       {feedError && <div className="text-[10px] font-bold text-red-700">加载失败：{feedError}</div>}
 
       {newestFirst.length === 0 ? (

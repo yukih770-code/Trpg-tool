@@ -9,12 +9,14 @@ import {
   rollSharedDice,
   type RoomServerHttpClientConfig,
 } from '../../lib/platform/roomServerHttpClient';
+import { createRoomSocketClient, type RoomSocketConnectionState } from '../../lib/platform/roomSocketClient';
 import { RuntimeFullscreenShell, type RuntimeShellMode } from './RuntimeFullscreenShell';
 import { SharedDiceDock } from './SharedDiceDock';
 import { RuntimeActionDock, buildRuntimeDockActions } from './RuntimeActionDock';
 import { RoomRuntimeLogPreviewPanel } from './RoomRuntimeLogPreviewPanel';
 import { RuntimePublicInfoPanel, type RuntimePublicInfoItem } from './RuntimePublicInfoPanel';
 import { RuntimeManualStateLogPanel, type RuntimeStateLogItem } from './RuntimeManualStateLogPanel';
+import { RuntimeActorReadPanel, type RuntimeActorReadSummary } from './RuntimeActorReadPanel';
 
 /**
  * RoomRuntimeEntryBridge (v0 / UI1a) — read-only Runtime Entry Preview.
@@ -66,9 +68,16 @@ function shortId(id: string): string {
 }
 
 export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLobby }: RoomRuntimeEntryBridgeProps) {
-  // Bridge has no WebSocket of its own; a member's own dice roll returns the event
-  // and is fed to the log panel as a live event (other windows get it via WS).
+  // M32: the bridge owns a live socket while mounted (the lobby's socket closes
+  // when the lobby unmounts). runtimeLogAppended feeds the log drawer AND the
+  // public-info / state-log feeds from the same event stream; roomSnapshot keeps
+  // presence (members / ready) fresh. Dedup is by eventId in every sink.
   const [logLiveEvents, setLogLiveEvents] = useState<RoomRuntimeLogEvent[]>([]);
+  const [liveRoom, setLiveRoom] = useState<RoomSnapshot | undefined>(room);
+  const [connState, setConnState] = useState<RoomSocketConnectionState>('idle');
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
+  const [feedJustUpdated, setFeedJustUpdated] = useState(false);
+  const shellMode = entryModeToShellMode(context.entryMode);
 
   // Room mode: the SERVER rolls (crypto) and writes the room RuntimeLog; we feed
   // the returned event into the log panel and return the roll to the dock.
@@ -113,6 +122,62 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       prev.some((e) => e.eventId === event.eventId) ? prev : [...prev, event].sort((a, b) => a.seq - b.seq),
     );
   };
+
+  // ── M32 live socket: log drawer + feeds + presence share ONE event stream ──
+  useEffect(() => {
+    const client = createRoomSocketClient({
+      baseUrl: context.serverBaseUrl,
+      onConnectionStateChange: (state) => {
+        setConnState(state);
+        if (state === 'open') client.subscribeRoom(context.roomId);
+      },
+      onRoomSnapshot: (message) => {
+        if (message.roomId !== context.roomId) return;
+        setLiveRoom(message.payload.room);
+        setLastSyncAt(new Date().toISOString());
+      },
+      onRuntimeLogAppended: (message) => {
+        if (message.roomId !== context.roomId) return;
+        const publicEvents = message.events.filter((e) => e.visibility === 'public');
+        if (publicEvents.length === 0) return;
+        // Log drawer buffer (panel merges by eventId — the host's own HTTP-returned
+        // event arriving again over the socket cannot duplicate).
+        setLogLiveEvents((prev) => [...prev, ...publicEvents]);
+        // Feed mirror (same stream, eventId-deduped in mergeNoteEvent).
+        let touchedFeeds = false;
+        for (const event of publicEvents) {
+          if (isNoteKind(event)) {
+            mergeNoteEvent(event);
+            touchedFeeds = true;
+          }
+        }
+        if (touchedFeeds) setFeedJustUpdated(true);
+        setLastSyncAt(new Date().toISOString());
+      },
+    });
+    client.connect();
+    return () => client.close();
+    // mergeNoteEvent/isNoteKind only use stable setters — safe to omit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [context.serverBaseUrl, context.roomId]);
+
+  // Brief "刚刚更新" perception window for the feeds.
+  useEffect(() => {
+    if (!feedJustUpdated) return;
+    const timer = setTimeout(() => setFeedJustUpdated(false), 6000);
+    return () => clearTimeout(timer);
+  }, [feedJustUpdated]);
+
+  const syncDown = connState === 'closed' || connState === 'error';
+  const syncLabel =
+    connState === 'open' ? '实时同步中' : connState === 'connecting' || connState === 'idle' ? '正在连接同步…' : '同步暂不可用';
+  const syncHint = !syncDown
+    ? null
+    : shellMode === 'host'
+      ? '实时同步暂不可用：发布可能失败或延迟送达玩家。已有内容仍可查看。'
+      : shellMode === 'player'
+        ? '实时同步暂不可用：你可能看不到最新的公开信息。已有内容仍可查看。'
+        : '实时同步暂不可用：当前只读内容可能不是最新。已有内容仍可查看。';
 
   const appendNote = async (input: {
     kind: 'host.note' | 'state.manualChange';
@@ -162,9 +227,31 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       return { id: e.eventId, targetName: p.targetName, body: p.body ?? e.text ?? '', createdAt: e.createdAt };
     });
 
-  const members = room?.members ?? [];
-  const actorBindings = room?.lobby?.actorBindings ?? [];
-  const readyStates = room?.lobby?.readyStates ?? [];
+  // M34 presence: prefer the LIVE snapshot (bridge socket) over the entry-time prop.
+  const presenceRoom = liveRoom ?? room;
+  const members = presenceRoom?.members ?? [];
+  const actorBindings = presenceRoom?.lobby?.actorBindings ?? [];
+  const readyStates = presenceRoom?.lobby?.readyStates ?? [];
+
+  // ── M37 read-only actor summary (player "我的角色") ─────────────────────────
+  // Prefer the live lobby actor-binding draft (carries clearance + status +
+  // source) and fall back to the entry context's actorRef. Read-only; no edits.
+  const myReadyState = readyStates.find((r) => r.memberId === context.currentMemberId)?.status ?? context.readyState;
+  const myBinding = actorBindings.find((b) => b.memberId === context.currentMemberId);
+  const actorSummary: RuntimeActorReadSummary | null =
+    context.actorRef || myBinding
+      ? {
+          displayName: context.actorRef?.displayName ?? myBinding?.actorRef.displayName,
+          systemId: context.actorRef?.systemId ?? myBinding?.actorRef.systemId ?? context.systemId,
+          actorId: context.actorRef?.actorId ?? myBinding?.actorRef.actorId,
+          source: context.actorRef?.source ?? myBinding?.actorRef.source,
+          bindingId: context.approvedActorBindingId ?? myBinding?.bindingId,
+          admissionId: context.admissionId ?? myBinding?.clearance?.admissionId,
+          bindingStatus: myBinding?.status,
+          clearanceStatus: myBinding?.clearance?.status,
+          readyState: myReadyState,
+        }
+      : null;
 
   const activeCount = members.filter((m) => m.status === 'active').length;
   const approvedCount = actorBindings.filter((b) => b.status === 'approved').length;
@@ -174,7 +261,22 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     return m.status === 'active' && b?.status === 'approved' && r === 'ready';
   }).length;
 
-  const shellMode = entryModeToShellMode(context.entryMode);
+  // M37 host summary: per-player actor + ready snapshot (read-only, no writes).
+  const playerStatuses = members
+    .filter((m) => m.role === 'player' && m.status !== 'left' && m.status !== 'kicked')
+    .map((m) => {
+      const b = actorBindings.find((x) => x.memberId === m.memberId);
+      const r = readyStates.find((x) => x.memberId === m.memberId)?.status;
+      return {
+        memberId: m.memberId,
+        name: m.displayName,
+        actorName: b?.actorRef.displayName,
+        approved: b?.status === 'approved',
+        ready: r === 'ready',
+        online: m.status === 'active',
+      };
+    });
+
   const card = 'rounded border border-slate-400/30 bg-white/60 p-3';
   const label = 'text-[11px] font-bold uppercase tracking-wide text-slate-600';
 
@@ -207,9 +309,14 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   // ── Right inspector: mode-differentiated ───────────────────────────────────
   const inspector = (
     <div className="space-y-2">
-      {notesError && (
+      {syncHint && (
         <div className="rounded border border-amber-500/40 bg-amber-50/80 px-2 py-1.5 text-[10px] leading-relaxed text-amber-800">
-          房间服务连接异常，实时同步可能不可用。已有内容仍可查看；可点击面板中的「刷新」重试，或确认房间服务在线。
+          {syncHint}
+        </div>
+      )}
+      {!syncDown && notesError && (
+        <div className="rounded border border-amber-500/40 bg-amber-50/80 px-2 py-1.5 text-[10px] leading-relaxed text-amber-800">
+          信息拉取失败，可点击面板中的「刷新」重试。实时推送不受影响。
         </div>
       )}
       <div className={card}>
@@ -227,8 +334,39 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
             <div>身份：<b>主持人</b></div>
             <div>当前场景：<span className="text-slate-500">未设置</span></div>
             <div>公开信息 <b>{publicInfoItems.length}</b> 条 · 状态记录 <b>{stateLogItems.length}</b> 条</div>
+            <div>
+              同步：<b className={syncDown ? 'text-amber-700' : 'text-emerald-700'}>{syncLabel}</b>
+              {lastSyncAt && (
+                <span className="ml-1 text-[10px] text-slate-400">最近 {new Date(lastSyncAt).toLocaleTimeString()}</span>
+              )}
+            </div>
           </div>
-          <p className="mt-1.5 border-t border-slate-300/40 pt-1.5 text-[10px] leading-relaxed text-slate-500">
+          <div className="mt-1.5 border-t border-slate-300/40 pt-1.5">
+            <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">玩家状态（{playerStatuses.length}）</div>
+            {playerStatuses.length === 0 ? (
+              <p className="text-[10px] italic text-slate-500">还没有玩家加入。分享房间码邀请玩家加入。</p>
+            ) : (
+              <div className="space-y-0.5">
+                {playerStatuses.map((p) => (
+                  <div key={p.memberId} className="flex items-center gap-1.5 text-[10px]">
+                    <span
+                      className={`inline-block h-1.5 w-1.5 rounded-full ${p.online ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                      title={p.online ? '在线' : '离线'}
+                      aria-hidden
+                    />
+                    <span className="font-bold text-slate-700">{p.name}</span>
+                    <span className="text-slate-500">{p.actorName ?? '未绑定角色'}</span>
+                    <span className="ml-auto flex items-center gap-1">
+                      <span className={p.approved ? 'text-emerald-700' : 'text-amber-700'}>{p.approved ? '已准入' : '未准入'}</span>
+                      <span className="text-slate-300">·</span>
+                      <span className={p.ready ? 'text-emerald-700' : 'text-slate-400'}>{p.ready ? '已准备' : '未准备'}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <p className="mt-1.5 text-[10px] leading-relaxed text-slate-500">
             下一步：用底部「公开信息」发布场景与线索，用「状态记录」记下伤害和关键变化，日志抽屉可回看全程。
           </p>
         </div>
@@ -239,6 +377,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
           <div className="space-y-0.5 text-[11px] text-slate-700">
             <div>身份：<b>玩家</b></div>
             <div>角色：<b>{context.actorRef?.displayName ?? '未绑定'}</b></div>
+            <div>同步：<b className={syncDown ? 'text-amber-700' : 'text-emerald-700'}>{syncLabel}</b></div>
           </div>
           <p className="mt-1.5 border-t border-slate-300/40 pt-1.5 text-[10px] leading-relaxed text-slate-500">
             你可以：投骰、查看主持人发布的公开信息、在日志抽屉回看全程。
@@ -248,7 +387,10 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       {shellMode === 'spectator' && (
         <div className={card}>
           <div className={`mb-1 ${label}`}>旁观视角</div>
-          <div className="text-[11px] text-slate-700">身份：<b>旁观者</b>（只读）</div>
+          <div className="space-y-0.5 text-[11px] text-slate-700">
+            <div>身份：<b>旁观者</b>（只读）</div>
+            <div>同步：<b className={syncDown ? 'text-amber-700' : 'text-emerald-700'}>{syncLabel}</b></div>
+          </div>
           <p className="mt-1.5 border-t border-slate-300/40 pt-1.5 text-[10px] leading-relaxed text-slate-500">
             你可以查看公开信息和日志，但不能投骰或修改任何内容。
           </p>
@@ -292,6 +434,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       systemId={context.systemId}
       mode={shellMode}
       roomCode={context.roomCode}
+      connectionLabel={syncLabel}
       sceneLabel="入口预览"
       onExit={onBackToLobby}
       exitLabel="返回房间大厅"
@@ -312,6 +455,8 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                   onRefresh={loadNotes}
                   loading={notesLoading}
                   feedError={notesError}
+                  justUpdated={feedJustUpdated}
+                  contextHint={syncDown ? '实时同步暂不可用，此列表可能不是最新。' : null}
                 />
               ),
               stateLogPanel:
@@ -323,7 +468,13 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                     onRefresh={loadNotes}
                     loading={notesLoading}
                     feedError={notesError}
+                    justUpdated={feedJustUpdated}
+                    contextHint={syncDown ? '实时同步暂不可用，此列表可能不是最新。' : null}
                   />
+                ) : undefined,
+              actorPanel:
+                shellMode === 'player' ? (
+                  <RuntimeActorReadPanel summary={actorSummary} role="player" />
                 ) : undefined,
             },
           )}

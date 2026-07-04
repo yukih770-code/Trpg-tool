@@ -110,6 +110,8 @@ export interface RuntimeDockExtraPanels {
   publicInfoPanel?: ReactNode;
   /** 状态记录 v0 — host manual state log (host dock only). */
   stateLogPanel?: ReactNode;
+  /** 我的角色 read-only summary (M37) — player dock only. */
+  actorPanel?: ReactNode;
 }
 
 const PUBLIC_INFO_FALLBACK = (
@@ -144,7 +146,14 @@ export function buildRuntimeDockActions(
   if (mode === 'player') {
     return [
       { id: 'dice', label: '投骰', panel: dicePanel },
-      { id: 'actor', label: '我的角色', shortLabel: '角色', disabled: true, panel: <RuntimeActionPlaceholder body="我的角色：查看并管理你的角色卡与角色状态。" /> },
+      {
+        id: 'actor',
+        label: '我的角色',
+        shortLabel: '角色',
+        panel: extras?.actorPanel ?? (
+          <RuntimeActionPlaceholder body="我的角色：查看并管理你的角色卡与角色状态。" />
+        ),
+      },
       publicInfo,
       LOG_ACTION,
     ];

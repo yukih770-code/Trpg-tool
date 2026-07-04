@@ -33,6 +33,8 @@ export interface RuntimePublicInfoPanelProps {
   feedError?: string | null;
   /** Extra context line, e.g. offline hint. */
   contextHint?: string | null;
+  /** Brief live-sync perception: shows a "刚刚更新" chip (M33). */
+  justUpdated?: boolean;
 }
 
 function formatTime(value?: string): string {
@@ -49,6 +51,7 @@ export function RuntimePublicInfoPanel({
   loading,
   feedError,
   contextHint,
+  justUpdated,
 }: RuntimePublicInfoPanelProps) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -114,7 +117,12 @@ export function RuntimePublicInfoPanel({
       )}
 
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-bold text-slate-600">已发布的公开信息（{items.length}）</span>
+        <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
+          已发布的公开信息（{items.length}）
+          {justUpdated && (
+            <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">刚刚更新</span>
+          )}
+        </span>
         {onRefresh && (
           <button
             type="button"

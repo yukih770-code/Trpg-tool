@@ -69,6 +69,71 @@ function briefPayload(payload: unknown): string {
   }
 }
 
+// ── M35 timeline filter ──────────────────────────────────────────────────────
+type LogFilterId = 'all' | 'dice' | 'info' | 'state' | 'other';
+
+const LOG_FILTERS: { id: LogFilterId; label: string; empty: string }[] = [
+  { id: 'all', label: '全部', empty: '还没有日志。投骰、公开信息和状态记录都会出现在这里。' },
+  { id: 'dice', label: '投骰', empty: '还没有投骰记录。' },
+  { id: 'info', label: '公开信息', empty: '还没有公开信息。' },
+  { id: 'state', label: '状态记录', empty: '还没有状态记录。' },
+  { id: 'other', label: '系统/其他', empty: '没有系统或聊天消息。' },
+];
+
+function matchesLogFilter(e: RoomRuntimeLogEvent, filter: LogFilterId): boolean {
+  switch (filter) {
+    case 'all': return true;
+    case 'dice': return e.kind === 'dice.roll';
+    case 'info': return e.kind === 'host.note';
+    case 'state': return e.kind === 'state.manualChange';
+    case 'other': return e.kind === 'system.note' || e.kind === 'chat.message';
+  }
+}
+
+// ── M36 Session Recap v0 (pure derivation, no AI, no persistence) ────────────
+function buildSessionRecap(events: RoomRuntimeLogEvent[]): string {
+  const infos = events.filter((e) => e.kind === 'host.note');
+  const states = events.filter((e) => e.kind === 'state.manualChange');
+  const dice = events.filter((e) => e.kind === 'dice.roll');
+  const others = events.filter((e) => e.kind === 'system.note' || e.kind === 'chat.message');
+
+  const isEmpty = infos.length === 0 && states.length === 0 && dice.length === 0 && others.length === 0;
+
+  const lines: string[] = [
+    '# 本场回顾（草稿）',
+    '',
+    '> 根据本场日志自动整理的回顾草稿，可复制后自行编辑。',
+    ...(isEmpty
+      ? ['', '_本场还没有可回顾的内容。发布公开信息、记录状态或投骰后，这里会自动汇总。_']
+      : []),
+    '',
+    `## 公开信息（${infos.length}）`,
+    ...(infos.length === 0 ? ['- （无）'] : infos.map((e) => {
+      const p = (e.payload ?? {}) as { title?: string; body?: string };
+      const body = p.body ?? e.text ?? '';
+      return p.title ? `- 【${p.title}】${body}` : `- ${body}`;
+    })),
+    '',
+    `## 状态记录（${states.length}）`,
+    ...(states.length === 0 ? ['- （无）'] : states.map((e) => {
+      const p = (e.payload ?? {}) as { targetName?: string; body?: string };
+      const body = p.body ?? e.text ?? '';
+      return p.targetName ? `- ${p.targetName}：${body}` : `- ${body}`;
+    })),
+    '',
+    `## 投骰（${dice.length}）`,
+    ...(dice.length === 0 ? ['- （无）'] : dice.map((e) => {
+      const roll = asDiceRoll(e.payload);
+      if (!roll) return `- ${e.text ?? '掷骰'}`;
+      return `- ${roll.normalizedExpression} = ${roll.total}${roll.label ? `（${roll.label}）` : ''}`;
+    })),
+    '',
+    `## 其他`,
+    `- 系统 / 聊天事件共 ${others.length} 条`,
+  ];
+  return lines.join('\n');
+}
+
 /** Merge by eventId, keep public only, sort ascending by seq. */
 function mergeEvents(prev: RoomRuntimeLogEvent[], incoming: RoomRuntimeLogEvent[]): RoomRuntimeLogEvent[] {
   const byId = new Map<string, RoomRuntimeLogEvent>();
@@ -164,6 +229,10 @@ export function RoomRuntimeLogPreviewPanel({
   // Collapsed by default to keep the lobby's first screen light.
   const [collapsed, setCollapsed] = useState(defaultCollapsed ?? true);
   const [seenCount, setSeenCount] = useState(0);
+  // M35 timeline filter + M36 session recap (both derive from the SAME events).
+  const [logFilter, setLogFilter] = useState<LogFilterId>('all');
+  const [showRecap, setShowRecap] = useState(false);
+  const [recapCopied, setRecapCopied] = useState<'idle' | 'ok' | 'fail'>('idle');
 
   // Initial load (and on room/server change): full public list.
   useEffect(() => {
@@ -267,9 +336,19 @@ export function RoomRuntimeLogPreviewPanel({
           )}
         </button>
         {!collapsed && (
-          <button type="button" className={btn} disabled={loading} onClick={refresh}>
-            {loading ? '刷新中…' : '刷新日志'}
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              className={btn}
+              onClick={() => { setShowRecap((v) => !v); setRecapCopied('idle'); }}
+              aria-pressed={showRecap}
+            >
+              {showRecap ? '返回日志' : '本场回顾'}
+            </button>
+            <button type="button" className={btn} disabled={loading} onClick={refresh}>
+              {loading ? '刷新中…' : '刷新日志'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -281,11 +360,67 @@ export function RoomRuntimeLogPreviewPanel({
 
       {listError && <div className="mb-2 rounded border border-red-400/40 bg-red-500/10 px-2 py-1 text-[10px] text-red-700">日志加载失败：{listError}</div>}
 
+      {showRecap ? (
+        /* ── M36 Session Recap v0 ── */
+        <div className="space-y-1.5">
+          <p className="text-[10px] text-slate-500">根据本场日志自动整理的回顾草稿（不含 AI 加工），可复制后编辑分享。</p>
+          <textarea
+            readOnly
+            value={buildSessionRecap(events)}
+            rows={14}
+            className="w-full rounded border border-slate-400/40 bg-white/80 p-2 font-mono text-[11px] leading-relaxed text-slate-700"
+            onFocus={(ev) => ev.currentTarget.select()}
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className={btn}
+              onClick={() => {
+                const text = buildSessionRecap(events);
+                try {
+                  void navigator.clipboard.writeText(text).then(
+                    () => setRecapCopied('ok'),
+                    () => setRecapCopied('fail'),
+                  );
+                } catch {
+                  setRecapCopied('fail');
+                }
+              }}
+            >
+              复制 Markdown
+            </button>
+            {recapCopied === 'ok' && <span className="text-[10px] font-bold text-emerald-700">已复制 ✓</span>}
+            {recapCopied === 'fail' && <span className="text-[10px] text-amber-700">复制失败，请点击文本框全选后手动复制。</span>}
+          </div>
+        </div>
+      ) : (
+      <>
+      {/* ── M35 timeline filter ── */}
+      <div className="mb-1.5 flex flex-wrap gap-1">
+        {LOG_FILTERS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            aria-pressed={logFilter === f.id}
+            onClick={() => setLogFilter(f.id)}
+            className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${
+              logFilter === f.id
+                ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-800'
+                : 'border-slate-400/40 bg-white/60 text-slate-500 hover:bg-white'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       <div className="max-h-72 space-y-1 overflow-y-auto">
-        {events.length === 0 ? (
-          <div className="text-[11px] italic text-slate-500">{loading ? '加载中…' : '暂无公开日志事件。'}</div>
+        {events.filter((e) => matchesLogFilter(e, logFilter)).length === 0 ? (
+          <div className="text-[11px] italic text-slate-500">
+            {loading ? '加载中…' : LOG_FILTERS.find((f) => f.id === logFilter)?.empty}
+          </div>
         ) : (
-          events.map((e) => (
+          events.filter((e) => matchesLogFilter(e, logFilter)).map((e) => (
             <div key={e.eventId} className="rounded border border-slate-300/40 bg-white/70 px-2 py-1 text-[11px]">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[9px] font-bold text-slate-400">#{e.seq}</span>
@@ -309,6 +444,8 @@ export function RoomRuntimeLogPreviewPanel({
           ))
         )}
       </div>
+      </>
+      )}
 
       {/* Send a minimal public chat.message (v0 only). */}
       <div className="mt-2 border-t border-slate-300/40 pt-2">
