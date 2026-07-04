@@ -24,11 +24,19 @@ export interface RuntimeActorRosterEntry {
   actorName?: string;
   system?: string;
   hasActor: boolean;
-  /** M60: whether a full character snapshot was resolved (only known for self). */
-  hasSnapshot?: boolean;
+  /** M64 snapshot state (only 'connected'/'unmatched' are known for self; other
+   * players' full sheets live on their machines → 'localOnly'). */
+  snapshotState?: 'connected' | 'localOnly' | 'unmatched' | 'awaiting';
   /** M60: provenance label when a snapshot was resolved (self only). */
   sourceLabel?: string;
 }
+
+const SNAPSHOT_STATE: Record<'connected' | 'localOnly' | 'unmatched' | 'awaiting', { label: string; cls: string; title?: string }> = {
+  connected: { label: '已连接角色卡', cls: 'bg-emerald-500/10 text-emerald-700' },
+  localOnly: { label: '完整角色卡在玩家本地', cls: 'bg-slate-500/10 text-slate-500', title: '完整角色卡快照通常只在该玩家本地可用' },
+  unmatched: { label: '未匹配本地角色库', cls: 'bg-amber-500/10 text-amber-700' },
+  awaiting: { label: '等待玩家角色数据', cls: 'bg-slate-500/10 text-slate-500' },
+};
 
 export interface RuntimeActorRosterPanelProps {
   entries: RuntimeActorRosterEntry[];
@@ -84,10 +92,13 @@ export function RuntimeActorRosterPanel({ entries }: RuntimeActorRosterPanelProp
                       {e.admissionLabel && (
                         <span className={e.admitted ? 'text-emerald-700' : 'text-amber-700'}>· {e.admissionLabel}</span>
                       )}
-                      {e.hasSnapshot ? (
-                        <span className="rounded-full bg-emerald-500/10 px-1.5 text-[9px] font-bold text-emerald-700" title={e.sourceLabel}>已连接角色卡</span>
-                      ) : (
-                        <span className="rounded-full bg-slate-500/10 px-1.5 text-[9px] font-bold text-slate-500" title="完整角色快照保存在该玩家本地">仅房间绑定</span>
+                      {e.snapshotState && (
+                        <span
+                          className={`rounded-full px-1.5 text-[9px] font-bold ${SNAPSHOT_STATE[e.snapshotState].cls}`}
+                          title={e.sourceLabel ?? SNAPSHOT_STATE[e.snapshotState].title}
+                        >
+                          {SNAPSHOT_STATE[e.snapshotState].label}
+                        </span>
                       )}
                     </>
                   ) : (
@@ -101,6 +112,7 @@ export function RuntimeActorRosterPanel({ entries }: RuntimeActorRosterPanelProp
       )}
 
       <p className="text-[10px] leading-relaxed text-slate-500">
+        完整角色卡快照通常只在该玩家本地可用；主持人当前看到的是房间绑定和公开摘要。
         角色对应关系用于跑团展示；这里不做踢人、审批或转移角色等管理操作。完整战役内角色实例将在后续阶段接入。
       </p>
       <RuntimeActorBoundaryNote variant="full" />

@@ -34,10 +34,17 @@ export interface RuntimeActorSnapshotQuery {
   displayName?: string;
 }
 
+export type RuntimeActorSnapshotMatchKind = 'actorId' | 'displayName' | 'name' | 'none';
+export type RuntimeActorSnapshotMatchConfidence = 'high' | 'medium' | 'low' | 'none';
+
 export interface RuntimeActorSnapshotSourceResult {
   snapshot?: unknown;
   sourceLabel: string;
   sourceKind: RuntimeActorSnapshotSourceKind;
+  /** How the local character was matched (M61). 'name' == fuzzy display-name match. */
+  matchKind: RuntimeActorSnapshotMatchKind;
+  /** Confidence in the match (M61): actorId=high, name=medium, binding-only=low. */
+  matchConfidence: RuntimeActorSnapshotMatchConfidence;
   warnings: string[];
 }
 
@@ -65,7 +72,11 @@ function readCharacters(getState: () => StoreLike): unknown[] {
   }
 }
 
-function matchCharacter(list: unknown[], actorId?: string, displayName?: string): unknown | undefined {
+function matchCharacter(
+  list: unknown[],
+  actorId?: string,
+  displayName?: string,
+): { character: unknown; matchKind: 'actorId' | 'displayName' } | undefined {
   const wantId = actorId?.trim();
   const wantName = displayName?.trim().toLowerCase();
   if (wantId) {
@@ -73,14 +84,14 @@ function matchCharacter(list: unknown[], actorId?: string, displayName?: string)
       const rec = c as { id?: unknown } | null;
       return rec && typeof rec.id === 'string' && rec.id === wantId;
     });
-    if (byId) return byId;
+    if (byId) return { character: byId, matchKind: 'actorId' };
   }
   if (wantName) {
     const byName = list.find((c) => {
       const rec = c as { name?: unknown } | null;
       return rec && typeof rec.name === 'string' && rec.name.trim().toLowerCase() === wantName;
     });
-    if (byName) return byName;
+    if (byName) return { character: byName, matchKind: 'displayName' };
   }
   return undefined;
 }
@@ -110,25 +121,33 @@ export function resolveRuntimeActorSnapshot(query: RuntimeActorSnapshotQuery): R
       return {
         sourceLabel: '未接入的系统',
         sourceKind: 'none',
+        matchKind: 'none',
+        matchConfidence: 'none',
         warnings: ['当前系统暂未接入完整角色快照，仅显示房间绑定信息。'],
       };
   }
 
   const matched = matchCharacter(list, query.actorId, query.displayName);
   if (matched) {
+    const byName = matched.matchKind === 'displayName';
+    // Match / provenance phrasing lives in the status banner (matchConfidence);
+    // `warnings` only carries genuinely extra notes (e.g. conservative read).
+    const warnings = conservative ? ['当前系统的角色快照为保守读取，部分字段可能暂不显示。'] : [];
     return {
-      snapshot: matched,
+      snapshot: matched.character,
       sourceLabel: `本地角色库 · ${systemName}`,
       sourceKind: 'characterVault',
-      warnings: conservative
-        ? ['当前系统的角色快照为保守读取，部分字段可能暂不显示。']
-        : [],
+      matchKind: matched.matchKind,
+      matchConfidence: byName ? 'medium' : 'high',
+      warnings,
     };
   }
 
   return {
     sourceLabel: '仅房间绑定',
     sourceKind: 'roomBinding',
-    warnings: ['未能在本地角色库匹配到当前角色，暂只显示房间绑定信息（角色名 / 系统 / 准入状态）。'],
+    matchKind: 'none',
+    matchConfidence: 'low',
+    warnings: [],
   };
 }

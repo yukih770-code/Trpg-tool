@@ -377,6 +377,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     fallbackSystemId: context.systemId,
     sourceLabel: snapshotResult.sourceKind === 'characterVault' ? snapshotResult.sourceLabel : undefined,
     extraWarnings: snapshotResult.warnings,
+    matchConfidence: snapshotResult.matchConfidence,
   });
 
   // M55/M57 read-only inventory summary from the same resolved snapshot.
@@ -423,7 +424,13 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         actorName: b?.actorRef.displayName,
         system: b?.actorRef.systemId,
         hasActor: !!b,
-        hasSnapshot: isSelf && snapshotResult.sourceKind === 'characterVault',
+        snapshotState: !b
+          ? undefined
+          : isSelf
+            ? snapshotResult.matchConfidence === 'high' || snapshotResult.matchConfidence === 'medium'
+              ? 'connected'
+              : 'unmatched'
+            : 'localOnly',
         sourceLabel: isSelf && snapshotResult.sourceKind === 'characterVault' ? snapshotResult.sourceLabel : undefined,
       };
     });

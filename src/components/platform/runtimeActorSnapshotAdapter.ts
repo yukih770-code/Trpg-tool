@@ -40,6 +40,9 @@ export interface RuntimeActorSnapshotInput {
   sourceLabel?: string;
   /** Extra source warnings from the resolver (shown before the generic one). */
   extraWarnings?: string[];
+  /** Match confidence from the resolver (M62). When set, the generic no-snapshot
+   * warning is suppressed because the status banner explains provenance. */
+  matchConfidence?: 'high' | 'medium' | 'low' | 'none';
 }
 
 type SystemFamily = 'dnd5e' | 'coc7e' | 'cpred' | 'other';
@@ -260,7 +263,9 @@ export function buildRuntimeCharacterSummary(input: RuntimeActorSnapshotInput): 
 
   const sourceWarnings: string[] = [];
   if (input.extraWarnings && input.extraWarnings.length > 0) sourceWarnings.push(...input.extraWarnings);
-  if (!snapshotRec && sourceWarnings.length === 0) {
+  // Only emit the generic no-snapshot warning when there is no status banner to
+  // explain provenance (i.e. matchConfidence not supplied by the resolver path).
+  if (!snapshotRec && sourceWarnings.length === 0 && !input.matchConfidence) {
     sourceWarnings.push('未获取到完整角色快照，当前仅显示轻量信息（角色名 / 系统 / 准入状态）。角色卡数值将在接入角色快照后自动显示。');
   }
 
@@ -273,6 +278,7 @@ export function buildRuntimeCharacterSummary(input: RuntimeActorSnapshotInput): 
     readyState: input.readyState,
     bindingStatus: input.binding?.status,
     dataSourceLabel: input.sourceLabel,
+    matchConfidence: input.matchConfidence,
     coreStats: sections.coreStats,
     skillHighlights: sections.skillHighlights,
     resourceHighlights: sections.resourceHighlights,

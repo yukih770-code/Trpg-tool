@@ -1,5 +1,6 @@
 import { RuntimeActorBoundaryNote } from './RuntimeActorBoundaryNote';
 import { RuntimeInventoryBoundaryNote } from './RuntimeInventoryBoundaryNote';
+import { RuntimeActorSnapshotStatus } from './RuntimeActorSnapshotStatus';
 import type { RuntimeInventoryItem, RuntimeInventorySummary } from './runtimeInventoryAdapter';
 
 /**
@@ -38,6 +39,8 @@ export interface RuntimeCharacterSummary {
   bindingStatus?: string;
   /** Human-facing provenance of the character data (M57/M60), e.g. 本地角色库 · DND 5E. */
   dataSourceLabel?: string;
+  /** Match confidence from the snapshot resolver (M62). */
+  matchConfidence?: 'high' | 'medium' | 'low' | 'none';
   coreStats: RuntimeCharacterStat[];
   skillHighlights: RuntimeCharacterStat[];
   resourceHighlights: RuntimeCharacterStat[];
@@ -203,6 +206,9 @@ export function RuntimeCharacterSheetPanel({ summary, role, inventory }: Runtime
           {readyLabel && <IdRow k="准备" v={readyLabel} tone={summary.readyState === 'ready' ? 'ok' : 'warn'} />}
         </div>
       </div>
+
+      {/* Snapshot match-confidence banner (M62). */}
+      <RuntimeActorSnapshotStatus confidence={summary.matchConfidence} sourceLabel={summary.dataSourceLabel} />
 
       {summary.sourceWarnings.length > 0 && (
         <div className="rounded border border-amber-500/30 bg-amber-50/60 px-2 py-1.5 text-[10px] leading-relaxed text-amber-800">
