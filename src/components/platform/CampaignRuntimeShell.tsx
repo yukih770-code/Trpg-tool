@@ -21,6 +21,9 @@ import { RuntimeSceneFocusPanel, type RuntimeSceneFocus } from './RuntimeSceneFo
 import { resolveRuntimeActorSnapshot } from './runtimeActorSnapshotSource';
 import { buildRuntimeCharacterSummary } from './runtimeActorSnapshotAdapter';
 import { buildRuntimeInventorySummary } from './runtimeInventoryAdapter';
+import { RuntimeMultiplayerTogglePanel } from './RuntimeMultiplayerTogglePanel';
+import { describeRuntimeMode } from './runtimeModeContract';
+import { CharacterClearanceSummary } from './CharacterClearanceSummary';
 import { rollSharedDiceExpression, formatSharedDiceRoll } from '../../lib/platform/sharedDiceExpression';
 
 // Dev-only: the Runtime Layout Shell Preview (RuntimeSlotShell + DND combat dev
@@ -316,6 +319,26 @@ export function CampaignRuntimeShell({
     <RuntimeCharacterSheetPanel summary={characterSummary} inventory={inventorySummary} role={isHost ? 'host' : 'player'} />
   );
 
+  // M69–M72 local runtime mode descriptor + settings/multiplayer-readiness panel.
+  const runtimeModeDescriptor = describeRuntimeMode({ isHost, hasActor: hasLocalActor, hasServer: false });
+  // M73 compact clearance summary for in-runtime settings (local = no room approval).
+  const clearanceCompactNode = (
+    <CharacterClearanceSummary
+      variant="compact"
+      actorName={characterSummary?.displayName ?? context.selectedActorName}
+      sourceLabel={characterSummary?.dataSourceLabel}
+      needsRecheck={characterSummary?.matchConfidence === 'low'}
+      local
+    />
+  );
+  const multiplayerPanelNode = (
+    <RuntimeMultiplayerTogglePanel
+      descriptor={runtimeModeDescriptor}
+      actorSourceLabel={characterSummary?.dataSourceLabel}
+      clearanceSummary={clearanceCompactNode}
+    />
+  );
+
   const renderRuntimeLogPanel = () => (
     <div className="mt-3 space-y-3">
       <div>
@@ -601,6 +624,8 @@ export function CampaignRuntimeShell({
   if (isHost && hasLocalActor) {
     dockActions.push({ id: 'actor', label: '我的角色', shortLabel: '角色', panel: actorPanelNode });
   }
+  // M70/M72: local runtime settings + multiplayer readiness entry (no networking).
+  dockActions.push({ id: 'settings', label: '设置 / 多人', shortLabel: '设置', panel: multiplayerPanelNode });
   const actionDock = <RuntimeActionDock actions={dockActions} />;
 
   const logDrawer = (

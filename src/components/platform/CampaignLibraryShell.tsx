@@ -38,6 +38,7 @@ import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from '
 import { ContextBar } from './ContextBar';
 // M26: Room Server reachability chip shown next to the host launch CTA.
 import { RoomServerStatusBanner } from './RoomServerStatusBanner';
+import { CharacterClearanceSummary } from './CharacterClearanceSummary';
 
 type CampaignLibraryTone = 'dnd' | 'coc' | 'cp';
 type CampaignLibraryMode = 'home' | 'existing' | 'detail' | 'add';
@@ -1553,7 +1554,7 @@ function CampaignDetail({
                   开启局域网房间
                 </button>
               )}
-              {/* Secondary CTA: enter the current campaign's run surface (local shell v0). */}
+              {/* Secondary CTA: host quick-resume into the campaign's local Runtime. */}
               <button
                 type="button"
                 onClick={enterCampaignRuntimeAsHost}
@@ -1562,12 +1563,16 @@ function CampaignDetail({
                   canEnterHostRuntime ? theme.secondary : `cursor-default opacity-65 ${theme.secondary}`
                 }`}
               >
-                进入战役
+                继续主持
               </button>
             </div>
             <p className={`mt-2 text-[11px] leading-relaxed ${theme.muted}`}>
-              进入战役：进入当前战役的运行界面（当前为本地运行壳，后续会与联机 Runtime 合流）。
+              继续主持：直接进入当前战役的 Runtime（当前为本地运行，后续会与联机 Runtime 合流）。下方「主持准备」用于管理角色准入、资料、地图与联机准备。
             </p>
+            {/* M73: reserved character binding / clearance space (placeholder, not real clearance). */}
+            <div className="mt-3">
+              <CharacterClearanceSummary variant="full" local />
+            </div>
             {onHostLaunchRoom && (
               <p className={`mt-2 text-[11px] leading-relaxed ${theme.muted}`}>
                 从当前战役创建一个 Room Server 房间（本地 / 局域网 v0），玩家可通过房间码加入。这不是进入正式 Runtime。
