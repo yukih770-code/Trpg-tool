@@ -134,9 +134,10 @@ function buildSessionRecap(events: RoomRuntimeLogEvent[]): string {
     '',
     `## 状态记录（${states.length}）`,
     ...(states.length === 0 ? ['- （无）'] : states.map((e) => {
-      const p = (e.payload ?? {}) as { targetName?: string; body?: string };
-      const body = p.body ?? e.text ?? '';
-      return p.targetName ? `- ${p.targetName}：${body}` : `- ${body}`;
+      const p = (e.payload ?? {}) as { targetName?: string; body?: string; itemLabel?: string; actionLabel?: string };
+      const actionItem = [p.actionLabel, p.itemLabel].filter(Boolean).join(' ');
+      const detail = [actionItem, p.body ?? e.text ?? ''].filter(Boolean).join(' ').trim();
+      return p.targetName ? `- ${p.targetName}：${detail}` : `- ${detail}`;
     })),
     '',
     `## 投骰（${dice.length}）`,
@@ -174,10 +175,10 @@ function asDiceRoll(payload: unknown): SharedDiceRollResult | null {
   return p as SharedDiceRollResult;
 }
 
-/** Narrow a payload written by the M29 public-info / state-log / M42 scene panels. */
-function asRunNote(payload: unknown): { noteKind?: string; title?: string; targetName?: string; body?: string; mapUrl?: string } | null {
+/** Narrow a payload written by the M29 public-info / state-log / M42 scene / M56 item panels. */
+function asRunNote(payload: unknown): { noteKind?: string; title?: string; targetName?: string; body?: string; mapUrl?: string; itemLabel?: string; actionLabel?: string } | null {
   if (!payload || typeof payload !== 'object') return null;
-  const p = payload as { noteKind?: unknown; title?: unknown; targetName?: unknown; body?: unknown; mapUrl?: unknown };
+  const p = payload as { noteKind?: unknown; title?: unknown; targetName?: unknown; body?: unknown; mapUrl?: unknown; itemLabel?: unknown; actionLabel?: unknown };
   if (p.noteKind !== 'publicInfo' && p.noteKind !== 'manualState' && p.noteKind !== 'sceneFocus') return null;
   return {
     noteKind: typeof p.noteKind === 'string' ? p.noteKind : undefined,
@@ -185,6 +186,8 @@ function asRunNote(payload: unknown): { noteKind?: string; title?: string; targe
     targetName: typeof p.targetName === 'string' ? p.targetName : undefined,
     body: typeof p.body === 'string' ? p.body : undefined,
     mapUrl: typeof p.mapUrl === 'string' ? p.mapUrl : undefined,
+    itemLabel: typeof p.itemLabel === 'string' ? p.itemLabel : undefined,
+    actionLabel: typeof p.actionLabel === 'string' ? p.actionLabel : undefined,
   };
 }
 
@@ -208,9 +211,13 @@ function RunNoteLine({ e }: { e: RoomRuntimeLogEvent }) {
       </div>
     );
   }
+  const actionItem = [note?.actionLabel, note?.itemLabel].filter(Boolean).join(' ');
   return (
     <div className="mt-0.5 text-[12px] leading-relaxed">
       {note?.targetName && <span className="mr-1.5 font-bold text-slate-800">{note.targetName}</span>}
+      {actionItem && (
+        <span className="mr-1.5 rounded-full bg-indigo-500/10 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700">{actionItem}</span>
+      )}
       <span className="whitespace-pre-wrap text-slate-700">{body}</span>
       <span className="ml-1.5 text-[9px] text-slate-400">（手动记录，不影响角色卡）</span>
     </div>

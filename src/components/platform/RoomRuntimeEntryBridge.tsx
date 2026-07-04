@@ -19,6 +19,7 @@ import { RuntimeManualStateLogPanel, type RuntimeStateLogItem } from './RuntimeM
 import { RuntimeCharacterSheetPanel } from './RuntimeCharacterSheetPanel';
 import { RuntimeActorRosterPanel, type RuntimeActorRosterEntry } from './RuntimeActorRosterPanel';
 import { buildRuntimeCharacterSummary } from './runtimeActorSnapshotAdapter';
+import { buildRuntimeInventorySummary } from './runtimeInventoryAdapter';
 import { RuntimeSceneFocusPanel, type RuntimeSceneFocus } from './RuntimeSceneFocusPanel';
 import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSceneBoardPanel';
 import { RuntimeMapStage } from './RuntimeMapStage';
@@ -249,11 +250,32 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     });
   };
 
-  const handleRecordStateChange = async (input: { targetName?: string; body: string }) => {
+  const handleRecordStateChange = async (input: {
+    targetName?: string;
+    body: string;
+    changeKind?: string;
+    itemLabel?: string;
+    actionLabel?: string;
+  }) => {
+    // M56: item/equipment change fields are OPTIONAL display metadata on the same
+    // state.manualChange event. They never modify a character sheet or store.
+    const actionItem = [input.actionLabel, input.itemLabel].filter(Boolean).join(' ');
+    const composed = [
+      input.targetName ? `${input.targetName}：` : '',
+      actionItem ? `${actionItem} ` : '',
+      input.body,
+    ].join('').trim();
     await appendNote({
       kind: 'state.manualChange',
-      text: input.targetName ? `${input.targetName}：${input.body}` : input.body,
-      payload: { noteKind: 'manualState', targetName: input.targetName, body: input.body },
+      text: composed || input.body,
+      payload: {
+        noteKind: 'manualState',
+        changeKind: input.changeKind,
+        targetName: input.targetName,
+        itemLabel: input.itemLabel,
+        actionLabel: input.actionLabel,
+        body: input.body,
+      },
     });
   };
 
@@ -299,8 +321,16 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const stateLogItems: RuntimeStateLogItem[] = noteEvents
     .filter((e) => e.kind === 'state.manualChange')
     .map((e) => {
-      const p = (e.payload ?? {}) as { targetName?: string; body?: string };
-      return { id: e.eventId, targetName: p.targetName, body: p.body ?? e.text ?? '', createdAt: e.createdAt };
+      const p = (e.payload ?? {}) as { targetName?: string; body?: string; itemLabel?: string; actionLabel?: string; changeKind?: string };
+      return {
+        id: e.eventId,
+        targetName: p.targetName,
+        body: p.body ?? e.text ?? '',
+        createdAt: e.createdAt,
+        itemLabel: p.itemLabel,
+        actionLabel: p.actionLabel,
+        changeKind: p.changeKind,
+      };
     });
 
   // M34 presence: prefer the LIVE snapshot (bridge socket) over the entry-time prop.
@@ -336,6 +366,13 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     playerLabel: myMember?.displayName ?? context.currentRole,
     readyState: myReadyState,
     fallbackSystemId: context.systemId,
+  });
+
+  // M55 read-only inventory summary. Same story: no rich snapshot source yet, so
+  // it returns empty sections + a sourceWarning; wiring a snapshot later fills it.
+  const inventorySummary = buildRuntimeInventorySummary({
+    snapshot: undefined,
+    systemId: characterSummary?.system ?? context.actorRef?.systemId ?? context.systemId,
   });
 
   const activeCount = members.filter((m) => m.status === 'active').length;
@@ -560,7 +597,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                 ) : undefined,
               actorPanel:
                 shellMode === 'player' ? (
-                  <RuntimeCharacterSheetPanel summary={characterSummary} role="player" />
+                  <RuntimeCharacterSheetPanel summary={characterSummary} inventory={inventorySummary} role="player" />
                 ) : undefined,
               scenePanel:
                 shellMode === 'host' ? (

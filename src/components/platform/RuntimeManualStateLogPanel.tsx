@@ -1,7 +1,13 @@
 import { useState } from 'react';
 
+import {
+  INVENTORY_ACTION_LABELS,
+  INVENTORY_CHANGE_KIND_OPTIONS,
+  type InventoryChangeKind,
+} from './runtimeInventoryBoundary';
+
 /**
- * RuntimeManualStateLogPanel (M29) — shared Manual State Log v0 panel.
+ * RuntimeManualStateLogPanel (M29 / M56) — shared Manual State Log v0 panel.
  *
  * AI-LANDMARK: RUNTIME_MANUAL_STATE_LOG_PANEL_V0
  *
@@ -18,13 +24,25 @@ export interface RuntimeStateLogItem {
   targetName?: string;
   body: string;
   createdAt?: string;
+  /** M56 optional change classification (display only). */
+  changeKind?: string;
+  itemLabel?: string;
+  actionLabel?: string;
+}
+
+export interface RuntimeManualStateLogRecordInput {
+  targetName?: string;
+  body: string;
+  changeKind?: InventoryChangeKind;
+  itemLabel?: string;
+  actionLabel?: string;
 }
 
 export interface RuntimeManualStateLogPanelProps {
   /** Whether the current user may record (host only). */
   canEdit: boolean;
   items: RuntimeStateLogItem[];
-  onRecord?: (input: { targetName?: string; body: string }) => Promise<void> | void;
+  onRecord?: (input: RuntimeManualStateLogRecordInput) => Promise<void> | void;
   onRefresh?: () => void;
   loading?: boolean;
   feedError?: string | null;
@@ -56,10 +74,15 @@ export function RuntimeManualStateLogPanel({
 }: RuntimeManualStateLogPanelProps) {
   const [targetName, setTargetName] = useState('');
   const [body, setBody] = useState('');
+  const [changeKind, setChangeKind] = useState<InventoryChangeKind>('condition');
+  const [itemLabel, setItemLabel] = useState('');
+  const [actionLabel, setActionLabel] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [justSaved, setJustSaved] = useState(false);
 
+  // Item / action fields only apply to物品 / 装备变化 (M56).
+  const showItemFields = changeKind === 'inventory' || changeKind === 'equipment';
   const canSubmit = canEdit && body.trim().length > 0 && !saving && !!onRecord;
 
   const record = async () => {
@@ -68,8 +91,15 @@ export function RuntimeManualStateLogPanel({
     setSaveError(null);
     setJustSaved(false);
     try {
-      await onRecord({ targetName: targetName.trim() || undefined, body: body.trim() });
+      await onRecord({
+        targetName: targetName.trim() || undefined,
+        body: body.trim(),
+        changeKind,
+        itemLabel: showItemFields ? itemLabel.trim() || undefined : undefined,
+        actionLabel: showItemFields ? actionLabel || undefined : undefined,
+      });
       setBody('');
+      setItemLabel('');
       setJustSaved(true);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : String(e));
@@ -99,6 +129,39 @@ export function RuntimeManualStateLogPanel({
             <datalist id="runtime-state-log-targets">
               {candidateTargets.map((t) => <option key={t} value={t} />)}
             </datalist>
+          )}
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] text-slate-500">变化类型</span>
+            <select
+              className={`${input} w-auto`}
+              value={changeKind}
+              onChange={(e) => setChangeKind(e.target.value as InventoryChangeKind)}
+              disabled={saving}
+            >
+              {INVENTORY_CHANGE_KIND_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          {showItemFields && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <select
+                className={`${input} w-auto`}
+                value={actionLabel}
+                onChange={(e) => setActionLabel(e.target.value)}
+                disabled={saving}
+              >
+                <option value="">动作（可选）</option>
+                {INVENTORY_ACTION_LABELS.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+              <input
+                className={`${input} flex-1`}
+                value={itemLabel}
+                onChange={(e) => setItemLabel(e.target.value)}
+                placeholder="物品名（可选），例如：长剑 / 治疗药水"
+                disabled={saving}
+              />
+            </div>
           )}
           <textarea
             className={`${input} mt-1.5 min-h-[52px] resize-y`}
@@ -153,6 +216,11 @@ export function RuntimeManualStateLogPanel({
             <div key={item.id} className="rounded border border-slate-300/50 bg-white/80 px-2 py-1.5">
               <div className="flex flex-wrap items-baseline gap-2 text-[12px]">
                 {item.targetName && <span className="font-bold text-slate-800">{item.targetName}</span>}
+                {(item.actionLabel || item.itemLabel) && (
+                  <span className="rounded-full bg-indigo-500/10 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700">
+                    {[item.actionLabel, item.itemLabel].filter(Boolean).join(' ')}
+                  </span>
+                )}
                 <span className="whitespace-pre-wrap leading-relaxed text-slate-700">{item.body}</span>
                 <span className="ml-auto text-[9px] text-slate-400">{formatTime(item.createdAt)}</span>
               </div>

@@ -1,4 +1,6 @@
 import { RuntimeActorBoundaryNote } from './RuntimeActorBoundaryNote';
+import { RuntimeInventoryBoundaryNote } from './RuntimeInventoryBoundaryNote';
+import type { RuntimeInventoryItem, RuntimeInventorySummary } from './runtimeInventoryAdapter';
 
 /**
  * RuntimeCharacterSheetPanel (M46) — read-only runtime character sheet.
@@ -47,6 +49,8 @@ export interface RuntimeCharacterSummary {
 export interface RuntimeCharacterSheetPanelProps {
   summary?: RuntimeCharacterSummary | null;
   role?: 'host' | 'player' | 'spectator';
+  /** Read-only inventory / equipment summary (M55), built by runtimeInventoryAdapter. */
+  inventory?: RuntimeInventorySummary | null;
 }
 
 const SYSTEM_LABEL: Record<string, string> = {
@@ -125,7 +129,24 @@ function StatGrid({ title, stats }: { title: string; stats: RuntimeCharacterStat
   );
 }
 
-export function RuntimeCharacterSheetPanel({ summary, role }: RuntimeCharacterSheetPanelProps) {
+function InvGroup({ title, items }: { title: string; items: RuntimeInventoryItem[] }) {
+  if (items.length === 0) return null;
+  return (
+    <div className="mt-1.5 first:mt-0">
+      <div className="text-[10px] font-bold text-slate-600">{title}</div>
+      <ul className="mt-0.5 space-y-0.5">
+        {items.map((it, i) => (
+          <li key={i} className="flex items-baseline justify-between gap-2 text-[11px]">
+            <span className="text-slate-700">{it.label}</span>
+            {it.detail && <span className="text-right text-[10px] text-slate-400">{it.detail}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export function RuntimeCharacterSheetPanel({ summary, role, inventory }: RuntimeCharacterSheetPanelProps) {
   if (!hasCharacter(summary)) {
     return (
       <div className="space-y-2 text-left">
@@ -155,7 +176,6 @@ export function RuntimeCharacterSheetPanel({ summary, role }: RuntimeCharacterSh
     summary.coreStats.length > 0 ||
     summary.skillHighlights.length > 0 ||
     summary.resourceHighlights.length > 0 ||
-    summary.equipmentHighlights.length > 0 ||
     summary.featureHighlights.length > 0 ||
     summary.notes.length > 0;
 
@@ -194,16 +214,6 @@ export function RuntimeCharacterSheetPanel({ summary, role }: RuntimeCharacterSh
           <StatGrid title="常用检定 / 技能" stats={summary.skillHighlights} />
           <StatGrid title="资源" stats={summary.resourceHighlights} />
           <StatGrid title="特性 / 能力" stats={summary.featureHighlights} />
-          <div className="rounded border border-slate-300/50 bg-white/70 p-2">
-            <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">装备</div>
-            {summary.equipmentHighlights.length === 0 ? (
-              <p className="text-[10px] italic text-slate-400">当前摘要暂无该项数据。</p>
-            ) : (
-              <ul className="list-disc pl-4 text-[11px] text-slate-700">
-                {summary.equipmentHighlights.map((e, i) => <li key={i}>{e}</li>)}
-              </ul>
-            )}
-          </div>
           {summary.notes.length > 0 && (
             <div className="rounded border border-slate-300/50 bg-white/70 p-2">
               <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">备注 / 特性</div>
@@ -213,6 +223,28 @@ export function RuntimeCharacterSheetPanel({ summary, role }: RuntimeCharacterSh
             </div>
           )}
         </>
+      )}
+
+      {/* Read-only inventory / equipment view (M55). */}
+      {inventory && (
+        <div className="rounded border border-slate-300/50 bg-white/70 p-2">
+          <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">装备 / 背包</div>
+          {!inventory.hasAny ? (
+            <p className="text-[10px] italic leading-relaxed text-slate-400">
+              {inventory.sourceWarnings[0] ?? '当前角色快照还没有提供可展示的装备 / 背包数据。'}
+            </p>
+          ) : (
+            <>
+              <InvGroup title="已装备" items={inventory.equipped} />
+              <InvGroup title="背包" items={inventory.inventory} />
+              <InvGroup title="消耗品 / 资源物品" items={inventory.consumables} />
+              <InvGroup title="货币 / 财产" items={inventory.currency} />
+            </>
+          )}
+          <div className="mt-1.5">
+            <RuntimeInventoryBoundaryNote variant="compact" />
+          </div>
+        </div>
       )}
 
       <RuntimeActorBoundaryNote variant="compact" />
