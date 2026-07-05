@@ -755,7 +755,11 @@ export function DndWorkspaceShell({
             <div className="space-y-3">
               {hostLaunchError && (
                 <div className="rounded border border-red-400/40 bg-red-500/10 px-2 py-1 text-[11px] text-red-700">
-                  开启房间失败：{hostLaunchError}
+                  <div className="font-bold">无法创建联机房间：请确认 Room Server 正在运行。</div>
+                  <details className="mt-0.5">
+                    <summary className="cursor-pointer text-[10px] font-bold text-red-700/70">诊断信息</summary>
+                    <div className="mt-0.5 break-words text-[10px] opacity-80">{hostLaunchError}</div>
+                  </details>
                 </div>
               )}
               <div className="flex items-center gap-2 border-b border-[#58180d]/15 pb-1">

@@ -231,6 +231,7 @@ export function RoomLobbyShell({
   const [readyError, setReadyError] = useState<string | null>(null);
   // Live RuntimeLog events from the shared socket, buffered for the preview panel.
   const [logLiveEvents, setLogLiveEvents] = useState<RoomRuntimeLogEvent[]>([]);
+  const [copiedInviteAction, setCopiedInviteAction] = useState<'code' | 'info' | null>(null);
 
   const config = useMemo<RoomServerHttpClientConfig>(() => ({ baseUrl }), [baseUrl]);
 
@@ -529,6 +530,23 @@ export function RoomLobbyShell({
   };
 
   const identity = room?.identity;
+  const inviteText = [
+    room?.campaignRef?.displayName ? `战役：${room.campaignRef.displayName}` : '战役：联机房间',
+    `房间码：${identity?.roomCode ?? '—'}`,
+    `房间服务：${serverLabel ?? baseUrl}`,
+    '请在“加入战役 / 加入房间”中输入房间码，进入联机大厅后完成角色绑定、ready 和主持人审批。',
+  ].join('\n');
+  const copyInviteText = async (kind: 'code' | 'info') => {
+    const text = kind === 'code' ? identity?.roomCode : inviteText;
+    if (!text) return;
+    try {
+      await navigator.clipboard?.writeText(text);
+      setCopiedInviteAction(kind);
+      window.setTimeout(() => setCopiedInviteAction(null), 1600);
+    } catch {
+      setCopiedInviteAction(null);
+    }
+  };
 
   const card = 'rounded border border-slate-400/30 bg-white/60 p-3';
   const label = 'text-[11px] font-bold uppercase tracking-wide text-slate-600';
@@ -563,6 +581,36 @@ export function RoomLobbyShell({
         {(originDetail ?? room?.campaignRef?.displayName) ? ` / ${originDetail ?? room?.campaignRef?.displayName}` : ''}
         <span className="ml-1 italic">（仅为来源上下文，不是权限）</span>
       </div>
+
+      {isHostScaffold && identity && (
+        <section className="rounded border border-emerald-400/30 bg-emerald-50/70 p-3 text-[12px] text-emerald-900">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-wide text-emerald-800">邀请玩家加入</div>
+              <p className="mt-1 text-[11px] leading-relaxed text-emerald-800/80">
+                把房间码发给同一局域网内的玩家。玩家在“加入战役 / 加入房间”中输入房间码后，会进入联机大厅。
+              </p>
+            </div>
+            <span className="rounded-full bg-white/70 px-2 py-0.5 font-mono text-sm font-black text-emerald-900">
+              {identity.roomCode}
+            </span>
+          </div>
+          <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-2">
+            <div className="rounded border border-emerald-300/50 bg-white/60 px-2 py-1">
+              <div className="text-[9px] font-bold uppercase tracking-wide text-emerald-700/70">房间服务</div>
+              <div className="mt-0.5 break-words font-semibold">{serverLabel ?? baseUrl}</div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className={btn} onClick={() => void copyInviteText('code')}>
+                {copiedInviteAction === 'code' ? '已复制房间码' : '复制房间码'}
+              </button>
+              <button type="button" className={btn} onClick={() => void copyInviteText('info')}>
+                {copiedInviteAction === 'info' ? '已复制邀请信息' : '复制邀请信息'}
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className={card}>
         <div className={`mb-1.5 ${label}`}>大厅状态</div>

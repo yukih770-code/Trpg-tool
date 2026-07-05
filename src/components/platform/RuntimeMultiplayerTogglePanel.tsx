@@ -128,9 +128,13 @@ export function RuntimeMultiplayerTogglePanel({
         当前会创建联机房间大厅；本地 RuntimeLog、场景和状态记录暂不会自动迁移。未来会支持从当前 Runtime 状态生成 replay / promotion。
       </p>
       {launchError && (
-        <p className="rounded border border-red-400/40 bg-red-500/10 px-2 py-1 text-[10px] leading-relaxed text-red-700">
-          创建联机房间失败：{launchError}
-        </p>
+        <div className="rounded border border-red-400/40 bg-red-500/10 px-2 py-1 text-[10px] leading-relaxed text-red-700">
+          <div className="font-bold">无法创建联机房间：请确认 Room Server 正在运行。</div>
+          <details className="mt-0.5">
+            <summary className="cursor-pointer font-bold text-red-700/70">诊断信息</summary>
+            <div className="mt-0.5 break-words opacity-80">{launchError}</div>
+          </details>
+        </div>
       )}
 
       {showChecklist && (
