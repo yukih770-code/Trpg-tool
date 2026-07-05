@@ -3,18 +3,50 @@
  *
  * AI-LANDMARK: BACKEND_DEPLOYMENT_CONTRACTS_V0
  *
- * These are platform-level backend deployment contracts. They describe how the
- * SAME Room Server application can run as LAN-hosted, official-hosted, or
- * third-party self-hosted. They do not implement networking, storage, rooms,
- * WebSocket, HTTP, authentication, Workshop publishing, or Runtime
- * synchronization.
+ * These are platform-level backend deployment contracts. They describe local
+ * dev/test, official hosted, and third-party/self-hosted boundary shapes. They
+ * do not implement networking, storage, rooms, WebSocket, HTTP, authentication,
+ * Workshop publishing, or Runtime synchronization.
  *
- * Core principle: LAN is a deployment target, not a different architecture — the
- * LAN host computer simply runs the same Room Server. The differences between
- * targets are deployment location, network reachability, storage adapter, and
- * Workshop publishing capability, never a separate codebase. This module imports
- * nothing and stays platform-neutral (no DND/COC/CP RED concepts).
+ * Core principle: local Room Server remains useful for development, LAN tests,
+ * and offline experiments. The formal long-term hosted backend is cloud API
+ * Server + Room Server + database/object-storage adapters. The differences
+ * between targets are deployment location, network reachability, storage
+ * adapter, and publishing capability, never a separate codebase. This module
+ * imports nothing and stays platform-neutral (no DND/COC/CP RED concepts).
  */
+
+export type BackendDeploymentEnvironment =
+  | 'localDev'
+  | 'cloudDev'
+  | 'staging'
+  | 'production';
+
+export type BackendRuntimeMode =
+  | 'local'
+  | 'cloud';
+
+/**
+ * Endpoint contract for frontend/backend wiring.
+ *
+ * This is configuration shape only. It must not perform environment reads,
+ * network detection, auth, deployment, or protocol negotiation.
+ */
+export interface BackendEndpointConfig {
+  profile: BackendDeploymentEnvironment;
+  runtimeMode: BackendRuntimeMode;
+  apiBaseUrl: string;
+  roomHttpUrl: string;
+  roomWsUrl: string;
+}
+
+export const LOCAL_DEV_BACKEND_ENDPOINT_CONFIG: BackendEndpointConfig = {
+  profile: 'localDev',
+  runtimeMode: 'local',
+  apiBaseUrl: 'http://localhost:8787',
+  roomHttpUrl: 'http://localhost:8787',
+  roomWsUrl: 'ws://localhost:8787',
+};
 
 export type BackendDeploymentTarget =
   | 'lanHostComputer'
