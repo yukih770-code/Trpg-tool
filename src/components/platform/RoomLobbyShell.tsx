@@ -78,6 +78,7 @@ interface SnapshotMeta {
 }
 
 type MyStatusKind = 'pendingApproval' | 'active' | 'kicked' | 'unknown' | 'other';
+type LobbyStepState = 'done' | 'current' | 'waiting';
 
 const STATUS_LABEL: Record<RoomMemberStatus, string> = {
   invited: '已邀请',
@@ -340,6 +341,7 @@ export function RoomLobbyShell({
   const pendingMemberCount = groups.pending.length;
   const pendingBindingCount = actorBindings.filter((b) => b.status === 'pendingHostApproval').length;
   const notReadyActiveCount = members.filter((m) => m.status === 'active' && !isMemberFullyReady(m.memberId)).length;
+  const memberBinding = (memberId: string) => actorBindings.find((binding) => binding.memberId === memberId);
   const myBindingLabel =
     myBindingStatus === 'approved'
       ? '已绑定'
@@ -349,23 +351,87 @@ export function RoomLobbyShell({
           ? '需重新提交'
           : '未绑定';
   const myReadyLabel = myReady === 'ready' ? '已准备' : '未准备';
+  // Runtime Entry Bridge eligibility (read-only preview; NOT real runtime).
+  const entryEligibility = evaluateRoomRuntimeEntryEligibility(room ?? undefined, currentMemberId);
   const playerNextStep =
     myStatus === 'pendingApproval'
-      ? '等待主持人批准加入。'
+      ? '等待主持人批准加入房间。'
       : myStatus !== 'active'
         ? '重新加入或等待主持人处理房间成员状态。'
         : myBindingStatus === 'notSubmitted'
-          ? '提交角色绑定。'
+          ? '选择或填写角色信息，并提交给主持人。'
           : myBindingStatus === 'pendingHostApproval'
-            ? '等待主持人审批角色。'
+            ? '等待主持人确认角色绑定。'
             : myClearanceStatus !== 'approved'
-              ? '等待角色准入通过。'
+              ? '完整角色安检暂未启用；当前等待准入占位通过。'
               : myReady !== 'ready'
-                ? '点击“我已准备”。'
-                : '可以进入联机跑团桌面。';
+                ? '确认后点击“我已准备”。'
+                : '等待主持人开始，或进入联机跑团桌面。';
+  const lobbySteps: { label: string; detail: string; state: LobbyStepState }[] = [
+    {
+      label: '加入房间',
+      detail: myStatus === 'pendingApproval' ? '等待主持人批准加入房间' : myStatus === 'active' ? '已加入' : '未完成',
+      state: myStatus === 'active' ? 'done' : myStatus === 'pendingApproval' ? 'current' : 'waiting',
+    },
+    {
+      label: '绑定角色',
+      detail:
+        myBindingStatus === 'notSubmitted'
+          ? '提交角色给主持人'
+          : myBindingStatus === 'rejected'
+            ? '修改后重新提交'
+            : myBinding?.actorRef.displayName ?? '已提交',
+      state: myStatus !== 'active' ? 'waiting' : myBindingStatus === 'notSubmitted' || myBindingStatus === 'rejected' ? 'current' : 'done',
+    },
+    {
+      label: '等待审批',
+      detail:
+        myBindingStatus === 'pendingHostApproval'
+          ? '等待主持人确认角色绑定'
+          : myBindingStatus === 'approved'
+            ? '已确认'
+            : '等待提交角色',
+      state: myBindingStatus === 'pendingHostApproval' ? 'current' : myBindingStatus === 'approved' ? 'done' : 'waiting',
+    },
+    {
+      label: '标记准备',
+      detail: myReady === 'ready' ? '已准备' : '确认后点击准备',
+      state: myReady === 'ready' ? 'done' : myBindingStatus === 'approved' && myClearanceStatus === 'approved' ? 'current' : 'waiting',
+    },
+    {
+      label: '进入桌面',
+      detail: entryEligibility.canEnter ? '可进入跑团桌面' : '等待前置条件完成',
+      state: entryEligibility.canEnter ? 'current' : 'waiting',
+    },
+  ];
+  const hostQueueItems = [
+    ...groups.pending.map((member) => ({
+      key: `member-${member.memberId}`,
+      player: member.displayName,
+      actor: memberBinding(member.memberId)?.actorRef.displayName ?? '未绑定',
+      status: '待加入',
+      action: '批准 / 拒绝成员',
+    })),
+    ...actorBindings
+      .filter((binding) => binding.status === 'pendingHostApproval')
+      .map((binding) => ({
+        key: `binding-${binding.bindingId}`,
+        player: memberName(binding.memberId),
+        actor: binding.actorRef.displayName,
+        status: '待角色审批',
+        action: '确认 / 拒绝角色',
+      })),
+    ...members
+      .filter((member) => member.status === 'active' && !isMemberFullyReady(member.memberId))
+      .map((member) => ({
+        key: `ready-${member.memberId}`,
+        player: member.displayName,
+        actor: memberBinding(member.memberId)?.actorRef.displayName ?? '未绑定',
+        status: '未准备',
+        action: '等待玩家完成',
+      })),
+  ];
 
-  // Runtime Entry Bridge eligibility (read-only preview; NOT real runtime).
-  const entryEligibility = evaluateRoomRuntimeEntryEligibility(room ?? undefined, currentMemberId);
   const handleEnterRuntime = () => {
     if (!room || !currentMember || !currentMemberId || !entryEligibility.canEnter || !entryEligibility.entryMode) return;
     const context: RoomRuntimeEntryContext = {
@@ -559,13 +625,32 @@ export function RoomLobbyShell({
       <section className={card}>
         <div className={`mb-1.5 ${label}`}>{isHostScaffold ? '主持人下一步' : '下一步'}</div>
         {isHostScaffold ? (
-          <div className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-3">
-            <StatusPill label="待审批成员" value={String(pendingMemberCount)} tone={pendingMemberCount > 0 ? 'warn' : 'ok'} />
-            <StatusPill label="待审批角色" value={String(pendingBindingCount)} tone={pendingBindingCount > 0 ? 'warn' : 'ok'} />
-            <StatusPill label="未准备成员" value={String(notReadyActiveCount)} tone={notReadyActiveCount > 0 ? 'warn' : 'ok'} />
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-3">
+              <StatusPill label="待批准成员" value={String(pendingMemberCount)} tone={pendingMemberCount > 0 ? 'warn' : 'ok'} />
+              <StatusPill label="待审批角色" value={String(pendingBindingCount)} tone={pendingBindingCount > 0 ? 'warn' : 'ok'} />
+              <StatusPill label="未准备成员" value={String(notReadyActiveCount)} tone={notReadyActiveCount > 0 ? 'warn' : 'ok'} />
+            </div>
+            {hostQueueItems.length > 0 ? (
+              <div className="space-y-1">
+                {hostQueueItems.map((item) => (
+                  <div key={item.key} className="flex flex-wrap items-center gap-2 rounded border border-amber-400/30 bg-amber-50/60 px-2 py-1 text-[11px]">
+                    <span className="font-bold text-slate-800">{item.player}</span>
+                    <span className="text-slate-600">角色：{item.actor}</span>
+                    <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">{item.status}</span>
+                    <span className="ml-auto text-[10px] text-slate-500">{item.action}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] font-bold text-emerald-700">当前没有待处理项。可以进入桌面，或等待玩家陆续准备。</p>
+            )}
           </div>
         ) : (
-          <p className="text-[12px] font-bold text-slate-700">{playerNextStep}</p>
+          <div className="space-y-3">
+            <PlayerLobbyStepper steps={lobbySteps} />
+            <p className="rounded border border-slate-300/40 bg-white/70 px-2 py-1 text-[12px] font-bold text-slate-700">{playerNextStep}</p>
+          </div>
         )}
       </section>
 
@@ -609,42 +694,47 @@ export function RoomLobbyShell({
 
       {/* Actor binding (pre-session draft) */}
       <section className={card}>
-        <div className={`mb-1.5 ${label}`}>角色绑定</div>
+        <div className={`mb-1.5 ${label}`}>我的角色</div>
         <p className="mb-2 text-[10px] text-slate-500">
-          这是角色绑定草稿，不是正式角色导入。后续会连接真实角色库与角色安检。当前系统：{identity?.systemId ?? '—'}（角色 / 调查员 / Solo / Actor）。
+          把你准备用于本房间的角色提交给主持人。完整角色安检暂未启用；当前只提交角色身份与绑定草稿，不写入角色库，也不会创建正式战役内角色实例。
         </p>
 
-        <div className="mb-2 text-[11px]">
-          {myBindingStatus === 'notSubmitted' && <span className="font-bold text-slate-600">未提交角色。</span>}
-          {myBindingStatus === 'pendingHostApproval' && <span className="font-bold text-amber-700">已提交角色草稿，等待 Host 审批。</span>}
-          {myBindingStatus === 'approved' && <span className="font-bold text-emerald-700">角色绑定草稿已批准。</span>}
+        <div className="mb-3 rounded border border-slate-300/40 bg-white/70 p-2 text-[11px]">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-bold text-slate-800">当前绑定：{myBinding?.actorRef.displayName ?? '未绑定'}</span>
+            <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${BINDING_TONE[myBindingStatus]}`}>{BINDING_LABEL[myBindingStatus]}</span>
+            {myBinding && <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">角色来源：{SOURCE_LABEL[myBinding.actorRef.source]}</span>}
+            {myBinding && <ClearanceBadge status={myClearanceStatus} />}
+          </div>
+          {myBindingStatus === 'pendingHostApproval' && <p className="mt-1 text-amber-700">已提交给主持人，正在等待确认角色绑定。</p>}
+          {myBindingStatus === 'approved' && <p className="mt-1 text-emerald-700">主持人已确认角色绑定。</p>}
           {myBindingStatus === 'rejected' && (
-            <span className="font-bold text-red-700">
+            <p className="mt-1 text-red-700">
               角色绑定被拒绝{myBinding?.rejectionReason ? `：${myBinding.rejectionReason}` : ''}。可修改后重新提交。
-            </span>
+            </p>
           )}
-          {myBinding && (
-            <span className="ml-2 text-[10px] text-slate-500">
-              当前：{myBinding.actorRef.displayName}
-            </span>
-          )}
-          {myBinding && <span className="ml-2 inline-flex"><ClearanceBadge status={myClearanceStatus} /></span>}
         </div>
 
         {iAmActive ? (
-          <div className="flex flex-wrap items-end gap-2">
-            <label className="flex flex-col gap-0.5 text-[10px] text-slate-500">角色显示名
-              <input className={input} value={bindingName} onChange={(e) => setBindingName(e.target.value)} placeholder="例如 Elaria / 调查员 / Solo" />
-            </label>
-            <label className="flex flex-col gap-0.5 text-[10px] text-slate-500">角色 ID（可选）
-              <input className={input} value={bindingActorId} onChange={(e) => setBindingActorId(e.target.value)} placeholder="可留空" />
-            </label>
-            <button type="button" className={btn} disabled={bindingBusy || !bindingName.trim()} onClick={submitBinding}>
-              {bindingBusy ? '提交中…' : myBinding ? '更新角色绑定草稿' : '提交角色绑定草稿'}
-            </button>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex min-w-[220px] flex-col gap-0.5 text-[10px] text-slate-500">角色名
+                <input className={input} value={bindingName} onChange={(e) => setBindingName(e.target.value)} placeholder="例如 Elaria / 调查员 / Solo" />
+              </label>
+              <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">角色来源：手动填写</span>
+              <button type="button" className={btn} disabled={bindingBusy || !bindingName.trim()} onClick={submitBinding}>
+                {bindingBusy ? '提交中…' : myBinding ? '更新角色绑定' : '提交角色给主持人'}
+              </button>
+            </div>
+            <details className="rounded border border-slate-300/40 bg-white/50 px-2 py-1">
+              <summary className="cursor-pointer text-[10px] font-bold text-slate-500">高级 / 可选：角色 ID</summary>
+              <label className="mt-2 flex max-w-xs flex-col gap-0.5 text-[10px] text-slate-500">角色 ID（可留空）
+                <input className={input} value={bindingActorId} onChange={(e) => setBindingActorId(e.target.value)} placeholder="仅用于未来匹配本地角色库" />
+              </label>
+            </details>
           </div>
         ) : (
-          <p className="text-[10px] italic text-slate-500">成为在线成员后才能提交角色绑定草稿。</p>
+          <p className="text-[10px] italic text-slate-500">成为在线成员后才能提交角色给主持人。</p>
         )}
         {bindingError && <div className="mt-1 text-[10px] font-bold text-red-700">提交失败：{bindingError}</div>}
       </section>
@@ -652,9 +742,9 @@ export function RoomLobbyShell({
       {/* Host: actor binding review (scaffold) */}
       {isHostScaffold && (
         <section className={card}>
-          <div className={`mb-1.5 ${label}`}>角色绑定审批（主持人）</div>
+          <div className={`mb-1.5 ${label}`}>待审批角色（主持人）</div>
           <p className="mb-2 text-[10px] text-amber-700">
-            主持人审批为本地 Room Server / scaffold 阶段操作，不是正式权限系统。批准不会创建正式角色实例或写回角色库。
+            当前只是确认玩家提交的角色身份与绑定草稿；完整角色安检暂未启用。批准不会创建正式角色实例，也不会写回角色库。
           </p>
           {actorBindings.length === 0 ? (
             <p className="text-[11px] italic text-slate-500">暂无角色绑定提交。</p>
@@ -677,7 +767,7 @@ export function RoomLobbyShell({
                         disabled={reviewBindingId === b.bindingId}
                         onClick={() => reviewBinding(b.bindingId, 'approve')}
                       >
-                        {reviewBindingId === b.bindingId ? '处理中…' : '安检并批准'}
+                        {reviewBindingId === b.bindingId ? '处理中…' : '确认角色绑定'}
                       </button>
                       <button
                         type="button"
@@ -717,7 +807,7 @@ export function RoomLobbyShell({
                 </button>
               </div>
             ) : (
-              <p className="text-[11px] italic text-amber-700">角色尚未通过准入，暂不能准备。</p>
+              <p className="text-[11px] italic text-amber-700">角色准入占位尚未通过，暂不能准备。完整规则安检将在后续接入。</p>
             )
           ) : (
             <p className="text-[11px] italic text-slate-500">请先提交角色并等待 Host 批准，之后才能准备。</p>
@@ -733,6 +823,16 @@ export function RoomLobbyShell({
       {onEnterRuntime && (
         <section className={card}>
           <div className={`mb-1.5 ${label}`}>联机跑团桌面</div>
+          {isHostScaffold ? (
+            <p className="mb-2 text-[11px] text-slate-600">
+              仍有未准备成员：<b>{notReadyActiveCount}</b>；仍有待审批角色：<b>{pendingBindingCount}</b>。
+              你可以先进入桌面，也可以等待所有人准备完成。
+            </p>
+          ) : (
+            <p className="mb-2 text-[11px] text-slate-600">
+              请先完成角色绑定和准备。如果按钮不可用，说明仍在等待主持人审批，或你尚未准备。
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" className={btn} disabled={!entryEligibility.canEnter} onClick={handleEnterRuntime}>
               进入跑团桌面
@@ -742,7 +842,7 @@ export function RoomLobbyShell({
             )}
           </div>
           <div className="mt-2 text-[10px] text-amber-700">
-            Alpha：角色实例、权限和结算仍为 v0 边界。
+            Alpha：这是联机跑团桌面，不是战役详情页；角色实例、权限和结算仍为 v0 边界。
             {currentMember?.role === 'host' && '主持人可直接进入主持人桌面。'}
           </div>
         </section>
@@ -832,6 +932,32 @@ function StatusPill({
     <div className={`rounded border px-2 py-1 ${toneClass}`}>
       <div className="text-[9px] font-bold uppercase tracking-wide opacity-70">{label}</div>
       <div className="mt-0.5 text-[11px] font-black">{value}</div>
+    </div>
+  );
+}
+
+function PlayerLobbyStepper({ steps }: { steps: { label: string; detail: string; state: LobbyStepState }[] }) {
+  const tone: Record<LobbyStepState, string> = {
+    done: 'border-emerald-400/40 bg-emerald-500/10 text-emerald-800',
+    current: 'border-amber-400/50 bg-amber-500/10 text-amber-800',
+    waiting: 'border-slate-300/50 bg-white/70 text-slate-500',
+  };
+  const mark: Record<LobbyStepState, string> = {
+    done: '✓',
+    current: '•',
+    waiting: '○',
+  };
+  return (
+    <div className="grid grid-cols-1 gap-1 sm:grid-cols-5">
+      {steps.map((step, index) => (
+        <div key={step.label} className={`rounded border px-2 py-1 ${tone[step.state]}`}>
+          <div className="flex items-center gap-1 text-[10px] font-black">
+            <span aria-hidden>{mark[step.state]}</span>
+            <span>{index + 1}. {step.label}</span>
+          </div>
+          <div className="mt-0.5 text-[9px] leading-snug opacity-80">{step.detail}</div>
+        </div>
+      ))}
     </div>
   );
 }
