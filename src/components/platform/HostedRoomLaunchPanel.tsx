@@ -6,12 +6,12 @@ import { RoomLobbyShell } from './RoomLobbyShell';
 import { RoomRuntimeEntryBridge } from './RoomRuntimeEntryBridge';
 
 /**
- * HostedRoomLaunchPanel (v0) — Room Lobby + Runtime Entry Preview for a room that
+ * HostedRoomLaunchPanel (v0) — Room Lobby + Runtime Alpha entry for a room that
  * was just hosted from a campaign.
  *
  * AI-LANDMARK: HOSTED_ROOM_LAUNCH_PANEL_V0
  *
- * Thin wrapper that owns the lobby ↔ entry-preview switch for a host who launched
+ * Thin wrapper that owns the lobby ↔ Runtime Alpha switch for a host who launched
  * a room from the host campaign detail (mirrors JoinCampaignPanel's lobby/bridge branches so the
  * three workspace shells don't duplicate it). NOT formal Runtime: no
  * CampaignRuntimeShell, no RuntimeLog / map / token / action intent, no

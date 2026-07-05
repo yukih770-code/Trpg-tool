@@ -123,6 +123,7 @@ export interface CampaignRuntimeContext {
   selectedActorId?: string;
   selectedActorName?: string;
   source: 'campaignEntry';
+  returnTo?: 'campaignList' | 'campaignDetail';
 }
 
 export interface CampaignInstanceSummary {

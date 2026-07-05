@@ -153,8 +153,8 @@ const ENTRY_BLOCKED_LABEL: Record<RoomRuntimeEntryBlockedReason, string> = {
   actorAdmissionRejected: '角色准入已被拒绝。',
   actorAdmissionStale: '角色准入已过期，需要重新提交。',
   memberNotReady: '请先点击「我已准备」。',
-  spectatorPreviewOnly: '旁观仅可进入只读预览。',
-  unknown: '暂不可进入跑团桌面预览。',
+  spectatorPreviewOnly: '旁观仅可进入只读跑团桌面。',
+  unknown: '暂不可进入跑团桌面。',
 };
 
 const CLEARANCE_LABEL: Record<RoomActorBindingClearanceStatus, string> = {
@@ -213,6 +213,7 @@ export function RoomLobbyShell({
   const [snapshotMeta, setSnapshotMeta] = useState<SnapshotMeta | null>(null);
   const [wsError, setWsError] = useState<string | null>(null);
   const [httpError, setHttpError] = useState<string | null>(null);
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   // Per-member host approval action state.
   const [pendingMemberId, setPendingMemberId] = useState<string | null>(null);
   const [memberActionError, setMemberActionError] = useState<string | null>(null);
@@ -336,6 +337,32 @@ export function RoomLobbyShell({
   };
   const readyCount = members.filter((m) => isMemberFullyReady(m.memberId)).length;
   const memberName = (id: string) => members.find((m) => m.memberId === id)?.displayName ?? shortId(id);
+  const pendingMemberCount = groups.pending.length;
+  const pendingBindingCount = actorBindings.filter((b) => b.status === 'pendingHostApproval').length;
+  const notReadyActiveCount = members.filter((m) => m.status === 'active' && !isMemberFullyReady(m.memberId)).length;
+  const myBindingLabel =
+    myBindingStatus === 'approved'
+      ? '已绑定'
+      : myBindingStatus === 'pendingHostApproval'
+        ? '待审批'
+        : myBindingStatus === 'rejected'
+          ? '需重新提交'
+          : '未绑定';
+  const myReadyLabel = myReady === 'ready' ? '已准备' : '未准备';
+  const playerNextStep =
+    myStatus === 'pendingApproval'
+      ? '等待主持人批准加入。'
+      : myStatus !== 'active'
+        ? '重新加入或等待主持人处理房间成员状态。'
+        : myBindingStatus === 'notSubmitted'
+          ? '提交角色绑定。'
+          : myBindingStatus === 'pendingHostApproval'
+            ? '等待主持人审批角色。'
+            : myClearanceStatus !== 'approved'
+              ? '等待角色准入通过。'
+              : myReady !== 'ready'
+                ? '点击“我已准备”。'
+                : '可以进入联机跑团桌面。';
 
   // Runtime Entry Bridge eligibility (read-only preview; NOT real runtime).
   const entryEligibility = evaluateRoomRuntimeEntryEligibility(room ?? undefined, currentMemberId);
@@ -456,7 +483,7 @@ export function RoomLobbyShell({
               战役房间大厅 · Room Lobby
               {identity?.roomCode ? <span className="ml-2 text-slate-500">#{identity.roomCode}</span> : null}
             </div>
-            <div className="text-[10px] text-slate-500">这是房间大厅，不是正式跑团桌面（Runtime）。角色绑定 / 准备状态为大厅草稿阶段；进入正式跑团桌面是后续功能。</div>
+            <div className="text-[10px] text-slate-500">联机大厅：成员加入、角色绑定和准备完成后进入跑团桌面。</div>
           </div>
         </div>
         {exitHandler && (
@@ -471,48 +498,74 @@ export function RoomLobbyShell({
         <span className="ml-1 italic">（仅为来源上下文，不是权限）</span>
       </div>
 
-      {/* Connection state */}
-      <div className="flex flex-wrap items-center gap-3">
-        <span className={label}>连接状态</span>
-        <span className={`text-[11px] font-bold ${CONN_TONE[connState]}`}>{CONN_LABEL[connState]}</span>
-        {snapshotMeta && (
-          <span className="text-[10px] text-slate-500">
-            最新快照 · seq {snapshotMeta.serverSeq} · {snapshotMeta.reason} · {snapshotMeta.sentAt}
-          </span>
-        )}
-      </div>
-      {wsError && <div className="rounded border border-amber-400/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-700">WebSocket：{wsError}</div>}
-      {httpError && <div className="rounded border border-red-400/40 bg-red-500/10 px-2 py-1 text-[10px] text-red-700">HTTP：{httpError}</div>}
-
-      {/* Room info */}
       <section className={card}>
-        <div className={`mb-1.5 ${label}`}>房间信息</div>
+        <div className={`mb-1.5 ${label}`}>大厅状态</div>
         {identity ? (
-          <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
-            <Info k="房间码" v={identity.roomCode} strong />
-            <Info k="系统" v={identity.systemId} />
-            <Info k="房间状态" v={identity.lifecycleStatus} />
-            <Info k="加入审批" v={room?.joinApprovalMode ?? '—'} />
-            <Info k="roomId" v={shortId(identity.roomId)} />
-            <Info k="服务器" v={serverLabel ?? baseUrl} />
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            <StatusPill label="连接" value={CONN_LABEL[connState]} tone={connState === 'open' ? 'ok' : connState === 'error' ? 'bad' : 'warn'} />
+            <StatusPill label="我的状态" value={currentMember ? STATUS_LABEL[currentMember.status] : '未匹配'} tone={myStatus === 'active' ? 'ok' : myStatus === 'pendingApproval' ? 'warn' : myStatus === 'kicked' ? 'bad' : 'muted'} />
+            <StatusPill label="角色" value={myBindingLabel} tone={myBindingStatus === 'approved' ? 'ok' : myBindingStatus === 'rejected' ? 'bad' : myBindingStatus === 'pendingHostApproval' ? 'warn' : 'muted'} />
+            <StatusPill label="准备" value={myReadyLabel} tone={myReady === 'ready' ? 'ok' : 'muted'} />
           </div>
         ) : (
           <div className="text-[11px] italic text-slate-500">正在获取房间快照…</div>
         )}
-        {/* Campaign linkage (read-only; not a permission). */}
-        {identity && (
-          room?.campaignRef ? (
-            <div className="mt-2 border-t border-slate-300/40 pt-2">
-              <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
-                <Info k="战役名称" v={room.campaignRef.displayName} strong />
-                <Info k="战役来源" v={CAMPAIGN_SOURCE_LABEL[room.campaignRef.source]} />
-                {room.campaignRef.campaignId && <Info k="campaignId" v={shortId(room.campaignRef.campaignId)} />}
-                <Info k="战役系统" v={room.campaignRef.systemId} />
-              </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+          <span>房间码 <b className="text-slate-800">{identity?.roomCode ?? '—'}</b></span>
+          <span className="text-slate-400">/</span>
+          <span>{room?.campaignRef?.displayName ?? '无战役关联'}</span>
+          <button
+            type="button"
+            className={`${btn} ml-auto`}
+            aria-expanded={showTechnicalDetails}
+            onClick={() => setShowTechnicalDetails((value) => !value)}
+          >
+            {showTechnicalDetails ? '收起技术详情' : '技术详情'}
+          </button>
+        </div>
+        {showTechnicalDetails && (
+          <div className="mt-3 rounded border border-slate-300/40 bg-white/70 p-2">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-2">
+              {identity && (
+                <>
+                  <Info k="系统" v={identity.systemId} />
+                  <Info k="房间状态" v={identity.lifecycleStatus} />
+                  <Info k="加入审批" v={room?.joinApprovalMode ?? '—'} />
+                  <Info k="roomId" v={shortId(identity.roomId)} />
+                  <Info k="服务器" v={serverLabel ?? baseUrl} />
+                </>
+              )}
+              {room?.campaignRef && (
+                <>
+                  <Info k="战役来源" v={CAMPAIGN_SOURCE_LABEL[room.campaignRef.source]} />
+                  {room.campaignRef.campaignId && <Info k="campaignId" v={shortId(room.campaignRef.campaignId)} />}
+                  <Info k="战役系统" v={room.campaignRef.systemId} />
+                </>
+              )}
+              {snapshotMeta && (
+                <>
+                  <Info k="seq" v={String(snapshotMeta.serverSeq)} />
+                  <Info k="reason" v={snapshotMeta.reason} />
+                  <Info k="sentAt" v={snapshotMeta.sentAt} />
+                </>
+              )}
             </div>
-          ) : (
-            <div className="mt-2 border-t border-slate-300/40 pt-2 text-[11px] italic text-slate-500">无战役关联 / 测试房间</div>
-          )
+            {wsError && <div className="mt-2 rounded border border-amber-400/40 bg-amber-500/10 px-2 py-1 text-[10px] text-amber-700">WebSocket：{wsError}</div>}
+            {httpError && <div className="mt-2 rounded border border-red-400/40 bg-red-500/10 px-2 py-1 text-[10px] text-red-700">HTTP：{httpError}</div>}
+          </div>
+        )}
+      </section>
+
+      <section className={card}>
+        <div className={`mb-1.5 ${label}`}>{isHostScaffold ? '主持人下一步' : '下一步'}</div>
+        {isHostScaffold ? (
+          <div className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-3">
+            <StatusPill label="待审批成员" value={String(pendingMemberCount)} tone={pendingMemberCount > 0 ? 'warn' : 'ok'} />
+            <StatusPill label="待审批角色" value={String(pendingBindingCount)} tone={pendingBindingCount > 0 ? 'warn' : 'ok'} />
+            <StatusPill label="未准备成员" value={String(notReadyActiveCount)} tone={notReadyActiveCount > 0 ? 'warn' : 'ok'} />
+          </div>
+        ) : (
+          <p className="text-[12px] font-bold text-slate-700">{playerNextStep}</p>
         )}
       </section>
 
@@ -523,7 +576,7 @@ export function RoomLobbyShell({
         {myStatus === 'active' && (
           <div>
             <div className="font-bold text-emerald-700">已加入房间。</div>
-            <div className="mt-0.5 text-[10px] text-slate-500">下一步：角色绑定 / 准备状态 / 进入正式跑团桌面（后续）。</div>
+            <div className="mt-0.5 text-[10px] text-slate-500">下一步：绑定角色、准备，然后进入联机跑团桌面。</div>
           </div>
         )}
         {myStatus === 'kicked' && <div className="font-bold text-red-700">加入请求被拒绝，或你已被移出房间。</div>}
@@ -572,7 +625,7 @@ export function RoomLobbyShell({
           )}
           {myBinding && (
             <span className="ml-2 text-[10px] text-slate-500">
-              当前：{myBinding.actorRef.displayName}{myBinding.actorRef.actorId ? ` · ${myBinding.actorRef.actorId}` : ''}
+              当前：{myBinding.actorRef.displayName}
             </span>
           )}
           {myBinding && <span className="ml-2 inline-flex"><ClearanceBadge status={myClearanceStatus} /></span>}
@@ -611,7 +664,6 @@ export function RoomLobbyShell({
                 <div key={b.bindingId} className="flex flex-wrap items-center gap-2 rounded border border-slate-300/40 bg-white/70 px-2 py-1 text-[11px]">
                   <span className="font-bold text-slate-800">{memberName(b.memberId)}</span>
                   <span className="text-slate-600">→ {b.actorRef.displayName}</span>
-                  {b.actorRef.actorId && <span className="text-[9px] text-slate-400">{b.actorRef.actorId}</span>}
                   <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{b.actorRef.systemId}</span>
                   <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{SOURCE_LABEL[b.actorRef.source]}</span>
                   <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${BINDING_TONE[b.status]}`}>{BINDING_LABEL[b.status]}</span>
@@ -674,24 +726,24 @@ export function RoomLobbyShell({
           <p className="text-[11px] italic text-slate-500">成为在线成员后才能设置准备状态。</p>
         )}
         {readyError && <div className="mt-1 text-[10px] font-bold text-red-700">操作失败：{readyError}</div>}
-        <div className="mt-2 text-[10px] text-slate-500">下一步：进入跑团桌面预览（只读，非正式 Runtime）。</div>
+        <div className="mt-2 text-[10px] text-slate-500">下一步：进入联机跑团桌面 Alpha。</div>
       </section>
 
-      {/* Runtime Entry Bridge (read-only preview) */}
+      {/* Runtime Entry Bridge (Runtime Alpha surface) */}
       {onEnterRuntime && (
         <section className={card}>
-          <div className={`mb-1.5 ${label}`}>跑团桌面预览入口</div>
+          <div className={`mb-1.5 ${label}`}>联机跑团桌面</div>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" className={btn} disabled={!entryEligibility.canEnter} onClick={handleEnterRuntime}>
-              进入跑团桌面预览
+              进入跑团桌面
             </button>
             {!entryEligibility.canEnter && entryEligibility.reason && (
               <span className="text-[10px] text-slate-500">{ENTRY_BLOCKED_LABEL[entryEligibility.reason]}</span>
             )}
           </div>
           <div className="mt-2 text-[10px] text-amber-700">
-            这是只读的 Runtime Entry Bridge 预览，未接入正式 Runtime / 权限 / 日志 / 地图。
-            {currentMember?.role === 'host' && '主持人可直接进入主持人预览，但同样未接入正式 Runtime。'}
+            Alpha：角色实例、权限和结算仍为 v0 边界。
+            {currentMember?.role === 'host' && '主持人可直接进入主持人桌面。'}
           </div>
         </section>
       )}
@@ -722,7 +774,7 @@ export function RoomLobbyShell({
               })}
             </div>
           )}
-          <div className="mt-2 text-[10px] text-slate-500">下一步：进入正式 Runtime 桌面（后续）。</div>
+          <div className="mt-2 text-[10px] text-slate-500">下一步：进入联机跑团桌面 Alpha。</div>
         </section>
       )}
 
@@ -745,7 +797,7 @@ export function RoomLobbyShell({
         </div>
       )}
 
-      <p className="text-[10px] italic text-slate-400">Room Lobby · 未进入 Runtime · 角色绑定 / 准备为大厅草稿（非正式角色实例）· 未实现地图 / 战斗日志 / action intent。</p>
+      <p className="text-[10px] italic text-slate-400">Room Lobby · 联机大厅 · 角色绑定 / 准备为大厅草稿（非正式角色实例）。</p>
     </div>
   );
 }
@@ -755,6 +807,31 @@ function Info({ k, v, strong }: { k: string; v: string; strong?: boolean }) {
     <div className="flex items-baseline gap-2">
       <span className="min-w-[64px] text-[10px] text-slate-500">{k}</span>
       <span className={strong ? 'text-sm font-black text-slate-800' : 'text-[12px] text-slate-700'}>{v}</span>
+    </div>
+  );
+}
+
+function StatusPill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'ok' | 'warn' | 'bad' | 'muted';
+}) {
+  const toneClass =
+    tone === 'ok'
+      ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-800'
+      : tone === 'warn'
+        ? 'border-amber-400/40 bg-amber-500/10 text-amber-800'
+        : tone === 'bad'
+          ? 'border-red-400/40 bg-red-500/10 text-red-800'
+          : 'border-slate-300/50 bg-slate-500/10 text-slate-700';
+  return (
+    <div className={`rounded border px-2 py-1 ${toneClass}`}>
+      <div className="text-[9px] font-bold uppercase tracking-wide opacity-70">{label}</div>
+      <div className="mt-0.5 text-[11px] font-black">{value}</div>
     </div>
   );
 }
@@ -788,7 +865,6 @@ function MemberGroup({
             {m.memberId === currentMemberId && <span className="rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-bold text-sky-700">我</span>}
             <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{ROLE_LABEL[m.role]}</span>
             <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{STATUS_LABEL[m.status]}</span>
-            <span className="text-[9px] text-slate-400">{shortId(m.memberId)}</span>
             {actions && m.status === 'pendingApproval' && (
               <span className="ml-auto flex items-center gap-1">
                 <button

@@ -439,6 +439,7 @@ export function CocWorkspaceShell({
   const [campaignEntryTab, setCampaignEntryTab] = useState<'mine' | 'join'>('mine');
   const [campaignRuntimeContext, setCampaignRuntimeContext] =
     useState<CampaignRuntimeContext | null>(null);
+  const [openCampaignListOnReturn, setOpenCampaignListOnReturn] = useState(false);
   // Hosted LAN room launched from a campaign (M19). v0 uses the local Room Server.
   const [hostedRoomSession, setHostedRoomSession] =
     useState<{ baseUrl: string; room: RoomSnapshot; hostMemberId: string; sourceCampaignId: string } | null>(null);
@@ -596,24 +597,33 @@ export function CocWorkspaceShell({
 
   const openCampaignDetail = (campaignId: string) => {
     setFocusedCampaignId(campaignId);
+    setOpenCampaignListOnReturn(false);
     setCampaignEntryTab('mine');
     onViewChange('campaigns');
   };
 
   const handleReturnToCampaignEntry = () => {
+    const runtimeReturnTo = campaignRuntimeContext?.returnTo;
     const returnCampaignId = campaignRuntimeContext?.campaignId;
     setCampaignRuntimeContext(null);
     setActorCreationCompletionContext(null);
+    setCampaignEntryTab('mine');
+    onViewChange('campaigns');
+    if (runtimeReturnTo === 'campaignList') {
+      setFocusedCampaignId(null);
+      setOpenCampaignListOnReturn(true);
+      return;
+    }
     if (returnCampaignId) {
       openCampaignDetail(returnCampaignId);
       return;
     }
-    setCampaignEntryTab('mine');
-    onViewChange('campaigns');
+    setOpenCampaignListOnReturn(true);
   };
 
   const handleEnterCampaignRuntime = (context: CampaignRuntimeContext) => {
-    setFocusedCampaignId(context.campaignId);
+    setFocusedCampaignId(context.returnTo === 'campaignList' ? null : context.campaignId);
+    setOpenCampaignListOnReturn(false);
     setCampaignEntryTab('mine');
     setCampaignRuntimeContext(context);
   };
@@ -625,7 +635,7 @@ export function CocWorkspaceShell({
       return;
     }
     onGlobalBackOverrideChange({
-      label: '返回战役详情',
+      label: campaignRuntimeContext.returnTo === 'campaignList' ? '返回战役列表' : '返回战役详情',
       onBack: handleReturnToCampaignEntry,
     });
     return () => onGlobalBackOverrideChange(null);
@@ -962,7 +972,13 @@ export function CocWorkspaceShell({
                   systemId="coc7e"
                   systemName={t('glossary.coc7e')}
                   tone="coc"
-                  initialMode={campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor || focusedCampaignId ? 'detail' : undefined}
+                  initialMode={
+                    campaignActorAddContext || campaignActorSelectContext || suggestedCampaignActor || focusedCampaignId
+                      ? 'detail'
+                      : openCampaignListOnReturn
+                        ? 'existing'
+                        : undefined
+                  }
                   initialCampaignId={campaignActorAddContext?.campaignId ?? campaignActorSelectContext?.campaignId ?? focusedCampaignId}
                   purpose={
                     campaignSelectForActorContext

@@ -26,17 +26,18 @@ import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSce
 import { RuntimeMapStage } from './RuntimeMapStage';
 
 /**
- * RoomRuntimeEntryBridge (v0 / UI1a) — read-only Runtime Entry Preview.
+ * RoomRuntimeEntryBridge (v0 / UI1a) — multiplayer Runtime Alpha surface.
  *
  * AI-LANDMARK: ROOM_RUNTIME_ENTRY_BRIDGE_V0
  *
- * The surface a member lands on after clicking "进入跑团桌面预览" in the lobby.
+ * The surface a member lands on after clicking "进入跑团桌面" in the lobby.
  * Now rendered inside the fullscreen RuntimeFullscreenShell (UI1a) with Host /
- * Player / Spectator slot differentiation. It is still a READ-ONLY preview of the
- * room runtime entry context — NOT the runtime. No map / token / RuntimeLog /
- * action intent, no RuntimeActor / CampaignActorInstance, no store writes. The
- * entry guard result (admissionId / approvedActorBindingId / "已准入角色") is
- * preserved. System-agnostic. No server / WebSocket / RuntimeLog API change.
+ * Player / Spectator slot differentiation. It is Runtime Alpha: role projection,
+ * room log, dice, scene, and read-only actor summary are connected, while
+ * RuntimeActor / CampaignActorInstance, permissions, settlement, and store writes
+ * remain v0 boundaries. The entry guard result (admissionId /
+ * approvedActorBindingId / "已准入角色") is preserved. System-agnostic. No server /
+ * WebSocket / RuntimeLog API change.
  */
 
 export interface RoomRuntimeEntryBridgeProps {
@@ -579,7 +580,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       roomCode={context.roomCode}
       connectionLabel={syncLabel}
       connectionTone={connState === 'open' ? 'ok' : syncDown ? 'warn' : 'idle'}
-      sceneLabel="入口预览"
+      sceneLabel="Runtime Alpha"
       onExit={onBackToLobby}
       exitLabel="返回房间大厅"
       mainStage={mainStage}

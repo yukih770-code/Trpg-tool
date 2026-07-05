@@ -385,16 +385,25 @@ export function CampaignLibraryShell({
   // host/player role toggle.
   const canEnterHostRuntime = Boolean(selectedCampaign && onEnterCampaignRuntime);
 
-  const enterCampaignRuntimeAsHost = () => {
-    if (!selectedCampaign || !onEnterCampaignRuntime) return;
+  const enterCampaignRuntimeAsHostForCampaign = (
+    campaign: LocalCampaign,
+    returnTo: CampaignRuntimeContext['returnTo'] = 'campaignDetail',
+  ) => {
+    if (!onEnterCampaignRuntime) return;
     onEnterCampaignRuntime({
-      campaignId: selectedCampaign.id,
-      campaignTitle: selectedCampaign.title,
-      campaignRoomCode: selectedCampaign.roomCode,
+      campaignId: campaign.id,
+      campaignTitle: campaign.title,
+      campaignRoomCode: campaign.roomCode,
       systemId,
       selectedEntryRole: 'host',
       source: 'campaignEntry',
+      returnTo,
     });
+  };
+
+  const enterCampaignRuntimeAsHost = () => {
+    if (!selectedCampaign) return;
+    enterCampaignRuntimeAsHostForCampaign(selectedCampaign);
   };
 
   const enterCampaignRuntime = () => {
@@ -713,6 +722,16 @@ export function CampaignLibraryShell({
                     setSelectedCampaignId(campaign.id);
                     setLibraryMode('detail');
                   }}
+                  onContinueHosting={
+                    !campaignSelectForActorContext && campaign.lifecycleStatus === 'active' && onEnterCampaignRuntime
+                      ? () => enterCampaignRuntimeAsHostForCampaign(campaign, 'campaignList')
+                      : undefined
+                  }
+                  onLaunchHostedRoom={
+                    !campaignSelectForActorContext && campaign.lifecycleStatus === 'active' && onHostLaunchRoom
+                      ? () => onHostLaunchRoom(campaign)
+                      : undefined
+                  }
                   onActivate={() => {
                     actions.updateCampaign(campaign.id, { status: 'active' });
                     setExpandedMoreCampaignId(null);
@@ -837,6 +856,8 @@ function CampaignCard({
   canSelect,
   onSelect,
   onViewDetail,
+  onContinueHosting,
+  onLaunchHostedRoom,
   onActivate,
   onArchive,
   onRestore,
@@ -857,6 +878,8 @@ function CampaignCard({
   canSelect: boolean;
   onSelect: () => void;
   onViewDetail: () => void;
+  onContinueHosting?: () => void;
+  onLaunchHostedRoom?: () => void;
   onActivate: () => void;
   onArchive: () => void;
   onRestore: () => void;
@@ -872,6 +895,7 @@ function CampaignCard({
   const isEditing = Boolean(editDraft);
   const canManage = !canSelect;
   const hasMoreActions = canManage;
+  const canUseHostActions = canManage && campaign.lifecycleStatus === 'active';
   return (
     <div className={`rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${theme.card}`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -913,34 +937,33 @@ function CampaignCard({
             {t('campaignLibrary.returnContext.selectCampaignButton')}
           </button>
         )}
+        {canUseHostActions && onContinueHosting && (
+          <button
+            type="button"
+            onClick={onContinueHosting}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.primary}`}
+          >
+            {t('campaignLibrary.actions.continueHosting')}
+          </button>
+        )}
+        {canUseHostActions && onLaunchHostedRoom && (
+          <button
+            type="button"
+            onClick={onLaunchHostedRoom}
+            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+          >
+            {t('campaignLibrary.actions.createOnlineRoom')}
+          </button>
+        )}
         <button
           type="button"
           onClick={onViewDetail}
           className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${
-            canSelect ? theme.secondary : theme.primary
+            canUseHostActions ? theme.secondary : canSelect ? theme.secondary : theme.primary
           }`}
         >
           {t('campaignLibrary.actions.viewDetail')}
         </button>
-        {canManage && campaign.lifecycleStatus === 'active' && (
-          <button
-            type="button"
-            aria-expanded={isEditing}
-            onClick={onStartEdit}
-            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
-          >
-            {t(isEditing ? 'campaignLibrary.actions.collapseEdit' : 'campaignLibrary.actions.edit')}
-          </button>
-        )}
-        {campaign.roomCode && (
-          <button
-            type="button"
-            onClick={onCopyRoomCode}
-            className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
-          >
-            {t('campaignLibrary.actions.copyRoomCode')}
-          </button>
-        )}
         {hasMoreActions && (
           <button
             type="button"
@@ -956,9 +979,28 @@ function CampaignCard({
       {hasMoreActions && isMoreActionsExpanded && (
         <div className={`mt-3 flex flex-col gap-2 rounded-lg border p-3 ${theme.card}`}>
           <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
-            {t('campaignLibrary.actions.lifecycleActions')}
+            {t('campaignLibrary.actions.managementActions')}
           </div>
           <div className="flex flex-wrap gap-2">
+            {canManage && campaign.lifecycleStatus === 'active' && (
+              <button
+                type="button"
+                aria-expanded={isEditing}
+                onClick={onStartEdit}
+                className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+              >
+                {t(isEditing ? 'campaignLibrary.actions.collapseEdit' : 'campaignLibrary.actions.edit')}
+              </button>
+            )}
+            {campaign.roomCode && (
+              <button
+                type="button"
+                onClick={onCopyRoomCode}
+                className={`border px-4 py-2 text-xs font-bold uppercase tracking-wider ${theme.secondary}`}
+              >
+                {t('campaignLibrary.actions.copyRoomCode')}
+              </button>
+            )}
             {campaign.lifecycleStatus === 'active' && campaign.status !== 'active' && (
               <button
                 type="button"
@@ -1454,11 +1496,11 @@ function CampaignDetail({
       </div>
 
       <div className={`rounded-lg border p-5 ${theme.card}`}>
-        <h4 className={`text-lg font-bold ${theme.accent}`}>进入与开启</h4>
+        <h4 className={`text-lg font-bold ${theme.accent}`}>运行方式</h4>
         <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
-          开启局域网房间让玩家加入，或进入当前战役的运行界面。玩家加入请走「加入战役」。
+          同一个 Runtime 可以以本地同步模式继续主持，也可以创建联机房间大厅，让玩家加入、绑定角色、准备并进入联机跑团桌面。
         </p>
-        <div className="mt-4 grid grid-cols-1 gap-4">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           {SHOW_PLAYER_PREP && (
           <div className={`rounded-lg border p-4 ${theme.card}`}>
             <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
@@ -1533,28 +1575,15 @@ function CampaignDetail({
 
           <div className={`rounded-lg border p-4 ${theme.card}`}>
             <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
-              {t('campaignLibrary.detail.entry.hostPath')}
+              当前 Runtime
             </div>
             <h5 className={`mt-1 text-base font-bold ${theme.accent}`}>
-              {t('campaignLibrary.detail.hostPrep.title')}
+              继续主持
             </h5>
             <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
-              {t('campaignLibrary.detail.entry.hostActiveNote')}
+              进入当前战役 Runtime。当前未开启多人同步；主持人也可从战役列表卡片快速进入。
             </p>
-            {/* M26: host-side Room Server reachability (join side lives in JoinCampaignPanel). */}
-            {onHostLaunchRoom && <RoomServerStatusBanner className="mt-3" />}
-            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {/* Primary CTA: launch a LAN Room Server room (NOT formal Runtime). */}
-              {onHostLaunchRoom && (
-                <button
-                  type="button"
-                  onClick={onHostLaunchRoom}
-                  className={`border px-3 py-2 text-xs font-bold ${theme.primary}`}
-                >
-                  开启局域网房间
-                </button>
-              )}
-              {/* Secondary CTA: host quick-resume into the campaign's local Runtime. */}
+            <div className="mt-4">
               <button
                 type="button"
                 onClick={enterCampaignRuntimeAsHost}
@@ -1566,17 +1595,28 @@ function CampaignDetail({
                 继续主持
               </button>
             </div>
-            <p className={`mt-2 text-[11px] leading-relaxed ${theme.muted}`}>
-              继续主持：直接进入当前战役的 Runtime（当前为本地运行，后续会与联机 Runtime 合流）。下方「主持准备」用于管理角色准入、资料、地图与联机准备。
-            </p>
-            {/* M73: reserved character binding / clearance space (placeholder, not real clearance). */}
-            <div className="mt-3">
-              <CharacterClearanceSummary variant="full" local />
+          </div>
+
+          <div className={`rounded-lg border p-4 ${theme.card}`}>
+            <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
+              联机房间
             </div>
+            <h5 className={`mt-1 text-base font-bold ${theme.accent}`}>
+              创建房间大厅
+            </h5>
+            <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
+              创建 Room Lobby，让玩家加入、绑定角色、ready 并由主持人审批。准备完成后再进入联机跑团桌面。
+            </p>
+            {/* M26: host-side Room Server reachability (join side lives in JoinCampaignPanel). */}
+            {onHostLaunchRoom && <RoomServerStatusBanner className="mt-3" />}
             {onHostLaunchRoom && (
-              <p className={`mt-2 text-[11px] leading-relaxed ${theme.muted}`}>
-                从当前战役创建一个 Room Server 房间（本地 / 局域网 v0），玩家可通过房间码加入。这不是进入正式 Runtime。
-              </p>
+              <button
+                type="button"
+                onClick={onHostLaunchRoom}
+                className={`mt-4 border px-3 py-2 text-xs font-bold ${theme.primary}`}
+              >
+                创建联机房间
+              </button>
             )}
           </div>
         </div>
@@ -1592,10 +1632,15 @@ function CampaignDetail({
               </p>
             </div>
             <span className={`border px-2 py-0.5 text-[10px] uppercase tracking-wider ${theme.badge}`}>
-              {t('campaignLibrary.detail.placeholder')}
+              摘要
             </span>
           </div>
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="mt-4">
+            <CharacterClearanceSummary variant="compact" local />
+          </div>
+          <details className="mt-4 rounded-lg border border-slate-300/40 p-3">
+            <summary className={`cursor-pointer text-xs font-bold ${theme.accent}`}>准备资源</summary>
+            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {hostPrepItems.map((key) => (
               <button
                 key={key}
@@ -1606,7 +1651,8 @@ function CampaignDetail({
                 {t(key)}
               </button>
             ))}
-          </div>
+            </div>
+          </details>
         </div>
       </div>
       <span className="sr-only">{systemId}</span>
