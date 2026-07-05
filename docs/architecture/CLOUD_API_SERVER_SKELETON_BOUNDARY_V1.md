@@ -79,6 +79,31 @@ Server runtime configuration should be explicit and environment-driven:
 Local defaults may use localhost for development. Production must not silently
 fall back to localhost as the formal public endpoint.
 
+Supported Room Server env keys:
+
+```text
+ROOM_SERVER_ENV=localDev | cloudDev | staging | production
+ROOM_SERVER_RUNTIME_MODE=local | cloud
+ROOM_SERVER_PORT=8787
+ROOM_PUBLIC_HTTP_URL=http://localhost:8787
+ROOM_PUBLIC_WS_URL=ws://localhost:8787
+ROOM_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+```
+
+Compatibility env keys may remain supported while older scripts migrate:
+
+```text
+PORT
+SERVER_DEPLOYMENT_ENVIRONMENT
+SERVER_RUNTIME_MODE
+ROOM_SERVER_PUBLIC_HTTP_URL
+ROOM_SERVER_PUBLIC_WS_URL
+ROOM_SERVER_ALLOWED_ORIGINS
+```
+
+Production cloud configuration should set explicit public HTTP / WebSocket URLs
+and explicit frontend origins. It should not rely on localhost defaults.
+
 ## 5. Adapter Boundaries
 
 ### Auth Adapter

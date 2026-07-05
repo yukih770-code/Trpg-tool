@@ -28,29 +28,18 @@ import { listRuntimeLogEvents } from './services/listRuntimeLogEvents.js';
 import { rollSharedDice } from './services/rollSharedDice.js';
 import { createInMemoryRuntimeLogRegistry } from './runtime-log-registry.js';
 import { createInMemoryActorAdmissionRegistry } from './actor-admission-registry.js';
+import { readServerRuntimeConfigFromEnv } from './config/serverRuntimeConfig.js';
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
 import { createRoomSocketServer } from './transport/roomSocketServer.js';
 import type { AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol/room-protocol.js';
 
 const app = express();
+const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
 
-// ── CORS allowlist (M26) ────────────────────────────────────────────────────
-// Deployable variant: origins come from ROOM_SERVER_ALLOWED_ORIGINS (comma-
-// separated). When unset (local dev) we default to the Vite dev origins. In
-// production set the env to the Netlify site URL(s). A literal "*" entry opts
-// into wildcard (echoed as Access-Control-Allow-Origin: *) — used only if the
-// operator explicitly asks for it; the default is NOT wildcard.
-const DEFAULT_DEV_ORIGINS = [
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-];
-const configuredOrigins = (process.env.ROOM_SERVER_ALLOWED_ORIGINS ?? '')
-  .split(',')
-  .map((s) => s.trim())
-  .filter((s) => s !== '');
-const ALLOWED_ORIGINS = configuredOrigins.length > 0 ? configuredOrigins : DEFAULT_DEV_ORIGINS;
+// ── CORS allowlist (M26, config boundary M104-M107) ─────────────────────────
+// Origins come from the shared server runtime config. Local dev defaults remain
+// localhost-friendly; cloud/production must use explicit env configuration.
+const ALLOWED_ORIGINS = serverRuntimeConfig.allowedOrigins;
 const ALLOW_ALL_ORIGINS = ALLOWED_ORIGINS.includes('*');
 
 // Minimal dependency-free CORS. Reflects an allowlisted Origin (or "*" when the
@@ -81,14 +70,23 @@ const registry = createInMemoryRoomRegistry();
 const runtimeLogRegistry = createInMemoryRuntimeLogRegistry();
 // Memory-only ActorAdmission store for Character Clearance (M24.2b).
 const actorAdmissionRegistry = createInMemoryActorAdmissionRegistry();
-const PORT = Number(process.env.PORT ?? 8787);
+const PORT = serverRuntimeConfig.httpPort;
 
 // HTTP server + WebSocket transport scaffold (room snapshot broadcast only).
 const httpServer = createServer(app);
 const roomSocketServer = createRoomSocketServer({ server: httpServer, registry, path: '/ws' });
 
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, service: 'room-server', version: 'm26', storage: MEMORY_STORAGE_CAPABILITY.adapterKind });
+  res.json({
+    ok: true,
+    service: 'room-server',
+    version: 'm26',
+    storage: MEMORY_STORAGE_CAPABILITY.adapterKind,
+    environment: serverRuntimeConfig.environment,
+    runtimeMode: serverRuntimeConfig.runtimeMode,
+    publicHttpUrl: serverRuntimeConfig.publicHttpUrl ?? null,
+    publicWsUrl: serverRuntimeConfig.publicWsUrl ?? null,
+  });
 });
 
 app.get('/rooms', (_req, res) => {
@@ -339,11 +337,22 @@ app.post('/rooms/:roomId/runtime/dice-roll', (req, res) => {
 
 httpServer.listen(PORT, () => {
   // eslint-disable-next-line no-console
-  console.log(`Room server listening on http://localhost:${PORT} (HTTP + WS /ws)`);
+  console.log(`Room server listening on port ${PORT} (HTTP + WS /ws)`);
+  // eslint-disable-next-line no-console
+  console.log(
+    `[room-server] runtime config: environment=${serverRuntimeConfig.environment}; ` +
+      `runtimeMode=${serverRuntimeConfig.runtimeMode}; ` +
+      `publicHttpUrl=${serverRuntimeConfig.publicHttpUrl ?? 'unset'}; ` +
+      `publicWsUrl=${serverRuntimeConfig.publicWsUrl ?? 'unset'}`,
+  );
   // eslint-disable-next-line no-console
   console.log(
     ALLOW_ALL_ORIGINS
-      ? '[room-server] CORS: all origins (*) — set ROOM_SERVER_ALLOWED_ORIGINS to restrict.'
+      ? '[room-server] CORS: all origins (*) — set ROOM_ALLOWED_ORIGINS to restrict.'
       : `[room-server] CORS allowlist: ${ALLOWED_ORIGINS.join(', ')}`,
   );
+  for (const warning of serverRuntimeConfig.warnings ?? []) {
+    // eslint-disable-next-line no-console
+    console.warn(`[room-server] config warning: ${warning}`);
+  }
 });

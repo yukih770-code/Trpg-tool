@@ -25,6 +25,7 @@ export interface ServerRuntimeConfig {
   publicHttpUrl?: string;
   publicWsUrl?: string;
   allowedOrigins: string[];
+  warnings?: string[];
 }
 
 export const DEFAULT_LOCAL_SERVER_RUNTIME_CONFIG: ServerRuntimeConfig = {
@@ -54,10 +55,18 @@ function readPort(env: ServerRuntimeEnv): number {
   return Number.isInteger(parsedPort) && parsedPort > 0 ? parsedPort : DEFAULT_LOCAL_SERVER_RUNTIME_CONFIG.httpPort;
 }
 
-function readAllowedOrigins(env: ServerRuntimeEnv): string[] {
-  const rawOrigins = readString(env, 'ROOM_SERVER_ALLOWED_ORIGINS');
+function readFirstString(env: ServerRuntimeEnv, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = readString(env, key);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function readAllowedOrigins(env: ServerRuntimeEnv, useLocalDefaults: boolean): string[] {
+  const rawOrigins = readFirstString(env, ['ROOM_ALLOWED_ORIGINS', 'ROOM_SERVER_ALLOWED_ORIGINS']);
   if (rawOrigins === undefined) {
-    return DEFAULT_LOCAL_SERVER_RUNTIME_CONFIG.allowedOrigins;
+    return useLocalDefaults ? DEFAULT_LOCAL_SERVER_RUNTIME_CONFIG.allowedOrigins : [];
   }
 
   return rawOrigins
@@ -67,7 +76,7 @@ function readAllowedOrigins(env: ServerRuntimeEnv): string[] {
 }
 
 function readEnvironment(env: ServerRuntimeEnv): ServerDeploymentEnvironment {
-  const rawEnvironment = readString(env, 'SERVER_DEPLOYMENT_ENVIRONMENT');
+  const rawEnvironment = readFirstString(env, ['ROOM_SERVER_ENV', 'SERVER_DEPLOYMENT_ENVIRONMENT']);
   if (
     rawEnvironment === 'localDev' ||
     rawEnvironment === 'cloudDev' ||
@@ -81,7 +90,7 @@ function readEnvironment(env: ServerRuntimeEnv): ServerDeploymentEnvironment {
 }
 
 function readRuntimeMode(env: ServerRuntimeEnv): ServerRuntimeMode {
-  const rawRuntimeMode = readString(env, 'SERVER_RUNTIME_MODE');
+  const rawRuntimeMode = readFirstString(env, ['ROOM_SERVER_RUNTIME_MODE', 'SERVER_RUNTIME_MODE']);
   if (rawRuntimeMode === 'local' || rawRuntimeMode === 'cloud') {
     return rawRuntimeMode;
   }
@@ -98,17 +107,34 @@ export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRun
   const environment = readEnvironment(env);
   const runtimeMode = readRuntimeMode(env);
   const shouldUseLocalEndpointDefaults = environment === 'localDev' && runtimeMode === 'local';
+  const publicHttpUrl =
+    readFirstString(env, ['ROOM_PUBLIC_HTTP_URL', 'ROOM_SERVER_PUBLIC_HTTP_URL']) ??
+    (shouldUseLocalEndpointDefaults ? DEFAULT_LOCAL_SERVER_RUNTIME_CONFIG.publicHttpUrl : undefined);
+  const publicWsUrl =
+    readFirstString(env, ['ROOM_PUBLIC_WS_URL', 'ROOM_SERVER_PUBLIC_WS_URL']) ??
+    (shouldUseLocalEndpointDefaults ? DEFAULT_LOCAL_SERVER_RUNTIME_CONFIG.publicWsUrl : undefined);
+  const allowedOrigins = readAllowedOrigins(env, shouldUseLocalEndpointDefaults);
+  const warnings: string[] = [];
+
+  if (environment === 'production' && runtimeMode === 'cloud') {
+    if (!publicHttpUrl || publicHttpUrl.includes('localhost') || publicHttpUrl.includes('127.0.0.1')) {
+      warnings.push('production cloud config should set ROOM_PUBLIC_HTTP_URL to a non-localhost URL.');
+    }
+    if (!publicWsUrl || publicWsUrl.includes('localhost') || publicWsUrl.includes('127.0.0.1')) {
+      warnings.push('production cloud config should set ROOM_PUBLIC_WS_URL to a non-localhost URL.');
+    }
+    if (allowedOrigins.length === 0 || allowedOrigins.includes('*')) {
+      warnings.push('production cloud config should set ROOM_ALLOWED_ORIGINS to explicit frontend origins.');
+    }
+  }
 
   return {
     environment,
     runtimeMode,
     httpPort: readPort(env),
-    publicHttpUrl:
-      readString(env, 'ROOM_SERVER_PUBLIC_HTTP_URL') ??
-      (shouldUseLocalEndpointDefaults ? DEFAULT_LOCAL_SERVER_RUNTIME_CONFIG.publicHttpUrl : undefined),
-    publicWsUrl:
-      readString(env, 'ROOM_SERVER_PUBLIC_WS_URL') ??
-      (shouldUseLocalEndpointDefaults ? DEFAULT_LOCAL_SERVER_RUNTIME_CONFIG.publicWsUrl : undefined),
-    allowedOrigins: readAllowedOrigins(env),
+    publicHttpUrl,
+    publicWsUrl,
+    allowedOrigins,
+    warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
