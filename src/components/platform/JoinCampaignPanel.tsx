@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 
 import {
-  createRoomOnServer,
   fetchRoomServerHealth,
   joinRoomOnServer,
   listRoomServerRooms,
@@ -83,7 +82,6 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
   const [diagnosticError, setDiagnosticError] = useState<string | null>(null);
   const [diagnosticDetail, setDiagnosticDetail] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [hostName, setHostName] = useState('测试主持人');
   const [joinCode, setJoinCode] = useState('');
   const [joinName, setJoinName] = useState('玩家');
   const [joinResult, setJoinResult] = useState<RoomJoinResult | null>(null);
@@ -94,7 +92,7 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
     currentMemberId?: string;
     currentRole?: RoomMemberRole;
     initialRoom?: RoomSnapshot;
-    origin: 'joinCampaign' | 'testRoom';
+    origin: 'joinCampaign';
   } | null>(null);
   // Read-only Runtime Entry Preview (bridge), entered from the lobby.
   const [runtimeEntry, setRuntimeEntry] = useState<{ context: RoomRuntimeEntryContext; room: RoomSnapshot } | null>(null);
@@ -111,9 +109,8 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
     }
 
     if (lobby) {
-      const isTestRoom = lobby.origin === 'testRoom';
       onBackOverrideChange({
-        label: isTestRoom ? '返回测试入口' : '返回加入战役',
+        label: '返回加入战役',
         onBack: () => setLobby(null),
       });
       return () => onBackOverrideChange(null);
@@ -153,19 +150,6 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
 
   const checkConnection = () => run(async () => { await fetchRoomServerHealth(config); setHealthOk(true); }, 'diagnostic');
   const refreshRooms = () => run(async () => { setRooms(await listRoomServerRooms(config)); setHealthOk(true); }, 'diagnostic');
-  const createTestRoom = () => run(async () => {
-    const { room } = await createRoomOnServer(config, { hostDisplayName: hostName.trim() || 'GM', systemId });
-    setRooms(await listRoomServerRooms(config));
-    const host = room.members.find((m) => m.role === 'host');
-    setLobby({
-      baseUrl,
-      roomId: room.identity.roomId,
-      currentMemberId: host?.memberId,
-      currentRole: 'host',
-      initialRoom: room,
-      origin: 'testRoom',
-    });
-  }, 'diagnostic');
   const doJoin = (code: string) => run(async () => {
     const result = await joinRoomOnServer(config, { inviteCodeOrRoomCode: code.trim(), requestedDisplayName: joinName.trim() || 'Player' });
     setJoinResult(result);
@@ -224,7 +208,6 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
   }
 
   if (lobby) {
-    const isTestRoom = lobby.origin === 'testRoom';
     return (
       <div className={panelClassName ?? 'rounded-lg border border-slate-400/30 bg-slate-50/60 p-4'}>
         <RoomLobbyShell
@@ -234,12 +217,12 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
           currentRole={lobby.currentRole}
           initialRoom={lobby.initialRoom}
           serverLabel={LOCAL_SERVER_LABEL}
-          backLabel={isTestRoom ? '返回测试入口' : '返回加入战役'}
+          backLabel="返回加入战役"
           onBackToOrigin={() => setLobby(null)}
           exitLabel="离开房间视图"
           onExitRoom={() => setLobby(null)}
-          originLabel={isTestRoom ? '测试房间' : '加入战役'}
-          originDetail={isTestRoom ? '无战役关联' : '你已进入联机大厅。请绑定角色并等待主持人审批。'}
+          originLabel="加入战役"
+          originDetail="你已进入联机大厅。请绑定角色并等待主持人审批。"
           onEnterRuntime={(payload) => setRuntimeEntry(payload)}
         />
       </div>
@@ -442,19 +425,6 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
                 )}
               </div>
             )}
-          </section>
-
-          <section className="rounded border border-amber-500/30 bg-amber-50/50 p-3">
-            <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-amber-800">开发 / 测试房间</div>
-            <p className="mb-1.5 text-[10px] text-amber-700/80">
-              仅用于本地开发 / 局域网联调，创建的是无战役关联的测试房间。正式主持房间请从「主持战役」进入某个战役后开启局域网房间。
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="flex items-center gap-1">主持人显示名
-                <input className={input} value={hostName} onChange={(e) => setHostName(e.target.value)} />
-              </label>
-              <button type="button" className={btn} disabled={busy} onClick={createTestRoom}>创建测试房间（无战役关联）</button>
-            </div>
           </section>
 
           <section className="rounded border border-dashed border-slate-400/30 bg-white/50 p-3 text-[11px] text-slate-500">
