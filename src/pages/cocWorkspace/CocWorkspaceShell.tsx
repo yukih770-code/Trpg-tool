@@ -11,15 +11,15 @@ import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryS
 import { JoinCampaignPanel } from '../../components/platform/JoinCampaignPanel';
 import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
 import { HostedRoomLaunchPanel } from '../../components/platform/HostedRoomLaunchPanel';
-import { createRoomOnServer } from '../../lib/platform/roomServerHttpClient';
-import type { RoomSnapshot } from '../../lib/platform/roomTypes';
 import type { LocalCampaign } from '../../lib/platform/campaignLocalStore';
-
-// Hosted Room Launch v0: Room Server address now comes from roomServerConfig
-// (VITE_ROOM_SERVER_HTTP_URL, localhost fallback) so Netlify hosts reach the
-// cloud Room Server. NOT a long-term server-selection UI.
-import { roomServerHttpUrl } from '../../lib/platform/roomServerConfig';
-const HOSTED_ROOM_BASE_URL_V0 = roomServerHttpUrl;
+import {
+  launchHostedRoomFromCampaign,
+  normalizeHostedRoomLaunchError,
+  type HostedRoomLaunchCampaignRef,
+  type HostedRoomLaunchSession,
+  type RoomLaunchActionState,
+  type RoomLaunchSource,
+} from '../../lib/platform/hostedRoomLaunch';
 import {
   CharacterCampaignCta,
   CharacterCampaignCtaProvider,
@@ -442,8 +442,9 @@ export function CocWorkspaceShell({
   const [openCampaignListOnReturn, setOpenCampaignListOnReturn] = useState(false);
   // Hosted LAN room launched from a campaign (M19). v0 uses the local Room Server.
   const [hostedRoomSession, setHostedRoomSession] =
-    useState<{ baseUrl: string; room: RoomSnapshot; hostMemberId: string; sourceCampaignId: string } | null>(null);
+    useState<(HostedRoomLaunchSession & { returnRuntimeContext?: CampaignRuntimeContext }) | null>(null);
   const [hostLaunchError, setHostLaunchError] = useState<string | null>(null);
+  const [hostLaunchState, setHostLaunchState] = useState<RoomLaunchActionState>('idle');
   const [actorCreationCompletionContext, setActorCreationCompletionContext] =
     useState<ActorCreationCompletionContext | null>(null);
   const currentCocActorId =
@@ -641,40 +642,54 @@ export function CocWorkspaceShell({
     return () => onGlobalBackOverrideChange(null);
   }, [campaignRuntimeContext, onGlobalBackOverrideChange]);
 
-  const handleHostLaunchRoom = (campaign: LocalCampaign) => {
+  const handleHostLaunchRoom = (
+    campaign: HostedRoomLaunchCampaignRef,
+    source: RoomLaunchSource = 'campaignDetail',
+    returnRuntimeContext?: CampaignRuntimeContext,
+  ) => {
     setHostLaunchError(null);
-    openCampaignDetail(campaign.id);
-    const baseUrl = HOSTED_ROOM_BASE_URL_V0;
+    setHostLaunchState('launching');
+    if (source === 'campaignDetail') {
+      openCampaignDetail(campaign.id);
+    }
+    if (source === 'campaignList') {
+      setFocusedCampaignId(null);
+      setOpenCampaignListOnReturn(true);
+      setCampaignEntryTab('mine');
+      onViewChange('campaigns');
+    }
     void (async () => {
       try {
-        const { room } = await createRoomOnServer(
-          { baseUrl },
-          {
-            hostDisplayName: 'GM',
-            systemId: 'coc7e',
-            campaignRef: {
-              source: 'localCampaignLibrary',
-              campaignId: campaign.id,
-              displayName: campaign.title,
-              systemId: 'coc7e',
-            },
-          },
-        );
-        const host = room.members.find((m) => m.role === 'host');
-        if (!host) {
-          setHostLaunchError('Room created but host member was not returned.');
-          return;
+        const session = await launchHostedRoomFromCampaign({ campaign, source });
+        if (source === 'runtimeSettings') {
+          setCampaignRuntimeContext(null);
+          setCampaignEntryTab('mine');
+          onViewChange('campaigns');
         }
-        setHostedRoomSession({ baseUrl, room, hostMemberId: host.memberId, sourceCampaignId: campaign.id });
+        setHostedRoomSession({ ...session, returnRuntimeContext });
+        setHostLaunchState('idle');
       } catch (e) {
-        setHostLaunchError(e instanceof Error ? e.message : String(e));
+        setHostLaunchError(normalizeHostedRoomLaunchError(e));
+        setHostLaunchState('failed');
       }
     })();
   };
 
   const handleCloseHostedRoom = () => {
-    const returnCampaignId = hostedRoomSession?.sourceCampaignId ?? hostedRoomSession?.room.campaignRef?.campaignId;
+    const closedSession = hostedRoomSession;
+    const returnCampaignId = closedSession?.sourceCampaignId ?? closedSession?.room.campaignRef?.campaignId;
     setHostedRoomSession(null);
+    if (closedSession?.source === 'runtimeSettings' && closedSession.returnRuntimeContext) {
+      setCampaignRuntimeContext(closedSession.returnRuntimeContext);
+      return;
+    }
+    if (closedSession?.source === 'campaignList') {
+      setFocusedCampaignId(null);
+      setOpenCampaignListOnReturn(true);
+      setCampaignEntryTab('mine');
+      onViewChange('campaigns');
+      return;
+    }
     if (returnCampaignId) {
       openCampaignDetail(returnCampaignId);
       return;
@@ -841,6 +856,15 @@ export function CocWorkspaceShell({
               context={campaignRuntimeContext}
               tone="coc"
               onExitRuntime={handleReturnToCampaignEntry}
+              onHostLaunchRoom={(runtimeContext) =>
+                handleHostLaunchRoom(
+                  { id: runtimeContext.campaignId, title: runtimeContext.campaignTitle, systemId: 'coc7e' },
+                  'runtimeSettings',
+                  runtimeContext,
+                )
+              }
+              roomLaunchState={hostLaunchState}
+              roomLaunchError={hostLaunchError}
             />
           )}
 
@@ -936,6 +960,19 @@ export function CocWorkspaceShell({
               room={hostedRoomSession.room}
               hostMemberId={hostedRoomSession.hostMemberId}
               serverLabel="本地 Room Server（局域网 v0）"
+              backLabel={
+                hostedRoomSession.source === 'runtimeSettings'
+                  ? '返回本地 Runtime'
+                  : hostedRoomSession.source === 'campaignList'
+                    ? '返回战役列表'
+                    : '返回战役详情'
+              }
+              originLabel={hostedRoomSession.source === 'runtimeSettings' ? '当前 Runtime' : '主持战役'}
+              originDetail={
+                hostedRoomSession.source === 'runtimeSettings'
+                  ? '从本地 Runtime 创建的联机房间大厅'
+                  : hostedRoomSession.room.campaignRef?.displayName
+              }
               onClose={handleCloseHostedRoom}
               onBackOverrideChange={onGlobalBackOverrideChange}
               panelClassName={panelClass}

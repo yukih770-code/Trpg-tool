@@ -24,6 +24,10 @@ export interface HostedRoomLaunchPanelProps {
   room: RoomSnapshot;
   hostMemberId: string;
   serverLabel?: string;
+  backLabel?: string;
+  exitLabel?: string;
+  originLabel?: string;
+  originDetail?: string;
   onClose?: () => void;
   panelClassName?: string;
   onBackOverrideChange?: (override: { label?: string; onBack: () => void } | null) => void;
@@ -34,6 +38,10 @@ export function HostedRoomLaunchPanel({
   room,
   hostMemberId,
   serverLabel,
+  backLabel = '返回战役详情',
+  exitLabel = '离开房间视图',
+  originLabel = '主持战役',
+  originDetail,
   onClose,
   panelClassName,
   onBackOverrideChange,
@@ -53,7 +61,7 @@ export function HostedRoomLaunchPanel({
 
     if (onClose) {
       onBackOverrideChange({
-        label: '返回战役详情',
+        label: backLabel,
         onBack: onClose,
       });
       return () => onBackOverrideChange(null);
@@ -61,7 +69,7 @@ export function HostedRoomLaunchPanel({
 
     onBackOverrideChange(null);
     return () => onBackOverrideChange(null);
-  }, [runtimeEntry, onBackOverrideChange]);
+  }, [runtimeEntry, onBackOverrideChange, onClose, backLabel]);
 
   if (runtimeEntry) {
     return (
@@ -83,12 +91,12 @@ export function HostedRoomLaunchPanel({
         currentRole="host"
         initialRoom={room}
         serverLabel={serverLabel}
-        backLabel="返回战役详情"
+        backLabel={backLabel}
         onBackToOrigin={onClose}
-        exitLabel="离开房间视图"
+        exitLabel={exitLabel}
         onExitRoom={onClose}
-        originLabel="主持战役"
-        originDetail={room.campaignRef?.displayName}
+        originLabel={originLabel}
+        originDetail={originDetail ?? room.campaignRef?.displayName}
         onEnterRuntime={(payload) => setRuntimeEntry(payload)}
       />
     </div>

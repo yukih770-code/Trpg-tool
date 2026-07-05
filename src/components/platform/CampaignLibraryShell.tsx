@@ -34,6 +34,7 @@ import {
   type CampaignSafeAppendResult,
 } from '../../lib/platform/campaignImportSafeAppend';
 import { createTranslator, readStoredLocale } from '../../i18n';
+import type { RoomLaunchSource } from '../../lib/platform/hostedRoomLaunch';
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { ContextBar } from './ContextBar';
 // M26: Room Server reachability chip shown next to the host launch CTA.
@@ -70,7 +71,7 @@ type CampaignLibraryShellProps = {
   onReturnToActorContext?: (context: Extract<CampaignLibraryPurpose, { kind: 'selectForActor' }>['context']) => void;
   onEnterCampaignRuntime?: (context: CampaignRuntimeContext) => void;
   /** Hand the selected campaign to the parent to host a LAN Room Server room (M19). */
-  onHostLaunchRoom?: (campaign: LocalCampaign) => void;
+  onHostLaunchRoom?: (campaign: LocalCampaign, source?: RoomLaunchSource) => void;
   onBackOverrideChange?: (override: { label?: string; onBack: () => void } | null) => void;
   panelClassName?: string;
   contextBarClassName?: string;
@@ -729,7 +730,7 @@ export function CampaignLibraryShell({
                   }
                   onLaunchHostedRoom={
                     !campaignSelectForActorContext && campaign.lifecycleStatus === 'active' && onHostLaunchRoom
-                      ? () => onHostLaunchRoom(campaign)
+                      ? () => onHostLaunchRoom(campaign, 'campaignList')
                       : undefined
                   }
                   onActivate={() => {
@@ -823,7 +824,7 @@ export function CampaignLibraryShell({
             canEnterPlayerRuntime={canEnterPlayerRuntime}
             canEnterHostRuntime={canEnterHostRuntime}
             hostPrepItems={hostPrepItems}
-            onHostLaunchRoom={selectedCampaign && onHostLaunchRoom ? () => onHostLaunchRoom(selectedCampaign) : undefined}
+            onHostLaunchRoom={selectedCampaign && onHostLaunchRoom ? () => onHostLaunchRoom(selectedCampaign, 'campaignDetail') : undefined}
           />
         ) : (
           <div className="mt-5">

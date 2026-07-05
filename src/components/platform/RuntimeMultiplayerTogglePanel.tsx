@@ -9,17 +9,18 @@ import {
   type PromotionCarryKind,
   type RuntimeModeDescriptor,
 } from './runtimeModeContract';
+import { RoomServerStatusBanner } from './RoomServerStatusBanner';
+import type { RoomLaunchActionState } from '../../lib/platform/hostedRoomLaunch';
 
 /**
  * RuntimeMultiplayerTogglePanel (M70/M71/M72) — local runtime settings + readiness.
  *
  * AI-LANDMARK: RUNTIME_MULTIPLAYER_TOGGLE_PANEL_V0
  *
- * A read-only settings card for the LOCAL runtime: it shows the current run mode /
- * sync state / authority / character-data source, and a "开启多人同步" entry that is
- * intentionally NOT enabled this round — clicking it only reveals the promotion
- * readiness checklist (what a future local→room upgrade would carry, re-confirm,
- * or drop). It creates NO room, opens NO socket, writes NO store. Pure UI/contract.
+ * A settings card for the LOCAL runtime: it shows the current run mode / sync
+ * state / authority / character-data source, and can create a Room Lobby through
+ * the shared hosted-room launch path. This is NOT Runtime promotion: it does not
+ * replay local RuntimeLog, migrate scene/state, open sockets here, or write store.
  */
 
 export interface RuntimeMultiplayerTogglePanelProps {
@@ -28,6 +29,9 @@ export interface RuntimeMultiplayerTogglePanelProps {
   actorSourceLabel?: string;
   /** Optional compact clearance summary (M73) rendered inside the settings panel. */
   clearanceSummary?: ReactNode;
+  onCreateHostedRoom?: () => void;
+  launchState?: RoomLaunchActionState;
+  launchError?: string | null;
 }
 
 const CARRY_TONE: Record<PromotionCarryKind, string> = {
@@ -51,9 +55,17 @@ function Row({ k, v }: { k: string; v: string }) {
   );
 }
 
-export function RuntimeMultiplayerTogglePanel({ descriptor, actorSourceLabel, clearanceSummary }: RuntimeMultiplayerTogglePanelProps) {
+export function RuntimeMultiplayerTogglePanel({
+  descriptor,
+  actorSourceLabel,
+  clearanceSummary,
+  onCreateHostedRoom,
+  launchState = 'idle',
+  launchError,
+}: RuntimeMultiplayerTogglePanelProps) {
   const [showChecklist, setShowChecklist] = useState(false);
   const isLocal = descriptor.authority === 'local';
+  const canCreateHostedRoom = Boolean(onCreateHostedRoom && isLocal);
 
   const groups: PromotionCarryKind[] = ['carried', 'reconfirm', 'dropped'];
 
@@ -79,21 +91,30 @@ export function RuntimeMultiplayerTogglePanel({ descriptor, actorSourceLabel, cl
         </div>
         {isLocal && (
           <p className="mt-1.5 text-[10px] leading-relaxed text-slate-500">
-            本地 Runtime 是完整 Runtime；联机只是可选的同步层。开启多人同步后，Room Server 将成为同步权威，其他玩家可加入同一战役 Runtime。
+            本地 Runtime 是游戏本体；联机只是可选同步层。当前会创建联机房间大厅，玩家可加入、绑定角色、ready 并由主持人审批。
           </p>
         )}
       </div>
 
+      {isLocal && <RoomServerStatusBanner className="text-left" />}
+
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          disabled
-          className="rounded border border-slate-300/60 bg-white/50 px-2.5 py-1 text-[11px] font-bold text-slate-400"
-          title="本轮尚未启用完整联机升级"
+          disabled={!canCreateHostedRoom || launchState === 'launching'}
+          onClick={onCreateHostedRoom}
+          className={`rounded border px-2.5 py-1 text-[11px] font-bold ${
+            canCreateHostedRoom
+              ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-800 disabled:opacity-50'
+              : 'border-slate-300/60 bg-white/50 text-slate-400'
+          }`}
+          title={canCreateHostedRoom ? '创建联机房间大厅' : '仅主持人可从本地 Runtime 创建联机房间'}
         >
-          开启多人同步
+          {launchState === 'launching' ? '正在创建房间…' : '创建联机房间'}
         </button>
-        <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">准备中</span>
+        <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">
+          {canCreateHostedRoom ? '进入房间大厅' : '只读'}
+        </span>
         <button
           type="button"
           onClick={() => setShowChecklist((v) => !v)}
@@ -104,8 +125,13 @@ export function RuntimeMultiplayerTogglePanel({ descriptor, actorSourceLabel, cl
         </button>
       </div>
       <p className="text-[10px] leading-relaxed text-slate-500">
-        当前入口用于展示未来"本地转联机"的流程与准备检查；本轮点击不会创建房间，也不会改变当前 Runtime。
+        当前会创建联机房间大厅；本地 RuntimeLog、场景和状态记录暂不会自动迁移。未来会支持从当前 Runtime 状态生成 replay / promotion。
       </p>
+      {launchError && (
+        <p className="rounded border border-red-400/40 bg-red-500/10 px-2 py-1 text-[10px] leading-relaxed text-red-700">
+          创建联机房间失败：{launchError}
+        </p>
+      )}
 
       {showChecklist && (
         <div className="space-y-2 rounded border border-slate-300/50 bg-white/60 p-2">
@@ -128,7 +154,7 @@ export function RuntimeMultiplayerTogglePanel({ descriptor, actorSourceLabel, cl
             );
           })}
           <p className="border-t border-slate-300/40 pt-1.5 text-[10px] leading-relaxed text-slate-400">
-            以上仅为开启前检查说明；真正的日志 replay、房间创建与权限迁移将在后续版本实现。
+            以上仅为开启前检查说明；本轮只创建房间大厅，不 replay 本地日志，不迁移场景或状态记录。
           </p>
         </div>
       )}

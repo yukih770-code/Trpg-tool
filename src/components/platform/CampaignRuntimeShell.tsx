@@ -25,6 +25,7 @@ import { RuntimeMultiplayerTogglePanel } from './RuntimeMultiplayerTogglePanel';
 import { describeRuntimeMode } from './runtimeModeContract';
 import { CharacterClearanceSummary } from './CharacterClearanceSummary';
 import { rollSharedDiceExpression, formatSharedDiceRoll } from '../../lib/platform/sharedDiceExpression';
+import type { RoomLaunchActionState } from '../../lib/platform/hostedRoomLaunch';
 
 // Dev-only: the Runtime Layout Shell Preview (RuntimeSlotShell + DND combat dev
 // panel) is hidden from normal Runtime; flip to true only for layout debugging.
@@ -52,6 +53,9 @@ type CampaignRuntimeShellProps = {
   context: CampaignRuntimeContext;
   tone: CampaignRuntimeTone;
   onExitRuntime: () => void;
+  onHostLaunchRoom?: (context: CampaignRuntimeContext) => void;
+  roomLaunchState?: RoomLaunchActionState;
+  roomLaunchError?: string | null;
 };
 
 type RuntimeLogCategory = 'roll' | 'action' | 'system' | 'handout' | 'host';
@@ -107,12 +111,16 @@ const toneClasses: Record<CampaignRuntimeTone, {
 };
 
 // AI-LANDMARK: CAMPAIGN_RUNTIME_SHELL_UI_V1
-// Minimal CampaignRuntimeShell: local RuntimeLog read/append only. No
-// multiplayer, backend, map, handout publish, permission system, or rule runtime.
+// Minimal CampaignRuntimeShell: local RuntimeLog read/append plus optional
+// parent-owned hosted-room launch. No replay/promotion, map token, permission
+// system, or rule runtime.
 export function CampaignRuntimeShell({
   context,
   tone,
   onExitRuntime,
+  onHostLaunchRoom,
+  roomLaunchState,
+  roomLaunchError,
 }: CampaignRuntimeShellProps) {
   const { t } = createTranslator(readStoredLocale());
   const [systemNoteDraft, setSystemNoteDraft] = useState('');
@@ -336,6 +344,9 @@ export function CampaignRuntimeShell({
       descriptor={runtimeModeDescriptor}
       actorSourceLabel={characterSummary?.dataSourceLabel}
       clearanceSummary={clearanceCompactNode}
+      onCreateHostedRoom={isHost && onHostLaunchRoom ? () => onHostLaunchRoom(context) : undefined}
+      launchState={roomLaunchState}
+      launchError={roomLaunchError}
     />
   );
 
