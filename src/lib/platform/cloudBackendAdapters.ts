@@ -13,6 +13,8 @@
  */
 
 export type CloudAuthProviderKind =
+  // P5.1: device-local anonymous identity (offline-first; no login, no provider).
+  | 'localAnonymous'
   | 'custom'
   | 'external'
   | 'unknown';

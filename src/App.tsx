@@ -1,4 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+// P5.1 Identity Foundation: first-launch anonymous local user bootstrap.
+import { ensureLocalUserIdentity } from './lib/platform/localUserIdentity';
+// P5.2 Actor Vault ownership backfill (idempotent, additive, offline-only).
+import { ensureActorVaultOwnershipBackfill } from './lib/platform/actorVaultOwnership';
 import { ArrowLeft, HomeIcon, Library, MoreHorizontal, Palette, Settings, Sparkles, Store, X } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -81,6 +85,17 @@ function normalizeFeatureKey(feature: string): PlaceholderKey {
 }
 
 export default function App() {
+  // AI-LANDMARK: LOCAL_ANONYMOUS_USER_IDENTITY_V1 (first-launch bootstrap)
+  // Idempotent: creates the device-local anonymous user once, then no-ops.
+  // Offline-only; no login, no network; changes no visible behavior.
+  useEffect(() => {
+    ensureLocalUserIdentity();
+    // P5.2: assign the local anonymous user as owner of existing local actors.
+    // Additive registry only — reads character stores, writes a separate key,
+    // idempotent, no character-schema change, no visible behavior change.
+    ensureActorVaultOwnershipBackfill();
+  }, []);
+
   const [appView, setAppView] = useState<AppView>('home');
   const [playStage, setPlayStage] = useState<PlayStage>('menu');
   const [activePlaceholder, setActivePlaceholder] = useState<PlaceholderKey>('campaigns');

@@ -1,6 +1,7 @@
 import { useCharacterStore } from '../../store/characterStore';
 import { useCocStore } from '../../store/cocStore';
 import { useCpStore } from '../../store/cpStore';
+import { getActorOwnershipRecord } from '../../lib/platform/actorVaultOwnership';
 
 /**
  * runtimeActorSnapshotSource (M57) — read-only actor snapshot resolver.
@@ -41,6 +42,10 @@ export interface RuntimeActorSnapshotSourceResult {
   snapshot?: unknown;
   sourceLabel: string;
   sourceKind: RuntimeActorSnapshotSourceKind;
+  /** Optional ownership metadata from Actor Vault ownership registry. Never used as permission. */
+  ownerId?: string;
+  /** Product-facing ownership label; never expose raw ownerId in normal UI. */
+  ownershipLabel?: string;
   /** How the local character was matched (M61). 'name' == fuzzy display-name match. */
   matchKind: RuntimeActorSnapshotMatchKind;
   /** Confidence in the match (M61): actorId=high, name=medium, binding-only=low. */
@@ -96,8 +101,26 @@ function matchCharacter(
   return undefined;
 }
 
+function actorIdFromSnapshot(snapshot: unknown): string | undefined {
+  const rec = snapshot && typeof snapshot === 'object' ? (snapshot as { id?: unknown }) : null;
+  return rec && typeof rec.id === 'string' && rec.id.trim() !== '' ? rec.id.trim() : undefined;
+}
+
+function readOwnership(systemId?: string, actorId?: string): { ownerId?: string; ownershipLabel?: string } {
+  const normalizedSystemId = systemId?.trim();
+  const normalizedActorId = actorId?.trim();
+  if (!normalizedSystemId || !normalizedActorId) return {};
+  const ownership = getActorOwnershipRecord(normalizedSystemId, normalizedActorId);
+  if (!ownership?.ownerId) return {};
+  return {
+    ownerId: ownership.ownerId,
+    ownershipLabel: '当前角色归属：本地用户',
+  };
+}
+
 export function resolveRuntimeActorSnapshot(query: RuntimeActorSnapshotQuery): RuntimeActorSnapshotSourceResult {
   const family = systemFamily(query.systemId);
+  const bindingOwnership = readOwnership(query.systemId, query.actorId);
 
   let list: unknown[] = [];
   let systemName = '';
@@ -121,6 +144,7 @@ export function resolveRuntimeActorSnapshot(query: RuntimeActorSnapshotQuery): R
       return {
         sourceLabel: '未接入的系统',
         sourceKind: 'none',
+        ...bindingOwnership,
         matchKind: 'none',
         matchConfidence: 'none',
         warnings: ['当前系统暂未接入完整角色快照，仅显示房间绑定信息。'],
@@ -130,6 +154,8 @@ export function resolveRuntimeActorSnapshot(query: RuntimeActorSnapshotQuery): R
   const matched = matchCharacter(list, query.actorId, query.displayName);
   if (matched) {
     const byName = matched.matchKind === 'displayName';
+    const matchedActorId = actorIdFromSnapshot(matched.character) ?? query.actorId;
+    const ownership = readOwnership(query.systemId, matchedActorId);
     // Match / provenance phrasing lives in the status banner (matchConfidence);
     // `warnings` only carries genuinely extra notes (e.g. conservative read).
     const warnings = conservative ? ['当前系统的角色快照为保守读取，部分字段可能暂不显示。'] : [];
@@ -137,6 +163,7 @@ export function resolveRuntimeActorSnapshot(query: RuntimeActorSnapshotQuery): R
       snapshot: matched.character,
       sourceLabel: `本地角色库 · ${systemName}`,
       sourceKind: 'characterVault',
+      ...ownership,
       matchKind: matched.matchKind,
       matchConfidence: byName ? 'medium' : 'high',
       warnings,
@@ -146,6 +173,7 @@ export function resolveRuntimeActorSnapshot(query: RuntimeActorSnapshotQuery): R
   return {
     sourceLabel: '仅房间绑定',
     sourceKind: 'roomBinding',
+    ...bindingOwnership,
     matchKind: 'none',
     matchConfidence: 'low',
     warnings: [],

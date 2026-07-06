@@ -39,6 +39,10 @@ export interface RuntimeCharacterSummary {
   bindingStatus?: string;
   /** Human-facing provenance of the character data (M57/M60), e.g. 本地角色库 · DND 5E. */
   dataSourceLabel?: string;
+  /** Optional read-side owner id. Carried for projections only; never displayed raw. */
+  ownerId?: string;
+  /** Product-facing ownership label. */
+  ownershipLabel?: string;
   /** Match confidence from the snapshot resolver (M62). */
   matchConfidence?: 'high' | 'medium' | 'low' | 'none';
   coreStats: RuntimeCharacterStat[];
@@ -201,6 +205,7 @@ export function RuntimeCharacterSheetPanel({ summary, role, inventory }: Runtime
         <div className="mt-2 space-y-0">
           {summary.playerLabel && <IdRow k="玩家 / 席位" v={summary.playerLabel} />}
           <IdRow k="来源" v={sourceLabel ?? '当前房间绑定角色'} />
+          {summary.ownershipLabel && <IdRow k="归属" v={summary.ownershipLabel.replace(/^当前角色归属：/, '')} />}
           {bindingLabel && <IdRow k="绑定" v={bindingLabel} tone={summary.bindingStatus === 'approved' ? 'ok' : 'warn'} />}
           {admissionLabel && <IdRow k="准入" v={admissionLabel} tone={summary.admissionStatus === 'approved' ? 'ok' : 'warn'} />}
           {readyLabel && <IdRow k="准备" v={readyLabel} tone={summary.readyState === 'ready' ? 'ok' : 'warn'} />}

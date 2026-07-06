@@ -38,6 +38,10 @@ export interface RuntimeActorSnapshotInput {
   fallbackSystemId?: string;
   /** Human-facing provenance label for the resolved snapshot (M57/M60). */
   sourceLabel?: string;
+  /** Optional Actor Vault owner id from read-side ownership registry. Not used for permission. */
+  ownerId?: string;
+  /** Product-facing ownership label; UI must not expose raw ownerId. */
+  ownershipLabel?: string;
   /** Extra source warnings from the resolver (shown before the generic one). */
   extraWarnings?: string[];
   /** Match confidence from the resolver (M62). When set, the generic no-snapshot
@@ -278,6 +282,8 @@ export function buildRuntimeCharacterSummary(input: RuntimeActorSnapshotInput): 
     readyState: input.readyState,
     bindingStatus: input.binding?.status,
     dataSourceLabel: input.sourceLabel,
+    ownerId: input.ownerId,
+    ownershipLabel: input.ownershipLabel,
     matchConfidence: input.matchConfidence,
     coreStats: sections.coreStats,
     skillHighlights: sections.skillHighlights,

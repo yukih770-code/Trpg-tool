@@ -377,6 +377,8 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     readyState: myReadyState,
     fallbackSystemId: context.systemId,
     sourceLabel: snapshotResult.sourceKind === 'characterVault' ? snapshotResult.sourceLabel : undefined,
+    ownerId: snapshotResult.ownerId,
+    ownershipLabel: snapshotResult.ownershipLabel,
     extraWarnings: snapshotResult.warnings,
     matchConfidence: snapshotResult.matchConfidence,
   });

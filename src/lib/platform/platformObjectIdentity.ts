@@ -54,6 +54,32 @@ export function generateInternalId(kind: PlatformObjectKind): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+// ── Identity Factory (P5.1) ──────────────────────────────────────────────────
+// AI-LANDMARK: PLATFORM_IDENTITY_FACTORY_V1
+//
+// The ONE centralized identity authority. New code must mint platform object
+// ids through these creators (all delegate to generateInternalId — no second
+// generation path exists). Existing ids in stores remain valid: the factory is
+// additive and no migration is performed in P5.1.
+//
+// Naming map (P5 roadmap → existing PlatformObjectKind):
+//   User → 'user' · Character → 'actor' · Campaign → 'campaign'
+//   Package → 'workshopPackage' · Runtime → 'runtimeSession'
+//   Artifact → 'mediaAsset'
+
+export const identityFactory = {
+  createUserId: (): string => generateInternalId('user'),
+  createActorId: (): string => generateInternalId('actor'),
+  createCampaignId: (): string => generateInternalId('campaign'),
+  createPackageId: (): string => generateInternalId('workshopPackage'),
+  createRuntimeSessionId: (): string => generateInternalId('runtimeSession'),
+  createArtifactId: (): string => generateInternalId('mediaAsset'),
+  /** Generic escape hatch for the remaining PlatformObjectKind values. */
+  createId: (kind: PlatformObjectKind): string => generateInternalId(kind),
+} as const;
+
+export type IdentityFactory = typeof identityFactory;
+
 export function generatePublicCode(
   kind: PlatformObjectKind,
   existingCodes: Iterable<string> = [],
