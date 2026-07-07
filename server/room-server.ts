@@ -29,6 +29,7 @@ import { rollSharedDice } from './services/rollSharedDice.js';
 import { createInMemoryRuntimeLogRegistry } from './runtime-log-registry.js';
 import { createInMemoryActorAdmissionRegistry } from './actor-admission-registry.js';
 import { readServerRuntimeConfigFromEnv } from './config/serverRuntimeConfig.js';
+import { checkPostgresHealth } from './db/postgresClient.js';
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
 import { createRoomSocketServer } from './transport/roomSocketServer.js';
 import type { AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol/room-protocol.js';
@@ -76,7 +77,8 @@ const PORT = serverRuntimeConfig.httpPort;
 const httpServer = createServer(app);
 const roomSocketServer = createRoomSocketServer({ server: httpServer, registry, path: '/ws' });
 
-app.get('/health', (_req, res) => {
+app.get('/health', async (_req, res) => {
+  const database = await checkPostgresHealth();
   res.json({
     ok: true,
     service: 'room-server',
@@ -86,6 +88,7 @@ app.get('/health', (_req, res) => {
     runtimeMode: serverRuntimeConfig.runtimeMode,
     publicHttpUrl: serverRuntimeConfig.publicHttpUrl ?? null,
     publicWsUrl: serverRuntimeConfig.publicWsUrl ?? null,
+    database,
   });
 });
 
