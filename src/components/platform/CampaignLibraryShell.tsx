@@ -34,6 +34,8 @@ import {
   type CampaignSafeAppendResult,
 } from '../../lib/platform/campaignImportSafeAppend';
 import { createTranslator, readStoredLocale } from '../../i18n';
+// P5.3: productized campaign ownership copy (never raw ownerId in normal UI).
+import { getCampaignOwnershipLabel } from '../../lib/platform/campaignOwnership';
 import type { RoomLaunchSource } from '../../lib/platform/hostedRoomLaunch';
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { ContextBar } from './ContextBar';
@@ -1468,7 +1470,13 @@ function CampaignDetail({
             [t('campaignLibrary.detail.fields.roomCode'), campaign.roomCode ?? '-'],
             [t('campaignLibrary.fields.status'), t(getCampaignStatusLabelKey(campaign))],
             [t('campaignLibrary.fields.updatedAt'), formatCampaignDate(campaign.updatedAt)],
-            [t('campaignLibrary.detail.fields.identityStatus'), t('campaignLibrary.detail.identityStatus')],
+            // P5.3: this slot was an honest "示例 / placeholder"; once the campaign
+            // has a backfilled owner it shows productized ownership copy instead.
+            // Metadata only — no permission meaning, raw ownerId never rendered.
+            [
+              t('campaignLibrary.detail.fields.identityStatus'),
+              getCampaignOwnershipLabel(campaign.id) ?? t('campaignLibrary.detail.identityStatus'),
+            ],
           ].map(([label, value]) => (
             <div key={label} className="min-w-0">
               <dt className={`font-bold uppercase tracking-wider ${theme.muted}`}>{label}</dt>

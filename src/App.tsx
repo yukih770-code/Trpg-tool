@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { ensureLocalUserIdentity } from './lib/platform/localUserIdentity';
 // P5.2 Actor Vault ownership backfill (idempotent, additive, offline-only).
 import { ensureActorVaultOwnershipBackfill } from './lib/platform/actorVaultOwnership';
+// P5.3 Campaign ownership backfill (same additive-registry pattern as P5.2).
+import { ensureCampaignOwnershipBackfill } from './lib/platform/campaignOwnership';
 import { ArrowLeft, HomeIcon, Library, MoreHorizontal, Palette, Settings, Sparkles, Store, X } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -94,6 +96,9 @@ export default function App() {
     // Additive registry only — reads character stores, writes a separate key,
     // idempotent, no character-schema change, no visible behavior change.
     ensureActorVaultOwnershipBackfill();
+    // P5.3: same for local campaigns. Additive registry, idempotent, never
+    // throws — startup can never be blocked by ownership backfill.
+    ensureCampaignOwnershipBackfill();
   }, []);
 
   const [appView, setAppView] = useState<AppView>('home');

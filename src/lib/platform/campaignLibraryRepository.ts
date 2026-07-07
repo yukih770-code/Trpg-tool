@@ -35,6 +35,7 @@ import {
   type CampaignEntryDraftRole,
 } from './campaignEntryDraftStore';
 import { getActorVaultRecord } from './actorVaultRepositoryBridge';
+import { getCampaignOwnerId } from './campaignOwnership';
 import type { CampaignInstanceSummary, CampaignSuggestedActor } from './campaignFlow';
 
 export type CampaignLibraryLifecycleFilter = Extract<
@@ -172,6 +173,10 @@ export function toCampaignInstanceSummary(campaign: LocalCampaign): CampaignInst
     systemId: campaign.systemId,
     title: campaign.title,
     roomCode: campaign.roomCode,
+    // P5.3: ownership metadata from the additive campaign ownership registry.
+    // Reuses the PRE-EXISTING optional hostUserId field on the summary type —
+    // metadata only, never a permission input, undefined until backfilled.
+    hostUserId: getCampaignOwnerId(campaign.id),
     lastPlayedAt: campaign.updatedAt,
   };
 }
