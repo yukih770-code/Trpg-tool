@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "db:verify:user": "tsx server/db/verifyPostgresUserSlice.ts",
     "server:dev": "tsx server/room-server.ts",
     "server:build": "tsc -p server/tsconfig.build.json",
     "server:start": "node dist-server/server/room-server.js"
