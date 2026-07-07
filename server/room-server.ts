@@ -30,6 +30,10 @@ import { createInMemoryRuntimeLogRegistry } from './runtime-log-registry.js';
 import { createInMemoryActorAdmissionRegistry } from './actor-admission-registry.js';
 import { readServerRuntimeConfigFromEnv } from './config/serverRuntimeConfig.js';
 import { checkPostgresHealth } from './db/postgresClient.js';
+import {
+  checkPostgresUserSchemaReadiness,
+  type PostgresSchemaReadinessResult,
+} from './db/postgresSchemaReadiness.js';
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
 import { createRoomSocketServer } from './transport/roomSocketServer.js';
 import type { AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol/room-protocol.js';
@@ -79,6 +83,12 @@ const roomSocketServer = createRoomSocketServer({ server: httpServer, registry, 
 
 app.get('/health', async (_req, res) => {
   const database = await checkPostgresHealth();
+  const schema: PostgresSchemaReadinessResult =
+    database.status === 'ok'
+      ? await checkPostgresUserSchemaReadiness()
+      : database.configured === false
+        ? { status: 'not_configured' }
+        : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
   res.json({
     ok: true,
     service: 'room-server',
@@ -88,7 +98,10 @@ app.get('/health', async (_req, res) => {
     runtimeMode: serverRuntimeConfig.runtimeMode,
     publicHttpUrl: serverRuntimeConfig.publicHttpUrl ?? null,
     publicWsUrl: serverRuntimeConfig.publicWsUrl ?? null,
-    database,
+    database: {
+      ...database,
+      schema,
+    },
   });
 });
 
