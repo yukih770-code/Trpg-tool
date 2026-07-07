@@ -33,6 +33,8 @@ import type {
   OwnershipMigrationResult,
 } from './ownershipMigrationContracts';
 import { localUserRepository } from './localUserIdentity';
+// P5.5: shared local persistence adapter (same key, same behavior, one impl).
+import { createLocalJsonStore } from './localPersistenceAdapter';
 import { useCampaignLocalStore } from './campaignLocalStore';
 
 // ── Ownership record shape (additive; campaign records are never rewritten) ──
@@ -94,9 +96,7 @@ function scanLocalCampaigns(): ScannedCampaign[] {
   }
 }
 
-// ── Ownership map persistence (own localStorage key; in-memory mirror) ────────
-
-let inMemoryMap: CampaignOwnershipMap | null = null;
+// ── Ownership map persistence (P5.5: shared adapter; same key, same mirror) ──
 
 function isOwnershipMap(value: unknown): value is CampaignOwnershipMap {
   if (!value || typeof value !== 'object') return false;
@@ -108,31 +108,18 @@ function emptyMap(): CampaignOwnershipMap {
   return { schemaVersion: 1, entries: {}, updatedAt: nowIso() };
 }
 
+const ownershipStore = createLocalJsonStore<CampaignOwnershipMap>({
+  key: CAMPAIGN_OWNERSHIP_STORAGE_KEY,
+  fallback: emptyMap,
+  validate: isOwnershipMap,
+});
+
 function loadMap(): CampaignOwnershipMap {
-  if (inMemoryMap) return inMemoryMap;
-  if (typeof window === 'undefined') {
-    inMemoryMap = emptyMap();
-    return inMemoryMap;
-  }
-  try {
-    const raw = window.localStorage.getItem(CAMPAIGN_OWNERSHIP_STORAGE_KEY);
-    const parsed: unknown = raw ? JSON.parse(raw) : null;
-    inMemoryMap = isOwnershipMap(parsed) ? parsed : emptyMap();
-  } catch {
-    inMemoryMap = emptyMap();
-  }
-  return inMemoryMap;
+  return ownershipStore.read();
 }
 
 function saveMap(map: CampaignOwnershipMap): void {
-  inMemoryMap = map;
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(CAMPAIGN_OWNERSHIP_STORAGE_KEY, JSON.stringify(map));
-  } catch {
-    // Quota / access failure must never break offline play; the in-memory map
-    // still serves this session.
-  }
+  ownershipStore.write(map);
 }
 
 // ── Public reads (metadata only — never used for permission decisions) ───────

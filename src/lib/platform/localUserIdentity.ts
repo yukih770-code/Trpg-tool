@@ -27,6 +27,8 @@ import type { AuthIdentity } from './cloudBackendAdapters';
 import type { UserProfile } from './userProfile';
 import type { ViewerContext } from '../architecture/projection';
 import { identityFactory } from './platformObjectIdentity';
+// P5.5: shared local persistence adapter (same key, same behavior, one impl).
+import { createLocalJsonStore } from './localPersistenceAdapter';
 
 // ── Record shape ─────────────────────────────────────────────────────────────
 
@@ -99,48 +101,27 @@ function isLocalUserRecord(value: unknown): value is LocalUserRecord {
   );
 }
 
-function readStoredRecord(): LocalUserRecord | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.localStorage.getItem(LOCAL_USER_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    return isLocalUserRecord(parsed) ? parsed : null;
-  } catch {
-    // Corrupt or inaccessible storage — treat as "no user yet" (self-heals on
-    // the next getOrCreateCurrentUser call).
-    return null;
-  }
-}
-
-function writeStoredRecord(record: LocalUserRecord): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(LOCAL_USER_STORAGE_KEY, JSON.stringify(record));
-  } catch {
-    // Quota/access failure must never break offline play; the in-memory record
-    // still works for this session.
-  }
-}
-
-// In-memory mirror so repeated calls in one session are stable even when
-// localStorage is unavailable (private mode, quota, SSR).
-let inMemoryRecord: LocalUserRecord | null = null;
+// P5.5: persistence goes through the shared local adapter (same key, same
+// semantics). `cacheFallback: false` preserves the P5.1 behavior of re-checking
+// storage until a real record exists; corrupt data still self-heals on the
+// next getOrCreateCurrentUser call, and write failures never break offline play.
+const localUserStore = createLocalJsonStore<LocalUserRecord | null>({
+  key: LOCAL_USER_STORAGE_KEY,
+  fallback: () => null,
+  validate: (value): value is LocalUserRecord | null => isLocalUserRecord(value),
+  cacheFallback: false,
+});
 
 // ── Repository implementation (local adapter) ────────────────────────────────
 
 export const localUserRepository: UserRepository = {
   loadCurrentUser(): LocalUserRecord | null {
-    if (inMemoryRecord) return inMemoryRecord;
-    const stored = readStoredRecord();
-    if (stored) inMemoryRecord = stored;
-    return stored;
+    return localUserStore.read();
   },
 
   createAnonymousUser(): LocalUserRecord {
     const record = makeDefaultAnonymousRecord();
-    inMemoryRecord = record;
-    writeStoredRecord(record);
+    localUserStore.write(record);
     return record;
   },
 
@@ -150,8 +131,7 @@ export const localUserRepository: UserRepository = {
 
   saveUser(record: LocalUserRecord): LocalUserRecord {
     const next: LocalUserRecord = { ...record, updatedAt: nowIso() };
-    inMemoryRecord = next;
-    writeStoredRecord(next);
+    localUserStore.write(next);
     return next;
   },
 
@@ -162,8 +142,7 @@ export const localUserRepository: UserRepository = {
       profile: { ...current.profile, ...patch, userId: current.profile.userId },
       updatedAt: nowIso(),
     };
-    inMemoryRecord = next;
-    writeStoredRecord(next);
+    localUserStore.write(next);
     return next;
   },
 };
