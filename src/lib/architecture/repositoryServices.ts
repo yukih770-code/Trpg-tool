@@ -18,6 +18,15 @@
  * Sync now: this Service is the SINGLE place that turns async when ApiRepository
  * lands (A11). Funnelling viewer-aware reads here keeps that migration bounded.
  * UI adoption of this Service is incremental (A9) — not forced this round.
+ *
+ * Identity semantics glossary (P5.7):
+ * - ownerId        = ASSET ownership metadata (who owns the object). Not permission.
+ * - hostUserId     = runtime/session HOST identity (who runs the table).
+ * - viewer         = the CURRENT ACCESS PERSPECTIVE fed into projection.
+ * - 'author-sample'= legacy SEED owner alias only (P5.4) — never the active user.
+ * Application-service responsibility: viewer-aware projection enforcement.
+ * Repository responsibility: raw data access. Local adapter responsibility:
+ * offline-first implementation details behind the repository boundary.
  */
 import { platformRepositories } from './repositoryComposition';
 import {

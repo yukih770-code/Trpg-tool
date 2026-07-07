@@ -37,6 +37,12 @@ import {
 import { getActorVaultRecord } from './actorVaultRepositoryBridge';
 // P5.6: campaign ownership metadata flows through the read-adapter boundary.
 import { defaultCampaignOwnershipReader } from './localRepositoryAdapters';
+// P5.7: imperative campaign operations flow through the explicit LOCAL
+// repository adapter (1:1 store delegation; swap seam for future cloud impls).
+import {
+  localCampaignRepositoryAdapter,
+  type CampaignLocalRepositoryAdapter,
+} from './campaignLocalRepositoryAdapter';
 import type { CampaignInstanceSummary, CampaignSuggestedActor } from './campaignFlow';
 
 export type CampaignLibraryLifecycleFilter = Extract<
@@ -226,18 +232,27 @@ export interface CampaignLibraryActions {
 /**
  * Campaign lifecycle + entry-draft action facade.
  *
- * Each call reads the live store via getState(), so the returned object is
- * stable and safe to memoize once. This intentionally exposes only the simple,
- * already-implemented local actions. It does NOT add overwrite, merge, purge,
- * membership, actor-instance, runtime, or backend behavior.
+ * P5.7: campaign operations delegate to the explicit LOCAL repository adapter
+ * (default: `localCampaignRepositoryAdapter`, 1:1 store delegation — behavior
+ * identical). The optional parameter is an additive swap seam for future
+ * cloud-backed adapters; existing callers pass nothing and change nothing.
+ * Entry-DRAFT operations intentionally stay on the draft store directly:
+ * drafts are UI-local selections (never membership), not repository data.
+ *
+ * The returned object is stable and safe to memoize once. This intentionally
+ * exposes only the simple, already-implemented local actions. It does NOT add
+ * overwrite, merge, purge, membership, actor-instance, runtime, or backend
+ * behavior.
  */
-export function createCampaignLibraryActions(): CampaignLibraryActions {
+export function createCampaignLibraryActions(
+  campaignAdapter: CampaignLocalRepositoryAdapter = localCampaignRepositoryAdapter,
+): CampaignLibraryActions {
   return {
-    createCampaign: (input) => useCampaignLocalStore.getState().createCampaign(input),
-    updateCampaign: (id, patch) => useCampaignLocalStore.getState().updateCampaign(id, patch),
-    archiveCampaign: (id) => useCampaignLocalStore.getState().archiveCampaign(id),
-    restoreCampaign: (id) => useCampaignLocalStore.getState().restoreCampaign(id),
-    trashCampaign: (id) => useCampaignLocalStore.getState().trashCampaign(id),
+    createCampaign: (input) => campaignAdapter.createCampaign(input),
+    updateCampaign: (id, patch) => campaignAdapter.updateCampaign(id, patch),
+    archiveCampaign: (id) => campaignAdapter.archiveCampaign(id),
+    restoreCampaign: (id) => campaignAdapter.restoreCampaign(id),
+    trashCampaign: (id) => campaignAdapter.trashCampaign(id),
     setEntryDraftActor: (campaignId, systemId, actorId) => {
       useCampaignEntryDraftStore.getState().setCampaignEntryDraftActor(campaignId, systemId, actorId);
     },

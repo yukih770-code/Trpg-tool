@@ -8,6 +8,15 @@
  * binds concrete mock data to the repository boundary. UI imports `platformRepo`
  * (the abstraction), never the raw mock maps.
  *
+ * Mock-vs-real responsibilities (P5.7 boundary note):
+ * - These classes are SEED/LOCAL MOCK ADAPTERS: they serve demo seed content
+ *   and are NOT the future real implementations. Real Local/Api/Postgres
+ *   repositories implement the same interfaces (./repositories) and replace
+ *   these bindings at the composition root (./repositoryComposition) only.
+ * - Identity/ownership facts they need come from the P5 read adapters
+ *   (localRepositoryAdapters); 'author-sample' stays a legacy SEED owner
+ *   alias (P5.4), never the active user.
+ *
  * Swap target: replace this module's bindings with LocalRepository /
  * ApiRepository implementations without touching any page (see repositories.ts).
  */

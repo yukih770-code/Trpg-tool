@@ -134,6 +134,36 @@ export function getActorVaultRepositoryBridgeCapability(
   return ACTOR_VAULT_REPOSITORY_BRIDGE_CAPABILITIES[systemId];
 }
 
+// ── Explicit read adapter boundary (P5.7) ────────────────────────────────────
+// AI-LANDMARK: ACTOR_VAULT_LOCAL_READ_ADAPTER_V1
+//
+// Narrow read-side contract over the actor vault. This bridge IS the local,
+// offline-first implementation; the per-system character stores remain the
+// authority for local mode. It is NOT a cloud repository — a future
+// cloud/Postgres adapter implements this SAME outer shape (likely async) and
+// is selected at the repository boundary, without rewiring UI or the runtime
+// actor snapshot path. Actor OWNERSHIP stays read-side metadata in the P5.2
+// registry (actorVaultOwnership / localRepositoryAdapters), never here.
+
+/** Read-only actor vault contract (local-mode authority: system stores). */
+export interface ActorVaultReadAdapter {
+  /** Implementation marker for diagnostics/boundary clarity. */
+  readonly kind: 'local';
+  listActorVaultRecords(systemId: ActorVaultSystemId): ActorVaultRecord[];
+  getActorVaultRecord(systemId: ActorVaultSystemId, actorId: string): ActorVaultRecord | undefined;
+  getActiveActorVaultRecord(systemId: ActorVaultSystemId): ActorVaultRecord | undefined;
+  getCapability(systemId: ActorVaultSystemId): ActorVaultRepositoryBridgeCapability;
+}
+
+/** Default local implementation — 1:1 delegation to the existing bridge reads. */
+export const localActorVaultReadAdapter: ActorVaultReadAdapter = {
+  kind: 'local',
+  listActorVaultRecords: (systemId) => listActorVaultRecords(systemId),
+  getActorVaultRecord: (systemId, actorId) => getActorVaultRecord(systemId, actorId),
+  getActiveActorVaultRecord: (systemId) => getActiveActorVaultRecord(systemId),
+  getCapability: (systemId) => getActorVaultRepositoryBridgeCapability(systemId),
+};
+
 export function listActorVaultRecords(systemId: ActorVaultSystemId): ActorVaultRecord[] {
   switch (systemId) {
     case 'dnd5e-2024':

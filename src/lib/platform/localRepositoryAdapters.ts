@@ -44,6 +44,9 @@ import {
   getLocalPersistenceDiagnostics,
   type LocalPersistenceDiagnostics,
 } from './localPersistenceAdapter';
+// P5.7: local repository adapter availability probes (diagnostics only).
+import { localActorVaultReadAdapter } from './actorVaultRepositoryBridge';
+import { localCampaignRepositoryAdapter } from './campaignLocalRepositoryAdapter';
 
 // ── Read adapter interfaces (narrow; read-side only) ─────────────────────────
 
@@ -112,6 +115,9 @@ export interface LocalFoundationDiagnostics {
   /** Ownership registry read paths are callable (they never throw by design). */
   actorOwnershipReadable: boolean;
   campaignOwnershipReadable: boolean;
+  /** P5.7: local repository adapters are present and callable. */
+  actorRepositoryAdapterReady: boolean;
+  campaignRepositoryAdapterReady: boolean;
   persistence: LocalPersistenceDiagnostics;
 }
 
@@ -137,10 +143,24 @@ export function getLocalFoundationDiagnostics(): LocalFoundationDiagnostics {
   } catch {
     /* keep false */
   }
+  let actorRepositoryAdapterReady = false;
+  let campaignRepositoryAdapterReady = false;
+  try {
+    actorRepositoryAdapterReady = localActorVaultReadAdapter.kind === 'local';
+  } catch {
+    /* keep false */
+  }
+  try {
+    campaignRepositoryAdapterReady = localCampaignRepositoryAdapter.kind === 'local';
+  } catch {
+    /* keep false */
+  }
   return {
     identityReady,
     actorOwnershipReadable,
     campaignOwnershipReadable,
+    actorRepositoryAdapterReady,
+    campaignRepositoryAdapterReady,
     persistence: getLocalPersistenceDiagnostics(),
   };
 }
