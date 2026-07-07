@@ -24,6 +24,11 @@
  *   does not duplicate it.
  *
  * No React, no vendor SDK, no permission behavior.
+ *
+ * P5.8: the future cloud counterpart of this adapter is
+ * `CloudCampaignRepositoryContract` (cloudRepositoryContracts.ts) — async,
+ * result-typed, viewer-passed. This local adapter stays sync/offline and does
+ * NOT implement that contract; correspondence is by shape only.
  */
 
 import {

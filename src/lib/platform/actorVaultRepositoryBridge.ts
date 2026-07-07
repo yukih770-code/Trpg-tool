@@ -144,6 +144,9 @@ export function getActorVaultRepositoryBridgeCapability(
 // is selected at the repository boundary, without rewiring UI or the runtime
 // actor snapshot path. Actor OWNERSHIP stays read-side metadata in the P5.2
 // registry (actorVaultOwnership / localRepositoryAdapters), never here.
+// P5.8: the future cloud counterpart is `CloudActorRepositoryContract`
+// (cloudRepositoryContracts.ts) — async, result-typed, viewer-passed. This
+// local adapter does NOT implement it; correspondence is by shape only.
 
 /** Read-only actor vault contract (local-mode authority: system stores). */
 export interface ActorVaultReadAdapter {
