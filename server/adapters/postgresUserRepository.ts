@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { PoolClient, QueryResultRow } from 'pg';
+import type { QueryResult, QueryResultRow } from 'pg';
 
 import type { AuthIdentity } from '../../src/lib/platform/cloudBackendAdapters.js';
 import {
@@ -73,6 +73,43 @@ export interface CreateUserWithIdentityInput {
   profile?: Partial<PostgresUserProfile>;
 }
 
+export interface PostgresUserRepositoryExecutor {
+  query<T extends QueryResultRow>(
+    text: string,
+    values?: readonly unknown[],
+  ): Promise<QueryResult<T>>;
+}
+
+export interface PostgresUserRepositoryOptions {
+  /**
+   * Defaults to true for normal repository calls. Transactional smoke tests can
+   * provide an already-transactional client and set this false.
+   */
+  useInternalTransactions?: boolean;
+}
+
+export interface PostgresUserRepository {
+  getUserById(userId: string): Promise<PostgresUserRepositoryResult<PostgresUserRecord | null>>;
+  getUserByIdentity(
+    providerKind: string,
+    providerSubject: string,
+  ): Promise<PostgresUserRepositoryResult<PostgresUserRecord | null>>;
+  createUserWithIdentity(
+    input: CreateUserWithIdentityInput,
+  ): Promise<PostgresUserRepositoryResult<PostgresUserRecord>>;
+  saveUserProfile(
+    profile: PostgresUserProfile,
+  ): Promise<PostgresUserRepositoryResult<PostgresUserProfile>>;
+  getUserProfile(userId: string): Promise<PostgresUserRepositoryResult<PostgresUserProfile | null>>;
+  checkReadiness(): Promise<
+    PostgresUserRepositoryResult<{
+      usersTable: boolean;
+      identitiesTable: boolean;
+      profilesTable: boolean;
+    }>
+  >;
+}
+
 interface UserRecordRow extends QueryResultRow {
   user_id: string;
   user_display_name: string;
@@ -132,6 +169,15 @@ function mapRepositoryError(error: unknown): PostgresUserRepositoryResult<never>
       error: {
         kind: 'not_configured',
         message: 'DATABASE_URL is not configured.',
+      },
+    };
+  }
+  if (error instanceof PostgresDatabaseError && error.message === 'schema_missing') {
+    return {
+      ok: false,
+      error: {
+        kind: 'schema_missing',
+        message: 'Postgres user repository tables are missing.',
       },
     };
   }
@@ -222,49 +268,16 @@ const USER_RECORD_SELECT = `
   LEFT JOIN user_profiles p ON p.user_id = u.user_id
 `;
 
-export async function getUserById(
-  userId: string,
-): Promise<PostgresUserRepositoryResult<PostgresUserRecord | null>> {
-  try {
-    const result = await queryPostgres<UserRecordRow>(
-      `${USER_RECORD_SELECT} WHERE u.user_id = $1 LIMIT 1`,
-      [userId],
-    );
-    return { ok: true, value: result.rows[0] ? rowToUserRecord(result.rows[0]) : null };
-  } catch (error) {
-    return mapRepositoryError(error);
-  }
-}
-
-export async function getUserByIdentity(
-  providerKind: string,
-  providerSubject: string,
-): Promise<PostgresUserRepositoryResult<PostgresUserRecord | null>> {
-  try {
-    const result = await queryPostgres<UserRecordRow>(
-      `
-        ${USER_RECORD_SELECT}
-        WHERE i.provider_kind = $1 AND i.provider_subject = $2
-        LIMIT 1
-      `,
-      [providerKind, providerSubject],
-    );
-    return { ok: true, value: result.rows[0] ? rowToUserRecord(result.rows[0]) : null };
-  } catch (error) {
-    return mapRepositoryError(error);
-  }
-}
-
 function makeDefaultHandle(userId: string): string {
   return `local-${userId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 12).toLowerCase()}`;
 }
 
 async function insertUserProfile(
-  client: PoolClient,
+  executor: PostgresUserRepositoryExecutor,
   profile: PostgresUserProfile,
   now: string,
 ): Promise<void> {
-  await client.query(
+  await executor.query(
     `
       INSERT INTO user_profiles (
         user_id,
@@ -310,9 +323,52 @@ async function insertUserProfile(
   );
 }
 
-export async function createUserWithIdentity(
-  input: CreateUserWithIdentityInput,
-): Promise<PostgresUserRepositoryResult<PostgresUserRecord>> {
+const defaultExecutor: PostgresUserRepositoryExecutor = {
+  query: (text, values) => queryPostgres(text, values),
+};
+
+export function createPostgresUserRepository(
+  executor: PostgresUserRepositoryExecutor = defaultExecutor,
+  options: PostgresUserRepositoryOptions = {},
+): PostgresUserRepository {
+  const useInternalTransactions = options.useInternalTransactions ?? true;
+
+  async function getUserById(
+    userId: string,
+  ): Promise<PostgresUserRepositoryResult<PostgresUserRecord | null>> {
+    try {
+      const result = await executor.query<UserRecordRow>(
+        `${USER_RECORD_SELECT} WHERE u.user_id = $1 LIMIT 1`,
+        [userId],
+      );
+      return { ok: true, value: result.rows[0] ? rowToUserRecord(result.rows[0]) : null };
+    } catch (error) {
+      return mapRepositoryError(error);
+    }
+  }
+
+  async function getUserByIdentity(
+    providerKind: string,
+    providerSubject: string,
+  ): Promise<PostgresUserRepositoryResult<PostgresUserRecord | null>> {
+    try {
+      const result = await executor.query<UserRecordRow>(
+        `
+          ${USER_RECORD_SELECT}
+          WHERE i.provider_kind = $1 AND i.provider_subject = $2
+          LIMIT 1
+        `,
+        [providerKind, providerSubject],
+      );
+      return { ok: true, value: result.rows[0] ? rowToUserRecord(result.rows[0]) : null };
+    } catch (error) {
+      return mapRepositoryError(error);
+    }
+  }
+
+  async function createUserWithIdentity(
+    input: CreateUserWithIdentityInput,
+  ): Promise<PostgresUserRepositoryResult<PostgresUserRecord>> {
   const now = new Date().toISOString();
   const userId = input.identity.userId || `user_${randomUUID()}`;
   const displayName = input.identity.displayName || input.profile?.displayName || 'Local User';
@@ -331,17 +387,15 @@ export async function createUserWithIdentity(
     sectionVisibility: input.profile?.sectionVisibility ?? {},
   };
   try {
-    await withPostgresClient(async (client) => {
-      await client.query('BEGIN');
-      try {
-        await client.query(
+      const write = async (writeExecutor: PostgresUserRepositoryExecutor): Promise<void> => {
+        await writeExecutor.query(
           `
             INSERT INTO users (user_id, display_name, status, schema_version, created_at, updated_at)
             VALUES ($1, $2, 'active', 1, $3, $3)
           `,
           [userId, displayName, now],
         );
-        await client.query(
+        await writeExecutor.query(
           `
             INSERT INTO user_identities (
               identity_id,
@@ -368,13 +422,26 @@ export async function createUserWithIdentity(
             now,
           ],
         );
-        await insertUserProfile(client, profile, now);
-        await client.query('COMMIT');
+        await insertUserProfile(writeExecutor, profile, now);
+      };
+
+      if (useInternalTransactions) {
+        await withPostgresClient(async (client) => {
+          await client.query('BEGIN');
+      try {
+            await write({
+              query: (text, values) => client.query(text, values ? [...values] : undefined),
+            });
+            await client.query('COMMIT');
       } catch (error) {
         await client.query('ROLLBACK');
         throw error;
       }
-    });
+        });
+      } else {
+        await write(executor);
+      }
+
     return {
       ok: true,
       value: {
@@ -395,37 +462,35 @@ export async function createUserWithIdentity(
   }
 }
 
-export async function saveUserProfile(
-  profile: PostgresUserProfile,
-): Promise<PostgresUserRepositoryResult<PostgresUserProfile>> {
+  async function saveUserProfile(
+    profile: PostgresUserProfile,
+  ): Promise<PostgresUserRepositoryResult<PostgresUserProfile>> {
   try {
     const now = new Date().toISOString();
-    await withPostgresClient(async (client) => {
-      await insertUserProfile(client, profile, now);
-    });
+      await insertUserProfile(executor, profile, now);
     return { ok: true, value: profile };
   } catch (error) {
     return mapRepositoryError(error);
   }
 }
 
-export async function getUserProfile(
-  userId: string,
-): Promise<PostgresUserRepositoryResult<PostgresUserProfile | null>> {
-  const userResult = await getUserById(userId);
+  async function getUserProfile(
+    userId: string,
+  ): Promise<PostgresUserRepositoryResult<PostgresUserProfile | null>> {
+    const userResult = await getUserById(userId);
   if (userResult.ok === false) return { ok: false, error: userResult.error };
   return { ok: true, value: userResult.value?.profile ?? null };
 }
 
-export async function checkPostgresUserRepositoryReadiness(): Promise<
-  PostgresUserRepositoryResult<{
-    usersTable: boolean;
-    identitiesTable: boolean;
-    profilesTable: boolean;
-  }>
-> {
+  async function checkReadiness(): Promise<
+    PostgresUserRepositoryResult<{
+      usersTable: boolean;
+      identitiesTable: boolean;
+      profilesTable: boolean;
+    }>
+  > {
   try {
-    const result = await queryPostgres<{ table_name: string }>(
+      const result = await executor.query<{ table_name: string }>(
       `
         SELECT table_name
         FROM information_schema.tables
@@ -446,4 +511,57 @@ export async function checkPostgresUserRepositoryReadiness(): Promise<
   } catch (error) {
     return mapRepositoryError(error);
   }
+}
+
+  return {
+    getUserById,
+    getUserByIdentity,
+    createUserWithIdentity,
+    saveUserProfile,
+    getUserProfile,
+    checkReadiness,
+  };
+}
+
+const defaultPostgresUserRepository = createPostgresUserRepository();
+
+export async function getUserById(
+  userId: string,
+): Promise<PostgresUserRepositoryResult<PostgresUserRecord | null>> {
+  return defaultPostgresUserRepository.getUserById(userId);
+}
+
+export async function getUserByIdentity(
+  providerKind: string,
+  providerSubject: string,
+): Promise<PostgresUserRepositoryResult<PostgresUserRecord | null>> {
+  return defaultPostgresUserRepository.getUserByIdentity(providerKind, providerSubject);
+}
+
+export async function createUserWithIdentity(
+  input: CreateUserWithIdentityInput,
+): Promise<PostgresUserRepositoryResult<PostgresUserRecord>> {
+  return defaultPostgresUserRepository.createUserWithIdentity(input);
+}
+
+export async function saveUserProfile(
+  profile: PostgresUserProfile,
+): Promise<PostgresUserRepositoryResult<PostgresUserProfile>> {
+  return defaultPostgresUserRepository.saveUserProfile(profile);
+}
+
+export async function getUserProfile(
+  userId: string,
+): Promise<PostgresUserRepositoryResult<PostgresUserProfile | null>> {
+  return defaultPostgresUserRepository.getUserProfile(userId);
+}
+
+export async function checkPostgresUserRepositoryReadiness(): Promise<
+  PostgresUserRepositoryResult<{
+    usersTable: boolean;
+    identitiesTable: boolean;
+    profilesTable: boolean;
+  }>
+> {
+  return defaultPostgresUserRepository.checkReadiness();
 }
