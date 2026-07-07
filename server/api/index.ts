@@ -17,3 +17,26 @@ export const API_SERVER_BOUNDARY: ApiServerBoundary = {
   kind: 'api-server-boundary',
   responsibility: 'platform-http-api',
 };
+
+export type {
+  ServerApiError,
+  ServerApiErrorKind,
+  ServerApiResponse,
+} from './apiResponse.js';
+export {
+  errorResponse,
+  okResponse,
+} from './apiResponse.js';
+export type {
+  CreateUserApiHandlersOptions,
+  GetUserByIdHandlerInput,
+  GetUserByIdentityHandlerInput,
+  GetUserProfileHandlerInput,
+  SaveUserProfileHandlerInput,
+  UserApiHandlers,
+  UserApiRequestContext,
+} from './userApiHandlers.js';
+export {
+  createUserApiHandlers,
+  defaultPostgresUserApiHandlers,
+} from './userApiHandlers.js';
