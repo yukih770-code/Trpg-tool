@@ -5,6 +5,8 @@ import { ensureLocalUserIdentity } from './lib/platform/localUserIdentity';
 import { ensureActorVaultOwnershipBackfill } from './lib/platform/actorVaultOwnership';
 // P5.3 Campaign ownership backfill (same additive-registry pattern as P5.2).
 import { ensureCampaignOwnershipBackfill } from './lib/platform/campaignOwnership';
+// P5.4: "我的主页" points at the REAL local anonymous user, not 'author-sample'.
+import { getCurrentLocalProfileUserId } from './lib/platform/localViewerIdentity';
 import { ArrowLeft, HomeIcon, Library, MoreHorizontal, Palette, Settings, Sparkles, Store, X } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -106,7 +108,9 @@ export default function App() {
   const [activePlaceholder, setActivePlaceholder] = useState<PlaceholderKey>('campaigns');
   const [locale, setLocale] = useState<Locale>(readStoredLocale);
   const [moreOpen, setMoreOpen] = useState<boolean>(false);
-  const [profileUserId, setProfileUserId] = useState<string>('author-sample');
+  // P5.4: default profile identity = the device's local anonymous user (lazy init
+  // is safe: the repository creates the user on first access, idempotently).
+  const [profileUserId, setProfileUserId] = useState<string>(() => getCurrentLocalProfileUserId());
   const [activeSettingsCat, setActiveSettingsCat] = useState<string | null>(null);
   const [playWorkspaceNavigation, setPlayWorkspaceNavigation] = useState<PlayWorkspaceNavigationState>(
     defaultPlayWorkspaceNavigationState,
@@ -551,7 +555,7 @@ export default function App() {
             type="button"
             onClick={() => {
               pushNavigation();
-              setProfileUserId('author-sample');
+              setProfileUserId(getCurrentLocalProfileUserId());
               setAppView('userProfile');
             }}
             className="flex items-center justify-between gap-2 border-b border-[#2f2a22]/8 py-2 text-left text-sm font-semibold text-[#17130f] hover:text-[#58180d] last:border-b-0"
@@ -872,7 +876,7 @@ export default function App() {
                 onClick={() => {
                   setMoreOpen(false);
                   pushNavigation();
-                  setProfileUserId('author-sample');
+                  setProfileUserId(getCurrentLocalProfileUserId());
                   setAppView('userProfile');
                 }}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-[#17130f] hover:bg-[#2f2a22]/8"

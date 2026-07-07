@@ -86,6 +86,14 @@ import {
   type MediaAssetVariant,
   type ResolvedMediaVariant,
 } from './mediaAsset';
+// P5.4: current local anonymous user is the active viewer; 'author-sample' is a
+// legacy seed-owner alias resolved at read time (no seed migration).
+import {
+  getCurrentLocalProfileUserId,
+  getCurrentLocalUserProfile,
+  isSeedOwnerAliasForCurrentUser,
+  resolveSeedOwnerIdForCurrentUser,
+} from '../platform/localViewerIdentity';
 import { FAN_WORKS } from '../platform/communityMockData';
 import type { FanWork } from '../platform/communityTypes';
 import { WORKSHOP_BROWSE_SAMPLES, WORKSHOP_SUBSCRIPTION_SAMPLES } from '../platform/workshopTypes';
@@ -417,12 +425,14 @@ const PERSONAL_IMPORTS_SEED: ImportedPackageItem[] = [
 ];
 
 class MockPersonalContentRepository implements PersonalContentRepository {
-  // Mock collections/imports are owner-scoped to the seed author for the demo.
+  // Mock collections/imports belong to the seed-owner alias set: the legacy
+  // sample author id (compatibility) or the current local anonymous user
+  // (the real active viewer since P5.4). Other user ids see nothing.
   listCollections(ownerId: string): CollectionItem[] {
-    return ownerId === 'author-sample' ? PERSONAL_COLLECTIONS_SEED : [];
+    return isSeedOwnerAliasForCurrentUser(ownerId) ? PERSONAL_COLLECTIONS_SEED : [];
   }
   listImportedPackages(ownerId: string): ImportedPackageItem[] {
-    return ownerId === 'author-sample' ? PERSONAL_IMPORTS_SEED : [];
+    return isSeedOwnerAliasForCurrentUser(ownerId) ? PERSONAL_IMPORTS_SEED : [];
   }
 }
 
@@ -444,6 +454,9 @@ const USER_PROFILE_SEED: UserProfile[] = [
 
 class MockUserProfileRepository implements UserProfileRepository {
   getProfile(userId: string): UserProfile | undefined {
+    // P5.4: the current local anonymous user has a REAL profile (P5.1 record);
+    // serve it here so "我的主页" no longer impersonates the sample author.
+    if (userId === getCurrentLocalProfileUserId()) return getCurrentLocalUserProfile();
     return USER_PROFILE_SEED.find((p) => p.userId === userId);
   }
   getProfileSummary(userId: string): UserProfileSummary | undefined {
@@ -460,7 +473,11 @@ class MockPermissionProjectionRepository implements PermissionProjectionReposito
   resolveProjection(entityId: EntityId, viewer: ViewerContext): ProjectionDecision {
     const node = this.graph.getEntity(entityId);
     if (!node) return { projection: 'denied', allowed: false, reason: 'not-found', accessLevel: 'none' };
-    return decideProjection({ visibility: node.visibility, ownerId: node.ownerId, shareCode: node.shareCode }, viewer);
+    // P5.4: legacy seed ownerId resolves to the current local user at read time.
+    return decideProjection(
+      { visibility: node.visibility, ownerId: resolveSeedOwnerIdForCurrentUser(node.ownerId), shareCode: node.shareCode },
+      viewer,
+    );
   }
 
   canViewEntity(entityId: EntityId, viewer: ViewerContext): boolean {
@@ -470,7 +487,8 @@ class MockPermissionProjectionRepository implements PermissionProjectionReposito
   canEditEntity(entityId: EntityId, viewer: ViewerContext): boolean {
     const node = this.graph.getEntity(entityId);
     if (!node) return false;
-    return viewer.role === 'admin' || (!!node.ownerId && node.ownerId === viewer.userId);
+    const effectiveOwnerId = resolveSeedOwnerIdForCurrentUser(node.ownerId);
+    return viewer.role === 'admin' || (!!effectiveOwnerId && effectiveOwnerId === viewer.userId);
   }
 
   // View-tier gate. The real clone/reference ALLOWANCE is governed by the
@@ -483,16 +501,21 @@ class MockPermissionProjectionRepository implements PermissionProjectionReposito
     return this.canViewEntity(entityId, viewer);
   }
 
+  /** Shallow clone with the legacy seed ownerId aliased (P5.4). Never mutates the stored node. */
+  private withResolvedOwner(node: EntityNode): EntityNode {
+    return { ...node, ownerId: resolveSeedOwnerIdForCurrentUser(node.ownerId) };
+  }
+
   projectEntitySummary(entityId: EntityId, viewer: ViewerContext): ProjectedEntitySummary {
     const node = this.graph.getEntity(entityId);
     if (!node) return { projection: 'denied', accessLevel: 'none' };
-    return projectNodeSummary(node, viewer);
+    return projectNodeSummary(this.withResolvedOwner(node), viewer);
   }
 
   projectEntityDetail(entityId: EntityId, viewer: ViewerContext): ProjectedEntityDetail {
     const node = this.graph.getEntity(entityId);
     if (!node) return { projection: 'denied', accessLevel: 'none' };
-    return projectNodeDetail(node, viewer);
+    return projectNodeDetail(this.withResolvedOwner(node), viewer);
   }
 }
 

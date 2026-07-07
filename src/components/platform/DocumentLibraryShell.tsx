@@ -12,7 +12,10 @@
  */
 import { useState } from 'react';
 import { createTranslator, type Locale } from '../../i18n';
-import { ANONYMOUS_VIEWER, type ViewerContext } from '../../lib/architecture/projection';
+import { ANONYMOUS_VIEWER } from '../../lib/architecture/projection';
+// P5.4: the owner viewer is the REAL local anonymous user (P5.1), no longer the
+// hardcoded 'author-sample'. Seed docs stay visible via read-time owner aliasing.
+import { getCurrentLocalViewerContext } from '../../lib/platform/localViewerIdentity';
 import { BlockDocumentList } from './BlockDocumentList';
 import { BlockDocumentReader } from './BlockDocumentReader';
 
@@ -22,15 +25,12 @@ export type DocumentLibraryShellProps = {
   onBack: () => void;
 };
 
-/** Mock owner identity matching the seed `ownerId: 'author-sample'`. */
-const OWNER_VIEWER: ViewerContext = { role: 'owner', userId: 'author-sample' };
-
 export function DocumentLibraryShell({ locale, onBack }: DocumentLibraryShellProps) {
   const { t } = createTranslator(locale);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [asOwner, setAsOwner] = useState<boolean>(false);
 
-  const viewer = asOwner ? OWNER_VIEWER : ANONYMOUS_VIEWER;
+  const viewer = asOwner ? getCurrentLocalViewerContext() : ANONYMOUS_VIEWER;
 
   if (selectedDocId) {
     return (
@@ -76,7 +76,7 @@ export function DocumentLibraryShell({ locale, onBack }: DocumentLibraryShellPro
             asOwner ? 'border-[#17130f] bg-[#17130f] text-white' : 'border-[#2f2a22]/20 text-[#51483d]'
           }`}
         >
-          作者本人
+          本地用户（本人）
         </button>
         <span className="text-[10px] text-[#51483d]/55">
           （切换身份会改变可见文档与对象——投影在 Service 层执行）

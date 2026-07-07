@@ -9,7 +9,9 @@
  */
 import { useState } from 'react';
 import { createTranslator, type Locale } from '../../i18n';
-import { type ViewerContext } from '../../lib/architecture/projection';
+// P5.4: the hub viewer is the REAL local anonymous user (P5.1), no longer the
+// hardcoded 'author-sample'. Seed content stays visible via read-time owner aliasing.
+import { getCurrentLocalViewerContext } from '../../lib/platform/localViewerIdentity';
 import { platformDataService } from '../../lib/architecture/repositoryServices';
 import type {
   ImportedPackageItem,
@@ -21,9 +23,6 @@ import type {
 export type PersonalContentHubProps = {
   locale: Locale;
 };
-
-/** Mock owner identity matching the seed `ownerId / authorId: 'author-sample'`. */
-const OWNER_VIEWER: ViewerContext = { role: 'owner', userId: 'author-sample' };
 
 type HubTab = 'documents' | 'fanWorks' | 'drafts' | 'collections' | 'packages' | 'imports';
 
@@ -54,7 +53,7 @@ export function PersonalContentHub({ locale }: PersonalContentHubProps) {
   const { t } = createTranslator(locale);
   const [tab, setTab] = useState<HubTab>('documents');
 
-  const viewer = OWNER_VIEWER;
+  const viewer = getCurrentLocalViewerContext();
 
   const visibilityChip = (visibility?: string) =>
     visibility ? (

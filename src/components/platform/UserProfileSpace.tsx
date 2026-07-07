@@ -16,6 +16,8 @@
 import { useState } from 'react';
 import { createTranslator, type Locale } from '../../i18n';
 import { ANONYMOUS_VIEWER, type ViewerContext } from '../../lib/architecture/projection';
+// P5.4: detect "my own profile" via the real local anonymous user (P5.1).
+import { getCurrentLocalProfileUserId } from '../../lib/platform/localViewerIdentity';
 import { platformDataService } from '../../lib/architecture/repositoryServices';
 import { USER_PROFILE_SECTIONS, type UserProfileSection } from '../../lib/platform/userProfile';
 import type { PersonalContentSummary } from '../../lib/platform/personalContent';
@@ -131,7 +133,12 @@ export function UserProfileSpace({ profileUserId, locale, onBack, onOpenPersonal
   const sectionLabel = SECTION_LABEL[locale];
   const kindLabel = KIND_LABEL[locale];
 
-  const viewer: ViewerContext = asOwnerPreview ? { role: 'owner', userId: profileUserId } : ANONYMOUS_VIEWER;
+  // P5.4: when viewing your OWN profile (the local anonymous user), you are the
+  // owner by default — otherwise a private local profile would render as missing.
+  // Other profiles keep the anonymous-visitor default + the owner-preview toggle.
+  const isSelfProfile = profileUserId === getCurrentLocalProfileUserId();
+  const viewer: ViewerContext =
+    asOwnerPreview || isSelfProfile ? { role: 'owner', userId: profileUserId } : ANONYMOUS_VIEWER;
 
   const profile = platformDataService.getProfile(profileUserId, viewer);
 
