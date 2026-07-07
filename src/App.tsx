@@ -7,6 +7,8 @@ import { ensureActorVaultOwnershipBackfill } from './lib/platform/actorVaultOwne
 import { ensureCampaignOwnershipBackfill } from './lib/platform/campaignOwnership';
 // P5.4: "我的主页" points at the REAL local anonymous user, not 'author-sample'.
 import { getCurrentLocalProfileUserId } from './lib/platform/localViewerIdentity';
+// P5.10I: one current-viewer account projection drives all account surfaces.
+import { getCurrentViewerAccount } from './lib/platform/currentViewerAccount';
 import { ArrowLeft, HomeIcon, Library, MoreHorizontal, Palette, Settings, Sparkles, Store, X } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -111,6 +113,8 @@ export default function App() {
   // P5.4: default profile identity = the device's local anonymous user (lazy init
   // is safe: the repository creates the user on first access, idempotently).
   const [profileUserId, setProfileUserId] = useState<string>(() => getCurrentLocalProfileUserId());
+  // P5.10I: single account projection for the top-nav + account dropdown.
+  const viewerAccount = getCurrentViewerAccount(locale === 'en' ? 'en' : 'zh');
   const [activeSettingsCat, setActiveSettingsCat] = useState<string | null>(null);
   const [playWorkspaceNavigation, setPlayWorkspaceNavigation] = useState<PlayWorkspaceNavigationState>(
     defaultPlayWorkspaceNavigationState,
@@ -608,8 +612,8 @@ export default function App() {
             aria-label={locale === 'en' ? 'Account menu' : '账号菜单'}
             className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 text-sm font-semibold text-white/85 transition hover:bg-white/10"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-xs font-bold text-white">示</span>
-            <span className="hidden lg:inline">示例作者</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-xs font-bold text-white">{viewerAccount.avatarLabel}</span>
+            <span className="hidden lg:inline">{viewerAccount.displayName}</span>
           </button>
         </div>
       </header>
@@ -852,11 +856,12 @@ export default function App() {
             {/* Account header (avatar / nickname placeholder) */}
             <div className="mb-2 flex items-center gap-2 border-b border-[#2f2a22]/10 pb-2">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#2f2a22]/15 to-[#2f2a22]/35 text-sm font-bold text-[#51483d]">
-                示
+                {viewerAccount.avatarLabel}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-[#17130f]">示例作者</p>
-                <p className="truncate text-[11px] text-[#51483d]/60">@graycastle_author</p>
+                <p className="truncate text-sm font-bold text-[#17130f]">{viewerAccount.displayName}</p>
+                <p className="truncate text-[11px] text-[#51483d]/60">@{viewerAccount.handle}</p>
+                <p className="truncate text-[10px] text-[#51483d]/45">{viewerAccount.authStateLabel}</p>
               </div>
               <button
                 type="button"
