@@ -46,9 +46,13 @@ import {
   type RoutableEntityTarget,
 } from '../platform/routableEntity';
 import type { PlatformRepositories } from './repositories';
-// P5.4: legacy 'author-sample' seed content resolves to the current local
-// anonymous user at read time (aliasing only — no seed migration, no filter removal).
-import { resolveSeedOwnerIdForCurrentUser, seedOwnerMatchesUser } from '../platform/localViewerIdentity';
+// P5.6: seed-owner aliasing now flows through the explicit read-adapter
+// boundary (delegates to the P5.4 primitives; behavior unchanged). A future
+// cloud implementation swaps the DEFAULT adapter here — call sites stay put.
+import { defaultSeedOwnerAliasResolver } from '../platform/localRepositoryAdapters';
+
+const { resolveSeedOwnerId: resolveSeedOwnerIdForCurrentUser, seedOwnerMatchesUser } =
+  defaultSeedOwnerAliasResolver;
 
 /** Simple package health badge (detailed diagnostics deferred to a future report). */
 function packageHealth(status: string, visibility: string): PackageHealthStatus {

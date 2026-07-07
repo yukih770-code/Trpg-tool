@@ -86,14 +86,21 @@ import {
   type MediaAssetVariant,
   type ResolvedMediaVariant,
 } from './mediaAsset';
-// P5.4: current local anonymous user is the active viewer; 'author-sample' is a
-// legacy seed-owner alias resolved at read time (no seed migration).
+// P5.6: viewer identity + seed-owner aliasing flow through the explicit
+// read-adapter boundary (delegates to the P5.4 primitives; behavior unchanged).
 import {
-  getCurrentLocalProfileUserId,
-  getCurrentLocalUserProfile,
-  isSeedOwnerAliasForCurrentUser,
-  resolveSeedOwnerIdForCurrentUser,
-} from '../platform/localViewerIdentity';
+  defaultLocalViewerContextReader,
+  defaultSeedOwnerAliasResolver,
+} from '../platform/localRepositoryAdapters';
+// Seed-alias-set predicate stays a direct P5.4 import: it is mock-seed-specific
+// compatibility (collections/imports demo scoping), not a general adapter need.
+import { isSeedOwnerAliasForCurrentUser } from '../platform/localViewerIdentity';
+
+const { resolveSeedOwnerId: resolveSeedOwnerIdForCurrentUser } = defaultSeedOwnerAliasResolver;
+const {
+  getCurrentProfileUserId: getCurrentLocalProfileUserId,
+  getCurrentUserProfile: getCurrentLocalUserProfile,
+} = defaultLocalViewerContextReader;
 import { FAN_WORKS } from '../platform/communityMockData';
 import type { FanWork } from '../platform/communityTypes';
 import { WORKSHOP_BROWSE_SAMPLES, WORKSHOP_SUBSCRIPTION_SAMPLES } from '../platform/workshopTypes';

@@ -131,6 +131,16 @@ export interface CampaignInstanceSummary {
   systemId: string;
   title: string;
   roomCode?: string;
+  /**
+   * Owner vs host semantics (P5.6 clarification):
+   * - Conceptually, ownerId = ASSET ownership (who owns the campaign data);
+   *   hostUserId = SESSION/ROOM host identity (who runs the table).
+   * - Since P5.3 this field is populated from the campaign OWNERSHIP registry
+   *   as temporary read-side compatibility (the field pre-dated ownership).
+   *   A later pass should introduce a dedicated ownerId on this summary and
+   *   reserve hostUserId for real session-host identity. Metadata only —
+   *   never a permission input; not part of any Room Server protocol type.
+   */
   hostUserId?: string;
   /**
    * Optional source package. A WorkshopPackage can seed or supply content to

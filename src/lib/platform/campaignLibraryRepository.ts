@@ -35,7 +35,8 @@ import {
   type CampaignEntryDraftRole,
 } from './campaignEntryDraftStore';
 import { getActorVaultRecord } from './actorVaultRepositoryBridge';
-import { getCampaignOwnerId } from './campaignOwnership';
+// P5.6: campaign ownership metadata flows through the read-adapter boundary.
+import { defaultCampaignOwnershipReader } from './localRepositoryAdapters';
 import type { CampaignInstanceSummary, CampaignSuggestedActor } from './campaignFlow';
 
 export type CampaignLibraryLifecycleFilter = Extract<
@@ -176,7 +177,7 @@ export function toCampaignInstanceSummary(campaign: LocalCampaign): CampaignInst
     // P5.3: ownership metadata from the additive campaign ownership registry.
     // Reuses the PRE-EXISTING optional hostUserId field on the summary type —
     // metadata only, never a permission input, undefined until backfilled.
-    hostUserId: getCampaignOwnerId(campaign.id),
+    hostUserId: defaultCampaignOwnershipReader.getCampaignOwnerId(campaign.id),
     lastPlayedAt: campaign.updatedAt,
   };
 }

@@ -1,7 +1,8 @@
 import { useCharacterStore } from '../../store/characterStore';
 import { useCocStore } from '../../store/cocStore';
 import { useCpStore } from '../../store/cpStore';
-import { getActorOwnershipRecord } from '../../lib/platform/actorVaultOwnership';
+// P5.6: actor ownership metadata flows through the read-adapter boundary.
+import { defaultActorOwnershipReader } from '../../lib/platform/localRepositoryAdapters';
 
 /**
  * runtimeActorSnapshotSource (M57) — read-only actor snapshot resolver.
@@ -110,7 +111,7 @@ function readOwnership(systemId?: string, actorId?: string): { ownerId?: string;
   const normalizedSystemId = systemId?.trim();
   const normalizedActorId = actorId?.trim();
   if (!normalizedSystemId || !normalizedActorId) return {};
-  const ownership = getActorOwnershipRecord(normalizedSystemId, normalizedActorId);
+  const ownership = defaultActorOwnershipReader.getActorOwnershipRecord(normalizedSystemId, normalizedActorId);
   if (!ownership?.ownerId) return {};
   return {
     ownerId: ownership.ownerId,
