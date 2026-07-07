@@ -88,10 +88,19 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   authoritative events, artifacts carry `sourceRefs` + human confirmation.
 - Read when: adding any AI feature.
 
-## Campaign DB (future — P5.11)
-- Docs: `P5_11_CAMPAIGN_DB_FIRST_SLICE_READINESS_V1`, `POSTGRES_SCHEMA_MINIMAL_MODEL_V1` (§3.4 `campaigns`).
+## Campaign DB (P5.11A-C — first slice implemented, server-only)
+- Files: `server/db/migrations/0002_campaigns.sql`,
+  `server/adapters/postgresCampaignRepository.ts`,
+  `server/db/postgresCampaignSchemaReadiness.ts`,
+  `server/db/postgresCampaignRepositorySmoke.ts`,
+  `server/db/postgresCampaignRepositoryWriteSmoke.ts`,
+  `server/db/verifyPostgresCampaign*.ts`; scripts `db:verify:campaign`,
+  `db:verify:campaign:write`; `/health` `database.campaignSchema`.
+- Docs: `POSTGRES_CAMPAIGN_REPOSITORY_FIRST_SLICE_V1`,
+  `P5_11_CAMPAIGN_DB_FIRST_SLICE_READINESS_V1`, `POSTGRES_SCHEMA_MINIMAL_MODEL_V1` (§3.4).
 - Migration source: `campaignOwnership.ts` (local campaign ownership registry).
-- Don't violate: `campaigns.owner_id` ≠ `hostUserId` (hostUserId lives in
-  `runtime_sessions`); `campaignRef` in the Room Server is a read-only echo, never
-  DB authority; start from the repository boundary, not frontend sync.
-- Read when: starting Campaign DB.
+- Don't violate: `campaigns.owner_id` ≠ `hostUserId` (hostUserId lives in a future
+  `runtime_sessions` table); `campaignRef` in the Room Server is a read-only echo,
+  never DB authority; server-only (no frontend sync); no membership/actor/runtime
+  persistence; manual DDL (no runner/auto-create); write smoke rolls back.
+- Read when: touching the Campaign DB.

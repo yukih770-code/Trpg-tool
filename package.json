@@ -11,6 +11,8 @@
     "lint": "tsc --noEmit",
     "db:verify:user": "tsx server/db/verifyPostgresUserSlice.ts",
     "db:verify:user:write": "tsx server/db/verifyPostgresUserWriteSmoke.ts",
+    "db:verify:campaign": "tsx server/db/verifyPostgresCampaignSlice.ts",
+    "db:verify:campaign:write": "tsx server/db/verifyPostgresCampaignWriteSmoke.ts",
     "api:verify:user": "tsx server/api/verifyUserApiHandlers.ts",
     "server:dev": "tsx server/room-server.ts",
     "server:build": "tsc -p server/tsconfig.build.json",

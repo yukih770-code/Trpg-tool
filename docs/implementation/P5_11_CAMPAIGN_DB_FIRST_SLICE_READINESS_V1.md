@@ -71,3 +71,11 @@ implementation in this task.** Grounded in the existing repo.
 **GO for P5.11A** as a server-only CampaignRepository boundary slice, starting from
 the repository (not frontend sync), reusing the User-slice pattern and the local
 campaign ownership registry as the migration source.
+
+## 7. Status — implemented (P5.11A-C)
+
+The first slice is now implemented (server-only): `0002_campaigns.sql`,
+`postgresCampaignRepository.ts`, `postgresCampaignSchemaReadiness.ts`, read-only +
+rollback write smokes, and `db:verify:campaign` / `db:verify:campaign:write`. See
+`POSTGRES_CAMPAIGN_REPOSITORY_FIRST_SLICE_V1.md`. No frontend sync, no Campaign API
+routes, no membership/actor/runtime persistence.

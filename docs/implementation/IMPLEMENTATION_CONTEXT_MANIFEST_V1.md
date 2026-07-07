@@ -70,7 +70,7 @@ PowerShell fallback: `Select-String -Path .\src\**\* -Pattern "DATABASE_URL"`.
 | Frontend account/profile UI | Index → Frontend Account Surface + Identity/Ownership; `FRONTEND_ACCOUNT_SURFACE_IDENTITY_BINDING_V1` |
 | User DB | Index → Postgres User First Slice; `POSTGRES_SCHEMA_MINIMAL_MODEL_V1`, `POSTGRES_FIRST_SLICE_USER_REPOSITORY_V1`, readiness checklist; `server/db/**` + `server/adapters/postgresUserRepository.ts` |
 | User API | Index → User API Boundary; `POSTGRES_USER_API_BOUNDARY_V1`, `POSTGRES_USER_DEV_API_VERIFICATION_V1`; `server/api/**` |
-| Campaign DB (P5.11) | Index → Campaign DB; `P5_11_CAMPAIGN_DB_FIRST_SLICE_READINESS_V1`, `POSTGRES_SCHEMA_MINIMAL_MODEL_V1` §3.4; `campaignOwnership.ts`, `campaignLocalRepositoryAdapter.ts` |
+| Campaign DB (P5.11) | Index → Campaign DB; `POSTGRES_CAMPAIGN_REPOSITORY_FIRST_SLICE_V1`, `P5_11_CAMPAIGN_DB_FIRST_SLICE_READINESS_V1`, `POSTGRES_SCHEMA_MINIMAL_MODEL_V1` §3.4; `server/adapters/postgresCampaignRepository.ts`, `server/db/postgresCampaignSchemaReadiness.ts`, `server/db/migrations/0002_campaigns.sql`; `campaignOwnership.ts` (migration source) |
 | Runtime / session / log | Index → Runtime/Room Authority; `RUNTIME_EVENT_REPLAY_BOUNDARY_AUDIT_V1`; `server/services/**`, `runtimeLogLocalStore.ts` |
 | AI features | Index → AI Memory; `DOMAIN_MODEL_BOUNDARY_AUDIT_V1` (AI section) |
 
@@ -78,6 +78,8 @@ PowerShell fallback: `Select-String -Path .\src\**\* -Pattern "DATABASE_URL"`.
 
 | Script | Purpose | Needs DB? |
 | --- | --- | --- |
-| `npm run db:verify:user` | read-only DB slice check | optional (not_configured OK) |
-| `npm run db:verify:user:write` | rollback-only write smoke | optional |
+| `npm run db:verify:user` | read-only user DB slice check | optional (not_configured OK) |
+| `npm run db:verify:user:write` | rollback-only user write smoke | optional |
+| `npm run db:verify:campaign` | read-only campaign DB slice check | optional (not_configured OK) |
+| `npm run db:verify:campaign:write` | rollback-only campaign write smoke | optional |
 | `npm run api:verify:user` | handler contract smoke (fake repo) | no |
