@@ -143,3 +143,16 @@ boundaries.
 
 Campaign, Actor, RuntimeEvent, Asset, Workshop, Room Runtime, membership, and
 cloud sync remain outside this slice. Existing local adapters remain active.
+
+## Update — P5.10F-G-H (verification + dev routes)
+
+- **Handlers are now smoke-verifiable** via `createUserApiHandlers({ userRepository })`
+  with a fake repository — no database required. Run `npm run api:verify:user`
+  (see `docs/implementation/POSTGRES_USER_DEV_API_VERIFICATION_V1.md`).
+- **Dev-only READ routes may be mounted** behind the server-only env gate
+  `POSTGRES_USER_DEV_API_ENABLED=true` (default off; **always off in production**):
+  `GET /api/dev/users/:userId`, `GET /api/dev/users/:userId/profile`,
+  `GET /api/dev/users/by-identity`. No write/save route is ever mounted.
+- **Production public API is still blocked** by the missing auth / session /
+  permission layer. The dev routes exist only for local verification precisely
+  because there is no authentication yet.

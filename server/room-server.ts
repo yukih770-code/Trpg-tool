@@ -37,6 +37,9 @@ import {
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
 import { createRoomSocketServer } from './transport/roomSocketServer.js';
 import type { AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol/room-protocol.js';
+// P5.10G: dev-only read-only User routes (gated; never in production).
+import { registerUserDevRoutes } from './api/userDevRoutes.js';
+import { defaultPostgresUserApiHandlers } from './api/userApiHandlers.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -70,6 +73,13 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// P5.10G: mount dev-only read-only User routes ONLY when explicitly gated.
+// Disabled by default and forced off in production (see serverRuntimeConfig).
+// No write/save route is ever mounted; responses use the safe API envelope.
+if (serverRuntimeConfig.devUserApiEnabled === true) {
+  registerUserDevRoutes(app, defaultPostgresUserApiHandlers);
+}
+
 const registry = createInMemoryRoomRegistry();
 // Separate, memory-only RuntimeLog store — NOT part of RoomSnapshot (M21).
 const runtimeLogRegistry = createInMemoryRuntimeLogRegistry();
@@ -96,6 +106,7 @@ app.get('/health', async (_req, res) => {
     storage: MEMORY_STORAGE_CAPABILITY.adapterKind,
     environment: serverRuntimeConfig.environment,
     runtimeMode: serverRuntimeConfig.runtimeMode,
+    devUserApiEnabled: serverRuntimeConfig.devUserApiEnabled === true,
     publicHttpUrl: serverRuntimeConfig.publicHttpUrl ?? null,
     publicWsUrl: serverRuntimeConfig.publicWsUrl ?? null,
     database: {

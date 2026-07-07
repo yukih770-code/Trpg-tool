@@ -25,6 +25,13 @@ export interface ServerRuntimeConfig {
   publicHttpUrl?: string;
   publicWsUrl?: string;
   allowedOrigins: string[];
+  /**
+   * P5.10G dev-only gate: when true, the server may mount read-only dev User
+   * routes (`/api/dev/users/*`). Server-only (env `POSTGRES_USER_DEV_API_ENABLED`,
+   * NO `VITE_` prefix), default false, and ALWAYS false in production. Optional so
+   * existing config literals stay valid; treat undefined as false.
+   */
+  devUserApiEnabled?: boolean;
   warnings?: string[];
 }
 
@@ -40,6 +47,7 @@ export const DEFAULT_LOCAL_SERVER_RUNTIME_CONFIG: ServerRuntimeConfig = {
     'http://localhost:5173',
     'http://127.0.0.1:5173',
   ],
+  devUserApiEnabled: false,
 };
 
 export type ServerRuntimeEnv = Record<string, string | undefined>;
@@ -99,6 +107,15 @@ function readRuntimeMode(env: ServerRuntimeEnv): ServerRuntimeMode {
 }
 
 /**
+ * Read the dev-only User API gate. Server-only; NEVER enabled in production.
+ * Anything other than the literal string 'true' is treated as false.
+ */
+function readDevUserApiEnabled(env: ServerRuntimeEnv, environment: ServerDeploymentEnvironment): boolean {
+  if (environment === 'production') return false;
+  return readString(env, 'POSTGRES_USER_DEV_API_ENABLED') === 'true';
+}
+
+/**
  * Pure config reader for future server wiring. Production still requires an
  * explicit public endpoint before this boundary should be connected to runtime
  * startup.
@@ -135,6 +152,7 @@ export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRun
     publicHttpUrl,
     publicWsUrl,
     allowedOrigins,
+    devUserApiEnabled: readDevUserApiEnabled(env, environment),
     warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
