@@ -15,7 +15,7 @@ import {
 } from '../../lib/platform/roomDiscoveryMapper';
 import type { RoomJoinResult, RoomMemberRole, RoomSnapshot, RoomSystemId } from '../../lib/platform/roomTypes';
 import type { RoomRuntimeEntryContext } from '../../lib/platform/roomRuntimeEntryTypes';
-import { roomServerHttpUrl } from '../../lib/platform/roomServerConfig';
+import { resolveRoomServerHttpUrl } from '../../lib/platform/roomServerEndpoint';
 import { RoomLobbyShell } from './RoomLobbyShell';
 import { RoomRuntimeEntryBridge } from './RoomRuntimeEntryBridge';
 import { RoomServerStatusBanner } from './RoomServerStatusBanner';
@@ -34,10 +34,10 @@ import { RoomServerStatusBanner } from './RoomServerStatusBanner';
  * systemId, not DND-specific concepts).
  */
 
-// Default Room Server address comes from env (roomServerConfig): localhost for
+// Default Room Server address comes from env (roomServerEndpoint): localhost for
 // local dev, or the deployed cloud Room Server on Netlify. The user can still
 // override it in the address input below.
-const DEFAULT_BASE_URL = roomServerHttpUrl;
+const DEFAULT_BASE_URL = resolveRoomServerHttpUrl();
 
 function normalizeJoinError(error: unknown): { message: string; detail: string } {
   const detail = error instanceof RoomServerHttpError ? `(${error.status}) ${error.message}` : error instanceof Error ? error.message : String(error);

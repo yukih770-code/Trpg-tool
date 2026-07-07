@@ -1,5 +1,5 @@
 import { createRoomOnServer } from './roomServerHttpClient';
-import { roomServerHttpUrl } from './roomServerConfig';
+import { resolveRoomServerHttpUrl } from './roomServerEndpoint';
 import type { LocalCampaignSystemId } from './campaignLocalStore';
 import type { RoomSnapshot, RoomSystemId } from './roomTypes';
 
@@ -31,7 +31,7 @@ export interface LaunchHostedRoomInput {
 export async function launchHostedRoomFromCampaign({
   campaign,
   source,
-  baseUrl = roomServerHttpUrl,
+  baseUrl = resolveRoomServerHttpUrl(),
   hostDisplayName = 'GM',
 }: LaunchHostedRoomInput): Promise<HostedRoomLaunchSession> {
   const { room } = await createRoomOnServer(

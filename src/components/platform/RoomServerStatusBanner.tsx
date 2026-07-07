@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { fetchRoomServerHealth } from '../../lib/platform/roomServerHttpClient';
-import { roomServerHttpUrl } from '../../lib/platform/roomServerConfig';
+import { isLocalRoomServerEndpoint, resolveRoomServerHttpUrl } from '../../lib/platform/roomServerEndpoint';
 
 /**
  * RoomServerStatusBanner (M26) — lightweight Room Server reachability chip.
@@ -12,7 +12,7 @@ import { roomServerHttpUrl } from '../../lib/platform/roomServerConfig';
  * the address it is checking, and a "重新检测" button. Meant for the Join / Host /
  * Room Lobby ENTRY area — it is compact and MUST NOT occupy the Runtime main
  * stage. It owns no room state and performs no writes; it only reads /health.
- * baseUrl defaults to the env-driven roomServerHttpUrl (roomServerConfig) but a
+ * baseUrl defaults to the env-driven Room Server endpoint resolver but a
  * caller may pass the address the user is actually editing.
  */
 
@@ -24,7 +24,7 @@ export interface RoomServerStatusBannerProps {
 type ProbeState = 'checking' | 'online' | 'offline';
 
 export function RoomServerStatusBanner({ baseUrl, className }: RoomServerStatusBannerProps) {
-  const effectiveBaseUrl = (baseUrl && baseUrl.trim() !== '' ? baseUrl.trim() : roomServerHttpUrl);
+  const effectiveBaseUrl = (baseUrl && baseUrl.trim() !== '' ? baseUrl.trim() : resolveRoomServerHttpUrl());
   const [state, setState] = useState<ProbeState>('checking');
   const [detail, setDetail] = useState<string | null>(null);
 
@@ -71,7 +71,7 @@ export function RoomServerStatusBanner({ baseUrl, className }: RoomServerStatusB
   const dot =
     state === 'online' ? 'bg-emerald-500' : state === 'offline' ? 'bg-amber-500' : 'bg-slate-400 animate-pulse';
 
-  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(effectiveBaseUrl);
+  const isLocal = isLocalRoomServerEndpoint(effectiveBaseUrl);
   const locationLabel = isLocal ? '本机' : '云端';
   const headline =
     state === 'online'
