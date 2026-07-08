@@ -76,6 +76,7 @@ PowerShell fallback: `Select-String -Path .\src\**\* -Pattern "DATABASE_URL"`.
 | RuntimeEvent DB (P5.14) | Index → RuntimeEvent DB; `P5_14_RUNTIME_EVENT_DB_FIRST_SLICE`, `POSTGRES_SCHEMA_MINIMAL_MODEL_V1`; `server/adapters/postgresRuntimeEventRepository.ts`, `server/db/postgresRuntimeEventSchemaReadiness.ts`, `server/db/migrations/0005_runtime_events.sql`. Append-only events; long-term persistence, NOT live authority; Room Server stays live authority; no WebSocket change |
 | GeneratedArtifact / AI Memory DB (P5.15) | Index → GeneratedArtifact / AI Memory DB; `P5_15_GENERATED_ARTIFACT_AI_MEMORY_DB_FIRST_SLICE`, `POSTGRES_SCHEMA_MINIMAL_MODEL_V1`; `server/adapters/postgresGeneratedArtifactRepository.ts`, `server/db/postgresGeneratedArtifactSchemaReadiness.ts`, `server/db/migrations/0006_generated_artifacts_ai_memory.sql`. Stores AI outputs + curated memory; no model call / embeddings / retrieval; visibility_scope is metadata only; AI advisory, not authoritative |
 | Server ruleset versioning / soft update UX (P5.S1, contract only) | Index → Server Ruleset Versioning & Soft Update UX; `SERVER_RULESET_VERSIONING_SOFT_UPDATE_UX_V1`; `src/lib/platform/serverRulesetVersioning.ts`, `src/lib/platform/softUpdatePolicy.ts`, `src/lib/platform/serverRulesetVersioningSmoke.ts`. Types + pure helpers only — no UI/DB/runtime/permission; snapshots + soft update; never hard-refresh a dirty editor |
+| World Server + Membership + Game Systems DB (P5.16-P5.18) | Index → World Server + Membership + Game Systems DB; `P5_16_WORLD_SERVER_MEMBERSHIP_DB_FIRST_SLICE`, `PUBLIC_SURFACE_SYSTEM_AUDIT_V1`; `server/adapters/postgresWorldServerRepository.ts`, `server/db/postgresWorldServerSchemaReadiness.ts`, `server/db/migrations/0007_world_servers_membership.sql`. Seven tables (server/campaign-bindings/game-system-bindings/roles/memberships/invites/join_requests); Global Public Surface is NOT a server row; Server ≠ Game System (a server enables MULTIPLE systems, default is a non-exclusive hint); roles/membership/invite/system-bindings are metadata, NOT permission enforcement |
 | Runtime / session / log | Index → Runtime/Room Authority; `RUNTIME_EVENT_REPLAY_BOUNDARY_AUDIT_V1`; `server/services/**`, `runtimeLogLocalStore.ts` |
 | AI features | Index → AI Memory; `DOMAIN_MODEL_BOUNDARY_AUDIT_V1` (AI section) |
 
@@ -95,4 +96,6 @@ PowerShell fallback: `Select-String -Path .\src\**\* -Pattern "DATABASE_URL"`.
 | `npm run db:verify:runtime:write` | rollback-only runtime append smoke | optional |
 | `npm run db:verify:generated` | read-only generated artifact DB slice check | optional (not_configured OK) |
 | `npm run db:verify:generated:write` | rollback-only generated artifact write smoke | optional |
+| `npm run db:verify:world` | read-only world server DB slice check | optional (not_configured OK) |
+| `npm run db:verify:world:write` | rollback-only world server write smoke | optional |
 | `npm run api:verify:user` | handler contract smoke (fake repo) | no |

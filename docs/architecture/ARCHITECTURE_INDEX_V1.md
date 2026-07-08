@@ -158,6 +158,34 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Read when: building world-server ruleset versioning, advanced settings, snapshots,
   or the soft-update/route-guard UX.
 
+## World Server + Membership + Game Systems DB (P5.16-P5.18 — first slice implemented, server-only)
+- Files: `server/db/migrations/0007_world_servers_membership.sql`,
+  `server/adapters/postgresWorldServerRepository.ts`,
+  `server/db/postgresWorldServerSchemaReadiness.ts`,
+  `server/db/postgresWorldServerRepositorySmoke.ts`,
+  `server/db/postgresWorldServerRepositoryWriteSmoke.ts`,
+  `server/db/verifyPostgresWorldServer*.ts`; scripts `db:verify:world`,
+  `db:verify:world:write`; `/health` `database.worldServerSchema`.
+- Doc: `P5_16_WORLD_SERVER_MEMBERSHIP_DB_FIRST_SLICE`; relates to
+  `PUBLIC_SURFACE_SYSTEM_AUDIT_V1` and `SERVER_RULESET_VERSIONING_SOFT_UPDATE_UX_V1`.
+- Tables (7): world_servers, world_server_campaign_bindings,
+  world_server_game_system_bindings, world_server_roles, world_server_memberships,
+  world_server_invites, world_server_join_requests.
+- Don't violate: **the Global Public Surface is NOT a normal server** — no
+  main/global/default server row; a World Server is a scoped community; public entry
+  ≠ public data; **Server ≠ Game System** — a server enables MULTIPLE game systems via
+  world_server_game_system_bindings, `default_game_system_id` is a convenience hint
+  (NOT exclusivity; one-default NOT DB-enforced); `owner_id` is the canonical owner
+  (not the membership system); roles/`permissions_payload`, `membership_status`,
+  `server_visibility`, `join_policy`, `invite_code`, join requests, and game-system
+  bindings are **metadata/workflow state — NO enforcement** in this slice; campaign
+  binding does NOT change campaign/runtime authority; `default_game_system_id`/
+  `ruleset_template_id`/`current_ruleset_version_id`/`enabled_pack_version_ids` are
+  opaque forward-compatible refs (no FK); server-only (no frontend/API/email); manual
+  DDL (no runner/auto-create); write smoke rolls back.
+- Read when: touching world servers, game-system bindings, membership, roles, invites,
+  or join requests.
+
 ## GeneratedArtifact / AI Memory DB (P5.15A-D — first slice implemented, server-only)
 - Files: `server/db/migrations/0006_generated_artifacts_ai_memory.sql`,
   `server/adapters/postgresGeneratedArtifactRepository.ts`,
