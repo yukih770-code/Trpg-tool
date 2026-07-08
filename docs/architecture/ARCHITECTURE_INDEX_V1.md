@@ -186,6 +186,31 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Read when: touching world servers, game-system bindings, membership, roles, invites,
   or join requests.
 
+## Visibility / Scope / Rights DB (P5.19 — first slice implemented, server-only)
+- Files: `server/db/migrations/0008_visibility_scope_rights.sql`,
+  `server/adapters/postgresVisibilityRepository.ts`,
+  `server/db/postgresVisibilitySchemaReadiness.ts`,
+  `server/db/postgresVisibilityRepositorySmoke.ts`,
+  `server/db/postgresVisibilityRepositoryWriteSmoke.ts`,
+  `server/db/verifyPostgresVisibility*.ts`; scripts `db:verify:visibility`,
+  `db:verify:visibility:write`; `/health` `database.visibilitySchema`.
+- Doc: `P5_19_VISIBILITY_SCOPE_RIGHTS_DB_FIRST_SLICE`; relates to
+  `PUBLIC_SURFACE_SYSTEM_AUDIT_V1`.
+- Tables (3): content_rights_policies, content_visibility_records,
+  content_publication_reviews.
+- Don't violate: **metadata only — enforces nothing** (no permission/publish/
+  moderation/public-feed/AI-retrieval/AI-scope-guard); **public entry ≠ public data**;
+  the Global Public Surface is NOT a server (global_public is a scope value); public
+  flags DEFAULT FALSE, `ai_scope` DEFAULTS private_only, `visibility_scope` DEFAULTS
+  user_private; server/campaign/private content is NOT public by default; a
+  public_projection is a SEPARATE record from its private source (projection_kind) —
+  publishing never mutates the source; generic content refs
+  (content_kind/content_id/projection_kind) — NO FK fanout to content tables; rights
+  and review metadata are stored, NOT license/publish enforcement; server-only (no
+  frontend/API); manual DDL (no runner/auto-create); write smoke rolls back.
+- Read when: touching content visibility, scope, rights/license, publish review, or AI
+  scope metadata.
+
 ## GeneratedArtifact / AI Memory DB (P5.15A-D — first slice implemented, server-only)
 - Files: `server/db/migrations/0006_generated_artifacts_ai_memory.sql`,
   `server/adapters/postgresGeneratedArtifactRepository.ts`,
