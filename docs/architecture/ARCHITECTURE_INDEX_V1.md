@@ -142,6 +142,22 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   / Session Recap in this slice.
 - Read when: touching the RuntimeEvent DB.
 
+## Server Ruleset Versioning & Soft Update UX (P5.S1 — contract only)
+- Files: `src/lib/platform/serverRulesetVersioning.ts` (version/snapshot/compatibility
+  types + `classifyRulesetChange`/`summarizeRulesetCompatibility`),
+  `src/lib/platform/softUpdatePolicy.ts` (route-guard/soft-update types +
+  `shouldAutoRefreshRoute`/`createSoftUpdateNotice`/`resolveRoomEntryMismatch`),
+  `src/lib/platform/serverRulesetVersioningSmoke.ts` (`runServerRulesetVersioningSmoke`).
+- Doc: `SERVER_RULESET_VERSIONING_SOFT_UPDATE_UX_V1`.
+- Don't violate: **contract only** — no UI, no DB, no runtime, no permission, no API
+  here; advanced rules are visual/schema-driven (never code); publishing creates a
+  new server ruleset VERSION; campaigns/rooms pin SNAPSHOTS; running/preparing tables
+  are never force-upgraded; updates are SOFT (top banner) — never hard-refresh a
+  dirty editor or kick to home; auto-refresh only when safe + clean + refreshable;
+  old data/pack versions are never deleted; public entry ≠ public data.
+- Read when: building world-server ruleset versioning, advanced settings, snapshots,
+  or the soft-update/route-guard UX.
+
 ## GeneratedArtifact / AI Memory DB (P5.15A-D — first slice implemented, server-only)
 - Files: `server/db/migrations/0006_generated_artifacts_ai_memory.sql`,
   `server/adapters/postgresGeneratedArtifactRepository.ts`,

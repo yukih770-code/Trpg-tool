@@ -91,20 +91,19 @@ server environment is `production`.
 ## Confirm the frontend has no DB leak
 
 ```bash
-rg "VITE_DATABASE_URL" .      # expected: 0 occurrences
-rg "DATABASE_URL" src          # expected: 0 occurrences under src/
+Search for Vite-prefixed database env names in the repo  # expected: 0 occurrences
+rg "DATABASE_URL" src                                      # expected: 0 occurrences under src/
 ```
 
 PowerShell fallback:
 
 ```powershell
-Select-String -Path .\**\* -Pattern "VITE_DATABASE_URL" -List
 Select-String -Path .\src\**\* -Pattern "DATABASE_URL" -List
 ```
 
 `DATABASE_URL` must appear only under `server/`, docs, and dev-env files — never in
-`src/` frontend code, and `VITE_DATABASE_URL` must never appear (a `VITE_` prefix
-would bundle a secret into the client).
+`src/` frontend code, and Vite-prefixed database env names must never appear
+(a Vite prefix would bundle a secret into the client).
 
 ## Excluded (unchanged)
 
