@@ -32,6 +32,19 @@ import { useAppStore } from './store/appStore';
 type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop' | 'fanPlaza' | 'documents' | 'personalHub' | 'userProfile';
 type PlayStage = 'menu' | 'workspace';
 type System = 'D&D' | 'CoC' | 'CP';
+type EntryStage = 'launcher' | 'serverSelect' | 'serverHome' | 'platform';
+type MockWorldServerRole = 'owner' | 'admin' | 'member';
+
+type MockWorldServer = {
+  id: string;
+  name: string;
+  description: string;
+  role: MockWorldServerRole;
+  memberCount: number;
+  activeCampaigns: number;
+  enabledSystems: string[];
+  lastActive: string;
+};
 
 type PlaceholderKey =
   | 'campaigns'
@@ -81,6 +94,35 @@ const PRIMARY_NAV: { key: PlatformNavKey; labelKey?: string; label?: { zh: strin
   { key: 'fanPlaza',      labelKey: 'shell.nav.fanPlaza',      icon: Palette  },
 ];
 
+const MOCK_WORLD_SERVERS: MockWorldServer[] = [
+  {
+    id: 'server-starlit-table',
+    name: '星灯跑团会',
+    description: '奇幻、调查与赛博朋克混合的长期社群空间。',
+    role: 'owner',
+    memberCount: 8,
+    activeCampaigns: 3,
+    enabledSystems: ['DND 5e', 'COC 7e', 'Cyberpunk RED'],
+    lastActive: '刚刚',
+  },
+  {
+    id: 'server-night-archive',
+    name: '夜航档案馆',
+    description: '偏调查、悬疑和短篇战役的朋友服务器。',
+    role: 'member',
+    memberCount: 5,
+    activeCampaigns: 1,
+    enabledSystems: ['COC 7e', '通用百分骰'],
+    lastActive: '昨天',
+  },
+];
+
+const roleLabel: Record<MockWorldServerRole, string> = {
+  owner: '服主',
+  admin: '管理员',
+  member: '成员',
+};
+
 function isPlaceholderKey(value: string): value is PlaceholderKey {
   return ['campaigns', 'community', 'privateImport', 'studio', 'aiHost', 'settings'].includes(value);
 }
@@ -109,6 +151,8 @@ export default function App() {
   const [playStage, setPlayStage] = useState<PlayStage>('menu');
   const [activePlaceholder, setActivePlaceholder] = useState<PlaceholderKey>('campaigns');
   const [locale, setLocale] = useState<Locale>(readStoredLocale);
+  const [entryStage, setEntryStage] = useState<EntryStage>('launcher');
+  const [selectedServerId, setSelectedServerId] = useState<string>(MOCK_WORLD_SERVERS[0]?.id ?? '');
   const [moreOpen, setMoreOpen] = useState<boolean>(false);
   // P5.4: default profile identity = the device's local anonymous user (lazy init
   // is safe: the repository creates the user on first access, idempotently).
@@ -124,6 +168,8 @@ export default function App() {
     useState<PlayWorkspaceBackOverride | null>(null);
   const system = useAppStore((state) => state.system as System);
   const setSystem = useAppStore((state) => state.setSystem);
+  const selectedWorldServer = MOCK_WORLD_SERVERS.find((server) => server.id === selectedServerId) ?? MOCK_WORLD_SERVERS[0];
+  const canManageSelectedServer = selectedWorldServer?.role === 'owner' || selectedWorldServer?.role === 'admin';
 
   const { t } = createTranslator(locale);
 
@@ -411,12 +457,12 @@ export default function App() {
       setAppView('systemLibrary');
       return;
     }
-    // Creative Workshop has a real scaffold page; never open it as a placeholder.
+    // Creative Workshop has its own page; keep it out of the generic holding view.
     if (feature === 'workshop' || feature === 'community') {
       setAppView('workshop');
       return;
     }
-    // Fan Plaza is a platform-level scaffold page, not a placeholder.
+    // Fan Plaza has its own page; keep it out of the generic holding view.
     if (feature === 'fanPlaza') {
       setAppView('fanPlaza');
       return;
@@ -480,17 +526,57 @@ export default function App() {
       active ? 'bg-white text-[#17130f]' : 'text-white/76 hover:bg-white/10 hover:text-white'
     }`;
 
-  // Categorized settings (only Language + My Profile are live; rest reserved).
-  const SETTINGS_CATS = ['常规', '外观', '语言', '账号', '数据与备份', '媒体与存储', '跑团偏好', '安全与隐私', '帮助与反馈'];
+  // Categorized settings (only Language + My Profile are active today; server
+  // admin groups stay visible as unavailable owner/admin sections).
+  const SETTINGS_CATS = [
+    '常规',
+    '外观',
+    '语言',
+    '账号',
+    '服务器设置',
+    '成员与角色',
+    '邀请与加入申请',
+    '游戏系统',
+    '图鉴与资料包',
+    '聊天与发言',
+    '战役与房间',
+    'AI 与自动化',
+    '高级设置',
+    '数据与备份',
+    '媒体与存储',
+    '跑团偏好',
+    '安全与隐私',
+    '帮助与反馈',
+  ];
   const settingsReservedContent: Record<string, string[]> = {
     常规: ['默认首页', '默认打开系统', '启动时恢复上次工作区'],
     外观: ['深色 / 浅色 / 跟随系统', '主题皮肤', '强调色', '显示密度'],
+    服务器设置: ['服务器名称', '服务器简介', '图标 / 封面', '可见性', '默认服务器首页', '服务器公告栏'],
+    成员与角色: ['设置管理员', '成员角色', '权限矩阵', '封禁 / 黑名单', '成员可见性'],
+    邀请与加入申请: ['邀请链接', '房间码策略', '加入申请', '审批队列', '邀请过期策略'],
+    游戏系统: ['已启用游戏系统', '默认起始系统', '规则集版本', '不同战役可使用不同系统', '自定义系统入口'],
+    图鉴与资料包: ['服务器图鉴', '私有资料包', '工坊资料包', '资料包版本', '发布到服务器图鉴'],
+    聊天与发言: ['公告发布权限', '频道 / 聊天室规则', '@全体成员权限', '上传文件权限', '消息管理权限'],
+    战役与房间: ['谁可以创建战役', '谁可以创建房间', '房间可见性', '旧版本房间加入策略', '运行中房间兼容策略'],
+    'AI 与自动化': ['AI 可读取范围', 'AI 草稿确认', '自动化权限', '私有资料隔离', 'AI 操作审计'],
+    高级设置: ['服务器刷新策略', '软更新策略', '规则版本发布', '公式编辑器', '导入 / 导出', '备份与恢复', '审计日志', '危险区'],
     数据与备份: ['导出平台备份', '导入平台备份', '本地备份目录', '清理缓存'],
     媒体与存储: ['素材目录', '图片缓存', '原图保存策略', '存储占用'],
     跑团偏好: ['默认骰子设置', '默认公开 / 私密投骰', '房间显示偏好', '聊天记录保存策略'],
     安全与隐私: ['主页可见性', '收藏夹公开设置', '角色公开默认值', '局域网访问提示'],
     帮助与反馈: ['使用说明', '问题反馈', '举报 / 投诉'],
   };
+  const serverAdminSettingsCats = new Set([
+    '服务器设置',
+    '成员与角色',
+    '邀请与加入申请',
+    '游戏系统',
+    '图鉴与资料包',
+    '聊天与发言',
+    '战役与房间',
+    'AI 与自动化',
+    '高级设置',
+  ]);
   const reservedSettingsRow = (label: string) => (
     <div
       key={label}
@@ -498,8 +584,18 @@ export default function App() {
     >
       {label}
       <span className="border border-dashed border-[#2f2a22]/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#51483d]/45">
-        {t('shell.more.reserved')}
+        {locale === 'en' ? 'Unavailable' : '暂未开放'}
       </span>
+    </div>
+  );
+  const renderReservedSettingsRows = (cat: string) => (
+    <div className="flex flex-col">
+      {serverAdminSettingsCats.has(cat) && (
+        <div className="mb-3 rounded-lg border border-[#2f2a22]/12 bg-[#f7f3ea] px-3 py-2 text-xs leading-5 text-[#51483d]">
+          仅服主 / 管理员可修改。
+        </div>
+      )}
+      {(settingsReservedContent[cat] ?? []).map(reservedSettingsRow)}
     </div>
   );
   const renderSettingsCategory = (cat: string) => {
@@ -544,8 +640,8 @@ export default function App() {
           {/* Auto-follow is a future note, not a selectable language. */}
           <div className="mt-1 rounded-lg border border-dashed border-[#2f2a22]/25 px-3 py-2 text-[11px] text-[#51483d]/55">
             {isEn
-              ? 'Auto-follow language: coming later (based on browser / system language; may be inaccurate).'
-              : '语言自动跟随：后续支持（将基于浏览器 / 系统语言等信息推断，可能不准确）。'}
+              ? 'Auto language: not available yet.'
+              : '自动跟随语言：暂未开放。'}
           </div>
         </div>
       );
@@ -571,8 +667,317 @@ export default function App() {
         </div>
       );
     }
-    return <div className="flex flex-col">{(settingsReservedContent[cat] ?? []).map(reservedSettingsRow)}</div>;
+    return renderReservedSettingsRows(cat);
   };
+
+  const resetPlatformLocation = () => {
+    setAppView('home');
+    setPlayStage('menu');
+    setActivePlaceholder('campaigns');
+    setPlayWorkspaceNavigation(defaultPlayWorkspaceNavigationState);
+    setNavigationStack([]);
+    setPlayWorkspaceBackOverride(null);
+    setActiveSettingsCat(null);
+  };
+
+  const exitCurrentServer = () => {
+    setMoreOpen(false);
+    resetPlatformLocation();
+    setEntryStage('serverSelect');
+  };
+
+  const logoutToLauncher = () => {
+    setMoreOpen(false);
+    resetPlatformLocation();
+    setSelectedServerId(MOCK_WORLD_SERVERS[0]?.id ?? '');
+    setEntryStage('launcher');
+  };
+
+  if (entryStage === 'launcher') {
+    return (
+      <div className="min-h-screen bg-[#17130f] text-[#f7f3ea]">
+        <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 md:px-8">
+          <header className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-bold">
+              <Sparkles className="h-4 w-4 text-[#f5c518]" />
+              {t('shell.brand')}
+            </div>
+            <button
+              type="button"
+              onClick={() => setLocalePreference(locale === 'en' ? 'zh-CN' : 'en')}
+              className="rounded-md border border-white/15 px-3 py-1.5 text-xs font-bold text-white/80 hover:bg-white/10"
+            >
+              {locale === 'en' ? '中文' : 'English'}
+            </button>
+          </header>
+
+          <main className="grid flex-1 items-center gap-8 py-12 lg:grid-cols-[minmax(0,1fr)_24rem]">
+            <section>
+              <div className="mb-4 inline-flex rounded-full border border-[#f5c518]/25 bg-[#f5c518]/10 px-3 py-1 text-xs font-bold text-[#f5c518]">
+                {locale === 'en' ? 'TRPG Platform' : 'TRPG 平台'}
+              </div>
+              <h1 className="max-w-3xl text-4xl font-black tracking-tight md:text-6xl">
+                {locale === 'en' ? 'Log in, choose a server, then enter the platform.' : '先登录，选择服务器，再进入平台。'}
+              </h1>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-white/68">
+                {locale === 'en'
+                  ? 'Choose a server to enter your table space.'
+                  : '选择服务器，进入你的跑团空间。'}
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Button
+                  type="button"
+                  onClick={() => setEntryStage('serverSelect')}
+                  className="rounded-md bg-[#f5c518] text-[#17130f] hover:bg-[#f5c518]/90"
+                >
+                  {locale === 'en' ? 'Log in and continue' : '登录并继续'}
+                </Button>
+                <button
+                  type="button"
+                  disabled
+                  className="rounded-md border border-white/15 px-4 py-2 text-sm font-bold text-white/45"
+                >
+                  {locale === 'en' ? 'Register unavailable' : '注册暂未开放'}
+                </button>
+              </div>
+            </section>
+
+            <aside className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 shadow-2xl">
+              <div className="text-xs font-bold uppercase tracking-widest text-white/50">
+                {locale === 'en' ? 'Account' : '账号'}
+              </div>
+              <div className="mt-4 space-y-3 text-sm leading-6 text-white/70">
+                <p>{locale === 'en' ? 'Account system is not open yet.' : '账号系统暂未开放。'}</p>
+                <p>{locale === 'en' ? 'Continue to choose a server.' : '可先进入服务器选择。'}</p>
+              </div>
+            </aside>
+          </main>
+        </div>
+        <Toaster />
+      </div>
+    );
+  }
+
+  if (entryStage === 'serverSelect') {
+    return (
+      <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
+        <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 md:px-8">
+          <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
+                {locale === 'en' ? 'Server workspace' : '服务器工作台'}
+              </div>
+              <h1 className="mt-1 text-3xl font-black">
+                {locale === 'en' ? 'Choose a server' : '选择服务器'}
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#51483d]">
+                {locale === 'en'
+                  ? 'Your servers appear here. Select one to continue.'
+                  : '你的服务器会出现在这里。选择一个继续。'}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setEntryStage('launcher')}
+                className="w-fit rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm font-bold text-[#51483d] hover:bg-[#2f2a22]/5"
+              >
+                {locale === 'en' ? 'Back to launcher' : '返回登录器'}
+              </button>
+              <button
+                type="button"
+                onClick={logoutToLauncher}
+                className="w-fit rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-bold text-[#58180d] hover:bg-[#fff8e6]"
+              >
+                {locale === 'en' ? 'Log out' : '退出登录'}
+              </button>
+            </div>
+          </header>
+
+          <section className="grid gap-3 md:grid-cols-2">
+            {MOCK_WORLD_SERVERS.map((server) => (
+              <button
+                key={server.id}
+                type="button"
+                onClick={() => {
+                  setSelectedServerId(server.id);
+                  setEntryStage('serverHome');
+                }}
+                className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 text-left shadow-sm transition hover:border-[#58180d]/35 hover:bg-[#fff8e6]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold">{server.name}</h2>
+                    <p className="mt-2 text-sm leading-6 text-[#51483d]">{server.description}</p>
+                  </div>
+                  <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1 text-[11px] font-bold text-[#51483d]">
+                    {roleLabel[server.role]}
+                  </span>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold text-[#51483d]">
+                  <span className="rounded-full bg-[#2f2a22]/6 px-2.5 py-1">{server.memberCount} 名成员</span>
+                  <span className="rounded-full bg-[#2f2a22]/6 px-2.5 py-1">{server.activeCampaigns} 个战役</span>
+                  <span className="rounded-full bg-[#2f2a22]/6 px-2.5 py-1">最近：{server.lastActive}</span>
+                </div>
+              </button>
+            ))}
+          </section>
+
+          <section className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/65 p-5">
+              <h2 className="text-lg font-bold">{locale === 'en' ? 'Create server' : '创建服务器'}</h2>
+              <p className="mt-2 text-sm leading-6 text-[#51483d]">
+                {locale === 'en'
+                  ? 'Start a new server space.'
+                  : '创建一个新的服务器空间。'}
+              </p>
+              <Button
+                type="button"
+                onClick={() => {
+                  setSelectedServerId(MOCK_WORLD_SERVERS[0].id);
+                  setEntryStage('serverHome');
+                }}
+                className="mt-4 rounded-md"
+              >
+                {locale === 'en' ? 'Create server' : '创建服务器'}
+              </Button>
+            </div>
+            <div className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/65 p-5">
+              <h2 className="text-lg font-bold">{locale === 'en' ? 'Join server' : '加入服务器'}</h2>
+              <p className="mt-2 text-sm leading-6 text-[#51483d]">
+                {locale === 'en'
+                  ? 'Invite code and application flow.'
+                  : '通过邀请码或申请加入。'}
+              </p>
+              <button
+                type="button"
+                disabled
+                className="mt-4 rounded-md border border-[#2f2a22]/15 px-4 py-2 text-sm font-bold text-[#51483d]/50"
+              >
+                {locale === 'en' ? 'Join unavailable' : '加入暂未开放'}
+              </button>
+            </div>
+          </section>
+        </main>
+        <Toaster />
+      </div>
+    );
+  }
+
+  if (entryStage === 'serverHome' && selectedWorldServer) {
+    return (
+      <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
+        <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 md:px-8">
+          <header className="flex flex-col gap-4 rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
+                {locale === 'en' ? 'Server home' : '服务器主页'}
+              </div>
+              <h1 className="mt-1 text-3xl font-black">{selectedWorldServer.name}</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#51483d]">{selectedWorldServer.description}</p>
+              <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-[#51483d]">
+                <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">我的身份：{roleLabel[selectedWorldServer.role]}</span>
+                <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">{selectedWorldServer.memberCount} 名成员</span>
+                <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">{selectedWorldServer.activeCampaigns} 个进行中战役</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={exitCurrentServer}
+                className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm font-bold text-[#51483d] hover:bg-[#2f2a22]/5"
+              >
+                {locale === 'en' ? 'Exit server' : '退出当前服务器'}
+              </button>
+              <button
+                type="button"
+                onClick={logoutToLauncher}
+                className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-bold text-[#58180d] hover:bg-[#fff8e6]"
+              >
+                {locale === 'en' ? 'Log out' : '退出登录'}
+              </button>
+              {canManageSelectedServer && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEntryStage('platform');
+                    setAppView('placeholder');
+                    setActivePlaceholder('settings');
+                    setActiveSettingsCat('服务器设置');
+                  }}
+                  className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm font-bold text-[#51483d] hover:bg-[#2f2a22]/5"
+                >
+                  {locale === 'en' ? 'Server settings' : '服务器设置'}
+                </button>
+              )}
+              <Button
+                type="button"
+                onClick={() => {
+                  setEntryStage('platform');
+                  setAppView('home');
+                  setNavigationStack([]);
+                }}
+                className="rounded-md"
+              >
+                {locale === 'en' ? 'Enter platform home' : '进入平台主页'}
+              </Button>
+            </div>
+          </header>
+
+          <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+            <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
+                {locale === 'en' ? 'Server bulletin' : '服务器公告'}
+              </div>
+              <h2 className="mt-2 text-2xl font-bold">{locale === 'en' ? 'Welcome back to the table.' : '欢迎回到集会所。'}</h2>
+              <p className="mt-2 text-sm leading-6 text-[#51483d]">
+                {locale === 'en'
+                  ? 'This server home is the place for announcements, campaigns, rooms, members, packs, and server-scoped activity.'
+                  : '服务器主页承载公告、战役、房间、成员、资料包和服务器内活动。'}
+              </p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {['集会所', '战役', '房间', '成员', '图鉴 / 资料包', '服务器公告'].map((label) => (
+                  <div key={label} className="rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-4">
+                    <div className="text-sm font-bold">{label}</div>
+                    <div className="mt-1 text-xs text-[#51483d]">服务器内入口</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <aside className="flex flex-col gap-4">
+              <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
+                  {locale === 'en' ? 'Enabled game systems' : '已启用游戏系统'}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {selectedWorldServer.enabledSystems.map((systemName) => (
+                    <span key={systemName} className="rounded-full bg-[#2f2a22]/8 px-3 py-1 text-xs font-bold text-[#51483d]">
+                      {systemName}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-3 text-xs leading-5 text-[#51483d]">
+                  起始系统不是服务器的唯一规则。不同战役之后可以使用不同系统或资料包。
+                </p>
+              </div>
+              <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
+                  {locale === 'en' ? 'Server settings' : '服务器设置'}
+                </div>
+                <p className="mt-2 text-sm leading-6 text-[#51483d]">
+                  {canManageSelectedServer
+                    ? '你是服主 / 管理员。完整服务器设置在“服务器设置 → 高级设置”等分类中。'
+                    : '你是普通成员。完整服务器设置不会对普通成员开放。'}
+                </p>
+              </div>
+            </aside>
+          </section>
+        </main>
+        <Toaster />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
@@ -940,20 +1345,24 @@ export default function App() {
 
               <div className="my-1 border-t border-[#2f2a22]/10" />
 
-              {/* 退出登录 (reserved — no real auth) */}
               <button
                 type="button"
                 role="menuitem"
-                disabled
-                className="flex items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm text-[#51483d]/55"
+                onClick={exitCurrentServer}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-[#17130f] hover:bg-[#2f2a22]/8"
               >
-                <span className="flex items-center gap-2">
-                  <ArrowLeft className="h-4 w-4 shrink-0" />
-                  {locale === 'en' ? 'Log out' : '退出登录'}
-                </span>
-                <span className="border border-dashed border-[#2f2a22]/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#51483d]/50">
-                  {t('shell.more.reserved')}
-                </span>
+                <HomeIcon className="h-4 w-4 shrink-0" />
+                {locale === 'en' ? 'Exit current server' : '退出当前服务器'}
+              </button>
+
+              <button
+                type="button"
+                role="menuitem"
+                onClick={logoutToLauncher}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-[#58180d] hover:bg-[#fff8e6]"
+              >
+                <ArrowLeft className="h-4 w-4 shrink-0" />
+                {locale === 'en' ? 'Log out' : '退出登录'}
               </button>
             </div>
           </div>

@@ -1,6 +1,5 @@
 // AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V2
-import { BookOpen, ChevronRight, Library, Palette, Play, Sparkles, Upload } from 'lucide-react';
-import { Badge } from '../../components/ui/badge';
+import { BookOpen, ChevronRight, Library, Megaphone, Palette, Play, Sparkles } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { createTranslator, type Locale } from '../i18n';
 import { useAppStore } from '../store/appStore';
@@ -84,12 +83,6 @@ const pinnedEntries: {
   },
 ];
 
-const platformStatusTagKeys = [
-  'home.platformStatus.tags.devMode',
-  'home.platformStatus.tags.scaffoldVisible',
-  'home.platformStatus.tags.interfaceReserved',
-] as const;
-
 export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
   const { t } = createTranslator(locale);
   const system  = useAppStore((state) => state.system as System);
@@ -113,13 +106,58 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
 
   return (
     <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
-      <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-8 md:px-8">
-
-        {/* ── Compact Hero ───────────────────────────────────────────── */}
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{t('home.hero.title')}</h1>
-          <p className="mt-1.5 text-sm text-[#51483d]">{t('home.hero.subtitle')}</p>
+      <div className="border-b border-white/10 bg-[#17130f] text-[#f7f3ea]">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 py-3 text-sm md:flex-row md:items-center md:justify-between md:px-8">
+          <div className="flex items-start gap-2">
+            <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-[#f5c518]" />
+            <span className="leading-5">
+              {locale === 'en'
+                ? 'Platform notice: public entry does not mean public data. Characters, campaigns, and drafts stay private by default.'
+                : '平台公告：公共入口不等于公开数据。角色、战役和草稿默认保持私有。'}
+            </span>
+          </div>
+          <button
+            type="button"
+            className="w-fit rounded-md border border-white/20 px-3 py-1.5 text-xs font-bold text-white/90 transition hover:bg-white/10"
+          >
+            {locale === 'en' ? 'View details →' : '查看详情 →'}
+          </button>
         </div>
+      </div>
+
+      <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-8 md:px-8">
+        <section
+          aria-label={locale === 'en' ? 'Official announcements and events' : '官方公告与活动'}
+          className="relative left-1/2 w-screen -translate-x-1/2 px-4 md:px-8"
+        >
+          <div className="mx-auto max-w-7xl rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm md:p-6">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div className="max-w-2xl">
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
+                  {locale === 'en' ? 'Official announcements' : '官方公告与活动'}
+                </div>
+                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+                  {locale === 'en' ? 'Updates, events, and recommended content' : '平台更新、活动与推荐内容'}
+                </h1>
+                <p className="mt-2 text-sm leading-6 text-[#51483d]">
+                  {locale === 'en'
+                    ? 'Platform announcements, release notes, events, and featured content.'
+                    : '平台公告、更新日志、活动推荐与精选内容。'}
+                </p>
+              </div>
+              <div className="grid min-w-0 gap-2 text-xs text-[#51483d] sm:grid-cols-3 md:w-[28rem]">
+                {(locale === 'en'
+                  ? ['Release notes', 'Platform event', 'Featured slot']
+                  : ['更新日志', '平台活动', '推荐 / 广告位']
+                ).map((label) => (
+                  <div key={label} className="rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] px-3 py-3 font-semibold">
+                    {label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* ── Section 1: 继续上次 ────────────────────────────────────── */}
         <section aria-label={t('home.resume.sectionTitle')}>
@@ -221,36 +259,6 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
                 </button>
               );
             })}
-          </div>
-        </section>
-
-        {/* ── Section 4: 平台状态摘要 ───────────────────────────────── */}
-        <section aria-label={t('home.platformStatus.sectionTitle')}>
-          <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
-            {t('home.platformStatus.sectionTitle')}
-          </h2>
-          <div className="flex flex-wrap items-center gap-2">
-            {platformStatusTagKeys.map((key) => (
-              <Badge
-                key={key}
-                variant="outline"
-                className="rounded-md border-[#2f2a22]/20 text-[10px] font-medium text-[#51483d]"
-              >
-                {t(key)}
-              </Badge>
-            ))}
-            <button
-              type="button"
-              disabled
-              title={t('home.platformStatus.localImportReserved')}
-              className="flex cursor-not-allowed items-center gap-1.5 rounded-md border border-[#2f2a22]/15 bg-white/50 px-3 py-1.5 text-[11px] text-[#51483d] opacity-75 sm:ml-auto"
-            >
-              <Upload className="h-3 w-3" />
-              {t('home.platformStatus.privateImport')}
-            </button>
-            <span className="text-[11px] text-[#7a6f63]">
-              {t('home.platformStatus.localImportReserved')}
-            </span>
           </div>
         </section>
 
