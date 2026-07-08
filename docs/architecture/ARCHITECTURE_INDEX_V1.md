@@ -142,11 +142,26 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   / Session Recap in this slice.
 - Read when: touching the RuntimeEvent DB.
 
-## AI Memory / GeneratedArtifact (future)
-- Docs: `DOMAIN_MODEL_BOUNDARY_AUDIT_V1` (AI section), `campaign-actor-instance-boundary`.
-- Don't violate: AI is advisory only — never authoritative, never appends
-  authoritative events, artifacts carry `sourceRefs` + human confirmation.
-- Read when: adding any AI feature.
+## GeneratedArtifact / AI Memory DB (P5.15A-D — first slice implemented, server-only)
+- Files: `server/db/migrations/0006_generated_artifacts_ai_memory.sql`,
+  `server/adapters/postgresGeneratedArtifactRepository.ts`,
+  `server/db/postgresGeneratedArtifactSchemaReadiness.ts`,
+  `server/db/postgresGeneratedArtifactRepositorySmoke.ts`,
+  `server/db/postgresGeneratedArtifactRepositoryWriteSmoke.ts`,
+  `server/db/verifyPostgresGeneratedArtifact*.ts`; scripts `db:verify:generated`,
+  `db:verify:generated:write`; `/health` `database.generatedArtifactSchema`.
+- Docs: `P5_15_GENERATED_ARTIFACT_AI_MEMORY_DB_FIRST_SLICE`, `POSTGRES_SCHEMA_MINIMAL_MODEL_V1`.
+- Tables: `generated_artifacts` (AI outputs, curated), `ai_memory_entries` (curated
+  memory), `ai_context_sources` (append-only provenance links).
+- Don't violate: **stores outputs/memory only** — no model call, no embeddings /
+  vector search, no AI context retrieval, no scope-guard enforcement in this slice;
+  `visibility_scope`/`memory_scope` are metadata only (defaults user_private /
+  campaign; AI memory never public by default); AI is advisory (never authoritative
+  events); RuntimeEvent stays append-only + Room Server stays live authority;
+  context sources are append-only; server-only (no frontend); manual DDL (no runner/
+  auto-create); write smoke rolls back.
+- Read when: adding any AI persistence / memory / recap feature.
+- Prior context: `DOMAIN_MODEL_BOUNDARY_AUDIT_V1` (AI section), `campaign-actor-instance-boundary`.
 
 ## Campaign DB (P5.11A-C — first slice implemented, server-only)
 - Files: `server/db/migrations/0002_campaigns.sql`,

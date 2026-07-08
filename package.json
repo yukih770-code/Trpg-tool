@@ -19,6 +19,8 @@
     "db:verify:asset:write": "tsx server/db/verifyPostgresAssetWriteSmoke.ts",
     "db:verify:runtime": "tsx server/db/verifyPostgresRuntimeEventSlice.ts",
     "db:verify:runtime:write": "tsx server/db/verifyPostgresRuntimeEventWriteSmoke.ts",
+    "db:verify:generated": "tsx server/db/verifyPostgresGeneratedArtifactSlice.ts",
+    "db:verify:generated:write": "tsx server/db/verifyPostgresGeneratedArtifactWriteSmoke.ts",
     "api:verify:user": "tsx server/api/verifyUserApiHandlers.ts",
     "server:dev": "tsx server/room-server.ts",
     "server:build": "tsc -p server/tsconfig.build.json",

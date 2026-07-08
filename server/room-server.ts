@@ -50,6 +50,10 @@ import {
   checkPostgresRuntimeEventSchemaReadiness,
   type PostgresRuntimeEventSchemaReadinessResult,
 } from './db/postgresRuntimeEventSchemaReadiness.js';
+import {
+  checkPostgresGeneratedArtifactSchemaReadiness,
+  type PostgresGeneratedArtifactSchemaReadinessResult,
+} from './db/postgresGeneratedArtifactSchemaReadiness.js';
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
 import { createRoomSocketServer } from './transport/roomSocketServer.js';
 import type { AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol/room-protocol.js';
@@ -139,6 +143,12 @@ app.get('/health', async (_req, res) => {
       : database.configured === false
         ? { status: 'not_configured' }
         : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
+  const generatedArtifactSchema: PostgresGeneratedArtifactSchemaReadinessResult =
+    database.status === 'ok'
+      ? await checkPostgresGeneratedArtifactSchemaReadiness()
+      : database.configured === false
+        ? { status: 'not_configured' }
+        : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
   res.json({
     ok: true,
     service: 'room-server',
@@ -156,6 +166,7 @@ app.get('/health', async (_req, res) => {
       actorSchema,
       assetSchema,
       runtimeEventSchema,
+      generatedArtifactSchema,
     },
   });
 });
