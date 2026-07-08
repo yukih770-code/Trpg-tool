@@ -82,6 +82,26 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   casually.
 - Read when: touching runtime, room, or the event log.
 
+## Actor / Character Vault DB (P5.12A-C — first slice implemented, server-only)
+- Files: `server/db/migrations/0003_actors.sql`,
+  `server/adapters/postgresActorRepository.ts`,
+  `server/db/postgresActorSchemaReadiness.ts`,
+  `server/db/postgresActorRepositorySmoke.ts`,
+  `server/db/postgresActorRepositoryWriteSmoke.ts`,
+  `server/db/verifyPostgresActor*.ts`; scripts `db:verify:actor`,
+  `db:verify:actor:write`; `/health` `database.actorSchema`.
+- Docs: `POSTGRES_ACTOR_REPOSITORY_FIRST_SLICE_V1`,
+  `P5_12_ACTOR_DB_FIRST_SLICE_READINESS_V1`, `POSTGRES_SCHEMA_MINIMAL_MODEL_V1`.
+- Migration source: `actorVaultOwnership.ts` (local actor ownership registry,
+  keyed `${systemId}:${actorId}`).
+- Don't violate: `actor_id` is the global cloud id; `local_actor_id` is the
+  source-origin id (not globally unique) — origin key is
+  `(owner_id, system_id, local_actor_id)`; full sheet lives in `actor_payload`
+  JSONB (do not relationalize per-system yet); this is the Character Vault, NOT
+  the Campaign Actor Instance and NOT live runtime HP/SAN authority; server-only
+  (no frontend sync); manual DDL (no runner/auto-create); write smoke rolls back.
+- Read when: touching the Actor / Character Vault DB.
+
 ## AI Memory / GeneratedArtifact (future)
 - Docs: `DOMAIN_MODEL_BOUNDARY_AUDIT_V1` (AI section), `campaign-actor-instance-boundary`.
 - Don't violate: AI is advisory only — never authoritative, never appends
