@@ -26,6 +26,7 @@
     "db:verify:visibility": "tsx server/db/verifyPostgresVisibilitySlice.ts",
     "db:verify:visibility:write": "tsx server/db/verifyPostgresVisibilityWriteSmoke.ts",
     "policy:verify:permission": "tsx server/policy/verifyEffectivePermissionResolver.ts",
+    "policy:verify:ai-scope": "tsx server/policy/verifyAiContextScopeGuard.ts",
     "api:verify:user": "tsx server/api/verifyUserApiHandlers.ts",
     "server:dev": "tsx server/room-server.ts",
     "server:build": "tsc -p server/tsconfig.build.json",

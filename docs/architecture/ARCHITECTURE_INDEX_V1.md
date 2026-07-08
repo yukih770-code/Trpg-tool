@@ -186,6 +186,24 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Read when: touching world servers, game-system bindings, membership, roles, invites,
   or join requests.
 
+## AI Context Scope Guard (P5.21 — contract only, pure backend policy)
+- Files: `server/policy/aiContextScopeGuard.ts` (types + `filterAiContextCandidates`
+  / `canIncludeAiContextCandidate` / `redactDeniedAiContextCandidate`, reuses P5.20
+  `canUseContentInAiContext`), `server/policy/aiContextScopeGuardSmoke.ts`
+  (`runAiContextScopeGuardSmoke`), `server/policy/verifyAiContextScopeGuard.ts`; script
+  `policy:verify:ai-scope`.
+- Doc: `P5_21_AI_CONTEXT_SCOPE_GUARD_CONTRACT`; builds on the P5.20 resolver.
+- Don't violate: **pure contract, not enforcement** — no DB, no HTTP, no React, no AI
+  model, no retrieval, no vector search, no network; **AI must not bypass visibility or
+  rights**; deny by default; AI disabled/private by default; **denied items are
+  redacted — NEVER carry body or summary**; unauthenticated AI context limited to
+  approved/clean/active public; server/campaign content must match request scope;
+  moderation-hidden/removed and archived excluded except moderation purpose + moderator;
+  public fallback must be explicit; frontend hints are NOT security — final enforcement
+  is a FUTURE AI Gateway preflight that CALLS this guard.
+- Read when: building AI retrieval, the AI Gateway, recap/NPC/rules/assistant features,
+  or any code that assembles an AI context window.
+
 ## Effective Permission Resolver (P5.20 — contract only, pure backend policy)
 - Files: `server/policy/effectivePermissionResolver.ts` (types + deterministic
   resolver + `canViewContent`/`canEditContent`/`canPublishContent`/
