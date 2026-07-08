@@ -102,6 +102,27 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   (no frontend sync); manual DDL (no runner/auto-create); write smoke rolls back.
 - Read when: touching the Actor / Character Vault DB.
 
+## Asset / Media Metadata DB (P5.13A-D — first slice implemented, server-only)
+- Files: `server/db/migrations/0004_asset_metadata.sql`,
+  `server/adapters/postgresAssetRepository.ts`,
+  `server/db/postgresAssetSchemaReadiness.ts`,
+  `server/db/postgresAssetRepositorySmoke.ts`,
+  `server/db/postgresAssetRepositoryWriteSmoke.ts`,
+  `server/db/verifyPostgresAsset*.ts`; scripts `db:verify:asset`,
+  `db:verify:asset:write`; `/health` `database.assetSchema`.
+- Docs: `POSTGRES_ASSET_REPOSITORY_FIRST_SLICE_V1`,
+  `P5_13_ASSET_DB_FIRST_SLICE_READINESS_V1`, `POSTGRES_SCHEMA_MINIMAL_MODEL_V1`
+  §3.8/§3.9/§10.
+- Shape source: `src/lib/architecture/mediaAsset.ts` (local MediaAsset metadata +
+  storage-ref model — this is the cloud counterpart).
+- Don't violate: **metadata only — blobs NEVER in Postgres**; `object_storage_refs`
+  is a vendor-neutral pointer (no upload/download/signed-URL/provider SDK/creds);
+  `external_url` covers today's URL-referenced assets (storage_ref_id NULL);
+  `owner_id` is the asset owner, `campaign_id` is an optional association (NOT a
+  permission model); server-only (no frontend sync); manual DDL (no runner/
+  auto-create); write smoke rolls back; not runtime map authority.
+- Read when: touching the Asset / Media metadata DB.
+
 ## AI Memory / GeneratedArtifact (future)
 - Docs: `DOMAIN_MODEL_BOUNDARY_AUDIT_V1` (AI section), `campaign-actor-instance-boundary`.
 - Don't violate: AI is advisory only — never authoritative, never appends

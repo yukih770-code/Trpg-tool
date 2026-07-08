@@ -15,6 +15,8 @@
     "db:verify:campaign:write": "tsx server/db/verifyPostgresCampaignWriteSmoke.ts",
     "db:verify:actor": "tsx server/db/verifyPostgresActorSlice.ts",
     "db:verify:actor:write": "tsx server/db/verifyPostgresActorWriteSmoke.ts",
+    "db:verify:asset": "tsx server/db/verifyPostgresAssetSlice.ts",
+    "db:verify:asset:write": "tsx server/db/verifyPostgresAssetWriteSmoke.ts",
     "api:verify:user": "tsx server/api/verifyUserApiHandlers.ts",
     "server:dev": "tsx server/room-server.ts",
     "server:build": "tsc -p server/tsconfig.build.json",

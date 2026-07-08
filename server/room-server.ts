@@ -42,6 +42,10 @@ import {
   checkPostgresActorSchemaReadiness,
   type PostgresActorSchemaReadinessResult,
 } from './db/postgresActorSchemaReadiness.js';
+import {
+  checkPostgresAssetSchemaReadiness,
+  type PostgresAssetSchemaReadinessResult,
+} from './db/postgresAssetSchemaReadiness.js';
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
 import { createRoomSocketServer } from './transport/roomSocketServer.js';
 import type { AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol/room-protocol.js';
@@ -119,6 +123,12 @@ app.get('/health', async (_req, res) => {
       : database.configured === false
         ? { status: 'not_configured' }
         : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
+  const assetSchema: PostgresAssetSchemaReadinessResult =
+    database.status === 'ok'
+      ? await checkPostgresAssetSchemaReadiness()
+      : database.configured === false
+        ? { status: 'not_configured' }
+        : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
   res.json({
     ok: true,
     service: 'room-server',
@@ -134,6 +144,7 @@ app.get('/health', async (_req, res) => {
       schema,
       campaignSchema,
       actorSchema,
+      assetSchema,
     },
   });
 });

@@ -72,6 +72,7 @@ PowerShell fallback: `Select-String -Path .\src\**\* -Pattern "DATABASE_URL"`.
 | User API | Index → User API Boundary; `POSTGRES_USER_API_BOUNDARY_V1`, `POSTGRES_USER_DEV_API_VERIFICATION_V1`; `server/api/**` |
 | Campaign DB (P5.11) | Index → Campaign DB; `POSTGRES_CAMPAIGN_REPOSITORY_FIRST_SLICE_V1`, `P5_11_CAMPAIGN_DB_FIRST_SLICE_READINESS_V1`, `POSTGRES_SCHEMA_MINIMAL_MODEL_V1` §3.4; `server/adapters/postgresCampaignRepository.ts`, `server/db/postgresCampaignSchemaReadiness.ts`, `server/db/migrations/0002_campaigns.sql`; `campaignOwnership.ts` (migration source) |
 | Actor / Character Vault DB (P5.12) | Index → Actor / Character Vault DB; `POSTGRES_ACTOR_REPOSITORY_FIRST_SLICE_V1`, `P5_12_ACTOR_DB_FIRST_SLICE_READINESS_V1`, `POSTGRES_SCHEMA_MINIMAL_MODEL_V1`; `server/adapters/postgresActorRepository.ts`, `server/db/postgresActorSchemaReadiness.ts`, `server/db/migrations/0003_actors.sql`; `actorVaultOwnership.ts` + `actorVaultRepositoryBridge.ts` (migration source / read shape) |
+| Asset / Media Metadata DB (P5.13) | Index → Asset / Media Metadata DB; `POSTGRES_ASSET_REPOSITORY_FIRST_SLICE_V1`, `P5_13_ASSET_DB_FIRST_SLICE_READINESS_V1`, `POSTGRES_SCHEMA_MINIMAL_MODEL_V1` §3.8/§3.9; `server/adapters/postgresAssetRepository.ts`, `server/db/postgresAssetSchemaReadiness.ts`, `server/db/migrations/0004_asset_metadata.sql`; `src/lib/architecture/mediaAsset.ts` (metadata/storage-ref shape). Metadata only — blobs never in Postgres |
 | Runtime / session / log | Index → Runtime/Room Authority; `RUNTIME_EVENT_REPLAY_BOUNDARY_AUDIT_V1`; `server/services/**`, `runtimeLogLocalStore.ts` |
 | AI features | Index → AI Memory; `DOMAIN_MODEL_BOUNDARY_AUDIT_V1` (AI section) |
 
@@ -85,4 +86,6 @@ PowerShell fallback: `Select-String -Path .\src\**\* -Pattern "DATABASE_URL"`.
 | `npm run db:verify:campaign:write` | rollback-only campaign write smoke | optional |
 | `npm run db:verify:actor` | read-only actor DB slice check | optional (not_configured OK) |
 | `npm run db:verify:actor:write` | rollback-only actor write smoke | optional |
+| `npm run db:verify:asset` | read-only asset DB slice check | optional (not_configured OK) |
+| `npm run db:verify:asset:write` | rollback-only asset write smoke | optional |
 | `npm run api:verify:user` | handler contract smoke (fake repo) | no |
