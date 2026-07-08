@@ -46,6 +46,10 @@ import {
   checkPostgresAssetSchemaReadiness,
   type PostgresAssetSchemaReadinessResult,
 } from './db/postgresAssetSchemaReadiness.js';
+import {
+  checkPostgresRuntimeEventSchemaReadiness,
+  type PostgresRuntimeEventSchemaReadinessResult,
+} from './db/postgresRuntimeEventSchemaReadiness.js';
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
 import { createRoomSocketServer } from './transport/roomSocketServer.js';
 import type { AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol/room-protocol.js';
@@ -129,6 +133,12 @@ app.get('/health', async (_req, res) => {
       : database.configured === false
         ? { status: 'not_configured' }
         : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
+  const runtimeEventSchema: PostgresRuntimeEventSchemaReadinessResult =
+    database.status === 'ok'
+      ? await checkPostgresRuntimeEventSchemaReadiness()
+      : database.configured === false
+        ? { status: 'not_configured' }
+        : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
   res.json({
     ok: true,
     service: 'room-server',
@@ -145,6 +155,7 @@ app.get('/health', async (_req, res) => {
       campaignSchema,
       actorSchema,
       assetSchema,
+      runtimeEventSchema,
     },
   });
 });

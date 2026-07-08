@@ -123,6 +123,25 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   auto-create); write smoke rolls back; not runtime map authority.
 - Read when: touching the Asset / Media metadata DB.
 
+## RuntimeEvent DB (P5.14A-D — first slice implemented, server-only)
+- Files: `server/db/migrations/0005_runtime_events.sql`,
+  `server/adapters/postgresRuntimeEventRepository.ts`,
+  `server/db/postgresRuntimeEventSchemaReadiness.ts`,
+  `server/db/postgresRuntimeEventRepositorySmoke.ts`,
+  `server/db/postgresRuntimeEventRepositoryWriteSmoke.ts`,
+  `server/db/verifyPostgresRuntimeEvent*.ts`; scripts `db:verify:runtime`,
+  `db:verify:runtime:write`; `/health` `database.runtimeEventSchema`.
+- Docs: `P5_14_RUNTIME_EVENT_DB_FIRST_SLICE`, `POSTGRES_SCHEMA_MINIMAL_MODEL_V1`.
+- Don't violate: **long-term persistence, NOT live authority** — the Room Server
+  keeps live runtime authority; not wired to the WebSocket protocol; `runtime_events`
+  is **append-only** (no updated_at/archived_at, no UPDATE/DELETE); corrections/
+  tombstones are future event rows (`caused_by_event_id`); `seq` is per-session
+  monotonic allocated transactionally; reads use afterSeq cursor (never OFFSET);
+  `idempotency_key` de-dupes appends; server-only (no frontend sync); manual DDL
+  (no runner/auto-create); write smoke rolls back; no AI Memory / GeneratedArtifact
+  / Session Recap in this slice.
+- Read when: touching the RuntimeEvent DB.
+
 ## AI Memory / GeneratedArtifact (future)
 - Docs: `DOMAIN_MODEL_BOUNDARY_AUDIT_V1` (AI section), `campaign-actor-instance-boundary`.
 - Don't violate: AI is advisory only — never authoritative, never appends
