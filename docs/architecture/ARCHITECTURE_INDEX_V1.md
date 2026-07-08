@@ -186,6 +186,26 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Read when: touching world servers, game-system bindings, membership, roles, invites,
   or join requests.
 
+## Effective Permission Resolver (P5.20 — contract only, pure backend policy)
+- Files: `server/policy/effectivePermissionResolver.ts` (types + deterministic
+  resolver + `canViewContent`/`canEditContent`/`canPublishContent`/
+  `canUseContentInAiContext`/`canManageWorldServer`),
+  `server/policy/effectivePermissionResolverSmoke.ts`
+  (`runEffectivePermissionResolverSmoke`),
+  `server/policy/verifyEffectivePermissionResolver.ts`; script
+  `policy:verify:permission`.
+- Doc: `P5_20_EFFECTIVE_PERMISSION_RESOLVER_CONTRACT`; interprets P5.19 metadata.
+- Don't violate: **pure contract, not enforcement** — no DB, no HTTP/Express, no
+  React, no AI, no network; deny by default / private by default / AI disabled-or-
+  private by default; public entry ≠ public data; Global Public Surface is not a
+  server; visibility must be interpreted before access, rights before public publish,
+  review/moderation before public-feed exposure, ai_scope before AI retrieval;
+  frontend hints are NOT security — final enforcement is a FUTURE server-side API
+  guard that CALLS this resolver; custom permissions_payload is NOT interpreted yet
+  (placeholder returns false).
+- Read when: building API guards, the AI Context Scope Guard, publish/moderation
+  gating, or any access decision over P5.19 metadata.
+
 ## Visibility / Scope / Rights DB (P5.19 — first slice implemented, server-only)
 - Files: `server/db/migrations/0008_visibility_scope_rights.sql`,
   `server/adapters/postgresVisibilityRepository.ts`,
