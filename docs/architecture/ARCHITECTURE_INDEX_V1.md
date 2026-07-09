@@ -186,6 +186,27 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Read when: touching world servers, game-system bindings, membership, roles, invites,
   or join requests.
 
+## AI Context Retrieval Safety Pipeline (P5.22-P5.24 — contract only, pure backend policy)
+- Files: `server/policy/aiContextSourceRegistry.ts` (16 source families + body/join/scope
+  policies), `server/policy/aiContextRetrievalPreflight.ts`
+  (`buildAiContextRetrievalPreflight`/`evaluateAiRetrievalSourceRequest`/
+  `normalizeAiContextCandidateMetadata`), `server/policy/aiContextPackBuilder.ts`
+  (`buildAiContextPack` reuses P5.21 guard + manifest + audit record),
+  `server/policy/aiContextRetrievalPipelineSmoke.ts`,
+  `server/policy/verifyAiContextRetrievalPipeline.ts`; script `policy:verify:ai-retrieval`.
+- Doc: `P5_22_AI_CONTEXT_RETRIEVAL_SAFETY_PIPELINE_CONTRACT`; builds on P5.20/P5.21.
+- Don't violate: **pure contract, not enforcement** — no DB, no model, no retrieval
+  adapters, no embeddings, no API, no frontend, no runtime; deny source by default;
+  unknown source denied; server sources need worldServerId, campaign sources need
+  campaignId; visibility join required for risky sources, rights join for
+  public/licensable sources; body_never/metadata_only forbid body fetch; **preflight is
+  never sufficient — every candidate still passes the P5.21 guard after fetch**; context
+  pack contains ONLY allowed items; **denied source plans / denied items / audit records
+  carry NO body or summary**; public fallback must be explicit; final enforcement is a
+  FUTURE AI Gateway that CALLS this pipeline.
+- Read when: building AI retrieval, the AI Gateway, retrieval adapters, source tracking,
+  or context-pack assembly.
+
 ## AI Context Scope Guard (P5.21 — contract only, pure backend policy)
 - Files: `server/policy/aiContextScopeGuard.ts` (types + `filterAiContextCandidates`
   / `canIncludeAiContextCandidate` / `redactDeniedAiContextCandidate`, reuses P5.20
