@@ -186,6 +186,22 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Read when: touching world servers, game-system bindings, membership, roles, invites,
   or join requests.
 
+## DB Migration Runner / Bootstrap / All-Schema Verify (P5.25-P5.27 — server-only tooling)
+- Files: `server/db/migrations/0000_migration_history.sql`,
+  `server/db/postgresMigrationRegistry.ts`, `server/db/postgresMigrationRunner.ts`,
+  `server/db/postgresAllSchemaReadiness.ts`, `server/db/verifyPostgresMigrationStatus.ts`,
+  `server/db/applyPostgresMigrations.ts`, `server/db/bootstrapPostgresDatabase.ts`,
+  `server/db/verifyPostgresAllSchemas.ts`; scripts `db:migrations:status`,
+  `db:migrations:apply`, `db:bootstrap`, `db:verify:all`.
+- Doc: `P5_25_DB_MIGRATION_RUNNER_BOOTSTRAP_CLI`.
+- Don't violate: **safe by default** — dry-run unless `--apply`; no connection-string
+  output; no SQL-body output; **fail closed** on checksum mismatch / missing applied
+  file / out-of-order / duplicate id / invalid filename; no destructive rollback / down
+  migrations; **no auto-apply on server startup or /health**; write smokes stay manual;
+  `schema_migrations` history table ensured (idempotent) before recording; apply is
+  in-order, one transaction per migration.
+- Read when: running/inspecting migrations, bootstrapping a DB, or verifying all schemas.
+
 ## AI Context Retrieval Safety Pipeline (P5.22-P5.24 — contract only, pure backend policy)
 - Files: `server/policy/aiContextSourceRegistry.ts` (16 source families + body/join/scope
   policies), `server/policy/aiContextRetrievalPreflight.ts`
