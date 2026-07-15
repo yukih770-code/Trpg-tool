@@ -99,6 +99,7 @@ async function main(): Promise<void> {
     method: 'POST',
     body: JSON.stringify({
       displayName: `E2E Verification World ${suffix}`,
+      serverHandle: `e2e-local-${suffix}`,
       description: 'Temporary HTTP E2E verification fixture.',
       serverVisibility: 'private',
       joinPolicy: 'inviteOnly',
