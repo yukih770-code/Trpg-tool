@@ -241,6 +241,25 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Read when: building AI retrieval, the AI Gateway, recap/NPC/rules/assistant features,
   or any code that assembles an AI context window.
 
+## Auth Session / API Guard Foundation (P5.28-P5.31 — server-only boundary, no route enforcement yet)
+- Files: `server/auth/requestAuthSession.ts` (anonymous default, dev headers, service
+  internal, bearer detected-not-trusted), `server/auth/currentViewerContext.ts`
+  (`toPermissionActorContext`), `server/api/apiRequestContext.ts`
+  (`resolveApiRequestScope`/`getStringParam`), `server/api/apiPermissionGuard.ts`
+  (`resolveApiPermissionGuard` reuses P5.20), `server/api/guardedApiHandler.ts`,
+  `server/api/apiGuardFoundationSmoke.ts`, `server/api/verifyApiGuardFoundation.ts`;
+  script `api:verify:guard`.
+- Doc: `P5_28_AUTH_SESSION_API_GUARD_FOUNDATION`; delegates to the P5.20 resolver.
+- Don't violate: **frontend login state is NOT security**; anonymous by default, deny by
+  default, guard fails closed; dev auth headers only when explicitly enabled AND not
+  production; bearer/cookie DETECTED but NOT trusted (no verifier); service-internal is
+  NOT a user (anonymous actor context); request scope is NOT authorization (conflicts →
+  400); P5.20 resolver is the source of truth; public messages are GENERIC — never leak
+  the internal permission reason; hide private-resource existence (404) when asked; no
+  DB, no route enforcement retrofit, no real auth provider, no frontend in this slice.
+- Read when: building API middleware/guards, a real auth provider, or any server/campaign
+  business API.
+
 ## Effective Permission Resolver (P5.20 — contract only, pure backend policy)
 - Files: `server/policy/effectivePermissionResolver.ts` (types + deterministic
   resolver + `canViewContent`/`canEditContent`/`canPublishContent`/

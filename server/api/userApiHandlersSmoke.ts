@@ -120,10 +120,11 @@ function evaluate(
   response: ServerApiResponse<unknown>,
   expected: { ok: boolean; statusCode: number; errorKind?: string },
 ): SmokeCaseResult {
+  const errorKind = response.ok === false ? response.error.kind : undefined;
   const actual = {
     ok: response.ok,
     statusCode: response.statusCode,
-    errorKind: response.ok ? undefined : response.error.kind,
+    errorKind,
   };
   const pass =
     actual.ok === expected.ok &&
