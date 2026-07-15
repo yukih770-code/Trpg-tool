@@ -144,6 +144,8 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 
 ## RuntimeEvent Persistence Bridge (P5.RUNTIME-BRIDGE — server-only seam)
 - Files: `server/runtime/runtimeEventPersistenceBridge.ts`,
+  `server/runtime/runtimeEventRepositoryPortAdapter.ts`,
+  `server/runtime/runtimeSessionContext.ts`,
   `server/runtime/runtimeEventPersistenceBridgeSmoke.ts`,
   `server/runtime/verifyRuntimeEventPersistenceBridge.ts`;
   script `runtime:verify:persistence-bridge`.
@@ -151,8 +153,9 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Don't violate: the bridge is dependency-injected and append-only; live Room
   Server/WebSocket state remains authoritative; no permission decisions, no
   frontend/runtime protocol changes, no update/delete path, no raw DB error
-  output. It is intentionally not wired to `room-server.ts` until one stable
-  event seam provides complete campaign + runtime-session context.
+  output. The HTTP Runtime Event API uses the bridge; live `room-server.ts` /
+  WebSocket events remain unwired until one stable event seam provides complete
+  campaign + runtime-session context.
 - Read when: connecting live room/runtime events to long-term persistence.
 
 ## Server Ruleset Versioning & Soft Update UX (P5.S1 — contract only)

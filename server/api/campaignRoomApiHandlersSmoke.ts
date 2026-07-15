@@ -28,6 +28,14 @@ import type {
   RoomParticipantRecord,
   RuntimeSessionBindingRecord,
 } from '../adapters/postgresCampaignRoomRepository.js';
+import {
+  resolveRuntimeSessionContext,
+} from '../runtime/runtimeSessionContext.js';
+import type {
+  RuntimeEventPersistenceAppendInput,
+  RuntimeEventPersistenceRepositoryPort,
+  RuntimeEventPersistenceRepositoryResult,
+} from '../runtime/runtimeEventPersistenceBridge.js';
 
 type Result<T> = PostgresCampaignRepositoryResult<T>;
 
@@ -134,7 +142,10 @@ function sessionRecord(): RuntimeSessionRecord {
   };
 }
 
-function makeFakeHandlers() {
+function makeFakeHandlers(options: {
+  runtimeEventPersistenceRepository?: RuntimeEventPersistenceRepositoryPort;
+  runtimeEventPersistenceBridgeEnabled?: boolean;
+} = {}) {
   const server = serverRecord();
   const campaigns = new Map<string, PostgresCampaignRecord>([[CAMPAIGN_ID, campaignRecord()]]);
   const bindings = new Map<string, WorldServerCampaignBindingRecord>([[CAMPAIGN_ID, bindingRecord()]]);
@@ -275,7 +286,27 @@ function makeFakeHandlers() {
     updateRuntimeSessionBinding: async () => ok(null),
   };
 
-  return createCampaignRoomApiHandlers({ worldRepository, campaignRepository, foundationRepository, runtimeRepository, campaignRoomRepository });
+  return createCampaignRoomApiHandlers({
+    worldRepository,
+    campaignRepository,
+    foundationRepository,
+    runtimeRepository,
+    campaignRoomRepository,
+    runtimeEventPersistenceRepository: options.runtimeEventPersistenceRepository,
+    runtimeEventPersistenceBridgeEnabled: options.runtimeEventPersistenceBridgeEnabled,
+  });
+}
+
+function bridgePort(
+  result: RuntimeEventPersistenceRepositoryResult = { ok: true, value: { runtimeEventId: 'bridge-event-1', seq: 41 } },
+  calls: RuntimeEventPersistenceAppendInput[] = [],
+): RuntimeEventPersistenceRepositoryPort {
+  return {
+    async appendRuntimeEvent(input) {
+      calls.push(input);
+      return result;
+    },
+  };
 }
 
 function isSuccess(response: { ok: boolean }): boolean { return response.ok === true; }
@@ -381,6 +412,108 @@ export async function runCampaignRoomApiHandlerSmoke(): Promise<{ total: number;
     return isSuccess(archived) && isSuccess(restored);
   });
   await check('50_wrong_room_is_hidden', async () => hasStatus(await handlers.getRoom(request(MEMBER, { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, roomId: 'wrong-room' })), 404));
+
+  await check('51_runtime_event_append_uses_bridge_output', async () => {
+    const injected = bridgePort({
+      ok: true,
+      value: {
+        runtimeEventId: 'bridge-event-fixed',
+        seq: 41,
+        record: { runtimeEventId: 'bridge-event-fixed', seq: 41, eventKind: 'bridge.note' },
+      },
+    });
+    const response = await makeFakeHandlers({ runtimeEventPersistenceRepository: injected }).appendRuntimeEvent({
+      ...room(MEMBER),
+      body: { runtimeSessionId: SESSION_ID, eventKind: 'bridge.note' },
+    });
+    return response.ok === true && (response.value as { runtimeEventId?: string }).runtimeEventId === 'bridge-event-fixed';
+  });
+  await check('52_runtime_event_append_preserves_idempotency_key', async () => {
+    const calls: RuntimeEventPersistenceAppendInput[] = [];
+    const handler = makeFakeHandlers({ runtimeEventPersistenceRepository: bridgePort(undefined, calls) });
+    await handler.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'idem.bridge', idempotencyKey: 'idem-bridge' } });
+    return calls[0]?.idempotencyKey === 'idem-bridge';
+  });
+  await check('53_runtime_event_missing_session_is_safe_400', async () => {
+    const response = await handlers.appendRuntimeEvent({ ...room(MEMBER), body: { eventKind: 'missing.session' } });
+    return hasStatus(response, 400);
+  });
+  await check('54_bridge_not_configured_maps_to_503', async () => {
+    const handler = makeFakeHandlers({ runtimeEventPersistenceRepository: bridgePort({ ok: false, error: { kind: 'not_configured', message: 'DATABASE_URL=secret' } }) });
+    const response = await handler.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'not.configured' } });
+    return hasStatus(response, 503) && JSON.stringify(response).includes('DATABASE_URL') === false;
+  });
+  await check('55_bridge_repository_error_maps_to_503', async () => {
+    const handler = makeFakeHandlers({ runtimeEventPersistenceRepository: bridgePort({ ok: false, error: { kind: 'database_error', message: 'driver secret' } }) });
+    const response = await handler.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'repo.error' } });
+    return hasStatus(response, 503) && JSON.stringify(response).includes('driver') === false;
+  });
+  await check('56_guard_denial_precedes_bridge', async () => {
+    const calls: RuntimeEventPersistenceAppendInput[] = [];
+    const handler = makeFakeHandlers({ runtimeEventPersistenceRepository: bridgePort(undefined, calls) });
+    const response = await handler.appendRuntimeEvent({ ...room(OUTSIDER), body: { runtimeSessionId: SESSION_ID, eventKind: 'guard.denied' } });
+    return hasStatus(response, 404) && calls.length === 0;
+  });
+  await check('57_anonymous_denial_precedes_bridge', async () => {
+    const calls: RuntimeEventPersistenceAppendInput[] = [];
+    const handler = makeFakeHandlers({ runtimeEventPersistenceRepository: bridgePort(undefined, calls) });
+    const response = await handler.appendRuntimeEvent({ params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, roomId: ROOM_ID }, body: { runtimeSessionId: SESSION_ID, eventKind: 'anonymous.denied' } });
+    return hasStatus(response, 401) && calls.length === 0;
+  });
+  await check('58_runtime_event_list_still_works', async () => isSuccess(await handlers.listRuntimeEvents(room(MEMBER))));
+  await check('59_runtime_event_after_seq_still_works', async () => isSuccess(await handlers.listRuntimeEvents({ ...room(MEMBER), query: { runtimeSessionId: SESSION_ID, afterSeq: 1 } })));
+  await check('60_runtime_event_limit_clamp_still_works', async () => isSuccess(await handlers.listRuntimeEvents({ ...room(MEMBER), query: { runtimeSessionId: SESSION_ID, limit: 99999 } })));
+  await check('61_runtime_event_routes_have_no_update_delete', async () => {
+    const methods: string[] = [];
+    const fakeApp = { get: (path: string) => methods.push(`GET ${path}`), post: (path: string) => methods.push(`POST ${path}`), patch: (path: string) => methods.push(`PATCH ${path}`) };
+    registerCampaignRoomApiRoutes(fakeApp as unknown as Express, handlers);
+    return methods.every((entry) => !entry.includes('/runtime-events') || entry.startsWith('GET ') || entry.startsWith('POST '));
+  });
+  await check('62_runtime_event_response_has_no_sql', async () => {
+    const handler = makeFakeHandlers({ runtimeEventPersistenceRepository: bridgePort({ ok: false, error: { kind: 'database_error', message: 'SELECT secret SQL' } }) });
+    const response = await handler.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'sql.safe' } });
+    return JSON.stringify(response).includes('SQL') === false;
+  });
+  await check('63_runtime_event_response_has_no_database_url', async () => {
+    const handler = makeFakeHandlers({ runtimeEventPersistenceRepository: bridgePort({ ok: false, error: { kind: 'not_configured', message: 'DATABASE_URL=secret' } }) });
+    const response = await handler.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'url.safe' } });
+    return JSON.stringify(response).includes('DATABASE_URL') === false;
+  });
+  await check('64_runtime_event_response_has_no_stack', async () => {
+    const handler = makeFakeHandlers({ runtimeEventPersistenceRepository: bridgePort({ ok: false, error: { kind: 'database_error', message: 'Error at db.ts:1\nstack secret' } }) });
+    const response = await handler.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'stack.safe' } });
+    return JSON.stringify(response).includes('stack secret') === false;
+  });
+  await check('65_runtime_session_context_resolver_ok', async () => {
+    const result = resolveRuntimeSessionContext({ worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, roomId: ROOM_ID, runtimeSessionId: SESSION_ID });
+    return result.ok === true && result.context.worldServerId === SERVER_ID;
+  });
+  await check('66_runtime_session_context_missing_is_safe', async () => {
+    const result = resolveRuntimeSessionContext({ worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, roomId: ROOM_ID });
+    return result.ok === false && result.reason === 'missing_runtime_session' && result.notes.every((note) => !note.includes('DATABASE_URL'));
+  });
+  await check('67_disabled_bridge_maps_to_503', async () => {
+    const calls: RuntimeEventPersistenceAppendInput[] = [];
+    const handler = makeFakeHandlers({ runtimeEventPersistenceRepository: bridgePort(undefined, calls), runtimeEventPersistenceBridgeEnabled: false });
+    const response = await handler.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'disabled.bridge' } });
+    return hasStatus(response, 503) && calls.length === 0;
+  });
+  await check('68_actor_and_causation_fields_are_preserved', async () => {
+    const calls: RuntimeEventPersistenceAppendInput[] = [];
+    const handler = makeFakeHandlers({ runtimeEventPersistenceRepository: bridgePort(undefined, calls) });
+    await handler.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'caused.event', actorId: 'actor-1', causedByEventId: 'event-0' } });
+    return calls[0]?.actorId === 'actor-1' && calls[0]?.causedByEventId === 'event-0';
+  });
+  await check('69_payload_and_private_visibility_are_preserved', async () => {
+    const calls: RuntimeEventPersistenceAppendInput[] = [];
+    const handler = makeFakeHandlers({ runtimeEventPersistenceRepository: bridgePort(undefined, calls) });
+    await handler.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'private.payload', visibility: 'private', payload: { text: 'kept' } } });
+    return calls[0]?.visibility === 'private' && calls[0]?.payload.text === 'kept';
+  });
+  await check('70_runtime_event_success_keeps_201_status', async () => {
+    const response = await handlers.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'status.201' } });
+    return hasStatus(response, 201);
+  });
 
   const passed = cases.filter((item) => item.passed).length;
   return { total: cases.length, passed, failed: cases.length - passed, cases };

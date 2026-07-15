@@ -20,7 +20,10 @@ export type RuntimeBridgeVisibilityScope =
   | 'server'
   | 'user_private'
   | 'global_public'
-  | 'unlisted';
+  | 'unlisted'
+  | 'private'
+  | 'public'
+  | 'hostOnly';
 
 export interface RuntimeEventPersistenceCandidate {
   worldServerId?: string | null;
@@ -30,6 +33,8 @@ export interface RuntimeEventPersistenceCandidate {
   source: RuntimeBridgeEventSource | string | null | undefined;
   eventKind: string;
   eventPayload: Record<string, unknown>;
+  actorId?: string | null;
+  causedByEventId?: string | null;
   actorUserId?: string | null;
   idempotencyKey?: string | null;
   clientEventId?: string | null;
@@ -55,13 +60,15 @@ export interface RuntimeEventPersistenceAppendInput {
   eventKind: string;
   visibility: RuntimeBridgeVisibilityScope;
   idempotencyKey: string;
+  actorId?: string;
+  causedByEventId?: string;
   payload: Record<string, unknown>;
   schemaVersion: number;
   createdByUserId?: string;
 }
 
 export type RuntimeEventPersistenceRepositoryResult =
-  | { ok: true; value: { runtimeEventId: string; seq: number } }
+  | { ok: true; value: { runtimeEventId: string; seq: number; record?: unknown } }
   | {
       ok: false;
       error: { kind?: string; message?: string; retryable?: boolean };
@@ -82,7 +89,7 @@ export interface RuntimeEventPersistenceBridgeResult {
   status: RuntimeEventPersistenceBridgeStatus;
   normalizedCandidate?: NormalizedRuntimeEventPersistenceCandidate;
   idempotencyKey?: string;
-  persistedEvent?: { runtimeEventId: string; seq: number };
+  persistedEvent?: { runtimeEventId: string; seq: number; record?: unknown };
   notes: string[];
 }
 
@@ -157,6 +164,8 @@ export function createRuntimeEventIdempotencyKey(
     | 'runtimeSessionId'
     | 'source'
     | 'eventKind'
+    | 'actorId'
+    | 'causedByEventId'
     | 'actorUserId'
     | 'clientEventId'
     | 'occurredAt'
@@ -170,6 +179,8 @@ export function createRuntimeEventIdempotencyKey(
     stablePart(input.runtimeSessionId),
     stablePart(normalizeSource(input.source)),
     stablePart(input.eventKind),
+    stablePart(input.actorId),
+    stablePart(input.causedByEventId),
     stablePart(input.actorUserId),
     stablePart(input.clientEventId),
     stablePart(input.occurredAt),
@@ -189,6 +200,8 @@ export function normalizeRuntimeEventPersistenceCandidate(
     source: normalizeSource(input.source),
     eventKind: stringOrUndefined(input.eventKind) ?? '',
     eventPayload: jsonSafeRecord(input.eventPayload),
+    actorId: stringOrUndefined(input.actorId),
+    causedByEventId: stringOrUndefined(input.causedByEventId),
     actorUserId: stringOrUndefined(input.actorUserId),
     idempotencyKey: stringOrUndefined(input.idempotencyKey),
     clientEventId: stringOrUndefined(input.clientEventId),
@@ -240,6 +253,8 @@ export async function persistRuntimeEventCandidate(
       eventKind: normalizedCandidate.eventKind,
       visibility: normalizedCandidate.visibilityScope,
       idempotencyKey,
+      actorId: normalizedCandidate.actorId ?? undefined,
+      causedByEventId: normalizedCandidate.causedByEventId ?? undefined,
       payload: normalizedCandidate.eventPayload,
       schemaVersion: 1,
       createdByUserId: normalizedCandidate.actorUserId ?? undefined,

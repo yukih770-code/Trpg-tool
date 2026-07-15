@@ -27,10 +27,30 @@ long-term history store.
   candidate `occurredAt` is normalized for bridge context; it does not override
   the persistence repository timestamp.
 
+## HTTP Runtime Event API Integration
+
+The existing `POST /api/world-servers/:worldServerId/campaigns/:campaignId/rooms/:roomId/runtime-events`
+handler now uses this bridge as its canonical append path. The handler keeps
+the existing room scope and `joinRoom` guard first, resolves the runtime session
+from the existing repository, anchors
+`worldServerId + campaignId + roomId + runtimeSessionId`, and then calls the
+bridge.
+
+The repository port adapter preserves the existing RuntimeEvent record shape,
+including visibility, actor, causation, payload, idempotency, event ID, and
+sequence. Existing list, `afterSeq`, and limit behavior is unchanged.
+
+Bridge failures map to generic API responses: incomplete context is `400`, and
+disabled, not-configured, or repository failures are `503`. Responses never
+include SQL, database URLs, driver errors, or stacks.
+
 ## Room Server wiring decision
 
 This slice intentionally does **not** wire the bridge into
 `server/room-server.ts` or `server/transport/roomSocketServer.ts`.
+
+The HTTP Runtime Event API is now wired through the bridge; this deferral applies
+only to live Room Server/WebSocket events.
 
 The current live server has separate in-memory RoomSnapshot and RuntimeLog
 paths, while the persistence repository requires a campaign and runtime-session
@@ -43,7 +63,7 @@ runtime-session boundary once that context is guaranteed.
 ## Verification
 
 `npm run runtime:verify:persistence-bridge -- --strict` uses a fake repository
-and does not contact Postgres. It covers no-op behavior, normalization,
-idempotency, JSON-safe payloads, append-only shape, safe repository errors, and
-the live-authority boundary.
-
+and does not contact Postgres. `npm run api:verify:campaign-room -- --strict`
+covers the original 50 cases plus 20 bridge/context integration cases,
+including guard ordering, failure mapping, response safety, idempotency, and
+unchanged event listing behavior.

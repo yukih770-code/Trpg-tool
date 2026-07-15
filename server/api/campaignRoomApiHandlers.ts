@@ -47,6 +47,13 @@ import { resolveApiAuthSession, type ApiRequestLike } from '../auth/requestAuthS
 import { resolveApiPermissionGuard, type ApiGuardAction } from './apiPermissionGuard.js';
 import { resolveApiRequestScope, type ApiRequestScopeResult } from './apiRequestContext.js';
 import { errorResponse, okResponse, type ServerApiResponse } from './apiResponse.js';
+import {
+  persistRuntimeEventCandidate,
+  type RuntimeBridgeVisibilityScope,
+  type RuntimeEventPersistenceRepositoryPort,
+} from '../runtime/runtimeEventPersistenceBridge.js';
+import { createRuntimeEventRepositoryPort } from '../runtime/runtimeEventRepositoryPortAdapter.js';
+import { resolveRuntimeSessionContext } from '../runtime/runtimeSessionContext.js';
 
 type ApiResult = ServerApiResponse<unknown>;
 type BodyRecord = Record<string, unknown>;
@@ -98,6 +105,8 @@ export interface CreateCampaignRoomApiHandlersOptions {
   campaignRepository?: CampaignRepository;
   foundationRepository?: FoundationApiRepository;
   runtimeRepository?: RuntimeRepository;
+  runtimeEventPersistenceRepository?: RuntimeEventPersistenceRepositoryPort;
+  runtimeEventPersistenceBridgeEnabled?: boolean;
   campaignRoomRepository?: PostgresCampaignRoomRepository;
   allowDevAuthHeaders?: boolean;
   nodeEnv?: string;
@@ -163,6 +172,13 @@ function recordOf(value: unknown): Record<string, unknown> | undefined {
 function stringArrayOf(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   return value.filter((item): item is string => typeof item === 'string' && item.trim() !== '').map((item) => item.trim());
+}
+
+function runtimeVisibilityOf(value: unknown): RuntimeBridgeVisibilityScope | undefined {
+  const visibility = stringOf(value);
+  if (visibility === 'private' || visibility === 'public' || visibility === 'hostOnly') return visibility;
+  if (visibility === 'campaign' || visibility === 'server' || visibility === 'user_private' || visibility === 'global_public' || visibility === 'unlisted') return visibility;
+  return undefined;
 }
 
 function idParam(input: CampaignRoomApiRequest, name: string): string | undefined {
@@ -258,6 +274,8 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
   const campaignRepository = options.campaignRepository ?? createPostgresCampaignRepository();
   const foundationRepository = options.foundationRepository ?? createPostgresPlatformFoundationRepository();
   const runtimeRepository = options.runtimeRepository ?? createPostgresRuntimeEventRepository();
+  const runtimeEventPersistenceRepository =
+    options.runtimeEventPersistenceRepository ?? createRuntimeEventRepositoryPort(runtimeRepository);
   const campaignRoomRepository = options.campaignRoomRepository ?? createPostgresCampaignRoomRepository();
 
   async function authorizeWorld(input: CampaignRoomApiRequest, action: ApiGuardAction, hide = action === 'view'): Promise<AuthorizedWorld | ApiResult> {
@@ -662,19 +680,47 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
       const session = await sessionForRoom(input, room.access, sessionId);
       if (isApiResult(session)) return session;
       if (!session) return errorResponse(404, { kind: 'not_found', message: 'Runtime session not found.' }, { requestId: requestIdOf(input) });
-      const event = unwrap(await runtimeRepository.appendRuntimeEvent({
-        runtimeEventId: stringOf(body.runtimeEventId) ?? randomUUID(),
-        runtimeSessionId: session.runtimeSessionId,
+      const contextResult = resolveRuntimeSessionContext({
+        worldServerId: room.access.server.worldServerId,
         campaignId: room.access.campaign.campaignId,
+        roomId: room.room.roomId,
+        runtimeSessionId: session.runtimeSessionId,
+      });
+      if (contextResult.ok === false) {
+        return errorResponse(400, { kind: 'bad_request', message: 'Runtime event context is incomplete.' }, { requestId: requestIdOf(input) });
+      }
+      const bridgeResult = await persistRuntimeEventCandidate({
+        worldServerId: contextResult.context.worldServerId,
+        campaignId: contextResult.context.campaignId,
+        roomId: contextResult.context.roomId,
+        runtimeSessionId: contextResult.context.runtimeSessionId,
+        source: 'runtime_api',
         eventKind,
-        visibility: stringOf(body.visibility) ?? 'private',
+        eventPayload: recordOf(body.payload) ?? {},
         actorId: stringOf(body.actorId),
         causedByEventId: stringOf(body.causedByEventId),
+        actorUserId: joinAccess.viewer.viewerUserId,
         idempotencyKey: stringOf(body.idempotencyKey),
-        payload: recordOf(body.payload),
-        createdByUserId: joinAccess.viewer.viewerUserId!,
-      }), requestIdOf(input), 'Runtime event');
-      return isApiResult(event) ? event : okResponse(event, { statusCode: 201, requestId: requestIdOf(input) });
+        clientEventId: stringOf(body.runtimeEventId),
+        occurredAt: stringOf(body.occurredAt),
+        visibilityScope: runtimeVisibilityOf(body.visibility) ?? 'private',
+      }, {
+        enabled: options.runtimeEventPersistenceBridgeEnabled,
+        repository: runtimeEventPersistenceRepository,
+      });
+      if (bridgeResult.status !== 'persisted') {
+        if (bridgeResult.status === 'missing_context') {
+          return errorResponse(400, { kind: 'bad_request', message: 'Runtime event context is incomplete.' }, { requestId: requestIdOf(input) });
+        }
+        return errorResponse(503, { kind: 'unavailable', message: 'Runtime event persistence is unavailable.' }, { requestId: requestIdOf(input) });
+      }
+      const persistedRecord = bridgeResult.persistedEvent?.record;
+      return okResponse(
+        persistedRecord && typeof persistedRecord === 'object'
+          ? persistedRecord
+          : { runtimeEventId: bridgeResult.persistedEvent?.runtimeEventId, seq: bridgeResult.persistedEvent?.seq },
+        { statusCode: 201, requestId: requestIdOf(input) },
+      );
     },
   };
 
