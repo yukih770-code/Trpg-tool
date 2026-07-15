@@ -28,6 +28,11 @@ import {
   type PlayWorkspaceNavigationState,
 } from './pages/PlayWorkspace';
 import { useAppStore } from './store/appStore';
+import { isDevApiDemoFallbackEnabled, resolveDevViewerUserId } from './lib/api/apiClient';
+import { ApiClientError } from './lib/api/apiTypes';
+import type { WorldServerRecord } from './lib/api/worldServerApiClient';
+import { useWorldServers } from './lib/worldServer/useWorldServers';
+import { useWorldServerDetail } from './lib/worldServer/useWorldServerDetail';
 
 type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop' | 'fanPlaza' | 'documents' | 'personalHub' | 'userProfile';
 type PlayStage = 'menu' | 'workspace';
@@ -35,15 +40,19 @@ type System = 'D&D' | 'CoC' | 'CP';
 type EntryStage = 'launcher' | 'serverSelect' | 'serverHome' | 'platform';
 type MockWorldServerRole = 'owner' | 'admin' | 'member';
 
-type MockWorldServer = {
+type DisplayWorldServer = {
   id: string;
   name: string;
   description: string;
   role: MockWorldServerRole;
-  memberCount: number;
-  activeCampaigns: number;
+  memberCount?: number;
+  activeCampaigns?: number;
   enabledSystems: string[];
-  lastActive: string;
+  lastActive?: string;
+  lifecycleStatus?: string;
+  ownerId?: string;
+  defaultGameSystemId?: string;
+  source: 'api' | 'demo';
 };
 
 type PlaceholderKey =
@@ -94,7 +103,7 @@ const PRIMARY_NAV: { key: PlatformNavKey; labelKey?: string; label?: { zh: strin
   { key: 'fanPlaza',      labelKey: 'shell.nav.fanPlaza',      icon: Palette  },
 ];
 
-const MOCK_WORLD_SERVERS: MockWorldServer[] = [
+const MOCK_WORLD_SERVERS: DisplayWorldServer[] = [
   {
     id: 'server-starlit-table',
     name: '星灯跑团会',
@@ -104,6 +113,7 @@ const MOCK_WORLD_SERVERS: MockWorldServer[] = [
     activeCampaigns: 3,
     enabledSystems: ['DND 5e', 'COC 7e', 'Cyberpunk RED'],
     lastActive: '刚刚',
+    source: 'demo',
   },
   {
     id: 'server-night-archive',
@@ -114,6 +124,7 @@ const MOCK_WORLD_SERVERS: MockWorldServer[] = [
     activeCampaigns: 1,
     enabledSystems: ['COC 7e', '通用百分骰'],
     lastActive: '昨天',
+    source: 'demo',
   },
 ];
 
@@ -125,6 +136,16 @@ const roleLabel: Record<MockWorldServerRole, string> = {
 
 function isPlaceholderKey(value: string): value is PlaceholderKey {
   return ['campaigns', 'community', 'privateImport', 'studio', 'aiHost', 'settings'].includes(value);
+}
+
+function apiErrorMessage(error: ApiClientError | null, locale: Locale): string {
+  if (!error) return '';
+  if (error.statusCode === 401) return locale === 'en' ? 'Please sign in to view your servers.' : '请先登录后查看你的服务器。';
+  if (error.statusCode === 403) return locale === 'en' ? 'You do not have access to this server.' : '你没有权限访问这个服务器。';
+  if (error.statusCode === 404) return locale === 'en' ? 'This server could not be found.' : '找不到这个服务器。';
+  return locale === 'en'
+    ? 'The server service is unavailable. Please try again later.'
+    : '暂时无法连接服务器服务，请稍后重试。';
 }
 
 function normalizeFeatureKey(feature: string): PlaceholderKey {
@@ -152,7 +173,10 @@ export default function App() {
   const [activePlaceholder, setActivePlaceholder] = useState<PlaceholderKey>('campaigns');
   const [locale, setLocale] = useState<Locale>(readStoredLocale);
   const [entryStage, setEntryStage] = useState<EntryStage>('launcher');
-  const [selectedServerId, setSelectedServerId] = useState<string>(MOCK_WORLD_SERVERS[0]?.id ?? '');
+  const [selectedServerId, setSelectedServerId] = useState<string>('');
+  const [createServerName, setCreateServerName] = useState<string>('');
+  const [createServerError, setCreateServerError] = useState<ApiClientError | null>(null);
+  const [createServerLoading, setCreateServerLoading] = useState<boolean>(false);
   const [moreOpen, setMoreOpen] = useState<boolean>(false);
   // P5.4: default profile identity = the device's local anonymous user (lazy init
   // is safe: the repository creates the user on first access, idempotently).
@@ -168,8 +192,38 @@ export default function App() {
     useState<PlayWorkspaceBackOverride | null>(null);
   const system = useAppStore((state) => state.system as System);
   const setSystem = useAppStore((state) => state.setSystem);
-  const selectedWorldServer = MOCK_WORLD_SERVERS.find((server) => server.id === selectedServerId) ?? MOCK_WORLD_SERVERS[0];
-  const canManageSelectedServer = selectedWorldServer?.role === 'owner' || selectedWorldServer?.role === 'admin';
+  const worldServersState = useWorldServers({ enabled: entryStage !== 'launcher' });
+  const worldServerDetail = useWorldServerDetail(selectedServerId, {
+    enabled: entryStage !== 'launcher' && selectedServerId !== '',
+  });
+  const devViewerUserId = resolveDevViewerUserId();
+  const demoFallbackEnabled = isDevApiDemoFallbackEnabled();
+  const apiWorldServers: DisplayWorldServer[] = worldServersState.servers.map((server: WorldServerRecord) => ({
+    id: server.worldServerId,
+    name: server.displayName,
+    description: server.description ?? '',
+    role: server.ownerId === devViewerUserId ? 'owner' : 'member',
+    enabledSystems: [],
+    lifecycleStatus: server.lifecycleStatus,
+    ownerId: server.ownerId,
+    defaultGameSystemId: server.defaultGameSystemId,
+    source: 'api',
+  }));
+  const displayWorldServers = apiWorldServers.length > 0
+    ? apiWorldServers
+    : (demoFallbackEnabled ? MOCK_WORLD_SERVERS : []);
+  const selectedWorldServer = displayWorldServers.find((server) => server.id === selectedServerId);
+  const selectedApiServer = worldServerDetail.server ?? worldServersState.servers.find((server) => server.worldServerId === selectedServerId) ?? null;
+  const selectedViewerMembership = devViewerUserId
+    ? worldServerDetail.members.find((member) => member.userId === devViewerUserId)
+    : undefined;
+  const canManageSelectedServer = Boolean(
+    selectedApiServer && devViewerUserId && (
+      selectedApiServer.ownerId === devViewerUserId
+      || selectedViewerMembership?.roleKey === 'owner'
+      || selectedViewerMembership?.roleKey === 'admin'
+    ),
+  );
 
   const { t } = createTranslator(locale);
 
@@ -588,16 +642,56 @@ export default function App() {
       </span>
     </div>
   );
-  const renderReservedSettingsRows = (cat: string) => (
-    <div className="flex flex-col">
-      {serverAdminSettingsCats.has(cat) && (
+  const renderServerDataSettingsRows = (cat: string) => {
+    if (!selectedApiServer || entryStage !== 'platform') return null;
+    const settings = worldServerDetail.settings?.settings ?? selectedApiServer.serverSettingsPayload;
+    const rows = cat === '服务器设置'
+      ? [
+          ['服务器名称', selectedApiServer.displayName],
+          ['服务器简介', selectedApiServer.description || '未填写'],
+          ['可见性', selectedApiServer.serverVisibility],
+          ['加入方式', selectedApiServer.joinPolicy],
+          ['生命周期', selectedApiServer.lifecycleStatus],
+        ]
+      : cat === '成员与角色'
+        ? [['成员数量', `${worldServerDetail.members.length}`], ['角色数量', `${worldServerDetail.roles.length}`]]
+        : cat === '游戏系统'
+          ? worldServerDetail.gameSystems.map((systemBinding) => [
+              systemBinding.isDefault ? '默认起始系统' : '已启用游戏系统',
+              systemBinding.displayName,
+            ])
+          : cat === '高级设置'
+            ? [['设置字段', `${Object.keys(settings).length}`], ['状态', '可在服务器设置中继续配置']]
+            : [];
+    if (rows.length === 0) return null;
+    return (
+      <div className="flex flex-col">
         <div className="mb-3 rounded-lg border border-[#2f2a22]/12 bg-[#f7f3ea] px-3 py-2 text-xs leading-5 text-[#51483d]">
-          仅服主 / 管理员可修改。
+          仅显示当前服务器已同步的资料；修改权限仍由服务器端决定。
         </div>
-      )}
-      {(settingsReservedContent[cat] ?? []).map(reservedSettingsRow)}
-    </div>
-  );
+        {rows.map(([label, value]) => (
+          <div key={`${cat}-${label}-${value}`} className="flex items-center justify-between gap-3 border-b border-[#2f2a22]/8 py-2 text-sm last:border-b-0">
+            <span className="text-[#51483d]/70">{label}</span>
+            <span className="text-right font-semibold text-[#17130f]">{value}</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+  const renderReservedSettingsRows = (cat: string) => {
+    const serverData = renderServerDataSettingsRows(cat);
+    if (serverData) return serverData;
+    return (
+      <div className="flex flex-col">
+        {serverAdminSettingsCats.has(cat) && (
+          <div className="mb-3 rounded-lg border border-[#2f2a22]/12 bg-[#f7f3ea] px-3 py-2 text-xs leading-5 text-[#51483d]">
+            仅服主 / 管理员可修改。
+          </div>
+        )}
+        {(settingsReservedContent[cat] ?? []).map(reservedSettingsRow)}
+      </div>
+    );
+  };
   const renderSettingsCategory = (cat: string) => {
     if (cat === '语言') {
       const isZh = locale === 'zh-CN';
@@ -680,16 +774,37 @@ export default function App() {
     setActiveSettingsCat(null);
   };
 
+  const handleCreateServer = async () => {
+    const displayName = createServerName.trim();
+    if (!displayName) {
+      setCreateServerError(new ApiClientError('api_error', locale === 'en' ? 'Enter a server name.' : '请输入服务器名称。'));
+      return;
+    }
+    setCreateServerLoading(true);
+    setCreateServerError(null);
+    try {
+      const server = await worldServersState.createServer({ displayName });
+      setCreateServerName('');
+      setSelectedServerId(server.worldServerId);
+      setEntryStage('serverHome');
+    } catch (error) {
+      setCreateServerError(error instanceof ApiClientError ? error : new ApiClientError('network', locale === 'en' ? 'Server creation failed.' : '创建服务器失败。'));
+    } finally {
+      setCreateServerLoading(false);
+    }
+  };
+
   const exitCurrentServer = () => {
     setMoreOpen(false);
     resetPlatformLocation();
+    setSelectedServerId('');
     setEntryStage('serverSelect');
   };
 
   const logoutToLauncher = () => {
     setMoreOpen(false);
     resetPlatformLocation();
-    setSelectedServerId(MOCK_WORLD_SERVERS[0]?.id ?? '');
+    setSelectedServerId('');
     setEntryStage('launcher');
   };
 
@@ -794,34 +909,66 @@ export default function App() {
             </div>
           </header>
 
-          <section className="grid gap-3 md:grid-cols-2">
-            {MOCK_WORLD_SERVERS.map((server) => (
+          {worldServersState.loading && (
+            <section className="rounded-2xl border border-[#2f2a22]/12 bg-white p-6 text-sm text-[#51483d]">
+              {t('worldServer.loading')}
+            </section>
+          )}
+
+          {!worldServersState.loading && worldServersState.error && !demoFallbackEnabled && (
+            <section className="rounded-2xl border border-[#2f2a22]/12 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-bold">{t('worldServer.unableToLoad')}</h2>
+              <p className="mt-2 text-sm leading-6 text-[#51483d]">{apiErrorMessage(worldServersState.error, locale)}</p>
               <button
-                key={server.id}
                 type="button"
-                onClick={() => {
-                  setSelectedServerId(server.id);
-                  setEntryStage('serverHome');
-                }}
-                className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 text-left shadow-sm transition hover:border-[#58180d]/35 hover:bg-[#fff8e6]"
+                onClick={() => void worldServersState.refresh()}
+                className="mt-4 rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm font-bold text-[#51483d] hover:bg-[#2f2a22]/5"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-bold">{server.name}</h2>
-                    <p className="mt-2 text-sm leading-6 text-[#51483d]">{server.description}</p>
-                  </div>
-                  <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1 text-[11px] font-bold text-[#51483d]">
-                    {roleLabel[server.role]}
-                  </span>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold text-[#51483d]">
-                  <span className="rounded-full bg-[#2f2a22]/6 px-2.5 py-1">{server.memberCount} 名成员</span>
-                  <span className="rounded-full bg-[#2f2a22]/6 px-2.5 py-1">{server.activeCampaigns} 个战役</span>
-                  <span className="rounded-full bg-[#2f2a22]/6 px-2.5 py-1">最近：{server.lastActive}</span>
-                </div>
+                {t('worldServer.retry')}
               </button>
-            ))}
-          </section>
+            </section>
+          )}
+
+          {!worldServersState.loading && !worldServersState.error && displayWorldServers.length === 0 && (
+            <section className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/65 p-6">
+              <h2 className="text-lg font-bold">{t('worldServer.noServers')}</h2>
+              <p className="mt-2 text-sm leading-6 text-[#51483d]">
+                {t('worldServer.noServersNote')}
+              </p>
+            </section>
+          )}
+
+          {displayWorldServers.length > 0 && (
+            <section className="grid gap-3 md:grid-cols-2">
+              {displayWorldServers.map((server) => (
+                <button
+                  key={server.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedServerId(server.id);
+                    setEntryStage('serverHome');
+                  }}
+                  className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 text-left shadow-sm transition hover:border-[#58180d]/35 hover:bg-[#fff8e6]"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl font-bold">{server.name}</h2>
+                      <p className="mt-2 text-sm leading-6 text-[#51483d]">{server.description || t('worldServer.noDescription')}</p>
+                    </div>
+                    <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1 text-[11px] font-bold text-[#51483d]">
+                      {roleLabel[server.role]}
+                    </span>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2 text-[11px] font-semibold text-[#51483d]">
+                    {server.memberCount !== undefined && <span className="rounded-full bg-[#2f2a22]/6 px-2.5 py-1">{server.memberCount} 名成员</span>}
+                    {server.activeCampaigns !== undefined && <span className="rounded-full bg-[#2f2a22]/6 px-2.5 py-1">{server.activeCampaigns} 个战役</span>}
+                    {server.lifecycleStatus && <span className="rounded-full bg-[#2f2a22]/6 px-2.5 py-1">{server.lifecycleStatus}</span>}
+                    {server.source === 'demo' && <span className="rounded-full border border-dashed border-[#2f2a22]/25 px-2.5 py-1">{t('worldServer.localDemo')}</span>}
+                  </div>
+                </button>
+              ))}
+            </section>
+          )}
 
           <section className="grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/65 p-5">
@@ -831,16 +978,32 @@ export default function App() {
                   ? 'Start a new server space.'
                   : '创建一个新的服务器空间。'}
               </p>
-              <Button
-                type="button"
-                onClick={() => {
-                  setSelectedServerId(MOCK_WORLD_SERVERS[0].id);
-                  setEntryStage('serverHome');
+              <form
+                className="mt-4 flex flex-col gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleCreateServer();
                 }}
-                className="mt-4 rounded-md"
               >
-                {locale === 'en' ? 'Create server' : '创建服务器'}
-              </Button>
+                <label className="text-xs font-bold text-[#51483d]" htmlFor="world-server-name">
+                  {t('worldServer.serverName')}
+                </label>
+                <input
+                  id="world-server-name"
+                  value={createServerName}
+                  onChange={(event) => setCreateServerName(event.target.value)}
+                  placeholder={t('worldServer.serverNamePlaceholder')}
+                  className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm outline-none focus:border-[#58180d]/45"
+                />
+                <Button type="submit" disabled={createServerLoading} className="w-fit rounded-md">
+                  {createServerLoading
+                    ? t('worldServer.creating')
+                    : t('worldServer.create')}
+                </Button>
+              </form>
+              {createServerError && (
+                <p className="mt-3 text-sm leading-5 text-[#8b3a2f]">{apiErrorMessage(createServerError, locale) || createServerError.message}</p>
+              )}
             </div>
             <div className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/65 p-5">
               <h2 className="text-lg font-bold">{locale === 'en' ? 'Join server' : '加入服务器'}</h2>
@@ -864,7 +1027,46 @@ export default function App() {
     );
   }
 
+  if (entryStage === 'serverHome' && selectedWorldServer?.source === 'api' && worldServerDetail.loading && !worldServerDetail.server) {
+    return (
+      <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
+        <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center gap-4 px-4 py-8 md:px-8">
+          <p className="text-sm text-[#51483d]">{t('worldServer.loading')}</p>
+          <button type="button" onClick={exitCurrentServer} className="w-fit rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm font-bold text-[#51483d]">
+            {t('worldServer.backToServers')}
+          </button>
+        </main>
+      </div>
+    );
+  }
+
+  if (entryStage === 'serverHome' && selectedWorldServer?.source === 'api' && worldServerDetail.error && !worldServerDetail.server) {
+    return (
+      <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
+        <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center gap-4 px-4 py-8 md:px-8">
+          <h1 className="text-2xl font-black">{t('worldServer.unableToOpen')}</h1>
+          <p className="text-sm leading-6 text-[#51483d]">{apiErrorMessage(worldServerDetail.error, locale)}</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => void worldServerDetail.refresh()} className="rounded-md bg-[#17130f] px-3 py-2 text-sm font-bold text-white">
+              {t('worldServer.retry')}
+            </button>
+            <button type="button" onClick={exitCurrentServer} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm font-bold text-[#51483d]">
+              {t('worldServer.backToServers')}
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (entryStage === 'serverHome' && selectedWorldServer) {
+    const homeDescription = selectedApiServer?.description ?? selectedWorldServer.description;
+    const homeMemberCount = selectedWorldServer.source === 'api'
+      ? worldServerDetail.members.length
+      : selectedWorldServer.memberCount;
+    const homeSystems = selectedWorldServer.source === 'api'
+      ? worldServerDetail.gameSystems.filter((binding) => binding.bindingStatus !== 'archived').map((binding) => binding.displayName)
+      : selectedWorldServer.enabledSystems;
     return (
       <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
         <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 md:px-8">
@@ -874,11 +1076,11 @@ export default function App() {
                 {locale === 'en' ? 'Server home' : '服务器主页'}
               </div>
               <h1 className="mt-1 text-3xl font-black">{selectedWorldServer.name}</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#51483d]">{selectedWorldServer.description}</p>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#51483d]">{homeDescription || t('worldServer.noDescription')}</p>
               <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-[#51483d]">
                 <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">我的身份：{roleLabel[selectedWorldServer.role]}</span>
-                <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">{selectedWorldServer.memberCount} 名成员</span>
-                <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">{selectedWorldServer.activeCampaigns} 个进行中战役</span>
+                {homeMemberCount !== undefined && <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">{homeMemberCount} 名成员</span>}
+                {selectedApiServer?.lifecycleStatus && <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">{selectedApiServer.lifecycleStatus}</span>}
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -951,14 +1153,17 @@ export default function App() {
                   {locale === 'en' ? 'Enabled game systems' : '已启用游戏系统'}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {selectedWorldServer.enabledSystems.map((systemName) => (
+                  {homeSystems.map((systemName) => (
                     <span key={systemName} className="rounded-full bg-[#2f2a22]/8 px-3 py-1 text-xs font-bold text-[#51483d]">
                       {systemName}
                     </span>
                   ))}
+                  {homeSystems.length === 0 && (
+                    <span className="text-xs text-[#51483d]">{t('worldServer.noSystems')}</span>
+                  )}
                 </div>
                 <p className="mt-3 text-xs leading-5 text-[#51483d]">
-                  起始系统不是服务器的唯一规则。不同战役之后可以使用不同系统或资料包。
+                  {t('worldServer.startingSystemNote')}
                 </p>
               </div>
               <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm">
@@ -967,10 +1172,15 @@ export default function App() {
                 </div>
                 <p className="mt-2 text-sm leading-6 text-[#51483d]">
                   {canManageSelectedServer
-                    ? '你是服主 / 管理员。完整服务器设置在“服务器设置 → 高级设置”等分类中。'
-                    : '你是普通成员。完整服务器设置不会对普通成员开放。'}
+                    ? t('worldServer.canManageSettings')
+                    : t('worldServer.settingsOnlyForManagers')}
                 </p>
               </div>
+              {worldServerDetail.partialErrors.length > 0 && (
+                <div className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/65 p-5 text-xs leading-5 text-[#51483d]">
+                  {t('worldServer.partialSync')}
+                </div>
+              )}
             </aside>
           </section>
         </main>
