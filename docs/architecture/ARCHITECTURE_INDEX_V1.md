@@ -202,6 +202,33 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   in-order, one transaction per migration.
 - Read when: running/inspecting migrations, bootstrapping a DB, or verifying all schemas.
 
+## Remaining Platform DB Foundation (P5.DB-CLOSURE — server-only)
+- Files: `server/db/migrations/0009_remaining_platform_foundation.sql`,
+  `server/adapters/postgresPlatformFoundationRepository.ts`,
+  `server/db/postgresPlatformFoundationSchemaReadiness.ts`,
+  `server/db/postgresPlatformFoundationRepositorySmoke.ts`,
+  `server/db/postgresPlatformFoundationRepositoryWriteSmoke.ts`,
+  `server/db/verifyPostgresPlatformFoundation*.ts`; scripts
+  `db:verify:platform`, `db:verify:platform:write`; aggregate
+  `db:verify:all` includes `platformFoundation`.
+- Doc: `P5_DB_CLOSURE_REMAINING_POSTGRES_FOUNDATION`.
+- Families: auth sessions / service identities / account audit; server settings
+  versions / ruleset versions / soft update notices; compendium packs / versions /
+  entries / bindings; campaign actor instances / bindings / runtime actor slots;
+  room records / participants / lobby slots / runtime-session bindings; chat,
+  notes, handouts, maps, scene-map bindings; server audit / permission decision
+  audit / AI operation audit / moderation; user notifications.
+- Don't violate: **DB foundation only** — no frontend, no API routes, no real auth
+  provider, no JWT/OAuth/password flow, no DB-backed route enforcement, no
+  WebSocket/runtime behavior change, no AI model/retrieval adapter, no upload/
+  download, no copyrighted content; repositories store metadata and do NOT decide
+  permissions; Room Server remains live authority; Character Vault actor !=
+  Campaign Actor Instance != RuntimeActor; denied private bodies/prompts are not
+  persisted in audit rows; write smoke rolls back.
+- Read when: adding APIs or repositories for sessions, server settings, compendium,
+  campaign actor instances, rooms/lobbies, content docs/maps, audit/moderation, or
+  notifications.
+
 ## AI Context Retrieval Safety Pipeline (P5.22-P5.24 — contract only, pure backend policy)
 - Files: `server/policy/aiContextSourceRegistry.ts` (16 source families + body/join/scope
   policies), `server/policy/aiContextRetrievalPreflight.ts`
