@@ -39,6 +39,7 @@
     "api:verify:world": "tsx server/api/verifyWorldServerApiHandlers.ts",
     "api:verify:campaign-room": "tsx server/api/verifyCampaignRoomApiHandlers.ts",
     "frontend:verify:world": "tsx src/lib/api/worldServerApiClientSmoke.ts",
+    "frontend:verify:campaign-room": "tsx src/lib/api/campaignRoomApiClientSmoke.ts",
     "server:dev": "tsx server/room-server.ts",
     "server:build": "tsc -p server/tsconfig.build.json",
     "server:start": "node dist-server/server/room-server.js"

@@ -341,6 +341,25 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Read when: connecting a frontend server workspace, settings surface, or future
   campaign/room client to the World Server API.
 
+## Frontend Campaign / Room / Runtime Real Data (P5.FRONTEND-CAMPAIGN-REALDATA)
+- Files: `src/lib/api/campaignRoomApiClient.ts`,
+  `src/lib/campaignRoom/useCampaigns.ts`,
+  `src/lib/campaignRoom/useCampaignDetail.ts`,
+  `src/lib/campaignRoom/useRoomDetail.ts`,
+  `src/lib/campaignRoom/useRuntimeEvents.ts`,
+  `src/components/platform/ServerCampaignWorkspace.tsx`;
+  smoke `src/lib/api/campaignRoomApiClientSmoke.ts` and script
+  `frontend:verify:campaign-room`.
+- Boundary: selected server home reads real campaign, room/lobby metadata,
+  runtime-session metadata, and append-only runtime events through the existing
+  API. Demo rows are never mixed with API rows. Frontend state is display/cache
+  only; backend guards remain authoritative.
+- Don't violate: room metadata is not live Room Lobby authority; runtime-session
+  metadata is not live Runtime authority; no event edit/delete UI, WebSocket
+  protocol change, full VTT board, full character sheet, AI recap, or database
+  env in the frontend.
+- Doc: `P5_FRONTEND_CAMPAIGN_ROOM_REAL_DATA`.
+
 ## Effective Permission Resolver (P5.20 — contract only, pure backend policy)
 - Files: `server/policy/effectivePermissionResolver.ts` (types + deterministic
   resolver + `canViewContent`/`canEditContent`/`canPublishContent`/

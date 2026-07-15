@@ -1,0 +1,245 @@
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { ApiClientError } from '../../lib/api/apiTypes';
+import {
+  campaignRoomApiClient,
+  type CampaignListItem,
+} from '../../lib/api/campaignRoomApiClient';
+import type { WorldServerGameSystemBinding } from '../../lib/api/worldServerApiClient';
+import { createTranslator, type Locale } from '../../i18n';
+import { useCampaigns } from '../../lib/campaignRoom/useCampaigns';
+import { useCampaignDetail } from '../../lib/campaignRoom/useCampaignDetail';
+import { useRoomDetail } from '../../lib/campaignRoom/useRoomDetail';
+import { useRuntimeEvents } from '../../lib/campaignRoom/useRuntimeEvents';
+
+type Props = {
+  worldServerId: string;
+  locale: Locale;
+  gameSystems: WorldServerGameSystemBinding[];
+  defaultGameSystemId?: string;
+  canManageServer: boolean;
+};
+
+function errorText(error: ApiClientError | null, locale: Locale): string {
+  if (!error) return '';
+  if (error.statusCode === 401) return locale === 'en' ? 'Please sign in to view this data.' : '请先登录后查看这部分内容。';
+  if (error.statusCode === 403) return locale === 'en' ? 'You do not have access to this data.' : '你没有权限查看这部分内容。';
+  if (error.statusCode === 404) return locale === 'en' ? 'This item is no longer available.' : '这项内容已经不可用。';
+  return locale === 'en' ? 'The server is temporarily unavailable.' : '服务器暂时不可用。';
+}
+
+function roomLabel(room: { roomCode?: string; metadata: Record<string, unknown> }): string {
+  const name = room.metadata.name;
+  if (typeof name === 'string' && name.trim()) return name;
+  if (room.roomCode) return room.roomCode;
+  return 'Room';
+}
+
+export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, defaultGameSystemId, canManageServer }: Props) {
+  const { t } = createTranslator(locale);
+  const { campaigns, loading, error, refresh, createCampaign } = useCampaigns(worldServerId);
+  const [selectedCampaignId, setSelectedCampaignId] = useState('');
+  const [selectedRoomId, setSelectedRoomId] = useState('');
+  const [campaignTitle, setCampaignTitle] = useState('');
+  const [campaignDescription, setCampaignDescription] = useState('');
+  const [campaignSystemId, setCampaignSystemId] = useState(defaultGameSystemId ?? gameSystems[0]?.gameSystemId ?? '');
+  const [roomName, setRoomName] = useState('');
+  const [eventText, setEventText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<ApiClientError | null>(null);
+
+  useEffect(() => {
+    if (!selectedCampaignId && campaigns[0]) setSelectedCampaignId(campaigns[0].campaign.campaignId);
+    if (selectedCampaignId && !campaigns.some((item) => item.campaign.campaignId === selectedCampaignId)) {
+      setSelectedCampaignId(campaigns[0]?.campaign.campaignId ?? '');
+    }
+  }, [campaigns, selectedCampaignId]);
+
+  const selectedCampaign: CampaignListItem | undefined = useMemo(
+    () => campaigns.find((item) => item.campaign.campaignId === selectedCampaignId),
+    [campaigns, selectedCampaignId],
+  );
+  const campaignDetail = useCampaignDetail(worldServerId, selectedCampaignId, { enabled: selectedCampaignId !== '' });
+  const selectedRoom = campaignDetail.rooms.find((room) => room.roomId === selectedRoomId);
+
+  useEffect(() => {
+    if (!selectedRoomId && campaignDetail.rooms[0]) setSelectedRoomId(campaignDetail.rooms[0].roomId);
+    if (selectedRoomId && !campaignDetail.rooms.some((room) => room.roomId === selectedRoomId)) {
+      setSelectedRoomId(campaignDetail.rooms[0]?.roomId ?? '');
+    }
+  }, [campaignDetail.rooms, selectedRoomId]);
+
+  const roomDetail = useRoomDetail(worldServerId, selectedCampaignId, selectedRoomId, { enabled: selectedRoomId !== '' });
+  const runtimeSessionId = roomDetail.runtimeSession?.session.runtimeSessionId ?? '';
+  const runtimeEvents = useRuntimeEvents(worldServerId, selectedCampaignId, selectedRoomId, runtimeSessionId);
+
+  const runAction = async (action: () => Promise<unknown>) => {
+    setBusy(true);
+    setActionError(null);
+    try { await action(); } catch (reason) {
+      setActionError(reason instanceof ApiClientError ? reason : new ApiClientError('invalid_response', t('campaignRoom.actionFailed')));
+    } finally { setBusy(false); }
+  };
+
+  const handleCreateCampaign = async (event: FormEvent) => {
+    event.preventDefault();
+    const title = campaignTitle.trim();
+    if (!title || !campaignSystemId.trim()) return;
+    await runAction(async () => {
+      const created = await createCampaign({ title, description: campaignDescription.trim(), systemId: campaignSystemId.trim() });
+      setCampaignTitle('');
+      setCampaignDescription('');
+      setSelectedCampaignId(created.campaign.campaignId);
+    });
+  };
+
+  const handleCreateRoom = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!selectedCampaignId) return;
+    await runAction(async () => {
+      const room = await campaignDetail.createRoom({ metadata: roomName.trim() ? { name: roomName.trim() } : {} });
+      setRoomName('');
+      setSelectedRoomId(room.roomId);
+    });
+  };
+
+  const handleCreateRuntimeSession = async () => {
+    if (!selectedRoomId || !selectedCampaignId) return;
+    await runAction(async () => {
+      await campaignRoomApiClient.createRuntimeSession(worldServerId, selectedCampaignId, selectedRoomId, { title: t('campaignRoom.newSessionTitle') });
+      await roomDetail.refresh();
+    });
+  };
+
+  const handleAppendEvent = async (event: FormEvent) => {
+    event.preventDefault();
+    const text = eventText.trim();
+    if (!text) return;
+    await runAction(async () => {
+      await runtimeEvents.appendEvent({ eventKind: 'frontend.note', visibility: 'public', payload: { text } });
+      setEventText('');
+    });
+  };
+
+  return (
+    <section className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{t('campaignRoom.eyebrow')}</div>
+          <h2 className="mt-1 text-2xl font-black">{t('campaignRoom.title')}</h2>
+          <p className="mt-1 text-sm leading-6 text-[#51483d]">{t('campaignRoom.subtitle')}</p>
+        </div>
+        <button type="button" onClick={() => void refresh()} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm font-bold text-[#51483d] hover:bg-[#2f2a22]/5">
+          {t('campaignRoom.refresh')}
+        </button>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(16rem,0.75fr)_minmax(0,1.25fr)]">
+        <div className="flex flex-col gap-3">
+          <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-lg font-bold">{t('campaignRoom.campaigns')}</h3>
+              <span className="text-xs font-bold text-[#51483d]">{campaigns.length}</span>
+            </div>
+            {loading && <p className="mt-3 text-sm text-[#51483d]">{t('campaignRoom.loading')}</p>}
+            {!loading && error && (
+              <div className="mt-3 rounded-xl bg-[#fff8e6] p-3 text-sm text-[#51483d]">
+                <p>{errorText(error, locale)}</p>
+                <button type="button" onClick={() => void refresh()} className="mt-2 font-bold underline">{t('campaignRoom.retry')}</button>
+              </div>
+            )}
+            {!loading && !error && campaigns.length === 0 && <p className="mt-3 text-sm leading-6 text-[#51483d]">{t('campaignRoom.noCampaigns')}</p>}
+            <div className="mt-3 flex flex-col gap-2">
+              {campaigns.map(({ campaign }) => (
+                <button key={campaign.campaignId} type="button" onClick={() => { setSelectedCampaignId(campaign.campaignId); setSelectedRoomId(''); }} className={`rounded-xl border p-3 text-left transition ${campaign.campaignId === selectedCampaignId ? 'border-[#58180d]/45 bg-[#fff8e6]' : 'border-[#2f2a22]/10 bg-[#f7f3ea] hover:border-[#58180d]/30'}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-bold">{campaign.title}</span>
+                    <span className="text-[11px] text-[#51483d]">{campaign.status}</span>
+                  </div>
+                  <div className="mt-1 text-xs text-[#51483d]">{campaign.systemId} · {campaign.lifecycleStatus}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <form onSubmit={(event) => void handleCreateCampaign(event)} className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/70 p-4">
+            <h3 className="font-bold">{t('campaignRoom.createCampaign')}</h3>
+            <div className="mt-3 flex flex-col gap-2">
+              <input value={campaignTitle} onChange={(event) => setCampaignTitle(event.target.value)} placeholder={t('campaignRoom.campaignTitle')} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm" />
+              <textarea value={campaignDescription} onChange={(event) => setCampaignDescription(event.target.value)} placeholder={t('campaignRoom.campaignDescription')} className="min-h-20 rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm" />
+              {gameSystems.length > 0 ? (
+                <select value={campaignSystemId} onChange={(event) => setCampaignSystemId(event.target.value)} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm">
+                  <option value="">{t('campaignRoom.chooseSystem')}</option>
+                  {gameSystems.map((system) => <option key={system.gameSystemId} value={system.gameSystemId}>{system.displayName}</option>)}
+                </select>
+              ) : (
+                <input value={campaignSystemId} onChange={(event) => setCampaignSystemId(event.target.value)} placeholder={t('campaignRoom.systemId')} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm" />
+              )}
+              <button type="submit" disabled={busy || !campaignTitle.trim() || !campaignSystemId.trim()} className="w-fit rounded-md bg-[#17130f] px-3 py-2 text-sm font-bold text-white disabled:opacity-40">{t('campaignRoom.create')}</button>
+            </div>
+          </form>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          {actionError && <p className="rounded-xl bg-[#fff8e6] p-3 text-sm text-[#8b3a2f]">{errorText(actionError, locale) || actionError.message}</p>}
+          {!selectedCampaignId && <div className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/70 p-6 text-sm text-[#51483d]">{t('campaignRoom.chooseCampaign')}</div>}
+          {selectedCampaignId && campaignDetail.loading && <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-6 text-sm text-[#51483d]">{t('campaignRoom.loadingDetail')}</div>}
+          {selectedCampaignId && campaignDetail.error && <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-6 text-sm text-[#51483d]">{errorText(campaignDetail.error, locale)} <button type="button" onClick={() => void campaignDetail.refresh()} className="ml-2 font-bold underline">{t('campaignRoom.retry')}</button></div>}
+          {campaignDetail.detail && (
+            <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{t('campaignRoom.campaignDetail')}</div>
+                  <h3 className="mt-1 text-2xl font-black">{campaignDetail.detail.campaign.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-[#51483d]">{campaignDetail.detail.campaign.description || t('campaignRoom.noDescription')}</p>
+                </div>
+                <div className="flex flex-wrap gap-2 text-[11px] font-bold text-[#51483d]">
+                  <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">{campaignDetail.detail.campaign.status}</span>
+                  <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">{campaignDetail.detail.campaign.lifecycleStatus}</span>
+                  <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">{campaignDetail.detail.campaign.systemId}</span>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.actorCount')}</strong><div className="mt-1 text-[#51483d]">{campaignDetail.actors.length}</div></div>
+                <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.roomCount')}</strong><div className="mt-1 text-[#51483d]">{campaignDetail.rooms.length}</div></div>
+              </div>
+              {campaignDetail.partialErrors.length > 0 && <p className="mt-3 text-xs text-[#51483d]">{t('campaignRoom.partialSync')}</p>}
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
+                <h4 className="font-bold">{t('campaignRoom.rooms')}</h4>
+                <form onSubmit={(event) => void handleCreateRoom(event)} className="flex flex-wrap gap-2">
+                  <input value={roomName} onChange={(event) => setRoomName(event.target.value)} placeholder={t('campaignRoom.roomName')} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm" />
+                  <button type="submit" disabled={busy} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.createRoom')}</button>
+                </form>
+              </div>
+              {campaignDetail.rooms.length === 0 && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noRooms')}</p>}
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {campaignDetail.rooms.map((room) => <button key={room.roomId} type="button" onClick={() => setSelectedRoomId(room.roomId)} className={`rounded-xl border p-3 text-left ${room.roomId === selectedRoomId ? 'border-[#58180d]/45 bg-[#fff8e6]' : 'border-[#2f2a22]/10 bg-[#f7f3ea]'}`}><div className="font-bold">{roomLabel(room)}</div><div className="mt-1 text-xs text-[#51483d]">{room.roomStatus} · {room.multiplayerMode}</div></button>)}
+              </div>
+            </div>
+          )}
+
+          {selectedRoom && roomDetail.room && (
+            <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div><div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{t('campaignRoom.roomDetail')}</div><h3 className="mt-1 text-xl font-bold">{roomLabel(roomDetail.room)}</h3></div>
+                <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1 text-xs font-bold text-[#51483d]">{roomDetail.room.roomStatus}</span>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-[#51483d]">{t('campaignRoom.metadataNote')}</p>
+              {roomDetail.loading && <p className="mt-3 text-sm text-[#51483d]">{t('campaignRoom.loadingDetail')}</p>}
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.participants')}</strong><div className="mt-1 text-[#51483d]">{roomDetail.participants.length}</div></div>
+                <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.lobbySlots')}</strong><div className="mt-1 text-[#51483d]">{roomDetail.slots.length}</div></div>
+              </div>
+              {(roomDetail.participants.length > 0 || roomDetail.slots.length > 0) && <div className="mt-4 grid gap-2 sm:grid-cols-2"><div>{roomDetail.participants.map((participant) => <div key={participant.participantId} className="text-xs text-[#51483d]">{participant.roleKey ?? t('campaignRoom.member')} · {participant.membershipStatus}</div>)}</div><div>{roomDetail.slots.map((slot) => <div key={slot.lobbySlotId} className="text-xs text-[#51483d]">{t('campaignRoom.slot')} {slot.slotIndex + 1} · {slot.slotStatus}</div>)}</div></div>}
+
+              <div className="mt-5 border-t border-[#2f2a22]/10 pt-4">
+                <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{t('campaignRoom.runtimeSession')}</h4>{!roomDetail.runtimeSession && canManageServer && <button type="button" disabled={busy} onClick={() => void handleCreateRuntimeSession()} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-xs font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.createSession')}</button>}</div>
+                {!roomDetail.runtimeSession && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noSession')}</p>}
+                {roomDetail.runtimeSession && <><p className="mt-2 text-sm text-[#51483d]">{roomDetail.runtimeSession.session.title || t('campaignRoom.untitledSession')} · {roomDetail.runtimeSession.session.status}</p><div className="mt-4"><div className="flex items-center justify-between gap-2"><h4 className="font-bold">{t('campaignRoom.runtimeEvents')}</h4><button type="button" onClick={() => void runtimeEvents.refresh()} className="text-xs font-bold underline">{t('campaignRoom.refresh')}</button></div>{runtimeEvents.error && <p className="mt-2 text-sm text-[#8b3a2f]">{errorText(runtimeEvents.error, locale)}</p>}{runtimeEvents.loading && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.loading')}</p>}{!runtimeEvents.loading && runtimeEvents.events.length === 0 && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noEvents')}</p>}<div className="mt-2 max-h-44 overflow-auto rounded-xl bg-[#f7f3ea] p-3">{runtimeEvents.events.map((item) => <div key={item.runtimeEventId} className="border-b border-[#2f2a22]/8 py-2 text-xs last:border-0"><span className="font-bold">#{item.seq} {item.eventKind}</span><span className="ml-2 text-[#51483d]">{typeof item.payload.text === 'string' ? item.payload.text : t('campaignRoom.eventData')}</span></div>)}</div><form onSubmit={(event) => void handleAppendEvent(event)} className="mt-3 flex gap-2"><input value={eventText} onChange={(event) => setEventText(event.target.value)} placeholder={t('campaignRoom.eventPlaceholder')} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm" /><button type="submit" disabled={busy || !eventText.trim()} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{t('campaignRoom.appendEvent')}</button></form><p className="mt-2 text-[11px] text-[#51483d]">{t('campaignRoom.appendOnlyNote')}</p></div></>}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}

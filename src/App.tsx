@@ -33,6 +33,7 @@ import { ApiClientError } from './lib/api/apiTypes';
 import type { WorldServerRecord } from './lib/api/worldServerApiClient';
 import { useWorldServers } from './lib/worldServer/useWorldServers';
 import { useWorldServerDetail } from './lib/worldServer/useWorldServerDetail';
+import { ServerCampaignWorkspace } from './components/platform/ServerCampaignWorkspace';
 
 type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop' | 'fanPlaza' | 'documents' | 'personalHub' | 'userProfile';
 type PlayStage = 'menu' | 'workspace';
@@ -1138,7 +1139,7 @@ export default function App() {
                   : '服务器主页承载公告、战役、房间、成员、资料包和服务器内活动。'}
               </p>
               <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {['集会所', '战役', '房间', '成员', '图鉴 / 资料包', '服务器公告'].map((label) => (
+                {['集会所', '成员', '图鉴 / 资料包', '服务器公告'].map((label) => (
                   <div key={label} className="rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-4">
                     <div className="text-sm font-bold">{label}</div>
                     <div className="mt-1 text-xs text-[#51483d]">服务器内入口</div>
@@ -1183,6 +1184,16 @@ export default function App() {
               )}
             </aside>
           </section>
+
+          {selectedWorldServer.source === 'api' && selectedApiServer && (
+            <ServerCampaignWorkspace
+              worldServerId={selectedApiServer.worldServerId}
+              locale={locale}
+              gameSystems={worldServerDetail.gameSystems}
+              defaultGameSystemId={selectedApiServer.defaultGameSystemId}
+              canManageServer={canManageSelectedServer}
+            />
+          )}
         </main>
         <Toaster />
       </div>
