@@ -34,6 +34,7 @@ import type { WorldServerRecord } from './lib/api/worldServerApiClient';
 import { useWorldServers } from './lib/worldServer/useWorldServers';
 import { useWorldServerDetail } from './lib/worldServer/useWorldServerDetail';
 import { ServerCampaignWorkspace } from './components/platform/ServerCampaignWorkspace';
+import { LocalDevIdentitySwitcher } from './components/platform/LocalDevIdentitySwitcher';
 
 type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop' | 'fanPlaza' | 'documents' | 'personalHub' | 'userProfile';
 type PlayStage = 'menu' | 'workspace';
@@ -179,6 +180,7 @@ export default function App() {
   const [createServerError, setCreateServerError] = useState<ApiClientError | null>(null);
   const [createServerLoading, setCreateServerLoading] = useState<boolean>(false);
   const [moreOpen, setMoreOpen] = useState<boolean>(false);
+  const [, setDevIdentityRevision] = useState(0);
   // P5.4: default profile identity = the device's local anonymous user (lazy init
   // is safe: the repository creates the user on first access, idempotently).
   const [profileUserId, setProfileUserId] = useState<string>(() => getCurrentLocalProfileUserId());
@@ -909,6 +911,14 @@ export default function App() {
               </button>
             </div>
           </header>
+
+          <LocalDevIdentitySwitcher
+            locale={locale}
+            onChanged={() => {
+              setDevIdentityRevision((value) => value + 1);
+              void worldServersState.refresh();
+            }}
+          />
 
           {worldServersState.loading && (
             <section className="rounded-2xl border border-[#2f2a22]/12 bg-white p-6 text-sm text-[#51483d]">

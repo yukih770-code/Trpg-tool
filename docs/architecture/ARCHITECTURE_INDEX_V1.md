@@ -390,6 +390,21 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   env in the frontend.
 - Doc: `P5_FRONTEND_CAMPAIGN_ROOM_REAL_DATA`.
 
+## Local Playable Lobby (P5.LOCAL-PLAYABLE-LOBBY)
+- Files: `src/components/platform/LocalDevIdentitySwitcher.tsx`,
+  `src/components/platform/ServerCampaignWorkspace.tsx`,
+  `src/lib/api/apiClient.ts`, `src/lib/api/campaignRoomApiClient.ts`,
+  `src/lib/localPlayableLobby/localPlayableLobbySmoke.ts`;
+  script `frontend:verify:local-playable-lobby`.
+- Boundary: frontend-only local table organizer over the existing API. The
+  dev identity selector is not authentication or security; it only changes the
+  development viewer header. Campaign/room metadata and append-only runtime
+  events remain API-owned; live Room Server/WebSocket authority is unchanged.
+- Don't violate: no database URL in frontend, no silent mock/API mixing, no
+  WebSocket rewrite, no live membership/ready authority, no RuntimeActor,
+  full VTT, full character editor, AI, deployment, or auth provider.
+- Doc: `P5_LOCAL_PLAYABLE_LOBBY`.
+
 ## Effective Permission Resolver (P5.20 — contract only, pure backend policy)
 - Files: `server/policy/effectivePermissionResolver.ts` (types + deterministic
   resolver + `canViewContent`/`canEditContent`/`canPublishContent`/

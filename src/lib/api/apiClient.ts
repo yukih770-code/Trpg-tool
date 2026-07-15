@@ -13,6 +13,8 @@ export type ApiClientOptions = {
   fetcher?: typeof fetch;
 };
 
+export const DEV_VIEWER_USER_ID_STORAGE_KEY = 'dnd.dev.viewerUserId';
+
 function frontendEnv(): FrontendApiEnv {
   return (import.meta as ImportMetaWithEnv).env ?? {};
 }
@@ -35,12 +37,38 @@ export function isDevApiDemoFallbackEnabled(env: FrontendApiEnv = frontendEnv())
   return env.DEV === true && readString(env.VITE_SERVER_WORKSPACE_DEMO) === 'true';
 }
 
-export function resolveDevViewerUserId(env: FrontendApiEnv = frontendEnv()): string | undefined {
+export function isFrontendDevelopment(env: FrontendApiEnv = frontendEnv()): boolean {
+  return env.DEV === true;
+}
+
+function storedDevViewerUserId(): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    return readString(window.localStorage.getItem(DEV_VIEWER_USER_ID_STORAGE_KEY));
+  } catch {
+    return undefined;
+  }
+}
+
+export function setDevViewerUserId(userId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(DEV_VIEWER_USER_ID_STORAGE_KEY, userId);
+  } catch {
+    // Local persistence is optional for the dev-only identity seam.
+  }
+}
+
+export function resolveConfiguredDevViewerUserId(env: FrontendApiEnv = frontendEnv()): string | undefined {
   return env.DEV === true ? readString(env.VITE_DEV_VIEWER_USER_ID) : undefined;
 }
 
+export function resolveDevViewerUserId(env: FrontendApiEnv = frontendEnv()): string | undefined {
+  return env.DEV === true ? storedDevViewerUserId() ?? resolveConfiguredDevViewerUserId(env) : undefined;
+}
+
 function devViewerHeader(env: FrontendApiEnv, isDev: boolean): Record<string, string> {
-  const viewerId = readString(env.VITE_DEV_VIEWER_USER_ID);
+  const viewerId = isDev ? resolveDevViewerUserId(env) : undefined;
   return isDev && viewerId ? { 'x-dev-user-id': viewerId } : {};
 }
 

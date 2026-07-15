@@ -3,6 +3,7 @@ import { ApiClientError } from '../../lib/api/apiTypes';
 import {
   campaignRoomApiClient,
   type CampaignListItem,
+  type CampaignActorInstance,
 } from '../../lib/api/campaignRoomApiClient';
 import type { WorldServerGameSystemBinding } from '../../lib/api/worldServerApiClient';
 import { createTranslator, type Locale } from '../../i18n';
@@ -34,6 +35,20 @@ function roomLabel(room: { roomCode?: string; metadata: Record<string, unknown> 
   return 'Room';
 }
 
+function participantKey(participant: { participantId?: string; roomParticipantId?: string }): string {
+  return participant.participantId ?? participant.roomParticipantId ?? 'participant';
+}
+
+function participantName(participant: { displayName?: string; metadata: Record<string, unknown> }, fallback: string): string {
+  if (participant.displayName?.trim()) return participant.displayName;
+  const metadataName = participant.metadata.displayName;
+  return typeof metadataName === 'string' && metadataName.trim() ? metadataName : fallback;
+}
+
+function actorLabel(actor: CampaignActorInstance, fallback: string): string {
+  return actor.displayName || fallback;
+}
+
 export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, defaultGameSystemId, canManageServer }: Props) {
   const { t } = createTranslator(locale);
   const { campaigns, loading, error, refresh, createCampaign } = useCampaigns(worldServerId);
@@ -44,6 +59,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const [campaignSystemId, setCampaignSystemId] = useState(defaultGameSystemId ?? gameSystems[0]?.gameSystemId ?? '');
   const [roomName, setRoomName] = useState('');
   const [eventText, setEventText] = useState('');
+  const [actorName, setActorName] = useState('');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiClientError | null>(null);
 
@@ -115,8 +131,19 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
     const text = eventText.trim();
     if (!text) return;
     await runAction(async () => {
-      await runtimeEvents.appendEvent({ eventKind: 'frontend.note', visibility: 'public', payload: { text } });
+      await runtimeEvents.appendEvent({ eventKind: 'system.note', visibility: 'public', payload: { text } });
       setEventText('');
+    });
+  };
+
+  const handleCreateCampaignActor = async (event: FormEvent) => {
+    event.preventDefault();
+    const displayName = actorName.trim();
+    if (!displayName || !selectedCampaignId || !canManageServer) return;
+    await runAction(async () => {
+      await campaignRoomApiClient.createCampaignActor(worldServerId, selectedCampaignId, { displayName, actorKind: 'pc' });
+      setActorName('');
+      await campaignDetail.refresh();
     });
   };
 
@@ -202,6 +229,31 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                 <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.actorCount')}</strong><div className="mt-1 text-[#51483d]">{campaignDetail.actors.length}</div></div>
                 <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.roomCount')}</strong><div className="mt-1 text-[#51483d]">{campaignDetail.rooms.length}</div></div>
               </div>
+              <div className="mt-4 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="font-bold">{t('campaignRoom.actorBindings')}</h4>
+                    <p className="mt-1 text-xs text-[#51483d]">{t('campaignRoom.actorBindingsNote')}</p>
+                  </div>
+                  {canManageServer && (
+                    <form onSubmit={(event) => void handleCreateCampaignActor(event)} className="flex flex-wrap gap-2">
+                      <input value={actorName} onChange={(event) => setActorName(event.target.value)} placeholder={t('campaignRoom.actorName')} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm" />
+                      <button type="submit" disabled={busy || !actorName.trim()} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-xs font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.bindActor')}</button>
+                    </form>
+                  )}
+                </div>
+                {campaignDetail.actors.length === 0 && <p className="mt-3 text-xs text-[#51483d]">{t('campaignRoom.noActors')}</p>}
+                {campaignDetail.actors.length > 0 && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {campaignDetail.actors.map((actor) => (
+                      <div key={actor.campaignActorInstanceId} className="rounded-lg border border-[#2f2a22]/10 bg-white px-3 py-2 text-xs">
+                        <div className="font-bold">{actorLabel(actor, t('campaignRoom.actorRecord'))}</div>
+                        <div className="mt-1 text-[#51483d]">{actor.instanceStatus} · {actor.sourceActorId ? t('campaignRoom.sourceActorConnected') : t('campaignRoom.sourceActorLocal')}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               {campaignDetail.partialErrors.length > 0 && <p className="mt-3 text-xs text-[#51483d]">{t('campaignRoom.partialSync')}</p>}
               <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
                 <h4 className="font-bold">{t('campaignRoom.rooms')}</h4>
@@ -217,24 +269,34 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
             </div>
           )}
 
+          {selectedRoom && roomDetail.error && !roomDetail.room && (
+            <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 text-sm text-[#51483d]">
+              <p>{errorText(roomDetail.error, locale)}</p>
+              <button type="button" onClick={() => void roomDetail.refresh()} className="mt-2 font-bold underline">{t('campaignRoom.retry')}</button>
+            </div>
+          )}
+
           {selectedRoom && roomDetail.room && (
             <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div><div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{t('campaignRoom.roomDetail')}</div><h3 className="mt-1 text-xl font-bold">{roomLabel(roomDetail.room)}</h3></div>
+                <button type="button" onClick={() => void roomDetail.refresh()} className="text-xs font-bold underline">{t('campaignRoom.refresh')}</button>
                 <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1 text-xs font-bold text-[#51483d]">{roomDetail.room.roomStatus}</span>
               </div>
               <p className="mt-2 text-xs leading-5 text-[#51483d]">{t('campaignRoom.metadataNote')}</p>
               {roomDetail.loading && <p className="mt-3 text-sm text-[#51483d]">{t('campaignRoom.loadingDetail')}</p>}
+              {roomDetail.partialErrors.length > 0 && <p className="mt-3 rounded-lg bg-[#fff8e6] p-3 text-xs text-[#51483d]">{t('campaignRoom.roomPartialSync')} <button type="button" onClick={() => void roomDetail.refresh()} className="ml-1 font-bold underline">{t('campaignRoom.retry')}</button></p>}
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.participants')}</strong><div className="mt-1 text-[#51483d]">{roomDetail.participants.length}</div></div>
                 <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.lobbySlots')}</strong><div className="mt-1 text-[#51483d]">{roomDetail.slots.length}</div></div>
               </div>
-              {(roomDetail.participants.length > 0 || roomDetail.slots.length > 0) && <div className="mt-4 grid gap-2 sm:grid-cols-2"><div>{roomDetail.participants.map((participant) => <div key={participant.participantId} className="text-xs text-[#51483d]">{participant.roleKey ?? t('campaignRoom.member')} · {participant.membershipStatus}</div>)}</div><div>{roomDetail.slots.map((slot) => <div key={slot.lobbySlotId} className="text-xs text-[#51483d]">{t('campaignRoom.slot')} {slot.slotIndex + 1} · {slot.slotStatus}</div>)}</div></div>}
+              {roomDetail.participants.length === 0 && roomDetail.slots.length === 0 && <p className="mt-4 text-sm text-[#51483d]">{t('campaignRoom.noParticipants')}</p>}
+              {(roomDetail.participants.length > 0 || roomDetail.slots.length > 0) && <div className="mt-4 grid gap-2 sm:grid-cols-2"><div>{roomDetail.participants.map((participant) => <div key={participantKey(participant)} className="rounded-lg border border-[#2f2a22]/10 bg-[#f7f3ea] p-3 text-xs"><div className="font-bold">{participantName(participant, t('campaignRoom.member'))}</div><div className="mt-1 text-[#51483d]">{participant.participantRole ?? participant.roleKey ?? t('campaignRoom.member')} · {participant.participantStatus ?? participant.membershipStatus ?? t('campaignRoom.member')} · {participant.readyStatus ?? t('campaignRoom.readyUnknown')}</div></div>)}</div><div>{roomDetail.slots.map((slot) => <div key={slot.lobbySlotId} className="rounded-lg border border-[#2f2a22]/10 bg-[#f7f3ea] p-3 text-xs"><div className="font-bold">{slot.slotLabel ?? `${t('campaignRoom.slot')} ${slot.slotIndex !== undefined ? slot.slotIndex + 1 : ''}`}</div><div className="mt-1 text-[#51483d]">{slot.slotStatus} · {slot.campaignActorInstanceId ? t('campaignRoom.actorAttached') : t('campaignRoom.actorUnbound')}</div></div>)}</div></div>}
 
               <div className="mt-5 border-t border-[#2f2a22]/10 pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{t('campaignRoom.runtimeSession')}</h4>{!roomDetail.runtimeSession && canManageServer && <button type="button" disabled={busy} onClick={() => void handleCreateRuntimeSession()} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-xs font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.createSession')}</button>}</div>
                 {!roomDetail.runtimeSession && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noSession')}</p>}
-                {roomDetail.runtimeSession && <><p className="mt-2 text-sm text-[#51483d]">{roomDetail.runtimeSession.session.title || t('campaignRoom.untitledSession')} · {roomDetail.runtimeSession.session.status}</p><div className="mt-4"><div className="flex items-center justify-between gap-2"><h4 className="font-bold">{t('campaignRoom.runtimeEvents')}</h4><button type="button" onClick={() => void runtimeEvents.refresh()} className="text-xs font-bold underline">{t('campaignRoom.refresh')}</button></div>{runtimeEvents.error && <p className="mt-2 text-sm text-[#8b3a2f]">{errorText(runtimeEvents.error, locale)}</p>}{runtimeEvents.loading && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.loading')}</p>}{!runtimeEvents.loading && runtimeEvents.events.length === 0 && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noEvents')}</p>}<div className="mt-2 max-h-44 overflow-auto rounded-xl bg-[#f7f3ea] p-3">{runtimeEvents.events.map((item) => <div key={item.runtimeEventId} className="border-b border-[#2f2a22]/8 py-2 text-xs last:border-0"><span className="font-bold">#{item.seq} {item.eventKind}</span><span className="ml-2 text-[#51483d]">{typeof item.payload.text === 'string' ? item.payload.text : t('campaignRoom.eventData')}</span></div>)}</div><form onSubmit={(event) => void handleAppendEvent(event)} className="mt-3 flex gap-2"><input value={eventText} onChange={(event) => setEventText(event.target.value)} placeholder={t('campaignRoom.eventPlaceholder')} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm" /><button type="submit" disabled={busy || !eventText.trim()} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{t('campaignRoom.appendEvent')}</button></form><p className="mt-2 text-[11px] text-[#51483d]">{t('campaignRoom.appendOnlyNote')}</p></div></>}
+                {roomDetail.runtimeSession && <><p className="mt-2 text-sm text-[#51483d]">{roomDetail.runtimeSession.session.title || t('campaignRoom.untitledSession')} · {roomDetail.runtimeSession.session.status}</p><div className="mt-4"><div className="flex items-center justify-between gap-2"><div><h4 className="font-bold">{t('campaignRoom.runtimeEvents')}</h4><p className="mt-1 text-xs text-[#51483d]">{t('campaignRoom.runtimeEventsNote')}</p></div><button type="button" onClick={() => void runtimeEvents.refresh()} className="text-xs font-bold underline">{t('campaignRoom.refresh')}</button></div>{runtimeEvents.error && <p className="mt-2 text-sm text-[#8b3a2f]">{errorText(runtimeEvents.error, locale)}</p>}{runtimeEvents.loading && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.loading')}</p>}{!runtimeEvents.loading && runtimeEvents.events.length === 0 && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noEvents')}</p>}<div className="mt-2 max-h-44 overflow-auto rounded-xl bg-[#f7f3ea] p-3">{runtimeEvents.events.map((item) => <div key={item.runtimeEventId} className="border-b border-[#2f2a22]/8 py-2 text-xs last:border-0"><span className="font-bold">#{item.seq} {item.eventKind}</span><span className="ml-2 text-[#51483d]">{typeof item.payload.text === 'string' ? item.payload.text : t('campaignRoom.eventData')}</span></div>)}</div><form onSubmit={(event) => void handleAppendEvent(event)} className="mt-3 flex gap-2"><input value={eventText} onChange={(event) => setEventText(event.target.value)} placeholder={t('campaignRoom.eventPlaceholder')} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm" /><button type="submit" disabled={busy || !eventText.trim()} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{t('campaignRoom.appendEvent')}</button></form><p className="mt-2 text-[11px] text-[#51483d]">{t('campaignRoom.appendOnlyNote')}</p></div></>}
               </div>
             </div>
           )}

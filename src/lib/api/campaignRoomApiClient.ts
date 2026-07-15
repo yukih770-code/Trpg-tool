@@ -62,10 +62,16 @@ export type RoomRecord = {
 };
 
 export type RoomParticipant = {
-  participantId: string;
+  participantId?: string;
+  roomParticipantId?: string;
   roomRecordId: string;
   userId?: string;
-  membershipStatus: string;
+  displayName?: string;
+  participantRole?: string;
+  participantStatus?: string;
+  readyStatus?: string;
+  actorBindingId?: string;
+  membershipStatus?: string;
   roleKey?: string;
   metadata: Record<string, unknown>;
 };
@@ -73,7 +79,10 @@ export type RoomParticipant = {
 export type RoomLobbySlot = {
   lobbySlotId: string;
   roomRecordId: string;
-  slotIndex: number;
+  roomParticipantId?: string;
+  campaignActorInstanceId?: string;
+  slotLabel?: string;
+  slotIndex?: number;
   slotStatus: string;
   participantId?: string;
   metadata: Record<string, unknown>;
