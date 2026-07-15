@@ -304,6 +304,26 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   auth provider, WebSocket/runtime, AI, upload, or migration-on-startup behavior.
 - Doc: `P5_API_CORE_WORLD_SERVER_SURFACE`.
 
+## Campaign / Room / Runtime API Surface (P5.API-CAMPAIGN-ROOM — server-only metadata/history surface)
+- Files: `server/api/campaignRoomApiHandlers.ts`, `server/api/campaignRoomApiRoutes.ts`,
+  `server/adapters/postgresCampaignRoomRepository.ts`,
+  `server/api/campaignRoomApiHandlersSmoke.ts`,
+  `server/api/verifyCampaignRoomApiHandlers.ts`; route family
+  `/api/world-servers/:worldServerId/campaigns`; script
+  `api:verify:campaign-room`.
+- Covers campaign CRUD/lifecycle, campaign actor-instance read/create/archive,
+  durable room metadata, lobby participant/slot reads, runtime-session metadata,
+  and append-only runtime-event list/append. Campaign scope uses the existing
+  `world_server_campaign_bindings` boundary; no new migration is introduced.
+- Don't violate: live Room Server/WebSocket state remains authoritative; room and
+  runtime-session endpoints persist metadata only; runtime events are append-only
+  history with idempotency/sequence reads and no update/delete route; repositories
+  do not decide permissions; safe envelopes hide internal errors. Actor-instance
+  PATCH is intentionally absent because the existing repository has no update port.
+- Read when: adding campaign/room clients, runtime history integration, or future
+  server-side campaign workspace APIs.
+- Doc: `P5_API_CAMPAIGN_ROOM_RUNTIME_SURFACE`.
+
 ## Frontend Server Workspace Real Data (P5.FRONTEND-REALDATA)
 - Files: `src/lib/api/apiTypes.ts`, `src/lib/api/apiClient.ts`,
   `src/lib/api/worldServerApiClient.ts`, `src/lib/worldServer/useWorldServers.ts`,
