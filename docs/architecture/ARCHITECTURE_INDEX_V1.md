@@ -304,6 +304,23 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   auth provider, WebSocket/runtime, AI, upload, or migration-on-startup behavior.
 - Doc: `P5_API_CORE_WORLD_SERVER_SURFACE`.
 
+## Frontend Server Workspace Real Data (P5.FRONTEND-REALDATA)
+- Files: `src/lib/api/apiTypes.ts`, `src/lib/api/apiClient.ts`,
+  `src/lib/api/worldServerApiClient.ts`, `src/lib/worldServer/useWorldServers.ts`,
+  `src/lib/worldServer/useWorldServerDetail.ts`, and the existing `src/App.tsx`
+  launcher/server workspace.
+- Boundary: frontend uses `VITE_API_BASE_URL` with a localhost fallback and the
+  existing safe API envelope; `VITE_DEV_VIEWER_USER_ID` is dev-only and is not
+  authentication. Frontend state is a display/cache concern, never security.
+- The current server select/home IA is preserved. API rows are not silently
+  mixed with fixtures; the old demo rows require an explicit dev-only demo flag.
+  Server detail, member/role summaries, settings summaries, and multiple game
+  systems are read from the World Server API where available.
+- Verification: `frontend:verify:world` covers URL normalization, response/error
+  handling, dev-header gating, request shape, and multi-system preservation.
+- Read when: connecting a frontend server workspace, settings surface, or future
+  campaign/room client to the World Server API.
+
 ## Effective Permission Resolver (P5.20 — contract only, pure backend policy)
 - Files: `server/policy/effectivePermissionResolver.ts` (types + deterministic
   resolver + `canViewContent`/`canEditContent`/`canPublishContent`/

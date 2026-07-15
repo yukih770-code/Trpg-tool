@@ -37,6 +37,7 @@
     "api:verify:guard": "tsx server/api/verifyApiGuardFoundation.ts",
     "api:verify:user": "tsx server/api/verifyUserApiHandlers.ts",
     "api:verify:world": "tsx server/api/verifyWorldServerApiHandlers.ts",
+    "frontend:verify:world": "tsx src/lib/api/worldServerApiClientSmoke.ts",
     "server:dev": "tsx server/room-server.ts",
     "server:build": "tsc -p server/tsconfig.build.json",
     "server:start": "node dist-server/server/room-server.js"
