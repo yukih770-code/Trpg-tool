@@ -340,6 +340,20 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   server-side campaign workspace APIs.
 - Doc: `P5_API_CAMPAIGN_ROOM_RUNTIME_SURFACE`.
 
+## Real Postgres / HTTP E2E Verification Harness (P5.E2E-DB-HTTP)
+- Files: `server/db/verifyPostgresE2EReadiness.ts`,
+  `server/api/verifyHttpE2EFlow.ts`, `src/lib/api/frontendApiE2ESmoke.ts`;
+  doc `P5_E2E_DB_HTTP_VERIFICATION`.
+- The DB harness is read-only by default: migration apply and rollback write
+  smokes require explicit flags. The HTTP harness targets an already-running
+  backend and exercises the existing World Server → Campaign → Room → Runtime
+  Session → append-only Runtime Event chain. The frontend smoke reuses typed
+  clients in dry mode or optional read-only real-backend mode.
+- Don't violate: no secrets or SQL output; no Vite database env; no automatic
+  server startup; no new routes, schema, auth provider, WebSocket protocol, or
+  live Room Server authority changes. `not_configured` and
+  `server_unavailable` remain honest outcomes.
+
 ## Frontend Server Workspace Real Data (P5.FRONTEND-REALDATA)
 - Files: `src/lib/api/apiTypes.ts`, `src/lib/api/apiClient.ts`,
   `src/lib/api/worldServerApiClient.ts`, `src/lib/worldServer/useWorldServers.ts`,
