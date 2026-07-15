@@ -67,6 +67,14 @@ export interface CreateRuntimeSessionInput {
   startedAt?: string;
 }
 
+export interface UpdateRuntimeSessionInput {
+  runtimeSessionId: string;
+  title?: string;
+  status?: string;
+  payload?: Record<string, unknown>;
+  endedAt?: string;
+}
+
 export interface ListRuntimeSessionsOptions {
   includeArchived?: boolean;
   limit?: number;
@@ -136,6 +144,7 @@ export interface PostgresRuntimeEventRepository {
     options?: ListRuntimeSessionsOptions,
   ): Promise<PostgresRuntimeEventRepositoryResult<RuntimeSessionRecord[]>>;
   createRuntimeSession(input: CreateRuntimeSessionInput): Promise<PostgresRuntimeEventRepositoryResult<RuntimeSessionRecord>>;
+  updateRuntimeSession(input: UpdateRuntimeSessionInput): Promise<PostgresRuntimeEventRepositoryResult<RuntimeSessionRecord | null>>;
   endRuntimeSession(
     runtimeSessionId: string,
     endedAt?: string,
@@ -387,6 +396,37 @@ export function createPostgresRuntimeEventRepository(
     }
   }
 
+  async function updateRuntimeSession(
+    input: UpdateRuntimeSessionInput,
+  ): Promise<PostgresRuntimeEventRepositoryResult<RuntimeSessionRecord | null>> {
+    const now = new Date().toISOString();
+    try {
+      const result = await executor.query<SessionRow>(
+        `
+          UPDATE runtime_sessions SET
+            title = COALESCE($2, title),
+            status = COALESCE($3, status),
+            session_payload = COALESCE($4::jsonb, session_payload),
+            ended_at = COALESCE($5, ended_at),
+            updated_at = $6
+          WHERE runtime_session_id = $1
+          RETURNING ${SESSION_RETURNING}
+        `,
+        [
+          input.runtimeSessionId,
+          input.title ?? null,
+          input.status ?? null,
+          input.payload ? JSON.stringify(input.payload) : null,
+          input.endedAt ?? null,
+          now,
+        ],
+      );
+      return { ok: true, value: result.rows[0] ? rowToSession(result.rows[0]) : null };
+    } catch (error) {
+      return mapRepositoryError(error);
+    }
+  }
+
   async function updateSessionLifecycle(
     runtimeSessionId: string,
     setClause: string,
@@ -611,6 +651,7 @@ export function createPostgresRuntimeEventRepository(
     getRuntimeSessionById,
     listRuntimeSessionsByCampaign,
     createRuntimeSession,
+    updateRuntimeSession,
     endRuntimeSession,
     archiveRuntimeSession,
     restoreRuntimeSession,

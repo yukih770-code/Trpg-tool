@@ -70,6 +70,8 @@ import { registerUserDevRoutes } from './api/userDevRoutes.js';
 import { defaultPostgresUserApiHandlers } from './api/userApiHandlers.js';
 import { registerWorldServerApiRoutes } from './api/worldServerApiRoutes.js';
 import { createWorldServerApiHandlers } from './api/worldServerApiHandlers.js';
+import { registerCampaignRoomApiRoutes } from './api/campaignRoomApiRoutes.js';
+import { createCampaignRoomApiHandlers } from './api/campaignRoomApiHandlers.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -115,6 +117,10 @@ if (serverRuntimeConfig.devUserApiEnabled === true) {
 // configured database/auth provider, handlers return safe unavailable/401
 // envelopes; startup performs no migration or readiness work for these routes.
 registerWorldServerApiRoutes(app, createWorldServerApiHandlers({
+  allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
+  nodeEnv: serverRuntimeConfig.environment === 'production' ? 'production' : 'development',
+}));
+registerCampaignRoomApiRoutes(app, createCampaignRoomApiHandlers({
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
   nodeEnv: serverRuntimeConfig.environment === 'production' ? 'production' : 'development',
 }));

@@ -53,3 +53,13 @@ export {
   defaultPostgresWorldServerApiHandlers,
 } from './worldServerApiHandlers.js';
 export { registerWorldServerApiRoutes } from './worldServerApiRoutes.js';
+export { registerCampaignRoomApiRoutes } from './campaignRoomApiRoutes.js';
+export {
+  createCampaignRoomApiHandlers,
+  defaultPostgresCampaignRoomApiHandlers,
+} from './campaignRoomApiHandlers.js';
+export type {
+  CampaignRoomApiHandlers,
+  CampaignRoomApiRequest,
+  CreateCampaignRoomApiHandlersOptions,
+} from './campaignRoomApiHandlers.js';

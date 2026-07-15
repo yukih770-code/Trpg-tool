@@ -198,6 +198,16 @@ export interface CreateRoomRecordInput {
   metadata?: Record<string, unknown>;
 }
 
+export interface UpdateRoomRecordInput {
+  roomRecordId: string;
+  roomCode?: string;
+  roomStatus?: string;
+  multiplayerMode?: string;
+  accessPolicy?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  closedAt?: string;
+}
+
 export interface ContentDocumentRecord {
   contentDocumentId: string;
   ownerId?: string;
@@ -696,6 +706,31 @@ export function createPostgresPlatformFoundationRepository(
       rowToRoom,
     );
 
+  const updateRoomRecord = (input: UpdateRoomRecordInput) =>
+    one<RoomRecord>(
+      `UPDATE room_records SET
+         room_code = COALESCE($2, room_code),
+         room_status = COALESCE($3, room_status),
+         multiplayer_mode = COALESCE($4, multiplayer_mode),
+         access_policy_payload = COALESCE($5::jsonb, access_policy_payload),
+         metadata_payload = COALESCE($6::jsonb, metadata_payload),
+         closed_at = COALESCE($7, closed_at),
+         updated_at = $8
+       WHERE room_record_id = $1
+       RETURNING ${ROOM_COLS}`,
+      [
+        input.roomRecordId,
+        input.roomCode ?? null,
+        input.roomStatus ?? null,
+        input.multiplayerMode ?? null,
+        input.accessPolicy ? JSON.stringify(input.accessPolicy) : null,
+        input.metadata ? JSON.stringify(input.metadata) : null,
+        input.closedAt ?? null,
+        new Date().toISOString(),
+      ],
+      rowToRoom,
+    );
+
   const createContentDocument = (input: CreateContentDocumentInput) => {
     const now = new Date().toISOString();
     return one<ContentDocumentRecord>(
@@ -843,6 +878,7 @@ export function createPostgresPlatformFoundationRepository(
     getRoomRecordByRoomId,
     listRoomRecordsByCampaign,
     updateRoomRecordStatus,
+    updateRoomRecord,
     createContentDocument,
     getContentDocumentById,
     listContentDocumentsByCampaign,
