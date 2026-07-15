@@ -287,6 +287,23 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Read when: building API middleware/guards, a real auth provider, or any server/campaign
   business API.
 
+## World Server / Membership / Settings API (P5.API-CORE — first real backend surface)
+- Files: `server/api/worldServerApiHandlers.ts`, `server/api/worldServerApiRoutes.ts`,
+  `server/api/worldServerApiHandlersSmoke.ts`, `server/api/verifyWorldServerApiHandlers.ts`;
+  route family `/api/world-servers`; script `api:verify:world`.
+- Reuses `requestAuthSession`, `currentViewerContext`, `resolveApiRequestScope`,
+  `resolveApiPermissionGuard`, `postgresWorldServerRepository`, and the platform
+  foundation settings/ruleset repository seam.
+- Covers world servers, members/roles, invites/join requests, settings and ruleset
+  versions, and multiple game-system bindings. The default game system is only a
+  convenience hint. Pack bindings are deferred because the current repository has
+  no clear world-server binding port.
+- Don't violate: **handlers enforce the API boundary; repositories do not decide
+  permissions**; dev auth remains opt-in and non-production; private reads can hide
+  existence; generic errors never expose SQL or internal reasons; no frontend,
+  auth provider, WebSocket/runtime, AI, upload, or migration-on-startup behavior.
+- Doc: `P5_API_CORE_WORLD_SERVER_SURFACE`.
+
 ## Effective Permission Resolver (P5.20 — contract only, pure backend policy)
 - Files: `server/policy/effectivePermissionResolver.ts` (types + deterministic
   resolver + `canViewContent`/`canEditContent`/`canPublishContent`/

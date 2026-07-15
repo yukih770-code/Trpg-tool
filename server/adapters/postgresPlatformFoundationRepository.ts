@@ -84,6 +84,34 @@ export interface CreateWorldServerSettingsVersionInput {
   changeSummary?: string;
 }
 
+export interface WorldServerRulesetVersionRecord {
+  rulesetVersionId: string;
+  worldServerId: string;
+  gameSystemId: string;
+  versionLabel: string;
+  lifecycleStatus: string;
+  rulesetPayload: Record<string, unknown>;
+  compatibilityPayload: Record<string, unknown>;
+  createdByUserId?: string;
+  schemaVersion: number;
+  createdAt?: string;
+  publishedAt?: string;
+  archivedAt?: string;
+}
+
+export interface CreateWorldServerRulesetVersionInput {
+  rulesetVersionId: string;
+  worldServerId: string;
+  gameSystemId: string;
+  versionLabel: string;
+  lifecycleStatus?: string;
+  rulesetPayload?: Record<string, unknown>;
+  compatibilityPayload?: Record<string, unknown>;
+  createdByUserId?: string;
+  schemaVersion?: number;
+  publishedAt?: string;
+}
+
 export interface CompendiumPackRecord {
   packId: string;
   ownerId?: string;
@@ -318,6 +346,23 @@ function rowToSettingsVersion(row: GenericRow): WorldServerSettingsVersionRecord
   };
 }
 
+function rowToRulesetVersion(row: GenericRow): WorldServerRulesetVersionRecord {
+  return {
+    rulesetVersionId: String(row.ruleset_version_id),
+    worldServerId: String(row.world_server_id),
+    gameSystemId: String(row.game_system_id),
+    versionLabel: String(row.version_label),
+    lifecycleStatus: String(row.lifecycle_status),
+    rulesetPayload: toPayload(row.ruleset_payload),
+    compatibilityPayload: toPayload(row.compatibility_payload),
+    createdByUserId: row.created_by_user_id ? String(row.created_by_user_id) : undefined,
+    schemaVersion: Number(row.schema_version),
+    createdAt: toIso(row.created_at),
+    publishedAt: toIso(row.published_at),
+    archivedAt: toIso(row.archived_at),
+  };
+}
+
 function rowToCompendiumPack(row: GenericRow): CompendiumPackRecord {
   return {
     packId: String(row.pack_id),
@@ -422,6 +467,7 @@ function rowToNotification(row: GenericRow): UserNotificationRecord {
 
 const AUTH_SESSION_COLS = 'session_id,user_id,session_kind,session_status,trust_level,device_label,metadata_payload,created_at,last_seen_at,expires_at,revoked_at';
 const SETTINGS_VERSION_COLS = 'settings_version_id,world_server_id,created_by_user_id,version_number,settings_payload,soft_update_policy_payload,change_summary,created_at,archived_at';
+const RULESET_VERSION_COLS = 'ruleset_version_id,world_server_id,game_system_id,version_label,lifecycle_status,ruleset_payload,compatibility_payload,created_by_user_id,schema_version,created_at,published_at,archived_at';
 const COMPENDIUM_PACK_COLS = 'pack_id,owner_id,world_server_id,campaign_id,display_name,pack_kind,visibility_scope,lifecycle_status,metadata_payload,created_at,updated_at,archived_at';
 const ACTOR_INSTANCE_COLS = 'campaign_actor_instance_id,campaign_id,source_actor_id,owner_id,actor_kind,display_name,instance_status,snapshot_hash,snapshot_payload,override_payload,created_at,updated_at,archived_at';
 const ROOM_COLS = 'room_record_id,room_id,world_server_id,campaign_id,host_user_id,room_code,room_status,multiplayer_mode,access_policy_payload,metadata_payload,created_at,updated_at,closed_at,archived_at';
@@ -513,6 +559,37 @@ export function createPostgresPlatformFoundationRepository(
 
   const listWorldServerSettingsVersions = (worldServerId: string, limit?: number) =>
     many<WorldServerSettingsVersionRecord>(`SELECT ${SETTINGS_VERSION_COLS} FROM world_server_settings_versions WHERE world_server_id = $1 ORDER BY version_number DESC LIMIT $2`, [worldServerId, limitOf(limit)], rowToSettingsVersion);
+
+  const createWorldServerRulesetVersion = (input: CreateWorldServerRulesetVersionInput) =>
+    one<WorldServerRulesetVersionRecord>(
+      `INSERT INTO world_server_ruleset_versions (ruleset_version_id,world_server_id,game_system_id,version_label,lifecycle_status,ruleset_payload,compatibility_payload,created_by_user_id,schema_version,created_at,published_at)
+       VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8,$9,$10,$11) RETURNING ${RULESET_VERSION_COLS}`,
+      [
+        input.rulesetVersionId,
+        input.worldServerId,
+        input.gameSystemId,
+        input.versionLabel,
+        input.lifecycleStatus ?? 'draft',
+        JSON.stringify(input.rulesetPayload ?? {}),
+        JSON.stringify(input.compatibilityPayload ?? {}),
+        input.createdByUserId ?? null,
+        input.schemaVersion ?? 1,
+        new Date().toISOString(),
+        input.publishedAt ?? null,
+      ],
+      rowToRulesetVersion,
+    );
+
+  const listWorldServerRulesetVersions = (worldServerId: string, gameSystemId?: string, limit?: number) => {
+    const values: unknown[] = [worldServerId];
+    const condition = gameSystemId ? (values.push(gameSystemId), ` AND game_system_id = $${values.length}`) : '';
+    values.push(limitOf(limit));
+    return many<WorldServerRulesetVersionRecord>(
+      `SELECT ${RULESET_VERSION_COLS} FROM world_server_ruleset_versions WHERE world_server_id = $1${condition} AND archived_at IS NULL ORDER BY created_at DESC LIMIT $${values.length}`,
+      values,
+      rowToRulesetVersion,
+    );
+  };
 
   const createCompendiumPack = (input: CreateCompendiumPackInput) => {
     const now = new Date().toISOString();
@@ -749,6 +826,8 @@ export function createPostgresPlatformFoundationRepository(
     createWorldServerSettingsVersion,
     getWorldServerSettingsVersionById,
     listWorldServerSettingsVersions,
+    createWorldServerRulesetVersion,
+    listWorldServerRulesetVersions,
     createCompendiumPack,
     getCompendiumPackById,
     listCompendiumPacksByOwner,

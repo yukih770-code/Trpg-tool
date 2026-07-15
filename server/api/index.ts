@@ -40,3 +40,16 @@ export {
   createUserApiHandlers,
   defaultPostgresUserApiHandlers,
 } from './userApiHandlers.js';
+
+export type {
+  CreateWorldServerApiHandlersOptions,
+  WorldServerApiHandlers,
+  WorldServerApiRepository,
+  WorldServerApiRequest,
+  WorldServerFoundationRepository,
+} from './worldServerApiHandlers.js';
+export {
+  createWorldServerApiHandlers,
+  defaultPostgresWorldServerApiHandlers,
+} from './worldServerApiHandlers.js';
+export { registerWorldServerApiRoutes } from './worldServerApiRoutes.js';

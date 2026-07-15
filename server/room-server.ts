@@ -68,6 +68,8 @@ import type { AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol
 // P5.10G: dev-only read-only User routes (gated; never in production).
 import { registerUserDevRoutes } from './api/userDevRoutes.js';
 import { defaultPostgresUserApiHandlers } from './api/userApiHandlers.js';
+import { registerWorldServerApiRoutes } from './api/worldServerApiRoutes.js';
+import { createWorldServerApiHandlers } from './api/worldServerApiHandlers.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -90,7 +92,7 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') {
     res.sendStatus(204);
@@ -107,6 +109,15 @@ app.use(express.json());
 if (serverRuntimeConfig.devUserApiEnabled === true) {
   registerUserDevRoutes(app, defaultPostgresUserApiHandlers);
 }
+
+// P5.API-CORE: business API routes are always registered, but dev auth headers
+// are accepted only through the existing explicit development gate. With no
+// configured database/auth provider, handlers return safe unavailable/401
+// envelopes; startup performs no migration or readiness work for these routes.
+registerWorldServerApiRoutes(app, createWorldServerApiHandlers({
+  allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
+  nodeEnv: serverRuntimeConfig.environment === 'production' ? 'production' : 'development',
+}));
 
 const registry = createInMemoryRoomRegistry();
 // Separate, memory-only RuntimeLog store — NOT part of RoomSnapshot (M21).
