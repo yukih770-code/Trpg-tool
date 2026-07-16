@@ -104,6 +104,7 @@ export type WorldServerRulesetVersion = {
 
 export type CreateWorldServerInput = {
   displayName: string;
+  serverHandle: string;
   description?: string;
   serverVisibility?: string;
   joinPolicy?: string;

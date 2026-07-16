@@ -56,10 +56,10 @@ export async function runWorldServerApiClientSmoke(): Promise<SmokeCase[]> {
         return jsonResponse({ ok: true, statusCode: 201, value: { worldServerId: 'ws-1' } });
       },
     });
-    await client.createWorldServer({ displayName: 'Test Server' });
+    await client.createWorldServer({ displayName: 'Test Server', serverHandle: 'test-server-smoke' });
     const headers = new Headers(seenInit?.headers);
     assert(seenInit?.method === 'POST', 'create method was not POST');
-    assert(seenInit?.body === JSON.stringify({ displayName: 'Test Server' }), 'create body changed');
+    assert(seenInit?.body === JSON.stringify({ displayName: 'Test Server', serverHandle: 'test-server-smoke' }), 'create body changed');
     assert(headers.get('x-dev-user-id') === 'dev-user', 'dev header was not sent in dev mode');
   });
 

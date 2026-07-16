@@ -28,7 +28,7 @@ import {
   type PlayWorkspaceNavigationState,
 } from './pages/PlayWorkspace';
 import { useAppStore } from './store/appStore';
-import { isDevApiDemoFallbackEnabled, resolveDevViewerUserId } from './lib/api/apiClient';
+import { classifyApiServiceFailure, isDevApiDemoFallbackEnabled, resolveDevViewerUserId } from './lib/api/apiClient';
 import { ApiClientError } from './lib/api/apiTypes';
 import type { WorldServerRecord } from './lib/api/worldServerApiClient';
 import { useWorldServers } from './lib/worldServer/useWorldServers';
@@ -142,17 +142,39 @@ function isPlaceholderKey(value: string): value is PlaceholderKey {
 
 function apiErrorMessage(error: ApiClientError | null, locale: Locale): string {
   if (!error) return '';
-  if (error.statusCode === 401) return locale === 'en' ? 'Please sign in to view your servers.' : '请先登录后查看你的服务器。';
-  if (error.statusCode === 403) return locale === 'en' ? 'You do not have access to this server.' : '你没有权限访问这个服务器。';
-  if (error.statusCode === 404) return locale === 'en' ? 'This server could not be found.' : '找不到这个服务器。';
-  return locale === 'en'
-    ? 'The server service is unavailable. Please try again later.'
-    : '暂时无法连接服务器服务，请稍后重试。';
+  switch (classifyApiServiceFailure(error)) {
+    case 'invalid_dev_identity': return locale === 'en' ? 'The current dev user is not present in the local database. Create the dev viewer fixture first.' : '当前开发用户未在本地数据库中创建，请先创建 dev viewer fixture。';
+    case 'backend_unreachable': return locale === 'en' ? 'Cannot reach the local backend. Make sure it is running.' : '无法连接本地服务器，请确认后端已经启动。';
+    case 'service_unavailable': return locale === 'en' ? 'The world server service is temporarily unavailable.' : '世界服务器服务暂时不可用。';
+    case 'access_denied': return locale === 'en' ? 'You do not have access to this server.' : '你没有权限访问这个服务器。';
+    case 'not_found': return locale === 'en' ? 'This server could not be found.' : '找不到这个服务器。';
+    default: return locale === 'en' ? 'The server list request failed. Please try again.' : '服务器列表请求失败，请稍后重试。';
+  }
 }
 
 function normalizeFeatureKey(feature: string): PlaceholderKey {
   const normalized = feature.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
   return isPlaceholderKey(normalized) ? normalized : 'campaigns';
+}
+
+function createServerHandle(displayName: string): string {
+  const normalized = displayName
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'server';
+  const suffix = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID().replace(/-/g, '').slice(0, 10)
+    : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  return `${normalized}-${suffix}`;
+}
+
+function createServerErrorMessage(error: ApiClientError | null, locale: Locale): string {
+  if (error?.statusCode === 400) return locale === 'en' ? 'Unable to create the server. Check the server name and try again.' : '无法创建服务器，请检查服务器名称后重试。';
+  if (error?.statusCode === 409) return locale === 'en' ? 'This server request conflicts with existing data. Try again.' : '服务器创建请求与现有数据冲突，请重试。';
+  return apiErrorMessage(error, locale);
 }
 
 export default function App() {
@@ -180,7 +202,6 @@ export default function App() {
   const [createServerError, setCreateServerError] = useState<ApiClientError | null>(null);
   const [createServerLoading, setCreateServerLoading] = useState<boolean>(false);
   const [moreOpen, setMoreOpen] = useState<boolean>(false);
-  const [, setDevIdentityRevision] = useState(0);
   // P5.4: default profile identity = the device's local anonymous user (lazy init
   // is safe: the repository creates the user on first access, idempotently).
   const [profileUserId, setProfileUserId] = useState<string>(() => getCurrentLocalProfileUserId());
@@ -786,7 +807,10 @@ export default function App() {
     setCreateServerLoading(true);
     setCreateServerError(null);
     try {
-      const server = await worldServersState.createServer({ displayName });
+      const server = await worldServersState.createServer({
+        displayName,
+        serverHandle: createServerHandle(displayName),
+      });
       setCreateServerName('');
       setSelectedServerId(server.worldServerId);
       setEntryStage('serverHome');
@@ -914,10 +938,7 @@ export default function App() {
 
           <LocalDevIdentitySwitcher
             locale={locale}
-            onChanged={() => {
-              setDevIdentityRevision((value) => value + 1);
-              void worldServersState.refresh();
-            }}
+            failureKind={classifyApiServiceFailure(worldServersState.error)}
           />
 
           {worldServersState.loading && (
@@ -984,6 +1005,7 @@ export default function App() {
           <section className="grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/65 p-5">
               <h2 className="text-lg font-bold">{locale === 'en' ? 'Create server' : '创建服务器'}</h2>
+              <p className="mt-2 text-sm leading-6 text-[#51483d]">{t('worldServer.createByCurrentDevUser')}</p>
               <p className="mt-2 text-sm leading-6 text-[#51483d]">
                 {locale === 'en'
                   ? 'Start a new server space.'
@@ -1013,7 +1035,7 @@ export default function App() {
                 </Button>
               </form>
               {createServerError && (
-                <p className="mt-3 text-sm leading-5 text-[#8b3a2f]">{apiErrorMessage(createServerError, locale) || createServerError.message}</p>
+                <p className="mt-3 text-sm leading-5 text-[#8b3a2f]">{createServerErrorMessage(createServerError, locale) || createServerError.message}</p>
               )}
             </div>
             <div className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/65 p-5">
