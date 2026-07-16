@@ -10,6 +10,7 @@ import { checkPostgresWorldServerSchemaReadiness } from './postgresWorldServerSc
 import { checkPostgresVisibilitySchemaReadiness } from './postgresVisibilitySchemaReadiness.js';
 import { checkPostgresPlatformFoundationSchemaReadiness } from './postgresPlatformFoundationSchemaReadiness.js';
 import { checkPostgresSceneStateSchemaReadiness } from './postgresSceneStateSchemaReadiness.js';
+import { checkPostgresDndPrivateMonsterSchemaReadiness } from './postgresDndPrivateMonsterSchemaReadiness.js';
 
 /**
  * Aggregate read-only readiness across all P5.10-P5.19 schema families (P5.27).
@@ -29,7 +30,7 @@ export interface PostgresAllSchemaReadinessResult {
   notes: string[];
 }
 
-const SCHEMA_ORDER = ['user', 'campaign', 'actor', 'asset', 'runtime', 'generated', 'world', 'visibility', 'platformFoundation', 'sceneState'] as const;
+const SCHEMA_ORDER = ['user', 'campaign', 'actor', 'asset', 'runtime', 'generated', 'world', 'visibility', 'platformFoundation', 'sceneState', 'dndPrivateMonster'] as const;
 
 export async function checkAllPostgresSchemaReadiness(): Promise<PostgresAllSchemaReadinessResult> {
   const config = readDatabaseRuntimeConfigFromEnv(process.env);
@@ -50,7 +51,7 @@ export async function checkAllPostgresSchemaReadiness(): Promise<PostgresAllSche
     return { status: kind, configured: true, reachable: false, schemas: unreachableSchemas, readyCount: 0, totalSchemas: SCHEMA_ORDER.length, notes: ['Database not reachable.'] };
   }
 
-  const [user, campaign, actor, asset, runtime, generated, world, visibility, platformFoundation, sceneState] = await Promise.all([
+  const [user, campaign, actor, asset, runtime, generated, world, visibility, platformFoundation, sceneState, dndPrivateMonster] = await Promise.all([
     checkPostgresUserSchemaReadiness(),
     checkPostgresCampaignSchemaReadiness(),
     checkPostgresActorSchemaReadiness(),
@@ -61,6 +62,7 @@ export async function checkAllPostgresSchemaReadiness(): Promise<PostgresAllSche
     checkPostgresVisibilitySchemaReadiness(),
     checkPostgresPlatformFoundationSchemaReadiness(),
     checkPostgresSceneStateSchemaReadiness(),
+    checkPostgresDndPrivateMonsterSchemaReadiness(),
   ]);
 
   const schemas: Record<string, string> = {
@@ -74,6 +76,7 @@ export async function checkAllPostgresSchemaReadiness(): Promise<PostgresAllSche
     visibility: visibility.status,
     platformFoundation: platformFoundation.status,
     sceneState: sceneState.status,
+    dndPrivateMonster: dndPrivateMonster.status,
   };
 
   const statuses = Object.values(schemas);

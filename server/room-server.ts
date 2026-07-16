@@ -72,6 +72,8 @@ import { registerWorldServerApiRoutes } from './api/worldServerApiRoutes.js';
 import { createWorldServerApiHandlers } from './api/worldServerApiHandlers.js';
 import { registerCampaignRoomApiRoutes } from './api/campaignRoomApiRoutes.js';
 import { createCampaignRoomApiHandlers } from './api/campaignRoomApiHandlers.js';
+import { registerDndPrivateMonsterApiRoutes } from './api/dndPrivateMonsterApiRoutes.js';
+import { createDndPrivateMonsterApiHandlers } from './api/dndPrivateMonsterApiHandlers.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -123,6 +125,10 @@ registerWorldServerApiRoutes(app, createWorldServerApiHandlers({
   nodeEnv: serverRuntimeConfig.environment === 'production' ? 'production' : 'development',
 }));
 registerCampaignRoomApiRoutes(app, createCampaignRoomApiHandlers({
+  allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
+  nodeEnv: serverRuntimeConfig.environment === 'production' ? 'production' : 'development',
+}));
+registerDndPrivateMonsterApiRoutes(app, createDndPrivateMonsterApiHandlers({
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
   nodeEnv: serverRuntimeConfig.environment === 'production' ? 'production' : 'development',
 }));

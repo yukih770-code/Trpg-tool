@@ -472,6 +472,16 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   does not add a full builder or rules automation.
 - Doc: `P5_DND_LITE_ACTOR_SHEET`.
 
+## Private DND Monster Templates (P5.DND-PRIVATE-MONSTER-IMPORT)
+- Files: `server/db/migrations/0011_dnd_private_monster_templates.sql`,
+  `server/adapters/postgresDndPrivateMonsterRepository.ts`,
+  `server/tools/importPrivateDndMonsters.ts`, and
+  `src/components/platform/DndMonsterTemplateLibraryPanel.tsx`.
+- Boundary: user-supplied, World Server-scoped private content only. Imports are
+  dry-run by default; no content seeds, public/default library, raw input files,
+  web scraping, OCR, or live Runtime authority are introduced.
+- Doc: `P5_DND_PRIVATE_MONSTER_IMPORT`.
+
 ## Effective Permission Resolver (P5.20 — contract only, pure backend policy)
 - Files: `server/policy/effectivePermissionResolver.ts` (types + deterministic
   resolver + `canViewContent`/`canEditContent`/`canPublishContent`/

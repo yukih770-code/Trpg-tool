@@ -16,6 +16,7 @@ import {
 import type { DndCheckKind, DndRollMode, DndRuntimeEventDraft } from '../../lib/dnd/dndDiceTypes';
 import { getDndActionRollInput, getDndLiteCheckInput } from '../../lib/dnd/dndLiteActorSheet';
 import type { DndAbilityKey, DndLiteActorSheet, DndSkillKey } from '../../lib/dnd/dndLiteActorTypes';
+import type { DndMonsterAction } from '../../lib/dnd/dndMonsterTemplateTypes';
 
 type LocalResult = { id: number; title: string; summary: string };
 
@@ -26,6 +27,7 @@ type Props = {
   combatants: Combatant[];
   actorSheets?: Record<string, DndLiteActorSheet>;
   preset?: { actorInstanceId: string; actionId?: string; nonce: number };
+  monsterActionPreset?: { monsterName: string; action: DndMonsterAction; nonce: number };
   onAppendEvent?: (event: DndRuntimeEventDraft) => Promise<void>;
 };
 
@@ -44,7 +46,7 @@ const skillNames: Record<DndSkillKey, [string, string]> = {
   acrobatics: ['体操', 'Acrobatics'], animalHandling: ['驯兽', 'Animal Handling'], arcana: ['奥秘', 'Arcana'], athletics: ['运动', 'Athletics'], deception: ['欺瞒', 'Deception'], history: ['历史', 'History'], insight: ['洞悉', 'Insight'], intimidation: ['威吓', 'Intimidation'], investigation: ['调查', 'Investigation'], medicine: ['医药', 'Medicine'], nature: ['自然', 'Nature'], perception: ['察觉', 'Perception'], performance: ['表演', 'Performance'], persuasion: ['游说', 'Persuasion'], religion: ['宗教', 'Religion'], sleightOfHand: ['巧手', 'Sleight of Hand'], stealth: ['隐匿', 'Stealth'], survival: ['求生', 'Survival'],
 };
 
-export function DndDiceCheckPanel({ locale, canManage, campaignActors, combatants, actorSheets = {}, preset, onAppendEvent }: Props) {
+export function DndDiceCheckPanel({ locale, canManage, campaignActors, combatants, actorSheets = {}, preset, monsterActionPreset, onAppendEvent }: Props) {
   const { t } = createTranslator(locale);
   const [quickFormula, setQuickFormula] = useState('1d20');
   const [checkActor, setCheckActor] = useState('');
@@ -61,6 +63,7 @@ export function DndDiceCheckPanel({ locale, canManage, campaignActors, combatant
   const [targetAc, setTargetAc] = useState('');
   const [attackMode, setAttackMode] = useState<DndRollMode>('normal');
   const [actionId, setActionId] = useState('');
+  const [externalAttackerName, setExternalAttackerName] = useState('');
   const [damageFormula, setDamageFormula] = useState('1d8+3');
   const [criticalDamage, setCriticalDamage] = useState(false);
   const [error, setError] = useState('');
@@ -102,9 +105,18 @@ export function DndDiceCheckPanel({ locale, canManage, campaignActors, combatant
 
   useEffect(() => {
     if (!preset) return;
+    setExternalAttackerName('');
     setAttacker(preset.actorInstanceId);
     setActionId(preset.actionId ?? '');
   }, [preset]);
+  useEffect(() => {
+    if (!monsterActionPreset) return;
+    setAttacker('');
+    setActionId('');
+    setExternalAttackerName(monsterActionPreset.monsterName);
+    if (monsterActionPreset.action.attackBonus !== undefined) setAttackBonus(String(monsterActionPreset.action.attackBonus));
+    if (monsterActionPreset.action.damageFormula) setDamageFormula(monsterActionPreset.action.damageFormula);
+  }, [monsterActionPreset]);
 
   const saveResult = (title: string, summary: string, event: DndRuntimeEventDraft) => {
     setError('');
@@ -141,7 +153,7 @@ export function DndDiceCheckPanel({ locale, canManage, campaignActors, combatant
   const handleAttack = (event: FormEvent) => {
     event.preventDefault();
     run(() => {
-      const result = rollDndAttack({ attackerName: actorNameFor(attacker), targetName: target, attackBonus: optionalInteger(attackBonus) ?? 0, targetAc: optionalInteger(targetAc), mode: attackMode });
+      const result = rollDndAttack({ attackerName: externalAttackerName || actorNameFor(attacker), targetName: target, attackBonus: optionalInteger(attackBonus) ?? 0, targetAc: optionalInteger(targetAc), mode: attackMode });
       const draft = dndAttackToRuntimeEvent(result, locale === 'en' ? 'en' : 'zh-CN');
       saveResult(t('dndDice.attack'), String(draft.payload.summary), draft);
     });
@@ -151,7 +163,7 @@ export function DndDiceCheckPanel({ locale, canManage, campaignActors, combatant
     event.preventDefault();
     run(() => {
       const result = rollDndDamage(damageFormula, { critical: criticalDamage });
-      const draft = dndDamageToRuntimeEvent(result, actorNameFor(attacker), locale === 'en' ? 'en' : 'zh-CN');
+      const draft = dndDamageToRuntimeEvent(result, externalAttackerName || actorNameFor(attacker), locale === 'en' ? 'en' : 'zh-CN');
       saveResult(t('dndDice.damage'), String(draft.payload.summary), draft);
     });
   };
@@ -204,7 +216,7 @@ export function DndDiceCheckPanel({ locale, canManage, campaignActors, combatant
         <form onSubmit={handleAttack} className="rounded-xl border border-[#2f2a22]/10 bg-white p-3">
           <h5 className="font-bold text-sm">{t('dndDice.attack')}</h5>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <select value={attacker} onChange={(event) => { setAttacker(event.target.value); setActionId(''); }} disabled={!canManage} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm disabled:opacity-50"><option value="">{t('dndDice.attacker')}</option>{actorOptions}</select>
+            <select value={attacker} onChange={(event) => { setAttacker(event.target.value); setActionId(''); setExternalAttackerName(''); }} disabled={!canManage} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm disabled:opacity-50"><option value="">{t('dndDice.attacker')}</option>{actorOptions}</select>
             <input value={target} onChange={(event) => setTarget(event.target.value)} disabled={!canManage} placeholder={t('dndDice.targetOptional')} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm disabled:opacity-50" />
             {attackerSheet && attackerSheet.actions.length > 0 && <select value={actionId} onChange={(event) => setActionId(event.target.value)} disabled={!canManage} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm disabled:opacity-50"><option value="">{t('dndDice.actionOptional')}</option>{attackerSheet.actions.map((action) => <option key={action.id} value={action.id}>{action.name}</option>)}</select>}
             <input value={attackBonus} onChange={(event) => setAttackBonus(event.target.value)} disabled={!canManage} type="number" placeholder={t('dndDice.attackBonus')} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm disabled:opacity-50" />

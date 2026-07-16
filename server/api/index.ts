@@ -54,6 +54,8 @@ export {
 } from './worldServerApiHandlers.js';
 export { registerWorldServerApiRoutes } from './worldServerApiRoutes.js';
 export { registerCampaignRoomApiRoutes } from './campaignRoomApiRoutes.js';
+export { registerDndPrivateMonsterApiRoutes } from './dndPrivateMonsterApiRoutes.js';
+export { createDndPrivateMonsterApiHandlers } from './dndPrivateMonsterApiHandlers.js';
 export {
   createCampaignRoomApiHandlers,
   defaultPostgresCampaignRoomApiHandlers,

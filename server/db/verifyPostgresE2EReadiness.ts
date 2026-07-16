@@ -11,6 +11,7 @@ import { runPostgresWorldServerRepositoryRollbackWriteSmoke } from './postgresWo
 import { runPostgresVisibilityRepositoryRollbackWriteSmoke } from './postgresVisibilityRepositoryWriteSmoke.js';
 import { runPostgresPlatformFoundationRepositoryRollbackWriteSmoke } from './postgresPlatformFoundationRepositoryWriteSmoke.js';
 import { runPostgresSceneStateRepositoryRollbackWriteSmoke } from './postgresSceneStateRepositoryWriteSmoke.js';
+import { runPostgresDndPrivateMonsterRepositoryRollbackWriteSmoke } from './postgresDndPrivateMonsterRepositoryWriteSmoke.js';
 
 type SmokeSummary = {
   name: string;
@@ -75,6 +76,7 @@ async function main(): Promise<void> {
         runWriteSmoke('visibility', runPostgresVisibilityRepositoryRollbackWriteSmoke),
         runWriteSmoke('platform', runPostgresPlatformFoundationRepositoryRollbackWriteSmoke),
         runWriteSmoke('sceneState', runPostgresSceneStateRepositoryRollbackWriteSmoke),
+        runWriteSmoke('dndPrivateMonster', runPostgresDndPrivateMonsterRepositoryRollbackWriteSmoke),
       ]);
     }
   }

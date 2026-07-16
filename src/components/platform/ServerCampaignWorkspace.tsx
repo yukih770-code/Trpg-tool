@@ -16,6 +16,7 @@ import { CombatRuntimeTable } from './CombatRuntimeTable';
 import { BasicMapBoard } from './BasicMapBoard';
 import { DndDiceCheckPanel } from './DndDiceCheckPanel';
 import { DndLiteActorSheetPanel } from './DndLiteActorSheetPanel';
+import { DndMonsterTemplateLibraryPanel } from './DndMonsterTemplateLibraryPanel';
 import { SavedSceneLibraryPanel } from './SavedSceneLibraryPanel';
 import { SceneRuntimeSnapshotPanel } from './SceneRuntimeSnapshotPanel';
 import type { CombatRuntimeEventDraft, CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
@@ -23,6 +24,9 @@ import type { MapBoardState, MapRuntimeEventDraft } from '../../lib/map/mapRunti
 import type { SceneRuntimeSnapshot } from '../../lib/scene/sceneRuntimeSnapshotTypes';
 import type { DndRuntimeEventDraft } from '../../lib/dnd/dndDiceTypes';
 import type { DndLiteActorSheet, DndLiteCombatantPrefill } from '../../lib/dnd/dndLiteActorTypes';
+import { getDndLiteCombatantPrefill } from '../../lib/dnd/dndLiteActorSheet';
+import { dndMonsterToLiteActorSheet, type DndMonsterAction, type DndPrivateMonsterTemplate } from '../../lib/dnd/dndMonsterTemplateTypes';
+import { useDndMonsterTemplates } from '../../lib/dnd/useDndMonsterTemplates';
 
 type Props = {
   worldServerId: string;
@@ -141,6 +145,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const [dndActorSheets, setDndActorSheets] = useState<Record<string, DndLiteActorSheet>>({});
   const [dndDicePreset, setDndDicePreset] = useState<{ actorInstanceId: string; actionId?: string; nonce: number }>();
   const [dndActorPrefill, setDndActorPrefill] = useState<(DndLiteCombatantPrefill & { nonce: number }) | undefined>();
+  const [dndMonsterActionPreset, setDndMonsterActionPreset] = useState<{ monsterName: string; action: DndMonsterAction; nonce: number }>();
   const [snapshotImportVersion, setSnapshotImportVersion] = useState(0);
   const [actorName, setActorName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -157,6 +162,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
     () => campaigns.find((item) => item.campaign.campaignId === selectedCampaignId),
     [campaigns, selectedCampaignId],
   );
+  const dndMonsters = useDndMonsterTemplates(isDndCampaign(selectedCampaign?.campaign.systemId) ? worldServerId : '');
   const campaignDetail = useCampaignDetail(worldServerId, selectedCampaignId, { enabled: selectedCampaignId !== '' });
   const selectedRoom = campaignDetail.rooms.find((room) => room.roomId === selectedRoomId);
 
@@ -240,6 +246,19 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
       const next = { ...previous };
       delete next[actorInstanceId];
       return next;
+    });
+  };
+
+  const handleCreateMonsterActorDraft = async (monster: DndPrivateMonsterTemplate) => {
+    if (!selectedCampaignId || !canManageServer) return;
+    await runAction(async () => {
+      const actor = await campaignRoomApiClient.createCampaignActor(worldServerId, selectedCampaignId, {
+        displayName: monster.name,
+        actorKind: 'monster',
+        sourceActorId: `private-monster:${monster.monsterTemplateId}`,
+      });
+      setDndActorSheets((previous) => ({ ...previous, [actor.campaignActorInstanceId]: dndMonsterToLiteActorSheet(monster) }));
+      await campaignDetail.refresh();
     });
   };
 
@@ -442,6 +461,18 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     onUseAction={(actorInstanceId, actionId) => setDndDicePreset({ actorInstanceId, actionId, nonce: Date.now() })}
                     onAddToCombat={(prefill) => setDndActorPrefill({ ...prefill, nonce: Date.now() })}
                   />}
+                  {isDndCampaign(selectedCampaign?.campaign.systemId) && <DndMonsterTemplateLibraryPanel
+                    locale={locale}
+                    worldServerId={worldServerId}
+                    canManage={canManageServer}
+                    monsters={dndMonsters.monsters}
+                    loading={dndMonsters.loading}
+                    error={dndMonsters.error}
+                    onRefresh={dndMonsters.refresh}
+                    onAddToCombat={(monster) => setDndActorPrefill({ ...getDndLiteCombatantPrefill(dndMonsterToLiteActorSheet(monster)), nonce: Date.now() })}
+                    onCreateActorDraft={handleCreateMonsterActorDraft}
+                    onUseAction={(monster, action) => setDndMonsterActionPreset({ monsterName: monster.name, action, nonce: Date.now() })}
+                  />}
                   <CombatRuntimeTable
                     locale={locale}
                     scopeKey={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`}
@@ -463,6 +494,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     combatants={runtimeCombatState.combatants}
                     actorSheets={dndActorSheets}
                     preset={dndDicePreset}
+                    monsterActionPreset={dndMonsterActionPreset}
                     onAppendEvent={handleAppendDndEvent}
                   />}
                   <SceneRuntimeSnapshotPanel
