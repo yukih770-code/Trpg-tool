@@ -14,11 +14,13 @@ import { useRoomDetail } from '../../lib/campaignRoom/useRoomDetail';
 import { useRuntimeEvents } from '../../lib/campaignRoom/useRuntimeEvents';
 import { CombatRuntimeTable } from './CombatRuntimeTable';
 import { BasicMapBoard } from './BasicMapBoard';
+import { DndDiceCheckPanel } from './DndDiceCheckPanel';
 import { SavedSceneLibraryPanel } from './SavedSceneLibraryPanel';
 import { SceneRuntimeSnapshotPanel } from './SceneRuntimeSnapshotPanel';
 import type { CombatRuntimeEventDraft, CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
 import type { MapBoardState, MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
 import type { SceneRuntimeSnapshot } from '../../lib/scene/sceneRuntimeSnapshotTypes';
+import type { DndRuntimeEventDraft } from '../../lib/dnd/dndDiceTypes';
 
 type Props = {
   worldServerId: string;
@@ -57,6 +59,10 @@ function actorLabel(actor: CampaignActorInstance, fallback: string): string {
   return actor.displayName || fallback;
 }
 
+function isDndCampaign(systemId: string | undefined): boolean {
+  return systemId?.toLowerCase().startsWith('dnd') ?? false;
+}
+
 function runtimeEventLabel(eventKind: string, locale: Locale): string {
   const labels: Record<string, [string, string]> = {
     'system.note': ['公开记录', 'Public note'],
@@ -80,12 +86,19 @@ function runtimeEventLabel(eventKind: string, locale: Locale): string {
     'scene.state_loaded': ['加载场景', 'Scene loaded'],
     'scene.state_archived': ['归档场景', 'Scene archived'],
     'scene.state_duplicated': ['复制场景', 'Scene duplicated'],
+    'dnd.check_rolled': ['DND 检定', 'DND check'],
+    'dnd.skill_rolled': ['DND 技能检定', 'DND skill check'],
+    'dnd.save_rolled': ['DND 豁免', 'DND saving throw'],
+    'dnd.attack_rolled': ['DND 攻击', 'DND attack'],
+    'dnd.damage_rolled': ['DND 伤害', 'DND damage'],
+    'dnd.roll_note': ['DND 掷骰', 'DND dice roll'],
   };
   return labels[eventKind]?.[locale === 'en' ? 1 : 0] ?? eventKind;
 }
 
 function runtimeEventSummary(item: RuntimeEvent, locale: Locale): string {
   if (typeof item.payload.text === 'string') return item.payload.text;
+  if (typeof item.payload.summary === 'string') return item.payload.summary;
   const combatant = item.payload.combatant;
   const combatantName = combatant && typeof combatant === 'object' && 'displayName' in combatant && typeof combatant.displayName === 'string' ? combatant.displayName : '';
   if (item.eventKind === 'combat.started') return locale === 'en' ? 'The local combat table started.' : '本地战斗桌已开始。';
@@ -206,6 +219,10 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   };
 
   const handleAppendMapEvent = async (event: MapRuntimeEventDraft) => {
+    await runtimeEvents.appendEvent({ eventKind: event.eventKind, visibility: 'public', payload: event.payload });
+  };
+
+  const handleAppendDndEvent = async (event: DndRuntimeEventDraft) => {
     await runtimeEvents.appendEvent({ eventKind: event.eventKind, visibility: 'public', payload: event.payload });
   };
 
@@ -410,6 +427,13 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     snapshotImportVersion={snapshotImportVersion}
                     onAppendEvent={handleAppendCombatEvent}
                   />
+                  {isDndCampaign(selectedCampaign?.campaign.systemId) && <DndDiceCheckPanel
+                    locale={locale}
+                    canManage={canManageServer}
+                    campaignActors={campaignDetail.actors}
+                    combatants={runtimeCombatState.combatants}
+                    onAppendEvent={handleAppendDndEvent}
+                  />}
                   <SceneRuntimeSnapshotPanel
                     locale={locale}
                     canManage={canManageServer}

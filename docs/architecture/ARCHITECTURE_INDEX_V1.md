@@ -452,6 +452,16 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   authority, campaign backup, asset storage, or a full VTT.
 - Doc: `P5_PERSISTED_SCENE_LIBRARY`.
 
+## DND Dice / Checks Runtime Layer (P5.DND-DICE-CHECKS)
+- Files: `src/lib/dnd/dndDiceTypes.ts`, `src/lib/dnd/dndDiceRoller.ts`,
+  `src/components/platform/DndDiceCheckPanel.tsx`, and
+  `src/lib/dnd/dndDiceRollerSmoke.ts` (`frontend:verify:dnd-dice`).
+- Boundary: safe frontend-local DND formula parsing, d20 checks, attack and
+  damage-lite result models, and append-only `dnd.*` Runtime Event drafts for
+  DND campaign pages. It is not a full rules engine, character writeback,
+  backend/API contract change, or live runtime authority.
+- Doc: `P5_DND_DICE_CHECKS`.
+
 ## Effective Permission Resolver (P5.20 — contract only, pure backend policy)
 - Files: `server/policy/effectivePermissionResolver.ts` (types + deterministic
   resolver + `canViewContent`/`canEditContent`/`canPublishContent`/
