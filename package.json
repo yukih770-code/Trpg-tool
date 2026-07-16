@@ -49,6 +49,7 @@
     "frontend:verify:combat-replay": "tsx src/lib/combat/combatRuntimeReplaySmoke.ts",
     "frontend:verify:map-runtime": "tsx src/lib/map/mapRuntimeReplaySmoke.ts",
     "frontend:verify:map-replay": "tsx src/lib/map/mapRuntimeReplaySmoke.ts",
+    "frontend:verify:scene-snapshot": "tsx src/lib/scene/sceneRuntimeSnapshotSmoke.ts",
     "frontend:verify:e2e-api": "tsx src/lib/api/frontendApiE2ESmoke.ts",
     "server:dev": "tsx server/room-server.ts",
     "server:build": "tsc -p server/tsconfig.build.json",

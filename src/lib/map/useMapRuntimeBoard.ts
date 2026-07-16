@@ -82,5 +82,18 @@ export function useMapRuntimeBoard(mapId: string) {
     return nextState;
   }, [mapId]);
 
-  return { state, setBackground, clearBackground, changeViewport, addToken, moveToken, updateToken, removeToken, selectToken, restore };
+  const replaceState = useCallback((nextState: MapBoardState) => {
+    const normalized = {
+      ...nextState,
+      mapId,
+      tokens: nextState.tokens.map((token) => createMapToken({ ...token, id: token.id })),
+      selectedTokenId: nextState.selectedTokenId && nextState.tokens.some((token) => token.id === nextState.selectedTokenId)
+        ? nextState.selectedTokenId
+        : undefined,
+    };
+    setState(normalized);
+    return normalized;
+  }, [mapId]);
+
+  return { state, setBackground, clearBackground, changeViewport, addToken, moveToken, updateToken, removeToken, selectToken, restore, replaceState };
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { createTranslator, type Locale } from '../../i18n';
 import { useCombatRuntimeTable } from '../../lib/combat/useCombatRuntimeTable';
 import type { CampaignActorInstance, RuntimeEvent } from '../../lib/api/campaignRoomApiClient';
-import { sortCombatants, type CombatRuntimeEventDraft, type CombatantKind } from '../../lib/combat/combatRuntimeTypes';
+import { sortCombatants, type CombatRuntimeEventDraft, type CombatantKind, type CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
 import { hasCombatRuntimeEvents } from '../../lib/combat/combatRuntimeReplay';
 
 type Props = {
@@ -13,6 +13,9 @@ type Props = {
   runtimeSessionId: string;
   runtimeEvents: RuntimeEvent[];
   onCombatantsChange?: (combatants: import('../../lib/combat/combatRuntimeTypes').Combatant[]) => void;
+  onStateChange?: (state: CombatRuntimeTableState) => void;
+  snapshotState?: CombatRuntimeTableState;
+  snapshotImportVersion?: number;
   onAppendEvent?: (event: CombatRuntimeEventDraft) => Promise<void>;
 };
 
@@ -27,10 +30,11 @@ function kindLabel(kind: CombatantKind, locale: Locale): string {
   return kind === 'character' ? '角色' : kind === 'npc' ? 'NPC' : '其他';
 }
 
-export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage, runtimeSessionId, runtimeEvents, onCombatantsChange, onAppendEvent }: Props) {
+export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage, runtimeSessionId, runtimeEvents, onCombatantsChange, onStateChange, snapshotState, snapshotImportVersion, onAppendEvent }: Props) {
   const { t } = createTranslator(locale);
   const table = useCombatRuntimeTable(scopeKey);
   const restoredScopeRef = useRef('');
+  const importedSnapshotRef = useRef(0);
   const [displayName, setDisplayName] = useState('');
   const [kind, setKind] = useState<CombatantKind>('character');
   const [initiativeModifier, setInitiativeModifier] = useState('0');
@@ -45,7 +49,15 @@ export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage
 
   useEffect(() => {
     onCombatantsChange?.(table.state.combatants);
-  }, [onCombatantsChange, table.state.combatants]);
+    onStateChange?.(table.state);
+  }, [onCombatantsChange, onStateChange, table.state]);
+
+  useEffect(() => {
+    if (!snapshotState || !snapshotImportVersion || importedSnapshotRef.current === snapshotImportVersion) return;
+    table.replaceState(snapshotState);
+    importedSnapshotRef.current = snapshotImportVersion;
+    setRestoreNotice(locale === 'en' ? 'Combat state restored from a local scene snapshot.' : '已从本地场景快照恢复战斗状态。');
+  }, [locale, snapshotImportVersion, snapshotState, table.replaceState]);
 
   const combatEvents = runtimeEvents.filter((event) => event.runtimeSessionId === runtimeSessionId && event.eventKind.startsWith('combat.'));
   const combatEventKey = combatEvents.map((event) => event.runtimeEventId).join('|');

@@ -14,8 +14,10 @@ import { useRoomDetail } from '../../lib/campaignRoom/useRoomDetail';
 import { useRuntimeEvents } from '../../lib/campaignRoom/useRuntimeEvents';
 import { CombatRuntimeTable } from './CombatRuntimeTable';
 import { BasicMapBoard } from './BasicMapBoard';
-import type { CombatRuntimeEventDraft, Combatant } from '../../lib/combat/combatRuntimeTypes';
-import type { MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
+import { SceneRuntimeSnapshotPanel } from './SceneRuntimeSnapshotPanel';
+import type { CombatRuntimeEventDraft, CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
+import type { MapBoardState, MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
+import type { SceneRuntimeSnapshot } from '../../lib/scene/sceneRuntimeSnapshotTypes';
 
 type Props = {
   worldServerId: string;
@@ -71,6 +73,8 @@ function runtimeEventLabel(eventKind: string, locale: Locale): string {
     'map.token_moved': ['移动地图 Token', 'Map token moved'],
     'map.token_updated': ['更新地图 Token', 'Map token updated'],
     'map.token_removed': ['删除地图 Token', 'Map token removed'],
+    'scene.snapshot_exported': ['导出场景快照', 'Scene snapshot exported'],
+    'scene.snapshot_imported': ['导入场景快照', 'Scene snapshot imported'],
   };
   return labels[eventKind]?.[locale === 'en' ? 1 : 0] ?? eventKind;
 }
@@ -93,6 +97,8 @@ function runtimeEventSummary(item: RuntimeEvent, locale: Locale): string {
   if (item.eventKind === 'map.token_moved') return locale === 'en' ? 'A map token moved.' : '地图 Token 已移动。';
   if (item.eventKind === 'map.token_updated') return locale === 'en' ? 'A map token was updated.' : '地图 Token 已更新。';
   if (item.eventKind === 'map.token_removed') return locale === 'en' ? `${String(item.payload.name ?? 'A token')} was removed from the map.` : `${String(item.payload.name ?? 'Token')}已从地图删除。`;
+  if (item.eventKind === 'scene.snapshot_exported') return locale === 'en' ? 'A local scene snapshot was exported.' : '已导出本地场景快照。';
+  if (item.eventKind === 'scene.snapshot_imported') return locale === 'en' ? 'A local scene snapshot was applied.' : '已应用本地场景快照。';
   return locale === 'en' ? 'Event data' : '事件数据';
 }
 
@@ -106,7 +112,9 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const [campaignSystemId, setCampaignSystemId] = useState(defaultGameSystemId ?? gameSystems[0]?.gameSystemId ?? '');
   const [roomName, setRoomName] = useState('');
   const [eventText, setEventText] = useState('');
-  const [runtimeCombatants, setRuntimeCombatants] = useState<Combatant[]>([]);
+  const [runtimeCombatState, setRuntimeCombatState] = useState<CombatRuntimeTableState>({ combatants: [], turn: { status: 'setup', roundNumber: 1, turnIndex: -1 } });
+  const [runtimeMapBoard, setRuntimeMapBoard] = useState<MapBoardState | undefined>();
+  const [snapshotImportVersion, setSnapshotImportVersion] = useState(0);
   const [actorName, setActorName] = useState('');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiClientError | null>(null);
@@ -190,6 +198,16 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
 
   const handleAppendMapEvent = async (event: MapRuntimeEventDraft) => {
     await runtimeEvents.appendEvent({ eventKind: event.eventKind, visibility: 'public', payload: event.payload });
+  };
+
+  const handleAppendSceneSnapshotEvent = async (eventKind: 'scene.snapshot_exported' | 'scene.snapshot_imported', payload: Record<string, unknown>) => {
+    await runtimeEvents.appendEvent({ eventKind, visibility: 'public', payload });
+  };
+
+  const handleApplySceneSnapshot = (snapshot: SceneRuntimeSnapshot) => {
+    if (snapshot.combat) setRuntimeCombatState(snapshot.combat);
+    if (snapshot.map) setRuntimeMapBoard(snapshot.map.board);
+    setSnapshotImportVersion((previous) => previous + 1);
   };
 
   const handleCreateCampaignActor = async (event: FormEvent) => {
@@ -352,7 +370,55 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
               <div className="mt-5 border-t border-[#2f2a22]/10 pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{t('campaignRoom.runtimeSession')}</h4>{!roomDetail.runtimeSession && canManageServer && <button type="button" disabled={busy} onClick={() => void handleCreateRuntimeSession()} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-xs font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.createSession')}</button>}</div>
                 {!roomDetail.runtimeSession && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noSession')}</p>}
-                {roomDetail.runtimeSession && <><p className="mt-2 text-sm text-[#51483d]">{roomDetail.runtimeSession.session.title || t('campaignRoom.untitledSession')} · {roomDetail.runtimeSession.session.status}</p><BasicMapBoard locale={locale} mapId={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`} runtimeSessionId={runtimeSessionId} runtimeEvents={runtimeEvents.events} campaignActors={campaignDetail.actors} combatants={runtimeCombatants} canManage={canManageServer} onAppendEvent={handleAppendMapEvent} /><CombatRuntimeTable locale={locale} scopeKey={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`} campaignActors={campaignDetail.actors} canManage={canManageServer} runtimeSessionId={runtimeSessionId} runtimeEvents={runtimeEvents.events} onCombatantsChange={setRuntimeCombatants} onAppendEvent={handleAppendCombatEvent} /><div className="mt-4"><div className="flex items-center justify-between gap-2"><div><h4 className="font-bold">{t('campaignRoom.runtimeEvents')}</h4><p className="mt-1 text-xs text-[#51483d]">{t('campaignRoom.runtimeEventsNote')}</p></div><button type="button" onClick={() => void runtimeEvents.refresh()} className="text-xs font-bold underline">{t('campaignRoom.refresh')}</button></div>{runtimeEvents.error && <p className="mt-2 text-sm text-[#8b3a2f]">{errorText(runtimeEvents.error, locale)}</p>}{runtimeEvents.loading && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.loading')}</p>}{!runtimeEvents.loading && runtimeEvents.events.length === 0 && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noEvents')}</p>}<div className="mt-2 max-h-44 overflow-auto rounded-xl bg-[#f7f3ea] p-3">{runtimeEvents.events.map((item) => <div key={item.runtimeEventId} className="border-b border-[#2f2a22]/8 py-2 text-xs last:border-0"><span className="font-bold">#{item.seq} {runtimeEventLabel(item.eventKind, locale)}</span><span className="ml-2 text-[#51483d]">{runtimeEventSummary(item, locale)}</span></div>)}</div><form onSubmit={(event) => void handleAppendEvent(event)} className="mt-3 flex gap-2"><input value={eventText} onChange={(event) => setEventText(event.target.value)} placeholder={t('campaignRoom.eventPlaceholder')} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm" /><button type="submit" disabled={busy || !eventText.trim()} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{t('campaignRoom.appendEvent')}</button></form><p className="mt-2 text-[11px] text-[#51483d]">{t('campaignRoom.appendOnlyNote')}</p></div></>}
+                {roomDetail.runtimeSession && <>
+                  <p className="mt-2 text-sm text-[#51483d]">{roomDetail.runtimeSession.session.title || t('campaignRoom.untitledSession')} · {roomDetail.runtimeSession.session.status}</p>
+                  <BasicMapBoard
+                    locale={locale}
+                    mapId={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`}
+                    runtimeSessionId={runtimeSessionId}
+                    runtimeEvents={runtimeEvents.events}
+                    campaignActors={campaignDetail.actors}
+                    combatants={runtimeCombatState.combatants}
+                    canManage={canManageServer}
+                    onBoardChange={setRuntimeMapBoard}
+                    snapshotBoard={runtimeMapBoard}
+                    snapshotImportVersion={snapshotImportVersion}
+                    onAppendEvent={handleAppendMapEvent}
+                  />
+                  <CombatRuntimeTable
+                    locale={locale}
+                    scopeKey={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`}
+                    campaignActors={campaignDetail.actors}
+                    canManage={canManageServer}
+                    runtimeSessionId={runtimeSessionId}
+                    runtimeEvents={runtimeEvents.events}
+                    onStateChange={setRuntimeCombatState}
+                    snapshotState={runtimeCombatState}
+                    snapshotImportVersion={snapshotImportVersion}
+                    onAppendEvent={handleAppendCombatEvent}
+                  />
+                  <SceneRuntimeSnapshotPanel
+                    locale={locale}
+                    canManage={canManageServer}
+                    context={{ roomId: selectedRoomId, campaignId: selectedCampaignId, runtimeSessionId }}
+                    combatState={runtimeCombatState}
+                    mapBoard={runtimeMapBoard}
+                    onApply={handleApplySceneSnapshot}
+                    onAppendEvent={handleAppendSceneSnapshotEvent}
+                  />
+                  <div className="mt-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <div><h4 className="font-bold">{t('campaignRoom.runtimeEvents')}</h4><p className="mt-1 text-xs text-[#51483d]">{t('campaignRoom.runtimeEventsNote')}</p></div>
+                      <button type="button" onClick={() => void runtimeEvents.refresh()} className="text-xs font-bold underline">{t('campaignRoom.refresh')}</button>
+                    </div>
+                    {runtimeEvents.error && <p className="mt-2 text-sm text-[#8b3a2f]">{errorText(runtimeEvents.error, locale)}</p>}
+                    {runtimeEvents.loading && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.loading')}</p>}
+                    {!runtimeEvents.loading && runtimeEvents.events.length === 0 && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noEvents')}</p>}
+                    <div className="mt-2 max-h-44 overflow-auto rounded-xl bg-[#f7f3ea] p-3">{runtimeEvents.events.map((item) => <div key={item.runtimeEventId} className="border-b border-[#2f2a22]/8 py-2 text-xs last:border-0"><span className="font-bold">#{item.seq} {runtimeEventLabel(item.eventKind, locale)}</span><span className="ml-2 text-[#51483d]">{runtimeEventSummary(item, locale)}</span></div>)}</div>
+                    <form onSubmit={(event) => void handleAppendEvent(event)} className="mt-3 flex gap-2"><input value={eventText} onChange={(event) => setEventText(event.target.value)} placeholder={t('campaignRoom.eventPlaceholder')} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm" /><button type="submit" disabled={busy || !eventText.trim()} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{t('campaignRoom.appendEvent')}</button></form>
+                    <p className="mt-2 text-[11px] text-[#51483d]">{t('campaignRoom.appendOnlyNote')}</p>
+                  </div>
+                </>}
               </div>
             </div>
           )}

@@ -99,5 +99,14 @@ export function useCombatRuntimeTable(scopeKey: string) {
     return nextState;
   }, []);
 
-  return { state, addCombatant, updateCombatant, removeCombatant, markDefeated, rollInitiative, start, moveTurn, pause, resume, end, restore };
+  const replaceState = useCallback((nextState: CombatRuntimeTableState) => {
+    const normalized = {
+      combatants: nextState.combatants.map((combatant) => createCombatant({ ...combatant, conditions: [...combatant.conditions] })),
+      turn: { ...nextState.turn },
+    };
+    setState(normalized);
+    return normalized;
+  }, []);
+
+  return { state, addCombatant, updateCombatant, removeCombatant, markDefeated, rollInitiative, start, moveTurn, pause, resume, end, restore, replaceState };
 }

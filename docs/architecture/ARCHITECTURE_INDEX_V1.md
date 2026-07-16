@@ -427,6 +427,19 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   walls, permissions, or full VTT.
 - Doc: `P5_BASIC_MAP_BOARD`.
 
+## Scene Runtime Snapshot (P5.SCENE-RUNTIME-SNAPSHOT)
+- Files: `src/lib/scene/sceneRuntimeSnapshotTypes.ts`,
+  `src/lib/scene/sceneRuntimeSnapshot.ts`,
+  `src/lib/scene/sceneRuntimeSnapshotSmoke.ts`,
+  `src/components/platform/SceneRuntimeSnapshotPanel.tsx`; the existing local
+  combat/map hooks expose a controlled state replacement seam.
+- Boundary: versioned local JSON export/import for the current combat/map
+  projection. Context mismatches warn before an explicit host apply. It is not
+  database persistence, a full backup, asset archive, live synchronization,
+  WebSocket authority, or permission enforcement. Optional `scene.snapshot_*`
+  Runtime Events are append-only audit notes and do not gate local actions.
+- Doc: `P5_SCENE_RUNTIME_SNAPSHOT`.
+
 ## Effective Permission Resolver (P5.20 — contract only, pure backend policy)
 - Files: `server/policy/effectivePermissionResolver.ts` (types + deterministic
   resolver + `canViewContent`/`canEditContent`/`canPublishContent`/

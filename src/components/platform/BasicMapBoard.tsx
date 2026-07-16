@@ -4,7 +4,7 @@ import type { CampaignActorInstance, RuntimeEvent } from '../../lib/api/campaign
 import type { Combatant } from '../../lib/combat/combatRuntimeTypes';
 import { hasMapRuntimeEvents } from '../../lib/map/mapRuntimeReplay';
 import { useMapRuntimeBoard } from '../../lib/map/useMapRuntimeBoard';
-import type { MapRuntimeEventDraft, MapToken, MapTokenSize } from '../../lib/map/mapRuntimeTypes';
+import type { MapBoardState, MapRuntimeEventDraft, MapToken, MapTokenSize } from '../../lib/map/mapRuntimeTypes';
 
 type Props = {
   locale: Locale;
@@ -14,6 +14,9 @@ type Props = {
   campaignActors: CampaignActorInstance[];
   combatants: Combatant[];
   canManage: boolean;
+  onBoardChange?: (state: MapBoardState) => void;
+  snapshotBoard?: MapBoardState;
+  snapshotImportVersion?: number;
   onAppendEvent?: (event: MapRuntimeEventDraft) => Promise<void>;
 };
 
@@ -38,12 +41,13 @@ function sizeLabel(size: MapTokenSize, locale: Locale): string {
   return labels[size];
 }
 
-export function BasicMapBoard({ locale, mapId, runtimeSessionId, runtimeEvents, campaignActors, combatants, canManage, onAppendEvent }: Props) {
+export function BasicMapBoard({ locale, mapId, runtimeSessionId, runtimeEvents, campaignActors, combatants, canManage, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent }: Props) {
   const { t } = createTranslator(locale);
   const board = useMapRuntimeBoard(mapId);
   const boardRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const restoredScopeRef = useRef('');
+  const importedSnapshotRef = useRef(0);
   const [backgroundUrl, setBackgroundUrl] = useState('');
   const [backgroundName, setBackgroundName] = useState('');
   const [tokenName, setTokenName] = useState('');
@@ -64,6 +68,16 @@ export function BasicMapBoard({ locale, mapId, runtimeSessionId, runtimeEvents, 
     board.restore(mapEvents);
     restoredScopeRef.current = mapId;
   }, [board.restore, mapEventKey, mapId]);
+
+  useEffect(() => {
+    onBoardChange?.(board.state);
+  }, [board.state, onBoardChange]);
+
+  useEffect(() => {
+    if (!snapshotBoard || !snapshotImportVersion || importedSnapshotRef.current === snapshotImportVersion) return;
+    board.replaceState(snapshotBoard);
+    importedSnapshotRef.current = snapshotImportVersion;
+  }, [board.replaceState, snapshotBoard, snapshotImportVersion]);
 
   useEffect(() => {
     setBackgroundUrl(board.state.backgroundUrl ?? '');
