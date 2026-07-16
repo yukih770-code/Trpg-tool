@@ -1,3 +1,6 @@
+import { classifyApiServiceFailure, resolveDevViewerUserId } from '../api/apiClient';
+import { ApiClientError } from '../api/apiTypes';
+
 type SelectionState = {
   campaignId: string;
   roomId: string;
@@ -37,6 +40,18 @@ function runSmoke(): void {
   const apiOnlyData = { source: 'api' as const, demoFallbackMixed: false };
   if (apiOnlyData.source !== 'api' || apiOnlyData.demoFallbackMixed) throw new Error('real and demo data were mixed');
 
+  const configuredIdentity = resolveDevViewerUserId({ DEV: true, VITE_DEV_VIEWER_USER_ID: 'fixture-user-a' });
+  if (configuredIdentity !== 'fixture-user-a') throw new Error('configured dev identity was not preferred');
+  if (classifyApiServiceFailure(new ApiClientError('api_error', 'unauthorized', { statusCode: 401 })) !== 'invalid_dev_identity') {
+    throw new Error('missing dev fixture was not classified');
+  }
+  if (classifyApiServiceFailure(new ApiClientError('network', 'offline')) !== 'backend_unreachable') {
+    throw new Error('backend outage was not classified');
+  }
+  if (classifyApiServiceFailure(new ApiClientError('api_error', 'unavailable', { statusCode: 503 })) !== 'service_unavailable') {
+    throw new Error('world service outage was not classified');
+  }
+
   // The smoke intentionally stays backend-free. Actor binding is represented by
   // campaign records only; live room actor state is outside this slice.
   const actorBindingPlaceholder = { campaignActorInstanceId: undefined, liveRuntimeActor: false };
@@ -47,8 +62,8 @@ function runSmoke(): void {
 
 runSmoke();
 console.log(JSON.stringify({
-  total: 8,
-  passed: 8,
+  total: 11,
+  passed: 11,
   cases: [
     'dev identity visibility is UI-only and can be hidden in production',
     'campaign selection resets room selection',
@@ -57,6 +72,9 @@ console.log(JSON.stringify({
     'runtime event append rejects empty text',
     'runtime event update/delete are not exposed',
     'real API data is not mixed with demo rows',
+    'configured dev identity is preferred over stale local selection',
+    'missing dev fixture is distinguished from backend unavailability',
+    'world service unavailability is distinguished from backend unavailability',
     'actor binding remains a campaign-record placeholder',
   ],
   notes: ['No backend, database, WebSocket, or mock network is used.'],

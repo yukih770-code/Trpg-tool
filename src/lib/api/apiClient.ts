@@ -64,7 +64,27 @@ export function resolveConfiguredDevViewerUserId(env: FrontendApiEnv = frontendE
 }
 
 export function resolveDevViewerUserId(env: FrontendApiEnv = frontendEnv()): string | undefined {
-  return env.DEV === true ? storedDevViewerUserId() ?? resolveConfiguredDevViewerUserId(env) : undefined;
+  // The configured fixture is the only known local dev user by default. A stale
+  // browser selection must not silently replace the API identity with an unknown id.
+  return env.DEV === true ? resolveConfiguredDevViewerUserId(env) ?? storedDevViewerUserId() : undefined;
+}
+
+export type ApiServiceFailureKind =
+  | 'backend_unreachable'
+  | 'invalid_dev_identity'
+  | 'service_unavailable'
+  | 'access_denied'
+  | 'not_found'
+  | 'request_failed';
+
+export function classifyApiServiceFailure(error: ApiClientError | null): ApiServiceFailureKind | null {
+  if (!error) return null;
+  if (error.kind === 'network') return 'backend_unreachable';
+  if (error.statusCode === 401 || error.apiErrorKind === 'unauthenticated') return 'invalid_dev_identity';
+  if (error.statusCode === 503 || error.apiErrorKind === 'unavailable') return 'service_unavailable';
+  if (error.statusCode === 403) return 'access_denied';
+  if (error.statusCode === 404) return 'not_found';
+  return 'request_failed';
 }
 
 function devViewerHeader(env: FrontendApiEnv, isDev: boolean): Record<string, string> {
