@@ -28,6 +28,7 @@ import type {
   RoomParticipantRecord,
   RuntimeSessionBindingRecord,
 } from '../adapters/postgresCampaignRoomRepository.js';
+import type { SceneStateDocumentRecord } from '../adapters/postgresSceneStateRepository.js';
 import {
   resolveRuntimeSessionContext,
 } from '../runtime/runtimeSessionContext.js';
@@ -153,6 +154,7 @@ function makeFakeHandlers(options: {
   const rooms = new Map<string, RoomRecord>([[ROOM_ID, roomRecord()]]);
   const sessions = new Map<string, RuntimeSessionRecord>([[SESSION_ID, sessionRecord()]]);
   const events = new Map<string, RuntimeEventRecord>();
+  const sceneStates = new Map<string, SceneStateDocumentRecord>();
   const participants: RoomParticipantRecord[] = [{
     roomParticipantId: 'participant-1',
     roomRecordId: 'room-record-1',
@@ -286,12 +288,46 @@ function makeFakeHandlers(options: {
     updateRuntimeSessionBinding: async () => ok(null),
   };
 
+  const sceneStateRepository = {
+    listSceneStates: async (worldServerId: string, campaignId: string, roomId: string, includeArchived = false) => ok(
+      [...sceneStates.values()].filter((state) => state.worldServerId === worldServerId && state.campaignId === campaignId && state.roomId === roomId && (includeArchived || !state.archivedAt)),
+    ),
+    getSceneState: async (sceneStateId: string) => ok(sceneStates.get(sceneStateId) ?? null),
+    createSceneState: async (input: SceneStateDocumentRecord) => {
+      const state: SceneStateDocumentRecord = { ...input, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' };
+      sceneStates.set(state.sceneStateId, state);
+      return ok(state);
+    },
+    updateSceneStateMetadata: async (input: { sceneStateId: string; title?: string; description?: string | null }) => {
+      const current = sceneStates.get(input.sceneStateId);
+      if (!current || current.archivedAt) return ok(null);
+      const state = { ...current, title: input.title ?? current.title, description: input.description === undefined ? current.description : input.description ?? undefined, updatedAt: '2026-01-02T00:00:00.000Z' };
+      sceneStates.set(state.sceneStateId, state);
+      return ok(state);
+    },
+    archiveSceneState: async (sceneStateId: string) => {
+      const current = sceneStates.get(sceneStateId);
+      if (!current || current.archivedAt) return ok(null);
+      const state = { ...current, archivedAt: '2026-01-02T00:00:00.000Z', updatedAt: '2026-01-02T00:00:00.000Z' };
+      sceneStates.set(sceneStateId, state);
+      return ok(state);
+    },
+    duplicateSceneState: async (input: { sceneStateId: string; sourceSceneStateId: string; title?: string; createdByUserId?: string }) => {
+      const source = sceneStates.get(input.sourceSceneStateId);
+      if (!source || source.archivedAt) return ok(null);
+      const state: SceneStateDocumentRecord = { ...source, sceneStateId: input.sceneStateId, title: input.title ?? `${source.title} copy`, createdByUserId: input.createdByUserId, sourceSceneStateId: source.sceneStateId, createdAt: '2026-01-02T00:00:00.000Z', updatedAt: '2026-01-02T00:00:00.000Z' };
+      sceneStates.set(state.sceneStateId, state);
+      return ok(state);
+    },
+  };
+
   return createCampaignRoomApiHandlers({
     worldRepository,
     campaignRepository,
     foundationRepository,
     runtimeRepository,
     campaignRoomRepository,
+    sceneStateRepository: sceneStateRepository as never,
     runtimeEventPersistenceRepository: options.runtimeEventPersistenceRepository,
     runtimeEventPersistenceBridgeEnabled: options.runtimeEventPersistenceBridgeEnabled,
   });
@@ -356,6 +392,26 @@ export async function runCampaignRoomApiHandlerSmoke(): Promise<{ total: number;
   await check('33_runtime_session_update_host', async () => isSuccess(await handlers.updateRuntimeSession({ ...room(), body: { runtimeSessionId: SESSION_ID, title: 'Renamed' } })));
   await check('34_runtime_session_update_member_denied', async () => hasStatus(await handlers.updateRuntimeSession({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, title: 'Nope' } }), 403));
   await check('35_runtime_session_is_metadata_only', async () => isSuccess(await handlers.getRuntimeSession(room(MEMBER))));
+  let sceneStateId = '';
+  await check('35a_scene_state_list_member_success', async () => isSuccess(await handlers.listSceneStates(room(MEMBER))));
+  await check('35b_scene_state_create_host_success', async () => {
+    const response = await handlers.createSceneState({ ...room(), body: { title: 'Opening scene', runtimeSessionId: SESSION_ID, stateJson: { schemaVersion: 1, appFeature: 'scene-runtime-snapshot', exportedAt: '2026-01-01T00:00:00.000Z', roomId: ROOM_ID, campaignId: CAMPAIGN_ID, combat: { combatants: [] }, map: { tokens: [] } } } });
+    if (response.ok !== true || response.statusCode !== 201) return false;
+    sceneStateId = String((response.value as { sceneStateId?: string }).sceneStateId ?? '');
+    return sceneStateId !== '';
+  });
+  await check('35c_scene_state_create_member_denied', async () => hasStatus(await handlers.createSceneState({ ...room(MEMBER), body: { title: 'Nope', stateJson: { schemaVersion: 1, appFeature: 'scene-runtime-snapshot', exportedAt: '2026-01-01T00:00:00.000Z' } } }), 403));
+  await check('35d_scene_state_get_and_update', async () => {
+    const detail = await handlers.getSceneState({ ...room(MEMBER), params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, roomId: ROOM_ID, sceneStateId } });
+    const update = await handlers.updateSceneState({ ...room(), params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, roomId: ROOM_ID, sceneStateId }, body: { title: 'Renamed scene' } });
+    return detail.ok === true && update.ok === true && (update.value as { title?: string }).title === 'Renamed scene';
+  });
+  await check('35e_scene_state_duplicate_and_archive', async () => {
+    const copy = await handlers.duplicateSceneState({ ...room(), params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, roomId: ROOM_ID, sceneStateId } });
+    const archived = await handlers.archiveSceneState({ ...room(), params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, roomId: ROOM_ID, sceneStateId } });
+    return hasStatus(copy, 201) && isSuccess(archived);
+  });
+  await check('35f_scene_state_rejects_credentials', async () => hasStatus(await handlers.createSceneState({ ...room(), body: { title: 'Unsafe', stateJson: { schemaVersion: 1, appFeature: 'scene-runtime-snapshot', exportedAt: '2026-01-01T00:00:00.000Z', token: 'do-not-store' } } }), 400));
   await check('36_runtime_event_list_success', async () => isSuccess(await handlers.listRuntimeEvents(room(MEMBER))));
   await check('37_runtime_event_after_seq_supported', async () => isSuccess(await handlers.listRuntimeEvents({ ...room(MEMBER), query: { runtimeSessionId: SESSION_ID, afterSeq: 0, limit: 2 } })));
   await check('38_runtime_event_limit_clamped', async () => isSuccess(await handlers.listRuntimeEvents({ ...room(MEMBER), query: { runtimeSessionId: SESSION_ID, limit: 9999 } })));

@@ -172,6 +172,11 @@ async function main(): Promise<void> {
   if (!createdSession.ok) {
     skip('append_runtime_event', 'create_runtime_session_failed');
     skip('runtime_event_list', 'create_runtime_session_failed');
+    skip('create_scene_state', 'create_runtime_session_failed');
+    skip('scene_state_list', 'create_runtime_session_failed');
+    skip('update_scene_state', 'create_runtime_session_failed');
+    skip('duplicate_scene_state', 'create_runtime_session_failed');
+    skip('archive_scene_state', 'create_runtime_session_failed');
   } else {
     const eventIdempotencyKey = `e2e-event-${suffix}`;
     const appended = await request('append_runtime_event', `${campaignRoot}/rooms/${encodeURIComponent(actualRoomId)}/runtime-events`, {
@@ -186,6 +191,44 @@ async function main(): Promise<void> {
         steps[steps.length - 1].reason = 'appended_event_missing_from_list';
       }
     } else skip('runtime_event_list', 'append_runtime_event_failed');
+
+    const sceneRoot = `${campaignRoot}/rooms/${encodeURIComponent(actualRoomId)}/scene-states`;
+    const createdSceneState = await request('create_scene_state', sceneRoot, {
+      method: 'POST',
+      body: JSON.stringify({
+        title: `E2E Scene ${suffix}`,
+        description: 'Temporary HTTP E2E scene fixture.',
+        runtimeSessionId: actualSessionId,
+        stateJson: {
+          schemaVersion: 1,
+          appFeature: 'scene-runtime-snapshot',
+          exportedAt: '2026-01-01T00:00:00.000Z',
+          campaignId,
+          roomId: actualRoomId,
+          runtimeSessionId: actualSessionId,
+          combat: { combatants: [], turn: { status: 'setup', roundNumber: 1, turnIndex: -1 } },
+          map: { board: { mapId: 'e2e-scene-map', zoom: 1, panX: 0, panY: 0, tokens: [] } },
+        },
+      }),
+    });
+    const scene = objectValue(createdSceneState.body);
+    const sceneStateId = typeof scene?.sceneStateId === 'string' ? scene.sceneStateId : undefined;
+    if (!createdSceneState.ok || !sceneStateId) {
+      skip('scene_state_list', 'create_scene_state_failed');
+      skip('update_scene_state', 'create_scene_state_failed');
+      skip('duplicate_scene_state', 'create_scene_state_failed');
+      skip('archive_scene_state', 'create_scene_state_failed');
+    } else {
+      const listed = await request('scene_state_list', sceneRoot);
+      const listedStates = valueOf(listed.body);
+      if (listed.ok && (!Array.isArray(listedStates) || !listedStates.some((item) => isRecord(item) && item.sceneStateId === sceneStateId))) {
+        steps[steps.length - 1].status = 'failed';
+        steps[steps.length - 1].reason = 'created_scene_missing_from_list';
+      }
+      await request('update_scene_state', `${sceneRoot}/${encodeURIComponent(sceneStateId)}`, { method: 'PATCH', body: JSON.stringify({ title: `E2E Scene Updated ${suffix}` }) });
+      await request('duplicate_scene_state', `${sceneRoot}/${encodeURIComponent(sceneStateId)}/duplicate`, { method: 'POST' });
+      await request('archive_scene_state', `${sceneRoot}/${encodeURIComponent(sceneStateId)}/archive`, { method: 'POST' });
+    }
   }
 
   await request('archive_campaign', `${campaignRoot}/archive`, { method: 'POST' });
@@ -199,7 +242,7 @@ async function main(): Promise<void> {
     status: failed.length === 0 ? 'passed' : 'failed',
     baseUrl,
     authHeaderConfigured: Boolean(viewerUserId),
-    createdFixture: { worldServer: true, campaign: true, room: createdRoom.ok, runtimeSession: createdSession.ok, runtimeEvent: steps.some((step) => step.name === 'append_runtime_event' && step.status === 'passed') },
+    createdFixture: { worldServer: true, campaign: true, room: createdRoom.ok, runtimeSession: createdSession.ok, runtimeEvent: steps.some((step) => step.name === 'append_runtime_event' && step.status === 'passed'), sceneState: steps.some((step) => step.name === 'create_scene_state' && step.status === 'passed') },
     steps,
     notes: ['Targets an already-running backend and uses unique temporary fixture names.', 'Cleanup prefers archive endpoints; no permanent delete is attempted.', 'No response body, secret, database URL, or stack trace is printed.'],
   }, null, 2));

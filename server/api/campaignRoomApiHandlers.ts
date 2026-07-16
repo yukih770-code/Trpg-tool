@@ -20,6 +20,7 @@ import {
   type PostgresCampaignRoomRepository,
   type PostgresCampaignRoomRepositoryResult,
 } from '../adapters/postgresCampaignRoomRepository.js';
+import { createPostgresSceneStateRepository, type PostgresSceneStateRepository, type SceneStateDocumentRecord } from '../adapters/postgresSceneStateRepository.js';
 import {
   createPostgresPlatformFoundationRepository,
   type CampaignActorInstanceRecord,
@@ -90,6 +91,7 @@ type RuntimeRepository = Pick<PostgresRuntimeEventRepository,
   | 'listRuntimeEvents'
   | 'appendRuntimeEvent'
 >;
+type SceneStateRepository = Pick<PostgresSceneStateRepository, 'listSceneStates' | 'getSceneState' | 'createSceneState' | 'updateSceneStateMetadata' | 'archiveSceneState' | 'duplicateSceneState'>;
 
 export interface CampaignRoomApiRequest {
   requestId?: string;
@@ -108,6 +110,7 @@ export interface CreateCampaignRoomApiHandlersOptions {
   runtimeEventPersistenceRepository?: RuntimeEventPersistenceRepositoryPort;
   runtimeEventPersistenceBridgeEnabled?: boolean;
   campaignRoomRepository?: PostgresCampaignRoomRepository;
+  sceneStateRepository?: SceneStateRepository;
   allowDevAuthHeaders?: boolean;
   nodeEnv?: string;
 }
@@ -134,6 +137,12 @@ export interface CampaignRoomApiHandlers {
   updateRuntimeSession(input: CampaignRoomApiRequest): Promise<ApiResult>;
   listRuntimeEvents(input: CampaignRoomApiRequest): Promise<ApiResult>;
   appendRuntimeEvent(input: CampaignRoomApiRequest): Promise<ApiResult>;
+  listSceneStates(input: CampaignRoomApiRequest): Promise<ApiResult>;
+  getSceneState(input: CampaignRoomApiRequest): Promise<ApiResult>;
+  createSceneState(input: CampaignRoomApiRequest): Promise<ApiResult>;
+  updateSceneState(input: CampaignRoomApiRequest): Promise<ApiResult>;
+  archiveSceneState(input: CampaignRoomApiRequest): Promise<ApiResult>;
+  duplicateSceneState(input: CampaignRoomApiRequest): Promise<ApiResult>;
 }
 
 type RepoFailure = { kind: string; retryable?: boolean };
@@ -202,6 +211,18 @@ function scopeFailure(scope: ApiRequestScopeResult, requestId?: string): ApiResu
 
 function requiredString(name: string, requestId?: string): ApiResult {
   return errorResponse(400, { kind: 'validation', message: `${name} is required.` }, { requestId });
+}
+
+function safeSceneState(value: unknown): Record<string, unknown> | null {
+  const state = recordOf(value);
+  if (!state || state.schemaVersion !== 1 || state.appFeature !== 'scene-runtime-snapshot' || !stringOf(state.exportedAt)) return null;
+  const blocked = new Set(['authorization', 'headers', 'cookie', 'password', 'token', 'secret', 'access_token', 'refresh_token']);
+  const walk = (candidate: unknown): boolean => Array.isArray(candidate)
+    ? candidate.every(walk)
+    : !candidate || typeof candidate !== 'object'
+      ? true
+      : Object.entries(candidate as Record<string, unknown>).every(([key, nested]) => !blocked.has(key.toLowerCase()) && walk(nested));
+  return walk(state) ? state : null;
 }
 
 function repositoryError(error: RepoFailure, requestId: string | undefined, domain: string): ApiResult {
@@ -277,6 +298,7 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
   const runtimeEventPersistenceRepository =
     options.runtimeEventPersistenceRepository ?? createRuntimeEventRepositoryPort(runtimeRepository);
   const campaignRoomRepository = options.campaignRoomRepository ?? createPostgresCampaignRoomRepository();
+  const sceneStateRepository = options.sceneStateRepository ?? createPostgresSceneStateRepository();
 
   async function authorizeWorld(input: CampaignRoomApiRequest, action: ApiGuardAction, hide = action === 'view'): Promise<AuthorizedWorld | ApiResult> {
     const requestId = requestIdOf(input);
@@ -667,6 +689,77 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
       return okResponse(events.filter((event) => eventVisible(event, room.access)), { requestId: requestIdOf(input) });
     },
 
+    async listSceneStates(input) {
+      const room = await authorizeRoom(input);
+      if (isApiResult(room)) return room;
+      const states = unwrap(await sceneStateRepository.listSceneStates(room.access.server.worldServerId, room.access.campaign.campaignId, room.room.roomId, input.query?.includeArchived === true || input.query?.includeArchived === 'true'), requestIdOf(input), 'Scene state');
+      return isApiResult(states) ? states : okResponse(states, { requestId: requestIdOf(input) });
+    },
+
+    async getSceneState(input) {
+      const room = await authorizeRoom(input);
+      if (isApiResult(room)) return room;
+      const sceneStateId = idParam(input, 'sceneStateId');
+      if (!sceneStateId) return requiredString('sceneStateId', requestIdOf(input));
+      const state = unwrap(await sceneStateRepository.getSceneState(sceneStateId), requestIdOf(input), 'Scene state');
+      if (isApiResult(state)) return state;
+      if (!state || state.archivedAt || state.worldServerId !== room.access.server.worldServerId || state.campaignId !== room.access.campaign.campaignId || state.roomId !== room.room.roomId) return errorResponse(404, { kind: 'not_found', message: 'Scene state not found.' }, { requestId: requestIdOf(input) });
+      return okResponse(state, { requestId: requestIdOf(input) });
+    },
+
+    async createSceneState(input) {
+      const room = await authorizeRoomManagement(input);
+      if (isApiResult(room)) return room;
+      const body = bodyOf(input);
+      const title = stringOf(body.title);
+      const stateJson = safeSceneState(body.stateJson);
+      if (!title) return requiredString('title', requestIdOf(input));
+      if (!stateJson) return errorResponse(400, { kind: 'validation', message: 'Scene state snapshot is invalid.' }, { requestId: requestIdOf(input) });
+      if ((stringOf(stateJson.roomId) && stateJson.roomId !== room.room.roomId) || (stringOf(stateJson.campaignId) && stateJson.campaignId !== room.access.campaign.campaignId)) return errorResponse(400, { kind: 'bad_request', message: 'Scene state context does not match this room.' }, { requestId: requestIdOf(input) });
+      const sessionId = stringOf(body.runtimeSessionId) ?? stringOf(stateJson.runtimeSessionId);
+      if (sessionId) { const session = await sessionForRoom(input, room.access, sessionId); if (isApiResult(session)) return session; if (!session) return errorResponse(400, { kind: 'bad_request', message: 'Runtime session does not match this room.' }, { requestId: requestIdOf(input) }); }
+      const state = unwrap(await sceneStateRepository.createSceneState({ sceneStateId: randomUUID(), worldServerId: room.access.server.worldServerId, campaignId: room.access.campaign.campaignId, roomId: room.room.roomId, runtimeSessionId: sessionId ?? undefined, title, description: stringOf(body.description) ?? undefined, schemaVersion: 1, stateJson, createdByUserId: room.access.viewer.viewerUserId ?? undefined }), requestIdOf(input), 'Scene state');
+      return isApiResult(state) ? state : okResponse(state, { statusCode: 201, requestId: requestIdOf(input) });
+    },
+
+    async updateSceneState(input) {
+      const room = await authorizeRoomManagement(input);
+      if (isApiResult(room)) return room;
+      const sceneStateId = idParam(input, 'sceneStateId');
+      if (!sceneStateId) return requiredString('sceneStateId', requestIdOf(input));
+      const existing = unwrap(await sceneStateRepository.getSceneState(sceneStateId), requestIdOf(input), 'Scene state');
+      if (isApiResult(existing)) return existing;
+      if (!existing || existing.archivedAt || existing.worldServerId !== room.access.server.worldServerId || existing.campaignId !== room.access.campaign.campaignId || existing.roomId !== room.room.roomId) return errorResponse(404, { kind: 'not_found', message: 'Scene state not found.' }, { requestId: requestIdOf(input) });
+      const body = bodyOf(input);
+      const description = Object.prototype.hasOwnProperty.call(body, 'description') ? stringOf(body.description) : undefined;
+      const updated = unwrap(await sceneStateRepository.updateSceneStateMetadata({ sceneStateId, title: stringOf(body.title), description }), requestIdOf(input), 'Scene state');
+      return isApiResult(updated) ? updated : updated ? okResponse(updated, { requestId: requestIdOf(input) }) : errorResponse(404, { kind: 'not_found', message: 'Scene state not found.' }, { requestId: requestIdOf(input) });
+    },
+
+    async archiveSceneState(input) {
+      const room = await authorizeRoomManagement(input);
+      if (isApiResult(room)) return room;
+      const sceneStateId = idParam(input, 'sceneStateId');
+      if (!sceneStateId) return requiredString('sceneStateId', requestIdOf(input));
+      const existing = unwrap(await sceneStateRepository.getSceneState(sceneStateId), requestIdOf(input), 'Scene state');
+      if (isApiResult(existing)) return existing;
+      if (!existing || existing.worldServerId !== room.access.server.worldServerId || existing.campaignId !== room.access.campaign.campaignId || existing.roomId !== room.room.roomId) return errorResponse(404, { kind: 'not_found', message: 'Scene state not found.' }, { requestId: requestIdOf(input) });
+      const archived = unwrap(await sceneStateRepository.archiveSceneState(sceneStateId), requestIdOf(input), 'Scene state');
+      return isApiResult(archived) ? archived : archived ? okResponse(archived, { requestId: requestIdOf(input) }) : errorResponse(404, { kind: 'not_found', message: 'Scene state not found.' }, { requestId: requestIdOf(input) });
+    },
+
+    async duplicateSceneState(input) {
+      const room = await authorizeRoomManagement(input);
+      if (isApiResult(room)) return room;
+      const sceneStateId = idParam(input, 'sceneStateId');
+      if (!sceneStateId) return requiredString('sceneStateId', requestIdOf(input));
+      const existing = unwrap(await sceneStateRepository.getSceneState(sceneStateId), requestIdOf(input), 'Scene state');
+      if (isApiResult(existing)) return existing;
+      if (!existing || existing.archivedAt || existing.worldServerId !== room.access.server.worldServerId || existing.campaignId !== room.access.campaign.campaignId || existing.roomId !== room.room.roomId) return errorResponse(404, { kind: 'not_found', message: 'Scene state not found.' }, { requestId: requestIdOf(input) });
+      const copy = unwrap(await sceneStateRepository.duplicateSceneState({ sceneStateId: randomUUID(), sourceSceneStateId: sceneStateId, title: stringOf(bodyOf(input).title) ?? undefined, createdByUserId: room.access.viewer.viewerUserId ?? undefined }), requestIdOf(input), 'Scene state');
+      return isApiResult(copy) ? copy : okResponse(copy, { statusCode: 201, requestId: requestIdOf(input) });
+    },
+
     async appendRuntimeEvent(input) {
       const room = await authorizeRoom(input);
       if (isApiResult(room)) return room;
@@ -735,4 +828,5 @@ export type {
   PostgresCampaignRoomRepositoryResult,
   PostgresPlatformFoundationRepositoryResult,
   PostgresRuntimeEventRepositoryResult,
+  SceneStateDocumentRecord,
 };

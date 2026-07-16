@@ -66,6 +66,14 @@ export function registerCampaignRoomApiRoutes(app: Express, handlers: CampaignRo
   app.get(`${rooms}/:roomId/participants`, (req, res) => void invoke(res, handlers.listParticipants, req));
   app.get(`${rooms}/:roomId/lobby-slots`, (req, res) => void invoke(res, handlers.listLobbySlots, req));
 
+  const sceneStates = `${rooms}/:roomId/scene-states`;
+  app.get(sceneStates, (req, res) => void invoke(res, handlers.listSceneStates, req));
+  app.post(sceneStates, (req, res) => void invoke(res, handlers.createSceneState, req));
+  app.get(`${sceneStates}/:sceneStateId`, (req, res) => void invoke(res, handlers.getSceneState, req));
+  app.patch(`${sceneStates}/:sceneStateId`, (req, res) => void invoke(res, handlers.updateSceneState, req));
+  app.post(`${sceneStates}/:sceneStateId/duplicate`, (req, res) => void invoke(res, handlers.duplicateSceneState, req));
+  app.post(`${sceneStates}/:sceneStateId/archive`, (req, res) => void invoke(res, handlers.archiveSceneState, req));
+
   const runtimeSession = `${rooms}/:roomId/runtime-session`;
   app.get(runtimeSession, (req, res) => void invoke(res, handlers.getRuntimeSession, req));
   app.post(runtimeSession, (req, res) => void invoke(res, handlers.createRuntimeSession, req));
@@ -75,4 +83,3 @@ export function registerCampaignRoomApiRoutes(app: Express, handlers: CampaignRo
   app.get(runtimeEvents, (req, res) => void invoke(res, handlers.listRuntimeEvents, req));
   app.post(runtimeEvents, (req, res) => void invoke(res, handlers.appendRuntimeEvent, req));
 }
-

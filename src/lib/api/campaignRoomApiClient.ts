@@ -131,6 +131,23 @@ export type RuntimeEvent = {
   createdAt?: string;
 };
 
+export type SceneStateDocument = {
+  sceneStateId: string;
+  worldServerId: string;
+  campaignId: string;
+  roomId: string;
+  runtimeSessionId?: string;
+  title: string;
+  description?: string;
+  schemaVersion: number;
+  stateJson: Record<string, unknown>;
+  createdByUserId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  archivedAt?: string;
+  sourceSceneStateId?: string;
+};
+
 export type CampaignRoomApiClient = {
   listCampaigns(worldServerId: string, options?: { includeArchived?: boolean; includeTrashed?: boolean }): Promise<CampaignListItem[]>;
   getCampaign(worldServerId: string, campaignId: string): Promise<CampaignDetail>;
@@ -153,6 +170,12 @@ export type CampaignRoomApiClient = {
   updateRuntimeSession(worldServerId: string, campaignId: string, roomId: string, input: { runtimeSessionId?: string; title?: string; status?: string; payload?: Record<string, unknown>; endedAt?: string }): Promise<RuntimeSessionDetail>;
   listRuntimeEvents(worldServerId: string, campaignId: string, roomId: string, options?: { runtimeSessionId?: string; afterSeq?: number; limit?: number }): Promise<RuntimeEvent[]>;
   appendRuntimeEvent(worldServerId: string, campaignId: string, roomId: string, input: { runtimeSessionId: string; eventKind: string; visibility?: string; payload?: Record<string, unknown>; idempotencyKey?: string }): Promise<RuntimeEvent>;
+  listSceneStates(worldServerId: string, campaignId: string, roomId: string, options?: { includeArchived?: boolean }): Promise<SceneStateDocument[]>;
+  getSceneState(worldServerId: string, campaignId: string, roomId: string, sceneStateId: string): Promise<SceneStateDocument>;
+  createSceneState(worldServerId: string, campaignId: string, roomId: string, input: { title: string; description?: string; runtimeSessionId?: string; stateJson: Record<string, unknown> }): Promise<SceneStateDocument>;
+  updateSceneState(worldServerId: string, campaignId: string, roomId: string, sceneStateId: string, input: { title?: string; description?: string | null }): Promise<SceneStateDocument>;
+  archiveSceneState(worldServerId: string, campaignId: string, roomId: string, sceneStateId: string): Promise<SceneStateDocument>;
+  duplicateSceneState(worldServerId: string, campaignId: string, roomId: string, sceneStateId: string, input?: { title?: string }): Promise<SceneStateDocument>;
 };
 
 function segment(value: string): string {
@@ -198,6 +221,12 @@ export function createCampaignRoomApiClient(options: ApiClientOptions = {}): Cam
     updateRuntimeSession: (id, campaignId, roomId, input) => json('PATCH', `${roomRoot(id, campaignId, roomId)}/runtime-session`, input),
     listRuntimeEvents: (id, campaignId, roomId, options = {}) => request(`${roomRoot(id, campaignId, roomId)}/runtime-events${query(options)}`),
     appendRuntimeEvent: (id, campaignId, roomId, input) => json('POST', `${roomRoot(id, campaignId, roomId)}/runtime-events`, input),
+    listSceneStates: (id, campaignId, roomId, options = {}) => request(`${roomRoot(id, campaignId, roomId)}/scene-states${query(options)}`),
+    getSceneState: (id, campaignId, roomId, sceneStateId) => request(`${roomRoot(id, campaignId, roomId)}/scene-states/${segment(sceneStateId)}`),
+    createSceneState: (id, campaignId, roomId, input) => json('POST', `${roomRoot(id, campaignId, roomId)}/scene-states`, input),
+    updateSceneState: (id, campaignId, roomId, sceneStateId, input) => json('PATCH', `${roomRoot(id, campaignId, roomId)}/scene-states/${segment(sceneStateId)}`, input),
+    archiveSceneState: (id, campaignId, roomId, sceneStateId) => json('POST', `${roomRoot(id, campaignId, roomId)}/scene-states/${segment(sceneStateId)}/archive`),
+    duplicateSceneState: (id, campaignId, roomId, sceneStateId, input) => json('POST', `${roomRoot(id, campaignId, roomId)}/scene-states/${segment(sceneStateId)}/duplicate`, input),
   };
 }
 

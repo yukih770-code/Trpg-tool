@@ -440,6 +440,18 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   Runtime Events are append-only audit notes and do not gate local actions.
 - Doc: `P5_SCENE_RUNTIME_SNAPSHOT`.
 
+## Persisted Scene Library (P5.PERSISTED-SCENE-LIBRARY)
+- Files: `server/db/migrations/0010_scene_state_documents.sql`,
+  `server/adapters/postgresSceneStateRepository.ts`, scene-state readiness and
+  rollback-only write smoke files, the Campaign/Room API scene-state routes,
+  `src/lib/api/campaignRoomApiClient.ts`, `useSceneStates`, and
+  `SavedSceneLibraryPanel`.
+- Boundary: a saved scene is a server-persisted, versioned combat/map snapshot
+  scoped to a World Server, Campaign, and Room. It is explicitly loaded into
+  the local page after validation; it is not live synchronization, runtime
+  authority, campaign backup, asset storage, or a full VTT.
+- Doc: `P5_PERSISTED_SCENE_LIBRARY`.
+
 ## Effective Permission Resolver (P5.20 — contract only, pure backend policy)
 - Files: `server/policy/effectivePermissionResolver.ts` (types + deterministic
   resolver + `canViewContent`/`canEditContent`/`canPublishContent`/

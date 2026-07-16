@@ -10,6 +10,7 @@ import { runPostgresGeneratedArtifactRepositoryRollbackWriteSmoke } from './post
 import { runPostgresWorldServerRepositoryRollbackWriteSmoke } from './postgresWorldServerRepositoryWriteSmoke.js';
 import { runPostgresVisibilityRepositoryRollbackWriteSmoke } from './postgresVisibilityRepositoryWriteSmoke.js';
 import { runPostgresPlatformFoundationRepositoryRollbackWriteSmoke } from './postgresPlatformFoundationRepositoryWriteSmoke.js';
+import { runPostgresSceneStateRepositoryRollbackWriteSmoke } from './postgresSceneStateRepositoryWriteSmoke.js';
 
 type SmokeSummary = {
   name: string;
@@ -73,6 +74,7 @@ async function main(): Promise<void> {
         runWriteSmoke('world', runPostgresWorldServerRepositoryRollbackWriteSmoke),
         runWriteSmoke('visibility', runPostgresVisibilityRepositoryRollbackWriteSmoke),
         runWriteSmoke('platform', runPostgresPlatformFoundationRepositoryRollbackWriteSmoke),
+        runWriteSmoke('sceneState', runPostgresSceneStateRepositoryRollbackWriteSmoke),
       ]);
     }
   }

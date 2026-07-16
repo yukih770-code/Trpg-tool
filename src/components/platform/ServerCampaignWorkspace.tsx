@@ -14,6 +14,7 @@ import { useRoomDetail } from '../../lib/campaignRoom/useRoomDetail';
 import { useRuntimeEvents } from '../../lib/campaignRoom/useRuntimeEvents';
 import { CombatRuntimeTable } from './CombatRuntimeTable';
 import { BasicMapBoard } from './BasicMapBoard';
+import { SavedSceneLibraryPanel } from './SavedSceneLibraryPanel';
 import { SceneRuntimeSnapshotPanel } from './SceneRuntimeSnapshotPanel';
 import type { CombatRuntimeEventDraft, CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
 import type { MapBoardState, MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
@@ -75,6 +76,10 @@ function runtimeEventLabel(eventKind: string, locale: Locale): string {
     'map.token_removed': ['删除地图 Token', 'Map token removed'],
     'scene.snapshot_exported': ['导出场景快照', 'Scene snapshot exported'],
     'scene.snapshot_imported': ['导入场景快照', 'Scene snapshot imported'],
+    'scene.state_saved': ['保存场景', 'Scene saved'],
+    'scene.state_loaded': ['加载场景', 'Scene loaded'],
+    'scene.state_archived': ['归档场景', 'Scene archived'],
+    'scene.state_duplicated': ['复制场景', 'Scene duplicated'],
   };
   return labels[eventKind]?.[locale === 'en' ? 1 : 0] ?? eventKind;
 }
@@ -99,6 +104,10 @@ function runtimeEventSummary(item: RuntimeEvent, locale: Locale): string {
   if (item.eventKind === 'map.token_removed') return locale === 'en' ? `${String(item.payload.name ?? 'A token')} was removed from the map.` : `${String(item.payload.name ?? 'Token')}已从地图删除。`;
   if (item.eventKind === 'scene.snapshot_exported') return locale === 'en' ? 'A local scene snapshot was exported.' : '已导出本地场景快照。';
   if (item.eventKind === 'scene.snapshot_imported') return locale === 'en' ? 'A local scene snapshot was applied.' : '已应用本地场景快照。';
+  if (item.eventKind === 'scene.state_saved') return locale === 'en' ? 'A scene was saved to this room.' : '场景已保存到当前房间。';
+  if (item.eventKind === 'scene.state_loaded') return locale === 'en' ? 'A saved scene was applied locally.' : '已在当前页面应用保存的场景。';
+  if (item.eventKind === 'scene.state_archived') return locale === 'en' ? 'A saved scene was archived.' : '已归档保存的场景。';
+  if (item.eventKind === 'scene.state_duplicated') return locale === 'en' ? 'A saved scene was duplicated.' : '已复制保存的场景。';
   return locale === 'en' ? 'Event data' : '事件数据';
 }
 
@@ -201,6 +210,10 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   };
 
   const handleAppendSceneSnapshotEvent = async (eventKind: 'scene.snapshot_exported' | 'scene.snapshot_imported', payload: Record<string, unknown>) => {
+    await runtimeEvents.appendEvent({ eventKind, visibility: 'public', payload });
+  };
+
+  const handleAppendSceneStateEvent = async (eventKind: 'scene.state_saved' | 'scene.state_loaded' | 'scene.state_archived' | 'scene.state_duplicated', payload: Record<string, unknown>) => {
     await runtimeEvents.appendEvent({ eventKind, visibility: 'public', payload });
   };
 
@@ -405,6 +418,19 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     mapBoard={runtimeMapBoard}
                     onApply={handleApplySceneSnapshot}
                     onAppendEvent={handleAppendSceneSnapshotEvent}
+                  />
+                  <SavedSceneLibraryPanel
+                    locale={locale}
+                    worldServerId={worldServerId}
+                    campaignId={selectedCampaignId}
+                    roomId={selectedRoomId}
+                    runtimeSessionId={runtimeSessionId}
+                    canManage={canManageServer}
+                    context={{ roomId: selectedRoomId, campaignId: selectedCampaignId, runtimeSessionId }}
+                    combatState={runtimeCombatState}
+                    mapBoard={runtimeMapBoard}
+                    onApply={handleApplySceneSnapshot}
+                    onAppendEvent={handleAppendSceneStateEvent}
                   />
                   <div className="mt-4">
                     <div className="flex items-center justify-between gap-2">
