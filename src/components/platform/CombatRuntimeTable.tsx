@@ -12,6 +12,7 @@ type Props = {
   canManage: boolean;
   runtimeSessionId: string;
   runtimeEvents: RuntimeEvent[];
+  onCombatantsChange?: (combatants: import('../../lib/combat/combatRuntimeTypes').Combatant[]) => void;
   onAppendEvent?: (event: CombatRuntimeEventDraft) => Promise<void>;
 };
 
@@ -26,7 +27,7 @@ function kindLabel(kind: CombatantKind, locale: Locale): string {
   return kind === 'character' ? '角色' : kind === 'npc' ? 'NPC' : '其他';
 }
 
-export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage, runtimeSessionId, runtimeEvents, onAppendEvent }: Props) {
+export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage, runtimeSessionId, runtimeEvents, onCombatantsChange, onAppendEvent }: Props) {
   const { t } = createTranslator(locale);
   const table = useCombatRuntimeTable(scopeKey);
   const restoredScopeRef = useRef('');
@@ -41,6 +42,10 @@ export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage
   const [notes, setNotes] = useState('');
   const [eventError, setEventError] = useState('');
   const [restoreNotice, setRestoreNotice] = useState('');
+
+  useEffect(() => {
+    onCombatantsChange?.(table.state.combatants);
+  }, [onCombatantsChange, table.state.combatants]);
 
   const combatEvents = runtimeEvents.filter((event) => event.runtimeSessionId === runtimeSessionId && event.eventKind.startsWith('combat.'));
   const combatEventKey = combatEvents.map((event) => event.runtimeEventId).join('|');

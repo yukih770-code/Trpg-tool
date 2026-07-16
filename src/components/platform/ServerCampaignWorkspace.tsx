@@ -13,7 +13,9 @@ import { useCampaignDetail } from '../../lib/campaignRoom/useCampaignDetail';
 import { useRoomDetail } from '../../lib/campaignRoom/useRoomDetail';
 import { useRuntimeEvents } from '../../lib/campaignRoom/useRuntimeEvents';
 import { CombatRuntimeTable } from './CombatRuntimeTable';
-import type { CombatRuntimeEventDraft } from '../../lib/combat/combatRuntimeTypes';
+import { BasicMapBoard } from './BasicMapBoard';
+import type { CombatRuntimeEventDraft, Combatant } from '../../lib/combat/combatRuntimeTypes';
+import type { MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
 
 type Props = {
   worldServerId: string;
@@ -62,6 +64,13 @@ function runtimeEventLabel(eventKind: string, locale: Locale): string {
     'combat.combatant_updated': ['战斗单位更新', 'Combatant updated'],
     'combat.combatant_removed': ['移出战斗桌', 'Combatant removed'],
     'combat.ended': ['战斗结束', 'Combat ended'],
+    'map.background_set': ['设置地图背景', 'Map background set'],
+    'map.background_cleared': ['清除地图背景', 'Map background cleared'],
+    'map.viewport_changed': ['调整地图视图', 'Map view changed'],
+    'map.token_added': ['添加地图 Token', 'Map token added'],
+    'map.token_moved': ['移动地图 Token', 'Map token moved'],
+    'map.token_updated': ['更新地图 Token', 'Map token updated'],
+    'map.token_removed': ['删除地图 Token', 'Map token removed'],
   };
   return labels[eventKind]?.[locale === 'en' ? 1 : 0] ?? eventKind;
 }
@@ -77,6 +86,13 @@ function runtimeEventSummary(item: RuntimeEvent, locale: Locale): string {
   if (item.eventKind === 'combat.combatant_added') return locale === 'en' ? `${combatantName || 'A combatant'} joined the table.` : `${combatantName || '战斗单位'}加入了战斗桌。`;
   if (item.eventKind === 'combat.combatant_updated') return locale === 'en' ? `${combatantName || 'A combatant'} was updated.` : `${combatantName || '战斗单位'}已更新。`;
   if (item.eventKind === 'combat.combatant_removed') return locale === 'en' ? `${String(item.payload.displayName ?? 'A combatant')} left the table.` : `${String(item.payload.displayName ?? '战斗单位')}已移出战斗桌。`;
+  if (item.eventKind === 'map.background_set') return locale === 'en' ? 'A map background was set.' : '已设置地图背景。';
+  if (item.eventKind === 'map.background_cleared') return locale === 'en' ? 'The map background was cleared.' : '已清除地图背景。';
+  if (item.eventKind === 'map.viewport_changed') return locale === 'en' ? 'The map view changed.' : '地图视图已调整。';
+  if (item.eventKind === 'map.token_added') return locale === 'en' ? `${String((item.payload.token as Record<string, unknown> | undefined)?.name ?? 'A token')} was added to the map.` : `${String((item.payload.token as Record<string, unknown> | undefined)?.name ?? 'Token')}已添加到地图。`;
+  if (item.eventKind === 'map.token_moved') return locale === 'en' ? 'A map token moved.' : '地图 Token 已移动。';
+  if (item.eventKind === 'map.token_updated') return locale === 'en' ? 'A map token was updated.' : '地图 Token 已更新。';
+  if (item.eventKind === 'map.token_removed') return locale === 'en' ? `${String(item.payload.name ?? 'A token')} was removed from the map.` : `${String(item.payload.name ?? 'Token')}已从地图删除。`;
   return locale === 'en' ? 'Event data' : '事件数据';
 }
 
@@ -90,6 +106,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const [campaignSystemId, setCampaignSystemId] = useState(defaultGameSystemId ?? gameSystems[0]?.gameSystemId ?? '');
   const [roomName, setRoomName] = useState('');
   const [eventText, setEventText] = useState('');
+  const [runtimeCombatants, setRuntimeCombatants] = useState<Combatant[]>([]);
   const [actorName, setActorName] = useState('');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiClientError | null>(null);
@@ -168,6 +185,10 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   };
 
   const handleAppendCombatEvent = async (event: CombatRuntimeEventDraft) => {
+    await runtimeEvents.appendEvent({ eventKind: event.eventKind, visibility: 'public', payload: event.payload });
+  };
+
+  const handleAppendMapEvent = async (event: MapRuntimeEventDraft) => {
     await runtimeEvents.appendEvent({ eventKind: event.eventKind, visibility: 'public', payload: event.payload });
   };
 
@@ -331,7 +352,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
               <div className="mt-5 border-t border-[#2f2a22]/10 pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{t('campaignRoom.runtimeSession')}</h4>{!roomDetail.runtimeSession && canManageServer && <button type="button" disabled={busy} onClick={() => void handleCreateRuntimeSession()} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-xs font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.createSession')}</button>}</div>
                 {!roomDetail.runtimeSession && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noSession')}</p>}
-                {roomDetail.runtimeSession && <><p className="mt-2 text-sm text-[#51483d]">{roomDetail.runtimeSession.session.title || t('campaignRoom.untitledSession')} · {roomDetail.runtimeSession.session.status}</p><CombatRuntimeTable locale={locale} scopeKey={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`} campaignActors={campaignDetail.actors} canManage={canManageServer} runtimeSessionId={runtimeSessionId} runtimeEvents={runtimeEvents.events} onAppendEvent={handleAppendCombatEvent} /><div className="mt-4"><div className="flex items-center justify-between gap-2"><div><h4 className="font-bold">{t('campaignRoom.runtimeEvents')}</h4><p className="mt-1 text-xs text-[#51483d]">{t('campaignRoom.runtimeEventsNote')}</p></div><button type="button" onClick={() => void runtimeEvents.refresh()} className="text-xs font-bold underline">{t('campaignRoom.refresh')}</button></div>{runtimeEvents.error && <p className="mt-2 text-sm text-[#8b3a2f]">{errorText(runtimeEvents.error, locale)}</p>}{runtimeEvents.loading && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.loading')}</p>}{!runtimeEvents.loading && runtimeEvents.events.length === 0 && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noEvents')}</p>}<div className="mt-2 max-h-44 overflow-auto rounded-xl bg-[#f7f3ea] p-3">{runtimeEvents.events.map((item) => <div key={item.runtimeEventId} className="border-b border-[#2f2a22]/8 py-2 text-xs last:border-0"><span className="font-bold">#{item.seq} {runtimeEventLabel(item.eventKind, locale)}</span><span className="ml-2 text-[#51483d]">{runtimeEventSummary(item, locale)}</span></div>)}</div><form onSubmit={(event) => void handleAppendEvent(event)} className="mt-3 flex gap-2"><input value={eventText} onChange={(event) => setEventText(event.target.value)} placeholder={t('campaignRoom.eventPlaceholder')} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm" /><button type="submit" disabled={busy || !eventText.trim()} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{t('campaignRoom.appendEvent')}</button></form><p className="mt-2 text-[11px] text-[#51483d]">{t('campaignRoom.appendOnlyNote')}</p></div></>}
+                {roomDetail.runtimeSession && <><p className="mt-2 text-sm text-[#51483d]">{roomDetail.runtimeSession.session.title || t('campaignRoom.untitledSession')} · {roomDetail.runtimeSession.session.status}</p><BasicMapBoard locale={locale} mapId={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`} runtimeSessionId={runtimeSessionId} runtimeEvents={runtimeEvents.events} campaignActors={campaignDetail.actors} combatants={runtimeCombatants} canManage={canManageServer} onAppendEvent={handleAppendMapEvent} /><CombatRuntimeTable locale={locale} scopeKey={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`} campaignActors={campaignDetail.actors} canManage={canManageServer} runtimeSessionId={runtimeSessionId} runtimeEvents={runtimeEvents.events} onCombatantsChange={setRuntimeCombatants} onAppendEvent={handleAppendCombatEvent} /><div className="mt-4"><div className="flex items-center justify-between gap-2"><div><h4 className="font-bold">{t('campaignRoom.runtimeEvents')}</h4><p className="mt-1 text-xs text-[#51483d]">{t('campaignRoom.runtimeEventsNote')}</p></div><button type="button" onClick={() => void runtimeEvents.refresh()} className="text-xs font-bold underline">{t('campaignRoom.refresh')}</button></div>{runtimeEvents.error && <p className="mt-2 text-sm text-[#8b3a2f]">{errorText(runtimeEvents.error, locale)}</p>}{runtimeEvents.loading && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.loading')}</p>}{!runtimeEvents.loading && runtimeEvents.events.length === 0 && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noEvents')}</p>}<div className="mt-2 max-h-44 overflow-auto rounded-xl bg-[#f7f3ea] p-3">{runtimeEvents.events.map((item) => <div key={item.runtimeEventId} className="border-b border-[#2f2a22]/8 py-2 text-xs last:border-0"><span className="font-bold">#{item.seq} {runtimeEventLabel(item.eventKind, locale)}</span><span className="ml-2 text-[#51483d]">{runtimeEventSummary(item, locale)}</span></div>)}</div><form onSubmit={(event) => void handleAppendEvent(event)} className="mt-3 flex gap-2"><input value={eventText} onChange={(event) => setEventText(event.target.value)} placeholder={t('campaignRoom.eventPlaceholder')} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm" /><button type="submit" disabled={busy || !eventText.trim()} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{t('campaignRoom.appendEvent')}</button></form><p className="mt-2 text-[11px] text-[#51483d]">{t('campaignRoom.appendOnlyNote')}</p></div></>}
               </div>
             </div>
           )}

@@ -417,6 +417,16 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   persistence.
 - Doc: `P5_COMBAT_RUNTIME_TABLE`.
 
+## Basic Map Board (P5.BASIC-MAP-BOARD)
+- Files: `src/lib/map/mapRuntimeTypes.ts`, `src/lib/map/useMapRuntimeBoard.ts`,
+  `src/lib/map/mapRuntimeReplay.ts`, `src/components/platform/BasicMapBoard.tsx`;
+  scripts `frontend:verify:map-runtime` and `frontend:verify:map-replay`.
+- Boundary: frontend-local background, viewport, and token projection using
+  append-only `map.*` Runtime Events; deterministic replay on runtime session
+  open; no WebSocket sync, DB map persistence, asset upload, grid, fog, LOS,
+  walls, permissions, or full VTT.
+- Doc: `P5_BASIC_MAP_BOARD`.
+
 ## Effective Permission Resolver (P5.20 — contract only, pure backend policy)
 - Files: `server/policy/effectivePermissionResolver.ts` (types + deterministic
   resolver + `canViewContent`/`canEditContent`/`canPublishContent`/
