@@ -405,6 +405,18 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   full VTT, full character editor, AI, deployment, or auth provider.
 - Doc: `P5_LOCAL_PLAYABLE_LOBBY`.
 
+## Combat Runtime Table (P5.COMBAT-RUNTIME-TABLE)
+- Files: `src/lib/combat/combatRuntimeTypes.ts`,
+  `src/lib/combat/useCombatRuntimeTable.ts`,
+  `src/components/platform/CombatRuntimeTable.tsx`,
+  `src/lib/combat/combatRuntimeTableSmoke.ts`.
+- Boundary: local initiative/turn state in the API-backed server workspace;
+  key actions append `combat.*` runtime events through the existing append-only
+  API. It is not live Room Server/WebSocket authority, a rules engine, a
+  character/inventory write path, a map/token layer, or CampaignActorInstance
+  persistence.
+- Doc: `P5_COMBAT_RUNTIME_TABLE`.
+
 ## Effective Permission Resolver (P5.20 — contract only, pure backend policy)
 - Files: `server/policy/effectivePermissionResolver.ts` (types + deterministic
   resolver + `canViewContent`/`canEditContent`/`canPublishContent`/

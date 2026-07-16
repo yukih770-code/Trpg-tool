@@ -4,6 +4,7 @@ import {
   campaignRoomApiClient,
   type CampaignListItem,
   type CampaignActorInstance,
+  type RuntimeEvent,
 } from '../../lib/api/campaignRoomApiClient';
 import type { WorldServerGameSystemBinding } from '../../lib/api/worldServerApiClient';
 import { createTranslator, type Locale } from '../../i18n';
@@ -11,6 +12,8 @@ import { useCampaigns } from '../../lib/campaignRoom/useCampaigns';
 import { useCampaignDetail } from '../../lib/campaignRoom/useCampaignDetail';
 import { useRoomDetail } from '../../lib/campaignRoom/useRoomDetail';
 import { useRuntimeEvents } from '../../lib/campaignRoom/useRuntimeEvents';
+import { CombatRuntimeTable } from './CombatRuntimeTable';
+import type { CombatRuntimeEventDraft } from '../../lib/combat/combatRuntimeTypes';
 
 type Props = {
   worldServerId: string;
@@ -47,6 +50,34 @@ function participantName(participant: { displayName?: string; metadata: Record<s
 
 function actorLabel(actor: CampaignActorInstance, fallback: string): string {
   return actor.displayName || fallback;
+}
+
+function runtimeEventLabel(eventKind: string, locale: Locale): string {
+  const labels: Record<string, [string, string]> = {
+    'system.note': ['公开记录', 'Public note'],
+    'combat.started': ['战斗开始', 'Combat started'],
+    'combat.turn_advanced': ['回合推进', 'Turn advanced'],
+    'combat.round_advanced': ['进入新回合', 'New round'],
+    'combat.combatant_added': ['加入战斗单位', 'Combatant added'],
+    'combat.combatant_updated': ['战斗单位更新', 'Combatant updated'],
+    'combat.combatant_removed': ['移出战斗桌', 'Combatant removed'],
+    'combat.ended': ['战斗结束', 'Combat ended'],
+  };
+  return labels[eventKind]?.[locale === 'en' ? 1 : 0] ?? eventKind;
+}
+
+function runtimeEventSummary(item: RuntimeEvent, locale: Locale): string {
+  if (typeof item.payload.text === 'string') return item.payload.text;
+  const combatant = item.payload.combatant;
+  const combatantName = combatant && typeof combatant === 'object' && 'displayName' in combatant && typeof combatant.displayName === 'string' ? combatant.displayName : '';
+  if (item.eventKind === 'combat.started') return locale === 'en' ? 'The local combat table started.' : '本地战斗桌已开始。';
+  if (item.eventKind === 'combat.round_advanced') return locale === 'en' ? `Round ${String(item.payload.round ?? '?')} started.` : `第 ${String(item.payload.round ?? '?')} 回合开始。`;
+  if (item.eventKind === 'combat.turn_advanced') return locale === 'en' ? 'The active turn advanced.' : '当前回合已推进。';
+  if (item.eventKind === 'combat.ended') return locale === 'en' ? 'The local combat table ended.' : '本地战斗桌已结束。';
+  if (item.eventKind === 'combat.combatant_added') return locale === 'en' ? `${combatantName || 'A combatant'} joined the table.` : `${combatantName || '战斗单位'}加入了战斗桌。`;
+  if (item.eventKind === 'combat.combatant_updated') return locale === 'en' ? `${combatantName || 'A combatant'} was updated.` : `${combatantName || '战斗单位'}已更新。`;
+  if (item.eventKind === 'combat.combatant_removed') return locale === 'en' ? `${String(item.payload.displayName ?? 'A combatant')} left the table.` : `${String(item.payload.displayName ?? '战斗单位')}已移出战斗桌。`;
+  return locale === 'en' ? 'Event data' : '事件数据';
 }
 
 export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, defaultGameSystemId, canManageServer }: Props) {
@@ -134,6 +165,10 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
       await runtimeEvents.appendEvent({ eventKind: 'system.note', visibility: 'public', payload: { text } });
       setEventText('');
     });
+  };
+
+  const handleAppendCombatEvent = async (event: CombatRuntimeEventDraft) => {
+    await runtimeEvents.appendEvent({ eventKind: event.eventKind, visibility: 'public', payload: event.payload });
   };
 
   const handleCreateCampaignActor = async (event: FormEvent) => {
@@ -296,7 +331,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
               <div className="mt-5 border-t border-[#2f2a22]/10 pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{t('campaignRoom.runtimeSession')}</h4>{!roomDetail.runtimeSession && canManageServer && <button type="button" disabled={busy} onClick={() => void handleCreateRuntimeSession()} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-xs font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.createSession')}</button>}</div>
                 {!roomDetail.runtimeSession && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noSession')}</p>}
-                {roomDetail.runtimeSession && <><p className="mt-2 text-sm text-[#51483d]">{roomDetail.runtimeSession.session.title || t('campaignRoom.untitledSession')} · {roomDetail.runtimeSession.session.status}</p><div className="mt-4"><div className="flex items-center justify-between gap-2"><div><h4 className="font-bold">{t('campaignRoom.runtimeEvents')}</h4><p className="mt-1 text-xs text-[#51483d]">{t('campaignRoom.runtimeEventsNote')}</p></div><button type="button" onClick={() => void runtimeEvents.refresh()} className="text-xs font-bold underline">{t('campaignRoom.refresh')}</button></div>{runtimeEvents.error && <p className="mt-2 text-sm text-[#8b3a2f]">{errorText(runtimeEvents.error, locale)}</p>}{runtimeEvents.loading && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.loading')}</p>}{!runtimeEvents.loading && runtimeEvents.events.length === 0 && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noEvents')}</p>}<div className="mt-2 max-h-44 overflow-auto rounded-xl bg-[#f7f3ea] p-3">{runtimeEvents.events.map((item) => <div key={item.runtimeEventId} className="border-b border-[#2f2a22]/8 py-2 text-xs last:border-0"><span className="font-bold">#{item.seq} {item.eventKind}</span><span className="ml-2 text-[#51483d]">{typeof item.payload.text === 'string' ? item.payload.text : t('campaignRoom.eventData')}</span></div>)}</div><form onSubmit={(event) => void handleAppendEvent(event)} className="mt-3 flex gap-2"><input value={eventText} onChange={(event) => setEventText(event.target.value)} placeholder={t('campaignRoom.eventPlaceholder')} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm" /><button type="submit" disabled={busy || !eventText.trim()} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{t('campaignRoom.appendEvent')}</button></form><p className="mt-2 text-[11px] text-[#51483d]">{t('campaignRoom.appendOnlyNote')}</p></div></>}
+                {roomDetail.runtimeSession && <><p className="mt-2 text-sm text-[#51483d]">{roomDetail.runtimeSession.session.title || t('campaignRoom.untitledSession')} · {roomDetail.runtimeSession.session.status}</p><CombatRuntimeTable locale={locale} scopeKey={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`} campaignActors={campaignDetail.actors} canManage={canManageServer} onAppendEvent={handleAppendCombatEvent} /><div className="mt-4"><div className="flex items-center justify-between gap-2"><div><h4 className="font-bold">{t('campaignRoom.runtimeEvents')}</h4><p className="mt-1 text-xs text-[#51483d]">{t('campaignRoom.runtimeEventsNote')}</p></div><button type="button" onClick={() => void runtimeEvents.refresh()} className="text-xs font-bold underline">{t('campaignRoom.refresh')}</button></div>{runtimeEvents.error && <p className="mt-2 text-sm text-[#8b3a2f]">{errorText(runtimeEvents.error, locale)}</p>}{runtimeEvents.loading && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.loading')}</p>}{!runtimeEvents.loading && runtimeEvents.events.length === 0 && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noEvents')}</p>}<div className="mt-2 max-h-44 overflow-auto rounded-xl bg-[#f7f3ea] p-3">{runtimeEvents.events.map((item) => <div key={item.runtimeEventId} className="border-b border-[#2f2a22]/8 py-2 text-xs last:border-0"><span className="font-bold">#{item.seq} {runtimeEventLabel(item.eventKind, locale)}</span><span className="ml-2 text-[#51483d]">{runtimeEventSummary(item, locale)}</span></div>)}</div><form onSubmit={(event) => void handleAppendEvent(event)} className="mt-3 flex gap-2"><input value={eventText} onChange={(event) => setEventText(event.target.value)} placeholder={t('campaignRoom.eventPlaceholder')} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm" /><button type="submit" disabled={busy || !eventText.trim()} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{t('campaignRoom.appendEvent')}</button></form><p className="mt-2 text-[11px] text-[#51483d]">{t('campaignRoom.appendOnlyNote')}</p></div></>}
               </div>
             </div>
           )}

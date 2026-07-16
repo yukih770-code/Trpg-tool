@@ -1,0 +1,96 @@
+import { useCallback, useEffect, useState } from 'react';
+import {
+  createCombatant,
+  createCombatRuntimeTableState,
+  advanceTurn,
+  endCombat,
+  pauseCombat,
+  resumeCombat,
+  startCombat,
+  type Combatant,
+  type CombatantInput,
+  type CombatRuntimeEventDraft,
+  type CombatRuntimeTableState,
+} from './combatRuntimeTypes';
+
+function newCombatantId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `combatant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+export function useCombatRuntimeTable(scopeKey: string) {
+  const [state, setState] = useState<CombatRuntimeTableState>(createCombatRuntimeTableState);
+
+  useEffect(() => {
+    setState(createCombatRuntimeTableState());
+  }, [scopeKey]);
+
+  const addCombatant = useCallback((input: CombatantInput): { combatant: Combatant; event: CombatRuntimeEventDraft } => {
+    const combatant = createCombatant({ ...input, id: newCombatantId() });
+    setState((previous) => ({ ...previous, combatants: [...previous.combatants, combatant] }));
+    return { combatant, event: { eventKind: 'combat.combatant_added', payload: { combatant } } };
+  }, []);
+
+  const updateCombatant = useCallback((id: string, patch: Partial<Omit<Combatant, 'id'>>): CombatRuntimeEventDraft | null => {
+    const current = state.combatants.find((combatant) => combatant.id === id);
+    if (!current) return null;
+    const updated = { ...current, ...patch, conditions: patch.conditions ? [...patch.conditions] : current.conditions };
+    setState((previous) => ({ ...previous, combatants: previous.combatants.map((combatant) => combatant.id === id ? updated : combatant) }));
+    return { eventKind: 'combat.combatant_updated', payload: { combatant: updated } };
+  }, [state.combatants]);
+
+  const removeCombatant = useCallback((id: string): CombatRuntimeEventDraft | null => {
+    const removed = state.combatants.find((combatant) => combatant.id === id);
+    if (!removed) return null;
+    setState((previous) => ({
+      ...previous,
+      combatants: previous.combatants.filter((combatant) => combatant.id !== id),
+      turn: previous.turn.activeCombatantId === id ? { ...previous.turn, activeCombatantId: undefined } : previous.turn,
+    }));
+    return { eventKind: 'combat.combatant_removed', payload: { combatantId: id, displayName: removed.displayName } };
+  }, [state.combatants]);
+
+  const markDefeated = useCallback((id: string): CombatRuntimeEventDraft | null => updateCombatant(id, { status: 'defeated' }), [updateCombatant]);
+
+  const rollInitiative = useCallback((id: string): CombatRuntimeEventDraft | null => {
+    const current = state.combatants.find((combatant) => combatant.id === id);
+    if (!current) return null;
+    const die = Math.floor(Math.random() * 20) + 1;
+    const initiative = die + current.initiativeModifier;
+    const updated = { ...current, initiative };
+    setState((previous) => ({ ...previous, combatants: previous.combatants.map((combatant) => combatant.id === id ? updated : combatant) }));
+    return { eventKind: 'combat.combatant_updated', payload: { combatant: updated, initiativeRoll: die, initiativeModifier: current.initiativeModifier } };
+  }, [state.combatants]);
+
+  const start = useCallback(() => {
+    const result = startCombat(state);
+    setState(result.state);
+    return result.event;
+  }, [state]);
+
+  const moveTurn = useCallback((direction: 'next' | 'previous') => {
+    const result = advanceTurn(state, direction);
+    setState(result.state);
+    return result.event;
+  }, [state]);
+
+  const end = useCallback(() => {
+    const result = endCombat(state);
+    setState(result.state);
+    return result.event;
+  }, [state]);
+
+  const pause = useCallback(() => {
+    const result = pauseCombat(state);
+    setState(result.state);
+    return result.event;
+  }, [state]);
+
+  const resume = useCallback(() => {
+    const result = resumeCombat(state);
+    setState(result.state);
+    return result.event;
+  }, [state]);
+
+  return { state, addCombatant, updateCombatant, removeCombatant, markDefeated, rollInitiative, start, moveTurn, pause, resume, end };
+}
