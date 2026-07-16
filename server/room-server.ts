@@ -95,7 +95,9 @@ app.use((req, res, next) => {
     res.setHeader('Vary', 'Origin');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // The frontend's local-development identity is sent as a request header.
+  // Include both accepted aliases so browser preflight matches the API boundary.
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Dev-User-Id, X-Dev-Viewer-User-Id');
   if (req.method === 'OPTIONS') {
     res.sendStatus(204);
     return;
