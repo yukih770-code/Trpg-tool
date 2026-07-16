@@ -462,6 +462,16 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   backend/API contract change, or live runtime authority.
 - Doc: `P5_DND_DICE_CHECKS`.
 
+## DND Lite Actor Sheet (P5.DND-LITE-ACTOR-SHEET)
+- Files: `src/lib/dnd/dndLiteActorTypes.ts`, `dndLiteActorSheet.ts`,
+  `src/components/platform/DndLiteActorSheetPanel.tsx`, and
+  `dndLiteActorSheetSmoke.ts` (`frontend:verify:dnd-lite-actor`).
+- Boundary: host-operated, frontend-local DND actor data keyed by an existing
+  Campaign Actor Instance id. It supplies safe dice and combat-table prefill,
+  but does not write the actor vault, database, scene snapshot, or server and
+  does not add a full builder or rules automation.
+- Doc: `P5_DND_LITE_ACTOR_SHEET`.
+
 ## Effective Permission Resolver (P5.20 — contract only, pure backend policy)
 - Files: `server/policy/effectivePermissionResolver.ts` (types + deterministic
   resolver + `canViewContent`/`canEditContent`/`canPublishContent`/

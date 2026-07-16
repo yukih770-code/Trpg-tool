@@ -4,6 +4,7 @@ import { useCombatRuntimeTable } from '../../lib/combat/useCombatRuntimeTable';
 import type { CampaignActorInstance, RuntimeEvent } from '../../lib/api/campaignRoomApiClient';
 import { sortCombatants, type CombatRuntimeEventDraft, type CombatantKind, type CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
 import { hasCombatRuntimeEvents } from '../../lib/combat/combatRuntimeReplay';
+import type { DndLiteActorSheet, DndLiteCombatantPrefill } from '../../lib/dnd/dndLiteActorTypes';
 
 type Props = {
   locale: Locale;
@@ -16,6 +17,8 @@ type Props = {
   onStateChange?: (state: CombatRuntimeTableState) => void;
   snapshotState?: CombatRuntimeTableState;
   snapshotImportVersion?: number;
+  dndActorSheets?: Record<string, DndLiteActorSheet>;
+  dndActorPrefill?: DndLiteCombatantPrefill & { nonce: number };
   onAppendEvent?: (event: CombatRuntimeEventDraft) => Promise<void>;
 };
 
@@ -30,11 +33,12 @@ function kindLabel(kind: CombatantKind, locale: Locale): string {
   return kind === 'character' ? '角色' : kind === 'npc' ? 'NPC' : '其他';
 }
 
-export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage, runtimeSessionId, runtimeEvents, onCombatantsChange, onStateChange, snapshotState, snapshotImportVersion, onAppendEvent }: Props) {
+export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage, runtimeSessionId, runtimeEvents, onCombatantsChange, onStateChange, snapshotState, snapshotImportVersion, dndActorSheets = {}, dndActorPrefill, onAppendEvent }: Props) {
   const { t } = createTranslator(locale);
   const table = useCombatRuntimeTable(scopeKey);
   const restoredScopeRef = useRef('');
   const importedSnapshotRef = useRef(0);
+  const dndPrefillRef = useRef(0);
   const [displayName, setDisplayName] = useState('');
   const [kind, setKind] = useState<CombatantKind>('character');
   const [initiativeModifier, setInitiativeModifier] = useState('0');
@@ -58,6 +62,18 @@ export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage
     importedSnapshotRef.current = snapshotImportVersion;
     setRestoreNotice(locale === 'en' ? 'Combat state restored from a local scene snapshot.' : '已从本地场景快照恢复战斗状态。');
   }, [locale, snapshotImportVersion, snapshotState, table.replaceState]);
+
+  useEffect(() => {
+    if (!dndActorPrefill || dndPrefillRef.current === dndActorPrefill.nonce) return;
+    setDisplayName(dndActorPrefill.displayName);
+    setKind(dndActorPrefill.kind);
+    setArmorClass(dndActorPrefill.armorClass === undefined ? '' : String(dndActorPrefill.armorClass));
+    setHitPoints(dndActorPrefill.hpCurrent === undefined ? '' : String(dndActorPrefill.hpCurrent));
+    setMaxHitPoints(dndActorPrefill.hpMax === undefined ? '' : String(dndActorPrefill.hpMax));
+    setNotes(dndActorPrefill.notes ?? '');
+    setSourceActorInstanceId(dndActorPrefill.sourceActorInstanceId ?? '');
+    dndPrefillRef.current = dndActorPrefill.nonce;
+  }, [dndActorPrefill]);
 
   const combatEvents = runtimeEvents.filter((event) => event.runtimeSessionId === runtimeSessionId && event.eventKind.startsWith('combat.'));
   const combatEventKey = combatEvents.map((event) => event.runtimeEventId).join('|');
@@ -131,7 +147,7 @@ export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage
           <input value={maxHitPoints} onChange={(event) => setMaxHitPoints(event.target.value)} type="number" placeholder={t('campaignCombat.maxHitPoints')} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm" />
           <input value={conditions} onChange={(event) => setConditions(event.target.value)} placeholder={t('campaignCombat.conditions')} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm lg:col-span-2" />
           <input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={t('campaignCombat.notes')} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm lg:col-span-2" />
-          {campaignActors.length > 0 && <select value={sourceActorInstanceId} onChange={(event) => { const value = event.target.value; setSourceActorInstanceId(value); const actor = campaignActors.find((item) => item.campaignActorInstanceId === value); if (actor) setDisplayName(actor.displayName); }} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm lg:col-span-2"><option value="">{t('campaignCombat.sourceActor')}</option>{campaignActors.map((actor) => <option key={actor.campaignActorInstanceId} value={actor.campaignActorInstanceId}>{actor.displayName}</option>)}</select>}
+          {campaignActors.length > 0 && <select value={sourceActorInstanceId} onChange={(event) => { const value = event.target.value; setSourceActorInstanceId(value); const actor = campaignActors.find((item) => item.campaignActorInstanceId === value); const sheet = dndActorSheets[value]; if (actor) setDisplayName(sheet?.displayName || actor.displayName); if (sheet) { setKind(sheet.actorKind === 'pc' ? 'character' : sheet.actorKind === 'npc' || sheet.actorKind === 'monster' ? 'npc' : 'other'); setArmorClass(sheet.defenses.armorClass === undefined ? '' : String(sheet.defenses.armorClass)); setHitPoints(sheet.defenses.currentHp === undefined ? '' : String(sheet.defenses.currentHp)); setMaxHitPoints(sheet.defenses.maxHp === undefined ? '' : String(sheet.defenses.maxHp)); setNotes(sheet.notes ?? ''); } }} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm lg:col-span-2"><option value="">{t('campaignCombat.sourceActor')}</option>{campaignActors.map((actor) => <option key={actor.campaignActorInstanceId} value={actor.campaignActorInstanceId}>{actor.displayName}{dndActorSheets[actor.campaignActorInstanceId] ? ` · DND ${dndActorSheets[actor.campaignActorInstanceId]?.actions.length ?? 0}` : ''}</option>)}</select>}
         </div>
         <button type="submit" disabled={!displayName.trim()} className="mt-3 rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{t('campaignCombat.add')}</button>
       </form>}
@@ -161,7 +177,7 @@ export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage
               <div><div className="font-bold">{combatant.displayName}</div><div className="mt-1 text-xs text-[#51483d]">{kindLabel(combatant.kind, locale)} · {combatant.status === 'defeated' ? t('campaignCombat.defeated') : t('campaignCombat.inTable')}</div></div>
               <div className="flex flex-wrap gap-2 text-xs font-bold"><span className="rounded-full bg-[#2f2a22]/8 px-2 py-1">{t('campaignCombat.initiative')}: {combatant.initiative ?? '—'}</span>{combatant.armorClass !== undefined && <span className="rounded-full bg-[#2f2a22]/8 px-2 py-1">AC {combatant.armorClass}</span>}{combatant.hpCurrent !== undefined && <span className="rounded-full bg-[#2f2a22]/8 px-2 py-1">HP {combatant.hpCurrent}{combatant.hpMax !== undefined ? `/${combatant.hpMax}` : ''}</span>}</div>
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#51483d]">{combatant.conditions.length > 0 ? <span>{t('campaignCombat.conditions')}: {combatant.conditions.join(', ')}</span> : <span>{t('campaignCombat.noConditions')}</span>}{combatant.notes && <span>{t('campaignCombat.notes')}: {combatant.notes}</span>}{isActive && <span className="rounded-full bg-[#58180d] px-2 py-1 font-bold text-white">{t('campaignCombat.currentTurn')}</span>}</div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#51483d]">{combatant.conditions.length > 0 ? <span>{t('campaignCombat.conditions')}: {combatant.conditions.join(', ')}</span> : <span>{t('campaignCombat.noConditions')}</span>}{combatant.sourceActorInstanceId && dndActorSheets[combatant.sourceActorInstanceId] && <span>DND · {dndActorSheets[combatant.sourceActorInstanceId]?.actions.length ?? 0} {locale === 'en' ? 'actions' : '个动作'}</span>}{combatant.notes && <span>{t('campaignCombat.notes')}: {combatant.notes}</span>}{isActive && <span className="rounded-full bg-[#58180d] px-2 py-1 font-bold text-white">{t('campaignCombat.currentTurn')}</span>}</div>
             {canManage && <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><input value={combatant.initiative ?? ''} onChange={(event) => emit(table.updateCombatant(combatant.id, { initiative: optionalNumber(event.target.value) }))} type="number" placeholder={t('campaignCombat.initiative')} className="rounded-md border border-[#2f2a22]/15 px-2 py-1.5 text-xs" /><input value={combatant.hpCurrent ?? ''} onChange={(event) => emit(table.updateCombatant(combatant.id, { hpCurrent: optionalNumber(event.target.value) }))} type="number" placeholder={t('campaignCombat.hitPoints')} className="rounded-md border border-[#2f2a22]/15 px-2 py-1.5 text-xs" /><input value={combatant.armorClass ?? ''} onChange={(event) => emit(table.updateCombatant(combatant.id, { armorClass: optionalNumber(event.target.value) }))} type="number" placeholder={t('campaignCombat.armorClass')} className="rounded-md border border-[#2f2a22]/15 px-2 py-1.5 text-xs" /><input value={combatant.conditions.join(', ')} onChange={(event) => emit(table.updateCombatant(combatant.id, { conditions: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) }))} placeholder={t('campaignCombat.conditions')} className="rounded-md border border-[#2f2a22]/15 px-2 py-1.5 text-xs" /><input value={combatant.notes ?? ''} onChange={(event) => emit(table.updateCombatant(combatant.id, { notes: event.target.value }))} placeholder={t('campaignCombat.notes')} className="rounded-md border border-[#2f2a22]/15 px-2 py-1.5 text-xs sm:col-span-2 lg:col-span-4" /></div>}
             {canManage && <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => emit(table.rollInitiative(combatant.id))} className="rounded-md border border-[#2f2a22]/15 px-2.5 py-1.5 text-xs font-bold">{t('campaignCombat.rollInitiative')}</button><button type="button" onClick={() => emit(table.markDefeated(combatant.id))} disabled={combatant.status !== 'active'} className="rounded-md border border-[#8b3a2f]/20 px-2.5 py-1.5 text-xs font-bold text-[#8b3a2f] disabled:opacity-40">{t('campaignCombat.markDefeated')}</button><button type="button" onClick={() => emit(table.removeCombatant(combatant.id))} className="rounded-md border border-[#2f2a22]/15 px-2.5 py-1.5 text-xs font-bold text-[#51483d]">{t('campaignCombat.remove')}</button></div>}
           </div>;

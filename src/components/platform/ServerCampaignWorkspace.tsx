@@ -15,12 +15,14 @@ import { useRuntimeEvents } from '../../lib/campaignRoom/useRuntimeEvents';
 import { CombatRuntimeTable } from './CombatRuntimeTable';
 import { BasicMapBoard } from './BasicMapBoard';
 import { DndDiceCheckPanel } from './DndDiceCheckPanel';
+import { DndLiteActorSheetPanel } from './DndLiteActorSheetPanel';
 import { SavedSceneLibraryPanel } from './SavedSceneLibraryPanel';
 import { SceneRuntimeSnapshotPanel } from './SceneRuntimeSnapshotPanel';
 import type { CombatRuntimeEventDraft, CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
 import type { MapBoardState, MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
 import type { SceneRuntimeSnapshot } from '../../lib/scene/sceneRuntimeSnapshotTypes';
 import type { DndRuntimeEventDraft } from '../../lib/dnd/dndDiceTypes';
+import type { DndLiteActorSheet, DndLiteCombatantPrefill } from '../../lib/dnd/dndLiteActorTypes';
 
 type Props = {
   worldServerId: string;
@@ -136,6 +138,9 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const [eventText, setEventText] = useState('');
   const [runtimeCombatState, setRuntimeCombatState] = useState<CombatRuntimeTableState>({ combatants: [], turn: { status: 'setup', roundNumber: 1, turnIndex: -1 } });
   const [runtimeMapBoard, setRuntimeMapBoard] = useState<MapBoardState | undefined>();
+  const [dndActorSheets, setDndActorSheets] = useState<Record<string, DndLiteActorSheet>>({});
+  const [dndDicePreset, setDndDicePreset] = useState<{ actorInstanceId: string; actionId?: string; nonce: number }>();
+  const [dndActorPrefill, setDndActorPrefill] = useState<(DndLiteCombatantPrefill & { nonce: number }) | undefined>();
   const [snapshotImportVersion, setSnapshotImportVersion] = useState(0);
   const [actorName, setActorName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -224,6 +229,18 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
 
   const handleAppendDndEvent = async (event: DndRuntimeEventDraft) => {
     await runtimeEvents.appendEvent({ eventKind: event.eventKind, visibility: 'public', payload: event.payload });
+  };
+
+  const handleSaveDndActorSheet = (actorInstanceId: string, sheet: DndLiteActorSheet) => {
+    setDndActorSheets((previous) => ({ ...previous, [actorInstanceId]: sheet }));
+  };
+
+  const handleClearDndActorSheet = (actorInstanceId: string) => {
+    setDndActorSheets((previous) => {
+      const next = { ...previous };
+      delete next[actorInstanceId];
+      return next;
+    });
   };
 
   const handleAppendSceneSnapshotEvent = async (eventKind: 'scene.snapshot_exported' | 'scene.snapshot_imported', payload: Record<string, unknown>) => {
@@ -415,6 +432,16 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     snapshotImportVersion={snapshotImportVersion}
                     onAppendEvent={handleAppendMapEvent}
                   />
+                  {isDndCampaign(selectedCampaign?.campaign.systemId) && <DndLiteActorSheetPanel
+                    locale={locale}
+                    canManage={canManageServer}
+                    campaignActors={campaignDetail.actors}
+                    sheets={dndActorSheets}
+                    onSave={handleSaveDndActorSheet}
+                    onClear={handleClearDndActorSheet}
+                    onUseAction={(actorInstanceId, actionId) => setDndDicePreset({ actorInstanceId, actionId, nonce: Date.now() })}
+                    onAddToCombat={(prefill) => setDndActorPrefill({ ...prefill, nonce: Date.now() })}
+                  />}
                   <CombatRuntimeTable
                     locale={locale}
                     scopeKey={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`}
@@ -425,6 +452,8 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     onStateChange={setRuntimeCombatState}
                     snapshotState={runtimeCombatState}
                     snapshotImportVersion={snapshotImportVersion}
+                    dndActorSheets={dndActorSheets}
+                    dndActorPrefill={dndActorPrefill}
                     onAppendEvent={handleAppendCombatEvent}
                   />
                   {isDndCampaign(selectedCampaign?.campaign.systemId) && <DndDiceCheckPanel
@@ -432,6 +461,8 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     canManage={canManageServer}
                     campaignActors={campaignDetail.actors}
                     combatants={runtimeCombatState.combatants}
+                    actorSheets={dndActorSheets}
+                    preset={dndDicePreset}
                     onAppendEvent={handleAppendDndEvent}
                   />}
                   <SceneRuntimeSnapshotPanel
