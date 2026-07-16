@@ -1,14 +1,17 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { createTranslator, type Locale } from '../../i18n';
 import { useCombatRuntimeTable } from '../../lib/combat/useCombatRuntimeTable';
-import type { CampaignActorInstance } from '../../lib/api/campaignRoomApiClient';
+import type { CampaignActorInstance, RuntimeEvent } from '../../lib/api/campaignRoomApiClient';
 import { sortCombatants, type CombatRuntimeEventDraft, type CombatantKind } from '../../lib/combat/combatRuntimeTypes';
+import { hasCombatRuntimeEvents } from '../../lib/combat/combatRuntimeReplay';
 
 type Props = {
   locale: Locale;
   scopeKey: string;
   campaignActors: CampaignActorInstance[];
   canManage: boolean;
+  runtimeSessionId: string;
+  runtimeEvents: RuntimeEvent[];
   onAppendEvent?: (event: CombatRuntimeEventDraft) => Promise<void>;
 };
 
@@ -23,9 +26,10 @@ function kindLabel(kind: CombatantKind, locale: Locale): string {
   return kind === 'character' ? '角色' : kind === 'npc' ? 'NPC' : '其他';
 }
 
-export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage, onAppendEvent }: Props) {
+export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage, runtimeSessionId, runtimeEvents, onAppendEvent }: Props) {
   const { t } = createTranslator(locale);
   const table = useCombatRuntimeTable(scopeKey);
+  const restoredScopeRef = useRef('');
   const [displayName, setDisplayName] = useState('');
   const [kind, setKind] = useState<CombatantKind>('character');
   const [initiativeModifier, setInitiativeModifier] = useState('0');
@@ -36,6 +40,17 @@ export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage
   const [sourceActorInstanceId, setSourceActorInstanceId] = useState('');
   const [notes, setNotes] = useState('');
   const [eventError, setEventError] = useState('');
+  const [restoreNotice, setRestoreNotice] = useState('');
+
+  const combatEvents = runtimeEvents.filter((event) => event.runtimeSessionId === runtimeSessionId && event.eventKind.startsWith('combat.'));
+  const combatEventKey = combatEvents.map((event) => event.runtimeEventId).join('|');
+
+  useEffect(() => {
+    if (restoredScopeRef.current === scopeKey || !hasCombatRuntimeEvents(combatEvents)) return;
+    table.restore(combatEvents);
+    restoredScopeRef.current = scopeKey;
+    setRestoreNotice(t('campaignCombat.restoreAutoNotice'));
+  }, [combatEventKey, scopeKey, t, table.restore]);
 
   const emit = (event: CombatRuntimeEventDraft | null) => {
     if (!event || !onAppendEvent) return;
@@ -112,6 +127,12 @@ export function CombatRuntimeTable({ locale, scopeKey, campaignActors, canManage
         {canManage && table.state.turn.status === 'paused' && <button type="button" onClick={() => emit(table.resume())} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-xs font-bold">{t('campaignCombat.resume')}</button>}
         {canManage && <button type="button" onClick={() => emit(table.end())} disabled={table.state.turn.status !== 'active' && table.state.turn.status !== 'paused'} className="rounded-md border border-[#8b3a2f]/25 bg-white px-3 py-2 text-xs font-bold text-[#8b3a2f] disabled:opacity-40">{t('campaignCombat.end')}</button>}
       </div>
+
+      {hasCombatRuntimeEvents(combatEvents) && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#2f2a22]/10 bg-white px-3 py-2 text-xs">
+        <span className="text-[#51483d]">{t('campaignCombat.restoreDetected')} · {combatEvents.length}</span>
+        <button type="button" onClick={() => { table.restore(combatEvents); restoredScopeRef.current = scopeKey; setRestoreNotice(t('campaignCombat.restoreNotice')); }} className="rounded-md border border-[#2f2a22]/15 px-2.5 py-1.5 font-bold">{t('campaignCombat.restore')}</button>
+      </div>}
+      {restoreNotice && <p className="mt-2 rounded-lg bg-[#f7f3ea] px-3 py-2 text-xs text-[#51483d]">{restoreNotice}</p>}
 
       {eventError && <p className="mt-3 rounded-lg bg-[#fff0eb] px-3 py-2 text-xs text-[#8b3a2f]">{eventError}</p>}
       <div className="mt-4 grid gap-2">

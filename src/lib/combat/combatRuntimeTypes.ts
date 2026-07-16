@@ -81,7 +81,7 @@ export function createCombatant(input: CombatantInput): Combatant {
   const displayName = input.displayName?.trim() || input.name?.trim() || 'Unnamed combatant';
   const hpCurrent = input.hpCurrent ?? input.hitPoints;
   const hpMax = input.hpMax ?? input.maxHitPoints;
-  const isDefeated = input.isDefeated ?? input.status === 'defeated' ?? false;
+  const isDefeated = input.isDefeated ?? input.status === 'defeated';
   return {
     ...input,
     id: input.id ?? '',

@@ -205,6 +205,11 @@ export const zhCN = {
     markDefeated: '标记失去战斗力',
     remove: '移出战斗桌',
     eventSaveFailed: '战斗桌已更新，但运行记录暂时未能保存。',
+    restore: '从战斗记录恢复',
+    restoreDetected: '检测到已保存的战斗记录',
+    restoreAutoNotice: '已根据战斗记录恢复当前战斗桌。',
+    restoreNotice: '已从战斗记录重新恢复。',
+    replayNote: '恢复只重建本地战斗桌，不会启动实时同步。',
     boundary: '当前为本地战斗桌 v0：不自动修改角色卡、背包或规则状态，也不创建独立的战役内角色实例。',
   },
   workshop: {

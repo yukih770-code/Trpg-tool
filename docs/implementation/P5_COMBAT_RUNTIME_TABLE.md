@@ -14,6 +14,19 @@ This slice adds a small local combat table to the API-backed server workspace:
 The table is a local page state projection. It is not live Room Server authority,
 not a WebSocket feature, and not a rules engine.
 
+## Replay from Runtime Events
+
+When a runtime session is opened, persisted `combat.*` runtime events for that
+session are replayed in server sequence order to reconstruct the local combat
+table. The table also exposes a manual `Restore from combat log` action for a
+fresh rebuild. Replay covers combatant add/update/remove, start, turn and round
+advance, pause, resume, and end events.
+
+Replay is deterministic and ignores unknown or incomplete event payloads. It is
+only a local read projection: it does not append events, write character data,
+or start live synchronization. New events still require the existing append
+path and a later refresh/replay to rebuild state.
+
 ## Boundaries
 
 This slice does not change character sheets, inventory, campaign actor storage,
@@ -43,4 +56,5 @@ saved so the local state is not presented as durable authority.
 ## Verification
 
 Run `npm run frontend:verify:combat-runtime` for the 20-case pure turn-order and
-event-model smoke, then use the standard TypeScript and build checks.
+event-model smoke, `npm run frontend:verify:combat-replay` for replay ordering
+and tolerance coverage, then use the standard TypeScript and build checks.

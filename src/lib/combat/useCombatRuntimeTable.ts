@@ -12,6 +12,7 @@ import {
   type CombatRuntimeEventDraft,
   type CombatRuntimeTableState,
 } from './combatRuntimeTypes';
+import { replayCombatRuntimeEvents, type CombatRuntimeReplayEvent } from './combatRuntimeReplay';
 
 function newCombatantId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
@@ -92,5 +93,11 @@ export function useCombatRuntimeTable(scopeKey: string) {
     return result.event;
   }, [state]);
 
-  return { state, addCombatant, updateCombatant, removeCombatant, markDefeated, rollInitiative, start, moveTurn, pause, resume, end };
+  const restore = useCallback((events: ReadonlyArray<CombatRuntimeReplayEvent>) => {
+    const nextState = replayCombatRuntimeEvents(events);
+    setState(nextState);
+    return nextState;
+  }, []);
+
+  return { state, addCombatant, updateCombatant, removeCombatant, markDefeated, rollInitiative, start, moveTurn, pause, resume, end, restore };
 }

@@ -205,6 +205,11 @@ export const en = {
     markDefeated: 'Mark defeated',
     remove: 'Remove',
     eventSaveFailed: 'The table updated, but the runtime event could not be saved.',
+    restore: 'Restore from combat log',
+    restoreDetected: 'Saved combat events detected',
+    restoreAutoNotice: 'The combat table was restored from the saved log.',
+    restoreNotice: 'Restored from the combat log.',
+    replayNote: 'Replay rebuilds the local table only; it does not start live sync.',
     boundary: 'Local combat table v0: it does not modify character sheets, inventory, or rules state, and does not create a separate campaign actor instance.',
   },
   workshop: {
