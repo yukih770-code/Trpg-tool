@@ -1,26 +1,18 @@
-import { ChevronRight, LayoutDashboard, Settings } from 'lucide-react';
+import { ChevronRight, LayoutDashboard } from 'lucide-react';
 import type { Locale } from '../../i18n';
 
 type Props = {
   locale: Locale;
   serverName: string;
   memberCount: number;
-  canManageServer: boolean;
   onOpenProfile: () => void;
-  onOpenSettings: () => void;
-  onSwitchServer: () => void;
-  onLogout: () => void;
 };
 
 export function PlatformOperationsWorkspace({
   locale,
   serverName,
   memberCount,
-  canManageServer,
   onOpenProfile,
-  onOpenSettings,
-  onSwitchServer,
-  onLogout,
 }: Props) {
   const isEn = locale === 'en';
   return (
@@ -33,9 +25,6 @@ export function PlatformOperationsWorkspace({
             <p className="mt-2 text-sm text-[#51483d]">{isEn ? `${memberCount} members · Browse server information or continue with your personal tools below.` : `${memberCount} 名成员 · 查看服务器资料，或使用下方的个人与资料入口。`}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={onSwitchServer} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm font-bold text-[#51483d] hover:bg-[#2f2a22]/5">{isEn ? 'Switch server' : '切换服务器'}</button>
-            <button type="button" onClick={onLogout} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-bold text-[#58180d] hover:bg-[#fff8e6]">{isEn ? 'Log out' : '退出登录'}</button>
-            {canManageServer && <button type="button" onClick={onOpenSettings} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm font-bold text-[#51483d] hover:bg-[#2f2a22]/5"><Settings className="mr-1 inline h-4 w-4" />{isEn ? 'Manage server' : '管理服务器'}</button>}
             <button type="button" onClick={onOpenProfile} className="rounded-md bg-[#17130f] px-3 py-2 text-sm font-bold text-white hover:bg-[#2f2a22]">{isEn ? 'Server profile' : '服务器资料'} <ChevronRight className="ml-1 inline h-4 w-4" /></button>
           </div>
         </div>

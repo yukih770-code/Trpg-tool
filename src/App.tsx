@@ -1292,11 +1292,7 @@ export default function App() {
                 locale={locale}
                 serverName={selectedApiServer.displayName}
                 memberCount={worldServerDetail.members.length}
-                canManageServer={canManageSelectedServer}
                 onOpenProfile={() => setEntryStage('serverHome')}
-                onOpenSettings={openSelectedServerSettings}
-                onSwitchServer={exitCurrentServer}
-                onLogout={() => void logoutToLauncher()}
               />
             )}
             <Home locale={locale} onEnterPlay={enterPlay} onOpenPlaceholder={openPlaceholder} />
@@ -1577,6 +1573,17 @@ export default function App() {
               </button>
 
               {/* 设置 */}
+              {selectedApiServer && canManageSelectedServer && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={openSelectedServerSettings}
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-[#17130f] hover:bg-[#2f2a22]/8"
+                >
+                  <Settings className="h-4 w-4 shrink-0" />
+                  {locale === 'en' ? 'Server settings' : '服务器设置'}
+                </button>
+              )}
               <button
                 type="button"
                 role="menuitem"
