@@ -32,6 +32,9 @@ export interface ServerRuntimeConfig {
    */
   devUserApiEnabled?: boolean;
   devAuthRequested?: boolean;
+  /** Safe booleans only. Invite/session secret values never leave server auth code. */
+  privateAlphaAuthEnabled?: boolean;
+  privateAlphaAuthConfigured?: boolean;
   warnings?: string[];
 }
 
@@ -141,6 +144,10 @@ export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRun
   const warnings: string[] = [];
 
   const devAuthRequested = readDevAuthRequested(env);
+  const privateAlphaAuthEnabled = readString(env, 'PRIVATE_ALPHA_AUTH_ENABLED') === 'true';
+  const privateAlphaAuthConfigured = privateAlphaAuthEnabled
+    && readString(env, 'PRIVATE_ALPHA_INVITE_CODE') !== undefined
+    && readString(env, 'PRIVATE_ALPHA_SESSION_SECRET') !== undefined;
   if (environment !== 'localDev' && devAuthRequested) {
     warnings.push('Dev auth was requested but is disabled outside localDev.');
   }
@@ -165,6 +172,8 @@ export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRun
     allowedOrigins,
     devUserApiEnabled: readDevUserApiEnabled(environment, devAuthRequested),
     devAuthRequested,
+    privateAlphaAuthEnabled,
+    privateAlphaAuthConfigured,
     warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
@@ -190,6 +199,8 @@ export function validateServerStartupConfig(
   if (config.allowedOrigins.length === 0) errors.push('Cloud deployment mode requires explicit ROOM_ALLOWED_ORIGINS.');
   if (config.allowedOrigins.includes('*')) errors.push('Cloud deployment mode does not allow wildcard ROOM_ALLOWED_ORIGINS.');
   if (config.devAuthRequested) errors.push('Cloud deployment mode must not enable POSTGRES_USER_DEV_API_ENABLED.');
+  if (!config.privateAlphaAuthEnabled) errors.push('Cloud deployment mode requires PRIVATE_ALPHA_AUTH_ENABLED=true.');
+  if (!config.privateAlphaAuthConfigured) errors.push('Cloud deployment mode requires private alpha invite and session secret configuration.');
   if (isLocalUrl(config.publicHttpUrl)) errors.push('Cloud deployment mode requires a non-local APP_PUBLIC_HTTP_URL.');
   if (isLocalUrl(config.publicWsUrl)) errors.push('Cloud deployment mode requires a non-local APP_PUBLIC_WS_URL.');
   return { errors, warnings };

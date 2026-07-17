@@ -28,13 +28,15 @@ import {
   type PlayWorkspaceNavigationState,
 } from './pages/PlayWorkspace';
 import { useAppStore } from './store/appStore';
-import { classifyApiServiceFailure, isDevApiDemoFallbackEnabled, resolveDevViewerUserId } from './lib/api/apiClient';
+import { classifyApiServiceFailure, isDevApiDemoFallbackEnabled, isPrivateAlphaAuthEnabled, resolveDevViewerUserId } from './lib/api/apiClient';
 import { ApiClientError } from './lib/api/apiTypes';
+import { authApiClient, type AuthenticatedApiUser } from './lib/api/authApiClient';
 import type { WorldServerRecord } from './lib/api/worldServerApiClient';
 import { useWorldServers } from './lib/worldServer/useWorldServers';
 import { useWorldServerDetail } from './lib/worldServer/useWorldServerDetail';
 import { ServerCampaignWorkspace } from './components/platform/ServerCampaignWorkspace';
 import { LocalDevIdentitySwitcher } from './components/platform/LocalDevIdentitySwitcher';
+import { PrivateAlphaLoginPanel } from './components/platform/PrivateAlphaLoginPanel';
 
 type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop' | 'fanPlaza' | 'documents' | 'personalHub' | 'userProfile';
 type PlayStage = 'menu' | 'workspace';
@@ -197,6 +199,13 @@ export default function App() {
   const [activePlaceholder, setActivePlaceholder] = useState<PlaceholderKey>('campaigns');
   const [locale, setLocale] = useState<Locale>(readStoredLocale);
   const [entryStage, setEntryStage] = useState<EntryStage>('launcher');
+  const privateAlphaAuthEnabled = isPrivateAlphaAuthEnabled();
+  const [privateAlphaAuthState, setPrivateAlphaAuthState] = useState<{
+    status: 'checking' | 'authenticated' | 'unauthenticated';
+    user?: AuthenticatedApiUser;
+    error?: ApiClientError | null;
+    reason?: 'login' | 'expired';
+  }>({ status: privateAlphaAuthEnabled ? 'checking' : 'unauthenticated' });
   const [selectedServerId, setSelectedServerId] = useState<string>('');
   const [createServerName, setCreateServerName] = useState<string>('');
   const [createServerError, setCreateServerError] = useState<ApiClientError | null>(null);
@@ -216,17 +225,43 @@ export default function App() {
     useState<PlayWorkspaceBackOverride | null>(null);
   const system = useAppStore((state) => state.system as System);
   const setSystem = useAppStore((state) => state.setSystem);
-  const worldServersState = useWorldServers({ enabled: entryStage !== 'launcher' });
+  useEffect(() => {
+    let active = true;
+    if (!privateAlphaAuthEnabled) {
+      setPrivateAlphaAuthState({ status: 'unauthenticated' });
+      return () => { active = false; };
+    }
+    void authApiClient.me()
+      .then((result) => {
+        if (!active) return;
+        setPrivateAlphaAuthState(result.authenticated && result.user
+          ? { status: 'authenticated', user: result.user }
+          : { status: 'unauthenticated' });
+      })
+      .catch((error) => {
+        if (!active) return;
+        setPrivateAlphaAuthState({ status: 'unauthenticated', error: error instanceof ApiClientError ? error : new ApiClientError('network', 'Authentication request failed.') });
+      });
+    return () => { active = false; };
+  }, [privateAlphaAuthEnabled]);
+
+  const apiIdentityReady = !privateAlphaAuthEnabled || privateAlphaAuthState.status === 'authenticated';
+  const worldServersState = useWorldServers({ enabled: entryStage !== 'launcher' && apiIdentityReady });
   const worldServerDetail = useWorldServerDetail(selectedServerId, {
-    enabled: entryStage !== 'launcher' && selectedServerId !== '',
+    enabled: entryStage !== 'launcher' && selectedServerId !== '' && apiIdentityReady,
   });
-  const devViewerUserId = resolveDevViewerUserId();
+  useEffect(() => {
+    if (privateAlphaAuthEnabled && worldServersState.error?.statusCode === 401) {
+      setPrivateAlphaAuthState({ status: 'unauthenticated', error: worldServersState.error, reason: 'expired' });
+    }
+  }, [privateAlphaAuthEnabled, worldServersState.error]);
+  const viewerUserId = privateAlphaAuthEnabled ? privateAlphaAuthState.user?.userId : resolveDevViewerUserId();
   const demoFallbackEnabled = isDevApiDemoFallbackEnabled();
   const apiWorldServers: DisplayWorldServer[] = worldServersState.servers.map((server: WorldServerRecord) => ({
     id: server.worldServerId,
     name: server.displayName,
     description: server.description ?? '',
-    role: server.ownerId === devViewerUserId ? 'owner' : 'member',
+    role: server.ownerId === viewerUserId ? 'owner' : 'member',
     enabledSystems: [],
     lifecycleStatus: server.lifecycleStatus,
     ownerId: server.ownerId,
@@ -238,12 +273,12 @@ export default function App() {
     : (demoFallbackEnabled ? MOCK_WORLD_SERVERS : []);
   const selectedWorldServer = displayWorldServers.find((server) => server.id === selectedServerId);
   const selectedApiServer = worldServerDetail.server ?? worldServersState.servers.find((server) => server.worldServerId === selectedServerId) ?? null;
-  const selectedViewerMembership = devViewerUserId
-    ? worldServerDetail.members.find((member) => member.userId === devViewerUserId)
+  const selectedViewerMembership = viewerUserId
+    ? worldServerDetail.members.find((member) => member.userId === viewerUserId)
     : undefined;
   const canManageSelectedServer = Boolean(
-    selectedApiServer && devViewerUserId && (
-      selectedApiServer.ownerId === devViewerUserId
+    selectedApiServer && viewerUserId && (
+      selectedApiServer.ownerId === viewerUserId
       || selectedViewerMembership?.roleKey === 'owner'
       || selectedViewerMembership?.roleKey === 'admin'
     ),
@@ -828,12 +863,57 @@ export default function App() {
     setEntryStage('serverSelect');
   };
 
-  const logoutToLauncher = () => {
+  const logoutToLauncher = async () => {
     setMoreOpen(false);
     resetPlatformLocation();
     setSelectedServerId('');
+    if (privateAlphaAuthEnabled) {
+      try {
+        await authApiClient.logout();
+      } catch {
+        // Client state must still return to the login gate after a failed logout request.
+      }
+      setPrivateAlphaAuthState({ status: 'unauthenticated' });
+    }
     setEntryStage('launcher');
   };
+
+  const signInPrivateAlpha = async (input: { displayName: string; accessCode: string }) => {
+    setPrivateAlphaAuthState((previous) => ({ ...previous, status: 'checking', error: null, reason: undefined }));
+    try {
+      const result = await authApiClient.loginPrivateAlpha(input);
+      setPrivateAlphaAuthState({ status: 'authenticated', user: result.user });
+      resetPlatformLocation();
+      setEntryStage('serverSelect');
+    } catch (error) {
+      setPrivateAlphaAuthState({
+        status: 'unauthenticated',
+        error: error instanceof ApiClientError ? error : new ApiClientError('network', 'Sign-in request failed.'),
+        reason: 'login',
+      });
+    }
+  };
+
+  if (privateAlphaAuthEnabled && privateAlphaAuthState.status !== 'authenticated') {
+    const authError = privateAlphaAuthState.error;
+    const authMessage = privateAlphaAuthState.status === 'checking'
+      ? null
+      : authError?.statusCode === 401 && privateAlphaAuthState.reason === 'expired'
+        ? t('privateAlphaAuth.sessionExpired')
+        : authError?.statusCode === 401
+        ? t('privateAlphaAuth.invalidCredentials')
+        : authError?.statusCode === 503
+          ? t('privateAlphaAuth.requestFailed')
+          : authError?.kind === 'network'
+            ? t('privateAlphaAuth.backendUnreachable')
+            : authError
+              ? t('privateAlphaAuth.requestFailed')
+              : null;
+    if (privateAlphaAuthState.status === 'checking' && !authError) {
+      return <div className="flex min-h-screen items-center justify-center bg-[#17130f] text-sm font-semibold text-white/70">{t('privateAlphaAuth.checking')}</div>;
+    }
+    return <PrivateAlphaLoginPanel locale={locale} loading={privateAlphaAuthState.status === 'checking'} error={authMessage} onSubmit={signInPrivateAlpha} onToggleLocale={() => setLocalePreference(locale === 'en' ? 'zh-CN' : 'en')} />;
+  }
 
   if (entryStage === 'launcher') {
     return (
@@ -1005,7 +1085,11 @@ export default function App() {
           <section className="grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/65 p-5">
               <h2 className="text-lg font-bold">{locale === 'en' ? 'Create server' : '创建服务器'}</h2>
-              <p className="mt-2 text-sm leading-6 text-[#51483d]">{t('worldServer.createByCurrentDevUser')}</p>
+              <p className="mt-2 text-sm leading-6 text-[#51483d]">
+                {privateAlphaAuthEnabled
+                  ? (locale === 'en' ? 'The signed-in user will create this server.' : '当前登录用户会成为此服务器的创建者。')
+                  : t('worldServer.createByCurrentDevUser')}
+              </p>
               <p className="mt-2 text-sm leading-6 text-[#51483d]">
                 {locale === 'en'
                   ? 'Start a new server space.'

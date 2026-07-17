@@ -43,6 +43,14 @@ export function isFrontendDevelopment(env: FrontendApiEnv = frontendEnv()): bool
   return env.DEV === true;
 }
 
+export function isLocalDevAuthEnabled(env: FrontendApiEnv = frontendEnv()): boolean {
+  return isFrontendDevelopment(env) && readString(env.VITE_LOCAL_DEV_AUTH_ENABLED) !== 'false';
+}
+
+export function isPrivateAlphaAuthEnabled(env: FrontendApiEnv = frontendEnv()): boolean {
+  return readString(env.VITE_PRIVATE_ALPHA_AUTH_ENABLED) === 'true';
+}
+
 function storedDevViewerUserId(): string | undefined {
   if (typeof window === 'undefined') return undefined;
   try {
@@ -62,13 +70,13 @@ export function setDevViewerUserId(userId: string): void {
 }
 
 export function resolveConfiguredDevViewerUserId(env: FrontendApiEnv = frontendEnv()): string | undefined {
-  return env.DEV === true ? readString(env.VITE_DEV_VIEWER_USER_ID) : undefined;
+  return isLocalDevAuthEnabled(env) ? readString(env.VITE_DEV_VIEWER_USER_ID) : undefined;
 }
 
 export function resolveDevViewerUserId(env: FrontendApiEnv = frontendEnv()): string | undefined {
   // The configured fixture is the only known local dev user by default. A stale
   // browser selection must not silently replace the API identity with an unknown id.
-  return env.DEV === true ? resolveConfiguredDevViewerUserId(env) ?? storedDevViewerUserId() : undefined;
+  return isLocalDevAuthEnabled(env) ? resolveConfiguredDevViewerUserId(env) ?? storedDevViewerUserId() : undefined;
 }
 
 export type ApiServiceFailureKind =
@@ -92,8 +100,8 @@ export function classifyApiServiceFailure(error: ApiClientError | null): ApiServ
 }
 
 function devViewerHeader(env: FrontendApiEnv, isDev: boolean): Record<string, string> {
-  const viewerId = isDev ? resolveDevViewerUserId(env) : undefined;
-  return isDev && viewerId ? { 'x-dev-user-id': viewerId } : {};
+  const viewerId = isDev && isLocalDevAuthEnabled(env) ? resolveDevViewerUserId(env) : undefined;
+  return viewerId ? { 'x-dev-user-id': viewerId } : {};
 }
 
 function safeMessage(statusCode: number): string {
@@ -138,7 +146,7 @@ export function createApiClient(options: ApiClientOptions = {}) {
 
     let response: Response;
     try {
-      response = await fetcher(`${baseUrl}${path}`, { ...init, headers });
+      response = await fetcher(`${baseUrl}${path}`, { ...init, headers, credentials: init.credentials ?? 'include' });
     } catch {
       throw new ApiClientError('network', '无法连接服务器服务。', { retryable: true });
     }

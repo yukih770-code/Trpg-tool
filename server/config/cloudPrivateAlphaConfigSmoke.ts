@@ -18,6 +18,9 @@ function cloudEnv(overrides: ServerRuntimeEnv = {}): ServerRuntimeEnv {
     APP_PUBLIC_WS_URL: 'wss://api.example.test',
     ROOM_ALLOWED_ORIGINS: 'https://app.example.test',
     POSTGRES_USER_DEV_API_ENABLED: 'false',
+    PRIVATE_ALPHA_AUTH_ENABLED: 'true',
+    PRIVATE_ALPHA_INVITE_CODE: 'test-access-code',
+    PRIVATE_ALPHA_SESSION_SECRET: 'test-session-secret',
     ...overrides,
   };
 }
@@ -45,6 +48,10 @@ async function run(): Promise<SmokeCase[]> {
   check('cloud_private_alpha_rejects_wildcard_and_dev_auth', () => {
     const result = validateServerStartupConfig(readServerRuntimeConfigFromEnv(cloudEnv({ ROOM_ALLOWED_ORIGINS: '*', POSTGRES_USER_DEV_API_ENABLED: 'true' })), true);
     assert(result.errors.some((error) => error.includes('wildcard')) && result.errors.some((error) => error.includes('DEV_API')), 'unsafe CORS or dev auth was accepted');
+  });
+  check('cloud_private_alpha_rejects_missing_private_auth', () => {
+    const result = validateServerStartupConfig(readServerRuntimeConfigFromEnv(cloudEnv({ PRIVATE_ALPHA_SESSION_SECRET: '' })), true);
+    assert(result.errors.some((error) => error.includes('private alpha invite')), 'missing private alpha auth was accepted');
   });
   check('production_rejects_local_public_urls', () => {
     const config = readServerRuntimeConfigFromEnv(cloudEnv({ SERVER_DEPLOYMENT_ENVIRONMENT: 'production', APP_PUBLIC_HTTP_URL: 'http://localhost:8787', APP_PUBLIC_WS_URL: 'ws://localhost:8787' }));

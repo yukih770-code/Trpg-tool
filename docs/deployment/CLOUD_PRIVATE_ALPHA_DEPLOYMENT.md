@@ -9,7 +9,7 @@ Private alpha has a static frontend, the Node Room/API service (HTTP plus `/ws`)
 ## Runtime Modes
 
 - `localDev`: local origins and an explicit local development identity header are permitted.
-- `cloudPrivateAlpha`: requires cloud mode, backend database configuration, explicit CORS origins, public HTTP/WS URLs, and disabled dev auth.
+- `cloudPrivateAlpha`: requires cloud mode, backend database configuration, explicit CORS origins, public HTTP/WS URLs, disabled dev auth, and private-alpha session configuration.
 - `production`: follows the same cloud safety requirements and requires verified auth for user-specific writes.
 
 Cloud startup rejects wildcard CORS, local public URLs, missing required backend configuration, and a request to enable local dev auth.
@@ -19,6 +19,8 @@ Cloud startup rejects wildcard CORS, local public URLs, missing required backend
 Use the tracked shapes only: `.env.example` for local development, `.env.cloud.backend.example` for server-only cloud variables, and `.env.cloud.frontend.example` for frontend build variables.
 
 Set `DATABASE_URL` only in the backend secret manager. Never set a Vite-prefixed database variable. Set `VITE_API_BASE_URL` when building the frontend. Configure `VITE_ROOM_SERVER_HTTP_URL` and `VITE_ROOM_SERVER_WS_URL` when the room transport endpoint needs explicit values.
+
+Set `PRIVATE_ALPHA_AUTH_ENABLED=true`, `PRIVATE_ALPHA_INVITE_CODE`, and `PRIVATE_ALPHA_SESSION_SECRET` only in the backend secret manager. Build the frontend with `VITE_PRIVATE_ALPHA_AUTH_ENABLED=true` and `VITE_LOCAL_DEV_AUTH_ENABLED=false`. The frontend receives no invite code, session secret, or database configuration.
 
 ## Build and Startup
 
@@ -36,9 +38,9 @@ Set `ROOM_ALLOWED_ORIGINS` to exact frontend origins. Cloud modes reject `*`; lo
 
 ## Private Alpha Smoke Test
 
-1. Load the deployed frontend and confirm it reaches the configured API URL.
+1. Load the deployed frontend, sign in with an operator-provided display name and access code, and confirm it reaches the configured API URL.
 2. Create a World Server, campaign and room; verify the lobby and `/ws` connection.
-3. Exercise combat table, map board, saved scenes, DND dice and Lite actor data.
+3. Log out and confirm user-specific API writes require a new session.
 4. Confirm private monster templates remain visible only within their intended World Server.
 5. Confirm an unlisted browser origin cannot read cross-origin responses.
 
@@ -50,7 +52,7 @@ Set `ROOM_ALLOWED_ORIGINS` to exact frontend origins. Cloud modes reject `*`; lo
 
 ## Known Limitations
 
-- No production authentication provider exists yet; local development identity headers are not cloud login.
+- Private alpha uses one operator-held access code, not public registration, password login, OAuth, or per-invite expiry/rate limits.
 - Live multiplayer authority and reconnection hardening remain incomplete.
 - No asset upload or object storage service exists.
 - Private monster import is local machine-readable import only, not a public compendium or upload feature.

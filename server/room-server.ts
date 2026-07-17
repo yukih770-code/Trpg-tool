@@ -76,10 +76,15 @@ import { registerCampaignRoomApiRoutes } from './api/campaignRoomApiRoutes.js';
 import { createCampaignRoomApiHandlers } from './api/campaignRoomApiHandlers.js';
 import { registerDndPrivateMonsterApiRoutes } from './api/dndPrivateMonsterApiRoutes.js';
 import { createDndPrivateMonsterApiHandlers } from './api/dndPrivateMonsterApiHandlers.js';
+import { createPrivateAlphaAuthService, readPrivateAlphaAuthConfigFromEnv } from './auth/privateAlphaAuth.js';
+import { setPrivateAlphaViewer } from './auth/requestViewer.js';
+import { createPrivateAlphaAuthApiHandlers } from './api/privateAlphaAuthApiHandlers.js';
+import { registerPrivateAlphaAuthApiRoutes } from './api/privateAlphaAuthApiRoutes.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
 const databaseRuntimeConfig = readDatabaseRuntimeConfigFromEnv(process.env);
+const privateAlphaAuthConfig = readPrivateAlphaAuthConfigFromEnv(process.env, serverRuntimeConfig.environment);
 const startupValidation = validateServerStartupConfig(serverRuntimeConfig, databaseRuntimeConfig.configured);
 if (startupValidation.errors.length > 0) {
   // Configuration labels are safe to print; values and secrets are never logged.
@@ -109,6 +114,7 @@ app.use((req, res, next) => {
   } else if (typeof origin === 'string' && ALLOWED_ORIGINS.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', ALLOWED_REQUEST_HEADERS.join(', '));
@@ -120,6 +126,24 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+
+const privateAlphaAuthService = createPrivateAlphaAuthService(privateAlphaAuthConfig);
+// Only a verified server-side session is attached here. Existing localDev header
+// handling remains inside API handlers and is never enabled in cloud modes.
+app.use('/api', async (req, _res, next) => {
+  try {
+    setPrivateAlphaViewer(req, await privateAlphaAuthService.resolveRequestViewer(req));
+  } catch {
+    setPrivateAlphaViewer(req, null);
+  }
+  next();
+});
+
+registerPrivateAlphaAuthApiRoutes(app, createPrivateAlphaAuthApiHandlers({
+  service: privateAlphaAuthService,
+  allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
+  nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
+}), { secureCookies: privateAlphaAuthConfig.secureCookies });
 
 // P5.10G: mount dev-only read-only User routes ONLY when explicitly gated.
 // Disabled by default and forced off in production (see serverRuntimeConfig).
@@ -134,15 +158,15 @@ if (serverRuntimeConfig.devUserApiEnabled === true) {
 // envelopes; startup performs no migration or readiness work for these routes.
 registerWorldServerApiRoutes(app, createWorldServerApiHandlers({
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
-  nodeEnv: serverRuntimeConfig.environment === 'production' ? 'production' : 'development',
+  nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));
 registerCampaignRoomApiRoutes(app, createCampaignRoomApiHandlers({
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
-  nodeEnv: serverRuntimeConfig.environment === 'production' ? 'production' : 'development',
+  nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));
 registerDndPrivateMonsterApiRoutes(app, createDndPrivateMonsterApiHandlers({
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
-  nodeEnv: serverRuntimeConfig.environment === 'production' ? 'production' : 'development',
+  nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));
 
 const registry = createInMemoryRoomRegistry();

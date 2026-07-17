@@ -4,6 +4,7 @@ import type { Express, Request, Response } from 'express';
 
 import type { ServerApiResponse } from './apiResponse.js';
 import type { WorldServerApiHandlers, WorldServerApiRequest } from './worldServerApiHandlers.js';
+import { getVerifiedViewer } from '../auth/requestViewer.js';
 
 const PREFIX = '/api/world-servers';
 
@@ -19,6 +20,7 @@ function inputOf(req: Request): WorldServerApiRequest {
     query: req.query as Record<string, unknown>,
     body: req.body,
     headers: req.headers as Record<string, string | string[] | undefined>,
+    viewer: getVerifiedViewer(req),
   };
 }
 
