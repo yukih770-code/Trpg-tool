@@ -66,5 +66,6 @@ export type DndLiteCombatantPrefill = {
   armorClass?: number;
   hpCurrent?: number;
   hpMax?: number;
+  temporaryHp?: number;
   notes?: string;
 };

@@ -66,6 +66,7 @@ function sanitizeCombatant(value: unknown): Combatant | null {
     initiativeFormula: stringValue(input?.initiativeFormula),
     hpCurrent: numberValue(input?.hpCurrent ?? input?.hitPoints),
     hpMax: numberValue(input?.hpMax ?? input?.maxHitPoints),
+    temporaryHp: numberValue(input?.temporaryHp),
     armorClass: numberValue(input?.armorClass),
     conditions,
     notes: stringValue(input?.notes),

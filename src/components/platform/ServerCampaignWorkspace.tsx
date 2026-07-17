@@ -21,6 +21,7 @@ import { SavedSceneLibraryPanel } from './SavedSceneLibraryPanel';
 import { SceneRuntimeSnapshotPanel } from './SceneRuntimeSnapshotPanel';
 import { LanRuntimeHostPanel } from './LanRuntimeHostPanel';
 import type { CombatRuntimeEventDraft, CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
+import type { CombatDamagePreset } from '../../lib/combat/combatComfort';
 import type { MapBoardState, MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
 import type { SceneRuntimeSnapshot } from '../../lib/scene/sceneRuntimeSnapshotTypes';
 import type { DndRuntimeEventDraft } from '../../lib/dnd/dndDiceTypes';
@@ -80,6 +81,14 @@ function runtimeEventLabel(eventKind: string, locale: Locale): string {
     'combat.combatant_added': ['加入战斗单位', 'Combatant added'],
     'combat.combatant_updated': ['战斗单位更新', 'Combatant updated'],
     'combat.combatant_removed': ['移出战斗桌', 'Combatant removed'],
+    'combat.damage_applied': ['应用伤害', 'Damage applied'],
+    'combat.healing_applied': ['应用治疗', 'Healing applied'],
+    'combat.temporary_hp_applied': ['应用临时生命', 'Temporary HP applied'],
+    'combat.condition_added': ['获得状态', 'Condition added'],
+    'combat.condition_removed': ['移除状态', 'Condition removed'],
+    'combat.condition_toggled': ['切换状态', 'Condition toggled'],
+    'combat.hp_overridden': ['调整生命值', 'HP adjusted'],
+    'combat.table_cleared': ['清除本地战斗表', 'Local combat table cleared'],
     'combat.ended': ['战斗结束', 'Combat ended'],
     'map.background_set': ['设置地图背景', 'Map background set'],
     'map.background_cleared': ['清除地图背景', 'Map background cleared'],
@@ -116,6 +125,17 @@ function runtimeEventSummary(item: RuntimeEvent, locale: Locale): string {
   if (item.eventKind === 'combat.combatant_added') return locale === 'en' ? `${combatantName || 'A combatant'} joined the table.` : `${combatantName || '战斗单位'}加入了战斗桌。`;
   if (item.eventKind === 'combat.combatant_updated') return locale === 'en' ? `${combatantName || 'A combatant'} was updated.` : `${combatantName || '战斗单位'}已更新。`;
   if (item.eventKind === 'combat.combatant_removed') return locale === 'en' ? `${String(item.payload.displayName ?? 'A combatant')} left the table.` : `${String(item.payload.displayName ?? '战斗单位')}已移出战斗桌。`;
+  const targetName = String(item.payload.targetName ?? (locale === 'en' ? 'The combatant' : '战斗单位'));
+  const sourceName = typeof item.payload.sourceName === 'string' && item.payload.sourceName.trim() ? item.payload.sourceName : locale === 'en' ? 'The host' : '主持人';
+  const amount = typeof item.payload.amount === 'number' ? item.payload.amount : '?';
+  if (item.eventKind === 'combat.damage_applied') return locale === 'en' ? `${sourceName} dealt ${amount} damage to ${targetName}.` : `${sourceName}对${targetName}造成 ${amount} 点伤害。`;
+  if (item.eventKind === 'combat.healing_applied') return locale === 'en' ? `${sourceName} restored ${amount} HP to ${targetName}.` : `${sourceName}为${targetName}恢复 ${amount} 点生命值。`;
+  if (item.eventKind === 'combat.temporary_hp_applied') return locale === 'en' ? `${targetName} gained ${amount} temporary HP.` : `${targetName}获得 ${amount} 点临时生命值。`;
+  if (item.eventKind === 'combat.condition_added') return locale === 'en' ? `${targetName} gained ${String(item.payload.condition ?? 'a condition')}.` : `${targetName}获得状态：${String(item.payload.condition ?? '未知')}。`;
+  if (item.eventKind === 'combat.condition_removed') return locale === 'en' ? `${targetName} removed ${String(item.payload.condition ?? 'a condition')}.` : `${targetName}移除状态：${String(item.payload.condition ?? '未知')}。`;
+  if (item.eventKind === 'combat.condition_toggled') return locale === 'en' ? `${targetName} ${item.payload.added === true ? 'gained' : 'removed'} ${String(item.payload.condition ?? 'a condition')}.` : `${targetName}${item.payload.added === true ? '获得' : '移除'}状态：${String(item.payload.condition ?? '未知')}。`;
+  if (item.eventKind === 'combat.hp_overridden') return locale === 'en' ? `The host set ${targetName} HP to ${String(item.payload.afterHp ?? amount)}.` : `主持人将 ${targetName} HP 调整为 ${String(item.payload.afterHp ?? amount)}。`;
+  if (item.eventKind === 'combat.table_cleared') return locale === 'en' ? 'The local combat table was cleared.' : '本地战斗表已清除。';
   if (item.eventKind === 'map.background_set') return locale === 'en' ? 'A map background was set.' : '已设置地图背景。';
   if (item.eventKind === 'map.background_cleared') return locale === 'en' ? 'The map background was cleared.' : '已清除地图背景。';
   if (item.eventKind === 'map.viewport_changed') return locale === 'en' ? 'The map view changed.' : '地图视图已调整。';
@@ -148,6 +168,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const [dndDicePreset, setDndDicePreset] = useState<{ actorInstanceId: string; actionId?: string; nonce: number }>();
   const [dndActorPrefill, setDndActorPrefill] = useState<(DndLiteCombatantPrefill & { nonce: number }) | undefined>();
   const [dndMonsterActionPreset, setDndMonsterActionPreset] = useState<{ monsterName: string; action: DndMonsterAction; nonce: number }>();
+  const [dndDamagePreset, setDndDamagePreset] = useState<CombatDamagePreset>();
   const [snapshotImportVersion, setSnapshotImportVersion] = useState(0);
   const [actorName, setActorName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -493,6 +514,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     snapshotImportVersion={snapshotImportVersion}
                     dndActorSheets={dndActorSheets}
                     dndActorPrefill={dndActorPrefill}
+                    damagePreset={dndDamagePreset}
                     onAppendEvent={handleAppendCombatEvent}
                   />
                   {isDndCampaign(selectedCampaign?.campaign.systemId) && <DndDiceCheckPanel
@@ -503,6 +525,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     actorSheets={dndActorSheets}
                     preset={dndDicePreset}
                     monsterActionPreset={dndMonsterActionPreset}
+                    onDamageReady={setDndDamagePreset}
                     onAppendEvent={handleAppendDndEvent}
                   />}
                   <SceneRuntimeSnapshotPanel

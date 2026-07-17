@@ -13,6 +13,19 @@ import {
   type CombatRuntimeTableState,
 } from './combatRuntimeTypes';
 import { replayCombatRuntimeEvents, type CombatRuntimeReplayEvent } from './combatRuntimeReplay';
+import {
+  applyDamage,
+  applyHealing,
+  applyTemporaryHp,
+  createConditionEvent,
+  createDamageEvent,
+  createHealingEvent,
+  createHitPointOverrideEvent,
+  createTemporaryHpEvent,
+  overrideHitPoints,
+  toggleCondition,
+  type CombatChangeContext,
+} from './combatComfort';
 
 function newCombatantId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
@@ -52,6 +65,50 @@ export function useCombatRuntimeTable(scopeKey: string) {
   }, [state.combatants]);
 
   const markDefeated = useCallback((id: string): CombatRuntimeEventDraft | null => updateCombatant(id, { status: 'defeated' }), [updateCombatant]);
+
+  const replaceCombatant = useCallback((next: Combatant) => {
+    setState((previous) => ({ ...previous, combatants: previous.combatants.map((combatant) => combatant.id === next.id ? next : combatant) }));
+  }, []);
+
+  const damage = useCallback((id: string, amount: number, context?: CombatChangeContext): CombatRuntimeEventDraft | null => {
+    const current = state.combatants.find((combatant) => combatant.id === id);
+    if (!current) return null;
+    const change = applyDamage(current, amount);
+    replaceCombatant(change.combatant);
+    return createDamageEvent(change, amount, context);
+  }, [replaceCombatant, state.combatants]);
+
+  const heal = useCallback((id: string, amount: number, context?: CombatChangeContext): CombatRuntimeEventDraft | null => {
+    const current = state.combatants.find((combatant) => combatant.id === id);
+    if (!current) return null;
+    const change = applyHealing(current, amount);
+    replaceCombatant(change.combatant);
+    return createHealingEvent(change, amount, context);
+  }, [replaceCombatant, state.combatants]);
+
+  const temporaryHp = useCallback((id: string, amount: number, replace: boolean, context?: CombatChangeContext): CombatRuntimeEventDraft | null => {
+    const current = state.combatants.find((combatant) => combatant.id === id);
+    if (!current) return null;
+    const change = applyTemporaryHp(current, amount, replace);
+    replaceCombatant(change.combatant);
+    return createTemporaryHpEvent(change, amount, context, replace);
+  }, [replaceCombatant, state.combatants]);
+
+  const overrideHp = useCallback((id: string, value: number, context?: CombatChangeContext): CombatRuntimeEventDraft | null => {
+    const current = state.combatants.find((combatant) => combatant.id === id);
+    if (!current) return null;
+    const change = overrideHitPoints(current, value);
+    replaceCombatant(change.combatant);
+    return createHitPointOverrideEvent(change, context);
+  }, [replaceCombatant, state.combatants]);
+
+  const setCondition = useCallback((id: string, condition: string): CombatRuntimeEventDraft | null => {
+    const current = state.combatants.find((combatant) => combatant.id === id);
+    if (!current || !condition.trim()) return null;
+    const changed = toggleCondition(current, condition);
+    replaceCombatant(changed.combatant);
+    return createConditionEvent(changed.combatant, condition, changed.added, {}, true);
+  }, [replaceCombatant, state.combatants]);
 
   const rollInitiative = useCallback((id: string): CombatRuntimeEventDraft | null => {
     const current = state.combatants.find((combatant) => combatant.id === id);
@@ -108,5 +165,10 @@ export function useCombatRuntimeTable(scopeKey: string) {
     return normalized;
   }, []);
 
-  return { state, addCombatant, updateCombatant, removeCombatant, markDefeated, rollInitiative, start, moveTurn, pause, resume, end, restore, replaceState };
+  const clear = useCallback((): CombatRuntimeEventDraft => {
+    setState(createCombatRuntimeTableState());
+    return { eventKind: 'combat.table_cleared', payload: {} };
+  }, []);
+
+  return { state, addCombatant, updateCombatant, removeCombatant, markDefeated, damage, heal, temporaryHp, overrideHp, setCondition, rollInitiative, start, moveTurn, pause, resume, end, clear, restore, replaceState };
 }

@@ -113,6 +113,7 @@ export function getDndLiteCombatantPrefill(sheet: DndLiteActorSheet, sourceActor
     armorClass: sheet.defenses.armorClass,
     hpCurrent: sheet.defenses.currentHp,
     hpMax: sheet.defenses.maxHp,
+    temporaryHp: sheet.defenses.temporaryHp,
     notes: [sheet.notes, sheet.tags?.length ? `Tags: ${sheet.tags.join(', ')}` : ''].filter(Boolean).join(' · ') || undefined,
   };
 }

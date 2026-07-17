@@ -19,6 +19,7 @@ export type Combatant = {
   initiativeFormula?: string;
   hpCurrent?: number;
   hpMax?: number;
+  temporaryHp?: number;
   armorClass?: number;
   conditions: string[];
   notes?: string;
@@ -54,6 +55,7 @@ export type CombatantInput = {
   initiativeFormula?: string;
   hpCurrent?: number;
   hpMax?: number;
+  temporaryHp?: number;
   armorClass?: number;
   conditions: string[];
   notes?: string;
@@ -71,6 +73,14 @@ export type CombatRuntimeEventDraft = {
     | 'combat.combatant_added'
     | 'combat.combatant_updated'
     | 'combat.combatant_removed'
+    | 'combat.damage_applied'
+    | 'combat.healing_applied'
+    | 'combat.temporary_hp_applied'
+    | 'combat.condition_added'
+    | 'combat.condition_removed'
+    | 'combat.condition_toggled'
+    | 'combat.hp_overridden'
+    | 'combat.table_cleared'
     | 'combat.paused'
     | 'combat.resumed'
     | 'combat.ended';

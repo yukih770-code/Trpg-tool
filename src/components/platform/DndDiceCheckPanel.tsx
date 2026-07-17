@@ -17,6 +17,7 @@ import type { DndCheckKind, DndRollMode, DndRuntimeEventDraft } from '../../lib/
 import { getDndActionRollInput, getDndLiteCheckInput } from '../../lib/dnd/dndLiteActorSheet';
 import type { DndAbilityKey, DndLiteActorSheet, DndSkillKey } from '../../lib/dnd/dndLiteActorTypes';
 import type { DndMonsterAction } from '../../lib/dnd/dndMonsterTemplateTypes';
+import type { CombatDamagePreset } from '../../lib/combat/combatComfort';
 
 type LocalResult = { id: number; title: string; summary: string };
 
@@ -28,6 +29,7 @@ type Props = {
   actorSheets?: Record<string, DndLiteActorSheet>;
   preset?: { actorInstanceId: string; actionId?: string; nonce: number };
   monsterActionPreset?: { monsterName: string; action: DndMonsterAction; nonce: number };
+  onDamageReady?: (preset: CombatDamagePreset) => void;
   onAppendEvent?: (event: DndRuntimeEventDraft) => Promise<void>;
 };
 
@@ -46,7 +48,7 @@ const skillNames: Record<DndSkillKey, [string, string]> = {
   acrobatics: ['体操', 'Acrobatics'], animalHandling: ['驯兽', 'Animal Handling'], arcana: ['奥秘', 'Arcana'], athletics: ['运动', 'Athletics'], deception: ['欺瞒', 'Deception'], history: ['历史', 'History'], insight: ['洞悉', 'Insight'], intimidation: ['威吓', 'Intimidation'], investigation: ['调查', 'Investigation'], medicine: ['医药', 'Medicine'], nature: ['自然', 'Nature'], perception: ['察觉', 'Perception'], performance: ['表演', 'Performance'], persuasion: ['游说', 'Persuasion'], religion: ['宗教', 'Religion'], sleightOfHand: ['巧手', 'Sleight of Hand'], stealth: ['隐匿', 'Stealth'], survival: ['求生', 'Survival'],
 };
 
-export function DndDiceCheckPanel({ locale, canManage, campaignActors, combatants, actorSheets = {}, preset, monsterActionPreset, onAppendEvent }: Props) {
+export function DndDiceCheckPanel({ locale, canManage, campaignActors, combatants, actorSheets = {}, preset, monsterActionPreset, onDamageReady, onAppendEvent }: Props) {
   const { t } = createTranslator(locale);
   const [quickFormula, setQuickFormula] = useState('1d20');
   const [checkActor, setCheckActor] = useState('');
@@ -165,6 +167,7 @@ export function DndDiceCheckPanel({ locale, canManage, campaignActors, combatant
       const result = rollDndDamage(damageFormula, { critical: criticalDamage });
       const draft = dndDamageToRuntimeEvent(result, externalAttackerName || actorNameFor(attacker), locale === 'en' ? 'en' : 'zh-CN');
       saveResult(t('dndDice.damage'), String(draft.payload.summary), draft);
+      onDamageReady?.({ amount: result.total, sourceName: externalAttackerName || actorNameFor(attacker) || undefined, targetName: target.trim() || undefined, rollRef: result.formula, nonce: Date.now() });
     });
   };
 

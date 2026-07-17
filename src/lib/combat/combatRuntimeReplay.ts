@@ -59,6 +59,7 @@ function combatantInput(value: unknown, fallback?: Combatant): Combatant | null 
     initiativeFormula: stringValue(input?.initiativeFormula) ?? fallback?.initiativeFormula,
     hpCurrent: numberValue(input?.hpCurrent) ?? numberValue(input?.hitPoints) ?? fallback?.hpCurrent,
     hpMax: numberValue(input?.hpMax) ?? numberValue(input?.maxHitPoints) ?? fallback?.hpMax,
+    temporaryHp: numberValue(input?.temporaryHp) ?? fallback?.temporaryHp,
     armorClass: numberValue(input?.armorClass) ?? fallback?.armorClass,
     conditions: input?.conditions === undefined ? fallback?.conditions ?? [] : conditions(input.conditions),
     notes: stringValue(input?.notes) ?? fallback?.notes,
@@ -108,6 +109,44 @@ export function replayCombatRuntimeEvents(events: ReadonlyArray<CombatRuntimeRep
     if (event.eventKind === 'combat.combatant_removed') {
       const id = stringValue(payload.combatantId);
       if (id) state = { ...state, combatants: state.combatants.filter((item) => item.id !== id), turn: state.turn.activeCombatantId === id ? { ...state.turn, activeCombatantId: undefined, turnIndex: -1 } : state.turn };
+      continue;
+    }
+    if (event.eventKind === 'combat.table_cleared') {
+      state = createCombatRuntimeTableState();
+      continue;
+    }
+    if (
+      event.eventKind === 'combat.damage_applied'
+      || event.eventKind === 'combat.healing_applied'
+      || event.eventKind === 'combat.temporary_hp_applied'
+      || event.eventKind === 'combat.hp_overridden'
+    ) {
+      const id = stringValue(payload.targetCombatantId);
+      if (!id) continue;
+      state = {
+        ...state,
+        combatants: state.combatants.map((combatant) => {
+          if (combatant.id !== id) return combatant;
+          const hpCurrent = numberValue(payload.afterHp) ?? combatant.hpCurrent;
+          const temporaryHp = numberValue(payload.afterTemporaryHp) ?? combatant.temporaryHp;
+          return { ...combatant, hpCurrent, hitPoints: hpCurrent, temporaryHp: temporaryHp || undefined };
+        }),
+      };
+      continue;
+    }
+    if (event.eventKind === 'combat.condition_added' || event.eventKind === 'combat.condition_removed' || event.eventKind === 'combat.condition_toggled') {
+      const id = stringValue(payload.targetCombatantId);
+      const condition = stringValue(payload.condition);
+      if (!id || !condition) continue;
+      state = {
+        ...state,
+        combatants: state.combatants.map((combatant) => {
+          if (combatant.id !== id) return combatant;
+          const has = combatant.conditions.includes(condition);
+          const shouldAdd = event.eventKind === 'combat.condition_added' || (event.eventKind === 'combat.condition_toggled' && !has);
+          return { ...combatant, conditions: shouldAdd ? (has ? combatant.conditions : [...combatant.conditions, condition]) : combatant.conditions.filter((item) => item !== condition) };
+        }),
+      };
       continue;
     }
     if (event.eventKind === 'combat.started') {

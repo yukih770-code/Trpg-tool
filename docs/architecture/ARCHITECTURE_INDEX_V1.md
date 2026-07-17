@@ -456,6 +456,18 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   persistence.
 - Doc: `P5_COMBAT_RUNTIME_TABLE`.
 
+## DND Comfort Combat (P5.DND-COMFORT-COMBAT)
+- Files: `src/lib/combat/combatComfort.ts`, `combatRuntimeTypes.ts`,
+  `useCombatRuntimeTable.ts`, `combatRuntimeReplay.ts`,
+  `src/components/platform/{CombatRuntimeTable,DndDiceCheckPanel}.tsx`, and
+  `src/lib/combat/dndCombatComfortSmoke.ts` (`frontend:verify:dnd-comfort-combat`).
+- Boundary: host-confirmed HP, temporary HP, condition, and manual override
+  records are append-only `combat.*` events with deterministic local replay.
+  Dice and monster actions can prefill a result, but never apply it
+  automatically. No character-sheet/inventory writeback, rules enforcement,
+  backend contract change, or live Room/WebSocket authority is introduced.
+- Doc: `P5_DND_COMFORT_COMBAT`.
+
 ## Basic Map Board (P5.BASIC-MAP-BOARD)
 - Files: `src/lib/map/mapRuntimeTypes.ts`, `src/lib/map/useMapRuntimeBoard.ts`,
   `src/lib/map/mapRuntimeReplay.ts`, `src/components/platform/BasicMapBoard.tsx`;

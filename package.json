@@ -52,6 +52,7 @@
     "frontend:verify:combat-runtime-table": "tsx src/lib/combat/combatRuntimeTableSmoke.ts",
     "frontend:verify:combat-runtime": "tsx src/lib/combat/combatRuntimeTableSmoke.ts",
     "frontend:verify:combat-replay": "tsx src/lib/combat/combatRuntimeReplaySmoke.ts",
+    "frontend:verify:dnd-comfort-combat": "tsx src/lib/combat/dndCombatComfortSmoke.ts",
     "frontend:verify:map-runtime": "tsx src/lib/map/mapRuntimeReplaySmoke.ts",
     "frontend:verify:map-replay": "tsx src/lib/map/mapRuntimeReplaySmoke.ts",
     "frontend:verify:scene-snapshot": "tsx src/lib/scene/sceneRuntimeSnapshotSmoke.ts",
