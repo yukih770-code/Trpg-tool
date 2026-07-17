@@ -100,9 +100,9 @@ export async function runCampaignRoomApiClientSmoke(): Promise<SmokeCase[]> {
     catch (error) { assert(error instanceof ApiClientError && error.statusCode === 403, 'API error was not mapped safely'); }
   });
   await check('non_json_and_network_mapping', async () => {
-    const nonJson = createApiClient({ fetcher: async () => new Response('<html/>', { status: 502 }) });
+    const nonJson = createApiClient({ env: { DEV: true }, fetcher: async () => new Response('<html/>', { status: 502 }) });
     try { await nonJson.request('/api/test'); } catch (error) { assert(error instanceof ApiClientError && error.kind === 'non_json', 'non-json response was not mapped'); }
-    const offline = createApiClient({ fetcher: async () => { throw new Error('offline'); } });
+    const offline = createApiClient({ env: { DEV: true }, fetcher: async () => { throw new Error('offline'); } });
     try { await offline.request('/api/test'); } catch (error) { assert(error instanceof ApiClientError && error.kind === 'network', 'network failure was not mapped'); }
   });
   await check('append_only_client_surface', () => {

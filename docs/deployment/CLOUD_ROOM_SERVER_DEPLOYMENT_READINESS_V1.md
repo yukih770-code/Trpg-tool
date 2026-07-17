@@ -90,24 +90,26 @@ ROOM_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhos
 The frontend defaults to `http://localhost:8787` when no Vite Room Server env is
 set.
 
-## 6. Cloud Production Example
+## 6. Cloud Private Alpha Example
 
 Backend Room Server:
 
 ```env
-ROOM_SERVER_ENV=production
+SERVER_DEPLOYMENT_ENVIRONMENT=cloudPrivateAlpha
 ROOM_SERVER_RUNTIME_MODE=cloud
 ROOM_SERVER_PORT=8787
-ROOM_PUBLIC_HTTP_URL=https://your-room-server.example.com
-ROOM_PUBLIC_WS_URL=wss://your-room-server.example.com
-ROOM_ALLOWED_ORIGINS=https://your-netlify-site.netlify.app
+APP_PUBLIC_HTTP_URL=https://api.example.invalid
+APP_PUBLIC_WS_URL=wss://api.example.invalid
+ROOM_ALLOWED_ORIGINS=https://app.example.invalid
+POSTGRES_USER_DEV_API_ENABLED=false
 ```
 
 Frontend Netlify build env:
 
 ```env
-VITE_ROOM_SERVER_HTTP_URL=https://your-room-server.example.com
-VITE_ROOM_SERVER_WS_URL=wss://your-room-server.example.com
+VITE_API_BASE_URL=https://api.example.invalid
+VITE_ROOM_SERVER_HTTP_URL=https://api.example.invalid
+VITE_ROOM_SERVER_WS_URL=wss://api.example.invalid
 ```
 
 The frontend env keys above are the current real keys used by
@@ -176,7 +178,7 @@ envelope or bypass Room Server authority.
 ## 10. Deployment Smoke Test
 
 1. Open `/health`.
-   Expected: `environment=production`, `runtimeMode=cloud`, `publicHttpUrl`
+  Expected: `environment=cloudPrivateAlpha`, `runtimeMode=cloud`, `publicHttpUrl`
    exists, and `publicWsUrl` exists.
 2. From the Netlify frontend, test Room Server status.
    Expected: server reachable.

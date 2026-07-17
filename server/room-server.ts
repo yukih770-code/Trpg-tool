@@ -29,6 +29,8 @@ import { rollSharedDice } from './services/rollSharedDice.js';
 import { createInMemoryRuntimeLogRegistry } from './runtime-log-registry.js';
 import { createInMemoryActorAdmissionRegistry } from './actor-admission-registry.js';
 import { readServerRuntimeConfigFromEnv } from './config/serverRuntimeConfig.js';
+import { readDatabaseRuntimeConfigFromEnv } from './config/databaseRuntimeConfig.js';
+import { validateServerStartupConfig } from './config/serverRuntimeConfig.js';
 import { checkPostgresHealth } from './db/postgresClient.js';
 import {
   checkPostgresUserSchemaReadiness,
@@ -77,12 +79,24 @@ import { createDndPrivateMonsterApiHandlers } from './api/dndPrivateMonsterApiHa
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
+const databaseRuntimeConfig = readDatabaseRuntimeConfigFromEnv(process.env);
+const startupValidation = validateServerStartupConfig(serverRuntimeConfig, databaseRuntimeConfig.configured);
+if (startupValidation.errors.length > 0) {
+  // Configuration labels are safe to print; values and secrets are never logged.
+  // eslint-disable-next-line no-console
+  console.error(`[room-server] startup configuration rejected: ${startupValidation.errors.join(' ')}`);
+  throw new Error('Cloud deployment startup configuration is invalid.');
+}
 
 // ── CORS allowlist (M26, config boundary M104-M107) ─────────────────────────
 // Origins come from the shared server runtime config. Local dev defaults remain
 // localhost-friendly; cloud/production must use explicit env configuration.
 const ALLOWED_ORIGINS = serverRuntimeConfig.allowedOrigins;
 const ALLOW_ALL_ORIGINS = ALLOWED_ORIGINS.includes('*');
+const ALLOWED_REQUEST_HEADERS = ['Content-Type'];
+if (serverRuntimeConfig.devUserApiEnabled === true) {
+  ALLOWED_REQUEST_HEADERS.push('X-Dev-User-Id', 'X-Dev-Viewer-User-Id');
+}
 
 // Minimal dependency-free CORS. Reflects an allowlisted Origin (or "*" when the
 // operator opted in). Non-allowlisted origins simply get no CORS header (the
@@ -97,9 +111,7 @@ app.use((req, res, next) => {
     res.setHeader('Vary', 'Origin');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');
-  // The frontend's local-development identity is sent as a request header.
-  // Include both accepted aliases so browser preflight matches the API boundary.
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Dev-User-Id, X-Dev-Viewer-User-Id');
+  res.setHeader('Access-Control-Allow-Headers', ALLOWED_REQUEST_HEADERS.join(', '));
   if (req.method === 'OPTIONS') {
     res.sendStatus(204);
     return;
@@ -484,4 +496,6 @@ httpServer.listen(PORT, () => {
     // eslint-disable-next-line no-console
     console.warn(`[room-server] config warning: ${warning}`);
   }
+  // eslint-disable-next-line no-console
+  console.log(`[room-server] database configured: ${databaseRuntimeConfig.configured}; dev auth enabled: ${serverRuntimeConfig.devUserApiEnabled === true}`);
 });

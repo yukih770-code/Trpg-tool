@@ -38,6 +38,7 @@ type Props = {
 
 function errorText(error: ApiClientError | null, locale: Locale): string {
   if (!error) return '';
+  if (error.kind === 'configuration') return locale === 'en' ? 'The frontend server address is not configured. Set VITE_API_BASE_URL and rebuild the frontend.' : '前端尚未配置服务器地址。请设置 VITE_API_BASE_URL 后重新构建前端。';
   if (error.statusCode === 401) return locale === 'en' ? 'Please sign in to view this data.' : '请先登录后查看这部分内容。';
   if (error.statusCode === 403) return locale === 'en' ? 'You do not have access to this data.' : '你没有权限查看这部分内容。';
   if (error.statusCode === 404) return locale === 'en' ? 'This item is no longer available.' : '这项内容已经不可用。';

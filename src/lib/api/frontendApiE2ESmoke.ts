@@ -1,4 +1,4 @@
-import { resolveApiBaseUrl } from './apiClient';
+import { createApiClient, resolveApiBaseUrl } from './apiClient';
 import { ApiClientError } from './apiTypes';
 import { createWorldServerApiClient } from './worldServerApiClient';
 import { createCampaignRoomApiClient } from './campaignRoomApiClient';
@@ -25,11 +25,18 @@ async function runDrySmoke(): Promise<SmokeCase[]> {
   const campaignClient = createCampaignRoomApiClient({ baseUrl: 'http://example.test/', env, isDev: true, fetcher: fakeFetch });
   await worldClient.listWorldServers();
   await campaignClient.listCampaigns('world-e2e');
+  let missingCloudConfigIsSafe = false;
+  try {
+    await createApiClient({ env: { DEV: false }, fetcher: fakeFetch }).request('/api/world-servers');
+  } catch (error) {
+    missingCloudConfigIsSafe = error instanceof ApiClientError && error.kind === 'configuration';
+  }
   return [
     { name: 'base_url_trailing_slash_normalized', passed: worldClient !== undefined && calls[0].startsWith('GET http://example.test/') },
     { name: 'world_client_expected_path', passed: calls.some((call) => call.includes('/api/world-servers?limit=100')) },
     { name: 'campaign_client_expected_path', passed: calls.some((call) => call.includes('/api/world-servers/world-e2e/campaigns')) },
     { name: 'dev_header_is_client_owned', passed: calls.length === 2 },
+    { name: 'cloud_missing_api_url_fails_before_network', passed: missingCloudConfigIsSafe },
   ];
 }
 

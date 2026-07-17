@@ -10,8 +10,7 @@
 
 export type ServerDeploymentEnvironment =
   | 'localDev'
-  | 'cloudDev'
-  | 'staging'
+  | 'cloudPrivateAlpha'
   | 'production';
 
 export type ServerRuntimeMode =
@@ -32,8 +31,14 @@ export interface ServerRuntimeConfig {
    * existing config literals stay valid; treat undefined as false.
    */
   devUserApiEnabled?: boolean;
+  devAuthRequested?: boolean;
   warnings?: string[];
 }
+
+export type ServerStartupValidation = {
+  errors: string[];
+  warnings: string[];
+};
 
 export const DEFAULT_LOCAL_SERVER_RUNTIME_CONFIG: ServerRuntimeConfig = {
   environment: 'localDev',
@@ -87,8 +92,7 @@ function readEnvironment(env: ServerRuntimeEnv): ServerDeploymentEnvironment {
   const rawEnvironment = readFirstString(env, ['ROOM_SERVER_ENV', 'SERVER_DEPLOYMENT_ENVIRONMENT']);
   if (
     rawEnvironment === 'localDev' ||
-    rawEnvironment === 'cloudDev' ||
-    rawEnvironment === 'staging' ||
+    rawEnvironment === 'cloudPrivateAlpha' ||
     rawEnvironment === 'production'
   ) {
     return rawEnvironment;
@@ -110,9 +114,12 @@ function readRuntimeMode(env: ServerRuntimeEnv): ServerRuntimeMode {
  * Read the dev-only User API gate. Server-only; NEVER enabled in production.
  * Anything other than the literal string 'true' is treated as false.
  */
-function readDevUserApiEnabled(env: ServerRuntimeEnv, environment: ServerDeploymentEnvironment): boolean {
-  if (environment === 'production') return false;
+function readDevAuthRequested(env: ServerRuntimeEnv): boolean {
   return readString(env, 'POSTGRES_USER_DEV_API_ENABLED') === 'true';
+}
+
+function readDevUserApiEnabled(environment: ServerDeploymentEnvironment, requested: boolean): boolean {
+  return environment === 'localDev' && requested;
 }
 
 /**
@@ -125,15 +132,19 @@ export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRun
   const runtimeMode = readRuntimeMode(env);
   const shouldUseLocalEndpointDefaults = environment === 'localDev' && runtimeMode === 'local';
   const publicHttpUrl =
-    readFirstString(env, ['ROOM_PUBLIC_HTTP_URL', 'ROOM_SERVER_PUBLIC_HTTP_URL']) ??
+    readFirstString(env, ['APP_PUBLIC_HTTP_URL', 'ROOM_PUBLIC_HTTP_URL', 'ROOM_SERVER_PUBLIC_HTTP_URL']) ??
     (shouldUseLocalEndpointDefaults ? DEFAULT_LOCAL_SERVER_RUNTIME_CONFIG.publicHttpUrl : undefined);
   const publicWsUrl =
-    readFirstString(env, ['ROOM_PUBLIC_WS_URL', 'ROOM_SERVER_PUBLIC_WS_URL']) ??
+    readFirstString(env, ['APP_PUBLIC_WS_URL', 'ROOM_PUBLIC_WS_URL', 'ROOM_SERVER_PUBLIC_WS_URL']) ??
     (shouldUseLocalEndpointDefaults ? DEFAULT_LOCAL_SERVER_RUNTIME_CONFIG.publicWsUrl : undefined);
   const allowedOrigins = readAllowedOrigins(env, shouldUseLocalEndpointDefaults);
   const warnings: string[] = [];
 
-  if (environment === 'production' && runtimeMode === 'cloud') {
+  const devAuthRequested = readDevAuthRequested(env);
+  if (environment !== 'localDev' && devAuthRequested) {
+    warnings.push('Dev auth was requested but is disabled outside localDev.');
+  }
+  if (environment !== 'localDev' && runtimeMode === 'cloud') {
     if (!publicHttpUrl || publicHttpUrl.includes('localhost') || publicHttpUrl.includes('127.0.0.1')) {
       warnings.push('production cloud config should set ROOM_PUBLIC_HTTP_URL to a non-localhost URL.');
     }
@@ -152,7 +163,34 @@ export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRun
     publicHttpUrl,
     publicWsUrl,
     allowedOrigins,
-    devUserApiEnabled: readDevUserApiEnabled(env, environment),
+    devUserApiEnabled: readDevUserApiEnabled(environment, devAuthRequested),
+    devAuthRequested,
     warnings: warnings.length > 0 ? warnings : undefined,
   };
+}
+
+function isLocalUrl(value: string | undefined): boolean {
+  return !value || /(?:localhost|127\.0\.0\.1)/i.test(value);
+}
+
+/**
+ * Validate only safe, deployment-shape inputs. This never opens a database
+ * connection and never includes a URL value in its output.
+ */
+export function validateServerStartupConfig(
+  config: ServerRuntimeConfig,
+  databaseConfigured: boolean,
+): ServerStartupValidation {
+  const errors: string[] = [];
+  const warnings = [...(config.warnings ?? [])];
+  if (config.environment === 'localDev') return { errors, warnings };
+
+  if (config.runtimeMode !== 'cloud') errors.push('Cloud deployment mode requires SERVER_RUNTIME_MODE=cloud.');
+  if (!databaseConfigured) errors.push('Cloud deployment mode requires backend DATABASE_URL configuration.');
+  if (config.allowedOrigins.length === 0) errors.push('Cloud deployment mode requires explicit ROOM_ALLOWED_ORIGINS.');
+  if (config.allowedOrigins.includes('*')) errors.push('Cloud deployment mode does not allow wildcard ROOM_ALLOWED_ORIGINS.');
+  if (config.devAuthRequested) errors.push('Cloud deployment mode must not enable POSTGRES_USER_DEV_API_ENABLED.');
+  if (isLocalUrl(config.publicHttpUrl)) errors.push('Cloud deployment mode requires a non-local APP_PUBLIC_HTTP_URL.');
+  if (isLocalUrl(config.publicWsUrl)) errors.push('Cloud deployment mode requires a non-local APP_PUBLIC_WS_URL.');
+  return { errors, warnings };
 }

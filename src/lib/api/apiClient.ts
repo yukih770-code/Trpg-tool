@@ -26,7 +26,9 @@ function readString(value: unknown): string | undefined {
 }
 
 export function resolveApiBaseUrl(env: FrontendApiEnv = frontendEnv()): string {
-  return (readString(env.VITE_API_BASE_URL) ?? 'http://localhost:8787').replace(/\/+$/, '');
+  const configured = readString(env.VITE_API_BASE_URL);
+  if (configured) return configured.replace(/\/+$/, '');
+  return isFrontendDevelopment(env) ? 'http://localhost:8787' : '';
 }
 
 export function isApiBaseUrlConfigured(env: FrontendApiEnv = frontendEnv()): boolean {
@@ -70,6 +72,7 @@ export function resolveDevViewerUserId(env: FrontendApiEnv = frontendEnv()): str
 }
 
 export type ApiServiceFailureKind =
+  | 'frontend_misconfigured'
   | 'backend_unreachable'
   | 'invalid_dev_identity'
   | 'service_unavailable'
@@ -79,6 +82,7 @@ export type ApiServiceFailureKind =
 
 export function classifyApiServiceFailure(error: ApiClientError | null): ApiServiceFailureKind | null {
   if (!error) return null;
+  if (error.kind === 'configuration') return 'frontend_misconfigured';
   if (error.kind === 'network') return 'backend_unreachable';
   if (error.statusCode === 401 || error.apiErrorKind === 'unauthenticated') return 'invalid_dev_identity';
   if (error.statusCode === 503 || error.apiErrorKind === 'unavailable') return 'service_unavailable';
@@ -124,6 +128,9 @@ export function createApiClient(options: ApiClientOptions = {}) {
   const fetcher = options.fetcher ?? fetch;
 
   async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    if (!baseUrl) {
+      throw new ApiClientError('configuration', '未配置服务器地址。请设置 VITE_API_BASE_URL 后重新构建前端。');
+    }
     const headers = new Headers(init.headers);
     headers.set('Accept', 'application/json');
     if (init.body !== undefined) headers.set('Content-Type', 'application/json');

@@ -21,6 +21,7 @@ export type ApiFailure = {
 export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
 
 export type ApiClientErrorKind =
+  | 'configuration'
   | 'network'
   | 'non_json'
   | 'api_error'

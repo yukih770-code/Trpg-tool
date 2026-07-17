@@ -44,6 +44,18 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   R2/S3/Clerk) live behind adapters, never in the domain.
 - Read when: planning cloud persistence/auth/storage.
 
+## Cloud Private Alpha Readiness
+- Files: `server/config/serverRuntimeConfig.ts`, `server/config/cloudPrivateAlphaConfigSmoke.ts`,
+  `server/room-server.ts`, `.env.cloud.backend.example`, `.env.cloud.frontend.example`.
+- Docs: `docs/deployment/CLOUD_PRIVATE_ALPHA_DEPLOYMENT.md`,
+  `docs/deployment/PRIVATE_ALPHA_AUTH_PLAN.md`.
+- Don't violate: local dev identity headers are `localDev` only; cloud modes require
+  explicit origins and backend database configuration, reject wildcard CORS and
+  never expose database settings to frontend code. This is deployment preparation,
+  not a deployment or an auth implementation.
+- Read when: preparing a private cloud environment, changing CORS/runtime env, or
+  adding verified authentication.
+
 ## Postgres User First Slice (server-only)
 - Files: `server/db/**` (client, schema readiness, smokes, `migrations/0001_user_identity.sql`),
   `server/adapters/postgresUserRepository.ts`, `server/config/{databaseRuntimeConfig,serverRuntimeConfig}.ts`.
