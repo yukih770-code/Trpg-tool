@@ -73,6 +73,16 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Read when: changing local endpoint resolution, LAN CORS, host diagnostics, or
   same-network join guidance.
 
+## Platform / Server Profile / Campaign Room Surfaces
+- Files: `src/components/platform/{PlatformOperationsWorkspace,ServerProfileBoard,ServerCampaignWorkspace}.tsx`,
+  `src/App.tsx`, `src/pages/Home.tsx`.
+- Product roles: the platform workspace is the current-server operations hub; the server profile is a
+  calm information and announcement board; campaign and room workspaces own play and session management.
+- Don't violate: the server profile does not create campaigns or rooms, host LAN, or expose runtime
+  controls. It may show read-only systems, members, announcements, resource previews, and a future
+  visual slot. Asset upload/object storage and LAN runtime behavior remain separate slices.
+- Read when: changing server entry navigation, profile presentation, or campaign/room workspace placement.
+
 ## Postgres User First Slice (server-only)
 - Files: `server/db/**` (client, schema readiness, smokes, `migrations/0001_user_identity.sql`),
   `server/adapters/postgresUserRepository.ts`, `server/config/{databaseRuntimeConfig,serverRuntimeConfig}.ts`.

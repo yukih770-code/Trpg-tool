@@ -106,10 +106,10 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
 
   return (
     <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
-      <div className="border-b border-white/10 bg-[#17130f] text-[#f7f3ea]">
+      <div className="border-b border-[#d8bf76]/45 bg-[#fff8e6] text-[#51483d]">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 py-3 text-sm md:flex-row md:items-center md:justify-between md:px-8">
           <div className="flex items-start gap-2">
-            <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-[#f5c518]" />
+            <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-[#a66b12]" />
             <span className="leading-5">
               {locale === 'en'
                 ? 'Platform notice: public entry does not mean public data. Characters, campaigns, and drafts stay private by default.'
@@ -118,7 +118,7 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
           </div>
           <button
             type="button"
-            className="w-fit rounded-md border border-white/20 px-3 py-1.5 text-xs font-bold text-white/90 transition hover:bg-white/10"
+            className="w-fit rounded-md border border-[#2f2a22]/15 bg-white/70 px-3 py-1.5 text-xs font-bold text-[#51483d] transition hover:bg-white"
           >
             {locale === 'en' ? 'View details →' : '查看详情 →'}
           </button>
@@ -126,38 +126,6 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
       </div>
 
       <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-8 md:px-8">
-        <section
-          aria-label={locale === 'en' ? 'Official announcements and events' : '官方公告与活动'}
-          className="relative left-1/2 w-screen -translate-x-1/2 px-4 md:px-8"
-        >
-          <div className="mx-auto max-w-7xl rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm md:p-6">
-            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-              <div className="max-w-2xl">
-                <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
-                  {locale === 'en' ? 'Official announcements' : '官方公告与活动'}
-                </div>
-                <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-                  {locale === 'en' ? 'Updates, events, and recommended content' : '平台更新、活动与推荐内容'}
-                </h1>
-                <p className="mt-2 text-sm leading-6 text-[#51483d]">
-                  {locale === 'en'
-                    ? 'Platform announcements, release notes, events, and featured content.'
-                    : '平台公告、更新日志、活动推荐与精选内容。'}
-                </p>
-              </div>
-              <div className="grid min-w-0 gap-2 text-xs text-[#51483d] sm:grid-cols-3 md:w-[28rem]">
-                {(locale === 'en'
-                  ? ['Release notes', 'Platform event', 'Featured slot']
-                  : ['更新日志', '平台活动', '推荐 / 广告位']
-                ).map((label) => (
-                  <div key={label} className="rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] px-3 py-3 font-semibold">
-                    {label}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* ── Section 1: 继续上次 ────────────────────────────────────── */}
         <section aria-label={t('home.resume.sectionTitle')}>

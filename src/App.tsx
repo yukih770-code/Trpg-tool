@@ -34,7 +34,8 @@ import { authApiClient, type AuthenticatedApiUser } from './lib/api/authApiClien
 import type { WorldServerRecord } from './lib/api/worldServerApiClient';
 import { useWorldServers } from './lib/worldServer/useWorldServers';
 import { useWorldServerDetail } from './lib/worldServer/useWorldServerDetail';
-import { ServerCampaignWorkspace } from './components/platform/ServerCampaignWorkspace';
+import { PlatformOperationsWorkspace } from './components/platform/PlatformOperationsWorkspace';
+import { ServerProfileBoard } from './components/platform/ServerProfileBoard';
 import { LocalDevIdentitySwitcher } from './components/platform/LocalDevIdentitySwitcher';
 import { PrivateAlphaLoginPanel } from './components/platform/PrivateAlphaLoginPanel';
 
@@ -851,7 +852,8 @@ export default function App() {
       });
       setCreateServerName('');
       setSelectedServerId(server.worldServerId);
-      setEntryStage('serverHome');
+      resetPlatformLocation();
+      setEntryStage('platform');
     } catch (error) {
       setCreateServerError(error instanceof ApiClientError ? error : new ApiClientError('network', locale === 'en' ? 'Server creation failed.' : '创建服务器失败。'));
     } finally {
@@ -864,6 +866,13 @@ export default function App() {
     resetPlatformLocation();
     setSelectedServerId('');
     setEntryStage('serverSelect');
+  };
+
+  const openSelectedServerSettings = () => {
+    setEntryStage('platform');
+    setAppView('placeholder');
+    setActivePlaceholder('settings');
+    setActiveSettingsCat('服务器设置');
   };
 
   const logoutToLauncher = async () => {
@@ -1068,7 +1077,8 @@ export default function App() {
                   type="button"
                   onClick={() => {
                     setSelectedServerId(server.id);
-                    setEntryStage('serverHome');
+                    resetPlatformLocation();
+                    setEntryStage('platform');
                   }}
                   className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 text-left shadow-sm transition hover:border-[#58180d]/35 hover:bg-[#fff8e6]"
                 >
@@ -1187,142 +1197,26 @@ export default function App() {
   }
 
   if (entryStage === 'serverHome' && selectedWorldServer) {
-    const homeDescription = selectedApiServer?.description ?? selectedWorldServer.description;
-    const homeMemberCount = selectedWorldServer.source === 'api'
-      ? worldServerDetail.members.length
-      : selectedWorldServer.memberCount;
-    const homeSystems = selectedWorldServer.source === 'api'
-      ? worldServerDetail.gameSystems.filter((binding) => binding.bindingStatus !== 'archived').map((binding) => binding.displayName)
-      : selectedWorldServer.enabledSystems;
     return (
-      <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
-        <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 md:px-8">
-          <header className="flex flex-col gap-4 rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm md:flex-row md:items-start md:justify-between">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
-                {locale === 'en' ? 'Server home' : '服务器主页'}
-              </div>
-              <h1 className="mt-1 text-3xl font-black">{selectedWorldServer.name}</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#51483d]">{homeDescription || t('worldServer.noDescription')}</p>
-              <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-[#51483d]">
-                <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">我的身份：{roleLabel[selectedWorldServer.role]}</span>
-                {homeMemberCount !== undefined && <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">{homeMemberCount} 名成员</span>}
-                {selectedApiServer?.lifecycleStatus && <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">{selectedApiServer.lifecycleStatus}</span>}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={exitCurrentServer}
-                className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm font-bold text-[#51483d] hover:bg-[#2f2a22]/5"
-              >
-                {locale === 'en' ? 'Exit server' : '退出当前服务器'}
-              </button>
-              <button
-                type="button"
-                onClick={logoutToLauncher}
-                className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-bold text-[#58180d] hover:bg-[#fff8e6]"
-              >
-                {locale === 'en' ? 'Log out' : '退出登录'}
-              </button>
-              {canManageSelectedServer && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEntryStage('platform');
-                    setAppView('placeholder');
-                    setActivePlaceholder('settings');
-                    setActiveSettingsCat('服务器设置');
-                  }}
-                  className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm font-bold text-[#51483d] hover:bg-[#2f2a22]/5"
-                >
-                  {locale === 'en' ? 'Server settings' : '服务器设置'}
-                </button>
-              )}
-              <Button
-                type="button"
-                onClick={() => {
-                  setEntryStage('platform');
-                  setAppView('home');
-                  setNavigationStack([]);
-                }}
-                className="rounded-md"
-              >
-                {locale === 'en' ? 'Enter platform home' : '进入平台主页'}
-              </Button>
-            </div>
-          </header>
-
-          <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-            <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
-                {locale === 'en' ? 'Server bulletin' : '服务器公告'}
-              </div>
-              <h2 className="mt-2 text-2xl font-bold">{locale === 'en' ? 'Welcome back to the table.' : '欢迎回到集会所。'}</h2>
-              <p className="mt-2 text-sm leading-6 text-[#51483d]">
-                {locale === 'en'
-                  ? 'This server home is the place for announcements, campaigns, rooms, members, packs, and server-scoped activity.'
-                  : '服务器主页承载公告、战役、房间、成员、资料包和服务器内活动。'}
-              </p>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {['集会所', '成员', '图鉴 / 资料包', '服务器公告'].map((label) => (
-                  <div key={label} className="rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-4">
-                    <div className="text-sm font-bold">{label}</div>
-                    <div className="mt-1 text-xs text-[#51483d]">服务器内入口</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <aside className="flex flex-col gap-4">
-              <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
-                  {locale === 'en' ? 'Enabled game systems' : '已启用游戏系统'}
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {homeSystems.map((systemName) => (
-                    <span key={systemName} className="rounded-full bg-[#2f2a22]/8 px-3 py-1 text-xs font-bold text-[#51483d]">
-                      {systemName}
-                    </span>
-                  ))}
-                  {homeSystems.length === 0 && (
-                    <span className="text-xs text-[#51483d]">{t('worldServer.noSystems')}</span>
-                  )}
-                </div>
-                <p className="mt-3 text-xs leading-5 text-[#51483d]">
-                  {t('worldServer.startingSystemNote')}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
-                  {locale === 'en' ? 'Server settings' : '服务器设置'}
-                </div>
-                <p className="mt-2 text-sm leading-6 text-[#51483d]">
-                  {canManageSelectedServer
-                    ? t('worldServer.canManageSettings')
-                    : t('worldServer.settingsOnlyForManagers')}
-                </p>
-              </div>
-              {worldServerDetail.partialErrors.length > 0 && (
-                <div className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/65 p-5 text-xs leading-5 text-[#51483d]">
-                  {t('worldServer.partialSync')}
-                </div>
-              )}
-            </aside>
-          </section>
-
-          {selectedWorldServer.source === 'api' && selectedApiServer && (
-            <ServerCampaignWorkspace
-              worldServerId={selectedApiServer.worldServerId}
-              locale={locale}
-              gameSystems={worldServerDetail.gameSystems}
-              defaultGameSystemId={selectedApiServer.defaultGameSystemId}
-              canManageServer={canManageSelectedServer}
-            />
-          )}
-        </main>
-        <Toaster />
-      </div>
+      <ServerProfileBoard
+        locale={locale}
+        serverName={selectedWorldServer.name}
+        description={selectedApiServer?.description ?? selectedWorldServer.description}
+        roleLabel={roleLabel[selectedWorldServer.role]}
+        lifecycleStatus={selectedApiServer?.lifecycleStatus}
+        members={worldServerDetail.members}
+        gameSystems={worldServerDetail.gameSystems}
+        partialSync={worldServerDetail.partialErrors.length > 0}
+        canManageServer={canManageSelectedServer}
+        onBackToWorkspace={() => {
+          setEntryStage('platform');
+          setAppView('home');
+          setNavigationStack([]);
+        }}
+        onOpenSettings={openSelectedServerSettings}
+        onExitServer={exitCurrentServer}
+        onLogout={() => void logoutToLauncher()}
+      />
     );
   }
 
@@ -1392,7 +1286,24 @@ export default function App() {
       {/* ── Main content (full width; no left sidebar) ── */}
       <div className={`min-w-0 ${focusMode ? '' : 'pb-16 md:pb-0'}`}>
         {appView === 'home' && (
-          <Home locale={locale} onEnterPlay={enterPlay} onOpenPlaceholder={openPlaceholder} />
+          <>
+            {selectedWorldServer?.source === 'api' && selectedApiServer && (
+              <PlatformOperationsWorkspace
+                locale={locale}
+                worldServerId={selectedApiServer.worldServerId}
+                serverName={selectedApiServer.displayName}
+                memberCount={worldServerDetail.members.length}
+                gameSystems={worldServerDetail.gameSystems}
+                defaultGameSystemId={selectedApiServer.defaultGameSystemId}
+                canManageServer={canManageSelectedServer}
+                onOpenProfile={() => setEntryStage('serverHome')}
+                onOpenSettings={openSelectedServerSettings}
+                onSwitchServer={exitCurrentServer}
+                onLogout={() => void logoutToLauncher()}
+              />
+            )}
+            <Home locale={locale} onEnterPlay={enterPlay} onOpenPlaceholder={openPlaceholder} />
+          </>
         )}
 
         {appView === 'systemLibrary' && (
