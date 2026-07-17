@@ -474,9 +474,20 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   scripts `frontend:verify:map-runtime` and `frontend:verify:map-replay`.
 - Boundary: frontend-local background, viewport, and token projection using
   append-only `map.*` Runtime Events; deterministic replay on runtime session
-  open; no WebSocket sync, DB map persistence, asset upload, grid, fog, LOS,
-  walls, permissions, or full VTT.
+  open; no WebSocket sync, DB map persistence, asset upload, fog, LOS, walls,
+  permissions, or full VTT.
 - Doc: `P5_BASIC_MAP_BOARD`.
+
+## DND Grid / Range / Templates (P5.DND-GRID-RANGE-TEMPLATES)
+- Files: `src/lib/map/{mapRuntimeTypes,useMapRuntimeBoard,mapRuntimeReplay}.ts`,
+  `src/components/platform/BasicMapBoard.tsx`, and
+  `src/lib/map/dndGridRangeSmoke.ts` (`frontend:verify:dnd-grid-range`).
+- Boundary: configurable grid, center snap, straight-line ruler, and generic
+  area geometry are host-assisted frontend projection tools. Grid/templates use
+  append-only `map.*` records and scene snapshot state; the ruler is temporary.
+  They never detect targets, enforce range/pathing, apply damage, encode spell
+  content, or alter backend/WebSocket/LAN authority.
+- Doc: `P5_DND_GRID_RANGE_TEMPLATES`.
 
 ## Scene Runtime Snapshot (P5.SCENE-RUNTIME-SNAPSHOT)
 - Files: `src/lib/scene/sceneRuntimeSnapshotTypes.ts`,

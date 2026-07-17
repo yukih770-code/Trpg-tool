@@ -1,5 +1,5 @@
 import { createCombatant, createCombatRuntimeTableState } from '../combat/combatRuntimeTypes';
-import { createMapBoardState, createMapToken } from '../map/mapRuntimeTypes';
+import { createMapAreaTemplate, createMapBoardState, createMapGridConfig, createMapToken } from '../map/mapRuntimeTypes';
 import {
   createSceneRuntimeSnapshot,
   importSceneRuntimeSnapshot,
@@ -33,6 +33,8 @@ map.backgroundName = 'Scene';
 map.zoom = 1.2;
 map.panX = 10;
 map.panY = -4;
+map.grid = createMapGridConfig({ enabled: true, sizePx: 40, feetPerSquare: 5, snap: true });
+map.templates = [createMapAreaTemplate({ id: 'template-1', shape: 'circle', x: 50, y: 50, sizeFeet: 20 })];
 map.tokens = [createMapToken({ id: 'token-1', name: 'Hero', x: 45, y: 60, size: 'medium', sourceType: 'combatant', sourceCombatantId: combatant.id })];
 
 const context = { roomId: 'room-1', campaignId: 'campaign-1', runtimeSessionId: 'runtime-1' };
@@ -43,6 +45,7 @@ check('exports schema version 1', both.schemaVersion === 1 && both.appFeature ==
 check('exports empty snapshot', !empty.combat && !empty.map);
 check('exports combat state', both.combat?.combatants[0]?.displayName === 'Hero' && both.combat.turn.roundNumber === 2);
 check('exports map board', both.map?.board.backgroundUrl === 'https://example.test/scene.png' && both.map.board.tokens.length === 1);
+check('exports grid and templates', both.map?.board.grid?.sizePx === 40 && both.map.board.templates?.[0]?.shape === 'circle');
 
 const valid = validateSceneRuntimeSnapshot(JSON.parse(JSON.stringify(both)), context);
 check('validates exported snapshot', valid.ok && valid.snapshot.map?.board.tokens[0]?.id === 'token-1');
@@ -55,6 +58,7 @@ check('rejects missing export time', incomplete.ok === false);
 
 const imported = importSceneRuntimeSnapshot(JSON.parse(JSON.stringify(both)), context);
 check('imports combat and map deterministically', imported.ok && imported.snapshot.combat?.combatants.length === 1 && imported.snapshot.map?.board.tokens.length === 1);
+check('missing grid and template snapshot fields stay compatible', sanitizeSceneRuntimeSnapshot({ ...both, map: { board: { ...map, grid: undefined, templates: undefined } } }).map?.board.grid?.feetPerSquare === 5);
 const mismatched = importSceneRuntimeSnapshot(JSON.parse(JSON.stringify(both)), { roomId: 'room-2', campaignId: 'campaign-2', runtimeSessionId: 'runtime-2' });
 check('warns about context mismatch', mismatched.ok && mismatched.warnings.length === 3);
 

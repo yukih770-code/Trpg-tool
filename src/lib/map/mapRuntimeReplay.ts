@@ -1,7 +1,11 @@
 import type { RuntimeEvent } from '../api/campaignRoomApiClient';
 import {
   createMapBoardState,
+  createMapAreaTemplate,
+  createMapGridConfig,
   createMapToken,
+  type MapAreaTemplate,
+  type MapAreaTemplateInput,
   type MapBoardState,
   type MapToken,
   type MapTokenInput,
@@ -43,6 +47,43 @@ function tokenInput(value: unknown, fallback?: MapToken): MapToken | null {
   return createMapToken(next);
 }
 
+function booleanValue(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
+function templateInput(value: unknown, fallback?: MapAreaTemplate): MapAreaTemplate | null {
+  const input = record(value);
+  const id = stringValue(input?.id) ?? fallback?.id;
+  if (!id) return null;
+  const shape = input?.shape === 'circle' || input?.shape === 'cone' || input?.shape === 'line' || input?.shape === 'square' || input?.shape === 'rectangle' ? input.shape : fallback?.shape ?? 'circle';
+  const next: MapAreaTemplateInput = {
+    id,
+    shape,
+    x: numberValue(input?.x) ?? fallback?.x ?? 50,
+    y: numberValue(input?.y) ?? fallback?.y ?? 50,
+    sizeFeet: numberValue(input?.sizeFeet) ?? fallback?.sizeFeet ?? 5,
+    widthFeet: numberValue(input?.widthFeet) ?? fallback?.widthFeet,
+    rotation: numberValue(input?.rotation) ?? fallback?.rotation ?? 0,
+    label: stringValue(input?.label) ?? fallback?.label,
+    isHidden: booleanValue(input?.isHidden) ?? fallback?.isHidden,
+  };
+  return createMapAreaTemplate(next);
+}
+
+function gridConfig(value: unknown, fallback?: MapBoardState['grid']) {
+  const input = record(value);
+  if (!input) return createMapGridConfig(fallback);
+  return createMapGridConfig({
+    enabled: booleanValue(input.enabled) ?? fallback?.enabled,
+    sizePx: numberValue(input.sizePx) ?? fallback?.sizePx,
+    feetPerSquare: numberValue(input.feetPerSquare) ?? fallback?.feetPerSquare,
+    originX: numberValue(input.originX) ?? fallback?.originX,
+    originY: numberValue(input.originY) ?? fallback?.originY,
+    snap: booleanValue(input.snap) ?? fallback?.snap,
+    showCoordinates: booleanValue(input.showCoordinates) ?? fallback?.showCoordinates,
+  });
+}
+
 export function replayMapRuntimeEvents(events: ReadonlyArray<MapRuntimeReplayEvent>, mapId: string): MapBoardState {
   const ordered = events
     .map((event, index) => ({ event, index }))
@@ -68,6 +109,10 @@ export function replayMapRuntimeEvents(events: ReadonlyArray<MapRuntimeReplayEve
       state = { ...state, zoom: zoom === undefined ? state.zoom : Math.min(2.5, Math.max(0.5, zoom)), panX: panX ?? state.panX, panY: panY ?? state.panY, updatedAt: event.createdAt };
       continue;
     }
+    if (event.eventKind === 'map.grid_updated') {
+      state = { ...state, grid: gridConfig(payload.grid, state.grid), updatedAt: event.createdAt };
+      continue;
+    }
     if (event.eventKind === 'map.token_added') {
       const token = tokenInput(payload.token);
       if (token && !state.tokens.some((item) => item.id === token.id)) state = { ...state, tokens: [...state.tokens, token], updatedAt: event.createdAt };
@@ -91,6 +136,28 @@ export function replayMapRuntimeEvents(events: ReadonlyArray<MapRuntimeReplayEve
     if (event.eventKind === 'map.token_removed') {
       const id = stringValue(payload.tokenId);
       if (id) state = { ...state, tokens: state.tokens.filter((item) => item.id !== id), selectedTokenId: state.selectedTokenId === id ? undefined : state.selectedTokenId, updatedAt: event.createdAt };
+      continue;
+    }
+    if (event.eventKind === 'map.template_added') {
+      const template = templateInput(payload.template);
+      if (template && !(state.templates ?? []).some((item) => item.id === template.id)) state = { ...state, templates: [...(state.templates ?? []), template], updatedAt: event.createdAt };
+      continue;
+    }
+    if (event.eventKind === 'map.template_updated') {
+      const candidate = record(payload.template);
+      const id = stringValue(candidate?.id);
+      const existing = id ? (state.templates ?? []).find((item) => item.id === id) : undefined;
+      const template = templateInput(candidate, existing);
+      if (template && existing) state = { ...state, templates: (state.templates ?? []).map((item) => item.id === template.id ? template : item), updatedAt: event.createdAt };
+      continue;
+    }
+    if (event.eventKind === 'map.template_removed') {
+      const id = stringValue(payload.templateId);
+      if (id) state = { ...state, templates: (state.templates ?? []).filter((item) => item.id !== id), selectedTemplateId: state.selectedTemplateId === id ? undefined : state.selectedTemplateId, updatedAt: event.createdAt };
+      continue;
+    }
+    if (event.eventKind === 'map.templates_cleared') {
+      state = { ...state, templates: [], selectedTemplateId: undefined, updatedAt: event.createdAt };
     }
   }
 

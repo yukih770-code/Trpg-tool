@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   createMapBoardState,
+  createMapAreaTemplate,
+  createMapGridConfig,
   createMapToken,
   type MapBoardState,
+  type MapAreaTemplate,
+  type MapAreaTemplateInput,
+  type MapGridPatch,
   type MapRuntimeEventDraft,
   type MapToken,
   type MapTokenInput,
@@ -10,9 +15,9 @@ import {
 } from './mapRuntimeTypes';
 import { replayMapRuntimeEvents, type MapRuntimeReplayEvent } from './mapRuntimeReplay';
 
-function newId(): string {
+function newId(prefix = 'map-token'): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
-  return `map-token-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export function useMapRuntimeBoard(mapId: string) {
@@ -33,6 +38,12 @@ export function useMapRuntimeBoard(mapId: string) {
     setState((previous) => ({ ...previous, backgroundUrl: undefined, backgroundName: undefined, updatedAt: new Date().toISOString() }));
     return { eventKind: 'map.background_cleared', payload: {} };
   }, []);
+
+  const updateGrid = useCallback((patch: MapGridPatch): MapRuntimeEventDraft => {
+    const grid = createMapGridConfig({ ...state.grid, ...patch });
+    setState((previous) => ({ ...previous, grid, updatedAt: new Date().toISOString() }));
+    return { eventKind: 'map.grid_updated', payload: { grid } };
+  }, [state.grid]);
 
   const changeViewport = useCallback((patch: MapViewportPatch): MapRuntimeEventDraft => {
     const zoom = patch.zoom === undefined ? state.zoom : Math.min(2.5, Math.max(0.5, patch.zoom));
@@ -72,8 +83,38 @@ export function useMapRuntimeBoard(mapId: string) {
     return { eventKind: 'map.token_removed', payload: { tokenId: id, name: token.name } };
   }, [state.selectedTokenId, state.tokens]);
 
+  const addTemplate = useCallback((input: MapAreaTemplateInput): { template: MapAreaTemplate; event: MapRuntimeEventDraft } => {
+    const template = createMapAreaTemplate({ ...input, id: input.id ?? newId('map-template') });
+    setState((previous) => ({ ...previous, templates: [...(previous.templates ?? []), template], selectedTemplateId: template.id, updatedAt: new Date().toISOString() }));
+    return { template, event: { eventKind: 'map.template_added', payload: { template } } };
+  }, []);
+
+  const updateTemplate = useCallback((id: string, patch: Partial<Omit<MapAreaTemplate, 'id'>>): MapRuntimeEventDraft | null => {
+    const template = (state.templates ?? []).find((item) => item.id === id);
+    if (!template) return null;
+    const updated = createMapAreaTemplate({ ...template, ...patch, id });
+    setState((previous) => ({ ...previous, templates: (previous.templates ?? []).map((item) => item.id === id ? updated : item), selectedTemplateId: id, updatedAt: new Date().toISOString() }));
+    return { eventKind: 'map.template_updated', payload: { template: updated } };
+  }, [state.templates]);
+
+  const removeTemplate = useCallback((id: string): MapRuntimeEventDraft | null => {
+    const template = (state.templates ?? []).find((item) => item.id === id);
+    if (!template) return null;
+    setState((previous) => ({ ...previous, templates: (previous.templates ?? []).filter((item) => item.id !== id), selectedTemplateId: previous.selectedTemplateId === id ? undefined : previous.selectedTemplateId, updatedAt: new Date().toISOString() }));
+    return { eventKind: 'map.template_removed', payload: { templateId: id, label: template.label } };
+  }, [state.templates]);
+
+  const clearTemplates = useCallback((): MapRuntimeEventDraft => {
+    setState((previous) => ({ ...previous, templates: [], selectedTemplateId: undefined, updatedAt: new Date().toISOString() }));
+    return { eventKind: 'map.templates_cleared', payload: {} };
+  }, []);
+
   const selectToken = useCallback((id?: string) => {
-    setState((previous) => ({ ...previous, selectedTokenId: id }));
+    setState((previous) => ({ ...previous, selectedTokenId: id, selectedTemplateId: id ? undefined : previous.selectedTemplateId }));
+  }, []);
+
+  const selectTemplate = useCallback((id?: string) => {
+    setState((previous) => ({ ...previous, selectedTemplateId: id, selectedTokenId: id ? undefined : previous.selectedTokenId }));
   }, []);
 
   const restore = useCallback((events: ReadonlyArray<MapRuntimeReplayEvent>) => {
@@ -86,14 +127,19 @@ export function useMapRuntimeBoard(mapId: string) {
     const normalized = {
       ...nextState,
       mapId,
+      grid: createMapGridConfig(nextState.grid),
+      templates: (nextState.templates ?? []).map((template) => createMapAreaTemplate({ ...template, id: template.id })),
       tokens: nextState.tokens.map((token) => createMapToken({ ...token, id: token.id })),
       selectedTokenId: nextState.selectedTokenId && nextState.tokens.some((token) => token.id === nextState.selectedTokenId)
         ? nextState.selectedTokenId
+        : undefined,
+      selectedTemplateId: nextState.selectedTemplateId && (nextState.templates ?? []).some((template) => template.id === nextState.selectedTemplateId)
+        ? nextState.selectedTemplateId
         : undefined,
     };
     setState(normalized);
     return normalized;
   }, [mapId]);
 
-  return { state, setBackground, clearBackground, changeViewport, addToken, moveToken, updateToken, removeToken, selectToken, restore, replaceState };
+  return { state, setBackground, clearBackground, updateGrid, changeViewport, addToken, moveToken, updateToken, removeToken, selectToken, addTemplate, updateTemplate, removeTemplate, clearTemplates, selectTemplate, restore, replaceState };
 }

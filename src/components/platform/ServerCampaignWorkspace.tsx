@@ -97,6 +97,11 @@ function runtimeEventLabel(eventKind: string, locale: Locale): string {
     'map.token_moved': ['移动地图 Token', 'Map token moved'],
     'map.token_updated': ['更新地图 Token', 'Map token updated'],
     'map.token_removed': ['删除地图 Token', 'Map token removed'],
+    'map.grid_updated': ['更新地图网格', 'Map grid updated'],
+    'map.template_added': ['添加区域模板', 'Area template added'],
+    'map.template_updated': ['更新区域模板', 'Area template updated'],
+    'map.template_removed': ['删除区域模板', 'Area template removed'],
+    'map.templates_cleared': ['清除区域模板', 'Area templates cleared'],
     'scene.snapshot_exported': ['导出场景快照', 'Scene snapshot exported'],
     'scene.snapshot_imported': ['导入场景快照', 'Scene snapshot imported'],
     'scene.state_saved': ['保存场景', 'Scene saved'],
@@ -143,6 +148,11 @@ function runtimeEventSummary(item: RuntimeEvent, locale: Locale): string {
   if (item.eventKind === 'map.token_moved') return locale === 'en' ? 'A map token moved.' : '地图 Token 已移动。';
   if (item.eventKind === 'map.token_updated') return locale === 'en' ? 'A map token was updated.' : '地图 Token 已更新。';
   if (item.eventKind === 'map.token_removed') return locale === 'en' ? `${String(item.payload.name ?? 'A token')} was removed from the map.` : `${String(item.payload.name ?? 'Token')}已从地图删除。`;
+  if (item.eventKind === 'map.grid_updated') return locale === 'en' ? 'The tactical grid changed.' : '战术网格已更新。';
+  if (item.eventKind === 'map.template_added') return locale === 'en' ? 'An area template was added.' : '已添加区域模板。';
+  if (item.eventKind === 'map.template_updated') return locale === 'en' ? 'An area template changed.' : '区域模板已更新。';
+  if (item.eventKind === 'map.template_removed') return locale === 'en' ? 'An area template was removed.' : '已删除区域模板。';
+  if (item.eventKind === 'map.templates_cleared') return locale === 'en' ? 'Area templates were cleared.' : '区域模板已清除。';
   if (item.eventKind === 'scene.snapshot_exported') return locale === 'en' ? 'A local scene snapshot was exported.' : '已导出本地场景快照。';
   if (item.eventKind === 'scene.snapshot_imported') return locale === 'en' ? 'A local scene snapshot was applied.' : '已应用本地场景快照。';
   if (item.eventKind === 'scene.state_saved') return locale === 'en' ? 'A scene was saved to this room.' : '场景已保存到当前房间。';

@@ -55,6 +55,7 @@
     "frontend:verify:dnd-comfort-combat": "tsx src/lib/combat/dndCombatComfortSmoke.ts",
     "frontend:verify:map-runtime": "tsx src/lib/map/mapRuntimeReplaySmoke.ts",
     "frontend:verify:map-replay": "tsx src/lib/map/mapRuntimeReplaySmoke.ts",
+    "frontend:verify:dnd-grid-range": "tsx src/lib/map/dndGridRangeSmoke.ts",
     "frontend:verify:scene-snapshot": "tsx src/lib/scene/sceneRuntimeSnapshotSmoke.ts",
     "frontend:verify:scene-state": "tsx src/lib/api/sceneStateApiClientSmoke.ts",
     "frontend:verify:dnd-dice": "tsx src/lib/dnd/dndDiceRollerSmoke.ts",

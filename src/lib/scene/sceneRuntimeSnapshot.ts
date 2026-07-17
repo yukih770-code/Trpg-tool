@@ -8,7 +8,7 @@ import {
   type CombatantSourceType,
   type CombatantStatus,
 } from '../combat/combatRuntimeTypes';
-import { createMapBoardState, createMapToken, type MapBoardState, type MapToken, type MapTokenSize, type MapTokenSourceType } from '../map/mapRuntimeTypes';
+import { createMapAreaTemplate, createMapBoardState, createMapGridConfig, createMapToken, type MapAreaTemplate, type MapBoardState, type MapGridConfig, type MapToken, type MapTokenSize, type MapTokenSourceType } from '../map/mapRuntimeTypes';
 import {
   SCENE_RUNTIME_SNAPSHOT_SCHEMA_VERSION,
   type SceneRuntimeSnapshot,
@@ -119,6 +119,41 @@ function sanitizeToken(value: unknown): MapToken | null {
   });
 }
 
+function booleanValue(value: unknown): boolean | undefined {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
+function sanitizeGrid(value: unknown): MapGridConfig {
+  const input = isRecord(value) ? value : {};
+  return createMapGridConfig({
+    enabled: booleanValue(input.enabled),
+    sizePx: numberValue(input.sizePx),
+    feetPerSquare: numberValue(input.feetPerSquare),
+    originX: numberValue(input.originX),
+    originY: numberValue(input.originY),
+    snap: booleanValue(input.snap),
+    showCoordinates: booleanValue(input.showCoordinates),
+  });
+}
+
+function sanitizeTemplate(value: unknown): MapAreaTemplate | null {
+  const input = isRecord(value) ? value : null;
+  const id = stringValue(input?.id);
+  if (!id) return null;
+  const shape = oneOf(input?.shape, ['circle', 'cone', 'line', 'square', 'rectangle'] as const, 'circle');
+  return createMapAreaTemplate({
+    id,
+    shape,
+    x: numberValue(input?.x),
+    y: numberValue(input?.y),
+    sizeFeet: numberValue(input?.sizeFeet) ?? 5,
+    widthFeet: numberValue(input?.widthFeet),
+    rotation: numberValue(input?.rotation),
+    label: stringValue(input?.label),
+    isHidden: booleanValue(input?.isHidden),
+  });
+}
+
 function sanitizeMap(value: unknown): MapBoardState | undefined {
   if (!isRecord(value)) return undefined;
   const mapId = stringValue(value.mapId) ?? 'snapshot-map';
@@ -130,7 +165,15 @@ function sanitizeMap(value: unknown): MapBoardState | undefined {
       })
     : [];
   const uniqueTokens = tokens.filter((token, index) => tokens.findIndex((candidate) => candidate.id === token.id) === index);
+  const templates = Array.isArray(value.templates)
+    ? value.templates.flatMap((template) => {
+        const next = sanitizeTemplate(template);
+        return next ? [next] : [];
+      })
+    : [];
+  const uniqueTemplates = templates.filter((template, index) => templates.findIndex((candidate) => candidate.id === template.id) === index);
   const selectedTokenId = stringValue(value.selectedTokenId);
+  const selectedTemplateId = stringValue(value.selectedTemplateId);
   return {
     ...base,
     backgroundUrl: stringValue(value.backgroundUrl),
@@ -138,8 +181,11 @@ function sanitizeMap(value: unknown): MapBoardState | undefined {
     zoom: clamp(numberValue(value.zoom) ?? base.zoom, 0.5, 2.5),
     panX: numberValue(value.panX) ?? base.panX,
     panY: numberValue(value.panY) ?? base.panY,
+    grid: sanitizeGrid(value.grid),
+    templates: uniqueTemplates,
     tokens: uniqueTokens,
     selectedTokenId: selectedTokenId && uniqueTokens.some((token) => token.id === selectedTokenId) ? selectedTokenId : undefined,
+    selectedTemplateId: selectedTemplateId && uniqueTemplates.some((template) => template.id === selectedTemplateId) ? selectedTemplateId : undefined,
     updatedAt: stringValue(value.updatedAt),
   };
 }

@@ -23,6 +23,12 @@ const events: MapRuntimeReplayEvent[] = [
   event(6, 'map.token_added', { token: { id: 'npc-1', name: 'Guard', x: 80, y: 25, size: 'medium', sourceType: 'manual_npc' } }),
   event(5, 'map.token_added', { token: { id: 'hero-1', name: 'Hero', x: 20, y: 30, size: 'medium', sourceType: 'campaign_actor', sourceActorInstanceId: 'actor-1' } }),
   event(4, 'map.viewport_changed', { zoom: 1.4, panX: 20, panY: -10 }),
+  event(3.5, 'map.templates_cleared'),
+  event(3.4, 'map.template_removed', { templateId: 'line-1' }),
+  event(3.3, 'map.template_updated', { template: { id: 'circle-1', shape: 'circle', x: 30, y: 40, sizeFeet: 20, rotation: 45 } }),
+  event(3.2, 'map.template_added', { template: { id: 'line-1', shape: 'line', x: 60, y: 50, sizeFeet: 30, widthFeet: 5, rotation: 0 } }),
+  event(3.1, 'map.template_added', { template: { id: 'circle-1', shape: 'circle', x: 25, y: 35, sizeFeet: 15, rotation: 0 } }),
+  event(3, 'map.grid_updated', { grid: { enabled: true, sizePx: 40, feetPerSquare: 5, originX: 2, originY: 3, snap: true, showCoordinates: false } }),
   event(3, 'map.background_cleared'),
   event(2, 'map.background_set', { backgroundUrl: 'https://example.test/map.png', backgroundName: 'Test map' }),
   event(1, 'system.note', { text: 'Not a map state event' }),
@@ -63,6 +69,15 @@ const cases: Array<{ name: string; run: () => void }> = [
       assertEqual(state.tokens[0]?.x, 65, 'token move should replay');
       assertEqual(state.tokens[0]?.size, 'large', 'token size update should replay');
       assertEqual(state.tokens[0]?.notes, 'Marked', 'token notes update should replay');
+    },
+  },
+  {
+    name: 'grid and templates replay with clear',
+    run: () => {
+      const state = replayMapRuntimeEvents(events, mapId);
+      assertEqual(state.grid?.sizePx, 40, 'grid size should replay');
+      assertEqual(state.grid?.snap, true, 'grid snap should replay');
+      assertEqual(state.templates?.length, 0, 'template clear should replay');
     },
   },
   {
