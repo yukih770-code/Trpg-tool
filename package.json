@@ -67,6 +67,9 @@
     "auth:verify:private-alpha": "tsx server/auth/privateAlphaAuthSmoke.ts",
     "frontend:verify:e2e-api": "tsx src/lib/api/frontendApiE2ESmoke.ts",
     "frontend:verify:auth-flow": "tsx src/lib/api/authApiClientSmoke.ts",
+    "dev:local": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Mode Start",
+    "dev:local:doctor": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Mode Doctor",
+    "dev:local:stop": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Mode Stop",
     "server:dev": "tsx server/room-server.ts",
     "server:build": "tsc -p server/tsconfig.build.json",
     "server:start": "node dist-server/server/room-server.js"
