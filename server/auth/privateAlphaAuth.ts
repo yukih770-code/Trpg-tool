@@ -13,7 +13,8 @@ import {
 import type { ServerDeploymentEnvironment, ServerRuntimeEnv } from '../config/serverRuntimeConfig.js';
 import { createCurrentViewerContextFromAuthSession, type CurrentViewerContext } from './currentViewerContext.js';
 
-const DEFAULT_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+const DEFAULT_SESSION_MAX_AGE_DAYS = 30;
+const SECONDS_PER_DAY = 60 * 60 * 24;
 export const PRIVATE_ALPHA_SESSION_COOKIE = 'trpg_private_alpha_session';
 
 export type PrivateAlphaAuthConfig = {
@@ -71,11 +72,18 @@ export function readPrivateAlphaAuthConfigFromEnv(
   environment: ServerDeploymentEnvironment,
 ): PrivateAlphaAuthConfig {
   const enabled = readString(env, 'PRIVATE_ALPHA_AUTH_ENABLED') === 'true';
+  const configuredSessionDays = readString(env, 'PRIVATE_ALPHA_SESSION_MAX_AGE_DAYS');
+  const sessionMaxAgeSeconds = configuredSessionDays
+    ? readPositiveInteger(configuredSessionDays, DEFAULT_SESSION_MAX_AGE_DAYS) * SECONDS_PER_DAY
+    : readPositiveInteger(readString(env, 'PRIVATE_ALPHA_SESSION_MAX_AGE_SECONDS'), DEFAULT_SESSION_MAX_AGE_DAYS * SECONDS_PER_DAY);
   return {
     enabled,
     inviteCode: readString(env, 'PRIVATE_ALPHA_INVITE_CODE'),
     sessionSecret: readString(env, 'PRIVATE_ALPHA_SESSION_SECRET'),
-    sessionMaxAgeSeconds: readPositiveInteger(readString(env, 'PRIVATE_ALPHA_SESSION_MAX_AGE_SECONDS'), DEFAULT_SESSION_MAX_AGE_SECONDS),
+    // Days are the operator-facing setting. Keep the earlier seconds key as a
+    // compatibility fallback so an existing private-alpha environment does not
+    // silently lose its configured session lifetime during this rollout.
+    sessionMaxAgeSeconds,
     secureCookies: environment !== 'localDev',
   };
 }

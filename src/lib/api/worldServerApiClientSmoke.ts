@@ -28,7 +28,8 @@ export async function runWorldServerApiClientSmoke(): Promise<SmokeCase[]> {
 
   await check('base_url_normalization', () => {
     assert(resolveApiBaseUrl({ VITE_API_BASE_URL: 'https://api.example.test///' }) === 'https://api.example.test', 'base URL was not normalized');
-    assert(resolveApiBaseUrl({}) === 'http://localhost:8787', 'local fallback changed');
+    assert(resolveApiBaseUrl({ DEV: true }) === 'http://localhost:8787', 'local development fallback changed');
+    assert(resolveApiBaseUrl({ DEV: false }) === '', 'production unexpectedly fell back to localhost');
   });
 
   await check('success_envelope_and_list_path', async () => {

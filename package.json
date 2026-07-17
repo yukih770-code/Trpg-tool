@@ -63,6 +63,7 @@
     "dnd:monster-import:apply": "tsx server/tools/importPrivateDndMonsters.ts --apply",
     "cloud:verify:env": "tsx server/config/cloudPrivateAlphaConfigSmoke.ts",
     "cloud:verify:startup": "tsx server/config/cloudPrivateAlphaStartupSmoke.ts",
+    "cloud:verify:e2e-plan": "tsx server/config/cloudPrivateAlphaE2EPlanSmoke.ts",
     "auth:verify:private-alpha": "tsx server/auth/privateAlphaAuthSmoke.ts",
     "frontend:verify:e2e-api": "tsx src/lib/api/frontendApiE2ESmoke.ts",
     "frontend:verify:auth-flow": "tsx src/lib/api/authApiClientSmoke.ts",

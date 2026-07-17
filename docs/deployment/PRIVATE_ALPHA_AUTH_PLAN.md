@@ -8,7 +8,7 @@ Status: implemented minimal private-alpha session gate. This is not public regis
 
 ## Current Private Alpha Flow
 
-In `cloudPrivateAlpha`, the backend requires `PRIVATE_ALPHA_AUTH_ENABLED=true`, an operator-held invite code, and a backend-only session secret. A user enters a display name and invite code; the backend creates or reuses a private-alpha identity, writes a short-lived `auth_sessions` record, and sets an HttpOnly, SameSite cookie. The API resolves the user identity from that signed cookie server-side.
+In `cloudPrivateAlpha`, the backend requires `PRIVATE_ALPHA_AUTH_ENABLED=true`, an operator-held invite code, and a backend-only session secret. A user enters a display name and invite code; the backend creates or reuses a private-alpha identity, writes a 30-day `auth_sessions` record by default, and sets an HttpOnly, SameSite cookie. The API resolves the user identity from that signed cookie server-side.
 
 The invite code and session secret are never built into the frontend. `x-dev-user-id` remains `localDev` only and is disabled in cloud modes. Logout revokes the current session record and clears the browser cookie.
 

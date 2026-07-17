@@ -9,6 +9,7 @@ export type AuthMe = {
   authenticated: boolean;
   user?: AuthenticatedApiUser;
   trustLevel?: string;
+  authMode: 'localDev' | 'privateAlpha' | 'unauthenticated';
 };
 
 export type AuthApiClient = {

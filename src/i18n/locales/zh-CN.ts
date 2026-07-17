@@ -138,7 +138,13 @@ export const zhCN = {
     invalidCredentials: '显示名或访问码无效。',
     backendUnreachable: '无法连接服务器，请稍后重试。',
     sessionExpired: '登录已失效，请重新登录。',
+    serviceUnavailable: '登录服务暂时不可用，请稍后重试。',
     requestFailed: '登录请求暂时失败，请稍后重试。',
+  },
+  privateAlphaOnboarding: {
+    createServer: '创建第一个服务器',
+    createCampaign: '在服务器中创建第一场战役',
+    createRoom: '在战役中创建联机房间',
   },
   campaignRoom: {
     eyebrow: '服务器内容',

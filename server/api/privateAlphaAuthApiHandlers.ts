@@ -13,7 +13,7 @@ export type PrivateAlphaAuthApiRequest = {
 };
 
 export type PrivateAlphaAuthApiHandlers = {
-  me(input: PrivateAlphaAuthApiRequest): Promise<ServerApiResponse<{ authenticated: boolean; user?: SafePrivateAlphaUser; trustLevel?: string }>>;
+  me(input: PrivateAlphaAuthApiRequest): Promise<ServerApiResponse<{ authenticated: boolean; user?: SafePrivateAlphaUser; trustLevel?: string; authMode: 'localDev' | 'privateAlpha' | 'unauthenticated' }>>;
   login(input: PrivateAlphaAuthApiRequest): Promise<ServerApiResponse<{ user: SafePrivateAlphaUser; sessionToken: string; maxAgeSeconds: number }>>;
   logout(input: PrivateAlphaAuthApiRequest & { sessionId?: string }): Promise<ServerApiResponse<{ loggedOut: true }>>;
 };
@@ -44,6 +44,11 @@ export function createPrivateAlphaAuthApiHandlers(
       const viewer = fallbackViewer(input, options);
       return okResponse({
         authenticated: viewer.isAuthenticated && Boolean(viewer.viewerUserId),
+        authMode: viewer.authTrustLevel === 'dev_header'
+          ? 'localDev'
+          : viewer.authTrustLevel === 'verified_session'
+            ? 'privateAlpha'
+            : 'unauthenticated',
         ...(viewer.isAuthenticated && viewer.viewerUserId
           ? { user: input.user ?? { userId: viewer.viewerUserId, displayName: 'Private Alpha User' }, trustLevel: viewer.authTrustLevel }
           : {}),

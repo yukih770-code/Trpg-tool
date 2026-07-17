@@ -138,7 +138,13 @@ export const en = {
     invalidCredentials: 'The display name or access code is invalid.',
     backendUnreachable: 'Cannot reach the server. Please try again.',
     sessionExpired: 'Your session expired. Please sign in again.',
+    serviceUnavailable: 'The sign-in service is temporarily unavailable. Please try again.',
     requestFailed: 'The sign-in request failed. Please try again.',
+  },
+  privateAlphaOnboarding: {
+    createServer: 'Create your first server',
+    createCampaign: 'Create the first campaign in that server',
+    createRoom: 'Create a multiplayer room from the campaign',
   },
   campaignRoom: {
     eyebrow: 'Server content',

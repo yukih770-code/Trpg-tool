@@ -142,8 +142,11 @@ function isPlaceholderKey(value: string): value is PlaceholderKey {
   return ['campaigns', 'community', 'privateImport', 'studio', 'aiHost', 'settings'].includes(value);
 }
 
-function apiErrorMessage(error: ApiClientError | null, locale: Locale): string {
+function apiErrorMessage(error: ApiClientError | null, locale: Locale, privateAlphaAuthEnabled = false): string {
   if (!error) return '';
+  if (privateAlphaAuthEnabled && error.statusCode === 401) {
+    return locale === 'en' ? 'Your sign-in session expired. Please sign in again.' : '登录已失效，请重新登录。';
+  }
   switch (classifyApiServiceFailure(error)) {
     case 'invalid_dev_identity': return locale === 'en' ? 'The current dev user is not present in the local database. Create the dev viewer fixture first.' : '当前开发用户未在本地数据库中创建，请先创建 dev viewer fixture。';
     case 'backend_unreachable': return locale === 'en' ? 'Cannot reach the local backend. Make sure it is running.' : '无法连接本地服务器，请确认后端已经启动。';
@@ -173,10 +176,10 @@ function createServerHandle(displayName: string): string {
   return `${normalized}-${suffix}`;
 }
 
-function createServerErrorMessage(error: ApiClientError | null, locale: Locale): string {
+function createServerErrorMessage(error: ApiClientError | null, locale: Locale, privateAlphaAuthEnabled = false): string {
   if (error?.statusCode === 400) return locale === 'en' ? 'Unable to create the server. Check the server name and try again.' : '无法创建服务器，请检查服务器名称后重试。';
   if (error?.statusCode === 409) return locale === 'en' ? 'This server request conflicts with existing data. Try again.' : '服务器创建请求与现有数据冲突，请重试。';
-  return apiErrorMessage(error, locale);
+  return apiErrorMessage(error, locale, privateAlphaAuthEnabled);
 }
 
 export default function App() {
@@ -903,7 +906,7 @@ export default function App() {
         : authError?.statusCode === 401
         ? t('privateAlphaAuth.invalidCredentials')
         : authError?.statusCode === 503
-          ? t('privateAlphaAuth.requestFailed')
+          ? t('privateAlphaAuth.serviceUnavailable')
           : authError?.kind === 'network'
             ? t('privateAlphaAuth.backendUnreachable')
             : authError
@@ -1030,7 +1033,7 @@ export default function App() {
           {!worldServersState.loading && worldServersState.error && !demoFallbackEnabled && (
             <section className="rounded-2xl border border-[#2f2a22]/12 bg-white p-6 shadow-sm">
               <h2 className="text-lg font-bold">{t('worldServer.unableToLoad')}</h2>
-              <p className="mt-2 text-sm leading-6 text-[#51483d]">{apiErrorMessage(worldServersState.error, locale)}</p>
+              <p className="mt-2 text-sm leading-6 text-[#51483d]">{apiErrorMessage(worldServersState.error, locale, privateAlphaAuthEnabled)}</p>
               <button
                 type="button"
                 onClick={() => void worldServersState.refresh()}
@@ -1047,6 +1050,13 @@ export default function App() {
               <p className="mt-2 text-sm leading-6 text-[#51483d]">
                 {t('worldServer.noServersNote')}
               </p>
+              {privateAlphaAuthEnabled && (
+                <ol className="mt-4 grid gap-2 text-sm leading-6 text-[#51483d] md:grid-cols-3">
+                  <li className="rounded-md bg-white px-3 py-2">1. {t('privateAlphaOnboarding.createServer')}</li>
+                  <li className="rounded-md bg-white px-3 py-2">2. {t('privateAlphaOnboarding.createCampaign')}</li>
+                  <li className="rounded-md bg-white px-3 py-2">3. {t('privateAlphaOnboarding.createRoom')}</li>
+                </ol>
+              )}
             </section>
           )}
 
@@ -1119,7 +1129,7 @@ export default function App() {
                 </Button>
               </form>
               {createServerError && (
-                <p className="mt-3 text-sm leading-5 text-[#8b3a2f]">{createServerErrorMessage(createServerError, locale) || createServerError.message}</p>
+                <p className="mt-3 text-sm leading-5 text-[#8b3a2f]">{createServerErrorMessage(createServerError, locale, privateAlphaAuthEnabled) || createServerError.message}</p>
               )}
             </div>
             <div className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/65 p-5">
