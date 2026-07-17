@@ -41,45 +41,47 @@ const systemCards: {
   },
 ];
 
-const pinnedEntries: {
+const quickEntries: {
   key: string;
-  labelKey: string;
-  noteKey: string;
-  actionLabelKey: string;
+  label: [string, string];
+  note: [string, string];
   icon: typeof Library;
-  action: 'systemLibrary' | 'currentSystem' | 'disabled';
+  action: 'systemLibrary' | 'currentSystem' | 'workshop' | 'fanPlaza' | 'personalHub';
 }[] = [
   {
-    key: 'recentCampaigns',
-    labelKey: 'home.pinned.recentCampaigns',
-    noteKey: 'home.pinned.recentCampaignsNote',
-    actionLabelKey: 'home.pinned.openSystemLibrary',
+    key: 'systemLibrary',
+    label: ['系统资料库', 'System library'],
+    note: ['浏览已支持的规则系统。', 'Browse supported game systems.'],
     icon: BookOpen,
     action: 'systemLibrary',
   },
   {
-    key: 'recentCharacters',
-    labelKey: 'home.pinned.recentCharacters',
-    noteKey: 'home.pinned.recentCharactersNote',
-    actionLabelKey: 'home.pinned.continueSystem',
+    key: 'myCharacters',
+    label: ['我的角色', 'My characters'],
+    note: ['回到当前系统继续角色流程。', 'Continue in the current game system.'],
     icon: Library,
     action: 'currentSystem',
   },
   {
-    key: 'drafts',
-    labelKey: 'home.pinned.drafts',
-    noteKey: 'home.pinned.draftsNote',
-    actionLabelKey: 'home.pinned.comingSoon',
+    key: 'workshop',
+    label: ['创意工坊', 'Workshop'],
+    note: ['查看和整理创作内容。', 'Browse and organize creative content.'],
     icon: Sparkles,
-    action: 'disabled',
+    action: 'workshop',
   },
   {
-    key: 'pending',
-    labelKey: 'home.pinned.pending',
-    noteKey: 'home.pinned.pendingNote',
-    actionLabelKey: 'home.pinned.comingSoon',
+    key: 'fanPlaza',
+    label: ['同人广场', 'Community plaza'],
+    note: ['发现社区创作与分享。', 'Discover community creations and sharing.'],
     icon: Palette,
-    action: 'disabled',
+    action: 'fanPlaza',
+  },
+  {
+    key: 'personalHub',
+    label: ['我的资料库', 'My library'],
+    note: ['查看自己的资料与收藏。', 'View your own resources and saved items.'],
+    icon: Library,
+    action: 'personalHub',
   },
 ];
 
@@ -185,15 +187,13 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
           </div>
         </section>
 
-        {/* ── Section 3: 我的工作 ────────────────────────────────────── */}
-        <section aria-label={t('home.pinned.sectionTitle')}>
+        <section aria-label={locale === 'en' ? 'Quick access' : '常用入口'}>
           <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
-            {t('home.pinned.sectionTitle')}
+            {locale === 'en' ? 'Quick access' : '常用入口'}
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            {pinnedEntries.map((entry) => {
+            {quickEntries.map((entry) => {
               const Icon = entry.icon;
-              const disabled = entry.action === 'disabled';
               const handleClick = () => {
                 if (entry.action === 'systemLibrary') {
                   onOpenPlaceholder('systemLibrary');
@@ -201,29 +201,23 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
                 }
                 if (entry.action === 'currentSystem') {
                   onEnterPlay(system);
+                  return;
                 }
+                onOpenPlaceholder(entry.action);
               };
 
               return (
                 <button
                   key={entry.key}
                   type="button"
-                  onClick={disabled ? undefined : handleClick}
-                  disabled={disabled}
-                  className={`flex min-h-[108px] flex-col gap-3 rounded-xl border border-[#2f2a22]/15 bg-white/60 px-4 py-4 text-left transition ${
-                    disabled
-                      ? 'cursor-not-allowed opacity-70'
-                      : 'hover:border-[#2f2a22]/30 hover:bg-white/90'
-                  }`}
+                  onClick={handleClick}
+                  className="flex min-h-[108px] flex-col gap-3 rounded-xl border border-[#2f2a22]/15 bg-white/60 px-4 py-4 text-left transition hover:border-[#2f2a22]/30 hover:bg-white/90"
                 >
                   <div className="flex items-center gap-3">
                     <Icon className="h-5 w-5 shrink-0 text-[#6a5f52]" />
-                    <span className="text-sm font-semibold">{t(entry.labelKey)}</span>
+                    <span className="text-sm font-semibold">{entry.label[locale === 'en' ? 1 : 0]}</span>
                   </div>
-                  <span className="text-xs leading-5 text-[#51483d]">{t(entry.noteKey)}</span>
-                  <span className="mt-auto text-[11px] font-semibold text-[#6a3f2a]">
-                    {t(entry.actionLabelKey)}
-                  </span>
+                  <span className="text-xs leading-5 text-[#51483d]">{entry.note[locale === 'en' ? 1 : 0]}</span>
                 </button>
               );
             })}

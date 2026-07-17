@@ -1290,11 +1290,8 @@ export default function App() {
             {selectedWorldServer?.source === 'api' && selectedApiServer && (
               <PlatformOperationsWorkspace
                 locale={locale}
-                worldServerId={selectedApiServer.worldServerId}
                 serverName={selectedApiServer.displayName}
                 memberCount={worldServerDetail.members.length}
-                gameSystems={worldServerDetail.gameSystems}
-                defaultGameSystemId={selectedApiServer.defaultGameSystemId}
                 canManageServer={canManageSelectedServer}
                 onOpenProfile={() => setEntryStage('serverHome')}
                 onOpenSettings={openSelectedServerSettings}
