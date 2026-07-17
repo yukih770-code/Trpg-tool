@@ -10,10 +10,22 @@ type Step = {
   reason?: string;
 };
 
-const baseUrl = (process.env.API_BASE_URL?.trim() || 'http://localhost:8787').replace(/\/+$/, '');
+const baseUrl = (process.env.E2E_API_BASE_URL?.trim() || process.env.API_BASE_URL?.trim() || 'http://localhost:8787').replace(/\/+$/, '');
 const viewerUserId = process.env.E2E_DEV_VIEWER_USER_ID?.trim();
+const privateAlphaAccessCode = process.env.E2E_PRIVATE_ALPHA_ACCESS_CODE?.trim();
+const configuredPrivateAlphaDisplayName = process.env.E2E_PRIVATE_ALPHA_DISPLAY_NAME?.trim();
 const strict = process.argv.includes('--strict');
+const authOnly = process.argv.includes('--auth-only');
 const steps: Step[] = [];
+let sessionCookie: string | undefined;
+
+function targetLabel(): 'local' | 'configured' {
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(baseUrl) ? 'local' : 'configured';
+}
+
+function authMode(): 'local_dev_header' | 'private_alpha_session' | 'none' {
+  return privateAlphaAccessCode ? 'private_alpha_session' : viewerUserId ? 'local_dev_header' : 'none';
+}
 
 function safeMessage(value: unknown): string {
   const message = typeof value === 'string' ? value : 'HTTP E2E request failed.';
@@ -40,11 +52,24 @@ function errorOf(body: unknown): string | undefined {
   return safeMessage(body.error.message);
 }
 
-async function request(name: string, path: string, init: RequestInit = {}): Promise<{ status: number; body?: unknown; ok: boolean }> {
+type RequestOptions = {
+  authenticated?: boolean;
+  expectedStatus?: number;
+};
+
+async function request(
+  name: string,
+  path: string,
+  init: RequestInit = {},
+  options: RequestOptions = {},
+): Promise<{ status: number; body?: unknown; ok: boolean; setCookie?: string }> {
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
   if (init.body !== undefined) headers.set('Content-Type', 'application/json');
-  if (viewerUserId) headers.set('x-dev-user-id', viewerUserId);
+  if (options.authenticated !== false) {
+    if (sessionCookie) headers.set('Cookie', sessionCookie);
+    else if (viewerUserId) headers.set('x-dev-user-id', viewerUserId);
+  }
 
   let response: Response;
   try {
@@ -63,14 +88,16 @@ async function request(name: string, path: string, init: RequestInit = {}): Prom
     return { status: response.status, ok: false };
   }
 
-  const ok = response.ok && (isRecord(body) ? body.ok !== false : true);
+  const ok = options.expectedStatus !== undefined
+    ? response.status === options.expectedStatus
+    : response.ok && (isRecord(body) ? body.ok !== false : true);
   steps.push({
     name,
     status: ok ? 'passed' : 'failed',
     httpStatus: response.status,
     reason: ok ? undefined : errorOf(body) ?? `http_${response.status}`,
   });
-  return { status: response.status, body, ok };
+  return { status: response.status, body, ok, setCookie: response.headers.get('set-cookie') ?? undefined };
 }
 
 function skip(name: string, reason: string): void {
@@ -82,6 +109,72 @@ function objectValue(body: unknown): JsonRecord | undefined {
   return isRecord(value) ? value : undefined;
 }
 
+function failLatestStep(reason: string): void {
+  const latest = steps[steps.length - 1];
+  if (!latest) return;
+  latest.status = 'failed';
+  latest.reason = reason;
+}
+
+function cookiePair(value: string | undefined): string | undefined {
+  const first = value?.split(';', 1)[0]?.trim();
+  return first && first.includes('=') ? first : undefined;
+}
+
+function report(status: string, createdFixture?: Record<string, boolean>): void {
+  const failed = steps.filter((step) => step.status === 'failed');
+  // eslint-disable-next-line no-console
+  console.log(JSON.stringify({
+    checkedAt: new Date().toISOString(),
+    strict,
+    status: failed.length === 0 ? status : 'failed',
+    target: targetLabel(),
+    authMode: authMode(),
+    createdFixture,
+    steps,
+    notes: [
+      'Targets an already-running backend and uses unique temporary fixture names.',
+      'Cleanup prefers archive endpoints; no permanent delete is attempted.',
+      'No response body, secret, database URL, or stack trace is printed.',
+    ],
+  }, null, 2));
+}
+
+async function authenticatePrivateAlpha(suffix: string): Promise<boolean> {
+  const unauthenticated = await request('auth_me_unauthenticated', '/api/auth/me', {}, { authenticated: false });
+  const unauthenticatedValue = objectValue(unauthenticated.body);
+  if (!unauthenticated.ok || unauthenticatedValue?.authenticated !== false) {
+    failLatestStep('unauthenticated_me_expected');
+    return false;
+  }
+
+  await request('private_alpha_invalid_invite_rejected', '/api/auth/private-alpha/login', {
+    method: 'POST',
+    body: JSON.stringify({ displayName: 'E2E Invalid', accessCode: `invalid-${suffix}` }),
+  }, { authenticated: false, expectedStatus: 401 });
+
+  const validLogin = await request('private_alpha_login', '/api/auth/private-alpha/login', {
+    method: 'POST',
+    body: JSON.stringify({
+      displayName: configuredPrivateAlphaDisplayName || `E2E Private Alpha ${suffix}`,
+      accessCode: privateAlphaAccessCode,
+    }),
+  }, { authenticated: false });
+  sessionCookie = cookiePair(validLogin.setCookie);
+  if (!validLogin.ok || !sessionCookie) {
+    failLatestStep('private_alpha_session_cookie_missing');
+    return false;
+  }
+
+  const authenticated = await request('auth_me_private_alpha', '/api/auth/me');
+  const authenticatedValue = objectValue(authenticated.body);
+  if (!authenticated.ok || authenticatedValue?.authenticated !== true || authenticatedValue?.authMode !== 'privateAlpha') {
+    failLatestStep('private_alpha_me_expected');
+    return false;
+  }
+  return true;
+}
+
 async function main(): Promise<void> {
   const suffix = `${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
   const worldPath = '/api/world-servers';
@@ -89,9 +182,22 @@ async function main(): Promise<void> {
   const health = await request('health', '/health');
   if (!health.ok) {
     const status = steps.some((step) => step.reason === 'server_unavailable') ? 'server_unavailable' : 'blocked';
-    // eslint-disable-next-line no-console
-    console.log(JSON.stringify({ checkedAt: new Date().toISOString(), strict, status, baseUrl, authHeaderConfigured: Boolean(viewerUserId), steps, notes: ['Targets an already-running backend; this script never starts one.', 'No response body, secret, database URL, or stack trace is printed.'] }, null, 2));
+    report(status);
     if (strict) process.exitCode = 1;
+    return;
+  }
+
+  if (privateAlphaAccessCode && !await authenticatePrivateAlpha(suffix)) {
+    report('auth_blocked');
+    if (strict) process.exitCode = 1;
+    return;
+  }
+  if (authOnly) {
+    if (!privateAlphaAccessCode) {
+      steps.push({ name: 'private_alpha_access_code', status: 'failed', reason: 'missing_e2e_private_alpha_access_code' });
+    }
+    report(privateAlphaAccessCode ? 'passed' : 'auth_blocked');
+    if (strict && !privateAlphaAccessCode) process.exitCode = 1;
     return;
   }
 
@@ -113,7 +219,7 @@ async function main(): Promise<void> {
     skip('world_server_detail', 'create_world_server_failed');
     skip('create_campaign', 'create_world_server_failed');
     // eslint-disable-next-line no-console
-    console.log(JSON.stringify({ checkedAt: new Date().toISOString(), strict, status: viewerUserId ? 'api_blocked' : 'dev_auth_required', baseUrl, authHeaderConfigured: Boolean(viewerUserId), steps, notes: ['The authenticated dev viewer must already exist in Postgres.', 'Set E2E_DEV_VIEWER_USER_ID and enable the server development auth seam locally when appropriate.', 'No test fixture is created directly in the database.'] }, null, 2));
+    report(privateAlphaAccessCode ? 'api_blocked' : viewerUserId ? 'api_blocked' : 'dev_auth_required');
     if (strict) process.exitCode = 1;
     return;
   }
@@ -144,7 +250,7 @@ async function main(): Promise<void> {
     skip('archive_campaign', 'create_campaign_failed');
     await request('archive_world_server', `${worldRoot}/archive`, { method: 'POST' });
     // eslint-disable-next-line no-console
-    console.log(JSON.stringify({ checkedAt: new Date().toISOString(), strict, status: 'api_blocked', baseUrl, authHeaderConfigured: Boolean(viewerUserId), steps, notes: ['Campaign creation did not return a campaign id.', 'The server may not have a ready campaign schema or the dev viewer may lack access.'] }, null, 2));
+    report('api_blocked');
     if (strict) process.exitCode = 1;
     return;
   }
@@ -235,17 +341,7 @@ async function main(): Promise<void> {
   await request('archive_world_server', `${worldRoot}/archive`, { method: 'POST' });
 
   const failed = steps.filter((step) => step.status === 'failed');
-  // eslint-disable-next-line no-console
-  console.log(JSON.stringify({
-    checkedAt: new Date().toISOString(),
-    strict,
-    status: failed.length === 0 ? 'passed' : 'failed',
-    baseUrl,
-    authHeaderConfigured: Boolean(viewerUserId),
-    createdFixture: { worldServer: true, campaign: true, room: createdRoom.ok, runtimeSession: createdSession.ok, runtimeEvent: steps.some((step) => step.name === 'append_runtime_event' && step.status === 'passed'), sceneState: steps.some((step) => step.name === 'create_scene_state' && step.status === 'passed') },
-    steps,
-    notes: ['Targets an already-running backend and uses unique temporary fixture names.', 'Cleanup prefers archive endpoints; no permanent delete is attempted.', 'No response body, secret, database URL, or stack trace is printed.'],
-  }, null, 2));
+  report('passed', { worldServer: true, campaign: true, room: createdRoom.ok, runtimeSession: createdSession.ok, runtimeEvent: steps.some((step) => step.name === 'append_runtime_event' && step.status === 'passed'), sceneState: steps.some((step) => step.name === 'create_scene_state' && step.status === 'passed') });
   if (strict && failed.length > 0) process.exitCode = 1;
 }
 
@@ -253,6 +349,6 @@ try {
   await main();
 } catch {
   // eslint-disable-next-line no-console
-  console.log(JSON.stringify({ checkedAt: new Date().toISOString(), strict, status: 'failed', baseUrl, authHeaderConfigured: Boolean(viewerUserId), steps, notes: ['Unexpected harness failure; details intentionally redacted.'] }, null, 2));
+  report('failed');
   if (strict) process.exitCode = 1;
 }

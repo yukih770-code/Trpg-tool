@@ -2,6 +2,9 @@
 
 Status: private-alpha foundation and deployment guide. This document does not deploy the application.
 
+For the executable private-alpha checklist, environment matrix, deployment smoke,
+and rollback procedure, use [CLOUD_DEPLOY_RUNBOOK.md](CLOUD_DEPLOY_RUNBOOK.md).
+
 ## Architecture
 
 Private alpha has a static frontend, the Node Room/API service (HTTP plus `/ws`), and PostgreSQL reachable only by the backend. The frontend knows public HTTP/WS endpoints only. Imported private monster data stays World Server-scoped and out of source control.
@@ -18,7 +21,7 @@ Cloud startup rejects wildcard CORS, local public URLs, missing required backend
 
 Use the tracked shapes only: `.env.example` for local development, `.env.cloud.backend.example` for server-only cloud variables, and `.env.cloud.frontend.example` for frontend build variables.
 
-Set `DATABASE_URL` only in the backend secret manager. Never set a Vite-prefixed database variable. Set `VITE_API_BASE_URL` when building the frontend. Configure `VITE_ROOM_SERVER_HTTP_URL` and `VITE_ROOM_SERVER_WS_URL` when the room transport endpoint needs explicit values.
+Set `DATABASE_URL` only in the backend secret manager. Never set a Vite-prefixed database variable. Set `VITE_API_BASE_URL` when building the frontend. Configure `VITE_ROOM_SERVER_HTTP_URL` and `VITE_ROOM_SERVER_WS_URL` when the room transport endpoint needs explicit values. The server reads `SERVER_DEPLOYMENT_ENVIRONMENT=cloudPrivateAlpha` plus `SERVER_RUNTIME_MODE=cloud`; `APP_RUNTIME_MODE` is not a runtime key in this codebase.
 
 Set `PRIVATE_ALPHA_AUTH_ENABLED=true`, `PRIVATE_ALPHA_INVITE_CODE`, `PRIVATE_ALPHA_SESSION_SECRET`, and `PRIVATE_ALPHA_SESSION_MAX_AGE_DAYS=30` only in the backend secret manager. Build the frontend with `VITE_PRIVATE_ALPHA_AUTH_ENABLED=true` and `VITE_LOCAL_DEV_AUTH_ENABLED=false`. The frontend receives no invite code, session secret, or database configuration.
 
@@ -35,7 +38,7 @@ Migrations never run automatically on application startup.
 
 ## CORS and Health
 
-Set `ROOM_ALLOWED_ORIGINS` to exact frontend origins. Cloud modes reject `*`; localhost defaults apply only to `localDev`. Verify `GET /health` after startup. It reports safe mode, endpoint, CORS and database readiness metadata without credentials.
+Set `ROOM_ALLOWED_ORIGINS` to exact frontend origins. Cloud modes reject `*`; localhost defaults apply only to `localDev`. Verify `GET /health` after startup. It reports safe mode, endpoint, CORS and database readiness metadata without credentials. The current private-alpha cookie is `SameSite=Lax`, so deploy the frontend and API on the same schemeful site (for example `app.alpha.example.com` and `api.alpha.example.com`) or behind one origin. A cross-site static-host/API pairing needs an explicit future cookie-policy change before it can be supported safely.
 
 ## Private Alpha Smoke Test
 

@@ -12,6 +12,13 @@ In `cloudPrivateAlpha`, the backend requires `PRIVATE_ALPHA_AUTH_ENABLED=true`, 
 
 The invite code and session secret are never built into the frontend. `x-dev-user-id` remains `localDev` only and is disabled in cloud modes. Logout revokes the current session record and clears the browser cookie.
 
+The current browser cookie is `HttpOnly`, `Secure` outside `localDev`, and
+`SameSite=Lax`. Therefore the first deployment should keep frontend and API on the
+same schemeful site, such as sibling subdomains of one private-alpha domain, or
+serve them behind one origin. A cross-site static-host/API pairing requires an
+explicit future `SameSite=None; Secure` design and CSRF review; do not assume the
+current session flow supports it.
+
 ## Options
 
 | Option | Suitability | Notes |

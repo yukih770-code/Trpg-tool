@@ -46,11 +46,12 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 
 ## Cloud Private Alpha Foundation
 - Files: `server/config/serverRuntimeConfig.ts`, `server/config/cloudPrivateAlphaConfigSmoke.ts`,
-  `server/config/cloudPrivateAlphaE2EPlanSmoke.ts`, `server/auth/privateAlphaAuth.ts`,
-  `server/api/privateAlphaAuthApiRoutes.ts`, `server/room-server.ts`, `.env.cloud.backend.example`,
+  `server/config/cloudPrivateAlphaE2EPlanSmoke.ts`, `verifyCloudPrivateAlphaBackend.ts`,
+  `server/auth/privateAlphaAuth.ts`, `server/api/privateAlphaAuthApiRoutes.ts`,
+  `server/api/verifyHttpE2EFlow.ts`, `server/room-server.ts`, `.env.cloud.backend.example`,
   `.env.cloud.frontend.example`, `src/components/platform/PrivateAlphaLoginPanel.tsx`.
 - Docs: `docs/deployment/CLOUD_PRIVATE_ALPHA_DEPLOYMENT.md`,
-  `docs/deployment/PRIVATE_ALPHA_AUTH_PLAN.md`.
+  `docs/deployment/CLOUD_DEPLOY_RUNBOOK.md`, `docs/deployment/PRIVATE_ALPHA_AUTH_PLAN.md`.
 - Don't violate: local dev identity headers are `localDev` only; cloud modes require
   explicit origins and backend database configuration, reject wildcard CORS and
   never expose database settings to frontend code. Private alpha uses a backend-only
