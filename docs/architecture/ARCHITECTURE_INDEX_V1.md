@@ -60,6 +60,19 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Read when: preparing a private cloud environment, changing CORS/runtime env, or
   adding verified authentication.
 
+## LAN Alpha Runtime
+- Files: `server/config/lanRuntimeConfig.ts`, `server/config/serverRuntimeConfig.ts`,
+  `server/config/printLanRuntimeInfo.ts`, `scripts/dev-local.ps1`,
+  `src/lib/platform/lanRuntimeEndpointOverride.ts`,
+  `src/components/platform/LanRuntimeHostPanel.tsx`.
+- Docs: `docs/development/LAN_ALPHA_RUNTIME.md`, `LOCAL_DEV_ONE_COMMAND.md`.
+- Don't violate: LAN Alpha is localDev-only host exposure with exact private-LAN
+  CORS origins. It does not weaken private-alpha sessions, enable dev headers in
+  cloud mode, change room authority/protocol, add guest identity, or promise
+  remote public multiplayer.
+- Read when: changing local endpoint resolution, LAN CORS, host diagnostics, or
+  same-network join guidance.
+
 ## Postgres User First Slice (server-only)
 - Files: `server/db/**` (client, schema readiness, smokes, `migrations/0001_user_identity.sql`),
   `server/adapters/postgresUserRepository.ts`, `server/config/{databaseRuntimeConfig,serverRuntimeConfig}.ts`.

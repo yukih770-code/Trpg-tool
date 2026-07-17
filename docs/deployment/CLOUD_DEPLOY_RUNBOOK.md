@@ -156,6 +156,7 @@ endpoint. No WebSocket protocol change is part of this deploy run.
 - No public registration, OAuth, password recovery, rate limiting, or per-invite
   expiry exists.
 - Remote public multiplayer hardening, reconnect policy, and multi-instance room
-  authority are not complete. LAN runtime remains the next phase.
+  authority are not complete. LAN Alpha is a separate same-network host mode and
+  does not relax this cloud deployment boundary.
 - No object storage, public monster upload, or real-time protocol rewrite is
   included.
