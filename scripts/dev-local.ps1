@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
   [ValidateSet('Start', 'Doctor', 'Stop', 'Backend', 'Frontend')]
-  [string]$Mode = 'Start'
+  [string]$Mode = 'Start',
+  [switch]$Lan
 )
 
 $ErrorActionPreference = 'Stop'
@@ -45,6 +46,12 @@ function Assert-RequiredLocalEnv {
   if ([Environment]::GetEnvironmentVariable('VITE_API_BASE_URL', 'Process').TrimEnd('/') -ne 'http://localhost:8787') {
     throw 'VITE_API_BASE_URL must point to the local backend for dev:local.'
   }
+}
+
+function Enable-LanAlphaForProcess {
+  if (-not $Lan) { return }
+  [Environment]::SetEnvironmentVariable('LAN_ALPHA_ENABLED', 'true', 'Process')
+  Write-LocalStatus 'LAN Alpha is enabled for this process. Private IPv4 CORS origins are generated when no explicit LAN_ALLOWED_ORIGINS value is configured.'
 }
 
 function Get-LocalPortProcess([int]$Port) {
@@ -107,7 +114,8 @@ function Assert-PortAvailable([int]$Port) {
 function Start-LocalWindow([ValidateSet('Backend', 'Frontend')][string]$ChildMode) {
   $scriptPath = $PSCommandPath.Replace("'", "''")
   $rootPath = $ProjectRoot.Replace("'", "''")
-  $command = "& { Set-Location -LiteralPath '$rootPath'; & '$scriptPath' -Mode $ChildMode }"
+  $lanArgument = if ($Lan) { ' -Lan' } else { '' }
+  $command = "& { Set-Location -LiteralPath '$rootPath'; & '$scriptPath' -Mode $ChildMode$lanArgument }"
   Start-Process -FilePath 'powershell.exe' -ArgumentList @(
     '-NoExit', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $command
   ) | Out-Null
@@ -130,6 +138,7 @@ function Wait-ForBackendHealth {
 
 function Invoke-Doctor {
   Import-ProjectEnv
+  Enable-LanAlphaForProcess
   $node = Get-Command node -ErrorAction SilentlyContinue
   $npm = Get-Command npm -ErrorAction SilentlyContinue
   Write-LocalStatus "Node available: $([bool]$node)"
@@ -170,10 +179,23 @@ function Invoke-Doctor {
       Pop-Location
     }
   }
+
+  if ($Lan) {
+    Write-LocalStatus 'LAN endpoint candidates and CORS status:'
+    Push-Location $ProjectRoot
+    try {
+      & npm run lan:print-join
+      if ($LASTEXITCODE -ne 0) { Write-Warning 'LAN endpoint diagnostics did not pass.' }
+    } finally {
+      Pop-Location
+    }
+    Write-LocalStatus 'LAN reminder: allow Node through Windows Firewall on private networks. VPN adapters can change the chosen private IPv4 address.'
+  }
 }
 
 function Invoke-Backend {
   Import-ProjectEnv
+  Enable-LanAlphaForProcess
   Assert-RequiredLocalEnv
   Set-Location -LiteralPath $ProjectRoot
   & npm run server:build
@@ -184,6 +206,7 @@ function Invoke-Backend {
 
 function Invoke-Frontend {
   Import-ProjectEnv
+  Enable-LanAlphaForProcess
   Assert-RequiredLocalEnv
   Set-Location -LiteralPath $ProjectRoot
   & npm run dev
@@ -201,6 +224,7 @@ switch ($Mode) {
   'Frontend' { Invoke-Frontend; break }
   'Start' {
     Import-ProjectEnv
+    Enable-LanAlphaForProcess
     Assert-RequiredLocalEnv
     Stop-SafeLocalService 8787 'backend'
     Stop-SafeLocalService 3000 'frontend'

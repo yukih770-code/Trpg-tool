@@ -9,6 +9,8 @@
  * deploy, authenticate, or know whether the backend runs on Render/Fly/Cloud Run.
  */
 
+import { resolveLanRuntimeEndpointOverride } from './lanRuntimeEndpointOverride';
+
 const DEFAULT_ROOM_SERVER_HTTP_URL = 'http://localhost:8787';
 
 type ImportMetaWithEnv = ImportMeta & {
@@ -32,6 +34,8 @@ export function deriveRoomServerWsUrl(httpUrl: string): string {
 }
 
 export function resolveRoomServerHttpUrl(env: RoomServerEndpointEnv = getViteEnv()): string {
+  const lanOverride = resolveLanRuntimeEndpointOverride();
+  if (lanOverride.apiBaseUrl) return lanOverride.apiBaseUrl;
   return readEnv(env.VITE_ROOM_SERVER_HTTP_URL) ?? DEFAULT_ROOM_SERVER_HTTP_URL;
 }
 

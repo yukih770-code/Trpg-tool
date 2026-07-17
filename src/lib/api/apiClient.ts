@@ -1,4 +1,5 @@
 import { ApiClientError, type ApiResponse } from './apiTypes';
+import { resolveLanRuntimeEndpointOverride } from '../platform/lanRuntimeEndpointOverride';
 
 type ImportMetaWithEnv = ImportMeta & {
   readonly env?: Record<string, unknown>;
@@ -26,13 +27,15 @@ function readString(value: unknown): string | undefined {
 }
 
 export function resolveApiBaseUrl(env: FrontendApiEnv = frontendEnv()): string {
+  const lanOverride = resolveLanRuntimeEndpointOverride();
+  if (lanOverride.apiBaseUrl) return lanOverride.apiBaseUrl;
   const configured = readString(env.VITE_API_BASE_URL);
   if (configured) return configured.replace(/\/+$/, '');
   return isFrontendDevelopment(env) ? 'http://localhost:8787' : '';
 }
 
 export function isApiBaseUrlConfigured(env: FrontendApiEnv = frontendEnv()): boolean {
-  return readString(env.VITE_API_BASE_URL) !== undefined;
+  return resolveLanRuntimeEndpointOverride().apiBaseUrl !== undefined || readString(env.VITE_API_BASE_URL) !== undefined;
 }
 
 export function isDevApiDemoFallbackEnabled(env: FrontendApiEnv = frontendEnv()): boolean {

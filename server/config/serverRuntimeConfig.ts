@@ -1,3 +1,5 @@
+import { readLanRuntimeConfig, type LanRuntimeConfig } from './lanRuntimeConfig.js';
+
 /**
  * Server runtime config boundary (v0).
  *
@@ -35,6 +37,8 @@ export interface ServerRuntimeConfig {
   /** Safe booleans only. Invite/session secret values never leave server auth code. */
   privateAlphaAuthEnabled?: boolean;
   privateAlphaAuthConfigured?: boolean;
+  /** LAN Alpha is localDev-only and exposes no credentials or permission bypass. */
+  lanAlpha?: LanRuntimeConfig;
   warnings?: string[];
 }
 
@@ -133,6 +137,19 @@ function readDevUserApiEnabled(environment: ServerDeploymentEnvironment, request
 export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRuntimeConfig {
   const environment = readEnvironment(env);
   const runtimeMode = readRuntimeMode(env);
+  const requestedLanAlpha = readLanRuntimeConfig(env, { backendPort: readPort(env) });
+  const lanAlpha = environment === 'localDev'
+    ? requestedLanAlpha
+    : {
+      ...requestedLanAlpha,
+      enabled: false,
+      endpoints: [],
+      allowedOrigins: [],
+      allowedOriginsSource: 'none' as const,
+      warnings: requestedLanAlpha.enabled
+        ? [...requestedLanAlpha.warnings, 'LAN Alpha is ignored outside localDev.']
+        : requestedLanAlpha.warnings,
+    };
   const shouldUseLocalEndpointDefaults = environment === 'localDev' && runtimeMode === 'local';
   const publicHttpUrl =
     readFirstString(env, ['APP_PUBLIC_HTTP_URL', 'ROOM_PUBLIC_HTTP_URL', 'ROOM_SERVER_PUBLIC_HTTP_URL']) ??
@@ -140,7 +157,10 @@ export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRun
   const publicWsUrl =
     readFirstString(env, ['APP_PUBLIC_WS_URL', 'ROOM_PUBLIC_WS_URL', 'ROOM_SERVER_PUBLIC_WS_URL']) ??
     (shouldUseLocalEndpointDefaults ? DEFAULT_LOCAL_SERVER_RUNTIME_CONFIG.publicWsUrl : undefined);
-  const allowedOrigins = readAllowedOrigins(env, shouldUseLocalEndpointDefaults);
+  const allowedOrigins = [...new Set([
+    ...readAllowedOrigins(env, shouldUseLocalEndpointDefaults),
+    ...(lanAlpha.enabled ? lanAlpha.allowedOrigins : []),
+  ])];
   const warnings: string[] = [];
 
   const devAuthRequested = readDevAuthRequested(env);
@@ -151,6 +171,7 @@ export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRun
   if (environment !== 'localDev' && devAuthRequested) {
     warnings.push('Dev auth was requested but is disabled outside localDev.');
   }
+  warnings.push(...lanAlpha.warnings);
   if (environment !== 'localDev' && runtimeMode === 'cloud') {
     if (!publicHttpUrl || publicHttpUrl.includes('localhost') || publicHttpUrl.includes('127.0.0.1')) {
       warnings.push('production cloud config should set ROOM_PUBLIC_HTTP_URL to a non-localhost URL.');
@@ -166,7 +187,7 @@ export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRun
   return {
     environment,
     runtimeMode,
-    httpPort: readPort(env),
+    httpPort: lanAlpha.enabled ? lanAlpha.backendPort : readPort(env),
     publicHttpUrl,
     publicWsUrl,
     allowedOrigins,
@@ -174,6 +195,7 @@ export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRun
     devAuthRequested,
     privateAlphaAuthEnabled,
     privateAlphaAuthConfigured,
+    lanAlpha,
     warnings: warnings.length > 0 ? warnings : undefined,
   };
 }

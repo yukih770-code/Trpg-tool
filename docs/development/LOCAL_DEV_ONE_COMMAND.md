@@ -28,6 +28,21 @@ values, checks ports `8787` and `3000`, checks backend health when it is already
 running, and runs the read-only PostgreSQL readiness check when a database
 connection is configured.
 
+## LAN Alpha
+
+```powershell
+npm run lan:doctor
+npm run dev:lan
+```
+
+`lan:doctor` adds safe LAN candidate, endpoint, CORS, firewall, and VPN guidance
+to the normal local checks. `dev:lan` starts the same local processes with LAN
+Alpha enabled for that run and opens the host browser. It does not modify `.env`
+or expose the application to the public internet. Use the LAN join link shown in
+the server workspace for player devices; do not share a `localhost` URL. See
+`LAN_ALPHA_RUNTIME.md` for host, player, authentication, and troubleshooting
+details.
+
 ## Stop
 
 ```powershell

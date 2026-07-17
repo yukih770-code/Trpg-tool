@@ -80,6 +80,7 @@ import { createPrivateAlphaAuthService, readPrivateAlphaAuthConfigFromEnv } from
 import { setPrivateAlphaViewer } from './auth/requestViewer.js';
 import { createPrivateAlphaAuthApiHandlers } from './api/privateAlphaAuthApiHandlers.js';
 import { registerPrivateAlphaAuthApiRoutes } from './api/privateAlphaAuthApiRoutes.js';
+import { okResponse } from './api/apiResponse.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -240,6 +241,11 @@ app.get('/health', async (_req, res) => {
     devUserApiEnabled: serverRuntimeConfig.devUserApiEnabled === true,
     publicHttpUrl: serverRuntimeConfig.publicHttpUrl ?? null,
     publicWsUrl: serverRuntimeConfig.publicWsUrl ?? null,
+    lanAlpha: {
+      enabled: serverRuntimeConfig.lanAlpha?.enabled === true,
+      candidateCount: serverRuntimeConfig.lanAlpha?.candidates.length ?? 0,
+      allowedOriginsSource: serverRuntimeConfig.lanAlpha?.allowedOriginsSource ?? 'none',
+    },
     database: {
       ...database,
       schema,
@@ -252,6 +258,21 @@ app.get('/health', async (_req, res) => {
       visibilitySchema,
     },
   });
+});
+
+// LAN Alpha exposes only local-network endpoint metadata. It never returns a
+// session, invite code, database configuration, or a permission bypass.
+app.get('/api/lan/runtime', (_req, res) => {
+  const lanAlpha = serverRuntimeConfig.lanAlpha;
+  res.json(okResponse({
+    enabled: lanAlpha?.enabled === true,
+    bindHost: lanAlpha?.enabled ? lanAlpha.bindHost : undefined,
+    frontendPort: lanAlpha?.frontendPort ?? 3000,
+    backendPort: lanAlpha?.backendPort ?? PORT,
+    allowedOriginsSource: lanAlpha?.allowedOriginsSource ?? 'none',
+    endpoints: lanAlpha?.enabled ? lanAlpha.endpoints : [],
+    warnings: lanAlpha?.warnings ?? [],
+  }));
 });
 
 app.get('/rooms', (_req, res) => {
@@ -500,7 +521,7 @@ app.post('/rooms/:roomId/runtime/dice-roll', (req, res) => {
   res.json({ ok: true, event: result.event, roll: result.roll });
 });
 
-httpServer.listen(PORT, () => {
+const onServerListening = () => {
   // eslint-disable-next-line no-console
   console.log(`Room server listening on port ${PORT} (HTTP + WS /ws)`);
   // eslint-disable-next-line no-console
@@ -522,4 +543,12 @@ httpServer.listen(PORT, () => {
   }
   // eslint-disable-next-line no-console
   console.log(`[room-server] database configured: ${databaseRuntimeConfig.configured}; dev auth enabled: ${serverRuntimeConfig.devUserApiEnabled === true}`);
-});
+};
+
+if (serverRuntimeConfig.lanAlpha?.enabled && serverRuntimeConfig.lanAlpha.bindHost !== '0.0.0.0') {
+  httpServer.listen(PORT, serverRuntimeConfig.lanAlpha.bindHost, onServerListening);
+} else {
+  // The Node default listener remains dual-stack on supported hosts while still
+  // exposing LAN interfaces. This keeps localhost health checks working too.
+  httpServer.listen(PORT, onServerListening);
+}

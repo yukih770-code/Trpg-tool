@@ -19,6 +19,7 @@ import { DndLiteActorSheetPanel } from './DndLiteActorSheetPanel';
 import { DndMonsterTemplateLibraryPanel } from './DndMonsterTemplateLibraryPanel';
 import { SavedSceneLibraryPanel } from './SavedSceneLibraryPanel';
 import { SceneRuntimeSnapshotPanel } from './SceneRuntimeSnapshotPanel';
+import { LanRuntimeHostPanel } from './LanRuntimeHostPanel';
 import type { CombatRuntimeEventDraft, CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
 import type { MapBoardState, MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
 import type { SceneRuntimeSnapshot } from '../../lib/scene/sceneRuntimeSnapshotTypes';
@@ -300,6 +301,12 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
           {t('campaignRoom.refresh')}
         </button>
       </div>
+
+      <LanRuntimeHostPanel
+        locale={locale}
+        canManageServer={canManageServer}
+        contextLabel={selectedRoom ? `${selectedCampaign?.campaign.title ?? ''} / ${roomLabel(selectedRoom)}`.replace(/^\s*\/\s*|\s*\/\s*$/g, '') : selectedCampaign?.campaign.title}
+      />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(16rem,0.75fr)_minmax(0,1.25fr)]">
         <div className="flex flex-col gap-3">
