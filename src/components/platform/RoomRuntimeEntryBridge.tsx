@@ -14,6 +14,8 @@ import {
   type RoomServerHttpClientConfig,
 } from '../../lib/platform/roomServerHttpClient';
 import { createRoomSocketClient, type RoomSocketConnectionState } from '../../lib/platform/roomSocketClient';
+import { resolveDevViewerUserId } from '../../lib/api/apiClient';
+import { resolveRoomRuntimePermissions } from '../../lib/platform/roomRuntimePermissions';
 import { readStoredLocale } from '../../i18n';
 import { RuntimeFullscreenShell, type RuntimeShellMode } from './RuntimeFullscreenShell';
 import { SharedDiceDock } from './SharedDiceDock';
@@ -187,11 +189,11 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const loadRoomMapEvents = useCallback(() => {
     setMapLoading(true);
     setMapError(null);
-    listRoomMapEvents({ baseUrl: context.serverBaseUrl }, context.roomId, { mapId: roomMapId })
+    listRoomMapEvents({ baseUrl: context.serverBaseUrl }, context.roomId, { mapId: roomMapId, memberId: context.currentMemberId })
       .then((result) => setRoomMapEvents(result.events.sort((left, right) => left.seq - right.seq)))
       .catch((error) => setMapError(error instanceof Error ? error.message : String(error)))
       .finally(() => setMapLoading(false));
-  }, [context.roomId, context.serverBaseUrl, roomMapId]);
+  }, [context.currentMemberId, context.roomId, context.serverBaseUrl, roomMapId]);
 
   useEffect(() => {
     loadRoomMapEvents();
@@ -208,9 +210,10 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   useEffect(() => {
     const client = createRoomSocketClient({
       baseUrl: context.serverBaseUrl,
+      localDevViewerUserId: resolveDevViewerUserId(),
       onConnectionStateChange: (state) => {
         setConnState(state);
-        if (state === 'open') client.subscribeRoom(context.roomId);
+        if (state === 'open') client.subscribeRoom(context.roomId, context.currentMemberId);
       },
       onRoomSnapshot: (message) => {
         if (message.roomId !== context.roomId) return;
@@ -683,7 +686,20 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   // ── Main stage: DND gets the shared Room Map board; other systems keep the
   // existing scene stage until they define their own map interaction contracts.
   const currentRoom = liveRoom ?? room;
-  const canPinRanges = shellMode === 'host' || !!currentRoom?.mapPermissions?.some((permission) => permission.memberId === context.currentMemberId && permission.canPinRanges);
+  const currentMember = currentRoom?.members.find((member) => member.memberId === context.currentMemberId);
+  const currentRangeGrant = currentRoom?.mapPermissions?.find((permission) => permission.memberId === context.currentMemberId && permission.canPinRanges);
+  const runtimePermissions = resolveRoomRuntimePermissions({
+    authenticated: Boolean(context.currentMemberId),
+    roomRole: currentMember?.role,
+    roomMemberActive: currentMember?.status === 'active',
+    grants: currentRangeGrant ? [{
+      action: 'map.template.fix',
+      scope: 'roomSession',
+      grantedByDisplayName: currentRangeGrant.grantedByDisplayName,
+      grantedAt: currentRangeGrant.grantedAt,
+    }] : [],
+  });
+  const canPinRanges = runtimePermissions['map.template.fix'];
   const mapCollaborators = (currentRoom?.members ?? [])
     .filter((member) => member.role === 'player' && member.status === 'active')
     .map((member) => ({
@@ -700,10 +716,11 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       fallbackBackgroundUrl={currentScene?.mapUrl}
       sceneTitle={currentScene?.title}
       sceneDescription={currentScene?.body}
-      statusNote="房间地图会实时同步；当前 Room Server 重启后需要重新设置。"
+      statusNote={currentRangeGrant ? '你获得了本房间会话内的固定范围授权；服务重启后需要由主持人重新授予。' : '地图协作取决于登录身份与房间角色；局域网连接本身不授予编辑权限。'}
       presentation="runtime"
-      canManage={shellMode === 'host' && !!context.currentMemberId}
+      canManage={runtimePermissions['map.grid.edit']}
       canPinRanges={canPinRanges}
+      canShareTemporaryRanges={runtimePermissions['map.preview.range.temporary']}
       sharedPreviews={(Object.values(sharedMapPreviews) as SharedMapPreview[]).flatMap((preview) => preview.preview ? [{ authorMemberId: preview.authorMemberId, authorDisplayName: preview.authorDisplayName, preview: preview.preview }] : [])}
       onSharePreview={shareRoomMapPreview}
       mapCollaborators={shellMode === 'host' ? mapCollaborators : []}

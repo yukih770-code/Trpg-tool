@@ -478,6 +478,17 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   permissions, or full VTT.
 - Doc: `P5_BASIC_MAP_BOARD`.
 
+## Room Runtime Permission Binding (P5.ROOM-RUNTIME-PERMISSION-BINDING)
+- Files: `src/lib/platform/roomRuntimePermissions.ts`,
+  `server/room/roomRuntimePermissionGuard.ts`, `server/transport/roomSocketServer.ts`,
+  `server/room-server.ts`, `src/components/platform/{RoomRuntimeEntryBridge,BasicMapBoard}.tsx`;
+  scripts `runtime:verify:room-permissions` and `frontend:verify:room-permissions`.
+- Boundary: server-side binding of authenticated user -> active room member ->
+  narrow Runtime action. LAN, room codes, and client-provided member ids are not
+  authority. Fixed map ranges are an explicit, in-memory `roomSession` grant;
+  host/admin persistence and a full VTT ACL are deferred.
+- Doc: `P5_ROOM_RUNTIME_PERMISSION_BINDING`.
+
 ## DND Grid / Range / Templates (P5.DND-GRID-RANGE-TEMPLATES)
 - Files: `src/lib/map/{mapRuntimeTypes,useMapRuntimeBoard,mapRuntimeReplay}.ts`,
   `src/components/platform/BasicMapBoard.tsx`, and

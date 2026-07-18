@@ -15,6 +15,7 @@ import {
   createRoomSocketClient,
   type RoomSocketConnectionState,
 } from '../../lib/platform/roomSocketClient';
+import { resolveDevViewerUserId } from '../../lib/api/apiClient';
 import type {
   RoomActorBindingClearanceStatus,
   RoomActorBindingSource,
@@ -240,9 +241,10 @@ export function RoomLobbyShell({
     setWsError(null);
     const client = createRoomSocketClient({
       baseUrl,
+      localDevViewerUserId: resolveDevViewerUserId(),
       onConnectionStateChange: (state) => {
         setConnState(state);
-        if (state === 'open') client.subscribeRoom(roomId);
+        if (state === 'open') client.subscribeRoom(roomId, currentMemberId);
       },
       onRoomSnapshot: (message) => {
         if (message.roomId !== roomId) return;
@@ -264,13 +266,13 @@ export function RoomLobbyShell({
     return () => {
       client.close();
     };
-  }, [baseUrl, roomId]);
+  }, [baseUrl, currentMemberId, roomId]);
 
   // HTTP fallback: pull an initial snapshot if none was provided.
   useEffect(() => {
     if (initialRoom) return;
     let cancelled = false;
-    getRoomServerRoom(config, roomId)
+    getRoomServerRoom(config, roomId, { memberId: currentMemberId })
       .then((snapshot) => { if (!cancelled) setRoom(snapshot); })
       .catch((e) => {
         if (!cancelled) {
@@ -470,7 +472,7 @@ export function RoomLobbyShell({
   // (GET /rooms/:roomId); it never fabricates local state.
   const refreshSnapshot = async () => {
     try {
-      setRoom(await getRoomServerRoom(config, roomId));
+      setRoom(await getRoomServerRoom(config, roomId, { memberId: currentMemberId }));
     } catch {
       // non-fatal: WS broadcast remains the source of truth
     }
@@ -480,8 +482,9 @@ export function RoomLobbyShell({
     setPendingMemberId(memberId);
     setMemberActionError(null);
     try {
-      if (action === 'approve') await approveRoomMemberOnServer(config, roomId, memberId);
-      else await rejectRoomMemberOnServer(config, roomId, memberId);
+      if (!currentMemberId) throw new Error('需要主持人成员身份才能处理加入申请。');
+      if (action === 'approve') await approveRoomMemberOnServer(config, roomId, memberId, currentMemberId);
+      else await rejectRoomMemberOnServer(config, roomId, memberId, currentMemberId);
       await refreshSnapshot();
     } catch (e) {
       setMemberActionError(errMsg(e));

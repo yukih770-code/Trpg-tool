@@ -28,6 +28,8 @@ export type RoomSocketConnectionState = 'idle' | 'connecting' | 'open' | 'closed
 export interface RoomSocketClientOptions {
   baseUrl: string;
   path?: string;
+  /** Local-dev only identity hint; production authority comes from the session cookie. */
+  localDevViewerUserId?: string;
   onMessage?: (message: RoomSocketServerMessage) => void;
   onRoomSnapshot?: (message: RoomSocketRoomSnapshotMessage) => void;
   onRuntimeLogAppended?: (message: RoomSocketRuntimeLogAppendedMessage) => void;
@@ -40,7 +42,7 @@ export interface RoomSocketClientOptions {
 export interface RoomSocketClient {
   connect(): void;
   close(): void;
-  subscribeRoom(roomId: string): void;
+  subscribeRoom(roomId: string, memberId?: string): void;
   unsubscribeRoom(roomId: string): void;
   ping(): void;
   shareMapPreview(input: { roomId: string; authorMemberId: string; mapId: string; phase: 'update' | 'clear'; preview?: MapInteractionPreview }): void;
@@ -48,10 +50,11 @@ export interface RoomSocketClient {
 }
 
 /** Convert an http(s) base URL into a ws(s) URL with the transport path. */
-export function toRoomSocketUrl(baseUrl: string, path = '/ws'): string {
+export function toRoomSocketUrl(baseUrl: string, path = '/ws', localDevViewerUserId?: string): string {
   const trimmed = baseUrl.replace(/\/+$/, '');
   const wsBase = trimmed.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:');
-  return `${wsBase}${path}`;
+  const suffix = localDevViewerUserId ? `?devViewerUserId=${encodeURIComponent(localDevViewerUserId)}` : '';
+  return `${wsBase}${path}${suffix}`;
 }
 
 function makeId(): string {
@@ -78,7 +81,7 @@ export function createRoomSocketClient(options: RoomSocketClientOptions): RoomSo
 
   return {
     connect() {
-      const url = toRoomSocketUrl(options.baseUrl, options.path);
+      const url = toRoomSocketUrl(options.baseUrl, options.path, options.localDevViewerUserId);
       setState('connecting');
       socket = new WebSocket(url);
       socket.onopen = () => setState('open');
@@ -103,8 +106,8 @@ export function createRoomSocketClient(options: RoomSocketClientOptions): RoomSo
       socket?.close();
       socket = null;
     },
-    subscribeRoom(roomId) {
-      send({ ...envelope(), type: 'subscribeRoom', roomId });
+    subscribeRoom(roomId, memberId) {
+      send({ ...envelope(), type: 'subscribeRoom', roomId, ...(memberId ? { memberId } : {}) });
     },
     unsubscribeRoom(roomId) {
       send({ ...envelope(), type: 'unsubscribeRoom', roomId });

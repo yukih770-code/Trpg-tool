@@ -7,13 +7,16 @@
  * connect, subscribe to a roomId (via message, not URL), and receive room
  * snapshot envelopes. Exposes `broadcastRoomSnapshot` for HTTP handlers to call.
  *
- * NO auth, NO permission, NO projection/filtering, and no gameplay intent
- * handling. RuntimeLog and Room Map deltas are relayed as separate envelopes.
+ * Room subscriptions and transient map previews require an authenticated active
+ * room member. This remains a narrow Runtime Alpha boundary: it does not add
+ * gameplay intent handling or broad projection/filtering. RuntimeLog and Room
+ * Map deltas are relayed as separate envelopes.
  * Never imported by the frontend. Room snapshots are always wrapped in an
  * envelope (see roomTransportTypes).
  */
 
 import type { Server as HttpServer } from 'node:http';
+import type { IncomingMessage } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { WebSocket, WebSocketServer } from 'ws';
 
@@ -26,11 +29,15 @@ import type {
 } from '../../src/lib/platform/roomTransportTypes.js';
 import type { RoomRuntimeLogEvent } from '../protocol/room-protocol.js';
 import type { RoomMapEvent, RoomMapLivePreview } from '../protocol/room-protocol.js';
+import type { CurrentViewerContext } from '../auth/currentViewerContext.js';
+import { resolveRoomParticipant, resolveRoomRuntimePermission } from '../room/roomRuntimePermissionGuard.js';
 
 export interface CreateRoomSocketServerOptions {
   server: HttpServer;
   registry: RoomRegistry;
   path?: string;
+  /** Resolves a browser session (or explicitly gated local-dev identity) per socket. */
+  resolveViewer?: (request: IncomingMessage) => Promise<CurrentViewerContext>;
 }
 
 export interface RoomSocketServerHandle {
@@ -51,7 +58,17 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
   const subscriptions = new Map<string, Set<WebSocket>>();
   // socket -> roomIds it is subscribed to (for cleanup on close)
   const socketRooms = new WeakMap<WebSocket, Set<string>>();
+  // socket -> authenticated member id for each subscribed room
+  const socketMembers = new WeakMap<WebSocket, Map<string, string>>();
   let serverSeq = 0;
+  const anonymousViewer: CurrentViewerContext = {
+    viewerUserId: null,
+    isAuthenticated: false,
+    authTrustLevel: 'anonymous',
+    isDevOnly: false,
+    isServiceInternal: false,
+    notes: [],
+  };
 
   // Error-isolated send: a single failing client must never throw into a caller
   // (HTTP mutation handler or another client's loop). On failure we drop the
@@ -73,6 +90,7 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
       for (const roomId of rooms) subscriptions.get(roomId)?.delete(ws);
     }
     socketRooms.delete(ws);
+    socketMembers.delete(ws);
     try {
       ws.terminate();
     } catch {
@@ -107,16 +125,21 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
     return { x: point.x, y: point.y };
   };
 
-  const handleMessage = (ws: WebSocket, raw: Record<string, unknown>): void => {
+  const handleMessage = (ws: WebSocket, raw: Record<string, unknown>, viewer: CurrentViewerContext): void => {
     switch (raw.type) {
       case 'subscribeRoom': {
-        if (typeof raw.roomId !== 'string') {
-          send(ws, { ...envelope(), type: 'error', code: 'invalidMessage', message: 'subscribeRoom requires a roomId.' });
+        if (typeof raw.roomId !== 'string' || typeof raw.memberId !== 'string') {
+          send(ws, { ...envelope(), type: 'error', code: 'invalidMessage', message: 'subscribeRoom requires a roomId and memberId.' });
           return;
         }
         const room = options.registry.get(raw.roomId);
         if (!room) {
           send(ws, { ...envelope(), type: 'error', code: 'roomNotFound', roomId: raw.roomId, message: `No room "${raw.roomId}".` });
+          return;
+        }
+        const access = resolveRoomParticipant({ room, viewer, memberId: raw.memberId });
+        if (!access.allowed) {
+          send(ws, { ...envelope(), type: 'error', code: 'notAuthorized', roomId: raw.roomId, message: 'Authenticated room membership is required.' });
           return;
         }
         let set = subscriptions.get(raw.roomId);
@@ -126,6 +149,7 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
         }
         set.add(ws);
         socketRooms.get(ws)?.add(raw.roomId);
+        socketMembers.get(ws)?.set(raw.roomId, raw.memberId);
         send(ws, { ...envelope(), type: 'subscribedRoom', roomId: raw.roomId });
         serverSeq += 1;
         send(ws, { ...envelope(), type: 'roomSnapshot', roomId: raw.roomId, serverSeq, reason: 'initialSubscribe', payload: { room } });
@@ -138,6 +162,7 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
         }
         subscriptions.get(raw.roomId)?.delete(ws);
         socketRooms.get(ws)?.delete(raw.roomId);
+        socketMembers.get(ws)?.delete(raw.roomId);
         send(ws, { ...envelope(), type: 'unsubscribedRoom', roomId: raw.roomId });
         return;
       }
@@ -159,9 +184,15 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
           send(ws, { ...envelope(), type: 'error', code: 'roomNotFound', roomId: raw.roomId, message: `No room "${raw.roomId}".` });
           return;
         }
+        const subscribedMemberId = socketMembers.get(ws)?.get(raw.roomId);
+        if (subscribedMemberId !== raw.authorMemberId) {
+          send(ws, { ...envelope(), type: 'error', code: 'notAuthorized', roomId: raw.roomId, message: 'Map preview author does not match the authenticated room member.' });
+          return;
+        }
+        const access = resolveRoomRuntimePermission({ room, viewer, memberId: raw.authorMemberId, action: 'map.preview.range.temporary' });
         const author = room.members.find((member) => member.memberId === raw.authorMemberId);
-        if (!author || author.status !== 'active' || raw.mapId.trim() === '' || raw.mapId.length > 240) {
-          send(ws, { ...envelope(), type: 'error', code: 'invalidMessage', roomId: raw.roomId, message: 'Map previews require an active room member and valid mapId.' });
+        if (!access.allowed || !author || raw.mapId.trim() === '' || raw.mapId.length > 240) {
+          send(ws, { ...envelope(), type: 'error', code: 'notAuthorized', roomId: raw.roomId, message: 'Map previews require an authenticated active player with room access.' });
           return;
         }
         let preview: RoomMapLivePreview['preview'];
@@ -198,8 +229,9 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
     }
   };
 
-  wss.on('connection', (ws: WebSocket) => {
+  wss.on('connection', (ws: WebSocket, request: IncomingMessage) => {
     socketRooms.set(ws, new Set<string>());
+    socketMembers.set(ws, new Map<string, string>());
     send(ws, { ...envelope(), type: 'connected', connectionId: randomUUID() });
 
     ws.on('message', (data: unknown) => {
@@ -212,7 +244,9 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
         send(ws, { ...envelope(), type: 'error', code: 'invalidMessage', message: 'Invalid JSON.' });
         return;
       }
-      handleMessage(ws, parsed);
+      Promise.resolve(options.resolveViewer?.(request) ?? anonymousViewer).then((viewer) => handleMessage(ws, parsed, viewer)).catch(() => {
+        send(ws, { ...envelope(), type: 'error', code: 'notAuthorized', message: 'Unable to verify this room connection.' });
+      });
     });
 
     ws.on('close', () => {

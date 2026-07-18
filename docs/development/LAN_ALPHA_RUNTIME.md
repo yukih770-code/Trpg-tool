@@ -67,6 +67,12 @@ explicit development identity behavior remains development-only. In
 `cloudPrivateAlpha`, every player still needs the existing private-alpha session;
 being on the LAN does not permit dev headers or bypass server authorization.
 
+Room Runtime collaboration is additionally bound to the authenticated user and
+that user's room-member record. LAN reachability, a room code, and a copied
+member id do not grant map or Runtime permissions. Temporary previews require
+an active participant; fixed map ranges require the host's explicit, current
+room-session grant and are cleared when the portable Room Server restarts.
+
 Not included: public matchmaking, remote internet play, STUN/TURN/WebRTC, NAT
 traversal, QR codes, mobile polish, database migrations, protocol rewrite, or
 gameplay/rules expansion.

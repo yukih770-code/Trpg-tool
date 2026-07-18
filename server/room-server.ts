@@ -11,8 +11,8 @@
  * official / third-party — LAN is just where it runs (see backendDeploymentTypes).
  */
 
-import { createServer } from 'node:http';
-import express from 'express';
+import { createServer, type IncomingMessage } from 'node:http';
+import express, { type Request } from 'express';
 
 import { createInMemoryRoomRegistry } from './room-registry.js';
 import { createRoom, validateCampaignRef, type CreateRoomInput } from './services/createRoom.js';
@@ -31,6 +31,7 @@ import { createInMemoryRoomMapRegistry } from './room-map-registry.js';
 import { appendRoomMapEvent } from './services/appendRoomMapEvent.js';
 import { listRoomMapEvents } from './services/listRoomMapEvents.js';
 import { setRoomMapMemberPermission } from './services/setRoomMapMemberPermission.js';
+import { mapRuntimeActionForMapEvent, resolveRoomParticipant, resolveRoomRuntimePermission } from './room/roomRuntimePermissionGuard.js';
 import { createInMemoryActorAdmissionRegistry } from './actor-admission-registry.js';
 import { readServerRuntimeConfigFromEnv } from './config/serverRuntimeConfig.js';
 import { readDatabaseRuntimeConfigFromEnv } from './config/databaseRuntimeConfig.js';
@@ -81,7 +82,10 @@ import { createCampaignRoomApiHandlers } from './api/campaignRoomApiHandlers.js'
 import { registerDndPrivateMonsterApiRoutes } from './api/dndPrivateMonsterApiRoutes.js';
 import { createDndPrivateMonsterApiHandlers } from './api/dndPrivateMonsterApiHandlers.js';
 import { createPrivateAlphaAuthService, readPrivateAlphaAuthConfigFromEnv } from './auth/privateAlphaAuth.js';
-import { setPrivateAlphaViewer } from './auth/requestViewer.js';
+import { getVerifiedViewer, setPrivateAlphaViewer } from './auth/requestViewer.js';
+import { createCurrentViewerContextFromAuthSession, type CurrentViewerContext } from './auth/currentViewerContext.js';
+import { resolveApiAuthSession } from './auth/requestAuthSession.js';
+import type { RoomRuntimeAction } from '../src/lib/platform/roomRuntimePermissions.js';
 import { createPrivateAlphaAuthApiHandlers } from './api/privateAlphaAuthApiHandlers.js';
 import { registerPrivateAlphaAuthApiRoutes } from './api/privateAlphaAuthApiRoutes.js';
 import { okResponse } from './api/apiResponse.js';
@@ -133,16 +137,41 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 const privateAlphaAuthService = createPrivateAlphaAuthService(privateAlphaAuthConfig);
+const roomAuthSessionOptions = {
+  allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
+  nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
+};
+
+function resolveRoomRequestViewer(request: Request): CurrentViewerContext {
+  return getVerifiedViewer(request)
+    ?? createCurrentViewerContextFromAuthSession(resolveApiAuthSession({ headers: request.headers }, roomAuthSessionOptions));
+}
+
+async function resolveRoomSocketViewer(request: IncomingMessage): Promise<CurrentViewerContext> {
+  const verified = await privateAlphaAuthService.resolveRequestViewer(request as unknown as Request);
+  if (verified) return verified.viewer;
+
+  // Browsers cannot attach arbitrary headers to a WebSocket handshake. The
+  // local-only query hint is accepted only through the same explicit dev gate
+  // that enables HTTP dev headers; production relies on the session cookie.
+  const requestUrl = new URL(request.url ?? '/', 'http://room.local');
+  const devViewerUserId = requestUrl.searchParams.get('devViewerUserId');
+  const headers = devViewerUserId ? { ...request.headers, 'x-dev-user-id': devViewerUserId } : request.headers;
+  return createCurrentViewerContextFromAuthSession(resolveApiAuthSession({ headers }, roomAuthSessionOptions));
+}
+
 // Only a verified server-side session is attached here. Existing localDev header
 // handling remains inside API handlers and is never enabled in cloud modes.
-app.use('/api', async (req, _res, next) => {
+const attachPrivateAlphaViewer = async (req: Request, _res: express.Response, next: express.NextFunction) => {
   try {
     setPrivateAlphaViewer(req, await privateAlphaAuthService.resolveRequestViewer(req));
   } catch {
     setPrivateAlphaViewer(req, null);
   }
   next();
-});
+};
+app.use('/api', attachPrivateAlphaViewer);
+app.use('/rooms', attachPrivateAlphaViewer);
 
 registerPrivateAlphaAuthApiRoutes(app, createPrivateAlphaAuthApiHandlers({
   service: privateAlphaAuthService,
@@ -185,7 +214,51 @@ const PORT = serverRuntimeConfig.httpPort;
 
 // HTTP server + WebSocket transport scaffold (room snapshot broadcast only).
 const httpServer = createServer(app);
-const roomSocketServer = createRoomSocketServer({ server: httpServer, registry, path: '/ws' });
+const roomSocketServer = createRoomSocketServer({
+  server: httpServer,
+  registry,
+  path: '/ws',
+  resolveViewer: resolveRoomSocketViewer,
+});
+
+function requireRoomRuntimeAction(
+  req: Request,
+  res: express.Response,
+  roomId: string,
+  memberId: string | undefined,
+  action: RoomRuntimeAction,
+) {
+  const room = registry.get(roomId);
+  if (!room) {
+    res.status(404).json({ error: 'roomNotFound', roomId });
+    return undefined;
+  }
+  const access = resolveRoomRuntimePermission({ room, viewer: resolveRoomRequestViewer(req), memberId, action });
+  if (!access.allowed) {
+    res.status(access.code === 'unauthenticated' ? 401 : 403).json({ error: 'notAuthorized', message: 'This room action is not permitted for the current user.' });
+    return undefined;
+  }
+  return room;
+}
+
+function requireRoomParticipant(
+  req: Request,
+  res: express.Response,
+  roomId: string,
+  memberId: string | undefined,
+) {
+  const room = registry.get(roomId);
+  if (!room) {
+    res.status(404).json({ error: 'roomNotFound', roomId });
+    return undefined;
+  }
+  const access = resolveRoomParticipant({ room, viewer: resolveRoomRequestViewer(req), memberId });
+  if (!access.allowed) {
+    res.status(access.code === 'unauthenticated' ? 401 : 403).json({ error: 'notAuthorized', message: 'Authenticated room membership is required.' });
+    return undefined;
+  }
+  return room;
+}
 
 app.get('/health', async (_req, res) => {
   const database = await checkPostgresHealth();
@@ -295,6 +368,11 @@ app.get('/rooms', (_req, res) => {
 
 app.post('/rooms/create', (req, res) => {
   const body = req.body as CreateRoomInput | undefined;
+  const viewer = resolveRoomRequestViewer(req);
+  if (!viewer.isAuthenticated || !viewer.viewerUserId) {
+    res.status(401).json({ error: 'unauthenticated', message: 'An authenticated user is required to create a room.' });
+    return;
+  }
   if (!body || typeof body.hostDisplayName !== 'string' || body.hostDisplayName.trim() === '') {
     res.status(400).json({ error: 'hostDisplayName is required.' });
     return;
@@ -306,7 +384,7 @@ app.post('/rooms/create', (req, res) => {
     res.status(400).json({ error: campaignRefError });
     return;
   }
-  const result = createRoom(body);
+  const result = createRoom({ ...body, hostUserId: viewer.viewerUserId });
   registry.create(result.room);
   roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'roomCreated');
   res.json(result);
@@ -314,6 +392,11 @@ app.post('/rooms/create', (req, res) => {
 
 app.post('/rooms/join', (req, res) => {
   const body = req.body as RoomJoinRequest | undefined;
+  const viewer = resolveRoomRequestViewer(req);
+  if (!viewer.isAuthenticated || !viewer.viewerUserId) {
+    res.status(401).json({ error: 'unauthenticated', message: 'An authenticated user is required to join a room.' });
+    return;
+  }
   if (
     !body ||
     typeof body.inviteCodeOrRoomCode !== 'string' ||
@@ -322,7 +405,7 @@ app.post('/rooms/join', (req, res) => {
     res.status(400).json({ error: 'inviteCodeOrRoomCode and requestedDisplayName are required.' });
     return;
   }
-  const result = joinRoom(registry, body);
+  const result = joinRoom(registry, { ...body, userId: viewer.viewerUserId });
   if (result.roomId) {
     const room = registry.get(result.roomId);
     if (room) roomSocketServer.broadcastRoomSnapshot(room.identity.roomId, room, 'memberJoined');
@@ -330,11 +413,18 @@ app.post('/rooms/join', (req, res) => {
   res.json(result);
 });
 
-// Debug/scaffold read — full snapshot, NO projection filtering yet.
+// Lobby snapshot read. The member id is bound to the authenticated viewer; a
+// room code alone never grants access to the full room snapshot.
 app.get('/rooms/:roomId', (req, res) => {
   const room = registry.get(req.params.roomId);
   if (!room) {
     res.status(404).json({ error: 'roomNotFound', roomId: req.params.roomId });
+    return;
+  }
+  const memberId = typeof req.query.memberId === 'string' ? req.query.memberId : undefined;
+  const access = resolveRoomParticipant({ room, viewer: resolveRoomRequestViewer(req), memberId });
+  if (!access.allowed) {
+    res.status(access.code === 'unauthenticated' ? 401 : 403).json({ error: 'notAuthorized', message: 'Authenticated room membership is required.' });
     return;
   }
   res.json(room);
@@ -342,6 +432,7 @@ app.get('/rooms/:roomId', (req, res) => {
 
 app.post('/rooms/:roomId/members/:memberId/approve', (req, res) => {
   const body = (req.body ?? {}) as { decidedByMemberId?: string };
+  if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.decidedByMemberId, 'room.host.manage')) return;
   const result = approveMember(registry, {
     roomId: req.params.roomId,
     memberId: req.params.memberId,
@@ -355,6 +446,7 @@ app.post('/rooms/:roomId/members/:memberId/approve', (req, res) => {
 
 app.post('/rooms/:roomId/members/:memberId/reject', (req, res) => {
   const body = (req.body ?? {}) as { decidedByMemberId?: string; reason?: string };
+  if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.decidedByMemberId, 'room.host.manage')) return;
   const result = rejectMember(registry, {
     roomId: req.params.roomId,
     memberId: req.params.memberId,
@@ -377,6 +469,7 @@ app.post('/rooms/:roomId/actor-bindings/submit', (req, res) => {
     res.status(400).json({ error: 'memberId and actorRef.displayName are required.' });
     return;
   }
+  if (!requireRoomParticipant(req, res, req.params.roomId, body.memberId)) return;
   const result = submitActorBinding(registry, {
     roomId: req.params.roomId,
     memberId: body.memberId,
@@ -395,6 +488,7 @@ app.post('/rooms/:roomId/actor-bindings/submit', (req, res) => {
 
 app.post('/rooms/:roomId/actor-bindings/:bindingId/approve', (req, res) => {
   const body = (req.body ?? {}) as { reviewerMemberId?: string };
+  if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.reviewerMemberId, 'room.host.manage')) return;
   const result = approveActorBinding(registry, actorAdmissionRegistry, {
     roomId: req.params.roomId,
     bindingId: req.params.bindingId,
@@ -416,6 +510,7 @@ app.post('/rooms/:roomId/actor-bindings/:bindingId/approve', (req, res) => {
 
 app.post('/rooms/:roomId/actor-bindings/:bindingId/reject', (req, res) => {
   const body = (req.body ?? {}) as { reviewerMemberId?: string; rejectionReason?: string };
+  if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.reviewerMemberId, 'room.host.manage')) return;
   const result = rejectActorBinding(registry, actorAdmissionRegistry, {
     roomId: req.params.roomId,
     bindingId: req.params.bindingId,
@@ -434,6 +529,7 @@ app.post('/rooms/:roomId/members/:memberId/ready', (req, res) => {
     res.status(400).json({ error: 'ready (boolean) is required.' });
     return;
   }
+  if (!requireRoomRuntimeAction(req, res, req.params.roomId, req.params.memberId, 'runtime.event.append')) return;
   const result = setMemberReady(registry, actorAdmissionRegistry, {
     roomId: req.params.roomId,
     memberId: req.params.memberId,
@@ -475,6 +571,7 @@ app.get('/rooms/:roomId/runtime-log', (req, res) => {
 
 app.post('/rooms/:roomId/runtime-log/events', (req, res) => {
   const body = (req.body ?? {}) as AppendRoomRuntimeLogEventInput;
+  if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.authorMemberId, 'runtime.event.append')) return;
   const result = appendRuntimeLogEvent(registry, runtimeLogRegistry, {
     roomId: req.params.roomId,
     authorMemberId: body.authorMemberId,
@@ -511,6 +608,8 @@ app.get('/rooms/:roomId/map-events', (req, res) => {
     return;
   }
   const mapId = typeof mapIdRaw === 'string' ? mapIdRaw : undefined;
+  const memberId = typeof req.query.memberId === 'string' ? req.query.memberId : undefined;
+  if (!requireRoomRuntimeAction(req, res, req.params.roomId, memberId, 'map.view')) return;
   const result = listRoomMapEvents(registry, roomMapRegistry, {
     roomId: req.params.roomId,
     afterSeq: afterSeqRaw === undefined ? undefined : Number(afterSeqRaw),
@@ -529,6 +628,7 @@ app.get('/rooms/:roomId/map-events', (req, res) => {
 
 app.post('/rooms/:roomId/map-events', (req, res) => {
   const body = (req.body ?? {}) as AppendRoomMapEventInput;
+  if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.authorMemberId, mapRuntimeActionForMapEvent(body.eventKind))) return;
   const result = appendRoomMapEvent(registry, roomMapRegistry, {
     roomId: req.params.roomId,
     authorMemberId: body.authorMemberId,
@@ -553,6 +653,7 @@ app.post('/rooms/:roomId/map-permissions/:memberId', (req, res) => {
     res.status(400).json({ error: 'invalidMapPermissionRequest' });
     return;
   }
+  if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.authorizedByMemberId, 'room.host.manage')) return;
   const result = setRoomMapMemberPermission(registry, {
     roomId: req.params.roomId,
     authorizedByMemberId: body.authorizedByMemberId,
@@ -564,6 +665,23 @@ app.post('/rooms/:roomId/map-permissions/:memberId', (req, res) => {
     res.status(status).json({ error: result.decision, message: result.message });
     return;
   }
+  // Keep an append-only, host-only audit record while grants remain a
+  // memory-only Room Server capability. It is intentionally not a public
+  // RuntimeLog event and is not a durable authorization history yet.
+  appendRuntimeLogEvent(registry, runtimeLogRegistry, {
+    roomId: req.params.roomId,
+    authorMemberId: body.authorizedByMemberId,
+    kind: 'host.note',
+    visibility: 'hostOnly',
+    text: body.canPinRanges ? 'Granted fixed map range collaboration.' : 'Revoked fixed map range collaboration.',
+    payload: {
+      noteKind: 'mapPermissionAudit',
+      memberId: req.params.memberId,
+      action: 'map.template.fix',
+      granted: body.canPinRanges,
+      scope: 'roomSession',
+    },
+  });
   roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'mapPermissionChanged');
   res.json({ room: result.room });
 });
@@ -581,6 +699,7 @@ app.post('/rooms/:roomId/runtime/dice-roll', (req, res) => {
     res.status(400).json({ ok: false, error: 'invalidExpression', message: 'expression is required.' });
     return;
   }
+  if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.memberId, 'runtime.event.append')) return;
   const result = rollSharedDice(registry, runtimeLogRegistry, {
     roomId: req.params.roomId,
     memberId: body.memberId,

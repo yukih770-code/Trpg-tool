@@ -52,6 +52,10 @@ export interface RoomMapMemberPermissionSummary {
   canPinRanges: boolean;
   canManageTokens: boolean;
   canManagePresentation: boolean;
+  /** Current portable Room Server grants live only for this room process. */
+  grantScope?: 'roomSession';
+  grantedByDisplayName?: string;
+  grantedAt?: string;
 }
 
 /**

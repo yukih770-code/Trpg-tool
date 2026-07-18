@@ -18,7 +18,9 @@ diagonal variant is claimed or enforced.
 ## Ruler and templates
 
 The ruler is temporary page state and does not append an event. It remains
-available to non-manager viewers without changing the shared map state. Generic circle,
+available to non-manager viewers without changing the shared map state. In a
+bound Room Runtime, active players may relay temporary previews; spectators keep
+local-only measurement. Generic circle,
 cone, line, square, and rectangle templates store only geometry, rotation,
 optional label, and visibility. Hosts can add, move, rotate, remove, and clear
 them. Grid/template state is included in `map.*` replay and scene snapshots.
@@ -44,7 +46,10 @@ scene snapshots; old events and snapshots without it use the default safely.
 
 ## Boundaries
 
-The DM remains authority. Templates do not identify targets, apply damage,
+The DM remains authority. In a bound Room Runtime, a host can grant a player the
+narrow, room-session-only ability to create fixed ranges; this never allows
+editing existing templates, changing the grid/background, or manipulating
+tokens. Templates do not identify targets, apply damage,
 modify HP, select spell effects, or encode official spell text. This adds no
 line of sight, walls, fog, pathfinding, collision, backend API, database
 migration, authentication, or WebSocket/LAN protocol change.

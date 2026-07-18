@@ -5,8 +5,9 @@
  *
  * Thin fetch wrapper over the portable Room Server's HTTP scaffold (M9/M10).
  * UI components call these instead of scattering fetch details. No WebSocket, no
- * caching, no auth. Reuses platform room types. `baseUrl` default is the caller's
- * concern (not hardcoded here).
+ * caching, or permission decisions. Browser credentials and the explicitly
+ * gated local-dev viewer header are forwarded consistently so server-side room
+ * authorization can bind a request to its real user. Reuses platform room types.
  */
 
 import type {
@@ -23,6 +24,7 @@ import type {
 } from './roomRuntimeLogTypes';
 import type { SharedDiceRollResponse } from './sharedDiceTypes';
 import type { AppendRoomMapEventInput, RoomMapEvent, RoomMapEventListResult } from './roomMapTypes';
+import { resolveDevViewerUserId } from '../api/apiClient';
 
 export interface RoomServerHttpClientConfig {
   baseUrl: string;
@@ -47,7 +49,12 @@ async function request<T>(config: RoomServerHttpClientConfig, path: string, init
   try {
     res = await fetch(url, {
       ...init,
-      headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+      credentials: init?.credentials ?? 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(resolveDevViewerUserId() ? { 'x-dev-user-id': resolveDevViewerUserId() as string } : {}),
+        ...(init?.headers ?? {}),
+      },
     });
   } catch (err) {
     throw new RoomServerHttpError(0, `Network error contacting ${url}: ${err instanceof Error ? err.message : String(err)}`);
@@ -93,8 +100,10 @@ export interface RoomServerRoomListItem {
 export async function getRoomServerRoom(
   config: RoomServerHttpClientConfig,
   roomId: string,
+  options?: { memberId?: string },
 ): Promise<RoomSnapshot> {
-  return request<RoomSnapshot>(config, `/rooms/${encodeURIComponent(roomId)}`);
+  const query = options?.memberId ? `?memberId=${encodeURIComponent(options.memberId)}` : '';
+  return request<RoomSnapshot>(config, `/rooms/${encodeURIComponent(roomId)}${query}`);
 }
 
 export async function createRoomOnServer(
@@ -121,10 +130,11 @@ export async function approveRoomMemberOnServer(
   config: RoomServerHttpClientConfig,
   roomId: string,
   memberId: string,
+  decidedByMemberId: string,
 ): Promise<unknown> {
   return request<unknown>(config, `/rooms/${encodeURIComponent(roomId)}/members/${encodeURIComponent(memberId)}/approve`, {
     method: 'POST',
-    body: JSON.stringify({}),
+    body: JSON.stringify({ decidedByMemberId }),
   });
 }
 
@@ -132,11 +142,12 @@ export async function rejectRoomMemberOnServer(
   config: RoomServerHttpClientConfig,
   roomId: string,
   memberId: string,
+  decidedByMemberId: string,
   reason?: string,
 ): Promise<unknown> {
   return request<unknown>(config, `/rooms/${encodeURIComponent(roomId)}/members/${encodeURIComponent(memberId)}/reject`, {
     method: 'POST',
-    body: JSON.stringify({ reason }),
+    body: JSON.stringify({ decidedByMemberId, reason }),
   });
 }
 
@@ -225,11 +236,12 @@ export async function appendRoomRuntimeLogEvent(
 export async function listRoomMapEvents(
   config: RoomServerHttpClientConfig,
   roomId: string,
-  options?: { afterSeq?: number; mapId?: string },
+  options?: { afterSeq?: number; mapId?: string; memberId?: string },
 ): Promise<RoomMapEventListResult> {
   const query = new URLSearchParams();
   if (options?.afterSeq !== undefined) query.set('afterSeq', String(options.afterSeq));
   if (options?.mapId) query.set('mapId', options.mapId);
+  if (options?.memberId) query.set('memberId', options.memberId);
   const suffix = query.size > 0 ? `?${query.toString()}` : '';
   return request<RoomMapEventListResult>(config, `/rooms/${encodeURIComponent(roomId)}/map-events${suffix}`);
 }

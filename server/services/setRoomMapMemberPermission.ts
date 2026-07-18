@@ -1,4 +1,4 @@
-/** Host-managed room map collaboration grant (memory-only v0). */
+/** Host-managed room map collaboration grant (room-session scope). */
 
 import type { RoomRegistry } from '../room-registry.js';
 import type { RoomMapMemberPermissionSummary, RoomSnapshot } from '../protocol/room-protocol.js';
@@ -38,6 +38,9 @@ export function setRoomMapMemberPermission(
       canPinRanges: input.canPinRanges,
       canManageTokens: false,
       canManagePresentation: false,
+      grantScope: 'roomSession',
+      grantedByDisplayName: author.displayName,
+      grantedAt: new Date().toISOString(),
     };
     return { ...current, mapPermissions: input.canPinRanges ? [...retained, permission] : retained };
   });

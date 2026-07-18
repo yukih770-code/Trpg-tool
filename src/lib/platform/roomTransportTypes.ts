@@ -29,6 +29,8 @@ export interface RoomSocketEnvelopeBase {
 export interface RoomSocketSubscribeMessage extends RoomSocketEnvelopeBase {
   type: 'subscribeRoom';
   roomId: string;
+  /** Claimed room member id; server binds it to the authenticated socket viewer. */
+  memberId?: string;
 }
 
 export interface RoomSocketUnsubscribeMessage extends RoomSocketEnvelopeBase {
@@ -129,7 +131,7 @@ export interface RoomSocketMapPreviewBroadcastMessage extends RoomSocketEnvelope
   preview: RoomMapLivePreview;
 }
 
-export type RoomSocketErrorCode = 'invalidMessage' | 'roomNotFound' | 'notSubscribed' | 'internalError';
+export type RoomSocketErrorCode = 'invalidMessage' | 'roomNotFound' | 'notSubscribed' | 'notAuthorized' | 'internalError';
 
 export interface RoomSocketErrorMessage extends RoomSocketEnvelopeBase {
   type: 'error';
