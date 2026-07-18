@@ -1,18 +1,19 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from 'react';
 import { createTranslator, type Locale } from '../../i18n';
-import type { CampaignActorInstance, RuntimeEvent } from '../../lib/api/campaignRoomApiClient';
+import type { CampaignActorInstance } from '../../lib/api/campaignRoomApiClient';
 import type { Combatant } from '../../lib/combat/combatRuntimeTypes';
-import { hasMapRuntimeEvents } from '../../lib/map/mapRuntimeReplay';
+import { hasMapRuntimeEvents, type MapRuntimeReplayEvent } from '../../lib/map/mapRuntimeReplay';
 import { useMapRuntimeBoard } from '../../lib/map/useMapRuntimeBoard';
 import { MAP_BACKGROUND_PRESETS, measureMapDistance, snapMapPosition, type MapAreaTemplate, type MapBackgroundPreset, type MapBoardState, type MapRuntimeEventDraft, type MapTemplateShape, type MapToken, type MapTokenSize } from '../../lib/map/mapRuntimeTypes';
 
 type Props = {
   locale: Locale;
   mapId: string;
-  runtimeSessionId: string;
-  runtimeEvents: RuntimeEvent[];
-  campaignActors: CampaignActorInstance[];
-  combatants: Combatant[];
+  mapEvents: MapRuntimeReplayEvent[];
+  /** Read-only scene image fallback until a room map event sets a map image. */
+  fallbackBackgroundUrl?: string;
+  campaignActors?: CampaignActorInstance[];
+  combatants?: Combatant[];
   canManage: boolean;
   onBoardChange?: (state: MapBoardState) => void;
   snapshotBoard?: MapBoardState;
@@ -87,7 +88,7 @@ function templateStyle(template: MapAreaTemplate, board: MapBoardState): CSSProp
   return { ...base, width: length, height: template.shape === 'square' ? length : width };
 }
 
-export function BasicMapBoard({ locale, mapId, runtimeSessionId, runtimeEvents, campaignActors, combatants, canManage, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent }: Props) {
+export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, campaignActors = [], combatants = [], canManage, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent }: Props) {
   const { t } = createTranslator(locale);
   const board = useMapRuntimeBoard(mapId);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -115,17 +116,17 @@ export function BasicMapBoard({ locale, mapId, runtimeSessionId, runtimeEvents, 
   const [eventError, setEventError] = useState('');
   const [imageError, setImageError] = useState(false);
 
-  const mapEvents = runtimeEvents.filter((event) => event.runtimeSessionId === runtimeSessionId && event.eventKind.startsWith('map.'));
-  const mapEventKey = mapEvents.map((event) => event.runtimeEventId).join('|');
+  const mapEventKey = mapEvents.map((event, index) => `${event.seq ?? index}:${event.eventKind}:${event.createdAt ?? ''}`).join('|');
   const selectedToken = board.state.selectedTokenId ? board.state.tokens.find((token) => token.id === board.state.selectedTokenId) : undefined;
   const selectedTemplate = board.state.selectedTemplateId ? (board.state.templates ?? []).find((template) => template.id === board.state.selectedTemplateId) : undefined;
   const grid = board.state.grid;
 
   useEffect(() => {
-    if (restoredScopeRef.current === mapId || !hasMapRuntimeEvents(mapEvents)) return;
+    const restoreKey = `${mapId}:${mapEventKey}`;
+    if (restoredScopeRef.current === restoreKey || !hasMapRuntimeEvents(mapEvents)) return;
     board.restore(mapEvents);
-    restoredScopeRef.current = mapId;
-  }, [board.restore, mapEventKey, mapId]);
+    restoredScopeRef.current = restoreKey;
+  }, [board.restore, mapEventKey, mapEvents, mapId]);
 
   useEffect(() => { onBoardChange?.(board.state); }, [board.state, onBoardChange]);
   useEffect(() => {
@@ -133,11 +134,13 @@ export function BasicMapBoard({ locale, mapId, runtimeSessionId, runtimeEvents, 
     board.replaceState(snapshotBoard);
     importedSnapshotRef.current = snapshotImportVersion;
   }, [board.replaceState, snapshotBoard, snapshotImportVersion]);
+  const displayedBackgroundUrl = board.state.backgroundUrl ?? fallbackBackgroundUrl;
+
   useEffect(() => {
     setBackgroundUrl(board.state.backgroundUrl ?? '');
     setBackgroundName(board.state.backgroundName ?? '');
     setImageError(false);
-  }, [board.state.backgroundUrl, board.state.backgroundName]);
+  }, [board.state.backgroundUrl, board.state.backgroundName, fallbackBackgroundUrl]);
   useEffect(() => {
     setSelectedName(selectedToken?.name ?? '');
     setSelectedSize(selectedToken?.size ?? 'medium');
@@ -271,7 +274,7 @@ export function BasicMapBoard({ locale, mapId, runtimeSessionId, runtimeEvents, 
   } : undefined;
 
   return <section className="mt-5 rounded-2xl border border-[#2f2a22]/12 bg-white p-4 shadow-sm">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{t('mapRuntime.eyebrow')}</div><h4 className="mt-1 text-xl font-black">{t('mapRuntime.title')}</h4><p className="mt-1 text-xs leading-5 text-[#51483d]">{t('mapRuntime.replayNote')}</p></div>{hasMapRuntimeEvents(mapEvents) && <button type="button" onClick={() => { board.restore(mapEvents); restoredScopeRef.current = mapId; }} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-xs font-bold">{t('mapRuntime.restore')}</button>}</div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{t('mapRuntime.eyebrow')}</div><h4 className="mt-1 text-xl font-black">{t('mapRuntime.title')}</h4><p className="mt-1 text-xs leading-5 text-[#51483d]">{t('mapRuntime.replayNote')}</p></div>{hasMapRuntimeEvents(mapEvents) && <button type="button" onClick={() => { board.restore(mapEvents); restoredScopeRef.current = `${mapId}:${mapEventKey}`; }} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-xs font-bold">{t('mapRuntime.restore')}</button>}</div>
 
     <div className="mt-4 rounded-xl border border-[#2f2a22]/12 bg-[#f7f3ea] p-2.5">
       <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -291,7 +294,7 @@ export function BasicMapBoard({ locale, mapId, runtimeSessionId, runtimeEvents, 
     <div ref={boardRef} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} className="relative mt-3 h-[26rem] overflow-hidden rounded-xl border border-[#2f2a22]/12 bg-[#eee8db] touch-none select-none">
       <div className="absolute inset-0" style={{ transform: `translate(${board.state.panX}px, ${board.state.panY}px) scale(${board.state.zoom})`, transformOrigin: 'top left' }}>
         <div aria-hidden="true" className="absolute inset-0" style={backgroundPresetStyle(board.state.backgroundPreset)} />
-        {board.state.backgroundUrl && !imageError && <img src={board.state.backgroundUrl} alt={board.state.backgroundName || t('mapRuntime.background')} onError={() => setImageError(true)} className="absolute inset-0 h-full w-full object-cover" draggable={false} />}
+        {displayedBackgroundUrl && !imageError && <img src={displayedBackgroundUrl} alt={board.state.backgroundName || t('mapRuntime.background')} onError={() => setImageError(true)} className="absolute inset-0 h-full w-full object-cover" draggable={false} />}
         {imageError && <div className="absolute inset-x-4 top-4 rounded-md bg-[#17130f]/75 px-3 py-2 text-center text-xs font-bold text-white">{t('mapRuntime.imageError')}</div>}
         <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={gridStyle} />
         {visibleTemplates.map((template) => <button key={template.id} type="button" data-map-template={template.id} onClick={() => board.selectTemplate(template.id)} title={template.label || templateLabel(template.shape, locale)} className={`absolute border-2 border-[#7b3f00]/70 bg-[#f5c518]/20 shadow-sm ${board.state.selectedTemplateId === template.id ? 'ring-2 ring-[#f5c518]' : ''}`} style={templateStyle(template, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#17130f]/75 px-1.5 py-0.5 text-[10px] font-bold text-white">{template.label || `${template.sizeFeet} ft`}</span></button>)}

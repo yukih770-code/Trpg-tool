@@ -480,8 +480,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                   <BasicMapBoard
                     locale={locale}
                     mapId={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`}
-                    runtimeSessionId={runtimeSessionId}
-                    runtimeEvents={runtimeEvents.events}
+                    mapEvents={runtimeEvents.events.filter((event) => event.runtimeSessionId === runtimeSessionId && event.eventKind.startsWith('map.'))}
                     campaignActors={campaignDetail.actors}
                     combatants={runtimeCombatState.combatants}
                     canManage={canManageServer}

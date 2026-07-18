@@ -7,9 +7,10 @@
  * connect, subscribe to a roomId (via message, not URL), and receive room
  * snapshot envelopes. Exposes `broadcastRoomSnapshot` for HTTP handlers to call.
  *
- * NO auth, NO permission, NO projection/filtering, NO Runtime / RuntimeLog /
- * map / intent payloads. Never imported by the frontend. Room snapshots are
- * always wrapped in an envelope (see roomTransportTypes).
+ * NO auth, NO permission, NO projection/filtering, and no gameplay intent
+ * handling. RuntimeLog and Room Map deltas are relayed as separate envelopes.
+ * Never imported by the frontend. Room snapshots are always wrapped in an
+ * envelope (see roomTransportTypes).
  */
 
 import type { Server as HttpServer } from 'node:http';
@@ -24,6 +25,7 @@ import type {
   RoomSocketServerMessage,
 } from '../../src/lib/platform/roomTransportTypes.js';
 import type { RoomRuntimeLogEvent } from '../protocol/room-protocol.js';
+import type { RoomMapEvent } from '../protocol/room-protocol.js';
 
 export interface CreateRoomSocketServerOptions {
   server: HttpServer;
@@ -34,6 +36,7 @@ export interface CreateRoomSocketServerOptions {
 export interface RoomSocketServerHandle {
   broadcastRoomSnapshot(roomId: string, room: RoomSnapshot, reason: RoomSocketRoomSnapshotReason): void;
   broadcastRuntimeLogAppended(roomId: string, events: RoomRuntimeLogEvent[]): void;
+  broadcastMapEventAppended(roomId: string, events: RoomMapEvent[]): void;
 }
 
 function envelope(): RoomSocketEnvelopeBase {
@@ -178,6 +181,24 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
       const message: RoomSocketServerMessage = {
         ...envelope(),
         type: 'runtimeLogAppended',
+        roomId,
+        serverSeq,
+        events,
+      };
+      const text = JSON.stringify(message);
+      for (const ws of [...set]) {
+        safeSend(ws, text);
+      }
+    },
+
+    broadcastMapEventAppended(roomId, events) {
+      if (events.length === 0) return;
+      const set = subscriptions.get(roomId);
+      if (!set || set.size === 0) return;
+      serverSeq += 1;
+      const message: RoomSocketServerMessage = {
+        ...envelope(),
+        type: 'mapEventAppended',
         roomId,
         serverSeq,
         events,

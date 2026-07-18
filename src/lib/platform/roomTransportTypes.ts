@@ -7,12 +7,13 @@
  * imports only `RoomSnapshot` (type). No React / store / localStorage / server
  * code, no DND/LAN/localhost hardcoding. The room snapshot rides inside an
  * ENVELOPE (`payload`), so a future projection/filtering layer can replace the
- * payload without changing the envelope shape. No Runtime / RuntimeLog / map /
- * intent payloads here.
+ * payload without changing the envelope shape. Room RuntimeLog and Room Map
+ * deltas have their own envelopes; neither rides inside RoomSnapshot.
  */
 
 import type { RoomSnapshot } from './roomTypes.js';
 import type { RoomRuntimeLogEvent } from './roomRuntimeLogTypes.js';
+import type { RoomMapEvent } from './roomMapTypes.js';
 
 export type RoomTransportProtocolVersion = 'room-ws-v0';
 
@@ -97,6 +98,17 @@ export interface RoomSocketRuntimeLogAppendedMessage extends RoomSocketEnvelopeB
   events: RoomRuntimeLogEvent[];
 }
 
+/**
+ * Room Map delta. This is intentionally separate from RuntimeLog so map state
+ * does not masquerade as a social/narrative event stream.
+ */
+export interface RoomSocketMapEventAppendedMessage extends RoomSocketEnvelopeBase {
+  type: 'mapEventAppended';
+  roomId: string;
+  serverSeq: number;
+  events: RoomMapEvent[];
+}
+
 export type RoomSocketErrorCode = 'invalidMessage' | 'roomNotFound' | 'notSubscribed' | 'internalError';
 
 export interface RoomSocketErrorMessage extends RoomSocketEnvelopeBase {
@@ -113,4 +125,5 @@ export type RoomSocketServerMessage =
   | RoomSocketPongMessage
   | RoomSocketRoomSnapshotMessage
   | RoomSocketRuntimeLogAppendedMessage
+  | RoomSocketMapEventAppendedMessage
   | RoomSocketErrorMessage;

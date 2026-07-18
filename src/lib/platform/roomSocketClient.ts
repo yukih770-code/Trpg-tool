@@ -7,7 +7,8 @@
  * `<baseUrl>/ws`, subscribes to rooms (via message, not URL), and surfaces room
  * snapshot envelopes via callbacks. No React, no server (`ws`) import, no
  * localhost hardcoding (caller supplies baseUrl). Handles room transport
- * messages only — no Runtime / RuntimeLog / map.
+ * messages only — no React, stores, or server code. Room RuntimeLog and map
+ * deltas are exposed as typed callbacks rather than being interpreted here.
  */
 
 import type {
@@ -15,6 +16,7 @@ import type {
   RoomSocketEnvelopeBase,
   RoomSocketErrorMessage,
   RoomSocketRoomSnapshotMessage,
+  RoomSocketMapEventAppendedMessage,
   RoomSocketRuntimeLogAppendedMessage,
   RoomSocketServerMessage,
 } from './roomTransportTypes';
@@ -27,6 +29,7 @@ export interface RoomSocketClientOptions {
   onMessage?: (message: RoomSocketServerMessage) => void;
   onRoomSnapshot?: (message: RoomSocketRoomSnapshotMessage) => void;
   onRuntimeLogAppended?: (message: RoomSocketRuntimeLogAppendedMessage) => void;
+  onMapEventAppended?: (message: RoomSocketMapEventAppendedMessage) => void;
   onErrorMessage?: (message: RoomSocketErrorMessage) => void;
   onConnectionStateChange?: (state: RoomSocketConnectionState) => void;
 }
@@ -87,6 +90,7 @@ export function createRoomSocketClient(options: RoomSocketClientOptions): RoomSo
         options.onMessage?.(message);
         if (message.type === 'roomSnapshot') options.onRoomSnapshot?.(message);
         else if (message.type === 'runtimeLogAppended') options.onRuntimeLogAppended?.(message);
+        else if (message.type === 'mapEventAppended') options.onMapEventAppended?.(message);
         else if (message.type === 'error') options.onErrorMessage?.(message);
       };
     },

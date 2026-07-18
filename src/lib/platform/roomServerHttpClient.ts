@@ -22,6 +22,7 @@ import type {
   RoomRuntimeLogListResult,
 } from './roomRuntimeLogTypes';
 import type { SharedDiceRollResponse } from './sharedDiceTypes';
+import type { AppendRoomMapEventInput, RoomMapEvent, RoomMapEventListResult } from './roomMapTypes';
 
 export interface RoomServerHttpClientConfig {
   baseUrl: string;
@@ -215,6 +216,31 @@ export async function appendRoomRuntimeLogEvent(
   input: AppendRoomRuntimeLogEventInput,
 ): Promise<{ event: RoomRuntimeLogEvent }> {
   return request<{ event: RoomRuntimeLogEvent }>(config, `/rooms/${encodeURIComponent(roomId)}/runtime-log/events`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+/** List the distinct append-only Room Map stream; it is not RuntimeLog. */
+export async function listRoomMapEvents(
+  config: RoomServerHttpClientConfig,
+  roomId: string,
+  options?: { afterSeq?: number; mapId?: string },
+): Promise<RoomMapEventListResult> {
+  const query = new URLSearchParams();
+  if (options?.afterSeq !== undefined) query.set('afterSeq', String(options.afterSeq));
+  if (options?.mapId) query.set('mapId', options.mapId);
+  const suffix = query.size > 0 ? `?${query.toString()}` : '';
+  return request<RoomMapEventListResult>(config, `/rooms/${encodeURIComponent(roomId)}/map-events${suffix}`);
+}
+
+/** Append one host-managed Room Map event. The server assigns id, seq, and time. */
+export async function appendRoomMapEvent(
+  config: RoomServerHttpClientConfig,
+  roomId: string,
+  input: AppendRoomMapEventInput,
+): Promise<{ event: RoomMapEvent }> {
+  return request<{ event: RoomMapEvent }>(config, `/rooms/${encodeURIComponent(roomId)}/map-events`, {
     method: 'POST',
     body: JSON.stringify(input),
   });

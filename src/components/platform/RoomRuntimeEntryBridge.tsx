@@ -3,13 +3,17 @@ import { useCallback, useEffect, useState } from 'react';
 import type { RoomRuntimeEntryContext, RoomRuntimeEntryMode } from '../../lib/platform/roomRuntimeEntryTypes';
 import type { RoomCampaignRefSource, RoomReadyStatus, RoomSnapshot } from '../../lib/platform/roomTypes';
 import type { RoomRuntimeLogEvent } from '../../lib/platform/roomRuntimeLogTypes';
+import type { RoomMapEvent } from '../../lib/platform/roomMapTypes';
 import {
+  appendRoomMapEvent,
   appendRoomRuntimeLogEvent,
+  listRoomMapEvents,
   listRoomRuntimeLog,
   rollSharedDice,
   type RoomServerHttpClientConfig,
 } from '../../lib/platform/roomServerHttpClient';
 import { createRoomSocketClient, type RoomSocketConnectionState } from '../../lib/platform/roomSocketClient';
+import { readStoredLocale } from '../../i18n';
 import { RuntimeFullscreenShell, type RuntimeShellMode } from './RuntimeFullscreenShell';
 import { SharedDiceDock } from './SharedDiceDock';
 import { RuntimeActionDock, buildRuntimeDockActions } from './RuntimeActionDock';
@@ -24,6 +28,8 @@ import { resolveRuntimeActorSnapshot } from './runtimeActorSnapshotSource';
 import { RuntimeSceneFocusPanel, type RuntimeSceneFocus } from './RuntimeSceneFocusPanel';
 import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSceneBoardPanel';
 import { RuntimeMapStage } from './RuntimeMapStage';
+import { BasicMapBoard } from './BasicMapBoard';
+import type { MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
 
 /**
  * RoomRuntimeEntryBridge (v0 / UI1a) — multiplayer Runtime Alpha surface.
@@ -37,7 +43,7 @@ import { RuntimeMapStage } from './RuntimeMapStage';
  * RuntimeActor / CampaignActorInstance, permissions, settlement, and store writes
  * remain v0 boundaries. The entry guard result (admissionId /
  * approvedActorBindingId / "已准入角色") is preserved. System-agnostic. No server /
- * WebSocket / RuntimeLog API change.
+ * Room Map uses its own append-only stream; it is not a RuntimeLog event.
  */
 
 export interface RoomRuntimeEntryBridgeProps {
@@ -140,6 +146,12 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const [recentEvents, setRecentEvents] = useState<RoomRuntimeLogEvent[]>([]);
   const [notesLoading, setNotesLoading] = useState(false);
   const [notesError, setNotesError] = useState<string | null>(null);
+  // Distinct from RuntimeLog: host-managed map events rebuild the shared DND
+  // board after refresh and arrive through their own WS message.
+  const roomMapId = `room:${context.roomId}`;
+  const [roomMapEvents, setRoomMapEvents] = useState<RoomMapEvent[]>([]);
+  const [mapLoading, setMapLoading] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
 
   const loadNotes = useCallback(() => {
     setNotesLoading(true);
@@ -156,6 +168,29 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   useEffect(() => {
     loadNotes();
   }, [loadNotes]);
+
+  const mergeRoomMapEvents = useCallback((incoming: RoomMapEvent[]) => {
+    setRoomMapEvents((previous) => {
+      const byId = new Map<string, RoomMapEvent>(previous.map((event) => [event.mapEventId, event]));
+      for (const event of incoming) {
+        if (event.mapId === roomMapId) byId.set(event.mapEventId, event);
+      }
+      return [...byId.values()].sort((left, right) => left.seq - right.seq);
+    });
+  }, [roomMapId]);
+
+  const loadRoomMapEvents = useCallback(() => {
+    setMapLoading(true);
+    setMapError(null);
+    listRoomMapEvents({ baseUrl: context.serverBaseUrl }, context.roomId, { mapId: roomMapId })
+      .then((result) => setRoomMapEvents(result.events.sort((left, right) => left.seq - right.seq)))
+      .catch((error) => setMapError(error instanceof Error ? error.message : String(error)))
+      .finally(() => setMapLoading(false));
+  }, [context.roomId, context.serverBaseUrl, roomMapId]);
+
+  useEffect(() => {
+    loadRoomMapEvents();
+  }, [loadRoomMapEvents]);
 
   const mergeNoteEvent = (event: RoomRuntimeLogEvent) => {
     if (!isNoteKind(event)) return;
@@ -201,12 +236,17 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         if (touchedFeeds) setFeedJustUpdated(true);
         setLastSyncAt(new Date().toISOString());
       },
+      onMapEventAppended: (message) => {
+        if (message.roomId !== context.roomId) return;
+        mergeRoomMapEvents(message.events);
+        setLastSyncAt(new Date().toISOString());
+      },
     });
     client.connect();
     return () => client.close();
     // mergeNoteEvent/isNoteKind only use stable setters — safe to omit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [context.serverBaseUrl, context.roomId]);
+  }, [context.serverBaseUrl, context.roomId, mergeRoomMapEvents]);
 
   // Brief "刚刚更新" perception window for the feeds.
   useEffect(() => {
@@ -242,6 +282,17 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     mergeNoteEvent(event);
     // Feed the shared log panel too (same live-event path as own dice rolls).
     setLogLiveEvents((prev) => [...prev, event]);
+  };
+
+  const appendMapEvent = async (event: MapRuntimeEventDraft) => {
+    if (!context.currentMemberId) throw new Error('需要成员身份才能修改地图。');
+    const response = await appendRoomMapEvent({ baseUrl: context.serverBaseUrl }, context.roomId, {
+      authorMemberId: context.currentMemberId,
+      mapId: roomMapId,
+      eventKind: event.eventKind,
+      payload: event.payload,
+    });
+    mergeRoomMapEvents([response.event]);
   };
 
   const handlePublishPublicInfo = async (input: { title?: string; body: string }) => {
@@ -490,6 +541,11 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
           信息拉取失败，可点击面板中的「刷新」重试。实时推送不受影响。
         </div>
       )}
+      {!syncDown && mapError && (
+        <div className="rounded border border-amber-500/40 bg-amber-50/80 px-2 py-1.5 text-[10px] leading-relaxed text-amber-800">
+          地图记录拉取失败，当前地图可能不是最新。重新进入桌面后会再次尝试恢复。
+        </div>
+      )}
       <div className={card}>
         <div className={`mb-1 ${label}`}>房间概览</div>
         <div className="flex flex-wrap gap-3 text-[11px]">
@@ -571,8 +627,20 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     </div>
   );
 
-  // ── Main stage: map-first tabletop (scene image fills it; HUD floats) ──────
-  const mainStage = <RuntimeMapStage scene={currentScene} role={shellMode} loading={notesLoading} />;
+  // ── Main stage: DND gets the shared Room Map board; other systems keep the
+  // existing scene stage until they define their own map interaction contracts.
+  const mainStage = context.systemId === 'dnd5e-2024' ? (
+    <BasicMapBoard
+      locale={readStoredLocale()}
+      mapId={roomMapId}
+      mapEvents={roomMapEvents}
+      fallbackBackgroundUrl={currentScene?.mapUrl}
+      canManage={shellMode === 'host' && !!context.currentMemberId}
+      onAppendEvent={appendMapEvent}
+    />
+  ) : (
+    <RuntimeMapStage scene={currentScene} role={shellMode} loading={notesLoading || mapLoading} />
+  );
 
   return (
     <RuntimeFullscreenShell

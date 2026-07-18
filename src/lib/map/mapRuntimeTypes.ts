@@ -69,20 +69,25 @@ export type MapTokenInput = Omit<MapToken, 'id' | 'name' | 'x' | 'y'> & {
   y?: number;
 };
 
+export const MAP_RUNTIME_EVENT_KINDS = [
+  'map.background_set',
+  'map.background_cleared',
+  'map.viewport_changed',
+  'map.token_added',
+  'map.token_moved',
+  'map.token_updated',
+  'map.token_removed',
+  'map.grid_updated',
+  'map.template_added',
+  'map.template_updated',
+  'map.template_removed',
+  'map.templates_cleared',
+] as const;
+
+export type MapRuntimeEventKind = typeof MAP_RUNTIME_EVENT_KINDS[number];
+
 export type MapRuntimeEventDraft = {
-  eventKind:
-    | 'map.background_set'
-    | 'map.background_cleared'
-    | 'map.viewport_changed'
-    | 'map.token_added'
-    | 'map.token_moved'
-    | 'map.token_updated'
-    | 'map.token_removed'
-    | 'map.grid_updated'
-    | 'map.template_added'
-    | 'map.template_updated'
-    | 'map.template_removed'
-    | 'map.templates_cleared';
+  eventKind: MapRuntimeEventKind;
   payload: Record<string, unknown>;
 };
 

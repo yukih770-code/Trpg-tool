@@ -1,4 +1,3 @@
-import type { RuntimeEvent } from '../api/campaignRoomApiClient';
 import {
   createMapBoardState,
   createMapAreaTemplate,
@@ -12,7 +11,17 @@ import {
   type MapTokenInput,
 } from './mapRuntimeTypes';
 
-export type MapRuntimeReplayEvent = Pick<RuntimeEvent, 'eventKind' | 'payload' | 'seq' | 'createdAt'>;
+/**
+ * Minimum append-only shape needed to rebuild a map board. Both the campaign
+ * Runtime event service and the Room Map stream satisfy this shape; neither is
+ * treated as the other.
+ */
+export type MapRuntimeReplayEvent = {
+  eventKind: string;
+  payload: Record<string, unknown>;
+  seq?: number;
+  createdAt?: string;
+};
 
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -172,6 +181,6 @@ export function replayMapRuntimeEvents(events: ReadonlyArray<MapRuntimeReplayEve
   return state;
 }
 
-export function hasMapRuntimeEvents(events: ReadonlyArray<Pick<RuntimeEvent, 'eventKind'>>): boolean {
+export function hasMapRuntimeEvents(events: ReadonlyArray<Pick<MapRuntimeReplayEvent, 'eventKind'>>): boolean {
   return events.some((event) => event.eventKind.startsWith('map.'));
 }

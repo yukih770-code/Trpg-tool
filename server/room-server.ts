@@ -6,8 +6,8 @@
  * Minimal Express HTTP scaffold for the portable Room Server. Provides health +
  * room create/join/list over an in-memory registry, plus a minimal
  * dependency-free CORS middleware and a WebSocket transport scaffold at /ws
- * (room snapshot broadcast only). NO Runtime / RuntimeLog / map sync, NO
- * database, NO auth, NO projection. Same server application runs LAN-hosted /
+ * (room snapshots plus separate RuntimeLog and Room Map deltas). No database
+ * persistence for portable room state, NO auth, NO projection. Same server application runs LAN-hosted /
  * official / third-party — LAN is just where it runs (see backendDeploymentTypes).
  */
 
@@ -27,6 +27,9 @@ import { appendRuntimeLogEvent } from './services/appendRuntimeLogEvent.js';
 import { listRuntimeLogEvents } from './services/listRuntimeLogEvents.js';
 import { rollSharedDice } from './services/rollSharedDice.js';
 import { createInMemoryRuntimeLogRegistry } from './runtime-log-registry.js';
+import { createInMemoryRoomMapRegistry } from './room-map-registry.js';
+import { appendRoomMapEvent } from './services/appendRoomMapEvent.js';
+import { listRoomMapEvents } from './services/listRoomMapEvents.js';
 import { createInMemoryActorAdmissionRegistry } from './actor-admission-registry.js';
 import { readServerRuntimeConfigFromEnv } from './config/serverRuntimeConfig.js';
 import { readDatabaseRuntimeConfigFromEnv } from './config/databaseRuntimeConfig.js';
@@ -66,7 +69,7 @@ import {
 } from './db/postgresVisibilitySchemaReadiness.js';
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
 import { createRoomSocketServer } from './transport/roomSocketServer.js';
-import type { AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol/room-protocol.js';
+import type { AppendRoomMapEventInput, AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol/room-protocol.js';
 // P5.10G: dev-only read-only User routes (gated; never in production).
 import { registerUserDevRoutes } from './api/userDevRoutes.js';
 import { defaultPostgresUserApiHandlers } from './api/userApiHandlers.js';
@@ -173,6 +176,8 @@ registerDndPrivateMonsterApiRoutes(app, createDndPrivateMonsterApiHandlers({
 const registry = createInMemoryRoomRegistry();
 // Separate, memory-only RuntimeLog store — NOT part of RoomSnapshot (M21).
 const runtimeLogRegistry = createInMemoryRuntimeLogRegistry();
+// Separate, memory-only map event stream. Not RoomSnapshot and not RuntimeLog.
+const roomMapRegistry = createInMemoryRoomMapRegistry();
 // Memory-only ActorAdmission store for Character Clearance (M24.2b).
 const actorAdmissionRegistry = createInMemoryActorAdmissionRegistry();
 const PORT = serverRuntimeConfig.httpPort;
@@ -487,6 +492,55 @@ app.post('/rooms/:roomId/runtime-log/events', (req, res) => {
   if (result.event && result.event.visibility === 'public') {
     roomSocketServer.broadcastRuntimeLogAppended(result.event.roomId, [result.event]);
   }
+  res.json({ event: result.event });
+});
+
+// ── Room Map stream v0 ─────────────────────────────────────────────────────
+// Host-managed append-only map events. Map data stays out of RuntimeLog and
+// RoomSnapshot. Memory-only until a future persistence boundary is introduced.
+app.get('/rooms/:roomId/map-events', (req, res) => {
+  const afterSeqRaw = req.query.afterSeq;
+  const mapIdRaw = req.query.mapId;
+  if (afterSeqRaw !== undefined && (typeof afterSeqRaw !== 'string' || !/^\d+$/.test(afterSeqRaw))) {
+    res.status(400).json({ error: 'invalidAfterSeq' });
+    return;
+  }
+  if (mapIdRaw !== undefined && (typeof mapIdRaw !== 'string' || mapIdRaw.trim() === '')) {
+    res.status(400).json({ error: 'invalidMapId' });
+    return;
+  }
+  const mapId = typeof mapIdRaw === 'string' ? mapIdRaw : undefined;
+  const result = listRoomMapEvents(registry, roomMapRegistry, {
+    roomId: req.params.roomId,
+    afterSeq: afterSeqRaw === undefined ? undefined : Number(afterSeqRaw),
+    mapId,
+  });
+  if (result.decision === 'roomNotFound') {
+    res.status(404).json({ error: 'roomNotFound' });
+    return;
+  }
+  if (result.decision !== 'ok') {
+    res.status(400).json({ error: 'invalidMapRequest', message: result.message });
+    return;
+  }
+  res.json(result.result);
+});
+
+app.post('/rooms/:roomId/map-events', (req, res) => {
+  const body = (req.body ?? {}) as AppendRoomMapEventInput;
+  const result = appendRoomMapEvent(registry, roomMapRegistry, {
+    roomId: req.params.roomId,
+    authorMemberId: body.authorMemberId,
+    mapId: body.mapId,
+    eventKind: body.eventKind,
+    payload: body.payload,
+  });
+  if (result.decision !== 'appended' || !result.event) {
+    const status = result.decision === 'roomNotFound' || result.decision === 'memberNotFound' ? 404 : 400;
+    res.status(status).json({ error: result.decision, message: result.message });
+    return;
+  }
+  roomSocketServer.broadcastMapEventAppended(result.event.roomId, [result.event]);
   res.json({ event: result.event });
 });
 

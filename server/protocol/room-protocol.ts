@@ -51,6 +51,13 @@ export type {
   RoomRuntimeLogListResult,
 } from '../../src/lib/platform/roomRuntimeLogTypes.js';
 
+export type {
+  RoomMapEvent,
+  RoomMapEventKind,
+  RoomMapEventListResult,
+  AppendRoomMapEventInput,
+} from '../../src/lib/platform/roomMapTypes.js';
+
 export type { BackendDeploymentProfile } from '../../src/lib/platform/backendDeploymentTypes.js';
 
 export type { StorageAdapterCapabilitySummary } from '../../src/lib/platform/storageAdapterBoundaryTypes.js';
