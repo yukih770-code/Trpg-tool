@@ -12,6 +12,11 @@ type Props = {
   mapEvents: MapRuntimeReplayEvent[];
   /** Read-only scene image fallback until a room map event sets a map image. */
   fallbackBackgroundUrl?: string;
+  /** Optional scene context shown over the board without becoming map state. */
+  sceneTitle?: string;
+  sceneDescription?: string;
+  /** Source-specific boundary note; defaults to the legacy campaign map note. */
+  statusNote?: string;
   campaignActors?: CampaignActorInstance[];
   combatants?: Combatant[];
   canManage: boolean;
@@ -42,6 +47,7 @@ function backgroundPresetStyle(preset: MapBackgroundPreset | undefined): CSSProp
     light_grid: { backgroundColor: '#edf2ef', backgroundImage: 'linear-gradient(rgba(68,91,91,.13) 1px, transparent 1px), linear-gradient(90deg, rgba(68,91,91,.13) 1px, transparent 1px)', backgroundSize: '24px 24px' },
     dark_dungeon: { backgroundColor: '#293036', backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,.045) 25%, transparent 25%), linear-gradient(-45deg, rgba(255,255,255,.045) 25%, transparent 25%)', backgroundSize: '26px 26px' },
     stone_floor: { backgroundColor: '#a9a59a', backgroundImage: 'linear-gradient(30deg, rgba(65,61,54,.13) 12%, transparent 12.5%, transparent 87%, rgba(65,61,54,.13) 87.5%)', backgroundSize: '36px 30px' },
+    town_square: { backgroundColor: '#b7a487', backgroundImage: 'linear-gradient(45deg, rgba(91,74,55,.20) 25%, transparent 25%, transparent 75%, rgba(91,74,55,.20) 75%), linear-gradient(-45deg, rgba(255,255,255,.16) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.16) 75%)', backgroundSize: '42px 42px' },
     grassland: { backgroundColor: '#718d5b', backgroundImage: 'radial-gradient(circle at 30% 40%, rgba(216,231,157,.25), transparent 28%), radial-gradient(circle at 70% 65%, rgba(51,88,49,.25), transparent 34%)' },
     sand: { backgroundColor: '#d7b77a', backgroundImage: 'radial-gradient(circle, rgba(255,255,255,.18) 1px, transparent 1.5px)', backgroundSize: '12px 12px' },
     water: { backgroundColor: '#5d9bb5', backgroundImage: 'repeating-linear-gradient(0deg, rgba(255,255,255,.16) 0 1px, transparent 1px 14px), repeating-linear-gradient(90deg, rgba(35,88,118,.12) 0 1px, transparent 1px 24px)' },
@@ -71,8 +77,8 @@ function templateLabel(shape: MapTemplateShape, locale: Locale): string {
 }
 
 function presetLabel(preset: MapBackgroundPreset, locale: Locale): string {
-  const zh: Record<MapBackgroundPreset, string> = { blank: '空白', parchment: '羊皮纸', light_grid: '浅色网格', dark_dungeon: '暗色地牢', stone_floor: '石板地面', grassland: '草地', sand: '沙地', water: '水域', tactical_gray: '灰色战术板' };
-  const en: Record<MapBackgroundPreset, string> = { blank: 'Blank', parchment: 'Parchment', light_grid: 'Light grid', dark_dungeon: 'Dark dungeon', stone_floor: 'Stone floor', grassland: 'Grassland', sand: 'Sand', water: 'Water', tactical_gray: 'Tactical gray' };
+  const zh: Record<MapBackgroundPreset, string> = { blank: '空白', parchment: '羊皮纸', light_grid: '浅色网格', dark_dungeon: '暗色地牢', stone_floor: '石板地面', town_square: '城镇广场', grassland: '草地', sand: '沙地', water: '水域', tactical_gray: '灰色战术板' };
+  const en: Record<MapBackgroundPreset, string> = { blank: 'Blank', parchment: 'Parchment', light_grid: 'Light grid', dark_dungeon: 'Dark dungeon', stone_floor: 'Stone floor', town_square: 'Town square', grassland: 'Grassland', sand: 'Sand', water: 'Water', tactical_gray: 'Tactical gray' };
   return locale === 'en' ? en[preset] : zh[preset];
 }
 
@@ -88,7 +94,7 @@ function templateStyle(template: MapAreaTemplate, board: MapBoardState): CSSProp
   return { ...base, width: length, height: template.shape === 'square' ? length : width };
 }
 
-export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, campaignActors = [], combatants = [], canManage, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent }: Props) {
+export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], canManage, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent }: Props) {
   const { t } = createTranslator(locale);
   const board = useMapRuntimeBoard(mapId);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -274,7 +280,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   } : undefined;
 
   return <section className="mt-5 rounded-2xl border border-[#2f2a22]/12 bg-white p-4 shadow-sm">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{t('mapRuntime.eyebrow')}</div><h4 className="mt-1 text-xl font-black">{t('mapRuntime.title')}</h4><p className="mt-1 text-xs leading-5 text-[#51483d]">{t('mapRuntime.replayNote')}</p></div>{hasMapRuntimeEvents(mapEvents) && <button type="button" onClick={() => { board.restore(mapEvents); restoredScopeRef.current = `${mapId}:${mapEventKey}`; }} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-xs font-bold">{t('mapRuntime.restore')}</button>}</div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{t('mapRuntime.eyebrow')}</div><h4 className="mt-1 text-xl font-black">{t('mapRuntime.title')}</h4><p className="mt-1 text-xs leading-5 text-[#51483d]">{statusNote ?? t('mapRuntime.replayNote')}</p></div>{hasMapRuntimeEvents(mapEvents) && <button type="button" onClick={() => { board.restore(mapEvents); restoredScopeRef.current = `${mapId}:${mapEventKey}`; }} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-xs font-bold">{t('mapRuntime.restore')}</button>}</div>
 
     <div className="mt-4 rounded-xl border border-[#2f2a22]/12 bg-[#f7f3ea] p-2.5">
       <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -297,6 +303,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
         {displayedBackgroundUrl && !imageError && <img src={displayedBackgroundUrl} alt={board.state.backgroundName || t('mapRuntime.background')} onError={() => setImageError(true)} className="absolute inset-0 h-full w-full object-cover" draggable={false} />}
         {imageError && <div className="absolute inset-x-4 top-4 rounded-md bg-[#17130f]/75 px-3 py-2 text-center text-xs font-bold text-white">{t('mapRuntime.imageError')}</div>}
         <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={gridStyle} />
+        {(sceneTitle?.trim() || sceneDescription?.trim()) && <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(20rem,70%)] rounded-lg border border-white/60 bg-white/80 px-3 py-2 shadow-lg backdrop-blur-sm"><div className="text-[13px] font-black text-[#2f2a22]">{sceneTitle?.trim() || '当前场景'}</div>{sceneDescription?.trim() && <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-[11px] leading-relaxed text-[#51483d]">{sceneDescription.trim()}</p>}</div>}
         {visibleTemplates.map((template) => <button key={template.id} type="button" data-map-template={template.id} onClick={() => board.selectTemplate(template.id)} title={template.label || templateLabel(template.shape, locale)} className={`absolute border-2 border-[#7b3f00]/70 bg-[#f5c518]/20 shadow-sm ${board.state.selectedTemplateId === template.id ? 'ring-2 ring-[#f5c518]' : ''}`} style={templateStyle(template, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#17130f]/75 px-1.5 py-0.5 text-[10px] font-bold text-white">{template.label || `${template.sizeFeet} ft`}</span></button>)}
         {measurement && <div aria-hidden="true" className="absolute h-0 origin-left border-t-2 border-dashed border-[#294966]" style={{ left: `${measurement.start.x}%`, top: `${measurement.start.y}%`, width: `${Math.hypot(measurement.end.x - measurement.start.x, measurement.end.y - measurement.start.y)}%`, transform: `rotate(${Math.atan2(measurement.end.y - measurement.start.y, measurement.end.x - measurement.start.x) * 180 / Math.PI}deg)` }} />}
         {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white px-2 py-1 text-xs font-bold shadow ${token.isHidden ? 'bg-[#51483d]/70 text-white' : 'bg-[#58180d] text-white'} ${board.state.selectedTokenId === token.id ? 'ring-4 ring-[#f5c518]/70' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={token.notes || token.name}>{token.name}{grid?.showCoordinates && <span className="ml-1 opacity-80">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}

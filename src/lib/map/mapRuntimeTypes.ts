@@ -2,7 +2,7 @@ export type MapTokenSize = 'tiny' | 'small' | 'medium' | 'large' | 'huge' | 'gar
 
 export type MapTokenSourceType = 'combatant' | 'campaign_actor' | 'manual' | 'unknown';
 
-export const MAP_BACKGROUND_PRESETS = ['blank', 'parchment', 'light_grid', 'dark_dungeon', 'stone_floor', 'grassland', 'sand', 'water', 'tactical_gray'] as const;
+export const MAP_BACKGROUND_PRESETS = ['blank', 'parchment', 'light_grid', 'dark_dungeon', 'stone_floor', 'town_square', 'grassland', 'sand', 'water', 'tactical_gray'] as const;
 
 export type MapBackgroundPreset = typeof MAP_BACKGROUND_PRESETS[number];
 

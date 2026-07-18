@@ -16,6 +16,7 @@ import { RuntimePublicInfoPanel, type RuntimePublicInfoItem } from './RuntimePub
 import { RuntimeManualStateLogPanel, type RuntimeStateLogItem } from './RuntimeManualStateLogPanel';
 import { RuntimeCharacterSheetPanel } from './RuntimeCharacterSheetPanel';
 import { RuntimeMapStage } from './RuntimeMapStage';
+import { BasicMapBoard } from './BasicMapBoard';
 import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSceneBoardPanel';
 import { RuntimeSceneFocusPanel, type RuntimeSceneFocus } from './RuntimeSceneFocusPanel';
 import { resolveRuntimeActorSnapshot } from './runtimeActorSnapshotSource';
@@ -26,6 +27,8 @@ import { describeRuntimeMode } from './runtimeModeContract';
 import { CharacterClearanceSummary } from './CharacterClearanceSummary';
 import { rollSharedDiceExpression, formatSharedDiceRoll } from '../../lib/platform/sharedDiceExpression';
 import type { RoomLaunchActionState } from '../../lib/platform/hostedRoomLaunch';
+import type { MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
+import type { MapRuntimeReplayEvent } from '../../lib/map/mapRuntimeReplay';
 
 // Dev-only: the Runtime Layout Shell Preview (RuntimeSlotShell + DND combat dev
 // panel) is hidden from normal Runtime; flip to true only for layout debugging.
@@ -135,6 +138,22 @@ export function CampaignRuntimeShell({
   const runtimeSystemId = toLocalCampaignSystemId(context.systemId);
   const appendRuntimeLogEvent = useRuntimeLogLocalStore((state) => state.appendRuntimeLogEvent);
   const runtimeLogEvents = useRuntimeLogEventsForCampaign(context.campaignId);
+  // Local DND map interaction is deliberately session-local. It gives the
+  // single-table path the same ruler and preset terrain tools without claiming
+  // room sync or durable campaign map storage.
+  const localMapId = `local:${context.campaignId}`;
+  const [localMapEvents, setLocalMapEvents] = useState<MapRuntimeReplayEvent[]>([]);
+  const appendLocalMapEvent = async (event: MapRuntimeEventDraft) => {
+    setLocalMapEvents((previous) => [
+      ...previous,
+      {
+        eventKind: event.eventKind,
+        payload: event.payload,
+        seq: previous.length === 0 ? 1 : (previous[previous.length - 1].seq ?? previous.length) + 1,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+  };
 
   const participantItems = [
     ['campaignRuntime.participants.host', isHost ? t('campaignRuntime.status.current') : t('campaignRuntime.status.placeholder')],
@@ -525,9 +544,23 @@ export function CampaignRuntimeShell({
     </div>
   );
 
-  // M67: the local main stage is now the shared map-first tabletop (local scene
-  // focus drives it), replacing the old static placeholder.
-  const mainStage = <RuntimeMapStage scene={currentScene} role={shellMode} />;
+  // DND local Runtime uses the interactive board; COC/CP keep the shared static
+  // scene stage until their system-specific map interaction contracts exist.
+  const mainStage = context.systemId === 'dnd5e-2024' ? (
+    <BasicMapBoard
+      locale={readStoredLocale()}
+      mapId={localMapId}
+      mapEvents={localMapEvents}
+      fallbackBackgroundUrl={currentScene?.mapUrl}
+      sceneTitle={currentScene?.title}
+      sceneDescription={currentScene?.body}
+      statusNote="本地地图仅在当前运行页面保留；开启联机房间后可使用实时地图同步。"
+      canManage={isHost}
+      onAppendEvent={appendLocalMapEvent}
+    />
+  ) : (
+    <RuntimeMapStage scene={currentScene} role={shellMode} />
+  );
 
   const summaryRow = (k: string, v: string) => (
     <div className={`rounded border p-2 ${theme.card}`}>

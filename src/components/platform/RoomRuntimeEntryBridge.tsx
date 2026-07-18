@@ -635,6 +635,9 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       mapId={roomMapId}
       mapEvents={roomMapEvents}
       fallbackBackgroundUrl={currentScene?.mapUrl}
+      sceneTitle={currentScene?.title}
+      sceneDescription={currentScene?.body}
+      statusNote="房间地图会实时同步；当前 Room Server 重启后需要重新设置。"
       canManage={shellMode === 'host' && !!context.currentMemberId}
       onAppendEvent={appendMapEvent}
     />
