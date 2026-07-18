@@ -652,3 +652,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   permission grants; player token movement remains disabled until a trusted
   server-side ownership rule exists; no asset upload, fog/LOS, pathfinding,
   automatic damage, or rules automation.
+
+## Character Entry Canonicalization Bridge (P5.CHARACTER-ENTRY-CANONICALIZATION-BRIDGE)
+- Read `docs/implementation/P5_CHARACTER_ENTRY_CANONICALIZATION_BRIDGE.md`
+  before adding a character-entry-to-map path. `EntryCharacterRef` is a pure
+  display normalization seam: local campaign selection remains local; only an
+  approved and clearance-approved Room Lobby binding becomes a Room Runtime map
+  candidate. It does not decide readiness, entry eligibility, map permissions,
+  token ownership, or character persistence.

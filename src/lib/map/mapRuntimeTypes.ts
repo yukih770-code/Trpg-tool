@@ -1,7 +1,7 @@
 export type MapTokenSize = 'tiny' | 'small' | 'medium' | 'large' | 'huge' | 'gargantuan' | 'custom';
 
 /** `campaign_actor` and `combatant` are existing persisted values. */
-export type MapTokenSourceType = 'combatant' | 'campaign_actor' | 'dndLiteActor' | 'monsterTemplate' | 'manual' | 'unknown';
+export type MapTokenSourceType = 'combatant' | 'campaign_actor' | 'dndLiteActor' | 'monsterTemplate' | 'vaultActor' | 'roomActorBinding' | 'quickDraft' | 'manual' | 'unknown';
 
 export type MapTokenKind = 'playerCharacter' | 'npc' | 'monster' | 'companion' | 'object' | 'unknown';
 

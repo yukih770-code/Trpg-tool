@@ -56,6 +56,7 @@
     "frontend:verify:map-runtime": "tsx src/lib/map/mapRuntimeReplaySmoke.ts",
     "frontend:verify:map-replay": "tsx src/lib/map/mapRuntimeReplaySmoke.ts",
     "frontend:verify:actor-presence": "tsx src/lib/map/actorPresenceSmoke.ts",
+    "frontend:verify:character-entry": "tsx src/lib/platform/entryCharacterRefSmoke.ts",
     "room:verify:map-bridge": "tsx server/roomMapBridgeSmoke.ts",
     "runtime:verify:room-permissions": "tsx server/room/roomRuntimePermissionSmoke.ts",
     "frontend:verify:room-permissions": "tsx src/lib/platform/roomRuntimePermissionsSmoke.ts",

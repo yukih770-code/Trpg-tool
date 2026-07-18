@@ -1,5 +1,6 @@
 import { createCombatant } from '../combat/combatRuntimeTypes';
 import { resolveRoomRuntimePermissions } from '../platform/roomRuntimePermissions';
+import { entryCharacterFromRoomBinding, entryCharacterToPresenceCandidate } from '../platform/entryCharacterRef';
 import { createSceneRuntimeSnapshot, importSceneRuntimeSnapshot } from '../scene/sceneRuntimeSnapshot';
 import { campaignActorPresenceCandidate, combatantPresenceCandidate, linkedTokenForCandidate, toMapTokenPrototype, tokenInitials, tokenWithCombatProjection } from './actorPresence';
 import { replayMapRuntimeEvents } from './mapRuntimeReplay';
@@ -14,12 +15,20 @@ const combatant = createCombatant({ id: 'combat-1', displayName: 'Ariadne', kind
 const combatCandidate = combatantPresenceCandidate(combatant);
 const heroToken = createMapToken({ id: 'token-hero', ...toMapTokenPrototype(hero, { x: 50, y: 50 }) });
 const combatToken = createMapToken({ id: 'token-combat', ...toMapTokenPrototype(combatCandidate, { x: 55, y: 55 }) });
+const admittedRoomEntry = entryCharacterFromRoomBinding({
+  bindingId: 'binding-1', memberId: 'member-1',
+  actorRef: { systemId: 'dnd5e-2024', actorId: 'actor-1', displayName: 'Ariadne', source: 'localActorVault' },
+  status: 'approved', submittedAt: '2026-07-18T00:00:00.000Z',
+  clearance: { admissionId: 'admission-1', status: 'approved', updatedAt: '2026-07-18T00:00:00.000Z' },
+}, { memberId: 'member-1', userId: 'user-a', displayName: 'Ariadne', role: 'player', status: 'active' });
+const admittedRoomCandidate = entryCharacterToPresenceCandidate(admittedRoomEntry);
 
 const cases: Array<{ name: string; run: () => void }> = [
   { name: 'old manual token still works', run: () => assert(createMapToken({ id: 'legacy', name: 'Marker', x: 1, y: 2, size: 'medium', sourceType: 'manual' }).name === 'Marker', 'manual token changed') },
   { name: 'old map token event replays', run: () => assert(replayMapRuntimeEvents([{ eventKind: 'map.token_added', payload: { token: { id: 'legacy', name: 'Marker', x: 1, y: 2, size: 'medium', sourceType: 'manual' } } }], 'map').tokens.length === 1, 'legacy event failed') },
   { name: 'campaign actor creates map token', run: () => assert(heroToken.campaignActorId === 'actor-1' && heroToken.kind === 'playerCharacter', 'campaign actor metadata missing') },
   { name: 'DND Lite actor creates map token', run: () => assert(toMapTokenPrototype(dndLite, { x: 0, y: 0 }).sourceType === 'dndLiteActor', 'DND Lite prototype missing') },
+  { name: 'admitted room binding creates a presence candidate', run: () => assert(admittedRoomEntry?.isApprovedForRoom && admittedRoomCandidate?.sourceType === 'roomActorBinding', 'room binding presence missing') },
   { name: 'monster template creates map token', run: () => assert(toMapTokenPrototype(monster, { x: 0, y: 0 }).kind === 'monster', 'monster prototype missing') },
   { name: 'combatant creates linked token', run: () => assert(combatToken.combatantId === 'combat-1', 'combat link missing') },
   { name: 'duplicate linked token is detected', run: () => assert(linkedTokenForCandidate([heroToken], hero)?.id === heroToken.id, 'duplicate link not detected') },

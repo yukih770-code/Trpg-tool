@@ -154,3 +154,16 @@ Character Vault or Campaign Actor is a long-term source, a Map Token is a
 scene projection, and a Combatant is a combat instance. Token ownership fields
 are display metadata only; the room runtime guard remains authoritative and
 player token movement is intentionally deferred.
+
+## Character Entry Canonicalization Bridge (P5.CHARACTER-ENTRY-CANONICALIZATION-BRIDGE)
+
+- Files: `src/lib/platform/entryCharacterRef.ts`,
+  `src/lib/platform/entryCharacterRefSmoke.ts`,
+  `src/components/platform/RoomRuntimeEntryBridge.tsx`,
+  `src/components/platform/BasicMapBoard.tsx`.
+- Normalizes legacy entry drafts, campaign actors, DND Lite actors, and Room
+  Lobby bindings for display and optional map presence.
+- Don't violate: local selection is not room submission; only approved binding
+  plus approved clearance is a Room Runtime candidate; source metadata is not
+  token ownership, map permission, readiness authority, or cross-device
+  character synchronization.

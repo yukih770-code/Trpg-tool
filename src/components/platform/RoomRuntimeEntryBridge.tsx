@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { RoomRuntimeEntryContext, RoomRuntimeEntryMode } from '../../lib/platform/roomRuntimeEntryTypes';
 import type { RoomCampaignRefSource, RoomReadyStatus, RoomSnapshot } from '../../lib/platform/roomTypes';
@@ -32,6 +32,8 @@ import { RuntimeSceneFocusPanel, type RuntimeSceneFocus } from './RuntimeSceneFo
 import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSceneBoardPanel';
 import { RuntimeMapStage } from './RuntimeMapStage';
 import { BasicMapBoard } from './BasicMapBoard';
+import { entryCharacterFromRoomBinding, entryCharacterToPresenceCandidate } from '../../lib/platform/entryCharacterRef';
+import type { MapTokenPresenceCandidate } from '../../lib/map/actorPresence';
 import type { MapInteractionPreview, MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
 
 /**
@@ -455,6 +457,20 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const myBinding = actorBindings.find((b) => b.memberId === context.currentMemberId);
   const myMember = members.find((m) => m.memberId === context.currentMemberId);
 
+  // Cleared room entries are display candidates only; room permissions still
+  // govern every map action.
+  const roomEntryCharacterCandidates = useMemo<MapTokenPresenceCandidate[]>(
+    () => actorBindings.flatMap((binding) => {
+      const member = members.find((candidate) => candidate.memberId === binding.memberId);
+      const entryCharacter = entryCharacterFromRoomBinding(binding, member);
+      const presenceCandidate = entryCharacter?.isApprovedForRoom
+        ? entryCharacterToPresenceCandidate(entryCharacter)
+        : undefined;
+      return presenceCandidate ? [presenceCandidate] : [];
+    }),
+    [actorBindings, members],
+  );
+
   // M57 resolve a REAL character snapshot for the current player from the local
   // character stores (DND / COC / CP-RED), matched by actor id then name. This is
   // the current user's own vault, so it resolves the player's own "我的角色";
@@ -713,6 +729,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       locale={readStoredLocale()}
       mapId={roomMapId}
       mapEvents={roomMapEvents}
+      actorPresenceCandidates={roomEntryCharacterCandidates}
       fallbackBackgroundUrl={currentScene?.mapUrl}
       sceneTitle={currentScene?.title}
       sceneDescription={currentScene?.body}

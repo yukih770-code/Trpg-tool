@@ -28,6 +28,17 @@ not enabled in this slice: owner/control metadata is only a UI hint until the
 server has a verified per-token ownership grant. Spectators remain view-only.
 The authenticated room-member permission guard remains authoritative.
 
+## Character entry bridge
+
+`EntryCharacterRef` normalizes lightweight display data from legacy campaign
+entry selection, campaign actors, DND Lite sheets, and Room Lobby bindings. A
+local draft is never automatically placed in a room. The Runtime map receives a
+Room Lobby entry only after its binding and clearance are both approved. These
+are source hints for map projection, not token ownership or an authority grant.
+
+Read `P5_CHARACTER_ENTRY_CANONICALIZATION_BRIDGE.md` before adding another
+character-to-token path.
+
 ## Not Included
 
 No asset upload, full token editor, fog/LOS/pathfinding, automatic range

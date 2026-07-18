@@ -399,6 +399,8 @@ export function CampaignLibraryShell({
       campaignRoomCode: campaign.roomCode,
       systemId,
       selectedEntryRole: 'host',
+      selectedActorId: effectiveSuggestedActor?.actorId,
+      selectedActorName: effectiveSuggestedActor?.actorName,
       source: 'campaignEntry',
       returnTo,
     });
@@ -1489,11 +1491,11 @@ function CampaignDetail({
           <div className={`mt-4 rounded-lg border p-3 text-xs leading-relaxed ${theme.badge}`}>
             <div className={`font-bold ${theme.accent}`}>
               {effectiveSuggestedActor
-                ? `已带入角色：${effectiveSuggestedActor.actorName}`
-                : '已带入一个角色上下文'}
+                ? `已选择角色：${effectiveSuggestedActor.actorName}`
+                : '已选择一个角色上下文'}
             </div>
             <p className="mt-1 opacity-80">
-              该角色来自角色库选择战役流程。当前主持战役详情仅保留主持人工作台；玩家入场请走“加入战役”。正式角色准入、安检与绑定将在 Character Clearance 阶段实现。
+              该角色仅保存在本地战役入口草稿中，尚未提交到联机大厅。当前主持战役详情仅保留主持人工作台；玩家入场请走“加入战役”。
             </p>
             {hasStaleDraftActor && (
               <p className={`mt-2 ${theme.muted}`}>

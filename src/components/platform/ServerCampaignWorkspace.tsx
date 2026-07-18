@@ -24,6 +24,11 @@ import type { CombatRuntimeEventDraft, CombatRuntimeTableState } from '../../lib
 import type { CombatDamagePreset } from '../../lib/combat/combatComfort';
 import type { MapBoardState, MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
 import type { MapTokenPresenceCandidate } from '../../lib/map/actorPresence';
+import {
+  entryCharacterFromCampaignActor,
+  entryCharacterFromDndLiteActor,
+  entryCharacterToPresenceCandidate,
+} from '../../lib/platform/entryCharacterRef';
 import type { SceneRuntimeSnapshot } from '../../lib/scene/sceneRuntimeSnapshotTypes';
 import type { DndRuntimeEventDraft } from '../../lib/dnd/dndDiceTypes';
 import type { DndLiteActorSheet, DndLiteCombatantPrefill } from '../../lib/dnd/dndLiteActorTypes';
@@ -213,16 +218,11 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const actorPresenceCandidates = useMemo<MapTokenPresenceCandidate[]>(() => [
     ...campaignDetail.actors.flatMap((actor) => {
       const sheet = dndActorSheets[actor.campaignActorInstanceId];
-      if (!sheet) return [];
-      return [{
-        sourceType: 'dndLiteActor' as const,
-        sourceId: actor.campaignActorInstanceId,
-        campaignActorId: actor.campaignActorInstanceId,
-        ownerUserId: actor.ownerId,
-        displayName: sheet.displayName || actor.displayName,
-        kind: sheet.actorKind === 'pc' ? 'playerCharacter' as const : sheet.actorKind === 'monster' ? 'monster' as const : sheet.actorKind === 'npc' ? 'npc' as const : 'unknown' as const,
-        hpSummary: { current: sheet.defenses.currentHp, max: sheet.defenses.maxHp, temporary: sheet.defenses.temporaryHp },
-      }];
+      const entryCharacter = sheet
+        ? entryCharacterFromDndLiteActor(actor.campaignActorInstanceId, sheet, actor.ownerId)
+        : entryCharacterFromCampaignActor(actor);
+      const candidate = entryCharacterToPresenceCandidate(entryCharacter);
+      return candidate ? [candidate] : [];
     }),
     ...dndMonsters.monsters.map((monster) => ({
       sourceType: 'monsterTemplate' as const,
@@ -504,7 +504,6 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     locale={locale}
                     mapId={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`}
                     mapEvents={runtimeEvents.events.filter((event) => event.runtimeSessionId === runtimeSessionId && event.eventKind.startsWith('map.'))}
-                    campaignActors={campaignDetail.actors}
                     combatants={runtimeCombatState.combatants}
                     actorPresenceCandidates={actorPresenceCandidates}
                     canManage={canManageServer}

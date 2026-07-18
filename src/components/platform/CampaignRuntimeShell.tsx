@@ -29,6 +29,7 @@ import { rollSharedDiceExpression, formatSharedDiceRoll } from '../../lib/platfo
 import type { RoomLaunchActionState } from '../../lib/platform/hostedRoomLaunch';
 import type { MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
 import type { MapRuntimeReplayEvent } from '../../lib/map/mapRuntimeReplay';
+import { entryCharacterFromCampaignSuggestedActor, entryCharacterToPresenceCandidate } from '../../lib/platform/entryCharacterRef';
 
 // Dev-only: the Runtime Layout Shell Preview (RuntimeSlotShell + DND combat dev
 // panel) is hidden from normal Runtime; flip to true only for layout debugging.
@@ -308,6 +309,16 @@ export function CampaignRuntimeShell({
     matchConfidence: snapshotResult.matchConfidence,
   });
   const inventorySummary = buildRuntimeInventorySummary({ snapshot: snapshotResult.snapshot, systemId: context.systemId });
+  // A local host may carry the selected campaign-entry character into the
+  // local map. This is not a Room Lobby submission or remote-player approval.
+  const localHostCarriedCandidate = isHost
+    ? entryCharacterToPresenceCandidate(entryCharacterFromCampaignSuggestedActor(
+      context.selectedActorId && context.selectedActorName
+        ? { actorId: context.selectedActorId, actorName: context.selectedActorName }
+        : undefined,
+      { systemId: context.systemId, isHostCarried: true },
+    ))
+    : undefined;
 
   // ── M67 local scene focus (local RuntimeLog, no server) ────────────────────
   const handleLocalSetScene = (input: { title?: string; body: string; mapUrl?: string }) => {
@@ -551,10 +562,11 @@ export function CampaignRuntimeShell({
       locale={readStoredLocale()}
       mapId={localMapId}
       mapEvents={localMapEvents}
+      actorPresenceCandidates={localHostCarriedCandidate ? [localHostCarriedCandidate] : []}
       fallbackBackgroundUrl={currentScene?.mapUrl}
       sceneTitle={currentScene?.title}
       sceneDescription={currentScene?.body}
-      statusNote="本地地图仅在当前运行页面保留；开启联机房间后可使用实时地图同步。"
+      statusNote={`${localHostCarriedCandidate ? `主持人带入角色：${localHostCarriedCandidate.displayName}。` : ''}本地地图仅在当前运行页面保留；开启联机房间后可使用实时地图同步。`}
       presentation="runtime"
       canManage={isHost}
       onAppendEvent={appendLocalMapEvent}

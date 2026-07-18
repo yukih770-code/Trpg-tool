@@ -363,7 +363,7 @@ export function RoomLobbyShell({
         ? '待审批'
         : myBindingStatus === 'rejected'
           ? '需重新提交'
-          : '未绑定';
+          : '等待选择角色';
   const myReadyLabel = myReady === 'ready' ? '已准备' : '未准备';
   // Runtime Entry Bridge eligibility (read-only preview; NOT real runtime).
   const entryEligibility = evaluateRoomRuntimeEntryEligibility(room ?? undefined, currentMemberId);
@@ -785,7 +785,7 @@ export function RoomLobbyShell({
                       <div className="text-sm font-black text-slate-900">{member.displayName}</div>
                       <div className="mt-0.5 flex flex-wrap gap-1">
                         {isMe && <span className="rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-bold text-sky-700">我</span>}
-                        <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{ROLE_LABEL[member.role]}</span>
+                        <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{member.role === 'player' && !binding ? '等待选择角色' : ROLE_LABEL[member.role]}</span>
                         <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{STATUS_LABEL[member.status]}</span>
                       </div>
                     </div>
@@ -797,7 +797,7 @@ export function RoomLobbyShell({
                   <div className="mt-2 space-y-1 text-[11px]">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-500">角色</span>
-                      <span className="font-bold text-slate-800">{binding?.actorRef.displayName ?? '未绑定'}</span>
+                      <span className="font-bold text-slate-800">{binding?.actorRef.displayName ?? '等待选择角色'}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-500">准入</span>
@@ -843,14 +843,14 @@ export function RoomLobbyShell({
 
       {/* Actor binding (pre-session draft) */}
       <section className={card}>
-        <div className={`mb-1.5 ${label}`}>我的角色</div>
+        <div className={`mb-1.5 ${label}`}>提交入场角色</div>
         <p className="mb-2 text-[10px] text-slate-500">
-          把你准备用于本房间的角色提交给主持人。完整角色安检暂未启用；当前只提交角色身份与绑定草稿，不写入角色库，也不会创建正式战役内角色实例。
+          把你准备用于本房间的角色提交给主持人。当前仅验证入场摘要；完整规则校验尚未启用，不会写入角色库或创建正式战役内角色实例。
         </p>
 
         <div className="mb-3 rounded border border-slate-300/40 bg-white/70 p-2 text-[11px]">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-bold text-slate-800">当前绑定：{myBinding?.actorRef.displayName ?? '未绑定'}</span>
+            <span className="font-bold text-slate-800">当前绑定：{myBinding?.actorRef.displayName ?? '等待选择角色'}</span>
             <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${BINDING_TONE[myBindingStatus]}`}>{BINDING_LABEL[myBindingStatus]}</span>
             {myBinding && <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">角色来源：{SOURCE_LABEL[myBinding.actorRef.source]}</span>}
             {myBinding && <ClearanceBadge status={myClearanceStatus} />}

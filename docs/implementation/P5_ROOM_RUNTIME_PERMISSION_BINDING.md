@@ -33,6 +33,15 @@ Pending members may subscribe for lobby status after their identity is matched,
 but Runtime actions require an active room member. A WebSocket may publish a
 temporary preview only for the member identity it successfully subscribed as.
 
+## Character entry projection
+
+An actor binding is not a token and a local campaign entry selection is not a
+room submission. The frontend may project a binding into the map candidate list
+only after `binding.status` and clearance status are both approved. The existing
+Room Runtime permission guard still decides placement and every subsequent map
+operation. No token ownership or player movement permission is inferred from
+the binding metadata.
+
 ## Grant lifecycle and audit
 
 `map.template.fix` is a narrow `roomSession` grant. It travels in the live room
@@ -54,4 +63,3 @@ after one authoritative room-membership source exists.
 
 - `npm run runtime:verify:room-permissions`
 - `npm run frontend:verify:room-permissions`
-
