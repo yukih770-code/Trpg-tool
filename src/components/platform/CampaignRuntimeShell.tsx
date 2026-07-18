@@ -555,6 +555,7 @@ export function CampaignRuntimeShell({
       sceneTitle={currentScene?.title}
       sceneDescription={currentScene?.body}
       statusNote="本地地图仅在当前运行页面保留；开启联机房间后可使用实时地图同步。"
+      presentation="runtime"
       canManage={isHost}
       onAppendEvent={appendLocalMapEvent}
     />

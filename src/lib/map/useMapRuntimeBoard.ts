@@ -37,8 +37,8 @@ export function useMapRuntimeBoard(mapId: string) {
 
   const setBackgroundPreset = useCallback((backgroundPreset: unknown): MapRuntimeEventDraft => {
     const preset = createMapBackgroundPreset(backgroundPreset);
-    setState((previous) => ({ ...previous, backgroundPreset: preset, updatedAt: new Date().toISOString() }));
-    return { eventKind: 'map.background_set', payload: { backgroundPreset: preset } };
+    setState((previous) => ({ ...previous, backgroundPreset: preset, backgroundUrl: undefined, backgroundName: undefined, updatedAt: new Date().toISOString() }));
+    return { eventKind: 'map.background_set', payload: { backgroundPreset: preset, clearCustomBackground: true } };
   }, []);
 
   const clearBackground = useCallback((): MapRuntimeEventDraft => {

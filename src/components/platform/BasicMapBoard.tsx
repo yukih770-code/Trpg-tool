@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from 'react';
+import { Grid3X3, Hand, Image, Minus, MousePointer2, Plus, RotateCcw, Ruler, Shapes } from 'lucide-react';
 import { createTranslator, type Locale } from '../../i18n';
 import type { CampaignActorInstance } from '../../lib/api/campaignRoomApiClient';
 import type { Combatant } from '../../lib/combat/combatRuntimeTypes';
@@ -24,6 +25,8 @@ type Props = {
   snapshotBoard?: MapBoardState;
   snapshotImportVersion?: number;
   onAppendEvent?: (event: MapRuntimeEventDraft) => Promise<void>;
+  /** Workspace keeps the full editor; Runtime uses a compact tabletop overlay. */
+  presentation?: 'workspace' | 'runtime';
 };
 
 type ToolMode = 'select' | 'move' | 'measure' | 'template';
@@ -94,7 +97,7 @@ function templateStyle(template: MapAreaTemplate, board: MapBoardState): CSSProp
   return { ...base, width: length, height: template.shape === 'square' ? length : width };
 }
 
-export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], canManage, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent }: Props) {
+export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], canManage, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace' }: Props) {
   const { t } = createTranslator(locale);
   const board = useMapRuntimeBoard(mapId);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -267,6 +270,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     } else if (drag.kind === 'pan' && canManage) {
       emit(board.changeViewport({ panX: board.state.panX, panY: board.state.panY, zoom: board.state.zoom }));
     }
+    if (drag.kind === 'measure') setMeasurement(undefined);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
@@ -278,6 +282,59 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     backgroundSize: `${grid.sizePx}px ${grid.sizePx}px`,
     backgroundPosition: `${grid.originX}px ${grid.originY}px`,
   } : undefined;
+
+  if (presentation === 'runtime') {
+    const toolButtonClass = (active: boolean) => `grid h-9 w-9 place-items-center rounded-lg border text-[#2f2a22] shadow-sm transition ${active ? 'border-[#58180d]/60 bg-[#fff0d6] text-[#58180d]' : 'border-white/70 bg-white/90 hover:bg-white'}`;
+    const compactPanelClass = 'absolute left-16 top-3 z-30 w-[min(20rem,calc(100%-5.5rem))] rounded-xl border border-slate-300/80 bg-white/95 p-3 shadow-xl backdrop-blur-sm';
+
+    return <section className="relative h-full min-h-0 w-full overflow-hidden bg-[#e5ebf3]">
+      <div
+        ref={boardRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        className={`absolute inset-0 touch-none select-none ${toolMode === 'measure' ? 'cursor-crosshair' : toolMode === 'move' ? 'cursor-grab' : 'cursor-default'}`}
+      >
+        <div className="absolute inset-0" style={{ transform: `translate(${board.state.panX}px, ${board.state.panY}px) scale(${board.state.zoom})`, transformOrigin: 'top left' }}>
+          <div aria-hidden="true" className="absolute inset-0" style={backgroundPresetStyle(board.state.backgroundPreset)} />
+          {displayedBackgroundUrl && !imageError && <img src={displayedBackgroundUrl} alt={board.state.backgroundName || t('mapRuntime.background')} onError={() => setImageError(true)} className="absolute inset-0 h-full w-full object-cover" draggable={false} />}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={gridStyle} />
+          {imageError && <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-md bg-slate-900/80 px-3 py-2 text-center text-xs font-bold text-white">{t('mapRuntime.imageError')}</div>}
+          {(sceneTitle?.trim() || sceneDescription?.trim()) && <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(20rem,70%)] rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2 shadow-lg backdrop-blur-sm"><div className="text-[13px] font-black text-slate-800">{sceneTitle?.trim() || '当前场景'}</div>{sceneDescription?.trim() && <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-[11px] leading-relaxed text-slate-600">{sceneDescription.trim()}</p>}</div>}
+          {visibleTemplates.map((template) => <button key={template.id} type="button" data-map-template={template.id} onClick={() => board.selectTemplate(template.id)} title={template.label || templateLabel(template.shape, locale)} className={`absolute border-2 border-[#7b3f00]/70 bg-[#f5c518]/20 shadow-sm ${board.state.selectedTemplateId === template.id ? 'ring-2 ring-[#f5c518]' : ''}`} style={templateStyle(template, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#17130f]/75 px-1.5 py-0.5 text-[10px] font-bold text-white">{template.label || `${template.sizeFeet} ft`}</span></button>)}
+          {measurement && <div aria-hidden="true" className="absolute h-0 origin-left border-t-2 border-dashed border-[#294966]" style={{ left: `${measurement.start.x}%`, top: `${measurement.start.y}%`, width: `${Math.hypot(measurement.end.x - measurement.start.x, measurement.end.y - measurement.start.y)}%`, transform: `rotate(${Math.atan2(measurement.end.y - measurement.start.y, measurement.end.x - measurement.start.x) * 180 / Math.PI}deg)` }} />}
+          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white px-2 py-1 text-xs font-bold shadow ${token.isHidden ? 'bg-[#51483d]/70 text-white' : 'bg-[#58180d] text-white'} ${board.state.selectedTokenId === token.id ? 'ring-4 ring-[#f5c518]/70' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={token.notes || token.name}>{token.name}{grid?.showCoordinates && <span className="ml-1 opacity-80">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
+        </div>
+      </div>
+
+      <div className="absolute left-3 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-1.5 rounded-xl border border-slate-300/70 bg-slate-50/85 p-1.5 shadow-lg backdrop-blur-sm">
+        <button type="button" title={t('mapRuntime.toolSelect')} aria-label={t('mapRuntime.toolSelect')} onClick={() => { setToolMode('select'); setMeasurement(undefined); }} className={toolButtonClass(toolMode === 'select')}><MousePointer2 size={17} /></button>
+        <button type="button" title={t('mapRuntime.toolMove')} aria-label={t('mapRuntime.toolMove')} onClick={() => { setToolMode('move'); setMeasurement(undefined); }} className={toolButtonClass(toolMode === 'move')}><Hand size={17} /></button>
+        <button type="button" title={t('mapRuntime.toolMeasure')} aria-label={t('mapRuntime.toolMeasure')} onClick={() => { setToolMode('measure'); setMeasurement(undefined); }} className={toolButtonClass(toolMode === 'measure')}><Ruler size={17} /></button>
+        {canManage && <>
+          <span className="mx-1 h-px bg-slate-300/80" />
+          <button type="button" title={t('mapRuntime.toolBackground')} aria-label={t('mapRuntime.toolBackground')} onClick={() => setActivePanel(activePanel === 'background' ? undefined : 'background')} className={toolButtonClass(activePanel === 'background')}><Image size={17} /></button>
+          <button type="button" title={t('mapRuntime.toolGrid')} aria-label={t('mapRuntime.toolGrid')} onClick={() => setActivePanel(activePanel === 'grid' ? undefined : 'grid')} className={toolButtonClass(activePanel === 'grid')}><Grid3X3 size={17} /></button>
+          <button type="button" title={t('mapRuntime.toolTemplate')} aria-label={t('mapRuntime.toolTemplate')} onClick={() => { setToolMode('template'); setActivePanel(activePanel === 'template' ? undefined : 'template'); }} className={toolButtonClass(toolMode === 'template')}><Shapes size={17} /></button>
+        </>}
+      </div>
+
+      {canManage && activePanel === 'background' && <div className={compactPanelClass}><div className="flex items-center justify-between gap-3"><div><div className="text-sm font-black text-slate-800">基础地形</div><p className="mt-0.5 text-[11px] text-slate-500">选择一张底图；网格会叠加在上方。</p></div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div><div className="mt-3 grid grid-cols-2 gap-2">{MAP_BACKGROUND_PRESETS.map((preset) => <button key={preset} type="button" onClick={() => emit(board.setBackgroundPreset(preset))} className={`h-16 rounded-lg border p-2 text-left text-[11px] font-bold shadow-sm ${board.state.backgroundPreset === preset ? 'border-[#58180d] ring-2 ring-[#f5c518]/60' : 'border-slate-300/80'}`} style={backgroundPresetStyle(preset)}><span className="rounded bg-white/80 px-1.5 py-0.5 text-[#17130f]">{presetLabel(preset, locale)}</span></button>)}</div><form onSubmit={(event) => { event.preventDefault(); emit(board.setBackground(backgroundUrl, backgroundName)); }} className="mt-3 grid gap-2"><input value={backgroundUrl} onChange={(event) => setBackgroundUrl(event.target.value)} placeholder={t('mapRuntime.backgroundUrl')} className="rounded-md border border-slate-300 bg-white px-2.5 py-2 text-xs" /><div className="flex gap-2"><input value={backgroundName} onChange={(event) => setBackgroundName(event.target.value)} placeholder={t('mapRuntime.backgroundName')} className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2.5 py-2 text-xs" /><button type="submit" disabled={!backgroundUrl.trim()} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">使用图片</button></div></form>{board.state.backgroundUrl && <button type="button" onClick={() => emit(board.clearBackground())} className="mt-2 text-xs font-bold text-[#8b3a2f]">{t('mapRuntime.resetToPreset')}</button>}</div>}
+
+      {canManage && activePanel === 'grid' && <div className={compactPanelClass}><div className="flex items-center justify-between"><div className="text-sm font-black text-slate-800">网格与测距</div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div><div className="mt-3 grid gap-2 text-xs"><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={grid?.enabled ?? false} onChange={(event) => emit(board.updateGrid({ enabled: event.target.checked }))} />显示网格</label><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={grid?.snap ?? false} onChange={(event) => emit(board.updateGrid({ snap: event.target.checked }))} />拖拽吸附</label><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={grid?.showCoordinates ?? false} onChange={(event) => emit(board.updateGrid({ showCoordinates: event.target.checked }))} />显示坐标</label><div className="grid grid-cols-2 gap-2"><label className="grid gap-1 text-[11px] text-slate-600">格子像素<input value={gridSize} onChange={(event) => setGridSize(event.target.value)} onBlur={() => emit(board.updateGrid({ sizePx: Number(gridSize) }))} type="number" min="12" className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" /></label><label className="grid gap-1 text-[11px] text-slate-600">每格英尺<input value={feetPerSquare} onChange={(event) => setFeetPerSquare(event.target.value)} onBlur={() => emit(board.updateGrid({ feetPerSquare: Number(feetPerSquare) }))} type="number" min="1" className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" /></label></div></div></div>}
+
+      {canManage && activePanel === 'template' && <div className={compactPanelClass}><div className="flex items-center justify-between"><div className="text-sm font-black text-slate-800">范围模板</div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div><p className="mt-1 text-[11px] text-slate-500">选好形状后，在地图上点一下放置。</p><div className="mt-3 flex flex-wrap gap-1.5">{templateShapes.map((shape) => <button key={shape} type="button" onClick={() => setTemplateShape(shape)} className={`rounded-md border px-2 py-1 text-xs font-bold ${templateShape === shape ? 'border-[#58180d]/50 bg-[#fff0d6] text-[#58180d]' : 'border-slate-300 bg-white'}`}>{templateLabel(shape, locale)}</button>)}</div><div className="mt-2 flex flex-wrap gap-1.5">{quickTemplateSizes.map((size) => <button key={size} type="button" onClick={() => setTemplateSize(String(size))} className={`rounded-full border px-2 py-1 text-[11px] font-bold ${templateSize === String(size) ? 'border-[#58180d]/50 bg-[#fff0d6] text-[#58180d]' : 'border-slate-300 bg-white'}`}>{size} ft</button>)}</div></div>}
+
+      {selectedToken && canManage && <div className="absolute right-3 top-3 z-20 w-56 rounded-xl border border-slate-300/80 bg-white/95 p-3 shadow-xl backdrop-blur-sm"><div className="flex items-center justify-between gap-2"><div className="text-sm font-black text-slate-800">{selectedToken.name}</div><button type="button" onClick={() => board.selectToken(undefined)} className="text-xs font-bold text-slate-500">关闭</button></div><p className="mt-1 text-[11px] text-slate-500">{sourceLabel(selectedToken.sourceType, locale)}</p><div className="mt-3 flex gap-2"><button type="button" onClick={() => emit(board.updateToken(selectedToken.id, { isHidden: !selectedToken.isHidden }))} className="rounded-md border border-slate-300 px-2 py-1.5 text-xs font-bold">{selectedToken.isHidden ? t('mapRuntime.showToken') : t('mapRuntime.hideToken')}</button><button type="button" onClick={() => emit(board.removeToken(selectedToken.id))} className="rounded-md border border-[#8b3a2f]/30 px-2 py-1.5 text-xs font-bold text-[#8b3a2f]">{t('mapRuntime.removeToken')}</button></div></div>}
+
+      {measurementDistance && <div className="pointer-events-none absolute bottom-4 left-1/2 z-20 -translate-x-1/2 rounded-full bg-slate-900/85 px-3 py-1.5 text-xs font-bold text-white shadow-lg">{measurementDistance.feet.toFixed(1)} ft · {measurementDistance.squares.toFixed(1)} {t('mapRuntime.squares')}</div>}
+      {lastMovement && <div className="pointer-events-none absolute bottom-4 right-3 z-20 rounded-md bg-white/90 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 shadow">{lastMovement.name} · {lastMovement.feet.toFixed(1)} ft</div>}
+      {eventError && <div className="absolute bottom-3 left-3 z-20 rounded-md bg-[#fff0eb]/95 px-2.5 py-1.5 text-xs font-bold text-[#8b3a2f] shadow">{eventError}</div>}
+      <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-slate-300/70 bg-white/90 p-1 shadow-lg backdrop-blur-sm"><button type="button" title="缩小" aria-label="缩小" onClick={() => changeViewport({ zoom: board.state.zoom - 0.1 })} className="grid h-8 w-8 place-items-center rounded-md hover:bg-slate-100"><Minus size={16} /></button><span className="min-w-12 text-center text-[11px] font-bold text-slate-600">{Math.round(board.state.zoom * 100)}%</span><button type="button" title="放大" aria-label="放大" onClick={() => changeViewport({ zoom: board.state.zoom + 0.1 })} className="grid h-8 w-8 place-items-center rounded-md hover:bg-slate-100"><Plus size={16} /></button><button type="button" title={t('mapRuntime.resetView')} aria-label={t('mapRuntime.resetView')} onClick={() => changeViewport({ zoom: 1, panX: 0, panY: 0 })} className="grid h-8 w-8 place-items-center rounded-md hover:bg-slate-100"><RotateCcw size={15} /></button>{hasMapRuntimeEvents(mapEvents) && <button type="button" title={t('mapRuntime.restore')} aria-label={t('mapRuntime.restore')} onClick={() => { board.restore(mapEvents); restoredScopeRef.current = `${mapId}:${mapEventKey}`; }} className="rounded-md px-2 text-[11px] font-bold text-slate-700 hover:bg-slate-100">恢复</button>}</div>
+      {statusNote && <div title={statusNote} className="pointer-events-none absolute bottom-3 right-3 z-10 max-w-40 truncate rounded bg-slate-900/45 px-2 py-1 text-[9px] font-bold text-white/90">{canManage ? '主持人地图控制' : '地图视图'}</div>}
+    </section>;
+  }
 
   return <section className="mt-5 rounded-2xl border border-[#2f2a22]/12 bg-white p-4 shadow-sm">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{t('mapRuntime.eyebrow')}</div><h4 className="mt-1 text-xl font-black">{t('mapRuntime.title')}</h4><p className="mt-1 text-xs leading-5 text-[#51483d]">{statusNote ?? t('mapRuntime.replayNote')}</p></div>{hasMapRuntimeEvents(mapEvents) && <button type="button" onClick={() => { board.restore(mapEvents); restoredScopeRef.current = `${mapId}:${mapEventKey}`; }} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-xs font-bold">{t('mapRuntime.restore')}</button>}</div>

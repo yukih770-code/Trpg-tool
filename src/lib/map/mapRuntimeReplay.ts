@@ -106,10 +106,11 @@ export function replayMapRuntimeEvents(events: ReadonlyArray<MapRuntimeReplayEve
     if (event.eventKind === 'map.background_set') {
       const url = stringValue(payload.backgroundUrl);
       const backgroundPreset = typeof payload.backgroundPreset === 'string' ? createMapBackgroundPreset(payload.backgroundPreset) : undefined;
+      const clearCustomBackground = payload.clearCustomBackground === true;
       if (url || backgroundPreset) state = {
         ...state,
-        backgroundUrl: url ?? state.backgroundUrl,
-        backgroundName: url ? stringValue(payload.backgroundName) ?? url : state.backgroundName,
+        backgroundUrl: url ?? (clearCustomBackground ? undefined : state.backgroundUrl),
+        backgroundName: url ? stringValue(payload.backgroundName) ?? url : clearCustomBackground ? undefined : state.backgroundName,
         backgroundPreset: backgroundPreset ?? state.backgroundPreset,
         updatedAt: event.createdAt,
       };

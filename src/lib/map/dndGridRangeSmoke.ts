@@ -39,5 +39,7 @@ const events: MapRuntimeReplayEvent[] = [
 const replayed = replayMapRuntimeEvents(events, 'grid-map');
 assert(replayed.grid?.snap && replayed.grid.sizePx === 50, 'grid event replays');
 assert(replayed.templates?.length === 0, 'template lifecycle replays');
-assert(replayed.backgroundPreset === 'parchment' && replayed.backgroundUrl === 'https://example.test/custom-map.png', 'preset replay keeps the custom background URL available');
+assert(replayed.backgroundPreset === 'parchment' && replayed.backgroundUrl === 'https://example.test/custom-map.png', 'legacy preset events retain their custom background without an explicit clear marker');
+const replayedBuiltInTerrain = replayMapRuntimeEvents([...events, { seq: 10, createdAt: '2026-07-18T00:00:09.000Z', eventKind: 'map.background_set', payload: { backgroundPreset: 'grassland', clearCustomBackground: true } }], 'grid-map');
+assert(replayedBuiltInTerrain.backgroundPreset === 'grassland' && replayedBuiltInTerrain.backgroundUrl === undefined, 'current terrain selection clears the custom background deterministically');
 console.log('DND grid/range smoke passed.');
