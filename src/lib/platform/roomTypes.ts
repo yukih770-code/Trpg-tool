@@ -17,6 +17,7 @@
  */
 
 import type { ActorSnapshotHash } from './characterClearanceTypes.js';
+import type { RoomMapMemberPermissionSummary } from './roomMapTypes.js';
 
 export type RoomMemberRole = 'host' | 'player' | 'spectator';
 
@@ -230,6 +231,8 @@ export interface RoomSnapshot {
   actorBindings: RoomActorBinding[];
   invites: RoomInviteDescriptor[];
   permissions?: RoomMemberPermissionSummary[];
+  /** Optional room-scoped map collaboration grants; host authority remains implicit. */
+  mapPermissions?: RoomMapMemberPermissionSummary[];
   notes?: string[];
   /** Room Lobby pre-session state (actor binding drafts + ready check). */
   lobby?: RoomLobbyState;

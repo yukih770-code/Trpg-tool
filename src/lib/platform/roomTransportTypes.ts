@@ -13,7 +13,8 @@
 
 import type { RoomSnapshot } from './roomTypes.js';
 import type { RoomRuntimeLogEvent } from './roomRuntimeLogTypes.js';
-import type { RoomMapEvent } from './roomMapTypes.js';
+import type { MapInteractionPreview } from '../map/mapRuntimeTypes.js';
+import type { RoomMapEvent, RoomMapLivePreview } from './roomMapTypes.js';
 
 export type RoomTransportProtocolVersion = 'room-ws-v0';
 
@@ -39,10 +40,20 @@ export interface RoomSocketPingMessage extends RoomSocketEnvelopeBase {
   type: 'ping';
 }
 
+export interface RoomSocketMapPreviewMessage extends RoomSocketEnvelopeBase {
+  type: 'roomMapPreview';
+  roomId: string;
+  authorMemberId: string;
+  mapId: string;
+  phase: 'update' | 'clear';
+  preview?: MapInteractionPreview;
+}
+
 export type RoomSocketClientMessage =
   | RoomSocketSubscribeMessage
   | RoomSocketUnsubscribeMessage
-  | RoomSocketPingMessage;
+  | RoomSocketPingMessage
+  | RoomSocketMapPreviewMessage;
 
 // ── Server -> Client ────────────────────────────────────────────────────────
 
@@ -75,6 +86,7 @@ export type RoomSocketRoomSnapshotReason =
   | 'actorBindingApproved'
   | 'actorBindingRejected'
   | 'memberReadyChanged'
+  | 'mapPermissionChanged'
   | 'manualBroadcast';
 
 export interface RoomSocketRoomSnapshotMessage extends RoomSocketEnvelopeBase {
@@ -109,6 +121,14 @@ export interface RoomSocketMapEventAppendedMessage extends RoomSocketEnvelopeBas
   events: RoomMapEvent[];
 }
 
+/** A non-persistent ruler/area gesture relayed only to current room subscribers. */
+export interface RoomSocketMapPreviewBroadcastMessage extends RoomSocketEnvelopeBase {
+  type: 'roomMapPreview';
+  roomId: string;
+  serverSeq: number;
+  preview: RoomMapLivePreview;
+}
+
 export type RoomSocketErrorCode = 'invalidMessage' | 'roomNotFound' | 'notSubscribed' | 'internalError';
 
 export interface RoomSocketErrorMessage extends RoomSocketEnvelopeBase {
@@ -126,4 +146,5 @@ export type RoomSocketServerMessage =
   | RoomSocketRoomSnapshotMessage
   | RoomSocketRuntimeLogAppendedMessage
   | RoomSocketMapEventAppendedMessage
+  | RoomSocketMapPreviewBroadcastMessage
   | RoomSocketErrorMessage;

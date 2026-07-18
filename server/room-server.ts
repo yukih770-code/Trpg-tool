@@ -30,6 +30,7 @@ import { createInMemoryRuntimeLogRegistry } from './runtime-log-registry.js';
 import { createInMemoryRoomMapRegistry } from './room-map-registry.js';
 import { appendRoomMapEvent } from './services/appendRoomMapEvent.js';
 import { listRoomMapEvents } from './services/listRoomMapEvents.js';
+import { setRoomMapMemberPermission } from './services/setRoomMapMemberPermission.js';
 import { createInMemoryActorAdmissionRegistry } from './actor-admission-registry.js';
 import { readServerRuntimeConfigFromEnv } from './config/serverRuntimeConfig.js';
 import { readDatabaseRuntimeConfigFromEnv } from './config/databaseRuntimeConfig.js';
@@ -542,6 +543,29 @@ app.post('/rooms/:roomId/map-events', (req, res) => {
   }
   roomSocketServer.broadcastMapEventAppended(result.event.roomId, [result.event]);
   res.json({ event: result.event });
+});
+
+// Host-managed collaboration grants for the Room Map. Memory-only v0: they
+// travel in RoomSnapshot for live UI updates but do not become RuntimeLog data.
+app.post('/rooms/:roomId/map-permissions/:memberId', (req, res) => {
+  const body = (req.body ?? {}) as { authorizedByMemberId?: unknown; canPinRanges?: unknown };
+  if (typeof body.authorizedByMemberId !== 'string' || typeof body.canPinRanges !== 'boolean') {
+    res.status(400).json({ error: 'invalidMapPermissionRequest' });
+    return;
+  }
+  const result = setRoomMapMemberPermission(registry, {
+    roomId: req.params.roomId,
+    authorizedByMemberId: body.authorizedByMemberId,
+    memberId: req.params.memberId,
+    canPinRanges: body.canPinRanges,
+  });
+  if (result.decision !== 'updated' || !result.room) {
+    const status = result.decision === 'roomNotFound' || result.decision === 'authorNotFound' || result.decision === 'memberNotFound' ? 404 : 400;
+    res.status(status).json({ error: result.decision, message: result.message });
+    return;
+  }
+  roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'mapPermissionChanged');
+  res.json({ room: result.room });
 });
 
 // ── Shared Dice v0 (M25) ────────────────────────────────────────────────────

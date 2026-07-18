@@ -18,6 +18,21 @@ export type MapGridConfig = {
 
 export type MapTemplateShape = 'circle' | 'cone' | 'line' | 'square' | 'rectangle';
 
+/** A non-persistent pointer gesture used by rulers and action-range previews. */
+export type MapInteractionPreviewKind = 'ruler' | 'area';
+
+export interface MapInteractionPoint {
+  x: number;
+  y: number;
+}
+
+export interface MapInteractionPreview {
+  kind: MapInteractionPreviewKind;
+  start: MapInteractionPoint;
+  end: MapInteractionPoint;
+  shape?: MapTemplateShape;
+}
+
 export type MapAreaTemplate = {
   id: string;
   shape: MapTemplateShape;

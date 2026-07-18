@@ -56,6 +56,8 @@ export type {
   RoomMapEventKind,
   RoomMapEventListResult,
   AppendRoomMapEventInput,
+  RoomMapMemberPermissionSummary,
+  RoomMapLivePreview,
 } from '../../src/lib/platform/roomMapTypes.js';
 
 export type { BackendDeploymentProfile } from '../../src/lib/platform/backendDeploymentTypes.js';

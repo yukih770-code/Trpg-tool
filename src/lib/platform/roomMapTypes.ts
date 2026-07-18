@@ -9,6 +9,7 @@
 
 import {
   MAP_RUNTIME_EVENT_KINDS,
+  type MapInteractionPreview,
   type MapRuntimeEventKind,
 } from '../map/mapRuntimeTypes.js';
 
@@ -39,4 +40,29 @@ export interface AppendRoomMapEventInput {
   mapId: string;
   eventKind: RoomMapEventKind;
   payload: Record<string, unknown>;
+}
+
+/**
+ * Room-scoped collaboration grants. Only `canPinRanges` is active today;
+ * the other fields reserve a stable, system-neutral boundary for later map
+ * collaboration without granting broad host authority.
+ */
+export interface RoomMapMemberPermissionSummary {
+  memberId: string;
+  canPinRanges: boolean;
+  canManageTokens: boolean;
+  canManagePresentation: boolean;
+}
+
+/**
+ * Ephemeral map interaction relayed over Room WebSocket. It is never stored in
+ * RuntimeLog or the append-only room map stream, so a refresh/replay clears it.
+ */
+export interface RoomMapLivePreview {
+  roomId: string;
+  mapId: string;
+  authorMemberId: string;
+  authorDisplayName: string;
+  phase: 'update' | 'clear';
+  preview?: MapInteractionPreview;
 }

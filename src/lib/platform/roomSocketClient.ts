@@ -17,9 +17,11 @@ import type {
   RoomSocketErrorMessage,
   RoomSocketRoomSnapshotMessage,
   RoomSocketMapEventAppendedMessage,
+  RoomSocketMapPreviewBroadcastMessage,
   RoomSocketRuntimeLogAppendedMessage,
   RoomSocketServerMessage,
 } from './roomTransportTypes';
+import type { MapInteractionPreview } from '../map/mapRuntimeTypes';
 
 export type RoomSocketConnectionState = 'idle' | 'connecting' | 'open' | 'closed' | 'error';
 
@@ -30,6 +32,7 @@ export interface RoomSocketClientOptions {
   onRoomSnapshot?: (message: RoomSocketRoomSnapshotMessage) => void;
   onRuntimeLogAppended?: (message: RoomSocketRuntimeLogAppendedMessage) => void;
   onMapEventAppended?: (message: RoomSocketMapEventAppendedMessage) => void;
+  onMapPreview?: (message: RoomSocketMapPreviewBroadcastMessage) => void;
   onErrorMessage?: (message: RoomSocketErrorMessage) => void;
   onConnectionStateChange?: (state: RoomSocketConnectionState) => void;
 }
@@ -40,6 +43,7 @@ export interface RoomSocketClient {
   subscribeRoom(roomId: string): void;
   unsubscribeRoom(roomId: string): void;
   ping(): void;
+  shareMapPreview(input: { roomId: string; authorMemberId: string; mapId: string; phase: 'update' | 'clear'; preview?: MapInteractionPreview }): void;
   getState(): RoomSocketConnectionState;
 }
 
@@ -91,6 +95,7 @@ export function createRoomSocketClient(options: RoomSocketClientOptions): RoomSo
         if (message.type === 'roomSnapshot') options.onRoomSnapshot?.(message);
         else if (message.type === 'runtimeLogAppended') options.onRuntimeLogAppended?.(message);
         else if (message.type === 'mapEventAppended') options.onMapEventAppended?.(message);
+        else if (message.type === 'roomMapPreview') options.onMapPreview?.(message);
         else if (message.type === 'error') options.onErrorMessage?.(message);
       };
     },
@@ -106,6 +111,9 @@ export function createRoomSocketClient(options: RoomSocketClientOptions): RoomSo
     },
     ping() {
       send({ ...envelope(), type: 'ping' });
+    },
+    shareMapPreview(input) {
+      send({ ...envelope(), type: 'roomMapPreview', ...input });
     },
     getState() {
       return state;

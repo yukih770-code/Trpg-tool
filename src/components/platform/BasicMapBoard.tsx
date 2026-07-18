@@ -5,7 +5,7 @@ import type { CampaignActorInstance } from '../../lib/api/campaignRoomApiClient'
 import type { Combatant } from '../../lib/combat/combatRuntimeTypes';
 import { hasMapRuntimeEvents, type MapRuntimeReplayEvent } from '../../lib/map/mapRuntimeReplay';
 import { useMapRuntimeBoard } from '../../lib/map/useMapRuntimeBoard';
-import { MAP_BACKGROUND_PRESETS, createMapAreaTemplate, measureMapDistance, snapMapPosition, type MapAreaTemplate, type MapAreaTemplateInput, type MapBackgroundPreset, type MapBoardState, type MapRuntimeEventDraft, type MapTemplateShape, type MapToken, type MapTokenSize } from '../../lib/map/mapRuntimeTypes';
+import { MAP_BACKGROUND_PRESETS, createMapAreaTemplate, measureMapDistance, snapMapPosition, type MapAreaTemplate, type MapAreaTemplateInput, type MapBackgroundPreset, type MapBoardState, type MapInteractionPreview, type MapRuntimeEventDraft, type MapTemplateShape, type MapToken, type MapTokenSize } from '../../lib/map/mapRuntimeTypes';
 
 type Props = {
   locale: Locale;
@@ -21,6 +21,12 @@ type Props = {
   campaignActors?: CampaignActorInstance[];
   combatants?: Combatant[];
   canManage: boolean;
+  /** Allows a non-host collaborator to create (but not edit) permanent range marks. */
+  canPinRanges?: boolean;
+  sharedPreviews?: Array<{ authorMemberId: string; authorDisplayName: string; preview: MapInteractionPreview }>;
+  onSharePreview?: (preview?: MapInteractionPreview) => void;
+  mapCollaborators?: Array<{ memberId: string; displayName: string; canPinRanges: boolean }>;
+  onSetCanPinRanges?: (memberId: string, canPinRanges: boolean) => Promise<void>;
   onBoardChange?: (state: MapBoardState) => void;
   snapshotBoard?: MapBoardState;
   snapshotImportVersion?: number;
@@ -115,13 +121,14 @@ function templateStyle(template: MapAreaTemplate, board: MapBoardState): CSSProp
   return { ...base, width: length, height: template.shape === 'square' ? length : width };
 }
 
-export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], canManage, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace' }: Props) {
+export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], canManage, canPinRanges = false, sharedPreviews = [], onSharePreview, mapCollaborators = [], onSetCanPinRanges, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace' }: Props) {
   const { t } = createTranslator(locale);
   const board = useMapRuntimeBoard(mapId);
   const boardRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const restoredScopeRef = useRef('');
   const importedSnapshotRef = useRef(0);
+  const lastSharedPreviewAtRef = useRef(0);
   const [toolMode, setToolMode] = useState<ToolMode>('select');
   const [activePanel, setActivePanel] = useState<UtilityPanel>();
   const [measurement, setMeasurement] = useState<{ start: Point; end: Point }>();
@@ -149,6 +156,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   const selectedToken = board.state.selectedTokenId ? board.state.tokens.find((token) => token.id === board.state.selectedTokenId) : undefined;
   const selectedTemplate = board.state.selectedTemplateId ? (board.state.templates ?? []).find((template) => template.id === board.state.selectedTemplateId) : undefined;
   const grid = board.state.grid;
+  const mayPinRanges = canManage || canPinRanges;
 
   useEffect(() => {
     const restoreKey = `${mapId}:${mapEventKey}`;
@@ -213,7 +221,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     emit(result.event);
   };
 
-  const templateFromDrag = (start: Point, end: Point): MapAreaTemplate | null => {
+  const templateFromDrag = (start: Point, end: Point, shape = templateShape, label = templateName.trim() || undefined): MapAreaTemplate | null => {
     const element = boardRef.current;
     if (!element) return null;
     const rect = element.getBoundingClientRect();
@@ -225,14 +233,24 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     const horizontalFeet = Math.max(1, dxPx * feetPerPixel);
     const verticalFeet = Math.max(1, dyPx * feetPerPixel);
     const rotation = Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI;
-    const input: MapAreaTemplateInput = templateShape === 'circle'
-      ? { id: 'template-draft', shape: templateShape, x: start.x, y: start.y, sizeFeet: distanceFeet, rotation: 0, label: templateName.trim() || undefined }
-      : templateShape === 'line' || templateShape === 'cone'
-        ? { id: 'template-draft', shape: templateShape, x: start.x, y: start.y, sizeFeet: distanceFeet, widthFeet: templateShape === 'line' ? Math.max(5, Number(templateWidth) || 5) : undefined, rotation, label: templateName.trim() || undefined }
-        : templateShape === 'square'
-          ? { id: 'template-draft', shape: templateShape, x: (start.x + end.x) / 2, y: (start.y + end.y) / 2, sizeFeet: Math.max(horizontalFeet, verticalFeet), rotation: 0, label: templateName.trim() || undefined }
-          : { id: 'template-draft', shape: templateShape, x: (start.x + end.x) / 2, y: (start.y + end.y) / 2, sizeFeet: horizontalFeet, widthFeet: verticalFeet, rotation: 0, label: templateName.trim() || undefined };
+    const input: MapAreaTemplateInput = shape === 'circle'
+      ? { id: 'template-draft', shape, x: start.x, y: start.y, sizeFeet: distanceFeet, rotation: 0, label }
+      : shape === 'line' || shape === 'cone'
+        ? { id: 'template-draft', shape, x: start.x, y: start.y, sizeFeet: distanceFeet, widthFeet: shape === 'line' ? Math.max(5, Number(templateWidth) || 5) : undefined, rotation, label }
+        : shape === 'square'
+          ? { id: 'template-draft', shape, x: (start.x + end.x) / 2, y: (start.y + end.y) / 2, sizeFeet: Math.max(horizontalFeet, verticalFeet), rotation: 0, label }
+          : { id: 'template-draft', shape, x: (start.x + end.x) / 2, y: (start.y + end.y) / 2, sizeFeet: horizontalFeet, widthFeet: verticalFeet, rotation: 0, label };
     return createMapAreaTemplate(input);
+  };
+
+  const sharePreview = (preview?: MapInteractionPreview) => {
+    if (!onSharePreview) return;
+    if (preview) {
+      const now = Date.now();
+      if (now - lastSharedPreviewAtRef.current < 60) return;
+      lastSharedPreviewAtRef.current = now;
+    }
+    onSharePreview(preview);
   };
 
   const handleAddManualToken = (event: FormEvent) => {
@@ -255,9 +273,11 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     if (toolMode === 'measure') {
       dragRef.current = { kind: 'measure', start: point, end: point };
       setMeasurement({ start: point, end: point });
+      sharePreview({ kind: 'ruler', start: point, end: point });
     } else if (toolMode === 'template' && !templateId && !tokenId) {
       dragRef.current = { kind: 'template-draw', start: point, end: point };
       setTemplateDraft(templateFromDrag(point, point) ?? undefined);
+      sharePreview({ kind: 'area', start: point, end: point, shape: templateShape });
     } else if (templateId && canManage) {
       const template = (board.state.templates ?? []).find((item) => item.id === templateId);
       if (template) { board.selectTemplate(templateId); dragRef.current = { kind: 'template', templateId, startX: event.clientX, startY: event.clientY, originX: template.x, originY: template.y, last: { x: template.x, y: template.y } }; }
@@ -280,6 +300,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
       if (!end) return;
       dragRef.current = { ...drag, end };
       setMeasurement({ start: drag.start, end });
+      sharePreview({ kind: 'ruler', start: drag.start, end });
       return;
     }
     if (drag.kind === 'template-draw') {
@@ -287,6 +308,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
       if (!end) return;
       dragRef.current = { ...drag, end };
       setTemplateDraft(templateFromDrag(drag.start, end) ?? undefined);
+      sharePreview({ kind: 'area', start: drag.start, end, shape: templateShape });
       return;
     }
     if (drag.kind === 'token' || drag.kind === 'template') {
@@ -320,7 +342,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     } else if (drag.kind === 'template-draw') {
       const end = pointFromEvent(event) ?? drag.end;
       const draft = templateFromDrag(drag.start, end);
-      if (draft && templateCommitMode === 'pinned') {
+      if (draft && templateCommitMode === 'pinned' && mayPinRanges) {
         const result = board.addTemplate({ ...draft, id: undefined });
         emit(result.event);
       }
@@ -329,6 +351,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
       emit(board.changeViewport({ panX: board.state.panX, panY: board.state.panY, zoom: board.state.zoom }));
     }
     if (drag.kind === 'measure') setMeasurement(undefined);
+    if (drag.kind === 'measure' || drag.kind === 'template-draw') sharePreview();
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
@@ -340,6 +363,27 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     backgroundSize: `${grid.sizePx}px ${grid.sizePx}px`,
     backgroundPosition: `${grid.originX}px ${grid.originY}px`,
   } : undefined;
+  const sharedAreaPreviews = sharedPreviews.flatMap(({ authorMemberId, authorDisplayName, preview }) => {
+    if (preview.kind !== 'area' || !preview.shape) return [];
+    const template = templateFromDrag(preview.start, preview.end, preview.shape);
+    return template ? [{ authorMemberId, authorDisplayName, template }] : [];
+  });
+  const sharedRulerPreviews = sharedPreviews.filter(({ preview }) => preview.kind === 'ruler');
+  const previewDistance = (preview: MapInteractionPreview) => {
+    if (!boardRef.current) return undefined;
+    const rect = boardRef.current.getBoundingClientRect();
+    return measureMapDistance(preview.start, preview.end, grid, rect.width / board.state.zoom, rect.height / board.state.zoom);
+  };
+  const sharedPreviewLayer = <>
+    {sharedAreaPreviews.map(({ authorMemberId, authorDisplayName, template }) => <div key={`${authorMemberId}:${template.id}`} aria-hidden="true" className="pointer-events-none absolute z-10 border-2 border-dashed border-[#2563eb] bg-[#60a5fa]/20 shadow-sm" style={templateStyle(template, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#1e3a5f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white">{authorDisplayName} · {templateDimensionLabel(template, locale)}</span></div>)}
+    {sharedRulerPreviews.map(({ authorMemberId, authorDisplayName, preview }) => {
+      const distance = previewDistance(preview);
+      return <div key={`${authorMemberId}:ruler`} aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
+        <div className="absolute h-0 origin-left border-t-2 border-dashed border-[#2563eb]" style={{ left: `${preview.start.x}%`, top: `${preview.start.y}%`, width: `${Math.hypot(preview.end.x - preview.start.x, preview.end.y - preview.start.y)}%`, transform: `rotate(${Math.atan2(preview.end.y - preview.start.y, preview.end.x - preview.start.x) * 180 / Math.PI}deg)` }} />
+        {distance && <span className="absolute -translate-y-1/2 rounded bg-[#1e3a5f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ left: `${preview.end.x}%`, top: `${preview.end.y}%` }}>{authorDisplayName} · {distance.feet.toFixed(1)} ft</span>}
+      </div>;
+    })}
+  </>;
 
   if (presentation === 'runtime') {
     const toolButtonClass = (active: boolean) => `grid h-9 w-9 place-items-center rounded-lg border text-[#2f2a22] shadow-sm transition ${active ? 'border-[#58180d]/60 bg-[#fff0d6] text-[#58180d]' : 'border-white/70 bg-white/90 hover:bg-white'}`;
@@ -363,6 +407,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
           {visibleTemplates.map((template) => <button key={template.id} type="button" data-map-template={template.id} onClick={() => board.selectTemplate(template.id)} title={templateDimensionLabel(template, locale)} className={`absolute border-2 border-[#7b3f00]/70 bg-[#f5c518]/20 shadow-sm ${board.state.selectedTemplateId === template.id ? 'ring-2 ring-[#f5c518]' : ''}`} style={templateStyle(template, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#17130f]/75 px-1.5 py-0.5 text-[10px] font-bold text-white">{templateDimensionLabel(template, locale)}</span></button>)}
           {templateDraft && <div aria-hidden="true" className="pointer-events-none absolute border-2 border-dashed border-[#294966] bg-[#8fd3ff]/20 shadow-sm" style={templateStyle(templateDraft, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#17130f]/80 px-1.5 py-0.5 text-[10px] font-bold text-white">{templateDimensionLabel(templateDraft, locale)}</span></div>}
           {measurement && <><div aria-hidden="true" className="absolute h-0 origin-left border-t-2 border-dashed border-[#294966]" style={{ left: `${measurement.start.x}%`, top: `${measurement.start.y}%`, width: `${Math.hypot(measurement.end.x - measurement.start.x, measurement.end.y - measurement.start.y)}%`, transform: `rotate(${Math.atan2(measurement.end.y - measurement.start.y, measurement.end.x - measurement.start.x) * 180 / Math.PI}deg)` }} />{measurementDistance && <span className="pointer-events-none absolute -translate-y-1/2 rounded bg-[#17130f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ left: `${measurement.end.x}%`, top: `${measurement.end.y}%` }}>{measurementDistance.feet.toFixed(1)} ft</span>}</>}
+          {sharedPreviewLayer}
           {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white px-2 py-1 text-xs font-bold shadow ${token.isHidden ? 'bg-[#51483d]/70 text-white' : 'bg-[#58180d] text-white'} ${board.state.selectedTokenId === token.id ? 'ring-4 ring-[#f5c518]/70' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={token.notes || token.name}>{token.name}{grid?.showCoordinates && <span className="ml-1 opacity-80">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
         </div>
       </div>
@@ -383,14 +428,14 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
 
       {canManage && activePanel === 'grid' && <div className={compactPanelClass}><div className="flex items-center justify-between"><div className="text-sm font-black text-slate-800">网格与测距</div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div><div className="mt-3 grid gap-2 text-xs"><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={grid?.enabled ?? false} onChange={(event) => emit(board.updateGrid({ enabled: event.target.checked }))} />显示网格</label><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={grid?.snap ?? false} onChange={(event) => emit(board.updateGrid({ snap: event.target.checked }))} />拖拽吸附</label><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={grid?.showCoordinates ?? false} onChange={(event) => emit(board.updateGrid({ showCoordinates: event.target.checked }))} />显示坐标</label><div className="grid grid-cols-2 gap-2"><label className="grid gap-1 text-[11px] text-slate-600">格子像素<input value={gridSize} onChange={(event) => setGridSize(event.target.value)} onBlur={() => emit(board.updateGrid({ sizePx: Number(gridSize) }))} type="number" min="12" className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" /></label><label className="grid gap-1 text-[11px] text-slate-600">每格英尺<input value={feetPerSquare} onChange={(event) => setFeetPerSquare(event.target.value)} onBlur={() => emit(board.updateGrid({ feetPerSquare: Number(feetPerSquare) }))} type="number" min="1" className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" /></label></div></div></div>}
 
-      {activePanel === 'template' && <div className={compactPanelClass}><div className="flex items-center justify-between"><div className="text-sm font-black text-slate-800">范围工具</div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div><div className={`mt-3 grid gap-1.5 ${canManage ? 'grid-cols-2' : 'grid-cols-1'}`}><button type="button" onClick={() => setTemplateCommitMode('preview')} className={`rounded-md border px-2.5 py-2 text-left text-xs font-bold ${templateCommitMode === 'preview' ? 'border-[#294966]/50 bg-[#edf4ff] text-[#294966]' : 'border-slate-300 bg-white'}`}><span className="block">临时范围</span><span className="mt-0.5 block text-[10px] font-normal opacity-80">仅用于测距，松开即消失</span></button>{canManage && <button type="button" onClick={() => setTemplateCommitMode('pinned')} className={`rounded-md border px-2.5 py-2 text-left text-xs font-bold ${templateCommitMode === 'pinned' ? 'border-[#58180d]/50 bg-[#fff0d6] text-[#58180d]' : 'border-slate-300 bg-white'}`}><span className="flex items-center gap-1"><Pin size={12} />固定范围</span><span className="mt-0.5 block text-[10px] font-normal opacity-80">主持人标记，会保存到地图</span></button>}</div><p className="mt-3 text-[11px] text-slate-500">选择形状后在地图上拖拽绘制，尺寸会直接标在图形旁。</p><div className="mt-3 grid grid-cols-2 gap-1.5">{([{ shape: 'circle', icon: Circle }, { shape: 'cone', icon: Triangle }, { shape: 'line', icon: Minus }, { shape: 'square', icon: Square }, { shape: 'rectangle', icon: RectangleHorizontal }] as const).map(({ shape, icon: Icon }) => <button key={shape} type="button" onClick={() => setTemplateShape(shape)} className={`flex items-center gap-2 rounded-md border px-2 py-2 text-left text-xs font-bold ${templateShape === shape ? 'border-[#58180d]/50 bg-[#fff0d6] text-[#58180d]' : 'border-slate-300 bg-white'}`}><Icon size={15} />{templateLabel(shape, locale)}</button>)}</div></div>}
+      {activePanel === 'template' && <div className={compactPanelClass}><div className="flex items-center justify-between"><div className="text-sm font-black text-slate-800">范围工具</div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div><div className={`mt-3 grid gap-1.5 ${mayPinRanges ? 'grid-cols-2' : 'grid-cols-1'}`}><button type="button" onClick={() => setTemplateCommitMode('preview')} className={`rounded-md border px-2.5 py-2 text-left text-xs font-bold ${templateCommitMode === 'preview' ? 'border-[#294966]/50 bg-[#edf4ff] text-[#294966]' : 'border-slate-300 bg-white'}`}><span className="block">临时范围</span><span className="mt-0.5 block text-[10px] font-normal opacity-80">房间成员可见，松开即消失</span></button>{mayPinRanges && <button type="button" onClick={() => setTemplateCommitMode('pinned')} className={`rounded-md border px-2.5 py-2 text-left text-xs font-bold ${templateCommitMode === 'pinned' ? 'border-[#58180d]/50 bg-[#fff0d6] text-[#58180d]' : 'border-slate-300 bg-white'}`}><span className="flex items-center gap-1"><Pin size={12} />固定范围</span><span className="mt-0.5 block text-[10px] font-normal opacity-80">会保存到地图记录</span></button>}</div><p className="mt-3 text-[11px] text-slate-500">选择形状后在地图上拖拽绘制，尺寸会直接标在图形旁。</p><div className="mt-3 grid grid-cols-2 gap-1.5">{([{ shape: 'circle', icon: Circle }, { shape: 'cone', icon: Triangle }, { shape: 'line', icon: Minus }, { shape: 'square', icon: Square }, { shape: 'rectangle', icon: RectangleHorizontal }] as const).map(({ shape, icon: Icon }) => <button key={shape} type="button" onClick={() => setTemplateShape(shape)} className={`flex items-center gap-2 rounded-md border px-2 py-2 text-left text-xs font-bold ${templateShape === shape ? 'border-[#58180d]/50 bg-[#fff0d6] text-[#58180d]' : 'border-slate-300 bg-white'}`}><Icon size={15} />{templateLabel(shape, locale)}</button>)}</div>{canManage && onSetCanPinRanges && mapCollaborators.length > 0 && <div className="mt-3 border-t border-slate-200 pt-3"><div className="text-[11px] font-black text-slate-700">协作权限</div><p className="mt-0.5 text-[10px] text-slate-500">仅允许指定玩家固定范围；底图、网格与单位仍由主持人管理。</p><div className="mt-2 grid gap-1">{mapCollaborators.map((member) => <label key={member.memberId} className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] font-bold text-slate-700"><span>{member.displayName}</span><span className="flex items-center gap-1.5 text-[10px]"><span className="text-slate-500">固定范围</span><input type="checkbox" checked={member.canPinRanges} onChange={(event) => { void onSetCanPinRanges(member.memberId, event.target.checked).catch((error) => setEventError(error instanceof Error ? error.message : String(error))); }} /></span></label>)}</div></div>}</div>}
 
       {selectedToken && canManage && <div className="absolute right-3 top-3 z-20 w-56 rounded-xl border border-slate-300/80 bg-white/95 p-3 shadow-xl backdrop-blur-sm"><div className="flex items-center justify-between gap-2"><div className="text-sm font-black text-slate-800">{selectedToken.name}</div><button type="button" onClick={() => board.selectToken(undefined)} className="text-xs font-bold text-slate-500">关闭</button></div><p className="mt-1 text-[11px] text-slate-500">{sourceLabel(selectedToken.sourceType, locale)}</p><div className="mt-3 flex gap-2"><button type="button" onClick={() => emit(board.updateToken(selectedToken.id, { isHidden: !selectedToken.isHidden }))} className="rounded-md border border-slate-300 px-2 py-1.5 text-xs font-bold">{selectedToken.isHidden ? t('mapRuntime.showToken') : t('mapRuntime.hideToken')}</button><button type="button" onClick={() => emit(board.removeToken(selectedToken.id))} className="rounded-md border border-[#8b3a2f]/30 px-2 py-1.5 text-xs font-bold text-[#8b3a2f]">{t('mapRuntime.removeToken')}</button></div></div>}
 
       {lastMovement && <div className="pointer-events-none absolute bottom-4 right-3 z-20 rounded-md bg-white/90 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 shadow">{lastMovement.name} · {lastMovement.feet.toFixed(1)} ft</div>}
       {eventError && <div className="absolute bottom-3 left-3 z-20 rounded-md bg-[#fff0eb]/95 px-2.5 py-1.5 text-xs font-bold text-[#8b3a2f] shadow">{eventError}</div>}
       <div className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-slate-300/70 bg-white/90 p-1 shadow-lg backdrop-blur-sm"><button type="button" title="缩小" aria-label="缩小" onClick={() => changeViewport({ zoom: board.state.zoom - 0.1 })} className="grid h-8 w-8 place-items-center rounded-md hover:bg-slate-100"><Minus size={16} /></button><span className="min-w-12 text-center text-[11px] font-bold text-slate-600">{Math.round(board.state.zoom * 100)}%</span><button type="button" title="放大" aria-label="放大" onClick={() => changeViewport({ zoom: board.state.zoom + 0.1 })} className="grid h-8 w-8 place-items-center rounded-md hover:bg-slate-100"><Plus size={16} /></button><button type="button" title={t('mapRuntime.resetView')} aria-label={t('mapRuntime.resetView')} onClick={() => changeViewport({ zoom: 1, panX: 0, panY: 0 })} className="grid h-8 w-8 place-items-center rounded-md hover:bg-slate-100"><RotateCcw size={15} /></button>{hasMapRuntimeEvents(mapEvents) && <button type="button" title={t('mapRuntime.restore')} aria-label={t('mapRuntime.restore')} onClick={() => { board.restore(mapEvents); restoredScopeRef.current = `${mapId}:${mapEventKey}`; }} className="rounded-md px-2 text-[11px] font-bold text-slate-700 hover:bg-slate-100">恢复</button>}</div>
-      {statusNote && <div title={statusNote} className="pointer-events-none absolute bottom-3 right-3 z-10 max-w-40 truncate rounded bg-slate-900/45 px-2 py-1 text-[9px] font-bold text-white/90">{canManage ? '主持人地图控制' : '地图视图'}</div>}
+      {statusNote && <div title={statusNote} className="pointer-events-none absolute bottom-3 right-3 z-10 max-w-40 truncate rounded bg-slate-900/45 px-2 py-1 text-[9px] font-bold text-white/90">{canManage ? '主持人地图控制' : mayPinRanges ? '可固定范围' : '地图视图'}</div>}
     </section>;
   }
 
@@ -422,6 +467,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
         {visibleTemplates.map((template) => <button key={template.id} type="button" data-map-template={template.id} onClick={() => board.selectTemplate(template.id)} title={templateDimensionLabel(template, locale)} className={`absolute border-2 border-[#7b3f00]/70 bg-[#f5c518]/20 shadow-sm ${board.state.selectedTemplateId === template.id ? 'ring-2 ring-[#f5c518]' : ''}`} style={templateStyle(template, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#17130f]/75 px-1.5 py-0.5 text-[10px] font-bold text-white">{templateDimensionLabel(template, locale)}</span></button>)}
         {templateDraft && <div aria-hidden="true" className="pointer-events-none absolute border-2 border-dashed border-[#294966] bg-[#8fd3ff]/20 shadow-sm" style={templateStyle(templateDraft, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#17130f]/80 px-1.5 py-0.5 text-[10px] font-bold text-white">{templateDimensionLabel(templateDraft, locale)}</span></div>}
         {measurement && <><div aria-hidden="true" className="absolute h-0 origin-left border-t-2 border-dashed border-[#294966]" style={{ left: `${measurement.start.x}%`, top: `${measurement.start.y}%`, width: `${Math.hypot(measurement.end.x - measurement.start.x, measurement.end.y - measurement.start.y)}%`, transform: `rotate(${Math.atan2(measurement.end.y - measurement.start.y, measurement.end.x - measurement.start.x) * 180 / Math.PI}deg)` }} />{measurementDistance && <span className="pointer-events-none absolute -translate-y-1/2 rounded bg-[#17130f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ left: `${measurement.end.x}%`, top: `${measurement.end.y}%` }}>{measurementDistance.feet.toFixed(1)} ft</span>}</>}
+        {sharedPreviewLayer}
         {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white px-2 py-1 text-xs font-bold shadow ${token.isHidden ? 'bg-[#51483d]/70 text-white' : 'bg-[#58180d] text-white'} ${board.state.selectedTokenId === token.id ? 'ring-4 ring-[#f5c518]/70' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={token.notes || token.name}>{token.name}{grid?.showCoordinates && <span className="ml-1 opacity-80">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
       </div>
       {measurementDistance && <div className="absolute bottom-3 left-3 rounded-md bg-[#17130f]/85 px-2 py-1 text-xs font-bold text-white">{measurementDistance.feet.toFixed(1)} ft · {measurementDistance.squares.toFixed(1)} {t('mapRuntime.squares')}</div>}

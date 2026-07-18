@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { RoomRuntimeEntryContext, RoomRuntimeEntryMode } from '../../lib/platform/roomRuntimeEntryTypes';
 import type { RoomCampaignRefSource, RoomReadyStatus, RoomSnapshot } from '../../lib/platform/roomTypes';
 import type { RoomRuntimeLogEvent } from '../../lib/platform/roomRuntimeLogTypes';
-import type { RoomMapEvent } from '../../lib/platform/roomMapTypes';
+import type { RoomMapEvent, RoomMapLivePreview } from '../../lib/platform/roomMapTypes';
 import {
   appendRoomMapEvent,
   appendRoomRuntimeLogEvent,
   listRoomMapEvents,
   listRoomRuntimeLog,
   rollSharedDice,
+  setRoomMapMemberPermission,
   type RoomServerHttpClientConfig,
 } from '../../lib/platform/roomServerHttpClient';
 import { createRoomSocketClient, type RoomSocketConnectionState } from '../../lib/platform/roomSocketClient';
@@ -29,7 +30,7 @@ import { RuntimeSceneFocusPanel, type RuntimeSceneFocus } from './RuntimeSceneFo
 import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSceneBoardPanel';
 import { RuntimeMapStage } from './RuntimeMapStage';
 import { BasicMapBoard } from './BasicMapBoard';
-import type { MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
+import type { MapInteractionPreview, MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
 
 /**
  * RoomRuntimeEntryBridge (v0 / UI1a) — multiplayer Runtime Alpha surface.
@@ -109,6 +110,8 @@ const CLEARANCE_LABEL: Record<string, string> = {
   stale: '需重新确认',
 };
 
+type SharedMapPreview = Pick<RoomMapLivePreview, 'authorMemberId' | 'authorDisplayName' | 'preview'> & { updatedAt: number };
+
 export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLobby }: RoomRuntimeEntryBridgeProps) {
   // M32: the bridge owns a live socket while mounted (the lobby's socket closes
   // when the lobby unmounts). runtimeLogAppended feeds the log drawer AND the
@@ -152,6 +155,8 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const [roomMapEvents, setRoomMapEvents] = useState<RoomMapEvent[]>([]);
   const [mapLoading, setMapLoading] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [sharedMapPreviews, setSharedMapPreviews] = useState<Record<string, SharedMapPreview>>({});
+  const roomSocketRef = useRef<ReturnType<typeof createRoomSocketClient> | null>(null);
 
   const loadNotes = useCallback(() => {
     setNotesLoading(true);
@@ -241,12 +246,40 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         mergeRoomMapEvents(message.events);
         setLastSyncAt(new Date().toISOString());
       },
+      onMapPreview: (message) => {
+        if (message.roomId !== context.roomId || message.preview.mapId !== roomMapId) return;
+        const preview = message.preview;
+        if (preview.authorMemberId === context.currentMemberId) return;
+        setSharedMapPreviews((previous) => {
+          const next = { ...previous };
+          if (preview.phase === 'clear' || !preview.preview) delete next[preview.authorMemberId];
+          else next[preview.authorMemberId] = { authorMemberId: preview.authorMemberId, authorDisplayName: preview.authorDisplayName, preview: preview.preview, updatedAt: Date.now() };
+          return next;
+        });
+      },
     });
+    roomSocketRef.current = client;
     client.connect();
-    return () => client.close();
+    return () => {
+      if (roomSocketRef.current === client) roomSocketRef.current = null;
+      client.close();
+    };
     // mergeNoteEvent/isNoteKind only use stable setters — safe to omit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [context.serverBaseUrl, context.roomId, mergeRoomMapEvents]);
+  }, [context.currentMemberId, context.serverBaseUrl, context.roomId, mergeRoomMapEvents, roomMapId]);
+
+  // A dropped client cannot always send a final clear. Expire stale transient
+  // previews instead of letting a ruler or spell area look permanent.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const cutoff = Date.now() - 3000;
+      setSharedMapPreviews((previous) => {
+        const active = Object.fromEntries((Object.entries(previous) as Array<[string, SharedMapPreview]>).filter(([, preview]) => preview.updatedAt >= cutoff)) as Record<string, SharedMapPreview>;
+        return Object.keys(active).length === Object.keys(previous).length ? previous : active;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Brief "刚刚更新" perception window for the feeds.
   useEffect(() => {
@@ -293,6 +326,26 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       payload: event.payload,
     });
     mergeRoomMapEvents([response.event]);
+  };
+
+  const shareRoomMapPreview = useCallback((preview?: MapInteractionPreview) => {
+    if (!context.currentMemberId) return;
+    roomSocketRef.current?.shareMapPreview({
+      roomId: context.roomId,
+      authorMemberId: context.currentMemberId,
+      mapId: roomMapId,
+      phase: preview ? 'update' : 'clear',
+      preview,
+    });
+  }, [context.currentMemberId, context.roomId, roomMapId]);
+
+  const setCanPinRoomRanges = async (memberId: string, canPinRanges: boolean) => {
+    if (!context.currentMemberId) throw new Error('需要主持人成员身份才能更新协作权限。');
+    const response = await setRoomMapMemberPermission({ baseUrl: context.serverBaseUrl }, context.roomId, memberId, {
+      authorizedByMemberId: context.currentMemberId,
+      canPinRanges,
+    });
+    setLiveRoom(response.room);
   };
 
   const handlePublishPublicInfo = async (input: { title?: string; body: string }) => {
@@ -629,6 +682,16 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
 
   // ── Main stage: DND gets the shared Room Map board; other systems keep the
   // existing scene stage until they define their own map interaction contracts.
+  const currentRoom = liveRoom ?? room;
+  const canPinRanges = shellMode === 'host' || !!currentRoom?.mapPermissions?.some((permission) => permission.memberId === context.currentMemberId && permission.canPinRanges);
+  const mapCollaborators = (currentRoom?.members ?? [])
+    .filter((member) => member.role === 'player' && member.status === 'active')
+    .map((member) => ({
+      memberId: member.memberId,
+      displayName: member.displayName,
+      canPinRanges: !!currentRoom?.mapPermissions?.some((permission) => permission.memberId === member.memberId && permission.canPinRanges),
+    }));
+
   const mainStage = context.systemId === 'dnd5e-2024' ? (
     <BasicMapBoard
       locale={readStoredLocale()}
@@ -640,6 +703,11 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       statusNote="房间地图会实时同步；当前 Room Server 重启后需要重新设置。"
       presentation="runtime"
       canManage={shellMode === 'host' && !!context.currentMemberId}
+      canPinRanges={canPinRanges}
+      sharedPreviews={(Object.values(sharedMapPreviews) as SharedMapPreview[]).flatMap((preview) => preview.preview ? [{ authorMemberId: preview.authorMemberId, authorDisplayName: preview.authorDisplayName, preview: preview.preview }] : [])}
+      onSharePreview={shareRoomMapPreview}
+      mapCollaborators={shellMode === 'host' ? mapCollaborators : []}
+      onSetCanPinRanges={shellMode === 'host' ? setCanPinRoomRanges : undefined}
       onAppendEvent={appendMapEvent}
     />
   ) : (

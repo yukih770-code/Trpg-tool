@@ -1,4 +1,5 @@
-/** Append one host-managed Room Map event (v0). */
+/** Append one persistent Room Map event. Hosts retain full control; a host may
+ * explicitly grant active players permission to pin new range markers only. */
 
 import { randomUUID } from 'node:crypto';
 
@@ -32,7 +33,12 @@ export function appendRoomMapEvent(
   const author = room.members.find((member) => member.memberId === input.authorMemberId);
   if (!author) return { decision: 'memberNotFound', message: `No member "${input.authorMemberId}".` };
   if (author.status !== 'active') return { decision: 'memberNotActive', message: `Member status is "${author.status}".` };
-  if (author.role !== 'host') return { decision: 'memberNotAuthorized', message: 'Room map changes require an active host member.' };
+  const isHost = author.role === 'host';
+  const canPinRanges = room.mapPermissions?.some((permission) => permission.memberId === author.memberId && permission.canPinRanges) === true;
+  const isPinnedRangeAdd = input.eventKind === 'map.template_added';
+  if (!isHost && !(canPinRanges && isPinnedRangeAdd)) {
+    return { decision: 'memberNotAuthorized', message: 'Room map changes require an active host, except explicitly granted range pins.' };
+  }
 
   if (
     typeof input.mapId !== 'string' ||

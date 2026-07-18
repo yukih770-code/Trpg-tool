@@ -246,6 +246,19 @@ export async function appendRoomMapEvent(
   });
 }
 
+/** Host grants or revokes one active player's ability to pin a lasting map range. */
+export async function setRoomMapMemberPermission(
+  config: RoomServerHttpClientConfig,
+  roomId: string,
+  memberId: string,
+  input: { authorizedByMemberId: string; canPinRanges: boolean },
+): Promise<{ room: RoomSnapshot }> {
+  return request<{ room: RoomSnapshot }>(config, `/rooms/${encodeURIComponent(roomId)}/map-permissions/${encodeURIComponent(memberId)}`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 /**
  * Shared Dice v0 (M25): submit an expression; the SERVER parses + rolls and
  * returns the dice.roll event + roll. The client never computes randomness, and

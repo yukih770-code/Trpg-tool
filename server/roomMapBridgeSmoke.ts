@@ -3,6 +3,7 @@ import { createRoom } from './services/createRoom.js';
 import { createInMemoryRoomMapRegistry } from './room-map-registry.js';
 import { appendRoomMapEvent } from './services/appendRoomMapEvent.js';
 import { listRoomMapEvents } from './services/listRoomMapEvents.js';
+import { setRoomMapMemberPermission } from './services/setRoomMapMemberPermission.js';
 
 function expect(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -46,6 +47,32 @@ const playerRejected = appendRoomMapEvent(rooms, mapEvents, {
 });
 expect(playerRejected.decision === 'memberNotAuthorized', 'active players must not mutate the host-managed room map');
 
+const permission = setRoomMapMemberPermission(rooms, {
+  roomId: room.identity.roomId,
+  authorizedByMemberId: host.memberId,
+  memberId: playerId,
+  canPinRanges: true,
+});
+expect(permission.decision === 'updated' && permission.room?.mapPermissions?.[0]?.canPinRanges, 'host should be able to grant a player fixed-range permission');
+
+const playerRange = appendRoomMapEvent(rooms, mapEvents, {
+  roomId: room.identity.roomId,
+  authorMemberId: playerId,
+  mapId: 'room-map-smoke',
+  eventKind: 'map.template_added',
+  payload: { template: { id: 'range-smoke', shape: 'circle', x: 50, y: 50, sizeFeet: 15, rotation: 0 } },
+});
+expect(playerRange.decision === 'appended' && playerRange.event?.seq === 3, 'a granted player should be able to pin a range');
+
+const playerStillRejected = appendRoomMapEvent(rooms, mapEvents, {
+  roomId: room.identity.roomId,
+  authorMemberId: playerId,
+  mapId: 'room-map-smoke',
+  eventKind: 'map.token_removed',
+  payload: { tokenId: 'token-smoke' },
+});
+expect(playerStillRejected.decision === 'memberNotAuthorized', 'range permission must not grant token control');
+
 const unknownRejected = appendRoomMapEvent(rooms, mapEvents, {
   roomId: room.identity.roomId,
   authorMemberId: 'unknown-member',
@@ -56,8 +83,8 @@ const unknownRejected = appendRoomMapEvent(rooms, mapEvents, {
 expect(unknownRejected.decision === 'memberNotFound', 'unknown members must not mutate the room map');
 
 const listed = listRoomMapEvents(rooms, mapEvents, { roomId: room.identity.roomId, mapId: 'room-map-smoke' });
-expect(listed.decision === 'ok' && listed.result?.events.length === 2, 'map listing should replay both events');
+expect(listed.decision === 'ok' && listed.result?.events.length === 3, 'map listing should replay host and delegated range events');
 expect(listed.result?.events[0]?.eventKind === 'map.grid_updated', 'map event order must be preserved');
 
 // eslint-disable-next-line no-console
-console.log('Room Map bridge smoke passed: host append, authorization, ordered replay.');
+console.log('Room Map bridge smoke passed: host append, delegated range permission, restricted player edits, ordered replay.');

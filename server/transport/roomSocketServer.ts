@@ -25,7 +25,7 @@ import type {
   RoomSocketServerMessage,
 } from '../../src/lib/platform/roomTransportTypes.js';
 import type { RoomRuntimeLogEvent } from '../protocol/room-protocol.js';
-import type { RoomMapEvent } from '../protocol/room-protocol.js';
+import type { RoomMapEvent, RoomMapLivePreview } from '../protocol/room-protocol.js';
 
 export interface CreateRoomSocketServerOptions {
   server: HttpServer;
@@ -84,7 +84,30 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
     safeSend(ws, JSON.stringify(message));
   };
 
-  const handleMessage = (ws: WebSocket, raw: { type?: string; roomId?: string }): void => {
+  const broadcastMapPreview = (roomId: string, preview: RoomMapLivePreview): void => {
+    const set = subscriptions.get(roomId);
+    if (!set || set.size === 0) return;
+    serverSeq += 1;
+    const message: RoomSocketServerMessage = {
+      ...envelope(),
+      type: 'roomMapPreview',
+      roomId,
+      serverSeq,
+      preview,
+    };
+    const text = JSON.stringify(message);
+    for (const target of [...set]) safeSend(target, text);
+  };
+
+  const coordinate = (value: unknown): { x: number; y: number } | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const point = value as { x?: unknown; y?: unknown };
+    if (typeof point.x !== 'number' || typeof point.y !== 'number' || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return null;
+    if (point.x < 0 || point.x > 100 || point.y < 0 || point.y > 100) return null;
+    return { x: point.x, y: point.y };
+  };
+
+  const handleMessage = (ws: WebSocket, raw: Record<string, unknown>): void => {
     switch (raw.type) {
       case 'subscribeRoom': {
         if (typeof raw.roomId !== 'string') {
@@ -122,6 +145,53 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
         send(ws, { ...envelope(), type: 'pong' });
         return;
       }
+      case 'roomMapPreview': {
+        if (typeof raw.roomId !== 'string' || typeof raw.authorMemberId !== 'string' || typeof raw.mapId !== 'string' || (raw.phase !== 'update' && raw.phase !== 'clear')) {
+          send(ws, { ...envelope(), type: 'error', code: 'invalidMessage', message: 'roomMapPreview requires roomId, authorMemberId, mapId, and phase.' });
+          return;
+        }
+        if (!socketRooms.get(ws)?.has(raw.roomId)) {
+          send(ws, { ...envelope(), type: 'error', code: 'notSubscribed', roomId: raw.roomId, message: 'Subscribe to the room before sharing a map preview.' });
+          return;
+        }
+        const room = options.registry.get(raw.roomId);
+        if (!room) {
+          send(ws, { ...envelope(), type: 'error', code: 'roomNotFound', roomId: raw.roomId, message: `No room "${raw.roomId}".` });
+          return;
+        }
+        const author = room.members.find((member) => member.memberId === raw.authorMemberId);
+        if (!author || author.status !== 'active' || raw.mapId.trim() === '' || raw.mapId.length > 240) {
+          send(ws, { ...envelope(), type: 'error', code: 'invalidMessage', roomId: raw.roomId, message: 'Map previews require an active room member and valid mapId.' });
+          return;
+        }
+        let preview: RoomMapLivePreview['preview'];
+        if (raw.phase === 'update') {
+          if (!raw.preview || typeof raw.preview !== 'object' || Array.isArray(raw.preview)) {
+            send(ws, { ...envelope(), type: 'error', code: 'invalidMessage', roomId: raw.roomId, message: 'Map preview update requires a preview payload.' });
+            return;
+          }
+          const candidate = raw.preview as { kind?: unknown; start?: unknown; end?: unknown; shape?: unknown };
+          const start = coordinate(candidate.start);
+          const end = coordinate(candidate.end);
+          const validShape = candidate.shape === undefined || candidate.shape === 'circle' || candidate.shape === 'cone' || candidate.shape === 'line' || candidate.shape === 'square' || candidate.shape === 'rectangle';
+          if ((candidate.kind !== 'ruler' && candidate.kind !== 'area') || !start || !end || !validShape || (candidate.kind === 'area' && candidate.shape === undefined)) {
+            send(ws, { ...envelope(), type: 'error', code: 'invalidMessage', roomId: raw.roomId, message: 'Map preview geometry is invalid.' });
+            return;
+          }
+          preview = candidate.kind === 'area'
+            ? { kind: 'area', start, end, shape: candidate.shape as 'circle' | 'cone' | 'line' | 'square' | 'rectangle' }
+            : { kind: 'ruler', start, end };
+        }
+        broadcastMapPreview(raw.roomId, {
+          roomId: raw.roomId,
+          mapId: raw.mapId.trim(),
+          authorMemberId: author.memberId,
+          authorDisplayName: author.displayName,
+          phase: raw.phase,
+          preview,
+        });
+        return;
+      }
       default: {
         send(ws, { ...envelope(), type: 'error', code: 'invalidMessage', message: `Unknown message type "${String(raw.type)}".` });
       }
@@ -133,9 +203,11 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
     send(ws, { ...envelope(), type: 'connected', connectionId: randomUUID() });
 
     ws.on('message', (data: unknown) => {
-      let parsed: { type?: string; roomId?: string };
+      let parsed: Record<string, unknown>;
       try {
-        parsed = JSON.parse(String(data)) as { type?: string; roomId?: string };
+        const candidate = JSON.parse(String(data));
+        if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) throw new Error('Invalid payload.');
+        parsed = candidate as Record<string, unknown>;
       } catch {
         send(ws, { ...envelope(), type: 'error', code: 'invalidMessage', message: 'Invalid JSON.' });
         return;
