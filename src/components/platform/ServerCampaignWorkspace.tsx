@@ -23,6 +23,7 @@ import { LanRuntimeHostPanel } from './LanRuntimeHostPanel';
 import type { CombatRuntimeEventDraft, CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
 import type { CombatDamagePreset } from '../../lib/combat/combatComfort';
 import type { MapBoardState, MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
+import type { MapTokenPresenceCandidate } from '../../lib/map/actorPresence';
 import type { SceneRuntimeSnapshot } from '../../lib/scene/sceneRuntimeSnapshotTypes';
 import type { DndRuntimeEventDraft } from '../../lib/dnd/dndDiceTypes';
 import type { DndLiteActorSheet, DndLiteCombatantPrefill } from '../../lib/dnd/dndLiteActorTypes';
@@ -209,6 +210,28 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const roomDetail = useRoomDetail(worldServerId, selectedCampaignId, selectedRoomId, { enabled: selectedRoomId !== '' });
   const runtimeSessionId = roomDetail.runtimeSession?.session.runtimeSessionId ?? '';
   const runtimeEvents = useRuntimeEvents(worldServerId, selectedCampaignId, selectedRoomId, runtimeSessionId);
+  const actorPresenceCandidates = useMemo<MapTokenPresenceCandidate[]>(() => [
+    ...campaignDetail.actors.flatMap((actor) => {
+      const sheet = dndActorSheets[actor.campaignActorInstanceId];
+      if (!sheet) return [];
+      return [{
+        sourceType: 'dndLiteActor' as const,
+        sourceId: actor.campaignActorInstanceId,
+        campaignActorId: actor.campaignActorInstanceId,
+        ownerUserId: actor.ownerId,
+        displayName: sheet.displayName || actor.displayName,
+        kind: sheet.actorKind === 'pc' ? 'playerCharacter' as const : sheet.actorKind === 'monster' ? 'monster' as const : sheet.actorKind === 'npc' ? 'npc' as const : 'unknown' as const,
+        hpSummary: { current: sheet.defenses.currentHp, max: sheet.defenses.maxHp, temporary: sheet.defenses.temporaryHp },
+      }];
+    }),
+    ...dndMonsters.monsters.map((monster) => ({
+      sourceType: 'monsterTemplate' as const,
+      sourceId: monster.monsterTemplateId,
+      displayName: monster.name,
+      kind: 'monster' as const,
+      hpSummary: monster.hitPointsAverage === undefined ? undefined : { current: monster.hitPointsAverage, max: monster.hitPointsAverage },
+    })),
+  ], [campaignDetail.actors, dndActorSheets, dndMonsters.monsters]);
 
   const runAction = async (action: () => Promise<unknown>) => {
     setBusy(true);
@@ -483,6 +506,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     mapEvents={runtimeEvents.events.filter((event) => event.runtimeSessionId === runtimeSessionId && event.eventKind.startsWith('map.'))}
                     campaignActors={campaignDetail.actors}
                     combatants={runtimeCombatState.combatants}
+                    actorPresenceCandidates={actorPresenceCandidates}
                     canManage={canManageServer}
                     onBoardChange={setRuntimeMapBoard}
                     snapshotBoard={runtimeMapBoard}

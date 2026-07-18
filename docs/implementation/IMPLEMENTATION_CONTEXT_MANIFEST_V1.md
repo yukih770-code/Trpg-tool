@@ -145,3 +145,12 @@ PowerShell fallback: `Select-String -Path .\src\**\* -Pattern "DATABASE_URL"`.
 | `npm run api:verify:world` | World Server API handler smoke (fake repos, 46 cases) | no |
 | `npm run api:verify:campaign-room` | Campaign / Room / Runtime API handler smoke (fake repos, 50 cases) | no |
 | `npm run frontend:verify:scene-state` | persisted scene library client request-shape smoke | no |
+| `npm run frontend:verify:actor-presence` | actor/token/combatant metadata, replay, snapshot, and permission-boundary smoke | no |
+
+## Actor Map Presence Foundation (P5.ACTOR-PRESENCE-FOUNDATION)
+
+Read `P5_ACTOR_PRESENCE_FOUNDATION.md` before changing map-token sources. A
+Character Vault or Campaign Actor is a long-term source, a Map Token is a
+scene projection, and a Combatant is a combat instance. Token ownership fields
+are display metadata only; the room runtime guard remains authoritative and
+player token movement is intentionally deferred.

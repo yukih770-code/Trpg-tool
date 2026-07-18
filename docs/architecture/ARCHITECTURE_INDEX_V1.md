@@ -639,3 +639,16 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   never DB authority; server-only (no frontend sync); no membership/actor/runtime
   persistence; manual DDL (no runner/auto-create); write smoke rolls back.
 - Read when: touching the Campaign DB.
+
+## Actor Map Presence Foundation (P5.ACTOR-PRESENCE-FOUNDATION)
+- Files: `src/lib/map/actorPresence.ts`, `src/lib/map/actorPresenceSmoke.ts`,
+  `src/lib/map/{mapRuntimeTypes,mapRuntimeReplay}.ts`,
+  `src/components/platform/BasicMapBoard.tsx`,
+  `src/components/platform/ServerCampaignWorkspace.tsx`.
+- Token source metadata is additive and replay/snapshot-compatible. Campaign
+  Actors, DND Lite actor sheets, private monster templates, and combatants can
+  produce lightweight placement prototypes; map tokens stay scene instances.
+- Don't violate: combat remains HP/condition authority; ownership hints are not
+  permission grants; player token movement remains disabled until a trusted
+  server-side ownership rule exists; no asset upload, fog/LOS, pathfinding,
+  automatic damage, or rules automation.

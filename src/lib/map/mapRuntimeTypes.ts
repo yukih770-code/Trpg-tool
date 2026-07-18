@@ -1,6 +1,15 @@
 export type MapTokenSize = 'tiny' | 'small' | 'medium' | 'large' | 'huge' | 'gargantuan' | 'custom';
 
-export type MapTokenSourceType = 'combatant' | 'campaign_actor' | 'manual' | 'unknown';
+/** `campaign_actor` and `combatant` are existing persisted values. */
+export type MapTokenSourceType = 'combatant' | 'campaign_actor' | 'dndLiteActor' | 'monsterTemplate' | 'manual' | 'unknown';
+
+export type MapTokenKind = 'playerCharacter' | 'npc' | 'monster' | 'companion' | 'object' | 'unknown';
+
+export type MapTokenHpSummary = {
+  current?: number;
+  max?: number;
+  temporary?: number;
+};
 
 export const MAP_BACKGROUND_PRESETS = ['blank', 'parchment', 'light_grid', 'dark_dungeon', 'stone_floor', 'town_square', 'grassland', 'sand', 'water', 'tactical_gray'] as const;
 
@@ -54,6 +63,19 @@ export type MapToken = {
   width?: number;
   height?: number;
   sourceType: MapTokenSourceType;
+  /** Additive source metadata; old manual tokens intentionally omit it. */
+  sourceId?: string;
+  campaignActorId?: string;
+  combatantId?: string;
+  /** Informational hints only. Room permissions remain server-authoritative. */
+  ownerUserId?: string;
+  controlledByUserId?: string;
+  displayName?: string;
+  imageUrl?: string;
+  initials?: string;
+  kind?: MapTokenKind;
+  hpSummary?: MapTokenHpSummary;
+  conditionSummary?: string[];
   sourceCombatantId?: string;
   sourceActorInstanceId?: string;
   colorLabel?: string;

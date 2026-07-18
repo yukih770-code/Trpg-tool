@@ -8,7 +8,7 @@ import {
   type CombatantSourceType,
   type CombatantStatus,
 } from '../combat/combatRuntimeTypes';
-import { createMapAreaTemplate, createMapBackgroundPreset, createMapBoardState, createMapGridConfig, createMapToken, type MapAreaTemplate, type MapBoardState, type MapGridConfig, type MapToken, type MapTokenSize, type MapTokenSourceType } from '../map/mapRuntimeTypes';
+import { createMapAreaTemplate, createMapBackgroundPreset, createMapBoardState, createMapGridConfig, createMapToken, type MapAreaTemplate, type MapBoardState, type MapGridConfig, type MapToken, type MapTokenKind, type MapTokenSize, type MapTokenSourceType } from '../map/mapRuntimeTypes';
 import {
   SCENE_RUNTIME_SNAPSHOT_SCHEMA_VERSION,
   type SceneRuntimeSnapshot,
@@ -110,7 +110,18 @@ function sanitizeToken(value: unknown): MapToken | null {
     size: oneOf<MapTokenSize>(input?.size, ['tiny', 'small', 'medium', 'large', 'huge', 'gargantuan', 'custom'], 'medium'),
     width: numberValue(input?.width),
     height: numberValue(input?.height),
-    sourceType: oneOf<MapTokenSourceType>(input?.sourceType, ['combatant', 'campaign_actor', 'manual', 'unknown'], 'unknown'),
+    sourceType: oneOf<MapTokenSourceType>(input?.sourceType, ['combatant', 'campaign_actor', 'dndLiteActor', 'monsterTemplate', 'manual', 'unknown'], 'unknown'),
+    sourceId: stringValue(input?.sourceId),
+    campaignActorId: stringValue(input?.campaignActorId),
+    combatantId: stringValue(input?.combatantId),
+    ownerUserId: stringValue(input?.ownerUserId),
+    controlledByUserId: stringValue(input?.controlledByUserId),
+    displayName: stringValue(input?.displayName),
+    imageUrl: stringValue(input?.imageUrl),
+    initials: stringValue(input?.initials),
+    kind: oneOf<MapTokenKind>(input?.kind, ['playerCharacter', 'npc', 'monster', 'companion', 'object', 'unknown'], 'unknown'),
+    hpSummary: isRecord(input?.hpSummary) ? { current: numberValue(input.hpSummary.current), max: numberValue(input.hpSummary.max), temporary: numberValue(input.hpSummary.temporary) } : undefined,
+    conditionSummary: Array.isArray(input?.conditionSummary) ? input.conditionSummary.flatMap((item) => stringValue(item) ? [stringValue(item) as string] : []) : undefined,
     sourceCombatantId: stringValue(input?.sourceCombatantId),
     sourceActorInstanceId: stringValue(input?.sourceActorInstanceId),
     colorLabel: stringValue(input?.colorLabel),
