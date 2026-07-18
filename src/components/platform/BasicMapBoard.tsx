@@ -116,8 +116,10 @@ function templateStyle(template: MapAreaTemplate, board: MapBoardState): CSSProp
   const width = Math.max(5, (template.widthFeet ?? template.sizeFeet) * pixelsPerFoot);
   const base: CSSProperties = { left: `${template.x}%`, top: `${template.y}%`, transform: `translate(-50%, -50%) rotate(${template.rotation}deg)`, transformOrigin: 'center', opacity: template.isHidden ? 0.3 : 1 };
   if (template.shape === 'circle') return { ...base, width: length * 2, height: length * 2, borderRadius: '999px' };
-  if (template.shape === 'cone') return { ...base, width: length, height: length, transformOrigin: '0 50%', clipPath: 'polygon(0 50%, 100% 0, 100% 100%)' };
-  if (template.shape === 'line') return { ...base, width: length, height: Math.max(6, width / 5), transformOrigin: '0 50%' };
+  // Lines and cones are origin-based. Centering them would move the start
+  // point away from the first click, which feels wrong for measuring/casting.
+  if (template.shape === 'cone') return { ...base, width: length, height: length, transform: `rotate(${template.rotation}deg)`, transformOrigin: '0 50%', clipPath: 'polygon(0 50%, 100% 0, 100% 100%)' };
+  if (template.shape === 'line') return { ...base, width: length, height: Math.max(6, width / 5), transform: `rotate(${template.rotation}deg)`, transformOrigin: '0 50%' };
   return { ...base, width: length, height: template.shape === 'square' ? length : width };
 }
 
@@ -133,6 +135,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   const [activePanel, setActivePanel] = useState<UtilityPanel>();
   const [measurement, setMeasurement] = useState<{ start: Point; end: Point }>();
   const [templateDraft, setTemplateDraft] = useState<MapAreaTemplate>();
+  const [templateGesture, setTemplateGesture] = useState<{ start: Point; end: Point }>();
   const [templateCommitMode, setTemplateCommitMode] = useState<TemplateCommitMode>('preview');
   const [lastMovement, setLastMovement] = useState<{ name: string; feet: number; squares: number }>();
   const [backgroundUrl, setBackgroundUrl] = useState('');
@@ -233,12 +236,20 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     const horizontalFeet = Math.max(1, dxPx * feetPerPixel);
     const verticalFeet = Math.max(1, dyPx * feetPerPixel);
     const rotation = Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI;
+    const squareFeet = Math.max(horizontalFeet, verticalFeet);
+    const squarePixels = squareFeet / feetPerPixel;
+    const boardWidth = rect.width / board.state.zoom;
+    const boardHeight = rect.height / board.state.zoom;
+    const squareCenter = {
+      x: start.x + (end.x === start.x ? (end.y >= start.y ? 1 : -1) : Math.sign(end.x - start.x)) * (squarePixels / boardWidth * 50),
+      y: start.y + (end.y === start.y ? (end.x >= start.x ? 1 : -1) : Math.sign(end.y - start.y)) * (squarePixels / boardHeight * 50),
+    };
     const input: MapAreaTemplateInput = shape === 'circle'
       ? { id: 'template-draft', shape, x: start.x, y: start.y, sizeFeet: distanceFeet, rotation: 0, label }
       : shape === 'line' || shape === 'cone'
         ? { id: 'template-draft', shape, x: start.x, y: start.y, sizeFeet: distanceFeet, widthFeet: shape === 'line' ? Math.max(5, Number(templateWidth) || 5) : undefined, rotation, label }
         : shape === 'square'
-          ? { id: 'template-draft', shape, x: (start.x + end.x) / 2, y: (start.y + end.y) / 2, sizeFeet: Math.max(horizontalFeet, verticalFeet), rotation: 0, label }
+          ? { id: 'template-draft', shape, x: squareCenter.x, y: squareCenter.y, sizeFeet: squareFeet, rotation: 0, label }
           : { id: 'template-draft', shape, x: (start.x + end.x) / 2, y: (start.y + end.y) / 2, sizeFeet: horizontalFeet, widthFeet: verticalFeet, rotation: 0, label };
     return createMapAreaTemplate(input);
   };
@@ -277,6 +288,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     } else if (toolMode === 'template' && !templateId && !tokenId) {
       dragRef.current = { kind: 'template-draw', start: point, end: point };
       setTemplateDraft(templateFromDrag(point, point) ?? undefined);
+      setTemplateGesture({ start: point, end: point });
       sharePreview({ kind: 'area', start: point, end: point, shape: templateShape });
     } else if (templateId && canManage) {
       const template = (board.state.templates ?? []).find((item) => item.id === templateId);
@@ -308,6 +320,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
       if (!end) return;
       dragRef.current = { ...drag, end };
       setTemplateDraft(templateFromDrag(drag.start, end) ?? undefined);
+      setTemplateGesture({ start: drag.start, end });
       sharePreview({ kind: 'area', start: drag.start, end, shape: templateShape });
       return;
     }
@@ -347,6 +360,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
         emit(result.event);
       }
       setTemplateDraft(undefined);
+      setTemplateGesture(undefined);
     } else if (drag.kind === 'pan' && canManage) {
       emit(board.changeViewport({ panX: board.state.panX, panY: board.state.panY, zoom: board.state.zoom }));
     }
@@ -358,6 +372,18 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   const visibleTokens = canManage ? board.state.tokens : board.state.tokens.filter((token) => !token.isHidden);
   const visibleTemplates = canManage ? board.state.templates ?? [] : (board.state.templates ?? []).filter((template) => !template.isHidden);
   const measurementDistance = measurement && boardRef.current ? measureMapDistance(measurement.start, measurement.end, grid, boardRef.current.getBoundingClientRect().width / board.state.zoom, boardRef.current.getBoundingClientRect().height / board.state.zoom) : undefined;
+  const pointerLabelStyle = (point: Point): CSSProperties => ({
+    left: `${point.x}%`,
+    top: `${point.y}%`,
+    transform: `translate(${point.x > 74 ? 'calc(-100% - 14px)' : '14px'}, ${point.y > 24 ? 'calc(-100% - 14px)' : '14px'})`,
+  });
+  const dragLineStyle = (start: Point, end: Point): CSSProperties => ({
+    left: `${start.x}%`,
+    top: `${start.y}%`,
+    width: `${Math.hypot(end.x - start.x, end.y - start.y)}%`,
+    transform: `rotate(${Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI}deg)`,
+  });
+  const anchorStyle = (point: Point): CSSProperties => ({ left: `${point.x}%`, top: `${point.y}%` });
   const gridStyle: CSSProperties | undefined = grid?.enabled ? {
     backgroundImage: 'linear-gradient(to right, rgba(88,24,13,.24) 1px, transparent 1px), linear-gradient(to bottom, rgba(88,24,13,.24) 1px, transparent 1px)',
     backgroundSize: `${grid.sizePx}px ${grid.sizePx}px`,
@@ -365,8 +391,8 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   } : undefined;
   const sharedAreaPreviews = sharedPreviews.flatMap(({ authorMemberId, authorDisplayName, preview }) => {
     if (preview.kind !== 'area' || !preview.shape) return [];
-    const template = templateFromDrag(preview.start, preview.end, preview.shape);
-    return template ? [{ authorMemberId, authorDisplayName, template }] : [];
+    const template = templateFromDrag(preview.start, preview.end, preview.shape, '');
+    return template ? [{ authorMemberId, authorDisplayName, template, start: preview.start }] : [];
   });
   const sharedRulerPreviews = sharedPreviews.filter(({ preview }) => preview.kind === 'ruler');
   const previewDistance = (preview: MapInteractionPreview) => {
@@ -375,14 +401,25 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     return measureMapDistance(preview.start, preview.end, grid, rect.width / board.state.zoom, rect.height / board.state.zoom);
   };
   const sharedPreviewLayer = <>
-    {sharedAreaPreviews.map(({ authorMemberId, authorDisplayName, template }) => <div key={`${authorMemberId}:${template.id}`} aria-hidden="true" className="pointer-events-none absolute z-10 border-2 border-dashed border-[#2563eb] bg-[#60a5fa]/20 shadow-sm" style={templateStyle(template, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#1e3a5f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white">{authorDisplayName} · {templateDimensionLabel(template, locale)}</span></div>)}
+    {sharedAreaPreviews.map(({ authorMemberId, authorDisplayName, template, start }) => <div key={`${authorMemberId}:${template.id}`} aria-hidden="true" className="pointer-events-none absolute inset-0 z-10"><div className="absolute border-2 border-dashed border-[#2563eb] bg-[#60a5fa]/20 shadow-sm" style={templateStyle(template, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#1e3a5f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white">{authorDisplayName} · {templateDimensionLabel(template, locale)}</span></div><span className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#2563eb] shadow" style={anchorStyle(start)} /></div>)}
     {sharedRulerPreviews.map(({ authorMemberId, authorDisplayName, preview }) => {
       const distance = previewDistance(preview);
       return <div key={`${authorMemberId}:ruler`} aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
-        <div className="absolute h-0 origin-left border-t-2 border-dashed border-[#2563eb]" style={{ left: `${preview.start.x}%`, top: `${preview.start.y}%`, width: `${Math.hypot(preview.end.x - preview.start.x, preview.end.y - preview.start.y)}%`, transform: `rotate(${Math.atan2(preview.end.y - preview.start.y, preview.end.x - preview.start.x) * 180 / Math.PI}deg)` }} />
-        {distance && <span className="absolute -translate-y-1/2 rounded bg-[#1e3a5f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ left: `${preview.end.x}%`, top: `${preview.end.y}%` }}>{authorDisplayName} · {distance.feet.toFixed(1)} ft</span>}
+        <div className="absolute h-0 origin-left border-t-2 border-dashed border-[#2563eb]" style={dragLineStyle(preview.start, preview.end)} />
+        <span className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#2563eb] shadow" style={anchorStyle(preview.start)} />
+        {distance && <span className="absolute rounded bg-[#1e3a5f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white" style={pointerLabelStyle(preview.end)}>{authorDisplayName} · {distance.feet.toFixed(1)} ft</span>}
       </div>;
     })}
+  </>;
+  const templateDraftLayer = templateDraft && <>
+    {templateGesture && templateDraft.shape === 'circle' && <div aria-hidden="true" className="pointer-events-none absolute h-0 origin-left border-t-2 border-dashed border-[#294966]/70" style={dragLineStyle(templateGesture.start, templateGesture.end)} />}
+    <div aria-hidden="true" className="pointer-events-none absolute border-2 border-dashed border-[#294966] bg-[#8fd3ff]/20 shadow-sm" style={templateStyle(templateDraft, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#17130f]/80 px-1.5 py-0.5 text-[10px] font-bold text-white">{templateDimensionLabel(templateDraft, locale)}</span></div>
+    {templateGesture && <span aria-hidden="true" className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#294966] shadow" style={anchorStyle(templateGesture.start)} />}
+  </>;
+  const measurementLayer = measurement && <>
+    <div aria-hidden="true" className="absolute h-0 origin-left border-t-2 border-dashed border-[#294966]" style={dragLineStyle(measurement.start, measurement.end)} />
+    <span aria-hidden="true" className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#294966] shadow" style={anchorStyle(measurement.start)} />
+    {measurementDistance && <span className="pointer-events-none absolute rounded bg-[#17130f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white" style={pointerLabelStyle(measurement.end)}>{measurementDistance.feet.toFixed(1)} ft</span>}
   </>;
 
   if (presentation === 'runtime') {
@@ -405,8 +442,8 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
           {imageError && <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-md bg-slate-900/80 px-3 py-2 text-center text-xs font-bold text-white">{t('mapRuntime.imageError')}</div>}
           {(sceneTitle?.trim() || sceneDescription?.trim()) && <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(20rem,70%)] rounded-lg border border-slate-300/60 bg-white/80 px-3 py-2 shadow-lg backdrop-blur-sm"><div className="text-[13px] font-black text-slate-800">{sceneTitle?.trim() || '当前场景'}</div>{sceneDescription?.trim() && <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-[11px] leading-relaxed text-slate-600">{sceneDescription.trim()}</p>}</div>}
           {visibleTemplates.map((template) => <button key={template.id} type="button" data-map-template={template.id} onClick={() => board.selectTemplate(template.id)} title={templateDimensionLabel(template, locale)} className={`absolute border-2 border-[#7b3f00]/70 bg-[#f5c518]/20 shadow-sm ${board.state.selectedTemplateId === template.id ? 'ring-2 ring-[#f5c518]' : ''}`} style={templateStyle(template, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#17130f]/75 px-1.5 py-0.5 text-[10px] font-bold text-white">{templateDimensionLabel(template, locale)}</span></button>)}
-          {templateDraft && <div aria-hidden="true" className="pointer-events-none absolute border-2 border-dashed border-[#294966] bg-[#8fd3ff]/20 shadow-sm" style={templateStyle(templateDraft, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#17130f]/80 px-1.5 py-0.5 text-[10px] font-bold text-white">{templateDimensionLabel(templateDraft, locale)}</span></div>}
-          {measurement && <><div aria-hidden="true" className="absolute h-0 origin-left border-t-2 border-dashed border-[#294966]" style={{ left: `${measurement.start.x}%`, top: `${measurement.start.y}%`, width: `${Math.hypot(measurement.end.x - measurement.start.x, measurement.end.y - measurement.start.y)}%`, transform: `rotate(${Math.atan2(measurement.end.y - measurement.start.y, measurement.end.x - measurement.start.x) * 180 / Math.PI}deg)` }} />{measurementDistance && <span className="pointer-events-none absolute -translate-y-1/2 rounded bg-[#17130f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ left: `${measurement.end.x}%`, top: `${measurement.end.y}%` }}>{measurementDistance.feet.toFixed(1)} ft</span>}</>}
+          {templateDraftLayer}
+          {measurementLayer}
           {sharedPreviewLayer}
           {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white px-2 py-1 text-xs font-bold shadow ${token.isHidden ? 'bg-[#51483d]/70 text-white' : 'bg-[#58180d] text-white'} ${board.state.selectedTokenId === token.id ? 'ring-4 ring-[#f5c518]/70' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={token.notes || token.name}>{token.name}{grid?.showCoordinates && <span className="ml-1 opacity-80">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
         </div>
@@ -465,8 +502,8 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
         <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={gridStyle} />
         {(sceneTitle?.trim() || sceneDescription?.trim()) && <div className="pointer-events-none absolute left-3 top-3 z-10 max-w-[min(20rem,70%)] rounded-lg border border-white/60 bg-white/80 px-3 py-2 shadow-lg backdrop-blur-sm"><div className="text-[13px] font-black text-[#2f2a22]">{sceneTitle?.trim() || '当前场景'}</div>{sceneDescription?.trim() && <p className="mt-1 line-clamp-4 whitespace-pre-wrap text-[11px] leading-relaxed text-[#51483d]">{sceneDescription.trim()}</p>}</div>}
         {visibleTemplates.map((template) => <button key={template.id} type="button" data-map-template={template.id} onClick={() => board.selectTemplate(template.id)} title={templateDimensionLabel(template, locale)} className={`absolute border-2 border-[#7b3f00]/70 bg-[#f5c518]/20 shadow-sm ${board.state.selectedTemplateId === template.id ? 'ring-2 ring-[#f5c518]' : ''}`} style={templateStyle(template, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#17130f]/75 px-1.5 py-0.5 text-[10px] font-bold text-white">{templateDimensionLabel(template, locale)}</span></button>)}
-        {templateDraft && <div aria-hidden="true" className="pointer-events-none absolute border-2 border-dashed border-[#294966] bg-[#8fd3ff]/20 shadow-sm" style={templateStyle(templateDraft, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#17130f]/80 px-1.5 py-0.5 text-[10px] font-bold text-white">{templateDimensionLabel(templateDraft, locale)}</span></div>}
-        {measurement && <><div aria-hidden="true" className="absolute h-0 origin-left border-t-2 border-dashed border-[#294966]" style={{ left: `${measurement.start.x}%`, top: `${measurement.start.y}%`, width: `${Math.hypot(measurement.end.x - measurement.start.x, measurement.end.y - measurement.start.y)}%`, transform: `rotate(${Math.atan2(measurement.end.y - measurement.start.y, measurement.end.x - measurement.start.x) * 180 / Math.PI}deg)` }} />{measurementDistance && <span className="pointer-events-none absolute -translate-y-1/2 rounded bg-[#17130f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white" style={{ left: `${measurement.end.x}%`, top: `${measurement.end.y}%` }}>{measurementDistance.feet.toFixed(1)} ft</span>}</>}
+        {templateDraftLayer}
+        {measurementLayer}
         {sharedPreviewLayer}
         {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white px-2 py-1 text-xs font-bold shadow ${token.isHidden ? 'bg-[#51483d]/70 text-white' : 'bg-[#58180d] text-white'} ${board.state.selectedTokenId === token.id ? 'ring-4 ring-[#f5c518]/70' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={token.notes || token.name}>{token.name}{grid?.showCoordinates && <span className="ml-1 opacity-80">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
       </div>
