@@ -30,6 +30,7 @@ const combat = { ...createCombatRuntimeTableState(), combatants: [combatant], tu
 const map = createMapBoardState('map-1');
 map.backgroundUrl = 'https://example.test/scene.png';
 map.backgroundName = 'Scene';
+map.backgroundPreset = 'stone_floor';
 map.zoom = 1.2;
 map.panX = 10;
 map.panY = -4;
@@ -46,6 +47,7 @@ check('exports empty snapshot', !empty.combat && !empty.map);
 check('exports combat state', both.combat?.combatants[0]?.displayName === 'Hero' && both.combat.turn.roundNumber === 2);
 check('exports map board', both.map?.board.backgroundUrl === 'https://example.test/scene.png' && both.map.board.tokens.length === 1);
 check('exports grid and templates', both.map?.board.grid?.sizePx === 40 && both.map.board.templates?.[0]?.shape === 'circle');
+check('exports background preset with custom URL', both.map?.board.backgroundPreset === 'stone_floor' && both.map.board.backgroundUrl === 'https://example.test/scene.png');
 
 const valid = validateSceneRuntimeSnapshot(JSON.parse(JSON.stringify(both)), context);
 check('validates exported snapshot', valid.ok && valid.snapshot.map?.board.tokens[0]?.id === 'token-1');
@@ -58,7 +60,7 @@ check('rejects missing export time', incomplete.ok === false);
 
 const imported = importSceneRuntimeSnapshot(JSON.parse(JSON.stringify(both)), context);
 check('imports combat and map deterministically', imported.ok && imported.snapshot.combat?.combatants.length === 1 && imported.snapshot.map?.board.tokens.length === 1);
-check('missing grid and template snapshot fields stay compatible', sanitizeSceneRuntimeSnapshot({ ...both, map: { board: { ...map, grid: undefined, templates: undefined } } }).map?.board.grid?.feetPerSquare === 5);
+check('missing grid, template, and preset snapshot fields stay compatible', sanitizeSceneRuntimeSnapshot({ ...both, map: { board: { ...map, grid: undefined, templates: undefined, backgroundPreset: undefined } } }).map?.board.grid?.feetPerSquare === 5 && sanitizeSceneRuntimeSnapshot({ ...both, map: { board: { ...map, backgroundPreset: undefined } } }).map?.board.backgroundPreset === 'tactical_gray');
 const mismatched = importSceneRuntimeSnapshot(JSON.parse(JSON.stringify(both)), { roomId: 'room-2', campaignId: 'campaign-2', runtimeSessionId: 'runtime-2' });
 check('warns about context mismatch', mismatched.ok && mismatched.warnings.length === 3);
 

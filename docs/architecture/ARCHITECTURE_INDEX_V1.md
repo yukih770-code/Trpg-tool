@@ -485,7 +485,9 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Boundary: configurable grid, center snap, straight-line ruler, and generic
   area geometry are host-assisted frontend projection tools. Grid/templates use
   append-only `map.*` records and scene snapshot state; the ruler is temporary.
-  They never detect targets, enforce range/pathing, apply damage, encode spell
+  The compact toolbar permits viewer-local measurement but reserves map mutation
+  controls for the existing manager UI path. CSS-only background presets and
+  custom URLs remain map projection metadata. They never detect targets, enforce range/pathing, apply damage, encode spell
   content, or alter backend/WebSocket/LAN authority.
 - Doc: `P5_DND_GRID_RANGE_TEMPLATES`.
 

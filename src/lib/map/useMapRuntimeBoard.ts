@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   createMapBoardState,
   createMapAreaTemplate,
+  createMapBackgroundPreset,
   createMapGridConfig,
   createMapToken,
   type MapBoardState,
@@ -32,6 +33,12 @@ export function useMapRuntimeBoard(mapId: string) {
     if (!url) return null;
     setState((previous) => ({ ...previous, backgroundUrl: url, backgroundName: backgroundName?.trim() || url, updatedAt: new Date().toISOString() }));
     return { eventKind: 'map.background_set', payload: { backgroundUrl: url, backgroundName: backgroundName?.trim() || url } };
+  }, []);
+
+  const setBackgroundPreset = useCallback((backgroundPreset: unknown): MapRuntimeEventDraft => {
+    const preset = createMapBackgroundPreset(backgroundPreset);
+    setState((previous) => ({ ...previous, backgroundPreset: preset, updatedAt: new Date().toISOString() }));
+    return { eventKind: 'map.background_set', payload: { backgroundPreset: preset } };
   }, []);
 
   const clearBackground = useCallback((): MapRuntimeEventDraft => {
@@ -127,6 +134,7 @@ export function useMapRuntimeBoard(mapId: string) {
     const normalized = {
       ...nextState,
       mapId,
+      backgroundPreset: createMapBackgroundPreset(nextState.backgroundPreset),
       grid: createMapGridConfig(nextState.grid),
       templates: (nextState.templates ?? []).map((template) => createMapAreaTemplate({ ...template, id: template.id })),
       tokens: nextState.tokens.map((token) => createMapToken({ ...token, id: token.id })),
@@ -141,5 +149,5 @@ export function useMapRuntimeBoard(mapId: string) {
     return normalized;
   }, [mapId]);
 
-  return { state, setBackground, clearBackground, updateGrid, changeViewport, addToken, moveToken, updateToken, removeToken, selectToken, addTemplate, updateTemplate, removeTemplate, clearTemplates, selectTemplate, restore, replaceState };
+  return { state, setBackground, setBackgroundPreset, clearBackground, updateGrid, changeViewport, addToken, moveToken, updateToken, removeToken, selectToken, addTemplate, updateTemplate, removeTemplate, clearTemplates, selectTemplate, restore, replaceState };
 }

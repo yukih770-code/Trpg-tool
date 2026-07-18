@@ -8,7 +8,7 @@ import {
   type CombatantSourceType,
   type CombatantStatus,
 } from '../combat/combatRuntimeTypes';
-import { createMapAreaTemplate, createMapBoardState, createMapGridConfig, createMapToken, type MapAreaTemplate, type MapBoardState, type MapGridConfig, type MapToken, type MapTokenSize, type MapTokenSourceType } from '../map/mapRuntimeTypes';
+import { createMapAreaTemplate, createMapBackgroundPreset, createMapBoardState, createMapGridConfig, createMapToken, type MapAreaTemplate, type MapBoardState, type MapGridConfig, type MapToken, type MapTokenSize, type MapTokenSourceType } from '../map/mapRuntimeTypes';
 import {
   SCENE_RUNTIME_SNAPSHOT_SCHEMA_VERSION,
   type SceneRuntimeSnapshot,
@@ -178,6 +178,7 @@ function sanitizeMap(value: unknown): MapBoardState | undefined {
     ...base,
     backgroundUrl: stringValue(value.backgroundUrl),
     backgroundName: stringValue(value.backgroundName),
+    backgroundPreset: createMapBackgroundPreset(value.backgroundPreset),
     zoom: clamp(numberValue(value.zoom) ?? base.zoom, 0.5, 2.5),
     panX: numberValue(value.panX) ?? base.panX,
     panY: numberValue(value.panY) ?? base.panY,

@@ -2,6 +2,7 @@ import type { RuntimeEvent } from '../api/campaignRoomApiClient';
 import {
   createMapBoardState,
   createMapAreaTemplate,
+  createMapBackgroundPreset,
   createMapGridConfig,
   createMapToken,
   type MapAreaTemplate,
@@ -95,7 +96,14 @@ export function replayMapRuntimeEvents(events: ReadonlyArray<MapRuntimeReplayEve
     const payload = event.payload ?? {};
     if (event.eventKind === 'map.background_set') {
       const url = stringValue(payload.backgroundUrl);
-      if (url) state = { ...state, backgroundUrl: url, backgroundName: stringValue(payload.backgroundName) ?? url, updatedAt: event.createdAt };
+      const backgroundPreset = typeof payload.backgroundPreset === 'string' ? createMapBackgroundPreset(payload.backgroundPreset) : undefined;
+      if (url || backgroundPreset) state = {
+        ...state,
+        backgroundUrl: url ?? state.backgroundUrl,
+        backgroundName: url ? stringValue(payload.backgroundName) ?? url : state.backgroundName,
+        backgroundPreset: backgroundPreset ?? state.backgroundPreset,
+        updatedAt: event.createdAt,
+      };
       continue;
     }
     if (event.eventKind === 'map.background_cleared') {

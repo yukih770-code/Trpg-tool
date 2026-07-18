@@ -2,6 +2,10 @@ export type MapTokenSize = 'tiny' | 'small' | 'medium' | 'large' | 'huge' | 'gar
 
 export type MapTokenSourceType = 'combatant' | 'campaign_actor' | 'manual' | 'unknown';
 
+export const MAP_BACKGROUND_PRESETS = ['blank', 'parchment', 'light_grid', 'dark_dungeon', 'stone_floor', 'grassland', 'sand', 'water', 'tactical_gray'] as const;
+
+export type MapBackgroundPreset = typeof MAP_BACKGROUND_PRESETS[number];
+
 export type MapGridConfig = {
   enabled: boolean;
   sizePx: number;
@@ -46,6 +50,7 @@ export type MapBoardState = {
   mapId: string;
   backgroundUrl?: string;
   backgroundName?: string;
+  backgroundPreset?: MapBackgroundPreset;
   zoom: number;
   panX: number;
   panY: number;
@@ -96,8 +101,17 @@ export type MapAreaTemplateInput = Omit<MapAreaTemplate, 'id' | 'x' | 'y' | 'rot
   rotation?: number;
 };
 
+export type MapBoardToolPermissions = {
+  canView: boolean;
+  canMeasure: boolean;
+  canManageTokens: boolean;
+  canManageTemplates: boolean;
+  canManageGrid: boolean;
+  canManageBackground: boolean;
+};
+
 export function createMapBoardState(mapId: string): MapBoardState {
-  return { mapId, zoom: 1, panX: 0, panY: 0, grid: createMapGridConfig(), templates: [], tokens: [] };
+  return { mapId, backgroundPreset: createMapBackgroundPreset(), zoom: 1, panX: 0, panY: 0, grid: createMapGridConfig(), templates: [], tokens: [] };
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -113,6 +127,23 @@ export function createMapGridConfig(input: Partial<MapGridConfig> = {}): MapGrid
     originY: Number.isFinite(input.originY) ? input.originY as number : 0,
     snap: input.snap ?? false,
     showCoordinates: input.showCoordinates ?? false,
+  };
+}
+
+export function createMapBackgroundPreset(value?: unknown): MapBackgroundPreset {
+  return typeof value === 'string' && (MAP_BACKGROUND_PRESETS as readonly string[]).includes(value)
+    ? value as MapBackgroundPreset
+    : 'tactical_gray';
+}
+
+export function getMapBoardToolPermissions(canManage: boolean): MapBoardToolPermissions {
+  return {
+    canView: true,
+    canMeasure: true,
+    canManageTokens: canManage,
+    canManageTemplates: canManage,
+    canManageGrid: canManage,
+    canManageBackground: canManage,
   };
 }
 

@@ -17,7 +17,8 @@ diagonal variant is claimed or enforced.
 
 ## Ruler and templates
 
-The ruler is temporary page state and does not append an event. Generic circle,
+The ruler is temporary page state and does not append an event. It remains
+available to non-manager viewers without changing the shared map state. Generic circle,
 cone, line, square, and rectangle templates store only geometry, rotation,
 optional label, and visibility. Hosts can add, move, rotate, remove, and clear
 them. Grid/template state is included in `map.*` replay and scene snapshots.
@@ -27,6 +28,19 @@ them. Grid/template state is included in `map.*` replay and scene snapshots.
 Persistent geometry uses `map.grid_updated`, `map.template_added`,
 `map.template_updated`, `map.template_removed`, and `map.templates_cleared`.
 Replay is sequence ordered and ignores unknown or incomplete geometry safely.
+
+## Usability and backgrounds
+
+The map board exposes a compact top toolbar. Managers can choose Select, Move,
+Measure, Template, Grid, and Background directly; viewers receive View and
+Measure only. This frontend split does not add a new authorization contract.
+
+The board defaults to the built-in `tactical_gray` CSS background. Blank,
+parchment, light-grid, dungeon, stone, grassland, sand, water, and tactical
+gray presets are safe visual styles rather than imported image assets. A custom
+background URL remains supported and takes priority over the selected preset.
+Preset selection is included in the existing `map.background_set` payload and
+scene snapshots; old events and snapshots without it use the default safely.
 
 ## Boundaries
 
