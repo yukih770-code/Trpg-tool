@@ -230,12 +230,14 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     const rect = element.getBoundingClientRect();
     const activeGrid = grid ?? { sizePx: 50, feetPerSquare: 5 };
     const feetPerPixel = activeGrid.feetPerSquare / activeGrid.sizePx;
-    const dxPx = Math.abs(((end.x - start.x) / 100) * rect.width / board.state.zoom);
-    const dyPx = Math.abs(((end.y - start.y) / 100) * rect.height / board.state.zoom);
+    const deltaXPx = ((end.x - start.x) / 100) * rect.width / board.state.zoom;
+    const deltaYPx = ((end.y - start.y) / 100) * rect.height / board.state.zoom;
+    const dxPx = Math.abs(deltaXPx);
+    const dyPx = Math.abs(deltaYPx);
     const distanceFeet = Math.max(1, Math.hypot(dxPx, dyPx) * feetPerPixel);
     const horizontalFeet = Math.max(1, dxPx * feetPerPixel);
     const verticalFeet = Math.max(1, dyPx * feetPerPixel);
-    const rotation = Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI;
+    const rotation = Math.atan2(deltaYPx, deltaXPx) * 180 / Math.PI;
     const squareFeet = Math.max(horizontalFeet, verticalFeet);
     const squarePixels = squareFeet / feetPerPixel;
     const boardWidth = rect.width / board.state.zoom;
@@ -377,12 +379,19 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     top: `${point.y}%`,
     transform: `translate(${point.x > 74 ? 'calc(-100% - 14px)' : '14px'}, ${point.y > 24 ? 'calc(-100% - 14px)' : '14px'})`,
   });
-  const dragLineStyle = (start: Point, end: Point): CSSProperties => ({
-    left: `${start.x}%`,
-    top: `${start.y}%`,
-    width: `${Math.hypot(end.x - start.x, end.y - start.y)}%`,
-    transform: `rotate(${Math.atan2(end.y - start.y, end.x - start.x) * 180 / Math.PI}deg)`,
-  });
+  const dragLineStyle = (start: Point, end: Point): CSSProperties => {
+    const rect = boardRef.current?.getBoundingClientRect();
+    const width = rect?.width || 1;
+    const height = rect?.height || 1;
+    const deltaX = ((end.x - start.x) / 100) * width;
+    const deltaY = ((end.y - start.y) / 100) * height;
+    return {
+      left: `${start.x}%`,
+      top: `${start.y}%`,
+      width: `${Math.hypot(deltaX, deltaY) / width * 100}%`,
+      transform: `rotate(${Math.atan2(deltaY, deltaX) * 180 / Math.PI}deg)`,
+    };
+  };
   const anchorStyle = (point: Point): CSSProperties => ({ left: `${point.x}%`, top: `${point.y}%` });
   const gridStyle: CSSProperties | undefined = grid?.enabled ? {
     backgroundImage: 'linear-gradient(to right, rgba(88,24,13,.24) 1px, transparent 1px), linear-gradient(to bottom, rgba(88,24,13,.24) 1px, transparent 1px)',
