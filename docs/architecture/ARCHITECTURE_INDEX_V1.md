@@ -761,3 +761,13 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   map token linkage is visual-only and token movement authority remains unchanged.
 - Don't violate: no spell/AI/inventory automation, character write-back, or
   player/spectator combat mutation authority.
+
+## Token Inspect Visibility Audit (P5.TOKEN-INSPECT-VISIBILITY-AUDIT)
+- Read `docs/implementation/P5_TOKEN_INSPECT_VISIBILITY_AUDIT.md` before
+  adding Token inspect, context-menu, enemy information, or investigation UI.
+- Current Room Map and public RuntimeLog events are room-wide payloads, not
+  viewer-aware projections. Hidden Token fields and raw combat values must not
+  be treated as safe merely because a React component omits them.
+- The required future boundary is server-side projection by authenticated
+  viewer; start with public observed data, then add party/owner/host and reveal
+  scopes. Do not expose monster/NPC secrets through public RuntimeLog payloads.

@@ -249,3 +249,11 @@ Read `P5_ROOM_RUNTIME_COMBAT_CONTROLS_SURFACE.md` before changing combat inside
 `RoomRuntimeEntryBridge`. Room combat is host-authored append-only `combat.*`
 RuntimeLog state, replayed by all viewers. The map link is display-only; existing
 server token ownership remains the only authority for token movement.
+
+## Token Inspect Visibility Audit (P5.TOKEN-INSPECT-VISIBILITY-AUDIT)
+
+Read `P5_TOKEN_INSPECT_VISIBILITY_AUDIT.md` before adding inspect/context-menu
+UI or exposing combat/character details from map Tokens. Current Room Map and
+public RuntimeLog payloads are not viewer-projected: React visibility is never
+a security boundary. First add server-side viewer projections, then layer public
+inspect, investigation reveals, and combat shortcuts on top.
