@@ -5,6 +5,7 @@ import { createSceneRuntimeSnapshot, importSceneRuntimeSnapshot } from '../scene
 import { campaignActorPresenceCandidate, combatantPresenceCandidate, linkedTokenForCandidate, toMapTokenPrototype, tokenInitials, tokenWithCombatProjection } from './actorPresence';
 import { replayMapRuntimeEvents } from './mapRuntimeReplay';
 import { createMapBoardState, createMapToken } from './mapRuntimeTypes';
+import { resolveTokenVisualIdentity } from './tokenVisualIdentity';
 
 function assert(condition: unknown, message: string): asserts condition { if (!condition) throw new Error(message); }
 
@@ -37,6 +38,7 @@ const cases: Array<{ name: string; run: () => void }> = [
   { name: 'replay restores source metadata', run: () => assert(replayMapRuntimeEvents([{ eventKind: 'map.token_added', payload: { token: heroToken } }], 'map').tokens[0]?.campaignActorId === 'actor-1', 'metadata not replayed') },
   { name: 'scene snapshot preserves source metadata', run: () => { const map = createMapBoardState('map'); map.tokens = [combatToken]; const imported = importSceneRuntimeSnapshot(createSceneRuntimeSnapshot({ map, exportedAt: '2026-07-18T00:00:00.000Z' })); assert(imported.ok && imported.snapshot.map?.board.tokens[0]?.combatantId === 'combat-1', 'snapshot lost combat link'); } },
   { name: 'missing image falls back to initials', run: () => assert(tokenInitials('Ariadne Vale') === 'AV' && tokenInitials('') === '?', 'initial fallback changed') },
+  { name: 'token visual identity keeps one circular body fallback', run: () => { const identity = resolveTokenVisualIdentity(createMapToken({ id: 'heat', name: '热', x: 0, y: 0, size: 'medium', sourceType: 'roomActorBinding', combatantId: 'combat-heat' })); assert(identity.label === '热' && identity.initials === '热' && identity.hasCombatLink, 'visual identity changed'); } },
   { name: 'combat summary projects onto linked token', run: () => { const projected = tokenWithCombatProjection(combatToken, [combatant]); assert(projected.hpSummary?.current === 12 && projected.conditionSummary?.[0] === 'Blessed', 'combat projection stale'); } },
   { name: 'host can move every token', run: () => assert(resolveRoomRuntimePermissions({ authenticated: true, roomMemberActive: true, roomRole: 'host' })['map.token.move'], 'host move unexpectedly denied') },
   { name: 'player cannot move unowned token', run: () => assert(!resolveRoomRuntimePermissions({ authenticated: true, roomMemberActive: true, roomRole: 'player' })['map.token.move'], 'player token move must remain disabled') },

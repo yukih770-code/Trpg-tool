@@ -35,6 +35,10 @@ The additive token source values `vaultActor`, `roomActorBinding`, and
 display prototype came from; a map token remains a scene instance, and combat
 remains the HP/condition authority.
 
+Token display follows `P5_TOKEN_RENDERING_CLARITY_PATCH.md`: an entry summary
+may contribute an existing image or initials, but never a second avatar, asset
+gallery entry, or ownership signal.
+
 ## Current user wording
 
 - A local campaign selection is **已选择角色** and has **尚未提交到联机大厅**.

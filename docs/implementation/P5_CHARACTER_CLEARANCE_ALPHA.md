@@ -41,6 +41,10 @@ Only an approved, admitted binding becomes a candidate for the existing map
 presence bridge. This does not grant token movement, ownership, or character
 sheet write access.
 
+Map display follows `P5_TOKEN_RENDERING_CLARITY_PATCH.md`: a cleared entry is
+shown as one circular token with external status information, not a cluster of
+avatars or a character-sheet projection.
+
 ## Explicitly Deferred
 
 - Full character builder and rule legality validation.

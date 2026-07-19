@@ -21,6 +21,13 @@ token resolves to **Locate** instead of creating a duplicate. Combat remains
 the HP/condition authority: a linked map token only projects the latest local
 combat summary for display. Moving a token never changes combat HP or status.
 
+## Token rendering clarity
+
+Read `P5_TOKEN_RENDERING_CLARITY_PATCH.md` before changing map-token visuals.
+One token has one circular avatar body. Existing `imageUrl` is preferred and
+stable initials are the fallback. Name, HP, condition, and combat linkage are
+external labels or small indicators, never another avatar body.
+
 ## Permission Boundary
 
 Hosts retain existing map token control. Player-owned movement is deliberately

@@ -176,3 +176,11 @@ entry distinct: joining is not player admission; only an approved and admitted
 binding may ready as a player. Hosts need no character; spectators are
 read-only. The state is session-only and does not modify local character stores
 or create persistent campaign actors.
+
+## Token Rendering Clarity Patch (P5.TOKEN-RENDERING-CLARITY-PATCH)
+
+Read `P5_TOKEN_RENDERING_CLARITY_PATCH.md` before changing map token visuals.
+One token is one circular body: existing `imageUrl` then initials fallback.
+Names, HP, conditions, and combat links stay outside the body as small display
+indicators. This preserves old map events and snapshots without adding assets,
+ownership, clearance, or persistence behavior.

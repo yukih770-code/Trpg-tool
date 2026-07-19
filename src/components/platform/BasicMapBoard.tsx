@@ -6,6 +6,7 @@ import type { Combatant } from '../../lib/combat/combatRuntimeTypes';
 import { hasMapRuntimeEvents, type MapRuntimeReplayEvent } from '../../lib/map/mapRuntimeReplay';
 import { useMapRuntimeBoard } from '../../lib/map/useMapRuntimeBoard';
 import { campaignActorPresenceCandidate, combatantPresenceCandidate, linkedTokenForCandidate, toMapTokenPrototype, tokenInitials, tokenWithCombatProjection, type MapTokenPresenceCandidate } from '../../lib/map/actorPresence';
+import { resolveTokenVisualIdentity } from '../../lib/map/tokenVisualIdentity';
 import { MAP_BACKGROUND_PRESETS, createMapAreaTemplate, measureMapDistance, snapMapPosition, type MapAreaTemplate, type MapAreaTemplateInput, type MapBackgroundPreset, type MapBoardState, type MapInteractionPreview, type MapRuntimeEventDraft, type MapTemplateShape, type MapToken, type MapTokenSize } from '../../lib/map/mapRuntimeTypes';
 
 type Props = {
@@ -175,6 +176,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   const [templateName, setTemplateName] = useState('');
   const [eventError, setEventError] = useState('');
   const [imageError, setImageError] = useState(false);
+  const [failedTokenImages, setFailedTokenImages] = useState<Record<string, true>>({});
 
   const mapEventKey = mapEvents.map((event, index) => `${event.seq ?? index}:${event.eventKind}:${event.createdAt ?? ''}`).join('|');
   const selectedToken = board.state.selectedTokenId ? board.state.tokens.find((token) => token.id === board.state.selectedTokenId) : undefined;
@@ -414,14 +416,28 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   const visibleTokens = (canManage ? board.state.tokens : board.state.tokens.filter((token) => !token.isHidden)).map((token) => tokenWithCombatProjection(token, combatants));
   const visibleTemplates = canManage ? board.state.templates ?? [] : (board.state.templates ?? []).filter((template) => !template.isHidden);
   const tokenContents = (token: MapToken) => {
-    const hp = token.hpSummary;
-    const condition = token.conditionSummary?.[0];
+    const identity = resolveTokenVisualIdentity(token, { imageFailed: failedTokenImages[token.id] });
     return <>
-      <span className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full border border-white/70 bg-[#294966] text-[10px] font-black text-white">
-        {token.imageUrl ? <><img src={token.imageUrl} alt="" className="h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none'; event.currentTarget.nextElementSibling?.classList.remove('hidden'); }} /><span className="hidden">{token.initials ?? tokenInitials(token.displayName ?? token.name)}</span></> : token.initials ?? tokenInitials(token.displayName ?? token.name)}
+      <span className={`relative grid h-10 w-10 place-items-center overflow-hidden rounded-full border-2 border-white/90 bg-[#294966] text-[12px] font-black text-white shadow ${token.isHidden ? 'opacity-70' : ''} ${board.state.selectedTokenId === token.id ? 'ring-4 ring-[#f5c518]/80 ring-offset-2 ring-offset-transparent' : ''}`}>
+        {identity.imageUrl ? (
+          <img
+            src={identity.imageUrl}
+            alt=""
+            className="h-full w-full object-cover"
+            onError={() => setFailedTokenImages((current) => current[token.id] ? current : { ...current, [token.id]: true })}
+          />
+        ) : identity.initials}
+        {identity.hasCombatLink && (
+          <span aria-label={locale === 'en' ? 'Linked combatant' : '已关联战斗'} className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full border border-white bg-slate-900 text-[8px] text-white shadow">⚔</span>
+        )}
       </span>
-      <span className="min-w-0 text-left"><span className="block max-w-24 truncate">{token.displayName ?? token.name}</span>{hp && <span className="block text-[9px] font-semibold opacity-85">HP {hp.current ?? '—'}{hp.max !== undefined ? `/${hp.max}` : ''}{hp.temporary ? ` +${hp.temporary}` : ''}</span>}{condition && <span className="block max-w-24 truncate text-[9px] font-semibold opacity-85">{condition}</span>}</span>
-      {(token.combatantId ?? token.sourceCombatantId) && <span aria-label={locale === 'en' ? 'Linked combatant' : '已关联战斗'} className="ml-0.5 text-[10px] opacity-80">⚔</span>}
+      <span className="max-w-28 truncate rounded bg-slate-950/80 px-1.5 py-0.5 text-center text-[10px] font-bold text-white shadow">{identity.label}</span>
+      {(identity.hpSummary || identity.conditionSummary) && (
+        <span className="flex max-w-32 flex-wrap justify-center gap-1 text-[9px] font-semibold text-slate-700">
+          {identity.hpSummary && <span className="rounded bg-white/90 px-1 py-0.5 shadow">{identity.hpSummary}</span>}
+          {identity.conditionSummary && <span className="max-w-20 truncate rounded bg-amber-100/95 px-1 py-0.5 text-amber-900 shadow">{identity.conditionSummary}</span>}
+        </span>
+      )}
     </>;
   };
   const measurementDistance = measurement && boardRef.current ? measureMapDistance(measurement.start, measurement.end, grid, boardRef.current.getBoundingClientRect().width / board.state.zoom, boardRef.current.getBoundingClientRect().height / board.state.zoom) : undefined;
@@ -505,7 +521,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
           {templateDraftLayer}
           {measurementLayer}
           {sharedPreviewLayer}
-          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className={`absolute flex max-w-40 items-center gap-1 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white px-1 py-1 text-xs font-bold shadow ${token.isHidden ? 'bg-[#51483d]/70 text-white' : 'bg-[#58180d] text-white'} ${board.state.selectedTokenId === token.id ? 'ring-4 ring-[#f5c518]/70' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={token.notes || token.name}>{tokenContents(token)}{grid?.showCoordinates && <span className="mr-1 text-[9px] opacity-80">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
+          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className="absolute flex max-w-36 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold" style={{ left: `${token.x}%`, top: `${token.y}%` }} title={token.notes || token.name}>{tokenContents(token)}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
         </div>
       </div>
 

@@ -110,7 +110,7 @@ function sanitizeToken(value: unknown): MapToken | null {
     size: oneOf<MapTokenSize>(input?.size, ['tiny', 'small', 'medium', 'large', 'huge', 'gargantuan', 'custom'], 'medium'),
     width: numberValue(input?.width),
     height: numberValue(input?.height),
-    sourceType: oneOf<MapTokenSourceType>(input?.sourceType, ['combatant', 'campaign_actor', 'dndLiteActor', 'monsterTemplate', 'manual', 'unknown'], 'unknown'),
+    sourceType: oneOf<MapTokenSourceType>(input?.sourceType, ['combatant', 'campaign_actor', 'dndLiteActor', 'monsterTemplate', 'vaultActor', 'roomActorBinding', 'quickDraft', 'manual', 'unknown'], 'unknown'),
     sourceId: stringValue(input?.sourceId),
     campaignActorId: stringValue(input?.campaignActorId),
     combatantId: stringValue(input?.combatantId),

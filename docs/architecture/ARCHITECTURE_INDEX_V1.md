@@ -672,3 +672,13 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Don't violate: all binding/admission/ready state is in-memory Room Server
   session state; no character-store write, CampaignActorInstance, persistent
   membership, token ownership, rule engine, or permission shortcut.
+
+## Token Rendering Clarity Patch (P5.TOKEN-RENDERING-CLARITY-PATCH)
+- Files: `src/lib/map/tokenVisualIdentity.ts`, `tokenVisualIdentitySmoke.ts`,
+  `src/components/platform/BasicMapBoard.tsx`, and existing map replay / scene
+  snapshot compatibility seams.
+- One MapToken has one circular visual body. Existing image URL takes priority;
+  initials are the safe fallback. Name, HP, status, and combat link are external
+  indicators, not duplicate avatars or new token state.
+- Don't violate: no asset upload, avatar packs, image generation, event-schema
+  change, token ownership movement, Character Clearance change, or persistence.
