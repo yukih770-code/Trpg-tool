@@ -202,3 +202,11 @@ Read `P5_ROOM_PLAYER_FLOW_POLISH.md` before changing Lobby progression copy.
 `roomPlayerFlow.ts` is a pure product-language derivation over the existing
 snapshot: it never authorizes entry, Ready, or movement. The Runtime map repeats
 the outcome as own-token, host-controlled-token, or not-yet-placed guidance.
+
+## Character Entry CTA Route Fix (P5.CHARACTER-ENTRY-CTA-ROUTE-FIX)
+
+Read `P5_CHARACTER_ENTRY_CTA_ROUTE_FIX.md` before changing Lobby character
+entry. Keep visible character actions separate from membership approval,
+clearance, Ready, and Runtime authority. Pending members may prepare but not
+submit; spectator entry is character-free; hosts may skip an optional carried
+character.

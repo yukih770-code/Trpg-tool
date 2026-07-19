@@ -816,6 +816,10 @@ export function DndWorkspaceShell({
                   tone="dnd"
                   panelClassName={panelClass}
                   onBackOverrideChange={onGlobalBackOverrideChange}
+                  onOpenFullCharacterCreator={() => {
+                    resetDndCreator();
+                    onOpenPlayTab('creator');
+                  }}
                 />
               )}
             </div>

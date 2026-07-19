@@ -41,3 +41,11 @@ or combat automation.
 - `npm run frontend:verify:character-clearance`
 - `npm run frontend:verify:token-ownership`
 - `npm run runtime:verify:token-ownership`
+
+## Character-entry CTA follow-up
+
+`P5_CHARACTER_ENTRY_CTA_ROUTE_FIX.md` adds visible next actions to the
+`waitingForCharacter` and pending-membership states. Players can prepare an
+existing-character selection or quick draft while pending, then submit only
+after membership approval. Spectator entry remains a join-page choice; hosts
+may skip an optional host-carried character.

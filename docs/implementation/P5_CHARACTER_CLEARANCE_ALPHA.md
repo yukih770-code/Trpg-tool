@@ -60,3 +60,11 @@ The Lobby translates the contract into short progress states: waiting to join,
 waiting to choose a character, submitted for host review, character needs
 changes, admitted and waiting for Ready, and Ready to enter. These labels do
 not change the binding, admission, or ready authority described above.
+
+## Visible Character Entry
+
+The Room Lobby exposes explicit choices for a local Vault character, a quick
+room-only draft, and the existing DND full character creator. A pending member
+may prepare a choice but cannot submit it until their room membership is
+active. This is a UX layer only: host binding review and clearance approval are
+still required before Ready.

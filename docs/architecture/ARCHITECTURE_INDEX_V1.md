@@ -705,3 +705,10 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   or spectator. It is presentation over existing server contracts.
 - Don't violate: no new auth/RBAC, clearance persistence, token ACL, character
   builder, automatic placement, or combat automation.
+
+## Character Entry CTA Route Fix (P5.CHARACTER-ENTRY-CTA-ROUTE-FIX)
+- Files: `src/lib/platform/characterEntryCta.ts`, `RoomLobbyShell.tsx`, and
+  the DND workspace route.
+- The Lobby displays direct Vault, quick-draft, full-creator, spectator, and
+  host-skip actions without changing Room approval, clearance, Ready, Runtime,
+  or token authority.

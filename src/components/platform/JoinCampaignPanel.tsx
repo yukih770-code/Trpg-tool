@@ -71,9 +71,11 @@ export interface JoinCampaignPanelProps {
   tone?: string;
   panelClassName?: string;
   onBackOverrideChange?: (override: { label?: string; onBack: () => void } | null) => void;
+  /** Optional system route for the existing full character creator. */
+  onOpenFullCharacterCreator?: () => void;
 }
 
-export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChange }: JoinCampaignPanelProps) {
+export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChange, onOpenFullCharacterCreator }: JoinCampaignPanelProps) {
   const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
   const [rooms, setRooms] = useState<RoomServerRoomListItem[]>([]);
   const [healthOk, setHealthOk] = useState<boolean | null>(null);
@@ -228,6 +230,7 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
           originLabel="加入战役"
           originDetail="你已进入联机大厅。请绑定角色并等待主持人审批。"
           onEnterRuntime={(payload) => setRuntimeEntry(payload)}
+          onOpenFullCharacterCreator={onOpenFullCharacterCreator}
         />
       </div>
     );

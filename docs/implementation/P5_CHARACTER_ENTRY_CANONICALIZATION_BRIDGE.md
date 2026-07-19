@@ -67,3 +67,10 @@ change is part of this bridge.
 - `npm run frontend:verify:character-entry`
 - `npm run frontend:verify:actor-presence`
 - `npm run frontend:verify:room-permissions`
+
+## CTA relationship
+
+The Lobby CTA surface can select an existing local record or produce a quick
+draft candidate. It does not bypass this bridge: only a submitted Room actor
+binding becomes the canonical session entry reference after the existing host
+review and clearance sequence.

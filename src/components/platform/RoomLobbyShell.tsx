@@ -16,6 +16,7 @@ import {
   type RoomSocketConnectionState,
 } from '../../lib/platform/roomSocketClient';
 import { resolveDevViewerUserId } from '../../lib/api/apiClient';
+import { getCharacterEntryActions, type CharacterEntryActionId } from '../../lib/platform/characterEntryCta';
 import {
   listActorVaultRecords,
   type ActorVaultRecord,
@@ -77,6 +78,8 @@ export interface RoomLobbyShellProps {
   onLeaveLobby?: () => void;
   /** Emitted when an eligible member opens the read-only Runtime Entry Preview. */
   onEnterRuntime?: (payload: { context: RoomRuntimeEntryContext; room: RoomSnapshot }) => void;
+  /** Opens an existing system character creator. The lobby stays server-authoritative. */
+  onOpenFullCharacterCreator?: () => void;
 }
 
 interface SnapshotMeta {
@@ -225,6 +228,7 @@ export function RoomLobbyShell({
   originDetail,
   onLeaveLobby,
   onEnterRuntime,
+  onOpenFullCharacterCreator,
 }: RoomLobbyShellProps) {
   // Back-compat: fall back to onLeaveLobby when the new back/exit props are absent.
   const backHandler = onBackToOrigin ?? onLeaveLobby;
@@ -246,6 +250,8 @@ export function RoomLobbyShell({
   const [bindingHpCurrent, setBindingHpCurrent] = useState('');
   const [bindingHpMax, setBindingHpMax] = useState('');
   const [bindingArmorClass, setBindingArmorClass] = useState('');
+  const [entryActionMode, setEntryActionMode] = useState<'existing' | 'quickDraft' | null>(null);
+  const [entryActionNotice, setEntryActionNotice] = useState<string | null>(null);
   const [bindingBusy, setBindingBusy] = useState(false);
   const [bindingError, setBindingError] = useState<string | null>(null);
   // Host binding review (per-binding) state.
@@ -519,6 +525,10 @@ export function RoomLobbyShell({
 
   const submitBinding = async () => {
     if (!currentMemberId) return;
+    if (!iAmActive) {
+      setBindingError('请等待主持人批准加入房间后再提交角色。');
+      return;
+    }
     setBindingBusy(true);
     setBindingError(null);
     try {
@@ -550,6 +560,40 @@ export function RoomLobbyShell({
     setBindingName(actor.displayName);
     setBindingSummary(actor.subtitle ?? '');
     setBindingSource('localActorVault');
+    setEntryActionMode('existing');
+  };
+
+  const handleEntryAction = (actionId: CharacterEntryActionId) => {
+    setBindingError(null);
+    if (actionId === 'existing') {
+      setEntryActionMode('existing');
+      setEntryActionNotice(vaultRecords.length > 0
+        ? '从本地角色库选择一名与当前系统兼容的角色。'
+        : '本地角色库中还没有可用角色；可以创建快速角色或打开完整车卡创建。');
+      return;
+    }
+    if (actionId === 'quickDraft') {
+      setBindingActorId('');
+      setBindingSource('quickDraft');
+      setEntryActionMode('quickDraft');
+      setEntryActionNotice('快速角色只用于当前房间的入场申请，不会写入角色库。');
+      return;
+    }
+    if (actionId === 'skipHostCharacter') {
+      setEntryActionMode(null);
+      setEntryActionNotice('主持人可直接主持；不提交角色不会影响主持人进入桌面。');
+      return;
+    }
+    if (actionId === 'spectator') {
+      setEntryActionNotice('请返回加入页并选择「以旁观者加入」。旁观者不需要角色，也不能提交入场角色。');
+      return;
+    }
+    if (onOpenFullCharacterCreator) {
+      setEntryActionNotice('正在打开完整车卡创建。完成后请使用页面返回回到此大厅，再从本地角色库选择新角色。');
+      onOpenFullCharacterCreator();
+      return;
+    }
+    setEntryActionNotice('当前系统尚未接通完整车卡创建。你仍可选择已有角色或创建快速角色。');
   };
 
   const reviewBinding = async (bindingId: string, action: 'approve' | 'reject') => {
@@ -893,7 +937,9 @@ export function RoomLobbyShell({
       <section className={card}>
         <div className={`mb-1.5 ${label}`}>{currentMember?.role === 'host' ? '主持人角色（可选）' : '选择入场角色'}</div>
         <p className="mb-2 text-[10px] text-slate-500">
-          选择本地角色库角色，或创建一份仅用于本次大厅的快速角色。提交后由主持人审核；不会改动你的角色库。
+          {currentMember?.role === 'host'
+            ? '主持人可直接主持，也可以带入一个自己的角色。'
+            : '请选择已有角色、创建快速角色，或以旁观者加入。角色提交后仍需主持人审核。'}
         </p>
 
         <div className="mb-3 rounded border border-slate-300/40 bg-white/70 p-2 text-[11px]">
@@ -912,9 +958,22 @@ export function RoomLobbyShell({
           )}
         </div>
 
-        {iAmActive ? (
-          <div className="space-y-2">
-            {vaultRecords.length > 0 && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          {getCharacterEntryActions(currentMember?.role).map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              className={`${btn} ${action.id === 'quickDraft' || action.id === 'existing' ? 'border-slate-700 bg-slate-800 text-white hover:bg-slate-700' : 'bg-white/70 text-slate-700 hover:bg-white'}`}
+              onClick={() => handleEntryAction(action.id)}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+        {entryActionNotice && <p className="mb-3 rounded border border-slate-300/50 bg-white/70 px-2 py-1.5 text-[10px] text-slate-600">{entryActionNotice}</p>}
+
+        <div className="space-y-2">
+            {entryActionMode === 'existing' && vaultRecords.length > 0 && (
               <label className="flex max-w-md flex-col gap-0.5 text-[10px] text-slate-500">从本地角色库选择
                 <select
                   className={input}
@@ -926,16 +985,28 @@ export function RoomLobbyShell({
                 </select>
               </label>
             )}
-            <div className="flex flex-wrap items-end gap-2">
+            {entryActionMode === 'existing' && vaultRecords.length === 0 && (
+              <p className="text-[10px] italic text-slate-500">当前系统没有可选的本地角色。可创建快速角色，或完成完整车卡创建后返回此处选择。</p>
+            )}
+            {entryActionMode === 'existing' && bindingName.trim() && (
+              <div className="flex flex-wrap items-center gap-2 rounded border border-slate-300/40 bg-white/50 px-2 py-1.5 text-[10px]">
+                <span className="font-bold text-slate-700">已选择：{bindingName}</span>
+                <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 font-bold text-slate-600">{SOURCE_LABEL[bindingSource]}</span>
+                <button type="button" className={btn} disabled={bindingBusy || !iAmActive} onClick={submitBinding}>
+                  {bindingBusy ? '提交中…' : iAmActive ? (myBinding ? '更新入场角色' : currentMember?.role === 'host' ? '提交主持人角色' : '提交角色申请') : '等待加入批准后提交'}
+                </button>
+              </div>
+            )}
+            {entryActionMode === 'quickDraft' && <div className="flex flex-wrap items-end gap-2">
               <label className="flex min-w-[220px] flex-col gap-0.5 text-[10px] text-slate-500">角色名
                 <input className={input} value={bindingName} onChange={(e) => { setBindingName(e.target.value); if (bindingSource === 'localActorVault') setBindingSource('quickDraft'); }} placeholder="例如 Elaria / 调查员 / Solo" />
               </label>
               <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">角色来源：{SOURCE_LABEL[bindingSource]}</span>
-              <button type="button" className={btn} disabled={bindingBusy || !bindingName.trim()} onClick={submitBinding}>
-                {bindingBusy ? '提交中…' : myBinding ? '更新入场角色' : '提交角色申请'}
+              <button type="button" className={btn} disabled={bindingBusy || !bindingName.trim() || !iAmActive} onClick={submitBinding}>
+                {bindingBusy ? '提交中…' : iAmActive ? (myBinding ? '更新入场角色' : currentMember?.role === 'host' ? '提交主持人角色' : '提交角色申请') : '等待加入批准后提交'}
               </button>
-            </div>
-            <details className="rounded border border-slate-300/40 bg-white/50 px-2 py-1">
+            </div>}
+            {entryActionMode === 'quickDraft' && <details open className="rounded border border-slate-300/40 bg-white/50 px-2 py-1">
               <summary className="cursor-pointer text-[10px] font-bold text-slate-500">快速角色摘要（可选）</summary>
               <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-4">
                 <label className="sm:col-span-4 flex flex-col gap-0.5 text-[10px] text-slate-500">简短说明
@@ -954,11 +1025,9 @@ export function RoomLobbyShell({
               <label className="mt-2 flex max-w-xs flex-col gap-0.5 text-[10px] text-slate-500">角色 ID（可选）
                 <input className={input} value={bindingActorId} onChange={(e) => { setBindingActorId(e.target.value); setBindingSource('quickDraft'); }} placeholder="仅用于本地角色库匹配" />
               </label>
-            </details>
-          </div>
-        ) : (
-          <p className="text-[10px] italic text-slate-500">成为在线成员后才能提交角色给主持人。</p>
-        )}
+            </details>}
+          {!iAmActive && <p className="text-[10px] italic text-slate-500">你可以先选择或创建角色；成为在线成员后即可提交给主持人。若想旁观，请返回加入页选择旁观者。</p>}
+        </div>
         {bindingError && <div className="mt-1 text-[10px] font-bold text-red-700">提交失败：{bindingError}</div>}
       </section>
       )}
