@@ -16,6 +16,11 @@ import {
   type RoomSocketConnectionState,
 } from '../../lib/platform/roomSocketClient';
 import { resolveDevViewerUserId } from '../../lib/api/apiClient';
+import {
+  listActorVaultRecords,
+  type ActorVaultRecord,
+  type ActorVaultSystemId,
+} from '../../lib/platform/actorVaultRepositoryBridge';
 import type {
   RoomActorBindingClearanceStatus,
   RoomActorBindingSource,
@@ -26,6 +31,7 @@ import type {
   RoomMemberStatus,
   RoomReadyStatus,
   RoomSnapshot,
+  RoomSystemId,
 } from '../../lib/platform/roomTypes';
 import type {
   RoomRuntimeEntryBlockedReason,
@@ -128,6 +134,7 @@ const BINDING_TONE: Record<RoomLobbyActorBindingStatus, string> = {
 
 const SOURCE_LABEL: Record<RoomActorBindingSource, string> = {
   localActorVault: '本地角色库',
+  quickDraft: '快速角色草稿',
   manualScaffold: '手动草稿',
   imported: '导入',
   unknown: '未知',
@@ -191,6 +198,17 @@ function errMsg(e: unknown): string {
   return e instanceof RoomServerHttpError ? `(${e.status}) ${e.message}` : e instanceof Error ? e.message : String(e);
 }
 
+function isActorVaultSystemId(systemId: RoomSystemId | undefined): systemId is ActorVaultSystemId {
+  return systemId === 'dnd5e-2024' || systemId === 'coc7e' || systemId === 'cp-red';
+}
+
+function optionalNumber(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 export function RoomLobbyShell({
   baseUrl,
   roomId,
@@ -222,6 +240,11 @@ export function RoomLobbyShell({
   // Actor binding draft form + submit state.
   const [bindingName, setBindingName] = useState('');
   const [bindingActorId, setBindingActorId] = useState('');
+  const [bindingSource, setBindingSource] = useState<RoomActorBindingSource>('quickDraft');
+  const [bindingSummary, setBindingSummary] = useState('');
+  const [bindingHpCurrent, setBindingHpCurrent] = useState('');
+  const [bindingHpMax, setBindingHpMax] = useState('');
+  const [bindingArmorClass, setBindingArmorClass] = useState('');
   const [bindingBusy, setBindingBusy] = useState(false);
   const [bindingError, setBindingError] = useState<string | null>(null);
   // Host binding review (per-binding) state.
@@ -235,6 +258,12 @@ export function RoomLobbyShell({
   const [copiedInviteAction, setCopiedInviteAction] = useState<'code' | 'info' | null>(null);
 
   const config = useMemo<RoomServerHttpClientConfig>(() => ({ baseUrl }), [baseUrl]);
+  const vaultRecords = useMemo<ActorVaultRecord[]>(() => {
+    const systemId = room?.identity.systemId;
+    return isActorVaultSystemId(systemId)
+      ? listActorVaultRecords(systemId).filter((record) => record.status === 'active')
+      : [];
+  }, [room?.identity.systemId]);
 
   // WebSocket: connect + subscribe to this room; clean up on unmount.
   useEffect(() => {
@@ -326,6 +355,7 @@ export function RoomLobbyShell({
   const myBinding = currentMemberId ? actorBindings.find((b) => b.memberId === currentMemberId) : undefined;
   const myBindingStatus: RoomLobbyActorBindingStatus = myBinding?.status ?? 'notSubmitted';
   const myClearanceStatus = myBinding?.clearance?.status;
+  const isSpectator = currentMember?.role === 'spectator';
   const myReady: RoomReadyStatus =
     (currentMemberId ? readyStates.find((r) => r.memberId === currentMemberId)?.status : undefined) ?? 'notReady';
   const activeCount = members.filter((m) => m.status === 'active').length;
@@ -356,7 +386,9 @@ export function RoomLobbyShell({
       : memberReady(memberId) === 'ready'
         ? 'bg-amber-500/15 text-amber-700'
         : 'bg-slate-500/10 text-slate-600';
-  const myBindingLabel =
+  const myBindingLabel = isSpectator
+    ? '旁观不需角色'
+    :
     myBindingStatus === 'approved'
       ? '已绑定'
       : myBindingStatus === 'pendingHostApproval'
@@ -367,7 +399,9 @@ export function RoomLobbyShell({
   const myReadyLabel = myReady === 'ready' ? '已准备' : '未准备';
   // Runtime Entry Bridge eligibility (read-only preview; NOT real runtime).
   const entryEligibility = evaluateRoomRuntimeEntryEligibility(room ?? undefined, currentMemberId);
-  const playerNextStep =
+  const playerNextStep = isSpectator
+    ? '旁观者无需提交角色或准备，可直接进入只读跑团桌面。'
+    :
     myStatus === 'pendingApproval'
       ? '等待主持人批准加入房间。'
       : myStatus !== 'active'
@@ -381,7 +415,18 @@ export function RoomLobbyShell({
               : myReady !== 'ready'
                 ? '确认后点击“我已准备”。'
                 : '等待主持人开始，或进入联机跑团桌面。';
-  const lobbySteps: { label: string; detail: string; state: LobbyStepState }[] = [
+  const lobbySteps: { label: string; detail: string; state: LobbyStepState }[] = isSpectator ? [
+    {
+      label: '加入房间',
+      detail: myStatus === 'active' ? '已加入旁观席' : '等待主持人批准加入房间',
+      state: myStatus === 'active' ? 'done' : 'current',
+    },
+    {
+      label: '进入桌面',
+      detail: entryEligibility.canEnter ? '可进入只读跑团桌面' : '等待加入完成',
+      state: entryEligibility.canEnter ? 'current' : 'waiting',
+    },
+  ] : [
     {
       label: '加入房间',
       detail: myStatus === 'pendingApproval' ? '等待主持人批准加入房间' : myStatus === 'active' ? '已加入' : '未完成',
@@ -504,7 +549,11 @@ export function RoomLobbyShell({
           displayName: bindingName.trim(),
           actorId: bindingActorId.trim() || undefined,
           systemId: room?.identity.systemId,
-          source: 'manualScaffold',
+          source: bindingSource,
+          summary: bindingSummary.trim() || undefined,
+          hpCurrent: optionalNumber(bindingHpCurrent),
+          hpMax: optionalNumber(bindingHpMax),
+          armorClass: optionalNumber(bindingArmorClass),
         },
       });
       await refreshSnapshot();
@@ -515,12 +564,24 @@ export function RoomLobbyShell({
     }
   };
 
+  const selectVaultActor = (actorId: string) => {
+    const actor = vaultRecords.find((record) => record.id === actorId);
+    if (!actor) return;
+    setBindingActorId(actor.id);
+    setBindingName(actor.displayName);
+    setBindingSummary(actor.subtitle ?? '');
+    setBindingSource('localActorVault');
+  };
+
   const reviewBinding = async (bindingId: string, action: 'approve' | 'reject') => {
     setReviewBindingId(bindingId);
     setReviewError(null);
     try {
       if (action === 'approve') await approveActorBindingOnRoomServer(config, roomId, bindingId, currentMemberId);
-      else await rejectActorBindingOnRoomServer(config, roomId, bindingId, currentMemberId);
+      else {
+        const rejectionReason = window.prompt('可选：告诉玩家需要调整什么。')?.trim() || undefined;
+        await rejectActorBindingOnRoomServer(config, roomId, bindingId, currentMemberId, rejectionReason);
+      }
       await refreshSnapshot();
     } catch (e) {
       setReviewError(errMsg(e));
@@ -732,7 +793,7 @@ export function RoomLobbyShell({
         ) : (
           <div className="space-y-3">
             <div className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-2 lg:grid-cols-4">
-              <StatusPill label="我的身份" value={currentMember ? ROLE_LABEL[currentMember.role] : '未匹配'} tone={currentMember ? 'ok' : 'muted'} />
+              <StatusPill label="我的身份" value={isSpectator ? '旁观' : myBindingStatus === 'approved' ? '玩家' : '等待选择角色'} tone={currentMember ? 'ok' : 'muted'} />
               <StatusPill label="当前角色" value={myBinding?.actorRef.displayName ?? '未绑定'} tone={myBindingStatus === 'approved' ? 'ok' : myBindingStatus === 'pendingHostApproval' ? 'warn' : 'muted'} />
               <StatusPill label="准入状态" value={myClearanceStatus ? CLEARANCE_LABEL[myClearanceStatus] : '本地占位'} tone={myClearanceStatus === 'approved' ? 'ok' : myClearanceStatus === 'rejected' ? 'bad' : 'warn'} />
               <StatusPill label="Ready" value={myReadyLabel} tone={myReady === 'ready' ? 'ok' : 'muted'} />
@@ -785,7 +846,19 @@ export function RoomLobbyShell({
                       <div className="text-sm font-black text-slate-900">{member.displayName}</div>
                       <div className="mt-0.5 flex flex-wrap gap-1">
                         {isMe && <span className="rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-bold text-sky-700">我</span>}
-                        <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{member.role === 'player' && !binding ? '等待选择角色' : ROLE_LABEL[member.role]}</span>
+                        <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">
+                          {member.role === 'spectator'
+                            ? '旁观'
+                            : member.role === 'host'
+                              ? '主持人'
+                              : !binding
+                                ? '等待选择角色'
+                                : binding.status === 'pendingHostApproval'
+                                  ? '等待主持人审核'
+                                  : binding.status === 'rejected'
+                                    ? '需要重新选择角色'
+                                    : '玩家'}
+                        </span>
                         <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{STATUS_LABEL[member.status]}</span>
                       </div>
                     </div>
@@ -797,7 +870,7 @@ export function RoomLobbyShell({
                   <div className="mt-2 space-y-1 text-[11px]">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-500">角色</span>
-                      <span className="font-bold text-slate-800">{binding?.actorRef.displayName ?? '等待选择角色'}</span>
+                      <span className="font-bold text-slate-800">{member.role === 'spectator' ? '无需角色' : binding?.actorRef.displayName ?? '等待选择角色'}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-500">准入</span>
@@ -841,11 +914,12 @@ export function RoomLobbyShell({
         )}
       </section>
 
-      {/* Actor binding (pre-session draft) */}
+      {/* Actor binding is a session-level entry draft, not a character-library write. */}
+      {!isSpectator && (
       <section className={card}>
-        <div className={`mb-1.5 ${label}`}>提交入场角色</div>
+        <div className={`mb-1.5 ${label}`}>{currentMember?.role === 'host' ? '主持人角色（可选）' : '选择入场角色'}</div>
         <p className="mb-2 text-[10px] text-slate-500">
-          把你准备用于本房间的角色提交给主持人。当前仅验证入场摘要；完整规则校验尚未启用，不会写入角色库或创建正式战役内角色实例。
+          选择本地角色库角色，或创建一份仅用于本次大厅的快速角色草稿。提交后由主持人审核；不会写入角色库，也不会创建正式战役内角色实例。
         </p>
 
         <div className="mb-3 rounded border border-slate-300/40 bg-white/70 p-2 text-[11px]">
@@ -866,19 +940,45 @@ export function RoomLobbyShell({
 
         {iAmActive ? (
           <div className="space-y-2">
+            {vaultRecords.length > 0 && (
+              <label className="flex max-w-md flex-col gap-0.5 text-[10px] text-slate-500">从本地角色库选择
+                <select
+                  className={input}
+                  value={bindingSource === 'localActorVault' ? bindingActorId : ''}
+                  onChange={(event) => selectVaultActor(event.target.value)}
+                >
+                  <option value="">选择已有角色</option>
+                  {vaultRecords.map((actor) => <option key={actor.id} value={actor.id}>{actor.displayName}{actor.subtitle ? ` · ${actor.subtitle}` : ''}</option>)}
+                </select>
+              </label>
+            )}
             <div className="flex flex-wrap items-end gap-2">
               <label className="flex min-w-[220px] flex-col gap-0.5 text-[10px] text-slate-500">角色名
-                <input className={input} value={bindingName} onChange={(e) => setBindingName(e.target.value)} placeholder="例如 Elaria / 调查员 / Solo" />
+                <input className={input} value={bindingName} onChange={(e) => { setBindingName(e.target.value); if (bindingSource === 'localActorVault') setBindingSource('quickDraft'); }} placeholder="例如 Elaria / 调查员 / Solo" />
               </label>
-              <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">角色来源：手动填写</span>
+              <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">角色来源：{SOURCE_LABEL[bindingSource]}</span>
               <button type="button" className={btn} disabled={bindingBusy || !bindingName.trim()} onClick={submitBinding}>
                 {bindingBusy ? '提交中…' : myBinding ? '更新角色绑定' : '提交角色给主持人'}
               </button>
             </div>
             <details className="rounded border border-slate-300/40 bg-white/50 px-2 py-1">
-              <summary className="cursor-pointer text-[10px] font-bold text-slate-500">高级 / 可选：角色 ID</summary>
-              <label className="mt-2 flex max-w-xs flex-col gap-0.5 text-[10px] text-slate-500">角色 ID（可留空）
-                <input className={input} value={bindingActorId} onChange={(e) => setBindingActorId(e.target.value)} placeholder="仅用于未来匹配本地角色库" />
+              <summary className="cursor-pointer text-[10px] font-bold text-slate-500">快速角色摘要（可选）</summary>
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-4">
+                <label className="sm:col-span-4 flex flex-col gap-0.5 text-[10px] text-slate-500">简短说明
+                  <input className={input} value={bindingSummary} onChange={(e) => setBindingSummary(e.target.value)} placeholder="例如：1 级游侠，擅长侦察" />
+                </label>
+                <label className="flex flex-col gap-0.5 text-[10px] text-slate-500">当前 HP
+                  <input className={input} inputMode="decimal" value={bindingHpCurrent} onChange={(e) => setBindingHpCurrent(e.target.value)} />
+                </label>
+                <label className="flex flex-col gap-0.5 text-[10px] text-slate-500">最大 HP
+                  <input className={input} inputMode="decimal" value={bindingHpMax} onChange={(e) => setBindingHpMax(e.target.value)} />
+                </label>
+                <label className="flex flex-col gap-0.5 text-[10px] text-slate-500">AC / 防护
+                  <input className={input} inputMode="decimal" value={bindingArmorClass} onChange={(e) => setBindingArmorClass(e.target.value)} />
+                </label>
+              </div>
+              <label className="mt-2 flex max-w-xs flex-col gap-0.5 text-[10px] text-slate-500">角色 ID（可选）
+                <input className={input} value={bindingActorId} onChange={(e) => { setBindingActorId(e.target.value); setBindingSource('quickDraft'); }} placeholder="仅用于本地角色库匹配" />
               </label>
             </details>
           </div>
@@ -887,6 +987,7 @@ export function RoomLobbyShell({
         )}
         {bindingError && <div className="mt-1 text-[10px] font-bold text-red-700">提交失败：{bindingError}</div>}
       </section>
+      )}
 
       {/* Host: actor binding review (scaffold) */}
       {isHostScaffold && (
@@ -903,6 +1004,9 @@ export function RoomLobbyShell({
                 <div key={b.bindingId} className="flex flex-wrap items-center gap-2 rounded border border-slate-300/40 bg-white/70 px-2 py-1 text-[11px]">
                   <span className="font-bold text-slate-800">{memberName(b.memberId)}</span>
                   <span className="text-slate-600">→ {b.actorRef.displayName}</span>
+                  {b.actorRef.summary && <span className="max-w-[180px] truncate text-slate-500">{b.actorRef.summary}</span>}
+                  {b.actorRef.hpMax !== undefined && <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">HP {b.actorRef.hpCurrent ?? b.actorRef.hpMax}/{b.actorRef.hpMax}</span>}
+                  {b.actorRef.armorClass !== undefined && <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">AC {b.actorRef.armorClass}</span>}
                   <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{b.actorRef.systemId}</span>
                   <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{SOURCE_LABEL[b.actorRef.source]}</span>
                   <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${BINDING_TONE[b.status]}`}>{BINDING_LABEL[b.status]}</span>
@@ -940,7 +1044,23 @@ export function RoomLobbyShell({
       <section className={card}>
         <div className={`mb-1.5 ${label}`}>准备状态</div>
         {iAmActive ? (
-          myBindingStatus === 'approved' ? (
+          isSpectator ? (
+            <p className="text-[11px] italic text-slate-500">旁观者无需绑定角色或标记准备，可直接进入只读跑团桌面。</p>
+          ) : currentMember?.role === 'host' ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`text-[11px] font-bold ${myReady === 'ready' ? 'text-emerald-700' : 'text-slate-600'}`}>
+                {myReady === 'ready' ? '主持人已准备。' : '主持人可不绑定角色直接进入桌面。'}
+              </span>
+              <button
+                type="button"
+                className={btn}
+                disabled={readyBusy}
+                onClick={() => toggleReady(myReady !== 'ready')}
+              >
+                {readyBusy ? '处理中…' : myReady === 'ready' ? '取消准备' : '我已准备'}
+              </button>
+            </div>
+          ) : myBindingStatus === 'approved' ? (
             myClearanceStatus === 'approved' ? (
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`text-[11px] font-bold ${myReady === 'ready' ? 'text-emerald-700' : 'text-slate-600'}`}>
@@ -956,10 +1076,10 @@ export function RoomLobbyShell({
                 </button>
               </div>
             ) : (
-              <p className="text-[11px] italic text-amber-700">角色准入占位尚未通过，暂不能准备。完整规则安检将在后续接入。</p>
+            <p className="text-[11px] italic text-amber-700">角色尚未通过本次房间准入，暂不能准备。</p>
             )
           ) : (
-            <p className="text-[11px] italic text-slate-500">请先提交角色并等待 Host 批准，之后才能准备。</p>
+            <p className="text-[11px] italic text-slate-500">请先提交角色并等待主持人批准，之后才能准备。</p>
           )
         ) : (
           <p className="text-[11px] italic text-slate-500">成为在线成员后才能设置准备状态。</p>

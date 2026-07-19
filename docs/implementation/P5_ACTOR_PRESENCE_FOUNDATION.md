@@ -39,6 +39,14 @@ are source hints for map projection, not token ownership or an authority grant.
 Read `P5_CHARACTER_ENTRY_CANONICALIZATION_BRIDGE.md` before adding another
 character-to-token path.
 
+## Character Clearance Alpha
+
+`P5_CHARACTER_CLEARANCE_ALPHA.md` adds the preceding Room Lobby flow. A local
+Actor Vault selection or quick draft becomes a presence candidate only after
+the host approves the binding and the session admission is approved. The
+optional name, summary, HP, and AC carried by that entry are display metadata;
+they do not grant token control or alter combat authority.
+
 ## Not Included
 
 No asset upload, full token editor, fog/LOS/pathfinding, automatic range

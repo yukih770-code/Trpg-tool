@@ -42,6 +42,13 @@ remains the HP/condition authority.
 - The Room Lobby form is **提交入场角色**.
 - A cleared binding appears as **已准入角色** in the map placement list.
 
+## Clearance Alpha relationship
+
+`P5_CHARACTER_CLEARANCE_ALPHA.md` owns the Room Lobby sequence: submit, host
+review, session admission, and ready. This bridge only normalizes the
+display-safe summary after that process; it never turns a local selection into
+a submitted binding by itself.
+
 ## Explicitly not implemented
 
 No Character Clearance rule engine, snapshot hashing authority, token ownership,

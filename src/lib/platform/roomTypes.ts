@@ -143,7 +143,7 @@ export type RoomLobbyActorBindingStatus =
   | 'approved'
   | 'rejected';
 
-export type RoomActorBindingSource = 'localActorVault' | 'manualScaffold' | 'imported' | 'unknown';
+export type RoomActorBindingSource = 'localActorVault' | 'quickDraft' | 'manualScaffold' | 'imported' | 'unknown';
 
 /** A pre-session reference to whatever the player intends to play (any system). */
 export interface RoomActorRefSummary {
@@ -151,6 +151,11 @@ export interface RoomActorRefSummary {
   actorId?: string;
   displayName: string;
   source: RoomActorBindingSource;
+  /** Optional entry-preview fields. They are not a character-sheet schema. */
+  summary?: string;
+  hpCurrent?: number;
+  hpMax?: number;
+  armorClass?: number;
 }
 
 // ── Clearance summary (M24.2a, OPTIONAL future layer) ───────────────────────

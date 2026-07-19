@@ -2,7 +2,9 @@ import { createInMemoryRoomRegistry } from '../room-registry.js';
 import { createRoom } from '../services/createRoom.js';
 import { joinRoom } from '../services/joinRoom.js';
 import { approveMember } from '../services/approveMember.js';
+import { setMemberReady } from '../services/setMemberReady.js';
 import { setRoomMapMemberPermission } from '../services/setRoomMapMemberPermission.js';
+import { createInMemoryActorAdmissionRegistry } from '../actor-admission-registry.js';
 import { resolveRoomParticipant, resolveRoomRuntimePermission } from './roomRuntimePermissionGuard.js';
 import type { CurrentViewerContext } from '../auth/currentViewerContext.js';
 
@@ -22,11 +24,16 @@ function viewer(userId: string | null): CurrentViewerContext {
 }
 
 const registry = createInMemoryRoomRegistry();
+const admissions = createInMemoryActorAdmissionRegistry();
 const created = createRoom({ hostDisplayName: 'Host', hostUserId: 'user_host' });
 registry.create(created.room);
 const roomId = created.room.identity.roomId;
 const hostMemberId = created.room.members[0]?.memberId;
 expect(hostMemberId, 'room creation must create the authenticated host member');
+expect(
+  setMemberReady(registry, admissions, { roomId, memberId: hostMemberId, ready: true }).decision === 'updated',
+  'active host should be able to ready without a character binding',
+);
 
 const joined = joinRoom(registry, {
   inviteCodeOrRoomCode: created.room.identity.roomCode,

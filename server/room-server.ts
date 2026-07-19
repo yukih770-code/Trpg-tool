@@ -464,7 +464,7 @@ app.post('/rooms/:roomId/members/:memberId/reject', (req, res) => {
 // NOT a real permission system. No Runtime / actor instance creation.
 
 app.post('/rooms/:roomId/actor-bindings/submit', (req, res) => {
-  const body = (req.body ?? {}) as { memberId?: string; actorRef?: { systemId?: string; actorId?: string; displayName?: string; source?: unknown } };
+  const body = (req.body ?? {}) as { memberId?: string; actorRef?: { systemId?: string; actorId?: string; displayName?: string; source?: unknown; summary?: string; hpCurrent?: number; hpMax?: number; armorClass?: number } };
   if (typeof body.memberId !== 'string' || !body.actorRef || typeof body.actorRef.displayName !== 'string') {
     res.status(400).json({ error: 'memberId and actorRef.displayName are required.' });
     return;
@@ -478,6 +478,10 @@ app.post('/rooms/:roomId/actor-bindings/submit', (req, res) => {
       actorId: body.actorRef.actorId,
       displayName: body.actorRef.displayName,
       source: body.actorRef.source as never,
+      summary: body.actorRef.summary,
+      hpCurrent: body.actorRef.hpCurrent,
+      hpMax: body.actorRef.hpMax,
+      armorClass: body.actorRef.armorClass,
     },
   });
   if (result.room) {

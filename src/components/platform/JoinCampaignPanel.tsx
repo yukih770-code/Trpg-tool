@@ -150,8 +150,12 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
 
   const checkConnection = () => run(async () => { await fetchRoomServerHealth(config); setHealthOk(true); }, 'diagnostic');
   const refreshRooms = () => run(async () => { setRooms(await listRoomServerRooms(config)); setHealthOk(true); }, 'diagnostic');
-  const doJoin = (code: string) => run(async () => {
-    const result = await joinRoomOnServer(config, { inviteCodeOrRoomCode: code.trim(), requestedDisplayName: joinName.trim() || 'Player' });
+  const doJoin = (code: string, requestedRole: 'player' | 'spectator' = 'player') => run(async () => {
+    const result = await joinRoomOnServer(config, {
+      inviteCodeOrRoomCode: code.trim(),
+      requestedDisplayName: joinName.trim() || 'Player',
+      requestedRole,
+    });
     setJoinResult(result);
     // Enter the lobby once we have a room to subscribe to (accepted or pending).
     if (result.roomId && (result.decision === 'accepted' || result.decision === 'pendingHostApproval')) {
@@ -346,9 +350,20 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
               >
                 {busy ? '正在加入…' : '加入大厅'}
               </button>
+              <button
+                type="button"
+                className="w-full rounded border border-slate-400/40 bg-white px-4 py-2 text-[11px] font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-40"
+                disabled={busy || !joinCode.trim()}
+                onClick={() => doJoin(joinCode, 'spectator')}
+              >
+                以旁观者加入
+              </button>
             </div>
             <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
               加入后你会先进入房间大厅，不会直接进入跑团桌面。
+            </p>
+            <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
+              旁观者无需选择角色或准备，只能查看跑团桌面。
             </p>
             {joinResult && (
               <div className="mt-3 rounded border border-slate-400/30 bg-white/70 px-2 py-1.5 text-[11px]">

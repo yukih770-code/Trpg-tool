@@ -5,6 +5,7 @@ import type { DndLiteActorSheet } from '../dnd/dndLiteActorTypes';
 import type { MapTokenPresenceCandidate } from '../map/actorPresence';
 import { tokenInitials } from '../map/actorPresence';
 import type { MapTokenHpSummary, MapTokenKind, MapTokenSourceType } from '../map/mapRuntimeTypes';
+import type { ActorVaultRecord } from './actorVaultRepositoryBridge';
 import type { RoomActorBindingSummary, RoomMemberIdentity } from './roomTypes';
 
 /**
@@ -31,6 +32,8 @@ export interface EntryCharacterRef {
   initials?: string;
   kind?: MapTokenKind;
   hpSummary?: MapTokenHpSummary;
+  summary?: string;
+  armorClass?: number;
   conditionSummary?: string[];
   /** Only a host-carried convenience or an admitted room binding is placeable in Room Runtime. */
   isApprovedForRoom?: boolean;
@@ -94,7 +97,26 @@ export function entryCharacterFromRoomBinding(
     ownerUserId: member?.userId,
     controlledByUserId: member?.userId,
     kind: 'playerCharacter',
+    summary: binding.actorRef.summary,
+    armorClass: binding.actorRef.armorClass,
+    hpSummary: binding.actorRef.hpCurrent !== undefined || binding.actorRef.hpMax !== undefined
+      ? { current: binding.actorRef.hpCurrent ?? binding.actorRef.hpMax ?? 0, max: binding.actorRef.hpMax ?? binding.actorRef.hpCurrent ?? 0 }
+      : undefined,
     isApprovedForRoom: approved,
+  });
+}
+
+/** Read-only Actor Vault record normalized for a room entry preview. */
+export function entryCharacterFromActorVaultRecord(actor: ActorVaultRecord): EntryCharacterRef {
+  return withInitials({
+    id: actor.id,
+    sourceId: actor.id,
+    sourceType: 'vaultActor',
+    displayName: normalizedName(actor.displayName),
+    systemId: actor.systemId,
+    summary: actor.subtitle,
+    kind: 'playerCharacter',
+    isLocalDraft: true,
   });
 }
 

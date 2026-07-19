@@ -40,9 +40,10 @@ export function setMemberReady(
     return { decision: 'memberNotActive', message: `Member status is "${member.status}".` };
   }
 
-  // Readying-up requires (a) an approved binding draft AND (b) an approved
-  // clearance/admission. Clearing ready is always ok.
-  if (input.ready) {
+  // A host may mark themselves ready without a character; host Runtime entry
+  // already has its own active-host guard. Players still require an approved
+  // binding and admission. Clearing ready is always ok.
+  if (input.ready && member.role !== 'host') {
     const binding = room.lobby?.actorBindings.find((b) => b.memberId === input.memberId);
     if (!binding || binding.status !== 'approved') {
       return { decision: 'actorNotApproved', message: 'An approved actor binding is required before ready.' };

@@ -159,7 +159,19 @@ export async function rejectRoomMemberOnServer(
 export async function submitActorBindingToRoomServer(
   config: RoomServerHttpClientConfig,
   roomId: string,
-  input: { memberId: string; actorRef: { systemId?: string; actorId?: string; displayName: string; source?: string } },
+  input: {
+    memberId: string;
+    actorRef: {
+      systemId?: string;
+      actorId?: string;
+      displayName: string;
+      source?: string;
+      summary?: string;
+      hpCurrent?: number;
+      hpMax?: number;
+      armorClass?: number;
+    };
+  },
 ): Promise<unknown> {
   return request<unknown>(config, `/rooms/${encodeURIComponent(roomId)}/actor-bindings/submit`, {
     method: 'POST',

@@ -167,3 +167,12 @@ player token movement is intentionally deferred.
   plus approved clearance is a Room Runtime candidate; source metadata is not
   token ownership, map permission, readiness authority, or cross-device
   character synchronization.
+
+## Character Clearance Alpha (P5.CHARACTER-CLEARANCE-ALPHA)
+
+Read `P5_CHARACTER_CLEARANCE_ALPHA.md` before changing Room Lobby entry. It
+keeps character selection, host review, session admission, ready, and Runtime
+entry distinct: joining is not player admission; only an approved and admitted
+binding may ready as a player. Hosts need no character; spectators are
+read-only. The state is session-only and does not modify local character stores
+or create persistent campaign actors.

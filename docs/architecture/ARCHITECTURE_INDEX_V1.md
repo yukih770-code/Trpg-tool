@@ -660,3 +660,15 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   approved and clearance-approved Room Lobby binding becomes a Room Runtime map
   candidate. It does not decide readiness, entry eligibility, map permissions,
   token ownership, or character persistence.
+
+## Character Clearance Alpha (P5.CHARACTER-CLEARANCE-ALPHA)
+- Files: `src/components/platform/{JoinCampaignPanel,RoomLobbyShell}.tsx`,
+  `src/lib/platform/{roomTypes,roomRuntimeEntryGuard,entryCharacterRef,characterClearanceSmoke}.ts`,
+  `server/services/{submitActorBinding,approveActorBinding,rejectActorBinding,setMemberReady}.ts`.
+- A room join is not player admission: a player chooses a local read-only Actor
+  Vault record or session-only quick draft, submits it, receives host approval
+  plus session admission, then marks ready. Hosts may enter without a character;
+  spectators are read-only and do not submit or ready.
+- Don't violate: all binding/admission/ready state is in-memory Room Server
+  session state; no character-store write, CampaignActorInstance, persistent
+  membership, token ownership, rule engine, or permission shortcut.

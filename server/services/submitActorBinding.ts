@@ -28,7 +28,7 @@ import type {
   RoomSystemId,
 } from '../../src/lib/platform/roomTypes.js';
 
-const VALID_SOURCES: readonly RoomActorBindingSource[] = ['localActorVault', 'manualScaffold', 'imported', 'unknown'];
+const VALID_SOURCES: readonly RoomActorBindingSource[] = ['localActorVault', 'quickDraft', 'manualScaffold', 'imported', 'unknown'];
 
 export interface SubmitActorBindingInput {
   roomId: string;
@@ -38,6 +38,10 @@ export interface SubmitActorBindingInput {
     actorId?: string;
     displayName: string;
     source?: string;
+    summary?: string;
+    hpCurrent?: number;
+    hpMax?: number;
+    armorClass?: number;
   };
 }
 
@@ -97,7 +101,16 @@ export function submitActorBinding(registry: RoomRegistry, input: SubmitActorBin
     const nextBinding: RoomActorBindingSummary = {
       bindingId,
       memberId: input.memberId,
-      actorRef: { systemId, actorId: input.actorRef.actorId, displayName, source },
+      actorRef: {
+        systemId,
+        actorId: input.actorRef.actorId?.trim() || undefined,
+        displayName,
+        source,
+        summary: input.actorRef.summary?.trim() || undefined,
+        hpCurrent: Number.isFinite(input.actorRef.hpCurrent) ? input.actorRef.hpCurrent : undefined,
+        hpMax: Number.isFinite(input.actorRef.hpMax) ? input.actorRef.hpMax : undefined,
+        armorClass: Number.isFinite(input.actorRef.armorClass) ? input.actorRef.armorClass : undefined,
+      },
       status: 'pendingHostApproval',
       submittedAt: now,
       // Reset clearance on (re)submit: a stale prior approval must NOT let the
