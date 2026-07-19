@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 
 import {
   fetchRoomServerHealth,
+  getRoomJoinStatus,
   joinRoomOnServer,
   listRoomServerRooms,
   RoomServerHttpError,
@@ -88,6 +89,14 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
   const [joinCode, setJoinCode] = useState('');
   const [joinName, setJoinName] = useState('玩家');
   const [joinResult, setJoinResult] = useState<RoomJoinResult | null>(null);
+  const [pendingJoin, setPendingJoin] = useState<{
+    baseUrl: string;
+    roomId: string;
+    memberId: string;
+    role: RoomMemberRole;
+  } | null>(null);
+  const [pendingJoinStatus, setPendingJoinStatus] = useState<'waiting' | 'rejected' | 'left'>('waiting');
+  const [pendingJoinError, setPendingJoinError] = useState<string | null>(null);
   // After create/join, enter the Room Lobby (NOT Runtime).
   const [lobby, setLobby] = useState<{
     baseUrl: string;
@@ -119,9 +128,54 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
       return () => onBackOverrideChange(null);
     }
 
+    if (pendingJoin) {
+      onBackOverrideChange({
+        label: '取消加入申请',
+        onBack: () => setPendingJoin(null),
+      });
+      return () => onBackOverrideChange(null);
+    }
+
     onBackOverrideChange(null);
     return () => onBackOverrideChange(null);
-  }, [lobby, runtimeEntry, onBackOverrideChange]);
+  }, [lobby, pendingJoin, runtimeEntry, onBackOverrideChange]);
+
+  useEffect(() => {
+    if (!pendingJoin || pendingJoinStatus !== 'waiting') return;
+    let cancelled = false;
+
+    const checkStatus = async () => {
+      try {
+        const status = await getRoomJoinStatus({ baseUrl: pendingJoin.baseUrl }, pendingJoin.roomId, pendingJoin.memberId);
+        if (cancelled) return;
+        setPendingJoinError(null);
+        if (status.memberStatus === 'active') {
+          setLobby({
+            baseUrl: pendingJoin.baseUrl,
+            roomId: pendingJoin.roomId,
+            currentMemberId: pendingJoin.memberId,
+            currentRole: status.assignedRole,
+            origin: 'joinCampaign',
+          });
+          setPendingJoin(null);
+          return;
+        }
+        if (status.memberStatus === 'kicked') setPendingJoinStatus('rejected');
+        if (status.memberStatus === 'left' || status.memberStatus === 'disconnected') setPendingJoinStatus('left');
+      } catch (error) {
+        if (!cancelled) {
+          setPendingJoinError(normalizeJoinError(error).message);
+        }
+      }
+    };
+
+    void checkStatus();
+    const timer = window.setInterval(() => void checkStatus(), 2500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [pendingJoin, pendingJoinStatus]);
 
   const config: RoomServerHttpClientConfig = { baseUrl };
 
@@ -160,8 +214,7 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
       requestedRole,
     });
     setJoinResult(result);
-    // Enter the lobby once we have a room to subscribe to (accepted or pending).
-    if (result.roomId && (result.decision === 'accepted' || result.decision === 'pendingHostApproval')) {
+    if (result.roomId && result.decision === 'accepted') {
       setLobby({
         baseUrl,
         roomId: result.roomId,
@@ -170,6 +223,16 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
         // No initialRoom for joins: RoomLobbyShell pulls a snapshot over HTTP/WS.
         origin: 'joinCampaign',
       });
+    }
+    if (result.roomId && result.memberId && result.assignedRole && result.decision === 'pendingHostApproval') {
+      setPendingJoin({
+        baseUrl,
+        roomId: result.roomId,
+        memberId: result.memberId,
+        role: result.assignedRole,
+      });
+      setPendingJoinStatus('waiting');
+      setPendingJoinError(null);
     }
   });
 
@@ -239,10 +302,34 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
 
   return (
     <div className={panelClassName ?? 'rounded-lg border border-slate-400/30 bg-slate-50/60 p-4'}>
+      {pendingJoin && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-[1px]" role="dialog" aria-modal="true" aria-labelledby="join-approval-title">
+          <section className="w-full max-w-md rounded-xl border border-slate-300 bg-white p-6 text-slate-700 shadow-2xl">
+            <div className="text-[11px] font-black uppercase tracking-[0.16em] text-amber-700">加入申请</div>
+            <h2 id="join-approval-title" className="mt-1 text-xl font-black text-slate-900">
+              {pendingJoinStatus === 'waiting' ? '正在等待主持人确认' : pendingJoinStatus === 'rejected' ? '加入申请未获批准' : '加入申请已结束'}
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-600">
+              {pendingJoinStatus === 'waiting'
+                ? '主持人批准前，你不会进入联机大厅，也不会看到房间成员、角色或跑团内容。此页面会自动检查审批结果。'
+                : pendingJoinStatus === 'rejected'
+                  ? '主持人没有批准这次加入申请。你可以检查房间码和显示名后重新申请，或联系主持人确认。'
+                  : '你的房间成员状态不再可用。请返回加入页面后重新操作。'}
+            </p>
+            {pendingJoin.role === 'spectator' && pendingJoinStatus === 'waiting' && (
+              <p className="mt-3 rounded-lg bg-slate-100 px-3 py-2 text-[11px] text-slate-600">你申请的是旁观席；获批后将以只读身份进入联机大厅。</p>
+            )}
+            {pendingJoinError && <p className="mt-3 rounded-lg border border-amber-300/60 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">状态暂时无法更新：{pendingJoinError}</p>}
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" className={btn} onClick={() => setPendingJoin(null)}>{pendingJoinStatus === 'waiting' ? '取消等待' : '返回加入页面'}</button>
+            </div>
+          </section>
+        </div>
+      )}
       <section className="rounded border border-slate-400/30 bg-white/80 p-4 text-[12px] text-slate-700">
         <div className="text-base font-black text-slate-900">加入联机大厅</div>
         <p className="mt-1 max-w-2xl text-[11px] leading-relaxed text-slate-500">
-          选择一个可加入的大厅，或输入主持人提供的房间码。加入后会先进入联机大厅，在那里绑定角色、ready，并等待主持人审批。
+          选择一个可加入的大厅，或输入主持人提供的房间码。需要审批的房间会先确认加入申请；获批后才进入联机大厅绑定角色、Ready 和等待角色审核。
         </p>
       </section>
 
@@ -364,7 +451,7 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
               </button>
             </div>
             <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
-              加入后你会先进入房间大厅，不会直接进入跑团桌面。
+              需要主持人审批的房间会先显示等待确认；获批后才会进入联机大厅，不会直接进入跑团桌面。
             </p>
             <p className="mt-1 text-[10px] leading-relaxed text-slate-500">
               旁观者无需选择角色或准备，只能查看跑团桌面。
@@ -402,7 +489,7 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
           <section className="rounded border border-slate-400/20 bg-white/55 p-3 text-[12px] text-slate-700">
             <div className="mb-2 text-[11px] font-black uppercase tracking-wide text-slate-600">加入后流程</div>
             <ol className="space-y-1.5 text-[11px]">
-              {['进入大厅', '绑定角色', '等待审批', '标记 ready', '进入跑团桌面'].map((step, index) => (
+              {['申请加入', '进入大厅', '绑定角色', '标记 Ready', '进入跑团桌面'].map((step, index) => (
                 <li key={step} className="flex items-center gap-2 rounded border border-slate-300/50 bg-white/70 px-2 py-1">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-[10px] font-black text-white">{index + 1}</span>
                   <span className="font-bold text-slate-700">{step}</span>

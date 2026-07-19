@@ -5,13 +5,18 @@
  *
  * Minimal Express HTTP scaffold for the portable Room Server. Provides health +
  * room create/join/list over an in-memory registry, plus a minimal
- * dependency-free CORS middleware and a WebSocket transport scaffold at /ws
- * (room snapshots plus separate RuntimeLog and Room Map deltas). No database
- * persistence for portable room state, NO auth, NO projection. Same server application runs LAN-hosted /
- * official / third-party — LAN is just where it runs (see backendDeploymentTypes).
+ * dependency-free CORS middleware and a WebSocket transport at /ws (room
+ * snapshots plus separate RuntimeLog and Room Map deltas). Live portable room
+ * state remains memory-resident; authenticated API and visibility-projection
+ * boundaries are layered around the runtime surfaces. The same server
+ * application runs LAN-hosted / official / third-party — LAN is just where it
+ * runs (see backendDeploymentTypes).
  */
 
+import { existsSync } from 'node:fs';
 import { createServer, type IncomingMessage } from 'node:http';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express, { type Request } from 'express';
 
 import { createInMemoryRoomRegistry } from './room-registry.js';
@@ -456,6 +461,29 @@ app.get('/rooms/:roomId', (req, res) => {
   res.json(projectRoomSnapshotForViewer(room, memberId));
 });
 
+// A pending applicant may only learn their own membership outcome. This keeps
+// the room snapshot and Lobby content private until the host accepts them.
+app.get('/rooms/:roomId/join-status', (req, res) => {
+  const room = registry.get(req.params.roomId);
+  if (!room) {
+    res.status(404).json({ error: 'roomNotFound', roomId: req.params.roomId });
+    return;
+  }
+  const memberId = typeof req.query.memberId === 'string' ? req.query.memberId : undefined;
+  const viewer = resolveRoomRequestViewer(req);
+  const member = memberId ? room.members.find((candidate) => candidate.memberId === memberId) : undefined;
+  if (!viewer.isAuthenticated || !viewer.viewerUserId || !member || !member.userId || member.userId !== viewer.viewerUserId) {
+    res.status(viewer.isAuthenticated ? 403 : 401).json({ error: 'notAuthorized' });
+    return;
+  }
+  res.json({
+    roomId: room.identity.roomId,
+    memberId: member.memberId,
+    memberStatus: member.status,
+    assignedRole: member.role,
+  });
+});
+
 // Non-destructive room lifecycle action. Existing snapshots, RuntimeLog events,
 // map events, and scene saves remain available to their respective history APIs.
 app.post('/rooms/:roomId/disband', (req, res) => {
@@ -748,8 +776,11 @@ app.post('/rooms/:roomId/map-events', (req, res) => {
 // Host-managed collaboration grants for the Room Map. Memory-only v0: they
 // travel in RoomSnapshot for live UI updates but do not become RuntimeLog data.
 app.post('/rooms/:roomId/map-permissions/:memberId', (req, res) => {
-  const body = (req.body ?? {}) as { authorizedByMemberId?: unknown; canPinRanges?: unknown };
-  if (typeof body.authorizedByMemberId !== 'string' || typeof body.canPinRanges !== 'boolean') {
+  const body = (req.body ?? {}) as { authorizedByMemberId?: unknown; canPinRanges?: unknown; canManageTokens?: unknown };
+  if (
+    typeof body.authorizedByMemberId !== 'string'
+    || (typeof body.canPinRanges !== 'boolean' && typeof body.canManageTokens !== 'boolean')
+  ) {
     res.status(400).json({ error: 'invalidMapPermissionRequest' });
     return;
   }
@@ -758,7 +789,8 @@ app.post('/rooms/:roomId/map-permissions/:memberId', (req, res) => {
     roomId: req.params.roomId,
     authorizedByMemberId: body.authorizedByMemberId,
     memberId: req.params.memberId,
-    canPinRanges: body.canPinRanges,
+    canPinRanges: typeof body.canPinRanges === 'boolean' ? body.canPinRanges : undefined,
+    canManageTokens: typeof body.canManageTokens === 'boolean' ? body.canManageTokens : undefined,
   });
   if (result.decision !== 'updated' || !result.room) {
     const status = result.decision === 'roomNotFound' || result.decision === 'authorNotFound' || result.decision === 'memberNotFound' ? 404 : 400;
@@ -773,12 +805,14 @@ app.post('/rooms/:roomId/map-permissions/:memberId', (req, res) => {
     authorMemberId: body.authorizedByMemberId,
     kind: 'host.note',
     visibility: 'hostOnly',
-    text: body.canPinRanges ? 'Granted fixed map range collaboration.' : 'Revoked fixed map range collaboration.',
+    text: typeof body.canManageTokens === 'boolean'
+      ? (body.canManageTokens ? 'Granted own-token movement.' : 'Revoked own-token movement.')
+      : body.canPinRanges ? 'Granted fixed map range collaboration.' : 'Revoked fixed map range collaboration.',
     payload: {
       noteKind: 'mapPermissionAudit',
       memberId: req.params.memberId,
-      action: 'map.template.fix',
-      granted: body.canPinRanges,
+      action: typeof body.canManageTokens === 'boolean' ? 'map.token.move.own' : 'map.template.fix',
+      granted: typeof body.canManageTokens === 'boolean' ? body.canManageTokens : body.canPinRanges,
       scope: 'roomSession',
     },
   });
@@ -817,6 +851,30 @@ app.post('/rooms/:roomId/runtime/dice-roll', (req, res) => {
   }
   res.json({ ok: true, event: result.event, roll: result.roll });
 });
+
+// A cloud private-alpha deployment is one public Node service: it owns the
+// API, WebSocket upgrade at /ws, and the already-built frontend. Register this
+// after every API route so client-side navigation never shadows API endpoints.
+if (serverRuntimeConfig.runtimeMode === 'cloud') {
+  const serverEntryDirectory = dirname(fileURLToPath(import.meta.url));
+  const frontendBuildDirectory = resolve(serverEntryDirectory, '../../dist');
+  const frontendIndexFile = resolve(frontendBuildDirectory, 'index.html');
+
+  if (!existsSync(frontendIndexFile)) {
+    throw new Error('Cloud startup requires dist/index.html. Run npm run build before npm run server:start.');
+  }
+
+  app.use(express.static(frontendBuildDirectory, { index: false, maxAge: '1h' }));
+  app.get('*', (req, res, next) => {
+    if (req.path === '/api' || req.path.startsWith('/api/') || req.path === '/rooms' || req.path.startsWith('/rooms/')) {
+      res.status(404).json({ error: 'notFound' });
+      return;
+    }
+    res.sendFile(frontendIndexFile, (error) => {
+      if (error) next(error);
+    });
+  });
+}
 
 const onServerListening = () => {
   // eslint-disable-next-line no-console

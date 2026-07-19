@@ -19,9 +19,10 @@ combat view/edit; runtime-event append; and host management.
 - Active spectators may view and make local measurements only. They do not
   share previews or mutate Runtime state.
 - A grant never permits editing or deleting an existing template, changing the
-  grid/background, or moving/creating/deleting arbitrary tokens. Active players
-  receive only the narrow `map.token.move.own` capability; every actual move
-  still requires the verified binding chain described below.
+  grid/background, or moving/creating/deleting arbitrary tokens. Own-token
+  movement is off by default and requires the host's narrow room-session
+  `map.token.move.own` grant; every actual move still requires the verified
+  binding chain described below.
 
 ## Enforcement
 
@@ -50,12 +51,14 @@ members have none.
 
 ## Grant lifecycle and audit
 
-`map.template.fix` is a narrow `roomSession` grant. It travels in the live room
-snapshot with its grantor display name and time, and is removed on revocation.
-Each grant/revoke also appends a host-only in-memory RuntimeLog audit record.
-Neither form is durable: restarting the portable Room Server clears the grant
-and its in-memory audit record. The UI states this limitation instead of
-claiming persistent server permissions.
+`map.template.fix` and `map.token.move.own` are narrow `roomSession` grants.
+The latter is stored through the existing map-permission summary but remains
+limited to a player's verified approved-character token. Both travel in the
+live room snapshot with their grantor display name and time, and are removed on
+revocation. Each grant/revoke also appends a host-only in-memory RuntimeLog
+audit record. Neither form is durable: restarting the portable Room Server
+clears the grant and its in-memory audit record. The UI states this limitation
+instead of claiming persistent server permissions.
 
 ## Deliberately deferred
 
@@ -75,9 +78,10 @@ after one authoritative room-membership source exists.
 ## Player-flow presentation
 
 Permission decisions remain server-side. The Lobby and Runtime present the
-result in product language: a player may move only their admitted character,
-the host controls other Tokens, and spectators are read-only. No new permission
-action or transport message is introduced by this presentation layer.
+result in product language: the host may authorize a player to move only their
+admitted character, the host controls all other Tokens, and spectators are
+read-only. No WebSocket protocol change is introduced by this presentation
+layer.
 
 ## Lobby IA boundary
 

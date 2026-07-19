@@ -81,10 +81,13 @@ function tokenInput(value: unknown, fallback?: MapToken): MapToken | null {
     imageUrl: stringValue(input?.imageUrl) ?? fallback?.imageUrl,
     initials: stringValue(input?.initials) ?? fallback?.initials,
     kind: input?.kind === 'playerCharacter' || input?.kind === 'npc' || input?.kind === 'monster' || input?.kind === 'companion' || input?.kind === 'object' || input?.kind === 'unknown' ? input.kind : fallback?.kind,
+    informationVisibility: input?.informationVisibility === 'default' || input?.informationVisibility === 'public'
+      ? input.informationVisibility
+      : fallback?.informationVisibility,
     hpSummary: record(input?.hpSummary) ? { current: numberValue(record(input?.hpSummary)?.current), max: numberValue(record(input?.hpSummary)?.max), temporary: numberValue(record(input?.hpSummary)?.temporary) } : fallback?.hpSummary,
     hpDisplay: hpDisplayValue(input?.hpDisplay) ?? fallback?.hpDisplay,
     acDisplay: acDisplayValue(input?.acDisplay) ?? fallback?.acDisplay,
-    visibility: input?.visibility === 'hostFull' || input?.visibility === 'ownerFull' || input?.visibility === 'partyPublic' || input?.visibility === 'publicObserved' || input?.visibility === 'investigated' ? input.visibility as RuntimeVisibility : fallback?.visibility,
+    visibility: input?.visibility === 'hostFull' || input?.visibility === 'ownerFull' || input?.visibility === 'partyPublic' || input?.visibility === 'publicShared' || input?.visibility === 'publicObserved' || input?.visibility === 'investigated' ? input.visibility as RuntimeVisibility : fallback?.visibility,
     relation: input?.relation === 'self' || input?.relation === 'ally' || input?.relation === 'enemy' || input?.relation === 'npc' || input?.relation === 'object' || input?.relation === 'unknown' ? input.relation as RuntimeTokenRelation : fallback?.relation,
     conditionSummary: Array.isArray(input?.conditionSummary) ? input.conditionSummary.flatMap((item) => stringValue(item) ? [stringValue(item) as string] : []) : fallback?.conditionSummary,
     sourceCombatantId: stringValue(input?.sourceCombatantId) ?? fallback?.sourceCombatantId,

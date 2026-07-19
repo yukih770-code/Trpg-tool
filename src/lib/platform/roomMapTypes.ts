@@ -43,9 +43,9 @@ export interface AppendRoomMapEventInput {
 }
 
 /**
- * Room-scoped collaboration grants. Only `canPinRanges` is active today;
- * the other fields reserve a stable, system-neutral boundary for later map
- * collaboration without granting broad host authority.
+ * Room-scoped collaboration grants. `canPinRanges` and the narrow
+ * `canManageTokens` own-token movement grant are active today. The server
+ * still verifies every player move against the room's approved character link.
  */
 export interface RoomMapMemberPermissionSummary {
   memberId: string;

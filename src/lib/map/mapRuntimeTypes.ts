@@ -5,6 +5,10 @@ export type MapTokenSourceType = 'combatant' | 'campaign_actor' | 'dndLiteActor'
 
 export type MapTokenKind = 'playerCharacter' | 'npc' | 'monster' | 'companion' | 'object' | 'unknown';
 
+/** Host-set visibility for a visible NPC, monster, or other manual Token.
+ * Player-character Tokens use the party-default policy in the server projector. */
+export type MapTokenInformationVisibility = 'default' | 'public';
+
 import type { RuntimeAcDisplay, RuntimeHpDisplay, RuntimeTokenRelation, RuntimeVisibility } from '../platform/roomRuntimeVisibility.js';
 
 export type MapTokenHpSummary = {
@@ -80,6 +84,8 @@ export type MapToken = {
   imageUrl?: string;
   initials?: string;
   kind?: MapTokenKind;
+  /** `public` shares only the safe combat display projection, never raw notes or ids. */
+  informationVisibility?: MapTokenInformationVisibility;
   hpSummary?: MapTokenHpSummary;
   /** Server-projected display values. Missing means hidden, not zero. */
   hpDisplay?: RuntimeHpDisplay;

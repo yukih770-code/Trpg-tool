@@ -55,7 +55,7 @@ const results = expected.map(([memberId, state]) => {
 });
 results.push(...[
   { name: 'own token gets movable hint', run: () => expect(describeTokenControlHint({ locale: 'zh', isHost: false, hasSelectedToken: true, canMoveSelectedToken: true, hasControlledBinding: true, hasControlledToken: true }) === '你的角色，可移动。', 'own token hint changed') },
-  { name: 'monster or other token gets host-controlled hint', run: () => expect(describeTokenControlHint({ locale: 'zh', isHost: false, hasSelectedToken: true, canMoveSelectedToken: false, hasControlledBinding: true, hasControlledToken: true }) === '该 Token 由主持人控制。', 'host control hint changed') },
+  { name: 'ungranted or other token gets host-control hint', run: () => expect(describeTokenControlHint({ locale: 'zh', isHost: false, hasSelectedToken: true, canMoveSelectedToken: false, hasControlledBinding: true, hasControlledToken: true }) === '该 Token 由主持人控制，或尚未授权移动。', 'host control hint changed') },
   { name: 'unplaced admitted character gets wait hint', run: () => expect(describeTokenControlHint({ locale: 'zh', isHost: false, hasSelectedToken: false, canMoveSelectedToken: false, hasControlledBinding: true, hasControlledToken: false })?.includes('尚未被放置') === true, 'unplaced token hint changed') },
 ].map((test) => {
   try { test.run(); return { name: test.name, passed: true }; }

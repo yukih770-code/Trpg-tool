@@ -369,11 +369,14 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     });
   }, [context.currentMemberId, context.roomId, roomMapId]);
 
-  const setCanPinRoomRanges = async (memberId: string, canPinRanges: boolean) => {
+  const setRoomMapCollaborationPermission = async (
+    memberId: string,
+    input: { canPinRanges?: boolean; canManageTokens?: boolean },
+  ) => {
     if (!context.currentMemberId) throw new Error('需要主持人成员身份才能更新协作权限。');
     const response = await setRoomMapMemberPermission({ baseUrl: context.serverBaseUrl }, context.roomId, memberId, {
       authorizedByMemberId: context.currentMemberId,
-      canPinRanges,
+      ...input,
     });
     setLiveRoom(response.room);
   };
@@ -607,7 +610,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     <div className="space-y-2">
       <div className="text-[11px]">
         <div className="font-bold text-slate-800">{ENTRY_MODE_LABEL[context.entryMode]}</div>
-        <div className="text-[10px] text-slate-500">{context.entryMode === 'hostPreview' ? '可控制全部 Token' : context.entryMode === 'playerReady' ? '可控制自己的角色 Token' : '只读观看'}</div>
+        <div className="text-[10px] text-slate-500">{context.entryMode === 'hostPreview' ? '可控制全部 Token' : context.entryMode === 'playerReady' ? '移动角色需主持人授权' : '只读观看'}</div>
       </div>
       <div className={card}>
         <div className={`mb-1 ${label}`}>本次入场角色</div>
@@ -652,12 +655,6 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
           <span>已准备 <b className="text-slate-800">{readyCount}</b></span>
         </div>
       </div>
-      {inspectedToken && <RuntimeTokenInspectPanel
-        token={inspectedToken}
-        combatant={roomCombatState.combatants.find((combatant) => combatant.mapTokenId === inspectedToken.id || combatant.id === inspectedToken.combatantId || combatant.id === inspectedToken.sourceCombatantId)}
-        role={shellMode}
-        onClose={() => setInspectedToken(undefined)}
-      />}
       <RoomRuntimeCombatPanel
         locale={readStoredLocale()}
         scopeKey={`room:${context.roomId}`}
@@ -704,7 +701,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
             <div>同步：<b className={syncDown ? 'text-amber-700' : 'text-emerald-700'}>{syncLabel}</b></div>
           </div>
           <p className="mt-1.5 border-t border-slate-300/40 pt-1.5 text-[10px] leading-relaxed text-slate-500">
-            你可以投骰、查看公开信息，并移动自己的角色 Token。怪物和其他玩家 Token 由主持人控制。
+            你可以投骰并查看公开信息。主持人授权后，才能移动自己的角色 Token；怪物和其他玩家 Token 始终由主持人控制。
           </p>
         </div>
       )}
@@ -749,17 +746,27 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   // existing scene stage until they define their own map interaction contracts.
   const currentRoom = liveRoom ?? room;
   const currentMember = currentRoom?.members.find((member) => member.memberId === context.currentMemberId);
-  const currentRangeGrant = currentRoom?.mapPermissions?.find((permission) => permission.memberId === context.currentMemberId && permission.canPinRanges);
+  const currentMapPermission = currentRoom?.mapPermissions?.find((permission) => permission.memberId === context.currentMemberId);
   const runtimePermissions = resolveRoomRuntimePermissions({
     authenticated: Boolean(context.currentMemberId),
     roomRole: currentMember?.role,
     roomMemberActive: currentMember?.status === 'active',
-    grants: currentRangeGrant ? [{
-      action: 'map.template.fix',
-      scope: 'roomSession',
-      grantedByDisplayName: currentRangeGrant.grantedByDisplayName,
-      grantedAt: currentRangeGrant.grantedAt,
-    }] : [],
+    grants: currentMapPermission
+      ? [
+          ...(currentMapPermission.canPinRanges ? [{
+            action: 'map.template.fix' as const,
+            scope: 'roomSession' as const,
+            grantedByDisplayName: currentMapPermission.grantedByDisplayName,
+            grantedAt: currentMapPermission.grantedAt,
+          }] : []),
+          ...(currentMapPermission.canManageTokens ? [{
+            action: 'map.token.move.own' as const,
+            scope: 'roomSession' as const,
+            grantedByDisplayName: currentMapPermission.grantedByDisplayName,
+            grantedAt: currentMapPermission.grantedAt,
+          }] : []),
+        ]
+      : [],
   });
   const canPinRanges = runtimePermissions['map.template.fix'];
   const mapCollaborators = (currentRoom?.members ?? [])
@@ -768,6 +775,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       memberId: member.memberId,
       displayName: member.displayName,
       canPinRanges: !!currentRoom?.mapPermissions?.some((permission) => permission.memberId === member.memberId && permission.canPinRanges),
+      canMoveOwnToken: !!currentRoom?.mapPermissions?.some((permission) => permission.memberId === member.memberId && permission.canManageTokens),
     }));
 
   const mainStage = context.systemId === 'dnd5e-2024' ? (
@@ -784,18 +792,23 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       fallbackBackgroundUrl={currentScene?.mapUrl}
       sceneTitle={currentScene?.title}
       sceneDescription={currentScene?.body}
-      statusNote={currentRangeGrant ? '你获得了本房间会话内的固定范围授权；服务重启后需要由主持人重新授予。' : '地图协作取决于登录身份与房间角色；局域网连接本身不授予编辑权限。'}
+      statusNote={currentMapPermission?.canManageTokens
+        ? '主持人已授权你移动自己的角色 Token；服务重启后需要重新授予。'
+        : currentMapPermission?.canPinRanges
+          ? '你获得了本房间会话内的固定范围授权；服务重启后需要由主持人重新授予。'
+          : '主持人可授权你移动自己的角色 Token；局域网连接本身不授予地图编辑权限。'}
       presentation="runtime"
       canManage={runtimePermissions['map.grid.edit']}
       canMoveToken={(token) => runtimePermissions['map.token.move.own'] && isTokenLinkedToApprovedRoomMember(currentRoom, context.currentMemberId, token)}
-      tokenMoveDeniedMessage="只能移动与已准入角色绑定关联的 Token。旧的未关联 Token 仍由主持人控制。"
+      tokenMoveDeniedMessage="主持人尚未授权你移动角色，或该 Token 不属于你的已准入角色。"
       controlledTokenBindingId={context.approvedActorBindingId}
       canPinRanges={canPinRanges}
       canShareTemporaryRanges={runtimePermissions['map.preview.range.temporary']}
       sharedPreviews={(Object.values(sharedMapPreviews) as SharedMapPreview[]).flatMap((preview) => preview.preview ? [{ authorMemberId: preview.authorMemberId, authorDisplayName: preview.authorDisplayName, preview: preview.preview }] : [])}
       onSharePreview={shareRoomMapPreview}
       mapCollaborators={shellMode === 'host' ? mapCollaborators : []}
-      onSetCanPinRanges={shellMode === 'host' ? setCanPinRoomRanges : undefined}
+      onSetCanPinRanges={shellMode === 'host' ? (memberId, canPinRanges) => setRoomMapCollaborationPermission(memberId, { canPinRanges }) : undefined}
+      onSetCanMoveOwnToken={shellMode === 'host' ? (memberId, canManageTokens) => setRoomMapCollaborationPermission(memberId, { canManageTokens }) : undefined}
       onAppendEvent={appendMapEvent}
     />
   ) : (
@@ -839,6 +852,12 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       mainStage={mainStage}
       actorRail={actorRail}
       inspector={inspector}
+      overlay={inspectedToken && <RuntimeTokenInspectPanel
+        token={inspectedToken}
+        combatant={roomCombatState.combatants.find((combatant) => combatant.mapTokenId === inspectedToken.id || combatant.id === inspectedToken.combatantId || combatant.id === inspectedToken.sourceCombatantId)}
+        role={shellMode}
+        onClose={() => setInspectedToken(undefined)}
+      />}
       actionDock={
         <RuntimeActionDock
           actions={buildRuntimeDockActions(

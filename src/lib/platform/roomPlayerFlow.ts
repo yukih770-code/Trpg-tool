@@ -29,7 +29,7 @@ export function describeTokenControlHint(input: {
     if (input.isHost) return input.locale === 'en' ? 'Host can move every token.' : '主持人可移动所有 Token。';
     return input.canMoveSelectedToken
       ? input.locale === 'en' ? 'Your character can move.' : '你的角色，可移动。'
-      : input.locale === 'en' ? 'This token is controlled by the host.' : '该 Token 由主持人控制。';
+      : input.locale === 'en' ? 'The host controls this token or has not granted movement.' : '该 Token 由主持人控制，或尚未授权移动。';
   }
   if (!input.isHost && input.hasControlledBinding && !input.hasControlledToken) {
     return input.locale === 'en'

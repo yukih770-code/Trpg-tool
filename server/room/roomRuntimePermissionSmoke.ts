@@ -50,6 +50,7 @@ expect(room, 'room should remain available after approval');
 expect(resolveRoomParticipant({ room, viewer: viewer('user_player'), memberId: playerMemberId }).allowed, 'authenticated player should subscribe to their own lobby');
 expect(!resolveRoomParticipant({ room, viewer: viewer('user_other'), memberId: playerMemberId }).allowed, 'another user must not claim the player member id');
 expect(!resolveRoomRuntimePermission({ room, viewer: viewer('user_player'), memberId: playerMemberId, action: 'map.template.fix' }).allowed, 'player must not pin a range without an explicit grant');
+expect(!resolveRoomRuntimePermission({ room, viewer: viewer('user_player'), memberId: playerMemberId, action: 'map.token.move.own' }).allowed, 'player must not move a token without an explicit host grant');
 expect(resolveRoomRuntimePermission({ room, viewer: viewer('user_player'), memberId: playerMemberId, action: 'map.preview.range.temporary' }).allowed, 'active player should share temporary previews');
 expect(!resolveRoomRuntimePermission({ room, viewer: viewer(null), memberId: hostMemberId, action: 'map.grid.edit' }).allowed, 'anonymous LAN-like caller must not gain host control');
 
@@ -64,6 +65,18 @@ const grantedRoom = registry.get(roomId);
 expect(grantedRoom, 'granted room should be present');
 expect(resolveRoomRuntimePermission({ room: grantedRoom, viewer: viewer('user_player'), memberId: playerMemberId, action: 'map.template.fix' }).allowed, 'explicit grant should allow only fixed range creation');
 expect(!resolveRoomRuntimePermission({ room: grantedRoom, viewer: viewer('user_player'), memberId: playerMemberId, action: 'map.template.edit' }).allowed, 'fixed-range grant must not allow editing existing templates');
+
+const movementGrant = setRoomMapMemberPermission(registry, {
+  roomId,
+  authorizedByMemberId: hostMemberId,
+  memberId: playerMemberId,
+  canManageTokens: true,
+});
+expect(movementGrant.decision === 'updated', 'host should grant narrow own-token movement');
+const movementGrantedRoom = registry.get(roomId);
+expect(movementGrantedRoom, 'movement-granted room should be present');
+expect(resolveRoomRuntimePermission({ room: movementGrantedRoom, viewer: viewer('user_player'), memberId: playerMemberId, action: 'map.token.move.own' }).allowed, 'explicit grant should allow own-token movement');
+expect(!resolveRoomRuntimePermission({ room: movementGrantedRoom, viewer: viewer('user_player'), memberId: playerMemberId, action: 'map.token.move.any' }).allowed, 'own-token grant must not allow broad token movement');
 
 const revoke = setRoomMapMemberPermission(registry, {
   roomId,

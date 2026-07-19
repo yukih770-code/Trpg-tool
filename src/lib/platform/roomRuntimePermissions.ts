@@ -39,7 +39,7 @@ export type RoomRuntimeAction = typeof ROOM_RUNTIME_ACTIONS[number];
 export type RoomRuntimeGrantScope = 'roomSession';
 
 export interface RoomRuntimeGrantSummary {
-  action: Extract<RoomRuntimeAction, 'map.template.fix'>;
+  action: Extract<RoomRuntimeAction, 'map.template.fix' | 'map.token.move.own'>;
   scope: RoomRuntimeGrantScope;
   grantedByDisplayName?: string;
   grantedAt?: string;
@@ -83,10 +83,11 @@ export function resolveRoomRuntimePermissions(facts: RoomRuntimePermissionFacts)
 
   if (facts.roomRole === 'player') {
     permissions['map.preview.range.temporary'] = true;
-    // Server-side token linkage validation remains required for every move.
-    permissions['map.token.move.own'] = true;
     permissions['runtime.event.append'] = true;
     permissions['map.template.fix'] = facts.grants?.some((grant) => grant.action === 'map.template.fix') === true;
+    // Moving a player token is a host-granted room-session capability. The
+    // server still verifies the token's approved character binding per move.
+    permissions['map.token.move.own'] = facts.grants?.some((grant) => grant.action === 'map.token.move.own') === true;
   }
 
   return permissions;

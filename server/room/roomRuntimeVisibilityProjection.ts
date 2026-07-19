@@ -38,10 +38,14 @@ function relationForToken(scope: ViewerScope, token: Pick<MapToken, 'kind' | 'ro
   return 'unknown';
 }
 
-function visibilityForToken(scope: ViewerScope, token: Pick<MapToken, 'kind' | 'roomMemberId' | 'actorBindingId'>): RuntimeVisibility {
+function visibilityForToken(scope: ViewerScope, token: Pick<MapToken, 'kind' | 'roomMemberId' | 'actorBindingId' | 'informationVisibility'>): RuntimeVisibility {
   if (scope.role === 'host') return 'hostFull';
   if (!scope.active) return 'publicObserved';
-  return relationForToken(scope, token) === 'self' ? 'ownerFull' : token.kind === 'playerCharacter' ? 'partyPublic' : 'publicObserved';
+  if (relationForToken(scope, token) === 'self') return 'ownerFull';
+  // A Token visible on the shared map exposes its basic table information by
+  // default. Narrative secrecy uses the existing hidden-Token path; host notes
+  // and opaque member/binding identifiers remain outside this projection.
+  return 'publicShared';
 }
 
 function injuryStage(current?: number, max?: number, defeated?: boolean): RuntimeInjuryStage | undefined {
@@ -55,13 +59,13 @@ function injuryStage(current?: number, max?: number, defeated?: boolean): Runtim
 }
 
 function hpFor(visibility: RuntimeVisibility, current?: number, max?: number, temporary?: number, defeated?: boolean): RuntimeHpDisplay {
-  if (visibility === 'hostFull' || visibility === 'ownerFull') return { kind: 'exact', current, max, temporary };
+  if (visibility === 'hostFull' || visibility === 'ownerFull' || visibility === 'partyPublic' || visibility === 'publicShared') return { kind: 'exact', current, max, temporary };
   const stage = injuryStage(current, max, defeated);
   return stage ? { kind: 'stage', stage } : { kind: 'unknown' };
 }
 
 function acFor(visibility: RuntimeVisibility, armorClass?: number): RuntimeAcDisplay {
-  return (visibility === 'hostFull' || visibility === 'ownerFull') && armorClass !== undefined
+  return (visibility === 'hostFull' || visibility === 'ownerFull' || visibility === 'partyPublic' || visibility === 'publicShared') && armorClass !== undefined
     ? { kind: 'exact', value: armorClass }
     : { kind: 'unknown' };
 }
@@ -69,7 +73,7 @@ function acFor(visibility: RuntimeVisibility, armorClass?: number): RuntimeAcDis
 function visibleConditions(visibility: RuntimeVisibility, conditions: readonly string[] | undefined): string[] {
   // Existing conditions do not carry individual public/revealed metadata. Until
   // such metadata exists, only owner/host receive the complete set.
-  return visibility === 'hostFull' || visibility === 'ownerFull' ? [...(conditions ?? [])] : [];
+  return visibility === 'hostFull' || visibility === 'ownerFull' || visibility === 'partyPublic' || visibility === 'publicShared' ? [...(conditions ?? [])] : [];
 }
 
 function projectToken(scope: ViewerScope, token: MapToken): MapToken {
@@ -90,6 +94,7 @@ function projectToken(scope: ViewerScope, token: MapToken): MapToken {
     imageUrl: token.imageUrl,
     initials: token.initials,
     kind: token.kind,
+    informationVisibility: undefined,
     hpSummary: own ? token.hpSummary : undefined,
     hpDisplay: hpFor(visibility, token.hpSummary?.current, token.hpSummary?.max, token.hpSummary?.temporary),
     acDisplay: { kind: 'unknown' },
@@ -112,7 +117,7 @@ function projectCombatant(scope: ViewerScope, combatant: Combatant, token?: MapT
     visibility: 'hostFull',
     relation: token ? relationForToken(scope, token) : 'unknown',
   };
-  const marker: Pick<MapToken, 'kind' | 'roomMemberId' | 'actorBindingId'> = token ?? {
+  const marker: Pick<MapToken, 'kind' | 'roomMemberId' | 'actorBindingId' | 'informationVisibility'> = token ?? {
     kind: combatant.kind === 'character' ? 'playerCharacter' : combatant.kind === 'npc' ? 'npc' : 'unknown',
   };
   const visibility = visibilityForToken(scope, marker);

@@ -7,6 +7,7 @@ import { approveMember } from '../services/approveMember.js';
 import { submitActorBinding } from '../services/submitActorBinding.js';
 import { approveActorBinding } from '../services/approveActorBinding.js';
 import { appendRoomMapEvent } from '../services/appendRoomMapEvent.js';
+import { setRoomMapMemberPermission } from '../services/setRoomMapMemberPermission.js';
 import { resolveVerifiedRoomTokenMove } from './roomTokenControlGuard.js';
 import type { CurrentViewerContext } from '../auth/currentViewerContext.js';
 
@@ -77,6 +78,8 @@ function verify(userId: string | null, memberId: string, payload: unknown) {
 
 const cases: Array<{ name: string; run: () => void }> = [
   { name: 'host can move any token', run: () => expect(verify('user-host', hostMemberId, movePayload('token-monster')).allowed, 'host move denied') },
+  { name: 'approved player cannot move own token before host grant', run: () => expect(!verify('user-a', playerA, movePayload('token-a')).allowed, 'own token moved without host grant') },
+  { name: 'host can grant narrow own-token movement', run: () => expect(setRoomMapMemberPermission(rooms, { roomId, authorizedByMemberId: hostMemberId, memberId: playerA, canManageTokens: true }).decision === 'updated', 'host movement grant failed') },
   { name: 'approved player can move own token', run: () => expect(verify('user-a', playerA, movePayload('token-a')).allowed, 'own token move denied') },
   { name: 'approved player can move own vault token linked to binding', run: () => expect(verify('user-a', playerA, movePayload('token-vault')).allowed, 'vault token move denied') },
   { name: 'approved player can move own quick draft token linked to binding', run: () => expect(verify('user-a', playerA, movePayload('token-draft')).allowed, 'quick draft token move denied') },

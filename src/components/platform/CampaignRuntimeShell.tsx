@@ -17,6 +17,7 @@ import { RuntimeManualStateLogPanel, type RuntimeStateLogItem } from './RuntimeM
 import { RuntimeCharacterSheetPanel } from './RuntimeCharacterSheetPanel';
 import { RuntimeMapStage } from './RuntimeMapStage';
 import { BasicMapBoard } from './BasicMapBoard';
+import { RuntimeTokenInspectPanel } from './RuntimeTokenInspectPanel';
 import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSceneBoardPanel';
 import { RuntimeSceneFocusPanel, type RuntimeSceneFocus } from './RuntimeSceneFocusPanel';
 import { resolveRuntimeActorSnapshot } from './runtimeActorSnapshotSource';
@@ -27,7 +28,7 @@ import { describeRuntimeMode } from './runtimeModeContract';
 import { CharacterClearanceSummary } from './CharacterClearanceSummary';
 import { rollSharedDiceExpression, formatSharedDiceRoll } from '../../lib/platform/sharedDiceExpression';
 import type { RoomLaunchActionState } from '../../lib/platform/hostedRoomLaunch';
-import type { MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
+import type { MapRuntimeEventDraft, MapToken } from '../../lib/map/mapRuntimeTypes';
 import type { MapRuntimeReplayEvent } from '../../lib/map/mapRuntimeReplay';
 import { entryCharacterFromCampaignSuggestedActor, entryCharacterToPresenceCandidate } from '../../lib/platform/entryCharacterRef';
 
@@ -144,6 +145,7 @@ export function CampaignRuntimeShell({
   // room sync or durable campaign map storage.
   const localMapId = `local:${context.campaignId}`;
   const [localMapEvents, setLocalMapEvents] = useState<MapRuntimeReplayEvent[]>([]);
+  const [inspectedToken, setInspectedToken] = useState<MapToken | undefined>();
   const appendLocalMapEvent = async (event: MapRuntimeEventDraft) => {
     setLocalMapEvents((previous) => [
       ...previous,
@@ -569,6 +571,7 @@ export function CampaignRuntimeShell({
       statusNote={`${localHostCarriedCandidate ? `主持人带入角色：${localHostCarriedCandidate.displayName}。` : ''}本地地图仅在当前运行页面保留；开启联机房间后可使用实时地图同步。`}
       presentation="runtime"
       canManage={isHost}
+      onInspectToken={setInspectedToken}
       onAppendEvent={appendLocalMapEvent}
     />
   ) : (
@@ -707,6 +710,13 @@ export function CampaignRuntimeShell({
       mainStage={mainStage}
       actorRail={actorRail}
       inspector={inspector}
+      overlay={inspectedToken ? (
+        <RuntimeTokenInspectPanel
+          token={inspectedToken}
+          role={shellMode}
+          onClose={() => setInspectedToken(undefined)}
+        />
+      ) : undefined}
       actionDock={actionDock}
       logDrawer={logDrawer}
     />

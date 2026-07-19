@@ -4,7 +4,7 @@
  * client-side permissions and must never be used to authorize mutations.
  */
 
-export type RuntimeVisibility = 'hostFull' | 'ownerFull' | 'partyPublic' | 'publicObserved' | 'investigated';
+export type RuntimeVisibility = 'hostFull' | 'ownerFull' | 'partyPublic' | 'publicShared' | 'publicObserved' | 'investigated';
 
 export type RuntimeInjuryStage = 'uninjured' | 'wounded' | 'bloodied' | 'nearDeath' | 'defeated';
 

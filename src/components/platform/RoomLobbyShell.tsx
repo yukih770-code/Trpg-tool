@@ -529,6 +529,7 @@ export function RoomLobbyShell({
   const btn = 'rounded border border-slate-500/40 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide disabled:opacity-40';
   const input = 'rounded border border-slate-400/40 bg-white/70 px-2 py-1 text-[12px] outline-none';
   const reviewBtn = 'rounded border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide disabled:opacity-40';
+  const submitCharacterBtn = 'rounded border border-amber-600 bg-amber-500 px-4 py-2 text-[12px] font-black text-slate-950 shadow-sm transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40';
 
   return (
     <div className="space-y-4 rounded-lg border border-slate-400/30 bg-slate-50/60 p-4 text-[12px] text-slate-700">
@@ -645,12 +646,18 @@ export function RoomLobbyShell({
 
       {/* Character entry is shown only for people who can act on it now. */}
       {presentation.canShowCharacterEntry && (
-      <section className={card}>
-        <div className={`mb-1.5 ${label}`}>选择角色</div>
+      <section className={`${card} border-amber-400/45 bg-amber-50/35`}>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <div className={`mb-1.5 ${label}`}>入场角色</div>
+            <div className="text-sm font-black text-slate-900">选择角色并提交审核</div>
+          </div>
+          <span className="rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-bold text-amber-800">提交后等待主持人确认</span>
+        </div>
         <p className="mb-2 text-[10px] text-slate-500">
           {iAmActive
             ? '请选择已有角色、创建快速角色，或以旁观者加入。提交后等待主持人审核。'
-            : '你可以先准备角色；主持人批准加入后即可提交。'}
+            : '主持人批准加入后即可选择并提交角色。'}
         </p>
 
         <div className="mb-3 flex flex-wrap gap-2">
@@ -658,7 +665,7 @@ export function RoomLobbyShell({
             <button
               key={action.id}
               type="button"
-              className={`${btn} ${action.id === 'quickDraft' || action.id === 'existing' ? 'border-slate-700 bg-slate-800 text-white hover:bg-slate-700' : 'bg-white/70 text-slate-700 hover:bg-white'}`}
+              className={`${btn} ${action.id === 'existing' ? 'border-slate-800 bg-slate-800 text-white hover:bg-slate-700' : action.id === 'quickDraft' ? 'border-amber-500/70 bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-white/70 text-slate-700 hover:bg-white'}`}
               onClick={() => handleEntryAction(action.id)}
             >
               {action.label}
@@ -688,7 +695,7 @@ export function RoomLobbyShell({
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-bold text-slate-700">已选择：{bindingName}</span>
                   <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 font-bold text-slate-600">{SOURCE_LABEL[bindingSource]}</span>
-                  <button type="button" className={btn} disabled={bindingBusy || !iAmActive} onClick={submitBinding}>
+                  <button type="button" className={submitCharacterBtn} disabled={bindingBusy || !iAmActive} onClick={submitBinding}>
                     {bindingBusy ? '提交中…' : iAmActive ? (myBinding ? '更新入场角色' : currentMember?.role === 'host' ? '提交主持人角色' : '提交角色申请') : '等待加入批准后提交'}
                   </button>
                 </div>
@@ -700,7 +707,7 @@ export function RoomLobbyShell({
                 <input className={input} value={bindingName} onChange={(e) => { setBindingName(e.target.value); if (bindingSource === 'localActorVault') setBindingSource('quickDraft'); }} placeholder="例如 Elaria / 调查员 / Solo" />
               </label>
               <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">角色来源：{SOURCE_LABEL[bindingSource]}</span>
-              <button type="button" className={btn} disabled={bindingBusy || !bindingName.trim() || !iAmActive} onClick={submitBinding}>
+              <button type="button" className={submitCharacterBtn} disabled={bindingBusy || !bindingName.trim() || !iAmActive} onClick={submitBinding}>
                 {bindingBusy ? '提交中…' : iAmActive ? (myBinding ? '更新入场角色' : currentMember?.role === 'host' ? '提交主持人角色' : '提交角色申请') : '等待加入批准后提交'}
               </button>
             </div>}

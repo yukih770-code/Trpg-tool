@@ -14,6 +14,7 @@ import type {
   RoomCampaignRef,
   RoomJoinRequest,
   RoomJoinResult,
+  RoomMemberRole,
   RoomSnapshot,
   RoomSystemId,
 } from './roomTypes';
@@ -105,6 +106,16 @@ export async function getRoomServerRoom(
 ): Promise<RoomSnapshot> {
   const query = options?.memberId ? `?memberId=${encodeURIComponent(options.memberId)}` : '';
   return request<RoomSnapshot>(config, `/rooms/${encodeURIComponent(roomId)}${query}`);
+}
+
+/** Minimal applicant-only status check. It intentionally contains no room or Lobby data. */
+export async function getRoomJoinStatus(
+  config: RoomServerHttpClientConfig,
+  roomId: string,
+  memberId: string,
+): Promise<{ roomId: string; memberId: string; memberStatus: 'pendingApproval' | 'active' | 'kicked' | 'left' | 'disconnected'; assignedRole: RoomMemberRole }> {
+  const query = new URLSearchParams({ memberId });
+  return request(config, `/rooms/${encodeURIComponent(roomId)}/join-status?${query.toString()}`);
 }
 
 export async function createRoomOnServer(
@@ -292,7 +303,7 @@ export async function setRoomMapMemberPermission(
   config: RoomServerHttpClientConfig,
   roomId: string,
   memberId: string,
-  input: { authorizedByMemberId: string; canPinRanges: boolean },
+  input: { authorizedByMemberId: string; canPinRanges?: boolean; canManageTokens?: boolean },
 ): Promise<{ room: RoomSnapshot }> {
   return request<{ room: RoomSnapshot }>(config, `/rooms/${encodeURIComponent(roomId)}/map-permissions/${encodeURIComponent(memberId)}`, {
     method: 'POST',

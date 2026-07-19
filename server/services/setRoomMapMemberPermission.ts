@@ -7,7 +7,9 @@ export interface SetRoomMapMemberPermissionInput {
   roomId: string;
   authorizedByMemberId: string;
   memberId: string;
-  canPinRanges: boolean;
+  canPinRanges?: boolean;
+  /** Still limited to the target's approved character token by the move guard. */
+  canManageTokens?: boolean;
 }
 
 export interface SetRoomMapMemberPermissionResult {
@@ -32,17 +34,20 @@ export function setRoomMapMemberPermission(
 
   const next = registry.update(input.roomId, (current) => {
     const previous = current.mapPermissions ?? [];
+    const existing = previous.find((permission) => permission.memberId === input.memberId);
     const retained = previous.filter((permission) => permission.memberId !== input.memberId);
+    const canPinRanges = input.canPinRanges ?? existing?.canPinRanges ?? false;
+    const canManageTokens = input.canManageTokens ?? existing?.canManageTokens ?? false;
     const permission: RoomMapMemberPermissionSummary = {
       memberId: input.memberId,
-      canPinRanges: input.canPinRanges,
-      canManageTokens: false,
-      canManagePresentation: false,
+      canPinRanges,
+      canManageTokens,
+      canManagePresentation: existing?.canManagePresentation ?? false,
       grantScope: 'roomSession',
       grantedByDisplayName: author.displayName,
       grantedAt: new Date().toISOString(),
     };
-    return { ...current, mapPermissions: input.canPinRanges ? [...retained, permission] : retained };
+    return { ...current, mapPermissions: canPinRanges || canManageTokens || permission.canManagePresentation ? [...retained, permission] : retained };
   });
   return next ? { decision: 'updated', room: next } : { decision: 'roomNotFound' };
 }

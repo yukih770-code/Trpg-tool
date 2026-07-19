@@ -53,15 +53,27 @@ export function mapRuntimeActionForMapEvent(eventKind: RoomMapEventKind): RoomRu
 }
 
 function grantsForMember(room: RoomSnapshot, memberId: string): RoomRuntimeGrantSummary[] {
-  const grant = room.mapPermissions?.find((item) => item.memberId === memberId && item.canPinRanges);
-  return grant
-    ? [{
+  const grant = room.mapPermissions?.find((item) => item.memberId === memberId);
+  if (!grant) return [];
+
+  const grants: RoomRuntimeGrantSummary[] = [];
+  if (grant.canPinRanges) {
+    grants.push({
         action: 'map.template.fix',
         scope: 'roomSession',
         grantedByDisplayName: grant.grantedByDisplayName,
         grantedAt: grant.grantedAt,
-      }]
-    : [];
+    });
+  }
+  if (grant.canManageTokens) {
+    grants.push({
+      action: 'map.token.move.own',
+      scope: 'roomSession',
+      grantedByDisplayName: grant.grantedByDisplayName,
+      grantedAt: grant.grantedAt,
+    });
+  }
+  return grants;
 }
 
 /**

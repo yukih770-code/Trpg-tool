@@ -76,8 +76,8 @@ export function getRoomLobbyPresentationState(input: RoomLobbyPresentationInput)
       primaryMessage: '你的加入请求正在等待主持人处理。',
       nextStepMessage: member?.role === 'spectator'
         ? '批准后可进入只读跑团桌面。'
-        : '你可以先准备角色；批准后即可提交角色申请。',
-      canShowCharacterEntry: member?.role === 'player',
+        : '批准后即可在联机大厅选择并提交角色。',
+      canShowCharacterEntry: false,
       canShowReadyAction: false,
       canShowRuntimeEntry: false,
       shouldShowSpectatorCopy: member?.role === 'spectator',

@@ -15,10 +15,10 @@ approve joins, approve characters, set Ready, or grant Runtime access. The
 existing server services and Runtime Entry guard remain authoritative.
 
 The default screen uses one **My Next Step** card, a compact player roster, and
-a host-only review queue. Character selection appears only while it is useful:
-members waiting for room approval may prepare a choice, active players without
-a usable character can submit one, and spectators do not see character or Ready
-pressure.
+a host-only review queue. Character selection appears only after a player has
+joined the Lobby; the submit action is the visual primary CTA once a character
+is selected. Pending applicants remain on the separate join-confirmation view,
+and spectators do not see character or Ready pressure.
 
 ## Host review and room controls
 

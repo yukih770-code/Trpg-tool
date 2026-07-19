@@ -31,7 +31,7 @@ const room: RoomSnapshot = {
 };
 
 const checks = [
-  ['pending remains actionable', 'pending', 'player_waiting_room_approval', true, false, false],
+  ['pending stays outside the lobby actions', 'pending', 'player_waiting_room_approval', false, false, false],
   ['needs character has actions', 'needs-character', 'player_needs_character', true, false, false],
   ['review has a single wait state', 'review', 'player_waiting_character_review', false, false, false],
   ['approved prompts ready', 'approved', 'player_approved_needs_ready', false, true, false],

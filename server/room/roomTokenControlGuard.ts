@@ -3,7 +3,7 @@ import type { CurrentViewerContext } from '../auth/currentViewerContext.js';
 import type { RoomSnapshot } from '../protocol/room-protocol.js';
 import { replayMapRuntimeEvents } from '../../src/lib/map/mapRuntimeReplay.js';
 import { isTokenLinkedToApprovedRoomMember } from '../../src/lib/platform/roomTokenOwnership.js';
-import { resolveRoomParticipant, type RoomRuntimePermissionDecision } from './roomRuntimePermissionGuard.js';
+import { resolveRoomParticipant, resolveRoomRuntimePermission, type RoomRuntimePermissionDecision } from './roomRuntimePermissionGuard.js';
 
 export type RoomTokenMoveDecision = Omit<RoomRuntimePermissionDecision, 'code'> & {
   code: RoomRuntimePermissionDecision['code'] | 'invalidMove' | 'tokenNotFound' | 'tokenNotOwned';
@@ -44,6 +44,9 @@ export function resolveRoomMemberTokenMove(input: TokenMoveInput): RoomTokenMove
   if (member.status !== 'active') return { allowed: false, code: 'member_inactive', memberId: member.memberId };
   if (member.role === 'host') return { allowed: true, code: 'allowed', memberId: member.memberId };
   if (member.role !== 'player') return { allowed: false, code: 'forbidden', memberId: member.memberId };
+  if (!input.room.mapPermissions?.some((permission) => permission.memberId === member.memberId && permission.canManageTokens)) {
+    return { allowed: false, code: 'forbidden', memberId: member.memberId };
+  }
 
   const token = replayMapRuntimeEvents(input.mapRegistry.list(input.room.identity.roomId, { mapId: input.mapId }).events, input.mapId)
     .tokens.find((candidate) => candidate.id === target.tokenId);
@@ -61,6 +64,13 @@ export function resolveVerifiedRoomTokenMove(input: TokenMoveInput & {
 }): RoomTokenMoveDecision {
   const participant = resolveRoomParticipant(input);
   if (!participant.allowed) return participant;
+  const permission = resolveRoomRuntimePermission({
+    room: input.room,
+    viewer: input.viewer,
+    memberId: input.memberId,
+    action: 'map.token.move.own',
+  });
+  if (!permission.allowed) return permission;
   const decision = resolveRoomMemberTokenMove(input);
   return decision.allowed ? { ...decision, userId: participant.userId } : decision;
 }

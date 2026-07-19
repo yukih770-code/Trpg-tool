@@ -35,6 +35,8 @@ export interface RuntimeFullscreenShellProps {
   mainStage?: ReactNode;
   actorRail?: ReactNode;
   inspector?: ReactNode;
+  /** Small, temporary runtime interaction surface such as Token inspection. */
+  overlay?: ReactNode;
   actionDock?: ReactNode;
   logDrawer?: ReactNode;
 }
@@ -81,6 +83,7 @@ export function RuntimeFullscreenShell({
   mainStage,
   actorRail,
   inspector,
+  overlay,
   actionDock,
   logDrawer,
 }: RuntimeFullscreenShellProps) {
@@ -231,6 +234,8 @@ export function RuntimeFullscreenShell({
             {logOpen && <div className="max-h-[35vh] overflow-y-auto border-t border-slate-300/60 px-2 pb-2">{logDrawer}</div>}
           </div>
         )}
+
+        {overlay}
       </div>
     </div>
   );

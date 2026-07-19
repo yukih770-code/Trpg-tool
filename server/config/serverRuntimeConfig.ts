@@ -5,9 +5,9 @@ import { readLanRuntimeConfig, type LanRuntimeConfig } from './lanRuntimeConfig.
  *
  * AI-LANDMARK: SERVER_RUNTIME_CONFIG_BOUNDARY_V0
  *
- * This module describes environment-driven server configuration. It is not
- * wired into the current Room Server entry yet, and it does not perform
- * deployment, auth, database, storage, or protocol setup.
+ * This module describes environment-driven server configuration. The Room
+ * Server entry consumes it at startup; this module itself still does not
+ * perform deployment, auth, database, storage, or protocol setup.
  */
 
 export type ServerDeploymentEnvironment =
@@ -130,9 +130,8 @@ function readDevUserApiEnabled(environment: ServerDeploymentEnvironment, request
 }
 
 /**
- * Pure config reader for future server wiring. Production still requires an
- * explicit public endpoint before this boundary should be connected to runtime
- * startup.
+ * Pure config reader. Cloud startup validation requires explicit public
+ * endpoints before the Room Server accepts the runtime configuration.
  */
 export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRuntimeConfig {
   const environment = readEnvironment(env);
