@@ -152,6 +152,18 @@ export async function rejectRoomMemberOnServer(
   });
 }
 
+/** Host-only non-destructive close. It preserves room history and only closes entry. */
+export async function disbandRoomOnServer(
+  config: RoomServerHttpClientConfig,
+  roomId: string,
+  decidedByMemberId: string,
+): Promise<{ room?: RoomSnapshot; decision: string }> {
+  return request<{ room?: RoomSnapshot; decision: string }>(config, `/rooms/${encodeURIComponent(roomId)}/disband`, {
+    method: 'POST',
+    body: JSON.stringify({ decidedByMemberId }),
+  });
+}
+
 // ── Room Lobby: actor binding + ready check (M15) ───────────────────────────
 // Pre-session lobby mutations. Updates arrive via the WS roomSnapshot broadcast;
 // these return the service result and do not require the UI to read the room.

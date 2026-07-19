@@ -36,6 +36,14 @@ details, errors, and RuntimeLog preview are under a collapsed **Technical
 Details** disclosure. They remain available for local troubleshooting without
 competing with normal play.
 
+## Closed rooms
+
+When the current snapshot is closed or archived, the same My Next Step card
+switches to **房间已解散**. Character submission, Ready, host review, and Runtime
+entry disappear; the member can return to the room list. Active hosts see a
+confirmed **解散房间** action while the room is open. Disbanding preserves history
+and is not a delete action.
+
 ## Boundaries
 
 This slice adds no permission action, WebSocket message, database migration,

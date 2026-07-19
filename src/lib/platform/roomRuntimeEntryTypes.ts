@@ -45,6 +45,7 @@ export interface RoomRuntimeEntryContext {
 
 export type RoomRuntimeEntryBlockedReason =
   | 'roomMissing'
+  | 'roomClosed'
   | 'memberMissing'
   | 'memberNotActive'
   | 'actorBindingMissing'

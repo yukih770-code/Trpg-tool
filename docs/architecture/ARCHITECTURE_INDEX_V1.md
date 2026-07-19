@@ -734,6 +734,16 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Don't violate: this adds no room permission, clearance, Ready, Runtime-entry,
   token-ownership, WebSocket, or persistence behavior.
 
+## Room Disband Lifecycle Cleanup (P5.ROOM-DISBAND-LIFECYCLE-CLEANUP)
+- Files: `server/services/disbandRoom.ts`, room Runtime permission guards,
+  `roomLifecycle.ts`, Lobby/Runtime close states, and lifecycle smoke scripts.
+- Disband maps to the existing non-destructive `closed` lifecycle status. Closed
+  and archived rooms are absent from default room discovery; existing members
+  receive a normal room snapshot and see a return path.
+- Don't violate: no Room/event/scene deletion, migration, restore UI, or
+  permission shortcut. A closed Room rejects joins, Ready, character submission,
+  Runtime entry, RuntimeLog/dice writes, and map mutations.
+
 ## Combat Mode HUD Foundation (P5.COMBAT-MODE-HUD-FOUNDATION)
 - Files: `src/lib/combat/combatModeHud.ts`, `CombatModeHud.tsx`,
   `CombatRuntimeTable.tsx`, `BasicMapBoard.tsx`, and Server Workspace wiring.

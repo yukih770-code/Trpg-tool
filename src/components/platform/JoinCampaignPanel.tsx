@@ -16,6 +16,7 @@ import {
 import type { RoomJoinResult, RoomMemberRole, RoomSnapshot, RoomSystemId } from '../../lib/platform/roomTypes';
 import type { RoomRuntimeEntryContext } from '../../lib/platform/roomRuntimeEntryTypes';
 import { resolveRoomServerHttpUrl } from '../../lib/platform/roomServerEndpoint';
+import { isRoomVisibleInActiveList } from '../../lib/platform/roomLifecycle';
 import { RoomLobbyShell } from './RoomLobbyShell';
 import { RoomRuntimeEntryBridge } from './RoomRuntimeEntryBridge';
 import { RoomServerStatusBanner } from './RoomServerStatusBanner';
@@ -56,7 +57,7 @@ function normalizeJoinError(error: unknown): { message: string; detail: string }
   }
   if (lower.includes('closed')) {
     return {
-      message: '房间已关闭：请让主持人重新创建联机房间。',
+      message: '该房间已解散，无法加入。',
       detail,
     };
   }
@@ -175,7 +176,7 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
   // Boundary: never render the raw Room Server list. Map to DiscoveredRoomSummary,
   // then filter to the CURRENT system only (exact match v0).
   const LOCAL_SERVER_LABEL = '本地 Room Server';
-  const discoveredRooms = mapRoomServerRoomsToDiscovered(rooms, {
+  const discoveredRooms = mapRoomServerRoomsToDiscovered(rooms.filter((room) => isRoomVisibleInActiveList(room.lifecycleStatus)), {
     source: 'lan',
     serverBaseUrl: baseUrl,
     serverLabel: LOCAL_SERVER_LABEL,
@@ -373,7 +374,7 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
                 {joinResult.decision === 'pendingHostApproval' && <div className="font-bold text-amber-700">加入请求已发送：等待主持人批准。</div>}
                 {joinResult.decision === 'accepted' && <div className="font-bold text-emerald-700">已加入房间，正在进入联机大厅。</div>}
                 {joinResult.decision === 'invalidInvite' && <div className="font-bold text-red-700">找不到这个房间。请检查房间码是否正确。</div>}
-                {joinResult.decision === 'roomClosed' && <div className="font-bold text-red-700">房间已关闭。请让主持人重新创建联机房间。</div>}
+                {joinResult.decision === 'roomClosed' && <div className="font-bold text-red-700">该房间已解散，无法加入。</div>}
                 <details className="mt-1">
                   <summary className="cursor-pointer text-[10px] font-bold text-slate-400">诊断信息</summary>
                   <div className="mt-0.5 text-[10px] text-slate-500">

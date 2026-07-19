@@ -18,7 +18,7 @@ export interface AppendRoomMapEventInput {
 }
 
 export interface AppendRoomMapEventResult {
-  decision: 'appended' | 'roomNotFound' | 'memberNotFound' | 'memberNotActive' | 'memberNotAuthorized' | 'invalidMapEvent';
+  decision: 'appended' | 'roomNotFound' | 'roomClosed' | 'memberNotFound' | 'memberNotActive' | 'memberNotAuthorized' | 'invalidMapEvent';
   event?: RoomMapEvent;
   message?: string;
 }
@@ -30,6 +30,9 @@ export function appendRoomMapEvent(
 ): AppendRoomMapEventResult {
   const room = roomRegistry.get(input.roomId);
   if (!room) return { decision: 'roomNotFound', message: `No room "${input.roomId}".` };
+  if (room.identity.lifecycleStatus === 'closed' || room.identity.lifecycleStatus === 'archived') {
+    return { decision: 'roomClosed', message: 'The room is closed.' };
+  }
 
   const author = room.members.find((member) => member.memberId === input.authorMemberId);
   if (!author) return { decision: 'memberNotFound', message: `No member "${input.authorMemberId}".` };

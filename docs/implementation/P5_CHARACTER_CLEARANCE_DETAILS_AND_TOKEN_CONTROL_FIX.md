@@ -38,6 +38,12 @@ legality validation, automatic rule enforcement, CampaignActorInstance,
 cross-device character-sheet transfer, or copyrighted rule text is introduced.
 The details are session review metadata only.
 
+## Room lifecycle interaction
+
+A closed/disbanded Room no longer accepts character submissions or Token map
+mutations. This does not delete the prior review summary or map-event history;
+it only removes live authority from the closed session.
+
 ## Verification
 
 - `npm run frontend:verify:player-token-control`

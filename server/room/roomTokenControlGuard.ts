@@ -35,6 +35,9 @@ function moveTarget(payload: unknown): { tokenId: string; x: number; y: number }
 export function resolveRoomMemberTokenMove(input: TokenMoveInput): RoomTokenMoveDecision {
   const target = moveTarget(input.payload);
   if (!target || !input.mapId.trim()) return { allowed: false, code: 'invalidMove' };
+  if (input.room.identity.lifecycleStatus === 'closed' || input.room.identity.lifecycleStatus === 'archived') {
+    return { allowed: false, code: 'room_closed' };
+  }
 
   const member = input.room.members.find((candidate) => candidate.memberId === input.memberId);
   if (!member) return { allowed: false, code: 'member_not_found' };

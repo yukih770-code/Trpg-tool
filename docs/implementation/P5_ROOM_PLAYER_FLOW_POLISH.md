@@ -62,3 +62,10 @@ may skip an optional host-carried character.
 Next Step card. It does not replace this state model or change approval, Ready,
 or Runtime-entry rules; it only removes duplicate dashboards and moves
 diagnostic state behind a collapsed disclosure.
+
+## Closed-room follow-up
+
+If a host disbands a room, it is no longer a player progression state. Existing
+members see a closed notice and return path; no one can submit a character,
+toggle Ready, or enter the Runtime table. Leave remains member-scoped and does
+not imply disbanding the room.

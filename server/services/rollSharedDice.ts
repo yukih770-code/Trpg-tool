@@ -30,6 +30,7 @@ export interface RollSharedDiceResult {
   decision:
     | 'rolled'
     | 'roomNotFound'
+    | 'roomClosed'
     | 'memberNotFound'
     | 'memberNotActive'
     | 'invalidExpression'
@@ -51,6 +52,9 @@ export function rollSharedDice(
 ): RollSharedDiceResult {
   const room = roomRegistry.get(input.roomId);
   if (!room) return { decision: 'roomNotFound', message: `No room "${input.roomId}".` };
+  if (room.identity.lifecycleStatus === 'closed' || room.identity.lifecycleStatus === 'archived') {
+    return { decision: 'roomClosed', message: 'The room is closed.' };
+  }
 
   const member = room.members.find((m) => m.memberId === input.memberId);
   if (!member) return { decision: 'memberNotFound', message: `No member "${input.memberId}".` };

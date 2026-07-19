@@ -9,7 +9,7 @@ import type { RoomMapEventKind } from '../protocol/room-protocol.js';
 
 export type RoomRuntimePermissionDecision = {
   allowed: boolean;
-  code: 'allowed' | 'unauthenticated' | 'member_not_found' | 'member_user_mismatch' | 'member_inactive' | 'forbidden';
+  code: 'allowed' | 'room_closed' | 'unauthenticated' | 'member_not_found' | 'member_user_mismatch' | 'member_inactive' | 'forbidden';
   memberId?: string;
   userId?: string;
 };
@@ -76,6 +76,9 @@ export function resolveRoomRuntimePermission(input: {
 }): RoomRuntimePermissionDecision {
   const participant = resolveRoomParticipant(input);
   if (!participant.allowed) return participant;
+  if (input.room.identity.lifecycleStatus === 'closed' || input.room.identity.lifecycleStatus === 'archived') {
+    return { allowed: false, code: 'room_closed', memberId: participant.memberId, userId: participant.userId };
+  }
   const viewerUserId = participant.userId;
   const member = input.room.members.find((candidate) => candidate.memberId === input.memberId);
   if (!member) return { allowed: false, code: 'member_not_found' };

@@ -142,6 +142,14 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
           send(ws, { ...envelope(), type: 'error', code: 'notAuthorized', roomId: raw.roomId, message: 'Authenticated room membership is required.' });
           return;
         }
+        // Existing subscribers receive the disband snapshot broadcast. A new
+        // subscription after closure is rejected so it cannot masquerade as an
+        // active room channel; the HTTP room snapshot remains the close-state
+        // source for an existing member's direct return view.
+        if (room.identity.lifecycleStatus === 'closed' || room.identity.lifecycleStatus === 'archived') {
+          send(ws, { ...envelope(), type: 'error', code: 'roomClosed', roomId: raw.roomId, message: 'This room has been disbanded.' });
+          return;
+        }
         let set = subscriptions.get(raw.roomId);
         if (!set) {
           set = new Set<WebSocket>();

@@ -2,6 +2,7 @@ import { describeRoomPlayerFlow } from './roomPlayerFlow';
 import type { RoomMemberIdentity, RoomSnapshot } from './roomTypes';
 
 export type RoomLobbyPresentationKind =
+  | 'room_closed'
   | 'host_ready_to_manage'
   | 'player_waiting_room_approval'
   | 'player_needs_character'
@@ -49,6 +50,23 @@ function memberFor(input: RoomLobbyPresentationInput): RoomMemberIdentity | unde
 export function getRoomLobbyPresentationState(input: RoomLobbyPresentationInput): RoomLobbyPresentationState {
   const member = memberFor(input);
   const flow = describeRoomPlayerFlow(input.room, input.memberId);
+
+  if (input.room?.identity.lifecycleStatus === 'closed' || input.room?.identity.lifecycleStatus === 'archived') {
+    return {
+      kind: 'room_closed',
+      roleLabel: '房间已解散',
+      stateLabel: '房间已解散',
+      primaryMessage: '该房间不再开放加入，也不能继续准备或进入跑团桌面。',
+      nextStepMessage: '历史记录不会被删除；请返回房间列表或战役页面。',
+      primaryCtaLabel: '返回房间列表',
+      canShowCharacterEntry: false,
+      canShowReadyAction: false,
+      canShowRuntimeEntry: false,
+      shouldShowSpectatorCopy: false,
+      shouldShowHostReviewQueue: false,
+      debugSummary: flow.state,
+    };
+  }
 
   if (!member || member.status !== 'active') {
     return {

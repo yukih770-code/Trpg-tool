@@ -227,6 +227,15 @@ Read `P5_ROOM_LOBBY_IA_REDESIGN.md` before changing Lobby layout or copy.
 and entry guard. Keep joining, character review, clearance, Ready, Runtime
 entry, token movement, and live transport authority where they already are.
 
+## Room Disband Lifecycle Cleanup (P5.ROOM-DISBAND-LIFECYCLE-CLEANUP)
+
+Read `P5_ROOM_DISBAND_LIFECYCLE_CLEANUP.md` before changing active-room lists
+or the Lobby close flow. Reuse `closed` / `archived`; do not introduce a
+destructive delete path. A closed Room preserves history but blocks joins,
+Ready, character submission, Runtime entry, and runtime/map writes. Existing
+members receive a snapshot so the UI can explain the closure and return them to
+their originating list.
+
 ## Combat Mode HUD Foundation (P5.COMBAT-MODE-HUD-FOUNDATION)
 
 Read `P5_COMBAT_MODE_HUD_FOUNDATION.md` before changing combat controls. The

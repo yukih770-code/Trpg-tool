@@ -750,6 +750,29 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     <RuntimeMapStage scene={currentScene} role={shellMode} loading={notesLoading || mapLoading} />
   );
 
+  if (currentRoom?.identity.lifecycleStatus === 'closed' || currentRoom?.identity.lifecycleStatus === 'archived') {
+    return (
+      <RuntimeFullscreenShell
+        title={context.campaignRef?.displayName ?? `房间 ${context.roomCode}`}
+        systemId={context.systemId}
+        mode={shellMode}
+        roomCode={context.roomCode}
+        connectionLabel="房间已解散"
+        connectionTone="warn"
+        onExit={onBackToLobby}
+        exitLabel="返回房间大厅"
+        mainStage={(
+          <div className="flex h-full items-center justify-center rounded-lg border border-amber-400/40 bg-amber-50/70 p-8 text-center">
+            <div className="max-w-md">
+              <div className="text-base font-black text-slate-800">房间已解散</div>
+              <p className="mt-2 text-[12px] leading-relaxed text-slate-600">该房间不再开放跑团桌面。历史记录不会被删除，请返回大厅或房间列表。</p>
+            </div>
+          </div>
+        )}
+      />
+    );
+  }
+
   return (
     <RuntimeFullscreenShell
       title={context.campaignRef?.displayName ?? `房间 ${context.roomCode}`}

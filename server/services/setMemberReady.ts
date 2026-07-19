@@ -20,7 +20,7 @@ export interface SetMemberReadyInput {
 }
 
 export interface SetMemberReadyResult {
-  decision: 'updated' | 'roomNotFound' | 'memberNotFound' | 'memberNotActive' | 'actorNotApproved' | 'actorNotAdmitted';
+  decision: 'updated' | 'roomNotFound' | 'roomClosed' | 'memberNotFound' | 'memberNotActive' | 'actorNotApproved' | 'actorNotAdmitted';
   room?: RoomSnapshot;
   memberId?: string;
   message?: string;
@@ -33,6 +33,9 @@ export function setMemberReady(
 ): SetMemberReadyResult {
   const room = registry.get(input.roomId);
   if (!room) return { decision: 'roomNotFound', message: `No room "${input.roomId}".` };
+  if (room.identity.lifecycleStatus === 'closed' || room.identity.lifecycleStatus === 'archived') {
+    return { decision: 'roomClosed', message: 'The room is closed.' };
+  }
 
   const member = room.members.find((m) => m.memberId === input.memberId);
   if (!member) return { decision: 'memberNotFound', message: `No member "${input.memberId}".` };

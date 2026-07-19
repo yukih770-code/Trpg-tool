@@ -12,12 +12,14 @@
 
 import type { RoomSnapshot } from './roomTypes';
 import type { RoomRuntimeEntryEligibility } from './roomRuntimeEntryTypes';
+import { isRoomClosed } from './roomLifecycle';
 
 export function evaluateRoomRuntimeEntryEligibility(
   room: RoomSnapshot | undefined,
   currentMemberId: string | undefined,
 ): RoomRuntimeEntryEligibility {
   if (!room) return { canEnter: false, reason: 'roomMissing' };
+  if (isRoomClosed(room)) return { canEnter: false, reason: 'roomClosed' };
 
   if (!currentMemberId) return { canEnter: false, reason: 'memberMissing' };
   const member = room.members.find((m) => m.memberId === currentMemberId);

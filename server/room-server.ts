@@ -23,6 +23,7 @@ import { submitActorBinding } from './services/submitActorBinding.js';
 import { approveActorBinding } from './services/approveActorBinding.js';
 import { rejectActorBinding } from './services/rejectActorBinding.js';
 import { setMemberReady } from './services/setMemberReady.js';
+import { disbandRoom } from './services/disbandRoom.js';
 import { appendRuntimeLogEvent } from './services/appendRuntimeLogEvent.js';
 import { listRuntimeLogEvents } from './services/listRuntimeLogEvents.js';
 import { rollSharedDice } from './services/rollSharedDice.js';
@@ -236,7 +237,11 @@ function requireRoomRuntimeAction(
   }
   const access = resolveRoomRuntimePermission({ room, viewer: resolveRoomRequestViewer(req), memberId, action });
   if (!access.allowed) {
-    res.status(access.code === 'unauthenticated' ? 401 : 403).json({ error: 'notAuthorized', message: 'This room action is not permitted for the current user.' });
+    const status = access.code === 'unauthenticated' ? 401 : access.code === 'room_closed' ? 409 : 403;
+    res.status(status).json({
+      error: access.code === 'room_closed' ? 'roomClosed' : 'notAuthorized',
+      message: access.code === 'room_closed' ? 'This room has been disbanded.' : 'This room action is not permitted for the current user.',
+    });
     return undefined;
   }
   return room;
@@ -357,7 +362,7 @@ app.get('/api/lan/runtime', (_req, res) => {
 
 app.get('/rooms', (_req, res) => {
   res.json({
-    rooms: registry.list().map((room) => ({
+    rooms: registry.list().filter((room) => room.identity.lifecycleStatus !== 'closed' && room.identity.lifecycleStatus !== 'archived').map((room) => ({
       roomId: room.identity.roomId,
       roomCode: room.identity.roomCode,
       systemId: room.identity.systemId,
@@ -429,6 +434,21 @@ app.get('/rooms/:roomId', (req, res) => {
     return;
   }
   res.json(room);
+});
+
+// Non-destructive room lifecycle action. Existing snapshots, RuntimeLog events,
+// map events, and scene saves remain available to their respective history APIs.
+app.post('/rooms/:roomId/disband', (req, res) => {
+  const body = (req.body ?? {}) as { decidedByMemberId?: unknown };
+  if (typeof body.decidedByMemberId !== 'string' || body.decidedByMemberId.trim() === '') {
+    res.status(400).json({ error: 'decidedByMemberId is required.' });
+    return;
+  }
+  if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.decidedByMemberId, 'room.host.manage')) return;
+  const result = disbandRoom(registry, { roomId: req.params.roomId, decidedByMemberId: body.decidedByMemberId });
+  if (result.room) roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'roomDisbanded');
+  const status = result.decision === 'roomNotFound' ? 404 : result.decision === 'disbanded' ? 200 : 409;
+  res.status(status).json(result);
 });
 
 app.post('/rooms/:roomId/members/:memberId/approve', (req, res) => {
@@ -650,7 +670,7 @@ app.post('/rooms/:roomId/map-events', (req, res) => {
     });
     if (!access.allowed) {
       res.status(access.code === 'unauthenticated' ? 401 : access.code === 'invalidMove' ? 400 : 403)
-        .json({ error: 'notAuthorized', message: 'You can only move your own admitted character token.' });
+        .json({ error: access.code === 'room_closed' ? 'roomClosed' : 'notAuthorized', message: access.code === 'room_closed' ? 'This room has been disbanded.' : 'You can only move your own admitted character token.' });
       return;
     }
   } else if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.authorMemberId, mapRuntimeActionForMapEvent(body.eventKind))) return;

@@ -66,6 +66,8 @@
     "frontend:verify:character-clearance-details": "tsx src/lib/platform/characterClearanceDetailsSmoke.ts",
     "frontend:verify:room-player-flow": "tsx src/lib/platform/roomPlayerFlowSmoke.ts",
     "frontend:verify:room-lobby-ia": "tsx src/lib/platform/roomLobbyPresentationStateSmoke.ts",
+    "frontend:verify:room-lifecycle": "tsx src/lib/platform/roomLifecycleSmoke.ts",
+    "runtime:verify:room-lifecycle": "tsx server/room/roomLifecycleSmoke.ts",
     "room:verify:map-bridge": "tsx server/roomMapBridgeSmoke.ts",
     "runtime:verify:room-permissions": "tsx server/room/roomRuntimePermissionSmoke.ts",
     "runtime:verify:token-ownership": "tsx server/room/roomTokenControlSmoke.ts",

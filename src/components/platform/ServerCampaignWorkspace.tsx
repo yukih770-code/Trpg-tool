@@ -204,14 +204,18 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   );
   const dndMonsters = useDndMonsterTemplates(isDndCampaign(selectedCampaign?.campaign.systemId) ? worldServerId : '');
   const campaignDetail = useCampaignDetail(worldServerId, selectedCampaignId, { enabled: selectedCampaignId !== '' });
-  const selectedRoom = campaignDetail.rooms.find((room) => room.roomId === selectedRoomId);
+  const activeRooms = useMemo(
+    () => campaignDetail.rooms.filter((room) => !room.closedAt && !['closed', 'archived', 'disbanded'].includes(room.roomStatus.toLowerCase())),
+    [campaignDetail.rooms],
+  );
+  const selectedRoom = activeRooms.find((room) => room.roomId === selectedRoomId);
 
   useEffect(() => {
-    if (!selectedRoomId && campaignDetail.rooms[0]) setSelectedRoomId(campaignDetail.rooms[0].roomId);
-    if (selectedRoomId && !campaignDetail.rooms.some((room) => room.roomId === selectedRoomId)) {
-      setSelectedRoomId(campaignDetail.rooms[0]?.roomId ?? '');
+    if (!selectedRoomId && activeRooms[0]) setSelectedRoomId(activeRooms[0].roomId);
+    if (selectedRoomId && !activeRooms.some((room) => room.roomId === selectedRoomId)) {
+      setSelectedRoomId(activeRooms[0]?.roomId ?? '');
     }
-  }, [campaignDetail.rooms, selectedRoomId]);
+  }, [activeRooms, selectedRoomId]);
 
   const roomDetail = useRoomDetail(worldServerId, selectedCampaignId, selectedRoomId, { enabled: selectedRoomId !== '' });
   const runtimeSessionId = roomDetail.runtimeSession?.session.runtimeSessionId ?? '';
@@ -430,7 +434,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.actorCount')}</strong><div className="mt-1 text-[#51483d]">{campaignDetail.actors.length}</div></div>
-                <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.roomCount')}</strong><div className="mt-1 text-[#51483d]">{campaignDetail.rooms.length}</div></div>
+                <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.roomCount')}</strong><div className="mt-1 text-[#51483d]">{activeRooms.length}</div></div>
               </div>
               <div className="mt-4 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -465,9 +469,9 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                   <button type="submit" disabled={busy} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.createRoom')}</button>
                 </form>
               </div>
-              {campaignDetail.rooms.length === 0 && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noRooms')}</p>}
+              {activeRooms.length === 0 && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noRooms')}</p>}
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                {campaignDetail.rooms.map((room) => <button key={room.roomId} type="button" onClick={() => setSelectedRoomId(room.roomId)} className={`rounded-xl border p-3 text-left ${room.roomId === selectedRoomId ? 'border-[#58180d]/45 bg-[#fff8e6]' : 'border-[#2f2a22]/10 bg-[#f7f3ea]'}`}><div className="font-bold">{roomLabel(room)}</div><div className="mt-1 text-xs text-[#51483d]">{room.roomStatus} · {room.multiplayerMode}</div></button>)}
+                {activeRooms.map((room) => <button key={room.roomId} type="button" onClick={() => setSelectedRoomId(room.roomId)} className={`rounded-xl border p-3 text-left ${room.roomId === selectedRoomId ? 'border-[#58180d]/45 bg-[#fff8e6]' : 'border-[#2f2a22]/10 bg-[#f7f3ea]'}`}><div className="font-bold">{roomLabel(room)}</div><div className="mt-1 text-xs text-[#51483d]">{room.roomStatus} · {room.multiplayerMode}</div></button>)}
               </div>
             </div>
           )}

@@ -89,6 +89,7 @@ export type RoomSocketRoomSnapshotReason =
   | 'actorBindingRejected'
   | 'memberReadyChanged'
   | 'mapPermissionChanged'
+  | 'roomDisbanded'
   | 'manualBroadcast';
 
 export interface RoomSocketRoomSnapshotMessage extends RoomSocketEnvelopeBase {
@@ -131,7 +132,7 @@ export interface RoomSocketMapPreviewBroadcastMessage extends RoomSocketEnvelope
   preview: RoomMapLivePreview;
 }
 
-export type RoomSocketErrorCode = 'invalidMessage' | 'roomNotFound' | 'notSubscribed' | 'notAuthorized' | 'internalError';
+export type RoomSocketErrorCode = 'invalidMessage' | 'roomNotFound' | 'roomClosed' | 'notSubscribed' | 'notAuthorized' | 'internalError';
 
 export interface RoomSocketErrorMessage extends RoomSocketEnvelopeBase {
   type: 'error';

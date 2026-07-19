@@ -48,7 +48,7 @@ export interface SubmitActorBindingInput {
 }
 
 export interface SubmitActorBindingResult {
-  decision: 'submitted' | 'roomNotFound' | 'memberNotFound' | 'memberNotActive' | 'invalidActorRef' | 'systemMismatch';
+  decision: 'submitted' | 'roomNotFound' | 'roomClosed' | 'memberNotFound' | 'memberNotActive' | 'invalidActorRef' | 'systemMismatch';
   room?: RoomSnapshot;
   bindingId?: string;
   message?: string;
@@ -61,6 +61,9 @@ function emptyLobby(): RoomLobbyState {
 export function submitActorBinding(registry: RoomRegistry, input: SubmitActorBindingInput): SubmitActorBindingResult {
   const room = registry.get(input.roomId);
   if (!room) return { decision: 'roomNotFound', message: `No room "${input.roomId}".` };
+  if (room.identity.lifecycleStatus === 'closed' || room.identity.lifecycleStatus === 'archived') {
+    return { decision: 'roomClosed', message: 'The room is closed.' };
+  }
 
   const member = room.members.find((m) => m.memberId === input.memberId);
   if (!member) return { decision: 'memberNotFound', message: `No member "${input.memberId}".` };

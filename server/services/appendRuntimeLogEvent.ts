@@ -51,6 +51,7 @@ export interface AppendRuntimeLogEventResult {
   decision:
     | 'appended'
     | 'roomNotFound'
+    | 'roomClosed'
     | 'memberNotFound'
     | 'memberNotActive'
     | 'memberNotAuthorized'
@@ -68,6 +69,9 @@ export function appendRuntimeLogEvent(
 ): AppendRuntimeLogEventResult {
   const room = roomRegistry.get(input.roomId);
   if (!room) return { decision: 'roomNotFound', message: `No room "${input.roomId}".` };
+  if (room.identity.lifecycleStatus === 'closed' || room.identity.lifecycleStatus === 'archived') {
+    return { decision: 'roomClosed', message: 'The room is closed.' };
+  }
 
   if (!VALID_KINDS.includes(input.kind)) {
     return { decision: 'invalidLogEvent', message: `Invalid kind "${String(input.kind)}".` };

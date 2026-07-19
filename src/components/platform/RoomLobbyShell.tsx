@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   approveActorBindingOnRoomServer,
   approveRoomMemberOnServer,
+  disbandRoomOnServer,
   getRoomServerRoom,
   rejectActorBindingOnRoomServer,
   rejectRoomMemberOnServer,
@@ -106,6 +107,7 @@ const SOURCE_LABEL: Record<RoomActorBindingSource, string> = {
 
 const ENTRY_BLOCKED_LABEL: Record<RoomRuntimeEntryBlockedReason, string> = {
   roomMissing: '房间快照未就绪。',
+  roomClosed: '房间已解散，不能进入跑团桌面。',
   memberMissing: '未匹配当前成员。',
   memberNotActive: '需先成为在线成员（被主持人批准）。',
   actorBindingMissing: '请先提交角色绑定草稿。',
@@ -186,6 +188,8 @@ export function RoomLobbyShell({
   // Live RuntimeLog events from the shared socket, buffered for the preview panel.
   const [logLiveEvents, setLogLiveEvents] = useState<RoomRuntimeLogEvent[]>([]);
   const [copiedInviteAction, setCopiedInviteAction] = useState<'code' | 'info' | null>(null);
+  const [disbandBusy, setDisbandBusy] = useState(false);
+  const [disbandError, setDisbandError] = useState<string | null>(null);
 
   const config = useMemo<RoomServerHttpClientConfig>(() => ({ baseUrl }), [baseUrl]);
   const vaultRecords = useMemo<ActorVaultRecord[]>(() => {
@@ -264,6 +268,7 @@ export function RoomLobbyShell({
     () => (currentMemberId ? members.find((m) => m.memberId === currentMemberId) : undefined),
     [members, currentMemberId],
   );
+  const roomIsClosed = room?.identity.lifecycleStatus === 'closed' || room?.identity.lifecycleStatus === 'archived';
 
   // Host scaffold gate: current member exists, is host, and is active.
   const isHostScaffold =
@@ -325,7 +330,7 @@ export function RoomLobbyShell({
   });
 
   const handleEnterRuntime = () => {
-    if (!room || !currentMember || !currentMemberId || !entryEligibility.canEnter || !entryEligibility.entryMode) return;
+    if (roomIsClosed || !room || !currentMember || !currentMemberId || !entryEligibility.canEnter || !entryEligibility.entryMode) return;
     const context: RoomRuntimeEntryContext = {
       roomId,
       roomCode: room.identity.roomCode,
@@ -373,6 +378,10 @@ export function RoomLobbyShell({
 
   const submitBinding = async () => {
     if (!currentMemberId) return;
+    if (roomIsClosed) {
+      setBindingError('房间已解散，不能继续提交角色。');
+      return;
+    }
     if (!iAmActive) {
       setBindingError('请等待主持人批准加入房间后再提交角色。');
       return;
@@ -464,6 +473,10 @@ export function RoomLobbyShell({
 
   const toggleReady = async (ready: boolean) => {
     if (!currentMemberId) return;
+    if (roomIsClosed) {
+      setReadyError('房间已解散，不能再更改 Ready 状态。');
+      return;
+    }
     setReadyBusy(true);
     setReadyError(null);
     try {
@@ -477,6 +490,22 @@ export function RoomLobbyShell({
   };
 
   const identity = room?.identity;
+  const handleDisbandRoom = async () => {
+    if (!currentMemberId || roomIsClosed) return;
+    const confirmed = window.confirm('确认解散房间？解散后，玩家将无法继续加入或进入该房间；历史记录不会被删除。');
+    if (!confirmed) return;
+    setDisbandBusy(true);
+    setDisbandError(null);
+    try {
+      const result = await disbandRoomOnServer(config, roomId, currentMemberId);
+      if (result.room) setRoom(result.room);
+      else await refreshSnapshot();
+    } catch (error) {
+      setDisbandError(errMsg(error));
+    } finally {
+      setDisbandBusy(false);
+    }
+  };
   const inviteText = [
     room?.campaignRef?.displayName ? `战役：${room.campaignRef.displayName}` : '战役：联机房间',
     `房间码：${identity?.roomCode ?? '—'}`,
@@ -518,9 +547,14 @@ export function RoomLobbyShell({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {isHostScaffold && identity && (
+          {isHostScaffold && identity && !roomIsClosed && (
             <button type="button" className={btn} onClick={() => void copyInviteText('code')}>
               {copiedInviteAction === 'code' ? '已复制房间码' : '复制房间码'}
+            </button>
+          )}
+          {isHostScaffold && !roomIsClosed && (
+            <button type="button" className="rounded border border-red-400/60 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-red-700 disabled:opacity-40" disabled={disbandBusy} onClick={() => void handleDisbandRoom()}>
+              {disbandBusy ? '解散中…' : '解散房间'}
             </button>
           )}
           {exitHandler && (
@@ -538,7 +572,7 @@ export function RoomLobbyShell({
             <p className="mt-1 text-[12px] leading-relaxed text-slate-700">{presentation.primaryMessage}</p>
             <p className="mt-1 text-[10px] text-slate-500">{presentation.nextStepMessage}</p>
           </div>
-          {isHostScaffold && (
+          {isHostScaffold && !roomIsClosed && (
             <div className="grid min-w-[220px] grid-cols-2 gap-1.5 text-[10px]">
               <span className="rounded bg-white/70 px-2 py-1">待处理 {reviewQueueCount} 项</span>
               <span className="rounded bg-white/70 px-2 py-1">等待加入 {pendingMemberCount}</span>
@@ -561,7 +595,11 @@ export function RoomLobbyShell({
           {presentation.canShowRuntimeEntry && !entryEligibility.canEnter && entryEligibility.reason && (
             <span className="text-[10px] text-slate-500">{ENTRY_BLOCKED_LABEL[entryEligibility.reason]}</span>
           )}
+          {roomIsClosed && (backHandler || exitHandler) && (
+            <button type="button" className={btn} onClick={backHandler ?? exitHandler}>返回房间列表</button>
+          )}
           {readyError && <span className="text-[10px] font-bold text-red-700">操作失败：{readyError}</span>}
+          {disbandError && <span className="text-[10px] font-bold text-red-700">解散失败：{disbandError}</span>}
         </div>
       </section>
 
@@ -771,7 +809,7 @@ export function RoomLobbyShell({
             <Info k="连接" v={CONN_LABEL[connState]} />
             {snapshotMeta && <Info k="事件序号" v={String(snapshotMeta.serverSeq)} />}
           </div>
-          {isHostScaffold && identity && (
+          {isHostScaffold && identity && !roomIsClosed && (
             <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
               <button type="button" className={btn} onClick={() => void copyInviteText('info')}>
                 {copiedInviteAction === 'info' ? '已复制邀请信息' : '复制邀请信息'}
@@ -786,7 +824,7 @@ export function RoomLobbyShell({
             baseUrl={baseUrl}
             currentMemberId={currentMemberId}
             currentMemberLabel={currentMember?.displayName}
-            canAppend={iAmActive}
+            canAppend={iAmActive && !roomIsClosed}
             liveEvents={logLiveEvents}
             onConsumedLiveEvents={() => setLogLiveEvents([])}
           />
