@@ -53,3 +53,10 @@ only the same active player may move that token.
 - Persistent campaign-character membership or runtime actor instances.
 - Persistent token ownership, automated combat, and rules automation.
 - Database persistence and account/auth changes.
+
+## Player-facing flow
+
+The Lobby translates the contract into short progress states: waiting to join,
+waiting to choose a character, submitted for host review, character needs
+changes, admitted and waiting for Ready, and Ready to enter. These labels do
+not change the binding, admission, or ready authority described above.

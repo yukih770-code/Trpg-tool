@@ -696,3 +696,12 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   room member, clearance binding, and persisted map token before it appends a
   move event. No persistence migration, full RBAC, fog/LOS, pathfinding, or
   automatic combat effect is added.
+
+## Room Player Flow Polish (P5.ROOM-PLAYER-FLOW-POLISH)
+- Files: `src/lib/platform/roomPlayerFlow.ts`, `RoomLobbyShell.tsx`,
+  `RoomRuntimeEntryBridge.tsx`, and `BasicMapBoard.tsx`.
+- The UI derives one player-visible Room state at a time: join approval,
+  character choice, host review, rejected character, Ready, table entry, host,
+  or spectator. It is presentation over existing server contracts.
+- Don't violate: no new auth/RBAC, clearance persistence, token ACL, character
+  builder, automatic placement, or combat automation.

@@ -60,9 +60,9 @@ export interface RoomRuntimeEntryBridgeProps {
 }
 
 const ENTRY_MODE_LABEL: Record<RoomRuntimeEntryMode, string> = {
-  hostPreview: '主持人预览',
-  playerReady: '玩家（已准备）',
-  spectatorPreview: '旁观预览',
+  hostPreview: '主持人',
+  playerReady: '玩家',
+  spectatorPreview: '旁观者',
 };
 
 const READY_LABEL: Record<RoomReadyStatus, string> = {
@@ -580,21 +580,19 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     <div className="space-y-2">
       <div className="text-[11px]">
         <div className="font-bold text-slate-800">{ENTRY_MODE_LABEL[context.entryMode]}</div>
-        <div className="text-[10px] text-slate-500">{context.currentRole} · {shortId(context.currentMemberId)}</div>
+        <div className="text-[10px] text-slate-500">{context.entryMode === 'hostPreview' ? '可控制全部 Token' : context.entryMode === 'playerReady' ? '可控制自己的角色 Token' : '只读观看'}</div>
       </div>
       <div className={card}>
-        <div className={`mb-1 ${label}`}>角色绑定</div>
+        <div className={`mb-1 ${label}`}>本次入场角色</div>
         {context.actorRef ? (
           <div>
             <div className="font-bold text-slate-800">{context.actorRef.displayName}</div>
             <div className="text-[10px] text-slate-500">
-              {context.actorRef.systemId}{context.actorRef.actorId ? ` · ${context.actorRef.actorId}` : ''}
+              {context.actorRef.systemId}
             </div>
-            {context.approvedActorBindingId && <div className="text-[9px] text-slate-400">binding {shortId(context.approvedActorBindingId)}</div>}
-            {context.admissionId && <div className="text-[9px] text-slate-400">admission {shortId(context.admissionId)}</div>}
           </div>
         ) : (
-          <div className="text-[11px] italic text-slate-500">无已准入角色（主持人 / 旁观预览可无角色）。</div>
+          <div className="text-[11px] italic text-slate-500">当前无需选择角色。</div>
         )}
         <div className="mt-1 text-[11px]">准备：<span className="font-bold">{context.readyState ? READY_LABEL[context.readyState] : '—'}</span></div>
       </div>
@@ -659,7 +657,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
             <div>同步：<b className={syncDown ? 'text-amber-700' : 'text-emerald-700'}>{syncLabel}</b></div>
           </div>
           <p className="mt-1.5 border-t border-slate-300/40 pt-1.5 text-[10px] leading-relaxed text-slate-500">
-            你可以：投骰、查看主持人发布的公开信息、在日志抽屉回看全程。
+            你可以投骰、查看公开信息，并移动自己的角色 Token。怪物和其他玩家 Token 由主持人控制。
           </p>
         </div>
       )}
@@ -671,7 +669,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
             <div>同步：<b className={syncDown ? 'text-amber-700' : 'text-emerald-700'}>{syncLabel}</b></div>
           </div>
           <p className="mt-1.5 border-t border-slate-300/40 pt-1.5 text-[10px] leading-relaxed text-slate-500">
-            你可以查看公开信息和日志，但不能投骰或修改任何内容。
+            你可以查看地图、测距、公开信息和日志；不能移动 Token 或修改地图。
           </p>
         </div>
       )}
@@ -739,6 +737,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       canManage={runtimePermissions['map.grid.edit']}
       canMoveToken={(token) => runtimePermissions['map.token.move.own'] && isTokenLinkedToApprovedRoomMember(currentRoom, context.currentMemberId, token)}
       tokenMoveDeniedMessage="你只能移动自己的已准入角色。"
+      controlledTokenBindingId={context.approvedActorBindingId}
       canPinRanges={canPinRanges}
       canShareTemporaryRanges={runtimePermissions['map.preview.range.temporary']}
       sharedPreviews={(Object.values(sharedMapPreviews) as SharedMapPreview[]).flatMap((preview) => preview.preview ? [{ authorMemberId: preview.authorMemberId, authorDisplayName: preview.authorDisplayName, preview: preview.preview }] : [])}

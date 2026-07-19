@@ -32,6 +32,13 @@ there is no new client-to-server WebSocket map mutation message.
 No full RBAC, persistent token-ownership database, asset upload, fog/LOS,
 pathfinding, automatic damage, or combat automation is included.
 
+## Player-facing map guidance
+
+The map labels an admitted player's placed character as movable. Other Tokens
+are described as host-controlled, and an admitted character without a placed
+Token gets a wait-for-host message. The UI rolls back an optimistic move if the
+server rejects it; it never treats the display hint as authority.
+
 ## Verification
 
 - `npm run frontend:verify:token-ownership`

@@ -71,3 +71,10 @@ after one authoritative room-membership source exists.
 - `npm run frontend:verify:room-permissions`
 - `npm run runtime:verify:token-ownership`
 - `npm run frontend:verify:token-ownership`
+
+## Player-flow presentation
+
+Permission decisions remain server-side. The Lobby and Runtime present the
+result in product language: a player may move only their admitted character,
+the host controls other Tokens, and spectators are read-only. No new permission
+action or transport message is introduced by this presentation layer.

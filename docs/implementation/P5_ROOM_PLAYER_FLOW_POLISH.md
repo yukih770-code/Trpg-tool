@@ -1,0 +1,43 @@
+# P5 Room Player Flow Polish
+
+## Player flow
+
+Room Lobby presents one current state and one next action:
+
+1. Wait for room approval.
+2. Choose a local character, make a quick character, or join as spectator.
+3. Wait for host review.
+4. Ready after the character is admitted.
+5. Enter the Runtime table.
+
+An active spectator needs no character and no Ready state. A spectator enters a
+read-only table and may view the map and measure, but cannot move Tokens or
+edit the map.
+
+## Host flow
+
+Hosts review pending room joins and entry-character submissions, with the
+character source, short summary, HP/AC when provided, optional rejection note,
+and compact counts for admitted, ready, and spectator members. Approval does
+not write to a player's character library.
+
+## Token explanation
+
+An admitted player sees their own placed character as movable. Other player,
+monster, NPC, and manual Tokens are explained as host-controlled. If the host
+has not placed the admitted character yet, the map tells the player to wait.
+These are client affordances only; the Room Server still validates every move.
+
+## Boundaries
+
+This is UI guidance over the existing Room Lobby, admission, ready, and token
+control contracts. It does not add a tutorial system, persistent clearance,
+public accounts/OAuth, Token ACL management, asset upload, automatic placement,
+or combat automation.
+
+## Verification
+
+- `npm run frontend:verify:room-player-flow`
+- `npm run frontend:verify:character-clearance`
+- `npm run frontend:verify:token-ownership`
+- `npm run runtime:verify:token-ownership`

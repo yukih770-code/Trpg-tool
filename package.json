@@ -60,6 +60,7 @@
     "frontend:verify:token-ownership": "tsx src/lib/platform/roomTokenOwnershipSmoke.ts",
     "frontend:verify:character-entry": "tsx src/lib/platform/entryCharacterRefSmoke.ts",
     "frontend:verify:character-clearance": "tsx src/lib/platform/characterClearanceSmoke.ts",
+    "frontend:verify:room-player-flow": "tsx src/lib/platform/roomPlayerFlowSmoke.ts",
     "room:verify:map-bridge": "tsx server/roomMapBridgeSmoke.ts",
     "runtime:verify:room-permissions": "tsx server/room/roomRuntimePermissionSmoke.ts",
     "runtime:verify:token-ownership": "tsx server/room/roomTokenControlSmoke.ts",

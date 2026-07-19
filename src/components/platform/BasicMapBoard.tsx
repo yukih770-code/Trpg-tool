@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from 'react';
 import { Circle, Grid3X3, Hand, Image, Minus, MousePointer2, Pin, Plus, RectangleHorizontal, RotateCcw, Ruler, Shapes, Square, Triangle, UsersRound } from 'lucide-react';
 import { createTranslator, type Locale } from '../../i18n';
+import { describeTokenControlHint } from '../../lib/platform/roomPlayerFlow';
 import type { CampaignActorInstance } from '../../lib/api/campaignRoomApiClient';
 import type { Combatant } from '../../lib/combat/combatRuntimeTypes';
 import { hasMapRuntimeEvents, type MapRuntimeReplayEvent } from '../../lib/map/mapRuntimeReplay';
@@ -28,6 +29,8 @@ type Props = {
   /** Client-side affordance only; Room Runtime still verifies every live move on the server. */
   canMoveToken?: (token: MapToken) => boolean;
   tokenMoveDeniedMessage?: string;
+  /** Approved binding used only to explain when a player's Token has not been placed yet. */
+  controlledTokenBindingId?: string;
   /** Allows a non-host collaborator to create (but not edit) permanent range marks. */
   canPinRanges?: boolean;
   /** Allows an active participant to relay a temporary ruler or range preview. */
@@ -148,7 +151,7 @@ function templateDragHint(shape: MapTemplateShape, locale: Locale): string {
   return '起点是角点，拖动到对角。';
 }
 
-export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], actorPresenceCandidates = [], canManage, canMoveToken, tokenMoveDeniedMessage, canPinRanges = false, canShareTemporaryRanges = false, sharedPreviews = [], onSharePreview, mapCollaborators = [], onSetCanPinRanges, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace' }: Props) {
+export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], actorPresenceCandidates = [], canManage, canMoveToken, tokenMoveDeniedMessage, controlledTokenBindingId, canPinRanges = false, canShareTemporaryRanges = false, sharedPreviews = [], onSharePreview, mapCollaborators = [], onSetCanPinRanges, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace' }: Props) {
   const { t } = createTranslator(locale);
   const board = useMapRuntimeBoard(mapId);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -188,6 +191,15 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   const mayPinRanges = canManage || canPinRanges;
   const mayMoveToken = (token: MapToken) => canManage || canMoveToken?.(token) === true;
   const moveDeniedMessage = tokenMoveDeniedMessage ?? (locale === 'en' ? 'You can only move your own admitted character.' : '你只能移动自己的已准入角色。');
+  const hasControlledToken = !controlledTokenBindingId || board.state.tokens.some((token) => token.actorBindingId === controlledTokenBindingId);
+  const tokenControlHint = describeTokenControlHint({
+    locale: locale === 'en' ? 'en' : 'zh',
+    isHost: canManage,
+    hasSelectedToken: !!selectedToken,
+    canMoveSelectedToken: !!selectedToken && mayMoveToken(selectedToken),
+    hasControlledBinding: !!controlledTokenBindingId,
+    hasControlledToken,
+  });
   const presenceCandidates = [
     ...combatants.map(combatantPresenceCandidate),
     ...campaignActors.map(campaignActorPresenceCandidate),
@@ -536,7 +548,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
           {templateDraftLayer}
           {measurementLayer}
           {sharedPreviewLayer}
-          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className={`absolute flex max-w-36 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold ${mayMoveToken(token) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={mayMoveToken(token) ? (token.notes || token.name) : `${token.notes ? `${token.notes} · ` : ''}${moveDeniedMessage}`}>{tokenContents(token)}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
+          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className={`absolute flex max-w-36 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold ${mayMoveToken(token) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={mayMoveToken(token) ? `${token.notes ? `${token.notes} · ` : ''}你的角色，可移动。` : `${token.notes ? `${token.notes} · ` : ''}该 Token 由主持人控制。`}>{tokenContents(token)}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
         </div>
       </div>
 
@@ -562,6 +574,8 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
       {canManage && activePanel === 'units' && <div className={compactPanelClass}><div className="flex items-center justify-between gap-3"><div><div className="text-sm font-black text-slate-800">放置单位</div><p className="mt-0.5 text-[11px] text-slate-500">从已带入角色或战斗表放到地图；已有关联单位时可定位。</p></div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div><div className="mt-3 max-h-72 space-y-1.5 overflow-y-auto">{presenceCandidates.map((candidate) => { const linked = linkedTokenForCandidate(board.state.tokens, candidate); return <div key={`${candidate.sourceType}:${candidate.sourceId}`} className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5"><div className="min-w-0"><div className="truncate text-xs font-bold text-slate-800">{candidate.displayName}</div><div className="text-[10px] text-slate-500">{sourceLabel(candidate.sourceType, locale)}{candidate.hpSummary ? ` · HP ${candidate.hpSummary.current ?? '—'}${candidate.hpSummary.max !== undefined ? `/${candidate.hpSummary.max}` : ''}` : ''}</div></div><button type="button" onClick={() => linked ? locateCandidate(candidate) : placeCandidate(candidate)} className="shrink-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-bold text-slate-700">{linked ? '定位' : '放到地图'}</button></div>; })}{presenceCandidates.length === 0 && <p className="rounded-md bg-slate-50 px-2 py-3 text-xs text-slate-500">当前房间尚无已准入或已带入的可放置角色；你仍可手动创建 Token。</p>}</div></div>}
 
       {selectedToken && canManage && <div className="absolute right-3 top-3 z-20 w-56 rounded-xl border border-slate-300/80 bg-white/95 p-3 shadow-xl backdrop-blur-sm"><div className="flex items-center justify-between gap-2"><div className="text-sm font-black text-slate-800">{selectedToken.name}</div><button type="button" onClick={() => board.selectToken(undefined)} className="text-xs font-bold text-slate-500">关闭</button></div><p className="mt-1 text-[11px] text-slate-500">{sourceLabel(selectedToken.sourceType, locale)}</p><div className="mt-3 flex gap-2"><button type="button" onClick={() => emit(board.updateToken(selectedToken.id, { isHidden: !selectedToken.isHidden }))} className="rounded-md border border-slate-300 px-2 py-1.5 text-xs font-bold">{selectedToken.isHidden ? t('mapRuntime.showToken') : t('mapRuntime.hideToken')}</button><button type="button" onClick={() => emit(board.removeToken(selectedToken.id))} className="rounded-md border border-[#8b3a2f]/30 px-2 py-1.5 text-xs font-bold text-[#8b3a2f]">{t('mapRuntime.removeToken')}</button></div></div>}
+
+      {!canManage && tokenControlHint && <div className="pointer-events-none absolute right-3 top-3 z-20 max-w-60 rounded-lg border border-slate-300/80 bg-white/95 px-3 py-2 text-[11px] font-bold text-slate-700 shadow-lg">{tokenControlHint}</div>}
 
       {lastMovement && <div className="pointer-events-none absolute bottom-4 right-3 z-20 rounded-md bg-white/90 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 shadow">{lastMovement.name} · {lastMovement.feet.toFixed(1)} ft</div>}
       {eventError && <div className="absolute bottom-3 left-3 z-20 rounded-md bg-[#fff0eb]/95 px-2.5 py-1.5 text-xs font-bold text-[#8b3a2f] shadow">{eventError}</div>}

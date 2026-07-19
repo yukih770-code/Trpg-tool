@@ -195,3 +195,10 @@ draggable, but the Room Server reconstructs the persisted map state and checks
 the authenticated viewer, active member, clearance-approved binding, and token
 link before accepting a move. Old tokens remain host-controlled unless a link
 can be proven.
+
+## Room Player Flow Polish (P5.ROOM-PLAYER-FLOW-POLISH)
+
+Read `P5_ROOM_PLAYER_FLOW_POLISH.md` before changing Lobby progression copy.
+`roomPlayerFlow.ts` is a pure product-language derivation over the existing
+snapshot: it never authorizes entry, Ready, or movement. The Runtime map repeats
+the outcome as own-token, host-controlled-token, or not-yet-placed guidance.
