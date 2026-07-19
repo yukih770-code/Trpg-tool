@@ -59,3 +59,9 @@ server rejects it; it never treats the display hint as authority.
 The combat HUD may select and visually emphasize a linked token. This is not a
 movement grant: token ownership and Room Runtime server verification remain the
 only movement authority.
+
+## Room combat projection
+
+Room combat may link a combatant to a pre-existing map token for HP, condition,
+and current-turn display. This optional link does not place a token, alter its
+binding metadata, or permit a player to move any additional token.

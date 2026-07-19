@@ -60,3 +60,9 @@ lobby, API, TypeScript, build, and leak checks.
 shortcut surface. Dice navigation only focuses the existing DND check panel;
 this document's manual host-confirmed damage and condition boundary remains in
 place.
+
+## Room Runtime follow-up
+
+The Room Runtime now exposes the same host-confirmed HP, temporary HP, AC, and
+condition fields through append-only `combat.*` records. These are combat-table
+state only: they never write to a character sheet, inventory, or rules engine.

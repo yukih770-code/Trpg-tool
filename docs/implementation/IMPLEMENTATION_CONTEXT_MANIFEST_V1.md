@@ -242,3 +242,10 @@ Read `P5_COMBAT_MODE_HUD_FOUNDATION.md` before changing combat controls. The
 HUD derives its display from the existing combat table and append-only runtime
 events. It may locate a linked map token or focus DND dice, but does not grant
 movement, infer player authority, or automate combat resolution.
+
+## Room Runtime Combat Controls Surface (P5.ROOM-RUNTIME-COMBAT-CONTROLS-SURFACE)
+
+Read `P5_ROOM_RUNTIME_COMBAT_CONTROLS_SURFACE.md` before changing combat inside
+`RoomRuntimeEntryBridge`. Room combat is host-authored append-only `combat.*`
+RuntimeLog state, replayed by all viewers. The map link is display-only; existing
+server token ownership remains the only authority for token movement.

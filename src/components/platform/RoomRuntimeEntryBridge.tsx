@@ -33,9 +33,12 @@ import { RuntimeSceneFocusPanel, type RuntimeSceneFocus } from './RuntimeSceneFo
 import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSceneBoardPanel';
 import { RuntimeMapStage } from './RuntimeMapStage';
 import { BasicMapBoard } from './BasicMapBoard';
+import { RoomRuntimeCombatPanel } from './RoomRuntimeCombatPanel';
 import { entryCharacterFromRoomBinding, entryCharacterToPresenceCandidate } from '../../lib/platform/entryCharacterRef';
 import type { MapTokenPresenceCandidate } from '../../lib/map/actorPresence';
 import type { MapInteractionPreview, MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
+import { replayMapRuntimeEvents } from '../../lib/map/mapRuntimeReplay';
+import { createCombatRuntimeTableState, type CombatRuntimeEventDraft, type CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
 
 /**
  * RoomRuntimeEntryBridge (v0 / UI1a) — multiplayer Runtime Alpha surface.
@@ -161,6 +164,9 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const [mapLoading, setMapLoading] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [sharedMapPreviews, setSharedMapPreviews] = useState<Record<string, SharedMapPreview>>({});
+  const [roomCombatState, setRoomCombatState] = useState<CombatRuntimeTableState>(createCombatRuntimeTableState);
+  const [selectedCombatantId, setSelectedCombatantId] = useState<string | undefined>();
+  const [combatantToLocate, setCombatantToLocate] = useState<string | undefined>();
   const roomSocketRef = useRef<ReturnType<typeof createRoomSocketClient> | null>(null);
 
   const loadNotes = useCallback(() => {
@@ -332,6 +338,19 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       payload: event.payload,
     });
     mergeRoomMapEvents([response.event]);
+  };
+
+  const appendCombatEvent = async (event: CombatRuntimeEventDraft) => {
+    if (!context.currentMemberId) throw new Error('需要主持人成员身份才能更新战斗。');
+    const { event: stored } = await appendRoomRuntimeLogEvent({ baseUrl: context.serverBaseUrl }, context.roomId, {
+      kind: event.eventKind,
+      visibility: 'public',
+      text: '战斗状态更新',
+      payload: event.payload,
+      authorMemberId: context.currentMemberId,
+    });
+    setLogLiveEvents((previous) => [...previous, stored]);
+    setRecentEvents((previous) => previous.some((candidate) => candidate.eventId === stored.eventId) ? previous : [...previous, stored].sort((left, right) => left.seq - right.seq));
   };
 
   const shareRoomMapPreview = useCallback((preview?: MapInteractionPreview) => {
@@ -571,6 +590,9 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         .filter((x): x is string => !!x && x.trim() !== ''),
     ),
   );
+  // The combat table projects onto the append-only room map; it does not own a
+  // second token store or rewrite map presence.
+  const roomMapBoard = useMemo(() => replayMapRuntimeEvents(roomMapEvents, roomMapId), [roomMapEvents, roomMapId]);
 
   const card = 'rounded border border-slate-400/30 bg-white/60 p-3';
   const label = 'text-[11px] font-bold uppercase tracking-wide text-slate-600';
@@ -625,6 +647,20 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
           <span>已准备 <b className="text-slate-800">{readyCount}</b></span>
         </div>
       </div>
+      <RoomRuntimeCombatPanel
+        locale={readStoredLocale()}
+        scopeKey={`room:${context.roomId}`}
+        role={shellMode}
+        roomEvents={recentEvents}
+        placedTokens={roomMapBoard.tokens}
+        myActorBindingId={context.approvedActorBindingId}
+        selectedCombatantId={selectedCombatantId}
+        onSelectCombatant={setSelectedCombatantId}
+        onLocateCombatant={(combatantId) => { setSelectedCombatantId(combatantId); setCombatantToLocate(combatantId); }}
+        onStateChange={setRoomCombatState}
+        onAppendEvent={appendCombatEvent}
+        onQuickRoll={handleRoomDiceRoll}
+      />
       {shellMode === 'host' && (
         <div className={card}>
           <div className={`mb-1 ${label}`}>主持台</div>
@@ -728,6 +764,10 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       locale={readStoredLocale()}
       mapId={roomMapId}
       mapEvents={roomMapEvents}
+      combatants={roomCombatState.combatants}
+      activeCombatantId={roomCombatState.turn.activeCombatantId}
+      locateCombatantId={combatantToLocate}
+      onSelectCombatant={setSelectedCombatantId}
       actorPresenceCandidates={roomEntryCharacterCandidates}
       fallbackBackgroundUrl={currentScene?.mapUrl}
       sceneTitle={currentScene?.title}

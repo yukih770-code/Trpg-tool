@@ -12,13 +12,16 @@
  */
 
 import type { RoomCampaignRef } from './roomTypes.js';
+import type { CombatRuntimeEventKind } from '../combat/combatRuntimeTypes.js';
 
 export type RoomRuntimeLogEventKind =
   | 'system.note'
   | 'chat.message'
   | 'dice.roll'
   | 'host.note'
-  | 'state.manualChange';
+  | 'state.manualChange'
+  /** Host-authoritative combat state transitions, replayed by the Room Runtime. */
+  | CombatRuntimeEventKind;
 
 export type RoomRuntimeLogVisibility = 'public' | 'hostOnly' | 'actorPrivate';
 

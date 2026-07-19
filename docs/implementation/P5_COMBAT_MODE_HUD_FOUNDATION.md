@@ -35,6 +35,12 @@ Turn lifecycle controls remain host-managed in this slice. A player-owned
 end-turn action stays deferred until the Server Workspace has an authoritative
 controller-to-combatant binding; spectators have no combat controls.
 
+## Room Runtime surface
+
+`P5_ROOM_RUNTIME_COMBAT_CONTROLS_SURFACE.md` mounts this HUD in the live Room
+Runtime. Its combat transitions are host-authored Room RuntimeLog records, not
+local-only Workspace state. The same player-owned end-turn boundary remains.
+
 ## Verification
 
 - `npm run frontend:verify:combat-mode-hud`

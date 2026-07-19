@@ -751,5 +751,13 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   persists resolved missing initiatives and `combat.initiative_rolled` records
   a manual roll.
 - The HUD is an operator aid, not combat automation: no spell execution,
-  automatic damage, actor write-back, Room protocol change, or token-permission
-  change is permitted.
+  automatic damage, actor write-back, separate Room command channel, or
+  token-permission change is permitted.
+
+## Room Runtime Combat Controls Surface (P5.ROOM-RUNTIME-COMBAT-CONTROLS-SURFACE)
+- Files: `RoomRuntimeCombatPanel.tsx`, `RoomRuntimeEntryBridge.tsx`, combat
+  replay/types, and the existing Room RuntimeLog append path.
+- Host-authored `combat.*` RuntimeLog events reconstruct the Room combat table;
+  map token linkage is visual-only and token movement authority remains unchanged.
+- Don't violate: no spell/AI/inventory automation, character write-back, or
+  player/spectator combat mutation authority.

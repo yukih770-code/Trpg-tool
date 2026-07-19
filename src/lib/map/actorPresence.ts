@@ -72,6 +72,8 @@ export function linkedTokenForCandidate(tokens: readonly MapToken[], candidate: 
 /** Combat remains authoritative. This is a visual projection only. */
 export function tokenWithCombatProjection(token: MapToken, combatants: readonly Combatant[]): MapToken {
   const id = token.combatantId ?? token.sourceCombatantId;
-  const combatant = id ? combatants.find((item) => item.id === id) : undefined;
+  const combatant = id
+    ? combatants.find((item) => item.id === id)
+    : combatants.find((item) => item.mapTokenId === token.id);
   return combatant ? { ...token, ...combatantTokenSummary(combatant) } : token;
 }

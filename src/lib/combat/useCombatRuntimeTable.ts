@@ -120,6 +120,22 @@ export function useCombatRuntimeTable(scopeKey: string) {
     return { eventKind: 'combat.initiative_rolled', payload: { combatant: updated, initiativeRoll: die, initiativeModifier: current.initiativeModifier } };
   }, [state.combatants]);
 
+  const rollInitiativeGroup = useCallback((mode: 'missing' | 'all'): CombatRuntimeEventDraft | null => {
+    const eligible = state.combatants.filter((combatant) => combatant.status === 'active' && !combatant.isDefeated && (mode === 'all' || combatant.initiative === undefined));
+    if (eligible.length === 0) return null;
+    const rolledIds = new Set(eligible.map((combatant) => combatant.id));
+    const combatants = state.combatants.map((combatant) => {
+      if (!rolledIds.has(combatant.id)) return combatant;
+      const die = Math.floor(Math.random() * 20) + 1;
+      return { ...combatant, initiative: die + combatant.initiativeModifier };
+    });
+    setState((previous) => ({ ...previous, combatants }));
+    return {
+      eventKind: 'combat.initiative_rolled',
+      payload: { combatants, rollMode: mode },
+    };
+  }, [state.combatants]);
+
   const start = useCallback(() => {
     const result = startCombat(state);
     setState(result.state);
@@ -170,5 +186,5 @@ export function useCombatRuntimeTable(scopeKey: string) {
     return { eventKind: 'combat.table_cleared', payload: {} };
   }, []);
 
-  return { state, addCombatant, updateCombatant, removeCombatant, markDefeated, damage, heal, temporaryHp, overrideHp, setCondition, rollInitiative, start, moveTurn, pause, resume, end, clear, restore, replaceState };
+  return { state, addCombatant, updateCombatant, removeCombatant, markDefeated, damage, heal, temporaryHp, overrideHp, setCondition, rollInitiative, rollInitiativeGroup, start, moveTurn, pause, resume, end, clear, restore, replaceState };
 }

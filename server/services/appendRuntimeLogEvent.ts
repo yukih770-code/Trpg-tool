@@ -9,8 +9,8 @@
  * approved lobby bindings (never blindly trusted).
  *
  * Author/role rules (scaffold semantics, NOT real auth): chat.message requires an
- * active author; host.note and hostOnly require an active HOST author;
- * system.note / dice.roll / state.manualChange may be author-less.
+ * active author; host.note, hostOnly, and combat.* require an active HOST
+ * author; system.note / dice.roll / state.manualChange may be author-less.
  *
  * visibility is a forward-compat field, NOT security isolation in v0: actorPrivate
  * is rejected; hostOnly is STORED BUT NOT PROJECTED (not broadcast, not returned by
@@ -27,6 +27,7 @@ import type {
   RoomRuntimeLogEventKind,
   RoomRuntimeLogVisibility,
 } from '../protocol/room-protocol.js';
+import { COMBAT_RUNTIME_EVENT_KINDS } from '../../src/lib/combat/combatRuntimeTypes.js';
 
 const VALID_KINDS: readonly RoomRuntimeLogEventKind[] = [
   'system.note',
@@ -34,6 +35,7 @@ const VALID_KINDS: readonly RoomRuntimeLogEventKind[] = [
   'dice.roll',
   'host.note',
   'state.manualChange',
+  ...COMBAT_RUNTIME_EVENT_KINDS,
 ];
 const VALID_VISIBILITIES: readonly RoomRuntimeLogVisibility[] = ['public', 'hostOnly', 'actorPrivate'];
 
@@ -102,10 +104,10 @@ export function appendRuntimeLogEvent(
 
   // Author/role requirements per kind/visibility (scaffold semantics, NOT auth):
   //  - chat.message requires an active author (no anonymous chat).
-  //  - host.note and hostOnly require an active HOST author.
+  //  - host.note, hostOnly, and combat.* require an active HOST author.
   //  - system.note / dice.roll / state.manualChange may be author-less (and are
   //    already active-checked above when an author is present).
-  const requiresHostAuthor = input.kind === 'host.note' || visibility === 'hostOnly';
+  const requiresHostAuthor = input.kind === 'host.note' || visibility === 'hostOnly' || input.kind.startsWith('combat.');
   const requiresAuthor = requiresHostAuthor || input.kind === 'chat.message';
   if (requiresAuthor && !authorMember) {
     return {

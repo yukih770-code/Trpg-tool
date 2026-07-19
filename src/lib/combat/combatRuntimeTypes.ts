@@ -13,6 +13,8 @@ export type Combatant = {
   sourceType: CombatantSourceType;
   kind: CombatantKind;
   sourceActorInstanceId?: string;
+  /** Room/Map presentation link. It does not create or own a map token. */
+  mapTokenId?: string;
   controllerUserId?: string;
   initiative?: number;
   initiativeModifier: number;
@@ -49,6 +51,7 @@ export type CombatantInput = {
   sourceType?: CombatantSourceType;
   kind: CombatantKind;
   sourceActorInstanceId?: string;
+  mapTokenId?: string;
   controllerUserId?: string;
   initiative?: number;
   initiativeModifier: number;
@@ -65,26 +68,31 @@ export type CombatantInput = {
   maxHitPoints?: number;
 };
 
+export const COMBAT_RUNTIME_EVENT_KINDS = [
+  'combat.started',
+  'combat.initiative_rolled',
+  'combat.turn_advanced',
+  'combat.round_advanced',
+  'combat.combatant_added',
+  'combat.combatant_updated',
+  'combat.combatant_removed',
+  'combat.damage_applied',
+  'combat.healing_applied',
+  'combat.temporary_hp_applied',
+  'combat.condition_added',
+  'combat.condition_removed',
+  'combat.condition_toggled',
+  'combat.hp_overridden',
+  'combat.table_cleared',
+  'combat.paused',
+  'combat.resumed',
+  'combat.ended',
+] as const;
+
+export type CombatRuntimeEventKind = typeof COMBAT_RUNTIME_EVENT_KINDS[number];
+
 export type CombatRuntimeEventDraft = {
-  eventKind:
-    | 'combat.started'
-    | 'combat.initiative_rolled'
-    | 'combat.turn_advanced'
-    | 'combat.round_advanced'
-    | 'combat.combatant_added'
-    | 'combat.combatant_updated'
-    | 'combat.combatant_removed'
-    | 'combat.damage_applied'
-    | 'combat.healing_applied'
-    | 'combat.temporary_hp_applied'
-    | 'combat.condition_added'
-    | 'combat.condition_removed'
-    | 'combat.condition_toggled'
-    | 'combat.hp_overridden'
-    | 'combat.table_cleared'
-    | 'combat.paused'
-    | 'combat.resumed'
-    | 'combat.ended';
+  eventKind: CombatRuntimeEventKind;
   payload: Record<string, unknown>;
 };
 

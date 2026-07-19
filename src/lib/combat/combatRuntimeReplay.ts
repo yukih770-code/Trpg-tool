@@ -1,4 +1,3 @@
-import type { RuntimeEvent } from '../api/campaignRoomApiClient';
 import {
   createCombatant,
   createCombatRuntimeTableState,
@@ -10,7 +9,13 @@ import {
   type CombatantStatus,
 } from './combatRuntimeTypes';
 
-export type CombatRuntimeReplayEvent = Pick<RuntimeEvent, 'eventKind' | 'payload' | 'seq' | 'createdAt'>;
+/** Both persisted campaign events and Room RuntimeLog events satisfy this shape. */
+export type CombatRuntimeReplayEvent = {
+  eventKind: string;
+  payload: Record<string, unknown>;
+  seq?: number;
+  createdAt?: string;
+};
 
 function record(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
@@ -53,6 +58,7 @@ function combatantInput(value: unknown, fallback?: Combatant): Combatant | null 
     sourceType: input?.sourceType === undefined ? fallback?.sourceType : sourceType(input.sourceType),
     kind: input?.kind === undefined ? fallback?.kind ?? 'other' : kind(input.kind),
     sourceActorInstanceId,
+    mapTokenId: stringValue(input?.mapTokenId) ?? fallback?.mapTokenId,
     controllerUserId: stringValue(input?.controllerUserId) ?? fallback?.controllerUserId,
     initiative: numberValue(input?.initiative) ?? fallback?.initiative,
     initiativeModifier: numberValue(input?.initiativeModifier) ?? fallback?.initiativeModifier ?? 0,
@@ -105,6 +111,10 @@ export function replayCombatRuntimeEvents(events: ReadonlyArray<CombatRuntimeRep
     if (event.eventKind === 'combat.combatant_added') {
       const combatant = combatantInput(payload.combatant);
       if (combatant && !state.combatants.some((item) => item.id === combatant.id)) state = { ...state, combatants: [...state.combatants, combatant] };
+      continue;
+    }
+    if (event.eventKind === 'combat.initiative_rolled' && Array.isArray(payload.combatants)) {
+      state = applyCombatantsPayload(state, payload);
       continue;
     }
     if (event.eventKind === 'combat.combatant_updated' || event.eventKind === 'combat.initiative_rolled') {
@@ -180,6 +190,6 @@ export function replayCombatRuntimeEvents(events: ReadonlyArray<CombatRuntimeRep
   return state;
 }
 
-export function hasCombatRuntimeEvents(events: ReadonlyArray<Pick<RuntimeEvent, 'eventKind'>>): boolean {
+export function hasCombatRuntimeEvents(events: ReadonlyArray<Pick<CombatRuntimeReplayEvent, 'eventKind'>>): boolean {
   return events.some((event) => event.eventKind.startsWith('combat.'));
 }
