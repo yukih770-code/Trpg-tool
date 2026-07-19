@@ -17,9 +17,18 @@ export const ROOM_RUNTIME_ACTIONS = [
   'map.template.delete',
   'map.grid.edit',
   'map.background.edit',
+  /** Legacy broad action retained for existing host-only integrations. */
   'map.token.move',
+  'map.token.move.own',
+  'map.token.move.any',
   'map.token.create',
+  'map.token.create.own',
+  'map.token.create.any',
+  'map.token.update.own',
+  'map.token.update.any',
   'map.token.delete',
+  'map.token.delete.any',
+  'map.token.assignOwner',
   'combat.view',
   'combat.edit',
   'runtime.event.append',
@@ -74,6 +83,8 @@ export function resolveRoomRuntimePermissions(facts: RoomRuntimePermissionFacts)
 
   if (facts.roomRole === 'player') {
     permissions['map.preview.range.temporary'] = true;
+    // Server-side token linkage validation remains required for every move.
+    permissions['map.token.move.own'] = true;
     permissions['runtime.event.append'] = true;
     permissions['map.template.fix'] = facts.grants?.some((grant) => grant.action === 'map.template.fix') === true;
   }

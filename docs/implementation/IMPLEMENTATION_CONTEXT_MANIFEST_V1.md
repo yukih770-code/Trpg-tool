@@ -97,6 +97,7 @@ PowerShell fallback: `Select-String -Path .\src\**\* -Pattern "DATABASE_URL"`.
 | Basic Map Board (P5.BASIC-MAP-BOARD) | Index → Basic Map Board; `P5_BASIC_MAP_BOARD`; `src/lib/map/mapRuntimeTypes.ts`, `src/lib/map/useMapRuntimeBoard.ts`, `src/lib/map/mapRuntimeReplay.ts`, `src/components/platform/BasicMapBoard.tsx`, `src/lib/map/mapRuntimeReplaySmoke.ts` (`frontend:verify:map-runtime`, `frontend:verify:map-replay`); local background/viewport/token projection with append-only `map.*` event replay; no live WebSocket sync, DB map persistence, asset upload, fog/LOS/walls, permissions, or full VTT |
 | DND Grid / Range / Templates (P5.DND-GRID-RANGE-TEMPLATES) | Index → DND Grid / Range / Templates; `P5_DND_GRID_RANGE_TEMPLATES`; `src/lib/map/{mapRuntimeTypes,useMapRuntimeBoard,mapRuntimeReplay}.ts`, `src/components/platform/BasicMapBoard.tsx`, `dndGridRangeSmoke.ts` (`frontend:verify:dnd-grid-range`); visible manager/viewer toolbar, CSS-only background presets, host-assisted grid/snap/Euclidean ruler/generic templates in map projection and scene snapshots. Geometry-only `map.*` replay; no target detection, automatic damage/rules, backend/API, or live authority change. |
 | Room Runtime Permission Binding (P5.ROOM-RUNTIME-PERMISSION-BINDING) | Index → Room Runtime Permission Binding; `P5_ROOM_RUNTIME_PERMISSION_BINDING`; `src/lib/platform/roomRuntimePermissions.ts`, `server/room/roomRuntimePermissionGuard.ts`, `server/transport/roomSocketServer.ts`, `server/room-server.ts`, `RoomRuntimeEntryBridge.tsx`; authenticated user -> room member binding enforced for Runtime map paths and map-preview WebSocket messages. LAN and room codes grant nothing. Fixed ranges are explicit `roomSession` grants with an in-memory host-only audit record; no persistent grants, full VTT ACL, or role hydration. |
+| Token Ownership Control Binding (P5.TOKEN-OWNERSHIP-CONTROL-BINDING) | Index → Token Ownership Control Binding; `P5_TOKEN_OWNERSHIP_CONTROL_BINDING`; `src/lib/platform/roomTokenOwnership.ts`, `server/room/roomTokenControlGuard.ts`, `appendRoomMapEvent.ts`, `BasicMapBoard.tsx`, `RoomRuntimeEntryBridge.tsx` (`frontend:verify:token-ownership`, `runtime:verify:token-ownership`); host moves any token, approved player moves only a server-verified linked room-character token. Viewer -> member -> clearance binding -> persisted token is checked at the server; token owner metadata, LAN and room codes are not authority. No persistent ownership DB/full RBAC/fog/LOS/pathfinding/automatic damage. |
 | Scene Runtime Snapshot (P5.SCENE-RUNTIME-SNAPSHOT) | Index → Scene Runtime Snapshot; `P5_SCENE_RUNTIME_SNAPSHOT`; `src/lib/scene/sceneRuntimeSnapshotTypes.ts`, `src/lib/scene/sceneRuntimeSnapshot.ts`, `src/lib/scene/sceneRuntimeSnapshotSmoke.ts`, `src/components/platform/SceneRuntimeSnapshotPanel.tsx` (`frontend:verify:scene-snapshot`); host-controlled local JSON snapshot of the current combat/map projection with version validation, sanitization, and context mismatch warnings. No database persistence, full backup, asset archive, WebSocket sync, permission enforcement, or RuntimeActor writeback. |
 | Persisted Scene Library (P5.PERSISTED-SCENE-LIBRARY) | Index → Persisted Scene Library; `P5_PERSISTED_SCENE_LIBRARY`; `server/db/migrations/0010_scene_state_documents.sql`, `server/adapters/postgresSceneStateRepository.ts`, `server/api/campaignRoomApiHandlers.ts`, `server/api/campaignRoomApiRoutes.ts`, `src/lib/campaignRoom/useSceneStates.ts`, `src/components/platform/SavedSceneLibraryPanel.tsx`. Saved combat/map snapshots are room-scoped server documents with explicit local apply and optional append-only audit events. No live sync, runtime authority, asset storage, full campaign backup, or VTT permissions. |
 | DND Dice / Checks Runtime Layer (P5.DND-DICE-CHECKS) | Index → DND Dice / Checks Runtime Layer; `P5_DND_DICE_CHECKS`; `src/lib/dnd/dndDiceTypes.ts`, `src/lib/dnd/dndDiceRoller.ts`, `src/components/platform/DndDiceCheckPanel.tsx`, `src/lib/dnd/dndDiceRollerSmoke.ts` (`frontend:verify:dnd-dice`). Safe frontend-local DND dice parsing, d20 checks, attack/damage-lite resolution, and append-only DND runtime-event drafts for DND campaign pages. No full rules engine, character writeback, backend/API contract, or live authority change. |
@@ -152,8 +153,9 @@ PowerShell fallback: `Select-String -Path .\src\**\* -Pattern "DATABASE_URL"`.
 Read `P5_ACTOR_PRESENCE_FOUNDATION.md` before changing map-token sources. A
 Character Vault or Campaign Actor is a long-term source, a Map Token is a
 scene projection, and a Combatant is a combat instance. Token ownership fields
-are display metadata only; the room runtime guard remains authoritative and
-player token movement is intentionally deferred.
+are display metadata only; the room runtime guard remains authoritative. An
+approved player move additionally requires the verified room binding and the
+persisted token link described in `P5_TOKEN_OWNERSHIP_CONTROL_BINDING.md`.
 
 ## Character Entry Canonicalization Bridge (P5.CHARACTER-ENTRY-CANONICALIZATION-BRIDGE)
 
@@ -164,8 +166,8 @@ player token movement is intentionally deferred.
 - Normalizes legacy entry drafts, campaign actors, DND Lite actors, and Room
   Lobby bindings for display and optional map presence.
 - Don't violate: local selection is not room submission; only approved binding
-  plus approved clearance is a Room Runtime candidate; source metadata is not
-  token ownership, map permission, readiness authority, or cross-device
+plus approved clearance is a Room Runtime candidate; source metadata is not
+standalone token ownership, map permission, readiness authority, or cross-device
   character synchronization.
 
 ## Character Clearance Alpha (P5.CHARACTER-CLEARANCE-ALPHA)
@@ -184,3 +186,12 @@ One token is one circular body: existing `imageUrl` then initials fallback.
 Names, HP, conditions, and combat links stay outside the body as small display
 indicators. This preserves old map events and snapshots without adding assets,
 ownership, clearance, or persistence behavior.
+
+## Token Ownership Control Binding (P5.TOKEN-OWNERSHIP-CONTROL-BINDING)
+
+Read `P5_TOKEN_OWNERSHIP_CONTROL_BINDING.md` before changing live Room Map
+movement. The browser may show the approved player's linked character token as
+draggable, but the Room Server reconstructs the persisted map state and checks
+the authenticated viewer, active member, clearance-approved binding, and token
+link before accepting a move. Old tokens remain host-controlled unless a link
+can be proven.

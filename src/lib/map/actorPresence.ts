@@ -14,6 +14,8 @@ export type MapTokenPresenceCandidate = {
   combatantId?: string;
   ownerUserId?: string;
   controlledByUserId?: string;
+  roomMemberId?: string;
+  actorBindingId?: string;
   hpSummary?: MapTokenHpSummary;
   conditionSummary?: string[];
 };
@@ -53,6 +55,7 @@ export function toMapTokenPrototype(candidate: MapTokenPresenceCandidate, positi
     sourceType: candidate.sourceType, sourceId: candidate.sourceId, campaignActorId: candidate.campaignActorId, combatantId: candidate.combatantId,
     sourceActorInstanceId: candidate.campaignActorId, sourceCombatantId: candidate.combatantId,
     ownerUserId: candidate.ownerUserId, controlledByUserId: candidate.controlledByUserId, imageUrl: candidate.imageUrl,
+    roomMemberId: candidate.roomMemberId, actorBindingId: candidate.actorBindingId,
     initials: candidate.initials ?? tokenInitials(candidate.displayName), kind: candidate.kind ?? 'unknown', hpSummary: candidate.hpSummary,
     conditionSummary: candidate.conditionSummary ? [...candidate.conditionSummary] : undefined, isHidden: false,
   };

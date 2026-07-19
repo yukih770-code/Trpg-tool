@@ -70,6 +70,10 @@ export type MapToken = {
   /** Informational hints only. Room permissions remain server-authoritative. */
   ownerUserId?: string;
   controlledByUserId?: string;
+  /** Room-local linkage used to verify an approved player-character token. */
+  roomMemberId?: string;
+  /** The approved Room Lobby actor binding that placed this character token. */
+  actorBindingId?: string;
   displayName?: string;
   imageUrl?: string;
   initials?: string;

@@ -43,11 +43,13 @@ sheet write access.
 
 Map display follows `P5_TOKEN_RENDERING_CLARITY_PATCH.md`: a cleared entry is
 shown as one circular token with external status information, not a cluster of
-avatars or a character-sheet projection.
+avatars or a character-sheet projection. When a host places that approved room
+binding, its room member and binding links allow the Room Server to verify that
+only the same active player may move that token.
 
 ## Explicitly Deferred
 
 - Full character builder and rule legality validation.
 - Persistent campaign-character membership or runtime actor instances.
-- Token movement ownership, automated combat, and rules automation.
+- Persistent token ownership, automated combat, and rules automation.
 - Database persistence and account/auth changes.

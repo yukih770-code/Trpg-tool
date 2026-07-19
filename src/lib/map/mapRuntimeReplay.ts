@@ -9,7 +9,7 @@ import {
   type MapBoardState,
   type MapToken,
   type MapTokenInput,
-} from './mapRuntimeTypes';
+} from './mapRuntimeTypes.js';
 
 /**
  * Minimum append-only shape needed to rebuild a map board. Both the campaign
@@ -53,6 +53,8 @@ function tokenInput(value: unknown, fallback?: MapToken): MapToken | null {
     combatantId: stringValue(input?.combatantId) ?? fallback?.combatantId,
     ownerUserId: stringValue(input?.ownerUserId) ?? fallback?.ownerUserId,
     controlledByUserId: stringValue(input?.controlledByUserId) ?? fallback?.controlledByUserId,
+    roomMemberId: stringValue(input?.roomMemberId) ?? fallback?.roomMemberId,
+    actorBindingId: stringValue(input?.actorBindingId) ?? fallback?.actorBindingId,
     displayName: stringValue(input?.displayName) ?? fallback?.displayName,
     imageUrl: stringValue(input?.imageUrl) ?? fallback?.imageUrl,
     initials: stringValue(input?.initials) ?? fallback?.initials,

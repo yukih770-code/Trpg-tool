@@ -17,8 +17,9 @@ falls back to initials without changing the token event.
 ## Deferred
 
 Account-avatar fallback, preset avatar galleries, image generation, uploads,
-object storage, token ownership movement, and Character Clearance changes are
-outside this patch.
+and object storage are outside this patch. Verified owned-token movement is
+documented separately in `P5_TOKEN_OWNERSHIP_CONTROL_BINDING.md`; this visual
+layer still does not make authorization decisions.
 
 ## Verification
 

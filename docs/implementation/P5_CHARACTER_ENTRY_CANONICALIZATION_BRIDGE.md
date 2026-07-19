@@ -31,9 +31,11 @@ bridge never grants token movement, map editing, or Room Runtime entry.
 ## Map source metadata
 
 The additive token source values `vaultActor`, `roomActorBinding`, and
-`quickDraft` are replay- and scene-snapshot-compatible. They describe where a
-display prototype came from; a map token remains a scene instance, and combat
-remains the HP/condition authority.
+`quickDraft` are replay- and scene-snapshot-compatible. An approved
+`roomActorBinding` placement also preserves its room member and binding ids for
+server-side movement verification. They describe where a display prototype came
+from; a map token remains a scene instance, and combat remains the HP/condition
+authority.
 
 Token display follows `P5_TOKEN_RENDERING_CLARITY_PATCH.md`: an entry summary
 may contribute an existing image or initials, but never a second avatar, asset
@@ -55,8 +57,8 @@ a submitted binding by itself.
 
 ## Explicitly not implemented
 
-No Character Clearance rule engine, snapshot hashing authority, token ownership,
-player token movement, cross-device character sync, persistent Campaign Actor
+No Character Clearance rule engine, snapshot hashing authority, persistent
+token ownership, cross-device character sync, persistent Campaign Actor
 Instance migration, database migration, auth change, or WebSocket protocol
 change is part of this bridge.
 

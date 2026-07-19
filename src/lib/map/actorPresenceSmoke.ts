@@ -29,7 +29,7 @@ const cases: Array<{ name: string; run: () => void }> = [
   { name: 'old map token event replays', run: () => assert(replayMapRuntimeEvents([{ eventKind: 'map.token_added', payload: { token: { id: 'legacy', name: 'Marker', x: 1, y: 2, size: 'medium', sourceType: 'manual' } } }], 'map').tokens.length === 1, 'legacy event failed') },
   { name: 'campaign actor creates map token', run: () => assert(heroToken.campaignActorId === 'actor-1' && heroToken.kind === 'playerCharacter', 'campaign actor metadata missing') },
   { name: 'DND Lite actor creates map token', run: () => assert(toMapTokenPrototype(dndLite, { x: 0, y: 0 }).sourceType === 'dndLiteActor', 'DND Lite prototype missing') },
-  { name: 'admitted room binding creates a presence candidate', run: () => assert(admittedRoomEntry?.isApprovedForRoom && admittedRoomCandidate?.sourceType === 'roomActorBinding', 'room binding presence missing') },
+  { name: 'admitted room binding carries placement linkage metadata', run: () => assert(admittedRoomEntry?.isApprovedForRoom && admittedRoomCandidate?.sourceType === 'roomActorBinding' && admittedRoomCandidate.actorBindingId === 'binding-1' && admittedRoomCandidate.roomMemberId === 'member-1', 'room binding presence linkage missing') },
   { name: 'monster template creates map token', run: () => assert(toMapTokenPrototype(monster, { x: 0, y: 0 }).kind === 'monster', 'monster prototype missing') },
   { name: 'combatant creates linked token', run: () => assert(combatToken.combatantId === 'combat-1', 'combat link missing') },
   { name: 'duplicate linked token is detected', run: () => assert(linkedTokenForCandidate([heroToken], hero)?.id === heroToken.id, 'duplicate link not detected') },

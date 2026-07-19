@@ -19,7 +19,9 @@ combat view/edit; runtime-event append; and host management.
 - Active spectators may view and make local measurements only. They do not
   share previews or mutate Runtime state.
 - A grant never permits editing or deleting an existing template, changing the
-  grid/background, or moving/creating/deleting tokens.
+  grid/background, or moving/creating/deleting arbitrary tokens. Active players
+  receive only the narrow `map.token.move.own` capability; every actual move
+  still requires the verified binding chain described below.
 
 ## Enforcement
 
@@ -33,14 +35,18 @@ Pending members may subscribe for lobby status after their identity is matched,
 but Runtime actions require an active room member. A WebSocket may publish a
 temporary preview only for the member identity it successfully subscribed as.
 
-## Character entry projection
+## Character entry projection and owned token movement
 
 An actor binding is not a token and a local campaign entry selection is not a
 room submission. The frontend may project a binding into the map candidate list
 only after `binding.status` and clearance status are both approved. The existing
 Room Runtime permission guard still decides placement and every subsequent map
-operation. No token ownership or player movement permission is inferred from
-the binding metadata.
+operation. A host-placed approved room-character token additionally carries a
+room member and binding link. For `map.token_moved`, the server reconstructs
+the persisted token and validates the authenticated viewer, active member,
+approved clearance binding, and matching token link. Metadata alone is never a
+permission grant. Hosts retain control of all tokens; spectators and pending
+members have none.
 
 ## Grant lifecycle and audit
 
@@ -54,8 +60,8 @@ claiming persistent server permissions.
 ## Deliberately deferred
 
 This does not add a database migration, a persistent permission table, a full
-VTT ACL, target selection, spell automation, token ownership, or a WebSocket
-protocol redesign. World-server owner/admin membership is not yet hydrated into
+VTT ACL, target selection, spell automation, persistent token ownership, or a
+WebSocket protocol redesign. World-server owner/admin membership is not yet hydrated into
 the legacy live Room Server registry, so those roles are a future integration
 after one authoritative room-membership source exists.
 
@@ -63,3 +69,5 @@ after one authoritative room-membership source exists.
 
 - `npm run runtime:verify:room-permissions`
 - `npm run frontend:verify:room-permissions`
+- `npm run runtime:verify:token-ownership`
+- `npm run frontend:verify:token-ownership`

@@ -89,6 +89,14 @@ const cases: Array<{ name: string; run: () => void }> = [
     },
   },
   {
+    name: 'approved room binding linkage is preserved',
+    run: () => {
+      const state = replayMapRuntimeEvents([event(1, 'map.token_added', { token: { id: 'room-hero', name: 'Hero', x: 20, y: 30, size: 'medium', sourceType: 'roomActorBinding', sourceId: 'binding-hero', actorBindingId: 'binding-hero', roomMemberId: 'member-hero', kind: 'playerCharacter' } })], mapId);
+      assertEqual(state.tokens[0]?.actorBindingId, 'binding-hero', 'binding id should replay');
+      assertEqual(state.tokens[0]?.roomMemberId, 'member-hero', 'room member linkage should replay');
+    },
+  },
+  {
     name: 'unknown and incomplete events are tolerated',
     run: () => {
       const state = replayMapRuntimeEvents([event(1, 'map.token_added'), event(2, 'map.token_moved'), event(3, 'map.future_event')], mapId);

@@ -29,6 +29,9 @@ export interface EntryCharacterRef {
   systemId?: string;
   ownerUserId?: string;
   controlledByUserId?: string;
+  /** Room-local linkage for an approved binding; it is not a global role. */
+  roomMemberId?: string;
+  actorBindingId?: string;
   initials?: string;
   kind?: MapTokenKind;
   hpSummary?: MapTokenHpSummary;
@@ -96,6 +99,8 @@ export function entryCharacterFromRoomBinding(
     systemId: binding.actorRef.systemId,
     ownerUserId: member?.userId,
     controlledByUserId: member?.userId,
+    roomMemberId: binding.memberId,
+    actorBindingId: binding.bindingId,
     kind: 'playerCharacter',
     summary: binding.actorRef.summary,
     armorClass: binding.actorRef.armorClass,
@@ -198,6 +203,8 @@ export function entryCharacterToPresenceCandidate(ref: EntryCharacterRef | undef
     kind: ref.kind ?? 'unknown',
     ownerUserId: ref.ownerUserId,
     controlledByUserId: ref.controlledByUserId,
+    roomMemberId: ref.roomMemberId,
+    actorBindingId: ref.actorBindingId,
     hpSummary: ref.hpSummary,
     conditionSummary: ref.conditionSummary,
     campaignActorId: ref.sourceType === 'campaignActor' || ref.sourceType === 'dndLiteActor' ? ref.id : undefined,

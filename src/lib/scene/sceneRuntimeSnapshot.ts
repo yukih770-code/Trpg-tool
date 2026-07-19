@@ -116,6 +116,8 @@ function sanitizeToken(value: unknown): MapToken | null {
     combatantId: stringValue(input?.combatantId),
     ownerUserId: stringValue(input?.ownerUserId),
     controlledByUserId: stringValue(input?.controlledByUserId),
+    roomMemberId: stringValue(input?.roomMemberId),
+    actorBindingId: stringValue(input?.actorBindingId),
     displayName: stringValue(input?.displayName),
     imageUrl: stringValue(input?.imageUrl),
     initials: stringValue(input?.initials),

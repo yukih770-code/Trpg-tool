@@ -16,6 +16,7 @@ import {
 import { createRoomSocketClient, type RoomSocketConnectionState } from '../../lib/platform/roomSocketClient';
 import { resolveDevViewerUserId } from '../../lib/api/apiClient';
 import { resolveRoomRuntimePermissions } from '../../lib/platform/roomRuntimePermissions';
+import { isTokenLinkedToApprovedRoomMember } from '../../lib/platform/roomTokenOwnership';
 import { readStoredLocale } from '../../i18n';
 import { RuntimeFullscreenShell, type RuntimeShellMode } from './RuntimeFullscreenShell';
 import { SharedDiceDock } from './SharedDiceDock';
@@ -736,6 +737,8 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       statusNote={currentRangeGrant ? '你获得了本房间会话内的固定范围授权；服务重启后需要由主持人重新授予。' : '地图协作取决于登录身份与房间角色；局域网连接本身不授予编辑权限。'}
       presentation="runtime"
       canManage={runtimePermissions['map.grid.edit']}
+      canMoveToken={(token) => runtimePermissions['map.token.move.own'] && isTokenLinkedToApprovedRoomMember(currentRoom, context.currentMemberId, token)}
+      tokenMoveDeniedMessage="你只能移动自己的已准入角色。"
       canPinRanges={canPinRanges}
       canShareTemporaryRanges={runtimePermissions['map.preview.range.temporary']}
       sharedPreviews={(Object.values(sharedMapPreviews) as SharedMapPreview[]).flatMap((preview) => preview.preview ? [{ authorMemberId: preview.authorMemberId, authorDisplayName: preview.authorDisplayName, preview: preview.preview }] : [])}

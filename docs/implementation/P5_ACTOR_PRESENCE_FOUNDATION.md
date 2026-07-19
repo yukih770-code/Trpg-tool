@@ -30,10 +30,11 @@ external labels or small indicators, never another avatar body.
 
 ## Permission Boundary
 
-Hosts retain existing map token control. Player-owned movement is deliberately
-not enabled in this slice: owner/control metadata is only a UI hint until the
-server has a verified per-token ownership grant. Spectators remain view-only.
-The authenticated room-member permission guard remains authoritative.
+Hosts retain existing map token control. A player may move only a host-placed
+`roomActorBinding` token that the Room Server verifies against that player's
+active, approved, clearance-approved binding. Owner/control metadata remains a
+display hint, never standalone authority. Spectators remain view-only; manual,
+monster, and NPC tokens are host-controlled by default.
 
 ## Character entry bridge
 

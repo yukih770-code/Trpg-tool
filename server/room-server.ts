@@ -32,6 +32,7 @@ import { appendRoomMapEvent } from './services/appendRoomMapEvent.js';
 import { listRoomMapEvents } from './services/listRoomMapEvents.js';
 import { setRoomMapMemberPermission } from './services/setRoomMapMemberPermission.js';
 import { mapRuntimeActionForMapEvent, resolveRoomParticipant, resolveRoomRuntimePermission } from './room/roomRuntimePermissionGuard.js';
+import { resolveVerifiedRoomTokenMove } from './room/roomTokenControlGuard.js';
 import { createInMemoryActorAdmissionRegistry } from './actor-admission-registry.js';
 import { readServerRuntimeConfigFromEnv } from './config/serverRuntimeConfig.js';
 import { readDatabaseRuntimeConfigFromEnv } from './config/databaseRuntimeConfig.js';
@@ -632,7 +633,26 @@ app.get('/rooms/:roomId/map-events', (req, res) => {
 
 app.post('/rooms/:roomId/map-events', (req, res) => {
   const body = (req.body ?? {}) as AppendRoomMapEventInput;
-  if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.authorMemberId, mapRuntimeActionForMapEvent(body.eventKind))) return;
+  if (body.eventKind === 'map.token_moved') {
+    const room = registry.get(req.params.roomId);
+    if (!room) {
+      res.status(404).json({ error: 'roomNotFound', roomId: req.params.roomId });
+      return;
+    }
+    const access = resolveVerifiedRoomTokenMove({
+      room,
+      mapRegistry: roomMapRegistry,
+      viewer: resolveRoomRequestViewer(req),
+      memberId: body.authorMemberId,
+      mapId: body.mapId,
+      payload: body.payload,
+    });
+    if (!access.allowed) {
+      res.status(access.code === 'unauthenticated' ? 401 : access.code === 'invalidMove' ? 400 : 403)
+        .json({ error: 'notAuthorized', message: 'You can only move your own admitted character token.' });
+      return;
+    }
+  } else if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.authorMemberId, mapRuntimeActionForMapEvent(body.eventKind))) return;
   const result = appendRoomMapEvent(registry, roomMapRegistry, {
     roomId: req.params.roomId,
     authorMemberId: body.authorMemberId,

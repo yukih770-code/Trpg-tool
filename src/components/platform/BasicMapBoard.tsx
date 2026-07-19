@@ -25,6 +25,9 @@ type Props = {
   /** Optional sources from system-specific actor/monster surfaces. */
   actorPresenceCandidates?: MapTokenPresenceCandidate[];
   canManage: boolean;
+  /** Client-side affordance only; Room Runtime still verifies every live move on the server. */
+  canMoveToken?: (token: MapToken) => boolean;
+  tokenMoveDeniedMessage?: string;
   /** Allows a non-host collaborator to create (but not edit) permanent range marks. */
   canPinRanges?: boolean;
   /** Allows an active participant to relay a temporary ruler or range preview. */
@@ -145,7 +148,7 @@ function templateDragHint(shape: MapTemplateShape, locale: Locale): string {
   return '起点是角点，拖动到对角。';
 }
 
-export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], actorPresenceCandidates = [], canManage, canPinRanges = false, canShareTemporaryRanges = false, sharedPreviews = [], onSharePreview, mapCollaborators = [], onSetCanPinRanges, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace' }: Props) {
+export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], actorPresenceCandidates = [], canManage, canMoveToken, tokenMoveDeniedMessage, canPinRanges = false, canShareTemporaryRanges = false, sharedPreviews = [], onSharePreview, mapCollaborators = [], onSetCanPinRanges, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace' }: Props) {
   const { t } = createTranslator(locale);
   const board = useMapRuntimeBoard(mapId);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -183,6 +186,8 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   const selectedTemplate = board.state.selectedTemplateId ? (board.state.templates ?? []).find((template) => template.id === board.state.selectedTemplateId) : undefined;
   const grid = board.state.grid;
   const mayPinRanges = canManage || canPinRanges;
+  const mayMoveToken = (token: MapToken) => canManage || canMoveToken?.(token) === true;
+  const moveDeniedMessage = tokenMoveDeniedMessage ?? (locale === 'en' ? 'You can only move your own admitted character.' : '你只能移动自己的已准入角色。');
   const presenceCandidates = [
     ...combatants.map(combatantPresenceCandidate),
     ...campaignActors.map(campaignActorPresenceCandidate),
@@ -222,7 +227,10 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   const emit = (event: MapRuntimeEventDraft | null) => {
     if (!event || !onAppendEvent) return;
     setEventError('');
-    void onAppendEvent(event).catch(() => setEventError(t('mapRuntime.eventSaveFailed')));
+    void onAppendEvent(event).catch(() => {
+      board.restore(mapEvents);
+      setEventError(event.eventKind === 'map.token_moved' ? moveDeniedMessage : t('mapRuntime.eventSaveFailed'));
+    });
   };
 
   const changeViewport = (patch: { zoom?: number; panX?: number; panY?: number }) => {
@@ -337,9 +345,16 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     } else if (templateId && canManage) {
       const template = (board.state.templates ?? []).find((item) => item.id === templateId);
       if (template) { board.selectTemplate(templateId); dragRef.current = { kind: 'template', templateId, startX: event.clientX, startY: event.clientY, originX: template.x, originY: template.y, last: { x: template.x, y: template.y } }; }
-    } else if (tokenId && canManage) {
+    } else if (tokenId) {
       const token = board.state.tokens.find((item) => item.id === tokenId);
-      if (token) { board.selectToken(tokenId); dragRef.current = { kind: 'token', tokenId, startX: event.clientX, startY: event.clientY, originX: token.x, originY: token.y, last: { x: token.x, y: token.y } }; }
+      if (token) {
+        board.selectToken(tokenId);
+        if (mayMoveToken(token)) {
+          dragRef.current = { kind: 'token', tokenId, startX: event.clientX, startY: event.clientY, originX: token.x, originY: token.y, last: { x: token.x, y: token.y } };
+        } else {
+          setEventError(moveDeniedMessage);
+        }
+      }
     } else {
       dragRef.current = { kind: 'pan', startX: event.clientX, startY: event.clientY, originX: board.state.panX, originY: board.state.panY };
     }
@@ -521,7 +536,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
           {templateDraftLayer}
           {measurementLayer}
           {sharedPreviewLayer}
-          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className="absolute flex max-w-36 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold" style={{ left: `${token.x}%`, top: `${token.y}%` }} title={token.notes || token.name}>{tokenContents(token)}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
+          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className={`absolute flex max-w-36 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold ${mayMoveToken(token) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={mayMoveToken(token) ? (token.notes || token.name) : `${token.notes ? `${token.notes} · ` : ''}${moveDeniedMessage}`}>{tokenContents(token)}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
         </div>
       </div>
 

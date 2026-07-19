@@ -46,9 +46,10 @@ export function mapRuntimeActionForMapEvent(eventKind: RoomMapEventKind): RoomRu
   if (eventKind === 'map.template_removed' || eventKind === 'map.templates_cleared') return 'map.template.delete';
   if (eventKind === 'map.grid_updated') return 'map.grid.edit';
   if (eventKind === 'map.background_set' || eventKind === 'map.background_cleared') return 'map.background.edit';
-  if (eventKind === 'map.token_added') return 'map.token.create';
-  if (eventKind === 'map.token_removed') return 'map.token.delete';
-  return 'map.token.move';
+  if (eventKind === 'map.token_added') return 'map.token.create.any';
+  if (eventKind === 'map.token_updated') return 'map.token.update.any';
+  if (eventKind === 'map.token_removed') return 'map.token.delete.any';
+  return 'map.token.move.any';
 }
 
 function grantsForMember(room: RoomSnapshot, memberId: string): RoomRuntimeGrantSummary[] {

@@ -649,8 +649,8 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   Actors, DND Lite actor sheets, private monster templates, and combatants can
   produce lightweight placement prototypes; map tokens stay scene instances.
 - Don't violate: combat remains HP/condition authority; ownership hints are not
-  permission grants; player token movement remains disabled until a trusted
-  server-side ownership rule exists; no asset upload, fog/LOS, pathfinding,
+  permission grants. Approved players may move only server-verified linked
+  room-character tokens; no asset upload, fog/LOS, pathfinding,
   automatic damage, or rules automation.
 
 ## Character Entry Canonicalization Bridge (P5.CHARACTER-ENTRY-CANONICALIZATION-BRIDGE)
@@ -659,7 +659,7 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   display normalization seam: local campaign selection remains local; only an
   approved and clearance-approved Room Lobby binding becomes a Room Runtime map
   candidate. It does not decide readiness, entry eligibility, map permissions,
-  token ownership, or character persistence.
+  persistent token ownership, or character persistence.
 
 ## Character Clearance Alpha (P5.CHARACTER-CLEARANCE-ALPHA)
 - Files: `src/components/platform/{JoinCampaignPanel,RoomLobbyShell}.tsx`,
@@ -671,7 +671,7 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   spectators are read-only and do not submit or ready.
 - Don't violate: all binding/admission/ready state is in-memory Room Server
   session state; no character-store write, CampaignActorInstance, persistent
-  membership, token ownership, rule engine, or permission shortcut.
+  membership, persistent token ownership, rule engine, or permission shortcut.
 
 ## Token Rendering Clarity Patch (P5.TOKEN-RENDERING-CLARITY-PATCH)
 - Files: `src/lib/map/tokenVisualIdentity.ts`, `tokenVisualIdentitySmoke.ts`,
@@ -681,4 +681,18 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   initials are the safe fallback. Name, HP, status, and combat link are external
   indicators, not duplicate avatars or new token state.
 - Don't violate: no asset upload, avatar packs, image generation, event-schema
-  change, token ownership movement, Character Clearance change, or persistence.
+  change, Character Clearance change, or persistence.
+
+## Token Ownership Control Binding (P5.TOKEN-OWNERSHIP-CONTROL-BINDING)
+- Files: `src/lib/platform/roomTokenOwnership.ts`,
+  `server/room/roomTokenControlGuard.ts`, `server/services/appendRoomMapEvent.ts`,
+  `src/components/platform/{RoomRuntimeEntryBridge,BasicMapBoard}.tsx`; scripts
+  `frontend:verify:token-ownership` and `runtime:verify:token-ownership`.
+- Active hosts control all tokens. An active approved player can move only a
+  `roomActorBinding` player-character token that maps to their approved
+  clearance binding. Spectators, pending members, monsters, NPCs, manual tokens,
+  and other players' tokens are denied.
+- Token metadata is a linkage clue, not authority: the server verifies viewer,
+  room member, clearance binding, and persisted map token before it appends a
+  move event. No persistence migration, full RBAC, fog/LOS, pathfinding, or
+  automatic combat effect is added.

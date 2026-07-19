@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 
 import type { RoomRegistry } from '../room-registry.js';
 import type { RoomMapRegistry } from '../room-map-registry.js';
+import { resolveRoomMemberTokenMove } from '../room/roomTokenControlGuard.js';
 import { ROOM_MAP_EVENT_KINDS } from '../../src/lib/platform/roomMapTypes.js';
 import type { RoomMapEvent, RoomMapEventKind } from '../protocol/room-protocol.js';
 
@@ -36,8 +37,11 @@ export function appendRoomMapEvent(
   const isHost = author.role === 'host';
   const canPinRanges = room.mapPermissions?.some((permission) => permission.memberId === author.memberId && permission.canPinRanges) === true;
   const isPinnedRangeAdd = input.eventKind === 'map.template_added';
-  if (!isHost && !(canPinRanges && isPinnedRangeAdd)) {
-    return { decision: 'memberNotAuthorized', message: 'Room map changes require an active host, except explicitly granted range pins.' };
+  const tokenMove = input.eventKind === 'map.token_moved'
+    ? resolveRoomMemberTokenMove({ room, mapRegistry, memberId: author.memberId, mapId: input.mapId, payload: input.payload })
+    : undefined;
+  if (!isHost && !(canPinRanges && isPinnedRangeAdd) && !tokenMove?.allowed) {
+    return { decision: 'memberNotAuthorized', message: 'Room map changes require an active host, an explicit range grant, or a verified owned character token.' };
   }
 
   if (
