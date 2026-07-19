@@ -80,6 +80,31 @@ const cases: Array<{ name: string; run: () => void }> = [
     },
   },
   {
+    name: 'restores the combat-start initiative snapshot',
+    run: () => {
+      const state = replayCombatRuntimeEvents([
+        event(1, 'combat.started', {
+          combatants: [{ ...alpha, initiative: 17 }, { ...beta, initiative: 11 }],
+          roundNumber: 1,
+          turnIndex: 0,
+          activeCombatantId: 'alpha',
+        }),
+      ]);
+      assertEqual(state.combatants.map((combatant) => combatant.initiative), [17, 11], 'start payload initiatives should be restored');
+      assertEqual(state.turn.activeCombatantId, 'alpha', 'start payload current combatant should be restored');
+    },
+  },
+  {
+    name: 'replays an initiative roll event like a targeted combatant update',
+    run: () => {
+      const state = replayCombatRuntimeEvents([
+        event(0, 'combat.combatant_added', { combatant: alpha }),
+        event(1, 'combat.initiative_rolled', { combatant: { id: 'alpha', initiative: 19 } }),
+      ]);
+      assertEqual(state.combatants[0]?.initiative, 19, 'initiative roll should update the combatant');
+    },
+  },
+  {
     name: 'replays pause and resume states',
     run: () => {
       const paused = replayCombatRuntimeEvents(events.filter((item) => item.seq <= 5));

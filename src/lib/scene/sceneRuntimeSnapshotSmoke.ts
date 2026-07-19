@@ -61,6 +61,7 @@ check('rejects missing export time', incomplete.ok === false);
 
 const imported = importSceneRuntimeSnapshot(JSON.parse(JSON.stringify(both)), context);
 check('imports combat and map deterministically', imported.ok && imported.snapshot.combat?.combatants.length === 1 && imported.snapshot.map?.board.tokens.length === 1);
+check('imports combat HUD turn state', imported.ok && imported.snapshot.combat?.turn.status === 'active' && imported.snapshot.combat.turn.roundNumber === 2 && imported.snapshot.combat.turn.activeCombatantId === 'hero-1' && imported.snapshot.combat.combatants[0]?.initiative === 17);
 check('imports room token linkage metadata', imported.ok && imported.snapshot.map?.board.tokens[0]?.actorBindingId === 'binding-hero' && imported.snapshot.map?.board.tokens[0]?.roomMemberId === 'member-hero');
 check('missing grid, template, and preset snapshot fields stay compatible', sanitizeSceneRuntimeSnapshot({ ...both, map: { board: { ...map, grid: undefined, templates: undefined, backgroundPreset: undefined } } }).map?.board.grid?.feetPerSquare === 5 && sanitizeSceneRuntimeSnapshot({ ...both, map: { board: { ...map, backgroundPreset: undefined } } }).map?.board.backgroundPreset === 'tactical_gray');
 const mismatched = importSceneRuntimeSnapshot(JSON.parse(JSON.stringify(both)), { roomId: 'room-2', campaignId: 'campaign-2', runtimeSessionId: 'runtime-2' });

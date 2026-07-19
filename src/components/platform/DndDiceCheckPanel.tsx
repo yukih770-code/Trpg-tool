@@ -182,7 +182,7 @@ export function DndDiceCheckPanel({ locale, canManage, campaignActors, combatant
   const actorOptions = <>{actorChoices.map((choice) => <option key={choice.value} value={choice.value}>{choice.name}{actorSheets[choice.value] ? ` · ${t('dndDice.actorSheetReady')}` : ''}</option>)}</>;
 
   return (
-    <section className="mt-5 rounded-2xl border border-[#58180d]/15 bg-[#fffaf0] p-4 shadow-sm">
+    <section id="dnd-dice-check-panel" className="mt-5 rounded-2xl border border-[#58180d]/15 bg-[#fffaf0] p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{t('dndDice.eyebrow')}</div>

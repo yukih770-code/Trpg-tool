@@ -712,3 +712,13 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - The Lobby displays direct Vault, quick-draft, full-creator, spectator, and
   host-skip actions without changing Room approval, clearance, Ready, Runtime,
   or token authority.
+
+## Combat Mode HUD Foundation (P5.COMBAT-MODE-HUD-FOUNDATION)
+- Files: `src/lib/combat/combatModeHud.ts`, `CombatModeHud.tsx`,
+  `CombatRuntimeTable.tsx`, `BasicMapBoard.tsx`, and Server Workspace wiring.
+- Existing combat events remain the source of replay; `combat.started` now
+  persists resolved missing initiatives and `combat.initiative_rolled` records
+  a manual roll.
+- The HUD is an operator aid, not combat automation: no spell execution,
+  automatic damage, actor write-back, Room protocol change, or token-permission
+  change is permitted.

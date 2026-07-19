@@ -23,6 +23,10 @@ type Props = {
   statusNote?: string;
   campaignActors?: CampaignActorInstance[];
   combatants?: Combatant[];
+  /** Presentation-only current-turn indicator from the shared combat table. */
+  activeCombatantId?: string;
+  /** One-shot request from the combat HUD to select a linked token. */
+  locateCombatantId?: string;
   /** Optional sources from system-specific actor/monster surfaces. */
   actorPresenceCandidates?: MapTokenPresenceCandidate[];
   canManage: boolean;
@@ -151,7 +155,7 @@ function templateDragHint(shape: MapTemplateShape, locale: Locale): string {
   return '起点是角点，拖动到对角。';
 }
 
-export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], actorPresenceCandidates = [], canManage, canMoveToken, tokenMoveDeniedMessage, controlledTokenBindingId, canPinRanges = false, canShareTemporaryRanges = false, sharedPreviews = [], onSharePreview, mapCollaborators = [], onSetCanPinRanges, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace' }: Props) {
+export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], activeCombatantId, locateCombatantId, actorPresenceCandidates = [], canManage, canMoveToken, tokenMoveDeniedMessage, controlledTokenBindingId, canPinRanges = false, canShareTemporaryRanges = false, sharedPreviews = [], onSharePreview, mapCollaborators = [], onSetCanPinRanges, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace' }: Props) {
   const { t } = createTranslator(locale);
   const board = useMapRuntimeBoard(mapId);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -205,6 +209,15 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     ...campaignActors.map(campaignActorPresenceCandidate),
     ...actorPresenceCandidates,
   ].filter((candidate, index, all) => all.findIndex((item) => `${item.sourceType}:${item.sourceId}` === `${candidate.sourceType}:${candidate.sourceId}`) === index);
+
+  useEffect(() => {
+    if (!locateCombatantId) return;
+    const combatant = combatants.find((item) => item.id === locateCombatantId);
+    const token = board.state.tokens.find((item) => item.combatantId === locateCombatantId
+      || item.sourceCombatantId === locateCombatantId
+      || (!!combatant?.sourceActorInstanceId && (item.campaignActorId === combatant.sourceActorInstanceId || item.sourceActorInstanceId === combatant.sourceActorInstanceId)));
+    if (token && board.state.selectedTokenId !== token.id) board.selectToken(token.id);
+  }, [board, combatants, locateCombatantId]);
 
   useEffect(() => {
     const restoreKey = `${mapId}:${mapEventKey}`;
@@ -442,6 +455,13 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
 
   const visibleTokens = (canManage ? board.state.tokens : board.state.tokens.filter((token) => !token.isHidden)).map((token) => tokenWithCombatProjection(token, combatants));
   const visibleTemplates = canManage ? board.state.templates ?? [] : (board.state.templates ?? []).filter((template) => !template.isHidden);
+  const isCurrentTurnToken = (token: MapToken) => {
+    if (!activeCombatantId) return false;
+    const combatant = combatants.find((item) => item.id === activeCombatantId);
+    return token.combatantId === activeCombatantId
+      || token.sourceCombatantId === activeCombatantId
+      || (!!combatant?.sourceActorInstanceId && (token.campaignActorId === combatant.sourceActorInstanceId || token.sourceActorInstanceId === combatant.sourceActorInstanceId));
+  };
   const tokenContents = (token: MapToken) => {
     const identity = resolveTokenVisualIdentity(token, { imageFailed: failedTokenImages[token.id] });
     return <>
@@ -548,7 +568,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
           {templateDraftLayer}
           {measurementLayer}
           {sharedPreviewLayer}
-          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className={`absolute flex max-w-36 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold ${mayMoveToken(token) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={mayMoveToken(token) ? `${token.notes ? `${token.notes} · ` : ''}你的角色，可移动。` : `${token.notes ? `${token.notes} · ` : ''}该 Token 由主持人控制。`}>{tokenContents(token)}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
+          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className={`absolute flex max-w-36 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold ${mayMoveToken(token) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} ${isCurrentTurnToken(token) ? 'z-10 drop-shadow-[0_0_10px_rgba(245,197,24,.95)]' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={mayMoveToken(token) ? `${token.notes ? `${token.notes} · ` : ''}你的角色，可移动。` : `${token.notes ? `${token.notes} · ` : ''}该 Token 由主持人控制。`}>{tokenContents(token)}{isCurrentTurnToken(token) && <span className="rounded bg-[#f5c518] px-1 text-[9px] font-black text-[#17130f]">当前回合</span>}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
         </div>
       </div>
 
@@ -613,7 +633,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
         {templateDraftLayer}
         {measurementLayer}
         {sharedPreviewLayer}
-        {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className={`absolute flex max-w-40 items-center gap-1 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white px-1 py-1 text-xs font-bold shadow ${token.isHidden ? 'bg-[#51483d]/70 text-white' : 'bg-[#58180d] text-white'} ${board.state.selectedTokenId === token.id ? 'ring-4 ring-[#f5c518]/70' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={token.notes || token.name}>{tokenContents(token)}{grid?.showCoordinates && <span className="mr-1 text-[9px] opacity-80">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
+        {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} className={`absolute flex max-w-40 items-center gap-1 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white px-1 py-1 text-xs font-bold shadow ${token.isHidden ? 'bg-[#51483d]/70 text-white' : 'bg-[#58180d] text-white'} ${board.state.selectedTokenId === token.id ? 'ring-4 ring-[#f5c518]/70' : ''} ${isCurrentTurnToken(token) ? 'z-10 ring-4 ring-[#f5c518] ring-offset-2 ring-offset-transparent' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={token.notes || token.name}>{tokenContents(token)}{isCurrentTurnToken(token) && <span className="rounded bg-[#f5c518] px-1 text-[9px] font-black text-[#17130f]">当前回合</span>}{grid?.showCoordinates && <span className="mr-1 text-[9px] opacity-80">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
       </div>
       {measurementDistance && <div className="absolute bottom-3 left-3 rounded-md bg-[#17130f]/85 px-2 py-1 text-xs font-bold text-white">{measurementDistance.feet.toFixed(1)} ft · {measurementDistance.squares.toFixed(1)} {t('mapRuntime.squares')}</div>}
     </div>

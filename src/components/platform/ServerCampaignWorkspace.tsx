@@ -179,6 +179,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const [roomName, setRoomName] = useState('');
   const [eventText, setEventText] = useState('');
   const [runtimeCombatState, setRuntimeCombatState] = useState<CombatRuntimeTableState>({ combatants: [], turn: { status: 'setup', roundNumber: 1, turnIndex: -1 } });
+  const [combatantToLocate, setCombatantToLocate] = useState<string>();
   const [runtimeMapBoard, setRuntimeMapBoard] = useState<MapBoardState | undefined>();
   const [dndActorSheets, setDndActorSheets] = useState<Record<string, DndLiteActorSheet>>({});
   const [dndDicePreset, setDndDicePreset] = useState<{ actorInstanceId: string; actionId?: string; nonce: number }>();
@@ -505,6 +506,8 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     mapId={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`}
                     mapEvents={runtimeEvents.events.filter((event) => event.runtimeSessionId === runtimeSessionId && event.eventKind.startsWith('map.'))}
                     combatants={runtimeCombatState.combatants}
+                    activeCombatantId={runtimeCombatState.turn.activeCombatantId}
+                    locateCombatantId={combatantToLocate}
                     actorPresenceCandidates={actorPresenceCandidates}
                     canManage={canManageServer}
                     onBoardChange={setRuntimeMapBoard}
@@ -547,6 +550,12 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     dndActorSheets={dndActorSheets}
                     dndActorPrefill={dndActorPrefill}
                     damagePreset={dndDamagePreset}
+                    onLocateCombatant={setCombatantToLocate}
+                    onRequestDice={(combatant) => {
+                      if (!combatant.sourceActorInstanceId) return;
+                      setDndDicePreset({ actorInstanceId: combatant.sourceActorInstanceId, nonce: Date.now() });
+                      document.getElementById('dnd-dice-check-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
                     onAppendEvent={handleAppendCombatEvent}
                   />
                   {isDndCampaign(selectedCampaign?.campaign.systemId) && <DndDiceCheckPanel

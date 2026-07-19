@@ -68,6 +68,7 @@ export type CombatantInput = {
 export type CombatRuntimeEventDraft = {
   eventKind:
     | 'combat.started'
+    | 'combat.initiative_rolled'
     | 'combat.turn_advanced'
     | 'combat.round_advanced'
     | 'combat.combatant_added'
@@ -135,12 +136,29 @@ function turnPayload(state: CombatRuntimeTableState, activeCombatantId?: string)
   return { roundNumber: state.turn.roundNumber, turnIndex: state.turn.turnIndex, activeCombatantId };
 }
 
-export function startCombat(state: CombatRuntimeTableState): { state: CombatRuntimeTableState; event: CombatRuntimeEventDraft | null } {
-  const order = eligibleCombatants(state);
+export function startCombat(
+  state: CombatRuntimeTableState,
+  rollDie: () => number = () => Math.floor(Math.random() * 20) + 1,
+): { state: CombatRuntimeTableState; event: CombatRuntimeEventDraft | null } {
+  const initiativeRolls: Array<{ combatantId: string; die: number; total: number }> = [];
+  const combatants = state.combatants.map((combatant) => {
+    if (combatant.status !== 'active' || combatant.isDefeated || combatant.initiative !== undefined) return combatant;
+    const die = Math.max(1, Math.min(20, Math.floor(rollDie())));
+    const initiative = die + combatant.initiativeModifier;
+    initiativeRolls.push({ combatantId: combatant.id, die, total: initiative });
+    return { ...combatant, initiative };
+  });
+  const order = sortCombatants(combatants.filter((combatant) => combatant.status === 'active' && !combatant.isDefeated));
   if (order.length === 0) return { state, event: null };
   const activeCombatantId = order[0].id;
-  const nextState = { combatants: state.combatants, turn: { status: 'active' as const, roundNumber: 1, turnIndex: 0, startedAt: new Date().toISOString(), activeCombatantId } };
-  return { state: nextState, event: { eventKind: 'combat.started', payload: { ...turnPayload(nextState), combatantCount: order.length } } };
+  const nextState = { combatants, turn: { status: 'active' as const, roundNumber: 1, turnIndex: 0, startedAt: new Date().toISOString(), activeCombatantId } };
+  return {
+    state: nextState,
+    event: {
+      eventKind: 'combat.started',
+      payload: { ...turnPayload(nextState), combatantCount: order.length, combatants, initiativeRolls },
+    },
+  };
 }
 
 export function advanceTurn(state: CombatRuntimeTableState, direction: 'next' | 'previous' = 'next'):

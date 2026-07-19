@@ -29,10 +29,13 @@ const combatants: Combatant[] = [manualNpc, campaignActor];
 check('initiative sort descending', sortCombatants([...combatants, unrolled])[0].id === 'actor-1');
 check('missing initiative sorts last', sortCombatants([...combatants, unrolled])[2].id === 'unrolled');
 
+const startWithMissing = startCombat({ ...empty, combatants: [...combatants, unrolled] }, () => 11);
+check('start combat rolls only missing initiatives', startWithMissing.state.combatants.find((combatant) => combatant.id === 'unrolled')?.initiative === 11 && startWithMissing.state.combatants.find((combatant) => combatant.id === 'actor-1')?.initiative === 18);
+
 let state = { ...empty, combatants };
 const started = startCombat(state);
 check('start combat selects first combatant', started.state.turn.activeCombatantId === 'actor-1' && started.state.turn.turnIndex === 0);
-check('append combat.started event payload model', started.event?.eventKind === 'combat.started' && typeof started.event?.payload.roundNumber === 'number');
+check('append combat.started event payload model', started.event?.eventKind === 'combat.started' && typeof started.event?.payload.roundNumber === 'number' && Array.isArray(started.event?.payload.combatants) && Array.isArray(started.event?.payload.initiativeRolls));
 state = started.state;
 
 const next = advanceTurn(state, 'next');
@@ -62,7 +65,7 @@ check('add/remove condition', withCondition.conditions[0] === 'Restrained' && wi
 const systemNote = { eventKind: 'system.note', payload: { text: 'A door opens.' } };
 check('append system.note payload model', systemNote.eventKind === 'system.note' && typeof systemNote.payload.text === 'string');
 const eventKinds: CombatRuntimeEventDraft['eventKind'][] = [
-  'combat.started', 'combat.turn_advanced', 'combat.round_advanced', 'combat.combatant_added', 'combat.combatant_updated', 'combat.combatant_removed', 'combat.paused', 'combat.resumed', 'combat.ended',
+  'combat.started', 'combat.initiative_rolled', 'combat.turn_advanced', 'combat.round_advanced', 'combat.combatant_added', 'combat.combatant_updated', 'combat.combatant_removed', 'combat.paused', 'combat.resumed', 'combat.ended',
 ];
 check('no update/delete runtime event action', !eventKinds.includes('runtime.event.update' as CombatRuntimeEventDraft['eventKind']) && !eventKinds.includes('runtime.event.delete' as CombatRuntimeEventDraft['eventKind']));
 check('local-only combat table limitation is represented', !('persist' in state) && !('database' in state));

@@ -45,3 +45,9 @@ server rejects it; it never treats the display hint as authority.
 - `npm run runtime:verify:token-ownership`
 - `npm run runtime:verify:room-permissions`
 - `npm run frontend:verify:room-permissions`
+
+## Combat HUD map focus
+
+The combat HUD may select and visually emphasize a linked token. This is not a
+movement grant: token ownership and Room Runtime server verification remain the
+only movement authority.

@@ -84,6 +84,15 @@ function applyTurnPayload(state: CombatRuntimeTableState, event: CombatRuntimeRe
   };
 }
 
+function applyCombatantsPayload(state: CombatRuntimeTableState, payload: Record<string, unknown>): CombatRuntimeTableState {
+  if (!Array.isArray(payload.combatants)) return state;
+  const combatants = payload.combatants.flatMap((value) => {
+    const combatant = combatantInput(value);
+    return combatant ? [combatant] : [];
+  });
+  return combatants.length > 0 ? { ...state, combatants } : state;
+}
+
 export function replayCombatRuntimeEvents(events: ReadonlyArray<CombatRuntimeReplayEvent>): CombatRuntimeTableState {
   const ordered = events
     .map((event, index) => ({ event, index }))
@@ -98,7 +107,7 @@ export function replayCombatRuntimeEvents(events: ReadonlyArray<CombatRuntimeRep
       if (combatant && !state.combatants.some((item) => item.id === combatant.id)) state = { ...state, combatants: [...state.combatants, combatant] };
       continue;
     }
-    if (event.eventKind === 'combat.combatant_updated') {
+    if (event.eventKind === 'combat.combatant_updated' || event.eventKind === 'combat.initiative_rolled') {
       const candidate = record(payload.combatant);
       const id = stringValue(candidate?.id);
       const existing = id ? state.combatants.find((item) => item.id === id) : undefined;
@@ -149,8 +158,8 @@ export function replayCombatRuntimeEvents(events: ReadonlyArray<CombatRuntimeRep
       };
       continue;
     }
-    if (event.eventKind === 'combat.started') {
-      state = applyTurnPayload(state, event, 'active');
+    if (event.eventKind === 'combat.started' || event.eventKind === 'combat.started_turn_based') {
+      state = applyTurnPayload(applyCombatantsPayload(state, payload), event, 'active');
       continue;
     }
     if (event.eventKind === 'combat.turn_advanced' || event.eventKind === 'combat.round_advanced') {

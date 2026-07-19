@@ -210,3 +210,10 @@ entry. Keep visible character actions separate from membership approval,
 clearance, Ready, and Runtime authority. Pending members may prepare but not
 submit; spectator entry is character-free; hosts may skip an optional carried
 character.
+
+## Combat Mode HUD Foundation (P5.COMBAT-MODE-HUD-FOUNDATION)
+
+Read `P5_COMBAT_MODE_HUD_FOUNDATION.md` before changing combat controls. The
+HUD derives its display from the existing combat table and append-only runtime
+events. It may locate a linked map token or focus DND dice, but does not grant
+movement, infer player authority, or automate combat resolution.

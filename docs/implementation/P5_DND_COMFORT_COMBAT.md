@@ -53,3 +53,10 @@ the final table decision.
 Run `npm run frontend:verify:dnd-comfort-combat` together with the existing
 combat replay/table, DND dice/actor, campaign-room, scene snapshot, local
 lobby, API, TypeScript, build, and leak checks.
+
+## Combat mode HUD follow-up
+
+`P5_COMBAT_MODE_HUD_FOUNDATION.md` adds an initiative rail and a current actor
+shortcut surface. Dice navigation only focuses the existing DND check panel;
+this document's manual host-confirmed damage and condition boundary remains in
+place.

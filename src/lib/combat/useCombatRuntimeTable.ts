@@ -117,7 +117,7 @@ export function useCombatRuntimeTable(scopeKey: string) {
     const initiative = die + current.initiativeModifier;
     const updated = { ...current, initiative };
     setState((previous) => ({ ...previous, combatants: previous.combatants.map((combatant) => combatant.id === id ? updated : combatant) }));
-    return { eventKind: 'combat.combatant_updated', payload: { combatant: updated, initiativeRoll: die, initiativeModifier: current.initiativeModifier } };
+    return { eventKind: 'combat.initiative_rolled', payload: { combatant: updated, initiativeRoll: die, initiativeModifier: current.initiativeModifier } };
   }, [state.combatants]);
 
   const start = useCallback(() => {

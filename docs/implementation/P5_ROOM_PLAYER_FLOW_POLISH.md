@@ -42,6 +42,12 @@ or combat automation.
 - `npm run frontend:verify:token-ownership`
 - `npm run runtime:verify:token-ownership`
 
+## Combat controls
+
+Combat status can be visible to all table participants, but this slice keeps
+turn lifecycle buttons host-managed. It does not infer a player combatant from
+display names or bypass the existing readiness and token-control boundaries.
+
 ## Character-entry CTA follow-up
 
 `P5_CHARACTER_ENTRY_CTA_ROUTE_FIX.md` adds visible next actions to the
