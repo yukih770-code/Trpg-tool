@@ -24,6 +24,7 @@ import type {
 } from './roomRuntimeLogTypes';
 import type { SharedDiceRollResponse } from './sharedDiceTypes';
 import type { AppendRoomMapEventInput, RoomMapEvent, RoomMapEventListResult } from './roomMapTypes';
+import type { CharacterClearanceDetails } from './characterClearanceDetails';
 import { resolveDevViewerUserId } from '../api/apiClient';
 
 export interface RoomServerHttpClientConfig {
@@ -170,6 +171,7 @@ export async function submitActorBindingToRoomServer(
       hpCurrent?: number;
       hpMax?: number;
       armorClass?: number;
+      details?: CharacterClearanceDetails;
     };
   },
 ): Promise<unknown> {

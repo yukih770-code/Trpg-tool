@@ -16,9 +16,16 @@ source link. `ownerUserId`, `controlledByUserId`, and a client-provided member
 id are never sufficient authority by themselves.
 
 Approved room-character placement carries additive `roomMemberId` and
-`actorBindingId` metadata alongside the existing `roomActorBinding` source.
-Old tokens and map events without those fields remain replayable and stay
-host-controlled unless an existing binding link can be proven.
+`actorBindingId` metadata. A player-controlled token must carry both exact
+values for the approved binding and member. Supported player-character source
+variants are `roomActorBinding`, `vaultActor`, `quickDraft`, `dndLiteActor`,
+and `campaign_actor`; non-binding source ids must also match the submitted actor
+id when one exists. `manual` / manual-summary, monster, NPC, object, unknown,
+or malformed tokens remain host-controlled.
+
+Old tokens and map events without exact member-plus-binding metadata remain
+replayable but host-controlled. This is deliberately stricter than a best-effort
+name or owner-id match: client-provided `ownerUserId` is never authority.
 
 ## Boundaries
 
@@ -42,6 +49,7 @@ server rejects it; it never treats the display hint as authority.
 ## Verification
 
 - `npm run frontend:verify:token-ownership`
+- `npm run frontend:verify:player-token-control`
 - `npm run runtime:verify:token-ownership`
 - `npm run runtime:verify:room-permissions`
 - `npm run frontend:verify:room-permissions`

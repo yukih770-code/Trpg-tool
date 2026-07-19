@@ -57,10 +57,16 @@ function hostAdd(id: string, token: Record<string, unknown>): void {
 }
 
 hostAdd('token-a', { name: 'Ariadne', sourceType: 'roomActorBinding', sourceId: bindingA, actorBindingId: bindingA, roomMemberId: playerA, kind: 'playerCharacter' });
+hostAdd('token-vault', { name: 'Ariadne vault', sourceType: 'vaultActor', sourceId: 'actor-a', actorBindingId: bindingA, roomMemberId: playerA, kind: 'playerCharacter' });
+hostAdd('token-draft', { name: 'Ariadne draft', sourceType: 'quickDraft', sourceId: 'actor-a', actorBindingId: bindingA, roomMemberId: playerA, kind: 'playerCharacter' });
+hostAdd('token-lite', { name: 'Ariadne lite', sourceType: 'dndLiteActor', sourceId: 'actor-a', actorBindingId: bindingA, roomMemberId: playerA, kind: 'playerCharacter' });
+hostAdd('token-campaign', { name: 'Ariadne campaign', sourceType: 'campaign_actor', sourceId: 'actor-a', actorBindingId: bindingA, roomMemberId: playerA, kind: 'playerCharacter' });
 hostAdd('token-b', { name: 'Borin', sourceType: 'roomActorBinding', sourceId: bindingB, actorBindingId: bindingB, roomMemberId: playerB, kind: 'playerCharacter' });
 hostAdd('token-monster', { name: 'Monster', sourceType: 'monsterTemplate', sourceId: 'monster-1', kind: 'monster' });
 hostAdd('token-manual', { name: 'Marker', sourceType: 'manual', kind: 'object' });
 hostAdd('token-spoofed', { name: 'Borin', sourceType: 'roomActorBinding', sourceId: bindingB, actorBindingId: bindingB, roomMemberId: playerB, kind: 'playerCharacter', ownerUserId: 'user-a', controlledByUserId: 'user-a' });
+hostAdd('token-no-member', { name: 'Old Token', sourceType: 'vaultActor', sourceId: 'actor-a', actorBindingId: bindingA, kind: 'playerCharacter' });
+hostAdd('token-spoofed-binding', { name: 'Ariadne', sourceType: 'vaultActor', sourceId: 'actor-a', actorBindingId: bindingB, roomMemberId: playerA, kind: 'playerCharacter' });
 
 function movePayload(tokenId: string) { return { tokenId, x: 33, y: 44 }; }
 function verify(userId: string | null, memberId: string, payload: unknown) {
@@ -72,12 +78,18 @@ function verify(userId: string | null, memberId: string, payload: unknown) {
 const cases: Array<{ name: string; run: () => void }> = [
   { name: 'host can move any token', run: () => expect(verify('user-host', hostMemberId, movePayload('token-monster')).allowed, 'host move denied') },
   { name: 'approved player can move own token', run: () => expect(verify('user-a', playerA, movePayload('token-a')).allowed, 'own token move denied') },
+  { name: 'approved player can move own vault token linked to binding', run: () => expect(verify('user-a', playerA, movePayload('token-vault')).allowed, 'vault token move denied') },
+  { name: 'approved player can move own quick draft token linked to binding', run: () => expect(verify('user-a', playerA, movePayload('token-draft')).allowed, 'quick draft token move denied') },
+  { name: 'approved player can move own DND Lite token linked to binding', run: () => expect(verify('user-a', playerA, movePayload('token-lite')).allowed, 'DND Lite token move denied') },
+  { name: 'approved player can move own campaign actor token linked to binding', run: () => expect(verify('user-a', playerA, movePayload('token-campaign')).allowed, 'campaign token move denied') },
   { name: 'approved player cannot move another player token', run: () => expect(!verify('user-a', playerA, movePayload('token-b')).allowed, 'other token move allowed') },
   { name: 'approved player cannot move monster token', run: () => expect(!verify('user-a', playerA, movePayload('token-monster')).allowed, 'monster move allowed') },
   { name: 'approved player cannot move manual host token', run: () => expect(!verify('user-a', playerA, movePayload('token-manual')).allowed, 'manual move allowed') },
   { name: 'pending member cannot move token', run: () => expect(!verify('user-pending', pending, movePayload('token-a')).allowed, 'pending move allowed') },
   { name: 'spectator cannot move token', run: () => expect(!verify('user-spectator', spectator, movePayload('token-a')).allowed, 'spectator move allowed') },
   { name: 'spoofed owner user id grants nothing', run: () => expect(!verify('user-a', playerA, movePayload('token-spoofed')).allowed, 'spoofed owner granted movement') },
+  { name: 'old token without room member metadata remains host controlled', run: () => expect(!verify('user-a', playerA, movePayload('token-no-member')).allowed, 'old token move allowed') },
+  { name: 'spoofed binding id is rejected', run: () => expect(!verify('user-a', playerA, movePayload('token-spoofed-binding')).allowed, 'spoofed binding move allowed') },
   { name: 'spoofed member id is rejected', run: () => expect(!verify('user-a', playerB, movePayload('token-b')).allowed, 'spoofed member accepted') },
   { name: 'malformed token move is rejected safely', run: () => expect(verify('user-a', playerA, { tokenId: 'token-a', x: 'bad', y: 30 }).code === 'invalidMove', 'malformed move was not rejected') },
   { name: 'null token move payload is rejected safely', run: () => expect(verify('user-a', playerA, null).code === 'invalidMove', 'null move payload was not rejected') },

@@ -689,13 +689,24 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   `src/components/platform/{RoomRuntimeEntryBridge,BasicMapBoard}.tsx`; scripts
   `frontend:verify:token-ownership` and `runtime:verify:token-ownership`.
 - Active hosts control all tokens. An active approved player can move only a
-  `roomActorBinding` player-character token that maps to their approved
-  clearance binding. Spectators, pending members, monsters, NPCs, manual tokens,
-  and other players' tokens are denied.
+  binding-linked player-character token that maps to their approved clearance
+  binding. `roomActorBinding`, vault, quick-draft, DND Lite, and campaign-actor
+  variants require exact persisted member/binding metadata; spectators, pending
+  members, monsters, NPCs, manual tokens, old metadata-free tokens, and other
+  players' tokens are denied.
 - Token metadata is a linkage clue, not authority: the server verifies viewer,
   room member, clearance binding, and persisted map token before it appends a
   move event. No persistence migration, full RBAC, fog/LOS, pathfinding, or
   automatic combat effect is added.
+
+## Character Clearance Details and Token Control Fix
+- Files: `src/lib/platform/characterClearanceDetails.ts`,
+  `CharacterClearanceDetailsSmoke.ts`, `CharacterClearanceDetailsPanel.tsx`,
+  Room Lobby binding transport, and existing token ownership guards.
+- The optional review payload is a bounded, compatibility-safe host-review
+  projection, not a full character sheet or rules engine. Player movement still
+  requires authenticated viewer -> active member -> approved clearance binding
+  -> exact persisted Token link.
 
 ## Room Player Flow Polish (P5.ROOM-PLAYER-FLOW-POLISH)
 - Files: `src/lib/platform/roomPlayerFlow.ts`, `RoomLobbyShell.tsx`,

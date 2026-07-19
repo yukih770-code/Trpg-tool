@@ -17,6 +17,7 @@
  */
 
 import type { ActorSnapshotHash } from './characterClearanceTypes.js';
+import type { CharacterClearanceDetails } from './characterClearanceDetails.js';
 import type { RoomMapMemberPermissionSummary } from './roomMapTypes.js';
 
 export type RoomMemberRole = 'host' | 'player' | 'spectator';
@@ -156,6 +157,8 @@ export interface RoomActorRefSummary {
   hpCurrent?: number;
   hpMax?: number;
   armorClass?: number;
+  /** Optional compact review metadata. It is not a character sheet or rules engine. */
+  details?: CharacterClearanceDetails;
 }
 
 // ── Clearance summary (M24.2a, OPTIONAL future layer) ───────────────────────

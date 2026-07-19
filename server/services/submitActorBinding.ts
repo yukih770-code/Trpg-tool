@@ -27,6 +27,7 @@ import type {
   RoomMemberReadyState,
   RoomSystemId,
 } from '../../src/lib/platform/roomTypes.js';
+import { normalizeCharacterClearanceDetails } from '../../src/lib/platform/characterClearanceDetails.js';
 
 const VALID_SOURCES: readonly RoomActorBindingSource[] = ['localActorVault', 'quickDraft', 'manualScaffold', 'imported', 'unknown'];
 
@@ -42,6 +43,7 @@ export interface SubmitActorBindingInput {
     hpCurrent?: number;
     hpMax?: number;
     armorClass?: number;
+    details?: unknown;
   };
 }
 
@@ -110,6 +112,7 @@ export function submitActorBinding(registry: RoomRegistry, input: SubmitActorBin
         hpCurrent: Number.isFinite(input.actorRef.hpCurrent) ? input.actorRef.hpCurrent : undefined,
         hpMax: Number.isFinite(input.actorRef.hpMax) ? input.actorRef.hpMax : undefined,
         armorClass: Number.isFinite(input.actorRef.armorClass) ? input.actorRef.armorClass : undefined,
+        details: normalizeCharacterClearanceDetails(input.actorRef.details),
       },
       status: 'pendingHostApproval',
       submittedAt: now,

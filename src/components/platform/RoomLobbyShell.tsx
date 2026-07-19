@@ -38,7 +38,10 @@ import { evaluateRoomRuntimeEntryEligibility } from '../../lib/platform/roomRunt
 import { describeRoomPlayerFlow } from '../../lib/platform/roomPlayerFlow';
 import { getRoomLobbyPresentationState } from '../../lib/platform/roomLobbyPresentationState';
 import type { RoomRuntimeLogEvent } from '../../lib/platform/roomRuntimeLogTypes';
+import { buildCharacterClearanceDetails, clearanceDetailsFromRoomActorRef } from '../../lib/platform/characterClearanceDetails';
+import { resolveRuntimeActorSnapshot } from './runtimeActorSnapshotSource';
 import { RoomRuntimeLogPreviewPanel } from './RoomRuntimeLogPreviewPanel';
+import { CharacterClearanceDetailsPanel } from './CharacterClearanceDetailsPanel';
 
 /**
  * RoomLobbyShell (v0) — platform Room Lobby surface.
@@ -191,6 +194,21 @@ export function RoomLobbyShell({
       ? listActorVaultRecords(systemId).filter((record) => record.status === 'active')
       : [];
   }, [room?.identity.systemId]);
+  const submissionDetails = useMemo(() => {
+    const snapshot = bindingSource === 'localActorVault' && bindingActorId.trim()
+      ? resolveRuntimeActorSnapshot({ systemId: room?.identity.systemId, actorId: bindingActorId, displayName: bindingName })
+      : undefined;
+    return buildCharacterClearanceDetails({
+      name: bindingName.trim() || '未命名角色',
+      sourceType: bindingSource,
+      systemId: room?.identity.systemId,
+      summary: bindingSummary.trim() || undefined,
+      hpCurrent: optionalNumber(bindingHpCurrent),
+      hpMax: optionalNumber(bindingHpMax),
+      armorClass: optionalNumber(bindingArmorClass),
+      snapshot: snapshot?.snapshot,
+    });
+  }, [bindingActorId, bindingArmorClass, bindingHpCurrent, bindingHpMax, bindingName, bindingSource, bindingSummary, room?.identity.systemId]);
 
   // WebSocket: connect + subscribe to this room; clean up on unmount.
   useEffect(() => {
@@ -373,6 +391,7 @@ export function RoomLobbyShell({
           hpCurrent: optionalNumber(bindingHpCurrent),
           hpMax: optionalNumber(bindingHpMax),
           armorClass: optionalNumber(bindingArmorClass),
+          details: submissionDetails,
         },
       });
       await refreshSnapshot();
@@ -627,12 +646,15 @@ export function RoomLobbyShell({
               <p className="text-[10px] italic text-slate-500">当前系统没有可选的本地角色。可创建快速角色，或完成完整车卡创建后返回此处选择。</p>
             )}
             {entryActionMode === 'existing' && bindingName.trim() && (
-              <div className="flex flex-wrap items-center gap-2 rounded border border-slate-300/40 bg-white/50 px-2 py-1.5 text-[10px]">
-                <span className="font-bold text-slate-700">已选择：{bindingName}</span>
-                <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 font-bold text-slate-600">{SOURCE_LABEL[bindingSource]}</span>
-                <button type="button" className={btn} disabled={bindingBusy || !iAmActive} onClick={submitBinding}>
-                  {bindingBusy ? '提交中…' : iAmActive ? (myBinding ? '更新入场角色' : currentMember?.role === 'host' ? '提交主持人角色' : '提交角色申请') : '等待加入批准后提交'}
-                </button>
+              <div className="rounded border border-slate-300/40 bg-white/50 px-2 py-1.5 text-[10px]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold text-slate-700">已选择：{bindingName}</span>
+                  <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 font-bold text-slate-600">{SOURCE_LABEL[bindingSource]}</span>
+                  <button type="button" className={btn} disabled={bindingBusy || !iAmActive} onClick={submitBinding}>
+                    {bindingBusy ? '提交中…' : iAmActive ? (myBinding ? '更新入场角色' : currentMember?.role === 'host' ? '提交主持人角色' : '提交角色申请') : '等待加入批准后提交'}
+                  </button>
+                </div>
+                <CharacterClearanceDetailsPanel title="将提交给主持人的角色信息" details={submissionDetails} />
               </div>
             )}
             {entryActionMode === 'quickDraft' && <div className="flex flex-wrap items-end gap-2">
@@ -664,6 +686,12 @@ export function RoomLobbyShell({
                 <input className={input} value={bindingActorId} onChange={(e) => { setBindingActorId(e.target.value); setBindingSource('quickDraft'); }} placeholder="仅用于本地角色库匹配" />
               </label>
             </details>}
+            {entryActionMode === 'quickDraft' && bindingName.trim() && (
+              <div className="rounded border border-slate-300/40 bg-white/50 px-2 py-1.5">
+                <CharacterClearanceDetailsPanel title="将提交给主持人的角色信息" details={submissionDetails} />
+                <p className="mt-1 text-[10px] text-slate-500">快速角色不会写入角色库；缺少装备或特性信息允许提交，但主持人可要求补充。</p>
+              </div>
+            )}
           {!iAmActive && <p className="text-[10px] italic text-slate-500">你可以先选择或创建角色；成为在线成员后即可提交给主持人。若想旁观，请返回加入页选择旁观者。</p>}
         </div>
         {bindingError && <div className="mt-1 text-[10px] font-bold text-red-700">提交失败：{bindingError}</div>}
@@ -694,19 +722,22 @@ export function RoomLobbyShell({
                 </div>
               ))}
               {pendingReviewBindings.map((binding) => (
-                <div key={binding.bindingId} className="flex flex-wrap items-center gap-2 rounded border border-amber-400/30 bg-amber-50/60 px-2 py-1.5 text-[11px]">
-                  <span className="font-bold text-slate-800">{memberName(binding.memberId)}</span>
-                  <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">角色申请</span>
-                  <span className="text-slate-600">{binding.actorRef.displayName}</span>
-                  {binding.actorRef.summary && <span className="max-w-[180px] truncate text-[10px] text-slate-500">{binding.actorRef.summary}</span>}
-                  {binding.actorRef.hpMax !== undefined && <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">HP {binding.actorRef.hpCurrent ?? binding.actorRef.hpMax}/{binding.actorRef.hpMax}</span>}
-                  {binding.actorRef.armorClass !== undefined && <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">AC {binding.actorRef.armorClass}</span>}
-                  <span className="ml-auto flex items-center gap-1">
-                    <button type="button" className={`${reviewBtn} border-emerald-500/50 text-emerald-700`} disabled={reviewBindingId === binding.bindingId} onClick={() => reviewBinding(binding.bindingId, 'approve')}>
-                      {reviewBindingId === binding.bindingId ? '处理中…' : '批准'}
-                    </button>
-                    <button type="button" className={`${reviewBtn} border-red-500/50 text-red-700`} disabled={reviewBindingId === binding.bindingId} onClick={() => reviewBinding(binding.bindingId, 'reject')}>拒绝</button>
-                  </span>
+                <div key={binding.bindingId} className="rounded border border-amber-400/30 bg-amber-50/60 px-2 py-1.5 text-[11px]">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold text-slate-800">{memberName(binding.memberId)}</span>
+                    <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">角色申请</span>
+                    <span className="text-slate-600">{binding.actorRef.displayName}</span>
+                    {binding.actorRef.summary && <span className="max-w-[180px] truncate text-[10px] text-slate-500">{binding.actorRef.summary}</span>}
+                    {binding.actorRef.hpMax !== undefined && <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">HP {binding.actorRef.hpCurrent ?? binding.actorRef.hpMax}/{binding.actorRef.hpMax}</span>}
+                    {binding.actorRef.armorClass !== undefined && <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">AC {binding.actorRef.armorClass}</span>}
+                    <span className="ml-auto flex items-center gap-1">
+                      <button type="button" className={`${reviewBtn} border-emerald-500/50 text-emerald-700`} disabled={reviewBindingId === binding.bindingId} onClick={() => reviewBinding(binding.bindingId, 'approve')}>
+                        {reviewBindingId === binding.bindingId ? '处理中…' : '批准'}
+                      </button>
+                      <button type="button" className={`${reviewBtn} border-red-500/50 text-red-700`} disabled={reviewBindingId === binding.bindingId} onClick={() => reviewBinding(binding.bindingId, 'reject')}>拒绝</button>
+                    </span>
+                  </div>
+                  <CharacterClearanceDetailsPanel details={binding.actorRef.details ?? clearanceDetailsFromRoomActorRef(binding.actorRef)} />
                 </div>
               ))}
             </div>

@@ -24,8 +24,10 @@ pressure.
 
 Hosts see one queue combining pending join requests and character submissions.
 The queue reuses the existing approve/reject handlers and does not create a
-second review path. Ready and table entry appear once in My Next Step; leaving
-the lobby remains the header action.
+second review path. Character submissions include a collapsed, display-safe
+review summary; hosts expand it only when they need basic, combat, equipment,
+trait, long-term-effect, or missing-information context. Ready and table entry
+appear once in My Next Step; leaving the lobby remains the header action.
 
 ## Technical details
 

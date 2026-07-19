@@ -736,7 +736,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       presentation="runtime"
       canManage={runtimePermissions['map.grid.edit']}
       canMoveToken={(token) => runtimePermissions['map.token.move.own'] && isTokenLinkedToApprovedRoomMember(currentRoom, context.currentMemberId, token)}
-      tokenMoveDeniedMessage="你只能移动自己的已准入角色。"
+      tokenMoveDeniedMessage="只能移动与已准入角色绑定关联的 Token。旧的未关联 Token 仍由主持人控制。"
       controlledTokenBindingId={context.approvedActorBindingId}
       canPinRanges={canPinRanges}
       canShareTemporaryRanges={runtimePermissions['map.preview.range.temporary']}

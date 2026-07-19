@@ -16,6 +16,11 @@ surface over the existing Room binding and clearance contracts.
 - A quick draft is an EntryCharacterRef candidate only. It does not write to
   the permanent character library.
 
+Before submission, the selected source is projected into the same bounded
+clearance-detail disclosure used by the host. A quick draft is explicitly
+session-only and may omit equipment or traits; those omissions are review
+context, not an automatic rejection.
+
 ## Pending Membership
 
 Pending members may prepare a Vault selection or quick draft while waiting for

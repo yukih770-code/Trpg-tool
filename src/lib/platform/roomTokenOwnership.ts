@@ -1,6 +1,15 @@
 import type { MapToken } from '../map/mapRuntimeTypes.js';
 import type { RoomSnapshot } from './roomTypes.js';
 
+/** Player-controlled character token variants that can be linked to a room binding. */
+const PLAYER_BINDING_TOKEN_SOURCES = new Set<MapToken['sourceType']>([
+  'roomActorBinding',
+  'vaultActor',
+  'quickDraft',
+  'dndLiteActor',
+  'campaign_actor',
+]);
+
 /**
  * Finds a token's approved room-binding link. This is a shared data check, not
  * authority: the Room Server must also bind the claimed member to its trusted
@@ -11,16 +20,16 @@ export function isTokenLinkedToApprovedRoomMember(
   memberId: string | undefined,
   token: Pick<MapToken, 'kind' | 'sourceType' | 'sourceId' | 'roomMemberId' | 'actorBindingId'>,
 ): boolean {
-  if (!room || !memberId || token.kind !== 'playerCharacter' || token.sourceType !== 'roomActorBinding') return false;
+  if (!room || !memberId || token.kind !== 'playerCharacter' || !PLAYER_BINDING_TOKEN_SOURCES.has(token.sourceType)) return false;
   const binding = room.lobby?.actorBindings.find((candidate) =>
     candidate.memberId === memberId
     && candidate.status === 'approved'
     && candidate.clearance?.status === 'approved',
   );
-  const bindingId = token.actorBindingId ?? token.sourceId;
-  return Boolean(
-    binding
-    && bindingId === binding.bindingId
-    && (token.roomMemberId === undefined || token.roomMemberId === memberId),
-  );
+  // Old / manual tokens remain replayable but host-controlled: a player must
+  // have both exact room member and approved binding metadata to move a token.
+  if (!binding || token.roomMemberId !== memberId || token.actorBindingId !== binding.bindingId) return false;
+  if (token.sourceType === 'roomActorBinding') return token.sourceId === binding.bindingId;
+  const actorId = binding.actorRef.actorId?.trim();
+  return !actorId || token.sourceId === actorId;
 }

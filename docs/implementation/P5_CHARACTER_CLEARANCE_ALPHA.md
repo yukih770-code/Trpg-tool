@@ -22,6 +22,19 @@ matching system. That selection is read-only. A quick draft stores only a
 display-safe session summary: name, optional short description, HP, and AC.
 Neither source writes the character library or creates a CampaignActorInstance.
 
+## Review detail metadata
+
+An optional `CharacterClearanceDetails` summary now travels with a binding.
+It is a bounded host-review projection: basic identity, combat numbers,
+equipment labels, traits/feats, long-term effects, and review hints may be
+present; every field is optional. The Lobby uses the same compact disclosure
+for a player's submission preview and the host's review queue. Old shallow
+bindings fall back to their existing name/summary/HP/AC fields.
+
+Missing data is shown as not provided rather than inferred. This remains
+review metadata only: no legality engine, automated rule enforcement, full
+character-sheet sync, secret/private data dump, or copyrighted rule text.
+
 ## Host Review
 
 The host can approve or reject a submitted binding. Rejection can include an
