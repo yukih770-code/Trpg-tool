@@ -78,3 +78,9 @@ Permission decisions remain server-side. The Lobby and Runtime present the
 result in product language: a player may move only their admitted character,
 the host controls other Tokens, and spectators are read-only. No new permission
 action or transport message is introduced by this presentation layer.
+
+## Lobby IA boundary
+
+The compact Lobby roster and host review queue are display and routing changes
+only. They reuse existing server-validated actions and do not grant a member
+map, token, Runtime, or review authority.

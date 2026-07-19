@@ -42,3 +42,10 @@ WebSocket protocol. Character approval and Runtime entry remain server-owned.
 - `npm run frontend:verify:character-entry-cta`
 - Existing character entry, clearance, room player flow, permissions, and token
   ownership smokes remain required.
+
+## Lobby placement
+
+The Room Lobby IA keeps these actions directly below My Next Step only while a
+member needs to choose or revise a character. Hosts are not pressured to bind a
+character, pending members may prepare without submitting, and spectators do
+not receive character-entry controls.

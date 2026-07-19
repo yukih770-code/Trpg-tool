@@ -211,6 +211,13 @@ clearance, Ready, and Runtime authority. Pending members may prepare but not
 submit; spectator entry is character-free; hosts may skip an optional carried
 character.
 
+## Room Lobby IA Redesign (P5.ROOM-LOBBY-IA-REDESIGN)
+
+Read `P5_ROOM_LOBBY_IA_REDESIGN.md` before changing Lobby layout or copy.
+`roomLobbyPresentationState.ts` is pure UI guidance over the existing snapshot
+and entry guard. Keep joining, character review, clearance, Ready, Runtime
+entry, token movement, and live transport authority where they already are.
+
 ## Combat Mode HUD Foundation (P5.COMBAT-MODE-HUD-FOUNDATION)
 
 Read `P5_COMBAT_MODE_HUD_FOUNDATION.md` before changing combat controls. The

@@ -55,3 +55,10 @@ display names or bypass the existing readiness and token-control boundaries.
 existing-character selection or quick draft while pending, then submit only
 after membership approval. Spectator entry remains a join-page choice; hosts
 may skip an optional host-carried character.
+
+## Lobby presentation follow-up
+
+`P5_ROOM_LOBBY_IA_REDESIGN.md` consolidates the player-flow copy into one My
+Next Step card. It does not replace this state model or change approval, Ready,
+or Runtime-entry rules; it only removes duplicate dashboards and moves
+diagnostic state behind a collapsed disclosure.

@@ -713,6 +713,16 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   host-skip actions without changing Room approval, clearance, Ready, Runtime,
   or token authority.
 
+## Room Lobby IA Redesign (P5.ROOM-LOBBY-IA-REDESIGN)
+- Files: `src/lib/platform/roomLobbyPresentationState.ts`,
+  `roomLobbyPresentationStateSmoke.ts`, and `RoomLobbyShell.tsx`.
+- One pure presentation adapter derives My Next Step from the existing room
+  snapshot and Runtime-entry eligibility. The default Lobby presents a compact
+  roster and host-only combined review queue; diagnostics and logs are
+  collapsed.
+- Don't violate: this adds no room permission, clearance, Ready, Runtime-entry,
+  token-ownership, WebSocket, or persistence behavior.
+
 ## Combat Mode HUD Foundation (P5.COMBAT-MODE-HUD-FOUNDATION)
 - Files: `src/lib/combat/combatModeHud.ts`, `CombatModeHud.tsx`,
   `CombatRuntimeTable.tsx`, `BasicMapBoard.tsx`, and Server Workspace wiring.

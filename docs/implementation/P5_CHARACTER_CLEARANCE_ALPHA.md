@@ -68,3 +68,10 @@ room-only draft, and the existing DND full character creator. A pending member
 may prepare a choice but cannot submit it until their room membership is
 active. This is a UX layer only: host binding review and clearance approval are
 still required before Ready.
+
+## Presentation boundary
+
+The Lobby may describe an approved character as ready for the next step, but it
+does not expose the underlying clearance record in its normal roster. The
+server still requires the approval and admission invariant before it accepts a
+player Ready update or Runtime entry.
