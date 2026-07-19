@@ -5,6 +5,8 @@ export type MapTokenSourceType = 'combatant' | 'campaign_actor' | 'dndLiteActor'
 
 export type MapTokenKind = 'playerCharacter' | 'npc' | 'monster' | 'companion' | 'object' | 'unknown';
 
+import type { RuntimeAcDisplay, RuntimeHpDisplay, RuntimeTokenRelation, RuntimeVisibility } from '../platform/roomRuntimeVisibility.js';
+
 export type MapTokenHpSummary = {
   current?: number;
   max?: number;
@@ -79,6 +81,11 @@ export type MapToken = {
   initials?: string;
   kind?: MapTokenKind;
   hpSummary?: MapTokenHpSummary;
+  /** Server-projected display values. Missing means hidden, not zero. */
+  hpDisplay?: RuntimeHpDisplay;
+  acDisplay?: RuntimeAcDisplay;
+  visibility?: RuntimeVisibility;
+  relation?: RuntimeTokenRelation;
   conditionSummary?: string[];
   sourceCombatantId?: string;
   sourceActorInstanceId?: string;

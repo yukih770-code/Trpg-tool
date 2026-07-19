@@ -771,3 +771,15 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - The required future boundary is server-side projection by authenticated
   viewer; start with public observed data, then add party/owner/host and reveal
   scopes. Do not expose monster/NPC secrets through public RuntimeLog payloads.
+
+## Token Inspect Safe Visual Surface (P5.TOKEN-INSPECT-SAFE-VISUAL-SURFACE)
+- Files: `server/room/roomRuntimeVisibilityProjection.ts`,
+  `src/lib/platform/roomRuntimeVisibility.ts`, `RuntimeTokenInspectPanel.tsx`,
+  and Room HTTP/WebSocket projection hooks.
+- RuntimeLog and Room Map reads are verified and projected per room member
+  before delivery. Hosts receive full currently available data; owners receive
+  their own exact values; non-host enemy/NPC defaults are injury stage plus
+  unknown AC.
+- Hidden Token/template payloads and non-owner clearance/binding detail do not
+  cross the non-host transport boundary.
+- Doc: `P5_TOKEN_INSPECT_SAFE_VISUAL_SURFACE`.

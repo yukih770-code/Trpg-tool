@@ -1,3 +1,5 @@
+import type { RuntimeAcDisplay, RuntimeHpDisplay, RuntimeTokenRelation, RuntimeVisibility } from '../platform/roomRuntimeVisibility.js';
+
 export type CombatantKind = 'character' | 'npc' | 'other';
 
 export type CombatantSourceType = 'campaign_actor' | 'manual_npc' | 'manual_pc' | 'unknown';
@@ -29,6 +31,11 @@ export type Combatant = {
   status: CombatantStatus;
   hitPoints?: number;
   maxHitPoints?: number;
+  /** Viewer-safe fields supplied by the Room Runtime projection. */
+  hpDisplay?: RuntimeHpDisplay;
+  acDisplay?: RuntimeAcDisplay;
+  visibility?: RuntimeVisibility;
+  relation?: RuntimeTokenRelation;
 };
 
 export type CombatTurnState = {
@@ -66,6 +73,10 @@ export type CombatantInput = {
   status?: CombatantStatus;
   hitPoints?: number;
   maxHitPoints?: number;
+  hpDisplay?: RuntimeHpDisplay;
+  acDisplay?: RuntimeAcDisplay;
+  visibility?: RuntimeVisibility;
+  relation?: RuntimeTokenRelation;
 };
 
 export const COMBAT_RUNTIME_EVENT_KINDS = [

@@ -34,6 +34,7 @@ import { listRoomMapEvents } from './services/listRoomMapEvents.js';
 import { setRoomMapMemberPermission } from './services/setRoomMapMemberPermission.js';
 import { mapRuntimeActionForMapEvent, resolveRoomParticipant, resolveRoomRuntimePermission } from './room/roomRuntimePermissionGuard.js';
 import { resolveVerifiedRoomTokenMove } from './room/roomTokenControlGuard.js';
+import { projectRoomMapEventsForViewer, projectRoomSnapshotForViewer, projectRuntimeLogEventsForViewer } from './room/roomRuntimeVisibilityProjection.js';
 import { createInMemoryActorAdmissionRegistry } from './actor-admission-registry.js';
 import { readServerRuntimeConfigFromEnv } from './config/serverRuntimeConfig.js';
 import { readDatabaseRuntimeConfigFromEnv } from './config/databaseRuntimeConfig.js';
@@ -221,6 +222,25 @@ const roomSocketServer = createRoomSocketServer({
   registry,
   path: '/ws',
   resolveViewer: resolveRoomSocketViewer,
+  projectRoomSnapshot: projectRoomSnapshotForViewer,
+  projectRuntimeLogEvents: (roomId, memberId, events) => {
+    const room = registry.get(roomId);
+    if (!room) return [];
+    const raw = listRuntimeLogEvents(registry, runtimeLogRegistry, {
+      roomId,
+      includeHostOnly: room.members.some((member) => member.memberId === memberId && member.role === 'host'),
+    }).result?.events ?? [];
+    const requested = new Set(events.map((event) => event.eventId));
+    return projectRuntimeLogEventsForViewer(room, memberId, raw, roomMapRegistry.list(roomId).events)
+      .filter((event) => requested.has(event.eventId));
+  },
+  projectMapEvents: (roomId, memberId, events) => {
+    const room = registry.get(roomId);
+    if (!room) return [];
+    const projectedAll = projectRoomMapEventsForViewer(room, memberId, roomMapRegistry.list(roomId).events);
+    const requested = new Set(events.map((event) => event.mapEventId));
+    return projectedAll.filter((event) => requested.has(event.mapEventId));
+  },
 });
 
 function requireRoomRuntimeAction(
@@ -433,7 +453,7 @@ app.get('/rooms/:roomId', (req, res) => {
     res.status(access.code === 'unauthenticated' ? 401 : 403).json({ error: 'notAuthorized', message: 'Authenticated room membership is required.' });
     return;
   }
-  res.json(room);
+  res.json(projectRoomSnapshotForViewer(room, memberId));
 });
 
 // Non-destructive room lifecycle action. Existing snapshots, RuntimeLog events,
@@ -568,8 +588,8 @@ app.post('/rooms/:roomId/members/:memberId/ready', (req, res) => {
 });
 
 // ── RuntimeLog server v0 (M21) ──────────────────────────────────────────────
-// Append-only per-room event stream. NOT in RoomSnapshot, NOT formal Runtime, NO
-// real auth/projection. Only public events are broadcast / listed in v0.
+// Append-only per-room event stream. It remains separate from RoomSnapshot, but
+// every read is now bound to a verified active member and projected per viewer.
 
 app.get('/rooms/:roomId/runtime-log', (req, res) => {
   const afterSeqRaw = req.query.afterSeq;
@@ -583,7 +603,14 @@ app.get('/rooms/:roomId/runtime-log', (req, res) => {
     }
     afterSeq = Number(afterSeqRaw);
   }
-  const result = listRuntimeLogEvents(registry, runtimeLogRegistry, { roomId: req.params.roomId, afterSeq });
+  const memberId = typeof req.query.memberId === 'string' ? req.query.memberId : undefined;
+  const room = requireRoomRuntimeAction(req, res, req.params.roomId, memberId, 'combat.view');
+  if (!room) return;
+  const member = room.members.find((candidate) => candidate.memberId === memberId);
+  const result = listRuntimeLogEvents(registry, runtimeLogRegistry, {
+    roomId: req.params.roomId,
+    includeHostOnly: member?.role === 'host',
+  });
   if (result.decision === 'roomNotFound') {
     res.status(404).json({ error: 'roomNotFound' });
     return;
@@ -592,7 +619,16 @@ app.get('/rooms/:roomId/runtime-log', (req, res) => {
     res.status(400).json({ error: 'invalidAfterSeq', message: result.message });
     return;
   }
-  res.json(result.result);
+  const raw = result.result;
+  const projected = raw
+    ? projectRuntimeLogEventsForViewer(room, memberId, raw.events, roomMapRegistry.list(room.identity.roomId).events)
+    : [];
+  res.json(raw && {
+    ...raw,
+    // Projection needs all prior events to produce a coherent current safe
+    // combat snapshot; afterSeq belongs on the already-projected view.
+    events: afterSeq === undefined ? projected : projected.filter((event) => event.seq > afterSeq),
+  });
 });
 
 app.post('/rooms/:roomId/runtime-log/events', (req, res) => {
@@ -612,11 +648,21 @@ app.post('/rooms/:roomId/runtime-log/events', (req, res) => {
     res.status(status).json({ error: result.decision, message: result.message });
     return;
   }
-  // Broadcast public events only; hostOnly is stored but withheld (NOT secure).
-  if (result.event && result.event.visibility === 'public') {
+  // Socket delivery applies a per-member projection. Host-only events reach only
+  // the host; public combat data is still redacted for non-host viewers.
+  if (result.event) {
     roomSocketServer.broadcastRuntimeLogAppended(result.event.roomId, [result.event]);
   }
-  res.json({ event: result.event });
+  const room = registry.get(req.params.roomId);
+  const authorIsHost = room?.members.some((member) => member.memberId === body.authorMemberId && member.role === 'host') ?? false;
+  const raw = room
+    ? listRuntimeLogEvents(registry, runtimeLogRegistry, { roomId: room.identity.roomId, includeHostOnly: authorIsHost }).result?.events ?? []
+    : [];
+  const projected = room
+    ? projectRuntimeLogEventsForViewer(room, body.authorMemberId, raw, roomMapRegistry.list(room.identity.roomId).events)
+      .find((event) => event.eventId === result.event?.eventId)
+    : result.event;
+  res.json({ event: projected ?? result.event });
 });
 
 // ── Room Map stream v0 ─────────────────────────────────────────────────────
@@ -638,8 +684,6 @@ app.get('/rooms/:roomId/map-events', (req, res) => {
   if (!requireRoomRuntimeAction(req, res, req.params.roomId, memberId, 'map.view')) return;
   const result = listRoomMapEvents(registry, roomMapRegistry, {
     roomId: req.params.roomId,
-    afterSeq: afterSeqRaw === undefined ? undefined : Number(afterSeqRaw),
-    mapId,
   });
   if (result.decision === 'roomNotFound') {
     res.status(404).json({ error: 'roomNotFound' });
@@ -649,7 +693,16 @@ app.get('/rooms/:roomId/map-events', (req, res) => {
     res.status(400).json({ error: 'invalidMapRequest', message: result.message });
     return;
   }
-  res.json(result.result);
+  const room = registry.get(req.params.roomId);
+  const raw = result.result;
+  const projected = room && raw ? projectRoomMapEventsForViewer(room, memberId, raw.events) : raw?.events ?? [];
+  const afterSeq = afterSeqRaw === undefined ? undefined : Number(afterSeqRaw);
+  res.json(raw && {
+    ...raw,
+    // Hidden token transitions require replay of the full authoritative map
+    // stream before applying caller filters.
+    events: projected.filter((event) => (mapId === undefined || event.mapId === mapId) && (afterSeq === undefined || event.seq > afterSeq)),
+  });
 });
 
 app.post('/rooms/:roomId/map-events', (req, res) => {
@@ -687,7 +740,9 @@ app.post('/rooms/:roomId/map-events', (req, res) => {
     return;
   }
   roomSocketServer.broadcastMapEventAppended(result.event.roomId, [result.event]);
-  res.json({ event: result.event });
+  const room = registry.get(req.params.roomId);
+  const projected = room ? projectRoomMapEventsForViewer(room, body.authorMemberId, roomMapRegistry.list(room.identity.roomId).events).find((event) => event.mapEventId === result.event?.mapEventId) : undefined;
+  res.json({ event: projected ?? result.event });
 });
 
 // Host-managed collaboration grants for the Room Map. Memory-only v0: they

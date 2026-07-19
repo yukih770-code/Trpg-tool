@@ -1,0 +1,71 @@
+import { createInMemoryRoomRegistry } from '../room-registry.js';
+import { createRoom } from '../services/createRoom.js';
+import { joinRoom } from '../services/joinRoom.js';
+import { approveMember } from '../services/approveMember.js';
+import { resolveRoomRuntimePermission } from './roomRuntimePermissionGuard.js';
+import { projectRoomMapEventsForViewer, projectRoomSnapshotForViewer, projectRuntimeLogEventsForViewer } from './roomRuntimeVisibilityProjection.js';
+import type { CurrentViewerContext } from '../auth/currentViewerContext.js';
+import type { RoomMapEvent, RoomRuntimeLogEvent } from '../protocol/room-protocol.js';
+
+function expect(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(message);
+}
+
+function viewer(userId: string | null): CurrentViewerContext {
+  return { viewerUserId: userId, isAuthenticated: userId !== null, authTrustLevel: userId ? 'dev_header' : 'anonymous', isDevOnly: userId !== null, isServiceInternal: false, notes: [] };
+}
+
+const rooms = createInMemoryRoomRegistry();
+const created = createRoom({ hostDisplayName: 'Host', hostUserId: 'user_host', systemId: 'dnd5e-2024' }).room;
+rooms.create(created);
+const host = created.members[0];
+expect(host, 'room must have a host');
+
+const joinedPlayer = joinRoom(rooms, { inviteCodeOrRoomCode: created.identity.roomCode, requestedDisplayName: 'Player', requestedRole: 'player', userId: 'user_player' });
+const joinedSpectator = joinRoom(rooms, { inviteCodeOrRoomCode: created.identity.roomCode, requestedDisplayName: 'Spectator', requestedRole: 'spectator', userId: 'user_spectator' });
+const joinedPending = joinRoom(rooms, { inviteCodeOrRoomCode: created.identity.roomCode, requestedDisplayName: 'Pending', requestedRole: 'player', userId: 'user_pending' });
+expect(joinedPlayer.memberId && joinedSpectator.memberId && joinedPending.memberId, 'joins must create members');
+approveMember(rooms, { roomId: created.identity.roomId, memberId: joinedPlayer.memberId, decidedByMemberId: host.memberId });
+approveMember(rooms, { roomId: created.identity.roomId, memberId: joinedSpectator.memberId, decidedByMemberId: host.memberId });
+const room = rooms.get(created.identity.roomId);
+expect(room, 'room must be available');
+
+expect(!resolveRoomRuntimePermission({ room, viewer: viewer('user_other'), memberId: 'not-a-member', action: 'combat.view' }).allowed, 'non-member cannot view runtime');
+expect(!resolveRoomRuntimePermission({ room, viewer: viewer('user_pending'), memberId: joinedPending.memberId, action: 'combat.view' }).allowed, 'pending member cannot view runtime');
+expect(resolveRoomRuntimePermission({ room, viewer: viewer('user_player'), memberId: joinedPlayer.memberId, action: 'combat.view' }).allowed, 'approved player can view runtime');
+expect(resolveRoomRuntimePermission({ room, viewer: viewer('user_spectator'), memberId: joinedSpectator.memberId, action: 'combat.view' }).allowed, 'active spectator can view public runtime');
+
+const now = new Date().toISOString();
+const mapEvents: RoomMapEvent[] = [
+  { mapEventId: 'map-1', roomId: room.identity.roomId, mapId: 'map', seq: 1, createdAt: now, authorMemberId: host.memberId, eventKind: 'map.token_added', payload: { token: { id: 'hero', name: 'Hero', displayName: 'Hero', x: 20, y: 20, size: 'medium', sourceType: 'roomActorBinding', kind: 'playerCharacter', actorBindingId: 'binding-hero', roomMemberId: joinedPlayer.memberId, hpSummary: { current: 14, max: 20 }, conditionSummary: ['Blessed'] } } },
+  { mapEventId: 'map-2', roomId: room.identity.roomId, mapId: 'map', seq: 2, createdAt: now, authorMemberId: host.memberId, eventKind: 'map.token_added', payload: { token: { id: 'goblin', name: 'Goblin', x: 60, y: 50, size: 'small', sourceType: 'manual', kind: 'monster', notes: 'AC 15, ambush trait', hpSummary: { current: 3, max: 7 }, conditionSummary: ['Poisoned'] } } },
+  { mapEventId: 'map-3', roomId: room.identity.roomId, mapId: 'map', seq: 3, createdAt: now, authorMemberId: host.memberId, eventKind: 'map.token_added', payload: { token: { id: 'hidden', name: 'Hidden monster', x: 75, y: 50, size: 'medium', sourceType: 'manual', kind: 'monster', isHidden: true, notes: 'secret' } } },
+];
+const playerMap = projectRoomMapEventsForViewer(room, joinedPlayer.memberId, mapEvents);
+const hostMap = projectRoomMapEventsForViewer(room, host.memberId, mapEvents);
+const playerHero = playerMap.find((event) => event.eventKind === 'map.token_added' && (event.payload.token as { id?: string } | undefined)?.id === 'hero')?.payload.token as { hpDisplay?: { kind?: string; current?: number }; acDisplay?: { kind?: string } } | undefined;
+const playerGoblin = playerMap.find((event) => event.eventKind === 'map.token_added' && (event.payload.token as { id?: string } | undefined)?.id === 'goblin')?.payload.token as { hpSummary?: unknown; hpDisplay?: { kind?: string }; notes?: unknown; conditionSummary?: string[]; actorBindingId?: unknown } | undefined;
+expect(playerHero?.hpDisplay?.kind === 'exact' && playerHero.hpDisplay.current === 14, 'owner receives exact own HP');
+expect(playerGoblin?.hpDisplay?.kind === 'stage' && playerGoblin.hpSummary === undefined && playerGoblin.notes === undefined, 'player receives redacted enemy HP and notes');
+expect(playerGoblin?.conditionSummary?.length === 0 && playerGoblin?.actorBindingId === undefined, 'enemy conditions and bindings stay hidden');
+expect(!playerMap.some((event) => (event.payload.token as { id?: string } | undefined)?.id === 'hidden'), 'hidden token is absent from player map payload');
+expect(hostMap.some((event) => (event.payload.token as { id?: string } | undefined)?.id === 'hidden'), 'host retains hidden token payload');
+
+const combatants = [
+  { id: 'hero-combat', displayName: 'Hero', sourceType: 'manual_pc', kind: 'character', mapTokenId: 'hero', initiative: 15, initiativeModifier: 2, hpCurrent: 14, hpMax: 20, armorClass: 16, conditions: ['Blessed'] },
+  { id: 'goblin-combat', displayName: 'Goblin', sourceType: 'manual_npc', kind: 'npc', mapTokenId: 'goblin', initiative: 12, initiativeModifier: 2, hpCurrent: 3, hpMax: 7, armorClass: 15, conditions: ['Poisoned'], notes: 'legendary secret' },
+];
+const logEvents: RoomRuntimeLogEvent[] = [{ eventId: 'runtime-1', roomId: room.identity.roomId, seq: 1, createdAt: now, authorMemberId: host.memberId, kind: 'combat.started', visibility: 'public', text: 'Combat started', payload: { combatants, roundNumber: 1, turnIndex: 0, activeCombatantId: 'hero-combat' } }];
+const playerLog = projectRuntimeLogEventsForViewer(room, joinedPlayer.memberId, logEvents, mapEvents);
+const hostLog = projectRuntimeLogEventsForViewer(room, host.memberId, logEvents, mapEvents);
+const playerCombatants = (playerLog[0]?.payload as { combatants?: Array<{ id: string; hpCurrent?: number; hpMax?: number; armorClass?: number; notes?: unknown; hpDisplay?: { kind?: string } }> }).combatants ?? [];
+const playerEnemy = playerCombatants.find((combatant) => combatant.id === 'goblin-combat');
+expect(playerEnemy?.hpDisplay?.kind === 'stage' && playerEnemy.hpCurrent === undefined && playerEnemy.hpMax === undefined && playerEnemy.armorClass === undefined && playerEnemy.notes === undefined, 'player combat projection hides enemy exact values and notes');
+const hostEnemy = ((hostLog[0]?.payload as { combatants?: Array<{ id: string; hpCurrent?: number; armorClass?: number }> }).combatants ?? []).find((combatant) => combatant.id === 'goblin-combat');
+expect(hostEnemy?.hpCurrent === 3 && hostEnemy.armorClass === 15, 'host receives full combat data');
+
+const projectedSnapshot = projectRoomSnapshotForViewer(room, joinedPlayer.memberId);
+expect(projectedSnapshot.members.every((member) => member.userId === undefined && member.reconnectTokenId === undefined), 'non-host snapshot strips account and reconnect ids');
+expect(projectRoomSnapshotForViewer(room, host.memberId) === room, 'host snapshot remains authoritative view');
+
+console.log('Runtime visibility projection smoke passed: member guard model, map redaction, combat projection, and snapshot redaction.');

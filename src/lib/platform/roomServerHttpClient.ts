@@ -234,15 +234,18 @@ export async function setRoomMemberReadyOnServer(
 }
 
 // ── RuntimeLog server v0 (M21) ──────────────────────────────────────────────
-// Append-only per-room event stream. v0 lists/broadcasts public events only.
+// Append-only per-room event stream. Reads are viewer-projected by the server.
 
-/** List a room's RuntimeLog events; afterSeq returns only events with seq > afterSeq. */
+/** List this member's projected RuntimeLog events; afterSeq returns seq > cursor. */
 export async function listRoomRuntimeLog(
   config: RoomServerHttpClientConfig,
   roomId: string,
-  options?: { afterSeq?: number },
+  options?: { afterSeq?: number; memberId?: string },
 ): Promise<RoomRuntimeLogListResult> {
-  const query = options?.afterSeq !== undefined ? `?afterSeq=${encodeURIComponent(String(options.afterSeq))}` : '';
+  const queryParams = new URLSearchParams();
+  if (options?.afterSeq !== undefined) queryParams.set('afterSeq', String(options.afterSeq));
+  if (options?.memberId) queryParams.set('memberId', options.memberId);
+  const query = queryParams.size > 0 ? `?${queryParams.toString()}` : '';
   return request<RoomRuntimeLogListResult>(config, `/rooms/${encodeURIComponent(roomId)}/runtime-log${query}`);
 }
 

@@ -1,5 +1,12 @@
 # P5 Token Inspect Visibility Audit
 
+## Status Update
+
+The safe follow-up now exists in `P5_TOKEN_INSPECT_SAFE_VISUAL_SURFACE.md`:
+RuntimeLog/map HTTP reads and WebSocket delivery are server-projected, and the
+Token inspect surface consumes that projection. The rest of this audit records
+the pre-fix exposure that motivated the boundary.
+
 ## Decision
 
 Do not add a general Token inspect panel that reads existing Room Map or

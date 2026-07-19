@@ -1,5 +1,12 @@
 # P5 Room Runtime Combat Controls Surface
 
+## Visibility Update
+
+Room Runtime combat controls now consume viewer-projected combat snapshots.
+Enemy/NPC values use injury stages and unknown AC by default for non-host
+viewers; host editing and combat authority remain unchanged. See
+`P5_TOKEN_INSPECT_SAFE_VISUAL_SURFACE.md`.
+
 ## Purpose
 
 This slice mounts the existing combat table inside `RoomRuntimeEntryBridge` so a

@@ -18,8 +18,8 @@ import type { SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
  *
  * AI-LANDMARK: ROOM_RUNTIME_LOG_PREVIEW_PANEL_V0
  *
- * Read-mostly preview of the server-side RuntimeLog for a room: lists PUBLIC
- * events (the server only projects public in v0), merges live `runtimeLogAppended`
+ * Read-mostly preview of the server-side RuntimeLog for a room: lists the
+ * current member's server-projected events, merges live `runtimeLogAppended`
  * events handed down by the lobby (it does NOT open its own WebSocket), and lets
  * an active member send a minimal public chat.message. This is NOT formal Runtime,
  * NOT CampaignRuntimeShell, NOT the local RuntimeLog store, NOT map/token/action
@@ -189,13 +189,11 @@ function buildSessionRecap(events: RoomRuntimeLogEvent[]): string {
   return lines.join('\n');
 }
 
-/** Merge by eventId, keep public only, sort ascending by seq. */
+/** Merge by eventId. Visibility has already been projected server-side. */
 function mergeEvents(prev: RoomRuntimeLogEvent[], incoming: RoomRuntimeLogEvent[]): RoomRuntimeLogEvent[] {
   const byId = new Map<string, RoomRuntimeLogEvent>();
   for (const e of prev) byId.set(e.eventId, e);
-  for (const e of incoming) {
-    if (e.visibility === 'public') byId.set(e.eventId, e);
-  }
+  for (const e of incoming) byId.set(e.eventId, e);
   return [...byId.values()].sort((a, b) => a.seq - b.seq);
 }
 
@@ -312,7 +310,7 @@ export function RoomRuntimeLogPreviewPanel({
     setListError(null);
     setEvents([]);
     latestSeqRef.current = 0;
-    listRoomRuntimeLog(config, roomId)
+    listRoomRuntimeLog(config, roomId, { memberId: currentMemberId })
       .then((result) => {
         if (cancelled) return;
         setEvents(mergeEvents([], result.events));
@@ -328,7 +326,7 @@ export function RoomRuntimeLogPreviewPanel({
     return () => {
       cancelled = true;
     };
-  }, [config, roomId]);
+  }, [config, roomId, currentMemberId]);
 
   // Merge live events handed down by the lobby (shared socket), then clear them.
   useEffect(() => {
@@ -345,7 +343,7 @@ export function RoomRuntimeLogPreviewPanel({
   const refresh = () => {
     setLoading(true);
     setListError(null);
-    listRoomRuntimeLog(config, roomId, { afterSeq: latestSeqRef.current })
+    listRoomRuntimeLog(config, roomId, { afterSeq: latestSeqRef.current, memberId: currentMemberId })
       .then((result) => {
         setEvents((prev) => mergeEvents(prev, result.events));
         latestSeqRef.current = Math.max(latestSeqRef.current, result.latestSeq);

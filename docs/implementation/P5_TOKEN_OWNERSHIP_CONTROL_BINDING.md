@@ -1,5 +1,12 @@
 # P5 Token Ownership Control Binding
 
+## Visibility Update
+
+Token ownership controls only server-verified movement. Visibility projection
+is separate: it strips non-owner binding/owner metadata from non-host map views
+and does not turn a projected Token into an authority claim. See
+`P5_TOKEN_INSPECT_SAFE_VISUAL_SURFACE.md`.
+
 ## Rule
 
 Hosts may place, move, update, and remove any map token. An active player may

@@ -6,6 +6,7 @@ import { sortCombatants, type CombatRuntimeEventDraft, type CombatRuntimeTableSt
 import { useCombatRuntimeTable } from '../../lib/combat/useCombatRuntimeTable';
 import type { MapToken } from '../../lib/map/mapRuntimeTypes';
 import type { RoomRuntimeLogEvent } from '../../lib/platform/roomRuntimeLogTypes';
+import { runtimeAcDisplayLabel, runtimeHpDisplayLabel } from '../../lib/platform/roomRuntimeVisibility';
 import { CombatModeHud } from './CombatModeHud';
 
 type RuntimeRole = 'host' | 'player' | 'spectator';
@@ -55,6 +56,16 @@ function statusLabel(status: CombatRuntimeTableState['turn']['status'], zh: bool
 
 function initials(name: string): string {
   return name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.slice(0, 1)).join('').toUpperCase() || '?';
+}
+
+function combatHpLabel(combatant: Combatant, zh: boolean): string {
+  if (combatant.hpDisplay) return runtimeHpDisplayLabel(combatant.hpDisplay, zh ? 'zh' : 'en');
+  return `HP ${combatant.hpCurrent ?? '—'}${combatant.hpMax === undefined ? '' : `/${combatant.hpMax}`}`;
+}
+
+function combatAcLabel(combatant: Combatant, zh: boolean): string {
+  if (combatant.acDisplay) return runtimeAcDisplayLabel(combatant.acDisplay, zh ? 'zh' : 'en');
+  return `AC ${combatant.armorClass ?? '—'}`;
 }
 
 /**
@@ -157,9 +168,9 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
             <div className="min-w-0"><div className="truncate text-sm font-black text-slate-800">{active.displayName}</div><div className="text-[10px] text-slate-600">{zh ? '当前回合' : 'Current turn'} · {zh ? '先攻' : 'Init'} {active.initiative ?? '—'}</div></div>
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-bold text-slate-700">
-            <span className="rounded bg-white px-1.5 py-1">HP {active.hpCurrent ?? '—'}{active.hpMax === undefined ? '' : `/${active.hpMax}`}</span>
-            <span className="rounded bg-white px-1.5 py-1">{zh ? '临时' : 'Temp'} {active.temporaryHp ?? 0}</span>
-            <span className="rounded bg-white px-1.5 py-1">AC {active.armorClass ?? '—'}</span>
+            <span className="rounded bg-white px-1.5 py-1">{combatHpLabel(active, zh)}</span>
+            {active.hpDisplay?.kind !== 'stage' && <span className="rounded bg-white px-1.5 py-1">{zh ? '临时' : 'Temp'} {active.temporaryHp ?? 0}</span>}
+            <span className="rounded bg-white px-1.5 py-1">{combatAcLabel(active, zh)}</span>
             <span className="rounded bg-white px-1.5 py-1">{active.conditions.length ? active.conditions.join('、') : (zh ? '无状态' : 'No conditions')}</span>
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -187,7 +198,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
         </>
       )}
 
-      {role === 'player' && <div className="mt-3 rounded bg-slate-900/5 px-2.5 py-2 text-[11px] text-slate-600">{myCombatant ? `${zh ? '我的角色' : 'My character'}：${myCombatant.displayName} · HP ${myCombatant.hpCurrent ?? '—'}${myCombatant.hpMax === undefined ? '' : `/${myCombatant.hpMax}`} · AC ${myCombatant.armorClass ?? '—'}` : (zh ? '你的已准入角色尚未加入战斗。' : 'Your admitted character is not in combat.')}</div>}
+      {role === 'player' && <div className="mt-3 rounded bg-slate-900/5 px-2.5 py-2 text-[11px] text-slate-600">{myCombatant ? `${zh ? '我的角色' : 'My character'}：${myCombatant.displayName} · ${combatHpLabel(myCombatant, zh)} · ${combatAcLabel(myCombatant, zh)}` : (zh ? '你的已准入角色尚未加入战斗。' : 'Your admitted character is not in combat.')}</div>}
       {role === 'spectator' && <p className="mt-3 rounded bg-slate-900/5 px-2.5 py-2 text-[11px] text-slate-600">{zh ? '旁观者可以查看回合顺序与战斗状态，不能修改战斗。' : 'Spectators can view combat but cannot change it.'}</p>}
 
       {ordered.length > 0 && <div className="mt-3 space-y-1.5 border-t border-slate-300/40 pt-3">{ordered.map((combatant) => {
@@ -195,7 +206,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
         const selectedNow = combatant.id === selected?.id;
         return <div key={combatant.id} className={`rounded border px-2 py-2 ${current ? 'border-amber-400/55 bg-amber-50/70' : 'border-slate-300/45 bg-white/70'}`}>
           <button type="button" onClick={() => { onSelectCombatant(combatant.id); onLocateCombatant(combatant.id); }} className="flex w-full items-center justify-between gap-2 text-left"><span className="min-w-0 truncate text-[11px] font-bold text-slate-800">{current ? '● ' : ''}{combatant.displayName}</span><span className="text-[10px] font-black text-slate-600">{zh ? '先攻' : 'Init'} {combatant.initiative ?? '—'}</span></button>
-          <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-slate-600"><span>HP {combatant.hpCurrent ?? '—'}{combatant.hpMax === undefined ? '' : `/${combatant.hpMax}`}</span><span>·</span><span>{zh ? '临时' : 'Temp'} {combatant.temporaryHp ?? 0}</span><span>·</span><span>AC {combatant.armorClass ?? '—'}</span>{combatant.conditions.length > 0 && <><span>·</span><span>{combatant.conditions.join('、')}</span></>}</div>
+          <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-slate-600"><span>{combatHpLabel(combatant, zh)}</span>{combatant.hpDisplay?.kind !== 'stage' && <><span>·</span><span>{zh ? '临时' : 'Temp'} {combatant.temporaryHp ?? 0}</span></>}<span>·</span><span>{combatAcLabel(combatant, zh)}</span>{combatant.conditions.length > 0 && <><span>·</span><span>{combatant.conditions.join('、')}</span></>}</div>
           {canManage && selectedNow && <div className="mt-2 grid grid-cols-2 gap-1.5"><input defaultValue={combatant.initiative ?? ''} onBlur={(event) => update(combatant, { initiative: numberValue(event.target.value) })} type="number" placeholder={zh ? '先攻' : 'Initiative'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.hpCurrent ?? ''} onBlur={(event) => update(combatant, { hpCurrent: numberValue(event.target.value), hitPoints: numberValue(event.target.value) })} type="number" placeholder="HP" className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.hpMax ?? ''} onBlur={(event) => update(combatant, { hpMax: numberValue(event.target.value), maxHitPoints: numberValue(event.target.value) })} type="number" placeholder={zh ? '最大 HP' : 'Max HP'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.temporaryHp ?? ''} onBlur={(event) => update(combatant, { temporaryHp: numberValue(event.target.value) })} type="number" placeholder={zh ? '临时 HP' : 'Temp HP'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.armorClass ?? ''} onBlur={(event) => update(combatant, { armorClass: numberValue(event.target.value) })} type="number" placeholder="AC" className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.conditions.join(', ')} onBlur={(event) => update(combatant, { conditions: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) })} placeholder={zh ? '状态，逗号分隔' : 'Conditions'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /></div>}
         </div>;
       })}</div>}

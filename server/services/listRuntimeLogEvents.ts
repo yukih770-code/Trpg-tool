@@ -3,9 +3,8 @@
  *
  * AI-LANDMARK: ROOM_SERVER_LIST_RUNTIME_LOG_V0
  *
- * Reads events from the RuntimeLog registry. v0 returns PUBLIC events only (no
- * real projection); latestSeq still reflects the true latest seq so afterSeq
- * cursors advance correctly past withheld (hostOnly) events. NO auth / projection.
+ * Reads raw stored events for a verified route. Viewer projection happens after
+ * this service because it needs the resolved room member and map/combat context.
  */
 
 import type { RoomRegistry } from '../room-registry.js';
@@ -15,6 +14,7 @@ import type { RoomRuntimeLogListResult } from '../protocol/room-protocol.js';
 export interface ListRuntimeLogEventsServiceInput {
   roomId: string;
   afterSeq?: number;
+  includeHostOnly?: boolean;
 }
 
 export interface ListRuntimeLogEventsResult {
@@ -37,7 +37,6 @@ export function listRuntimeLogEvents(
   }
 
   const raw = logRegistry.list(input.roomId, { afterSeq: input.afterSeq });
-  // v0 projection: public only. latestSeq stays the true latest for cursors.
-  const events = raw.events.filter((e) => e.visibility === 'public');
+  const events = raw.events.filter((event) => event.visibility === 'public' || (input.includeHostOnly === true && event.visibility === 'hostOnly'));
   return { decision: 'ok', result: { roomId: raw.roomId, latestSeq: raw.latestSeq, events } };
 }

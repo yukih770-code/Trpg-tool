@@ -7,7 +7,8 @@ import {
   type CombatantKind,
   type CombatantSourceType,
   type CombatantStatus,
-} from './combatRuntimeTypes';
+} from './combatRuntimeTypes.js';
+import type { RuntimeAcDisplay, RuntimeHpDisplay, RuntimeTokenRelation, RuntimeVisibility } from '../platform/roomRuntimeVisibility.js';
 
 /** Both persisted campaign events and Room RuntimeLog events satisfy this shape. */
 export type CombatRuntimeReplayEvent = {
@@ -27,6 +28,21 @@ function stringValue(value: unknown): string | undefined {
 
 function numberValue(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function hpDisplayValue(value: unknown): RuntimeHpDisplay | undefined {
+  const input = record(value);
+  if (!input || typeof input.kind !== 'string') return undefined;
+  if (input.kind === 'exact') return { kind: 'exact', current: numberValue(input.current), max: numberValue(input.max), temporary: numberValue(input.temporary) };
+  if (input.kind === 'stage' && (input.stage === 'uninjured' || input.stage === 'wounded' || input.stage === 'bloodied' || input.stage === 'nearDeath' || input.stage === 'defeated')) return { kind: 'stage', stage: input.stage };
+  return input.kind === 'unknown' ? { kind: 'unknown' } : undefined;
+}
+
+function acDisplayValue(value: unknown): RuntimeAcDisplay | undefined {
+  const input = record(value);
+  if (!input || typeof input.kind !== 'string') return undefined;
+  if (input.kind === 'exact' && numberValue(input.value) !== undefined) return { kind: 'exact', value: numberValue(input.value) as number };
+  return input.kind === 'unknown' ? { kind: 'unknown' } : undefined;
 }
 
 function sourceType(value: unknown): CombatantSourceType {
@@ -71,6 +87,10 @@ function combatantInput(value: unknown, fallback?: Combatant): Combatant | null 
     notes: stringValue(input?.notes) ?? fallback?.notes,
     isDefeated: typeof input?.isDefeated === 'boolean' ? input.isDefeated : fallback?.isDefeated,
     status: input?.status === undefined ? fallback?.status : status(input.status),
+    hpDisplay: hpDisplayValue(input?.hpDisplay) ?? fallback?.hpDisplay,
+    acDisplay: acDisplayValue(input?.acDisplay) ?? fallback?.acDisplay,
+    visibility: input?.visibility === 'hostFull' || input?.visibility === 'ownerFull' || input?.visibility === 'partyPublic' || input?.visibility === 'publicObserved' || input?.visibility === 'investigated' ? input.visibility as RuntimeVisibility : fallback?.visibility,
+    relation: input?.relation === 'self' || input?.relation === 'ally' || input?.relation === 'enemy' || input?.relation === 'npc' || input?.relation === 'object' || input?.relation === 'unknown' ? input.relation as RuntimeTokenRelation : fallback?.relation,
   };
   return createCombatant(next);
 }
@@ -108,6 +128,19 @@ export function replayCombatRuntimeEvents(events: ReadonlyArray<CombatRuntimeRep
 
   for (const event of ordered) {
     const payload = event.payload ?? {};
+    // Projected Room Runtime events include a safe current combat snapshot on
+    // each combat event. Prefer it so a later redacted update remains correct
+    // after refresh/replay.
+    if (event.eventKind.startsWith('combat.') && Array.isArray(payload.combatants)) {
+      state = applyCombatantsPayload(state, payload);
+      if (event.eventKind !== 'combat.combatant_added' && event.eventKind !== 'combat.combatant_removed') {
+        const nextStatus = event.eventKind === 'combat.paused' ? 'paused'
+          : event.eventKind === 'combat.ended' ? 'ended'
+          : state.turn.status === 'setup' ? 'active'
+          : state.turn.status;
+        state = applyTurnPayload(state, event, nextStatus);
+      }
+    }
     if (event.eventKind === 'combat.combatant_added') {
       const combatant = combatantInput(payload.combatant);
       if (combatant && !state.combatants.some((item) => item.id === combatant.id)) state = { ...state, combatants: [...state.combatants, combatant] };

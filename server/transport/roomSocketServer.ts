@@ -36,6 +36,10 @@ export interface CreateRoomSocketServerOptions {
   server: HttpServer;
   registry: RoomRegistry;
   path?: string;
+  /** Per-member projection callbacks keep authoritative Room data off non-host sockets. */
+  projectRoomSnapshot?: (room: RoomSnapshot, memberId: string) => RoomSnapshot;
+  projectRuntimeLogEvents?: (roomId: string, memberId: string, events: RoomRuntimeLogEvent[]) => RoomRuntimeLogEvent[];
+  projectMapEvents?: (roomId: string, memberId: string, events: RoomMapEvent[]) => RoomMapEvent[];
   /** Resolves a browser session (or explicitly gated local-dev identity) per socket. */
   resolveViewer?: (request: IncomingMessage) => Promise<CurrentViewerContext>;
 }
@@ -160,7 +164,7 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
         socketMembers.get(ws)?.set(raw.roomId, raw.memberId);
         send(ws, { ...envelope(), type: 'subscribedRoom', roomId: raw.roomId });
         serverSeq += 1;
-        send(ws, { ...envelope(), type: 'roomSnapshot', roomId: raw.roomId, serverSeq, reason: 'initialSubscribe', payload: { room } });
+        send(ws, { ...envelope(), type: 'roomSnapshot', roomId: raw.roomId, serverSeq, reason: 'initialSubscribe', payload: { room: options.projectRoomSnapshot?.(room, raw.memberId) ?? room } });
         return;
       }
       case 'unsubscribeRoom': {
@@ -271,19 +275,19 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
       const set = subscriptions.get(roomId);
       if (!set || set.size === 0) return; // no subscribers -> no-op
       serverSeq += 1;
-      const message: RoomSocketServerMessage = {
-        ...envelope(),
-        type: 'roomSnapshot',
-        roomId,
-        serverSeq,
-        reason,
-        payload: { room },
-      };
-      const text = JSON.stringify(message);
       // Snapshot the subscriber set first: safeSend may mutate `set` (dropSocket)
       // when a send throws, so iterating the live set would be unsafe.
       for (const ws of [...set]) {
-        safeSend(ws, text);
+        const memberId = socketMembers.get(ws)?.get(roomId);
+        if (!memberId) continue;
+        send(ws, {
+          ...envelope(),
+          type: 'roomSnapshot',
+          roomId,
+          serverSeq,
+          reason,
+          payload: { room: options.projectRoomSnapshot?.(room, memberId) ?? room },
+        });
       }
     },
 
@@ -292,16 +296,11 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
       const set = subscriptions.get(roomId);
       if (!set || set.size === 0) return; // no subscribers -> no-op
       serverSeq += 1;
-      const message: RoomSocketServerMessage = {
-        ...envelope(),
-        type: 'runtimeLogAppended',
-        roomId,
-        serverSeq,
-        events,
-      };
-      const text = JSON.stringify(message);
       for (const ws of [...set]) {
-        safeSend(ws, text);
+        const memberId = socketMembers.get(ws)?.get(roomId);
+        if (!memberId) continue;
+        const projected = options.projectRuntimeLogEvents?.(roomId, memberId, events) ?? events;
+        if (projected.length > 0) send(ws, { ...envelope(), type: 'runtimeLogAppended', roomId, serverSeq, events: projected });
       }
     },
 
@@ -310,16 +309,11 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
       const set = subscriptions.get(roomId);
       if (!set || set.size === 0) return;
       serverSeq += 1;
-      const message: RoomSocketServerMessage = {
-        ...envelope(),
-        type: 'mapEventAppended',
-        roomId,
-        serverSeq,
-        events,
-      };
-      const text = JSON.stringify(message);
       for (const ws of [...set]) {
-        safeSend(ws, text);
+        const memberId = socketMembers.get(ws)?.get(roomId);
+        if (!memberId) continue;
+        const projected = options.projectMapEvents?.(roomId, memberId, events) ?? events;
+        if (projected.length > 0) send(ws, { ...envelope(), type: 'mapEventAppended', roomId, serverSeq, events: projected });
       }
     },
   };

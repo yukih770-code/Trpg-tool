@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type MouseEvent, type PointerEvent } from 'react';
 import { Circle, Grid3X3, Hand, Image, Minus, MousePointer2, Pin, Plus, RectangleHorizontal, RotateCcw, Ruler, Shapes, Square, Triangle, UsersRound } from 'lucide-react';
 import { createTranslator, type Locale } from '../../i18n';
 import { describeTokenControlHint } from '../../lib/platform/roomPlayerFlow';
@@ -29,6 +29,8 @@ type Props = {
   locateCombatantId?: string;
   /** Lets the Runtime combat surface follow a token selection without changing map ownership. */
   onSelectCombatant?: (combatantId: string) => void;
+  /** Opens a viewer-safe runtime inspect panel from a selected map token. */
+  onInspectToken?: (token: MapToken) => void;
   /** Optional sources from system-specific actor/monster surfaces. */
   actorPresenceCandidates?: MapTokenPresenceCandidate[];
   canManage: boolean;
@@ -157,7 +159,7 @@ function templateDragHint(shape: MapTemplateShape, locale: Locale): string {
   return '起点是角点，拖动到对角。';
 }
 
-export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], activeCombatantId, locateCombatantId, onSelectCombatant, actorPresenceCandidates = [], canManage, canMoveToken, tokenMoveDeniedMessage, controlledTokenBindingId, canPinRanges = false, canShareTemporaryRanges = false, sharedPreviews = [], onSharePreview, mapCollaborators = [], onSetCanPinRanges, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace' }: Props) {
+export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], activeCombatantId, locateCombatantId, onSelectCombatant, onInspectToken, actorPresenceCandidates = [], canManage, canMoveToken, tokenMoveDeniedMessage, controlledTokenBindingId, canPinRanges = false, canShareTemporaryRanges = false, sharedPreviews = [], onSharePreview, mapCollaborators = [], onSetCanPinRanges, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace' }: Props) {
   const { t } = createTranslator(locale);
   const board = useMapRuntimeBoard(mapId);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -189,6 +191,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   const [eventError, setEventError] = useState('');
   const [imageError, setImageError] = useState(false);
   const [failedTokenImages, setFailedTokenImages] = useState<Record<string, true>>({});
+  const [tokenMenu, setTokenMenu] = useState<{ token: MapToken; x: number; y: number }>();
 
   const mapEventKey = mapEvents.map((event, index) => `${event.seq ?? index}:${event.eventKind}:${event.createdAt ?? ''}`).join('|');
   const selectedToken = board.state.selectedTokenId ? board.state.tokens.find((token) => token.id === board.state.selectedTokenId) : undefined;
@@ -251,6 +254,17 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     setGridSize(String(grid?.sizePx ?? 50));
     setFeetPerSquare(String(grid?.feetPerSquare ?? 5));
   }, [grid?.feetPerSquare, grid?.sizePx]);
+  useEffect(() => {
+    if (!tokenMenu) return;
+    const close = () => setTokenMenu(undefined);
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
+    window.addEventListener('pointerdown', close);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('pointerdown', close);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [tokenMenu]);
 
   const emit = (event: MapRuntimeEventDraft | null) => {
     if (!event || !onAppendEvent) return;
@@ -274,6 +288,25 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
       x: Math.min(100, Math.max(0, ((event.clientX - rect.left - board.state.panX) / board.state.zoom / rect.width) * 100)),
       y: Math.min(100, Math.max(0, ((event.clientY - rect.top - board.state.panY) / board.state.zoom / rect.height) * 100)),
     };
+  };
+
+  const selectToken = (token: MapToken) => {
+    board.selectToken(token.id);
+    const combatant = combatants.find((item) => item.id === token.combatantId || item.id === token.sourceCombatantId || item.mapTokenId === token.id);
+    if (combatant) onSelectCombatant?.(combatant.id);
+  };
+
+  const openTokenMenu = (event: MouseEvent<HTMLButtonElement>, token: MapToken) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = boardRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    selectToken(token);
+    setTokenMenu({
+      token,
+      x: Math.min(88, Math.max(3, ((event.clientX - rect.left) / rect.width) * 100)),
+      y: Math.min(86, Math.max(3, ((event.clientY - rect.top) / rect.height) * 100)),
+    });
   };
 
   const addToken = (input: { name: string; sourceType: MapToken['sourceType']; sourceCombatantId?: string; sourceActorInstanceId?: string; notes?: string }) => {
@@ -356,6 +389,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   };
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
     const point = pointFromEvent(event);
     if (!point) return;
     const target = event.target as HTMLElement;
@@ -468,6 +502,12 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   };
   const tokenContents = (token: MapToken) => {
     const identity = resolveTokenVisualIdentity(token, { imageFailed: failedTokenImages[token.id] });
+    const hpLabel = token.hpDisplay?.kind === 'exact'
+      ? `HP ${token.hpDisplay.current ?? '—'}${token.hpDisplay.max === undefined ? '' : `/${token.hpDisplay.max}`}`
+      : token.hpDisplay?.kind === 'stage'
+        ? ({ uninjured: '未受伤', wounded: '轻伤', bloodied: '重伤', nearDeath: '濒死', defeated: '已倒下' }[token.hpDisplay.stage])
+        : token.hpDisplay?.kind === 'unknown' ? 'HP：未知' : identity.hpSummary;
+    const acLabel = token.acDisplay?.kind === 'exact' ? `AC ${token.acDisplay.value}` : token.acDisplay?.kind === 'unknown' ? 'AC：未知' : undefined;
     return <>
       <span className={`relative grid h-10 w-10 place-items-center overflow-hidden rounded-full border-2 border-white/90 bg-[#294966] text-[12px] font-black text-white shadow ${token.isHidden ? 'opacity-70' : ''} ${board.state.selectedTokenId === token.id ? 'ring-4 ring-[#f5c518]/80 ring-offset-2 ring-offset-transparent' : ''}`}>
         {identity.imageUrl ? (
@@ -483,9 +523,10 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
         )}
       </span>
       <span className="max-w-28 truncate rounded bg-slate-950/80 px-1.5 py-0.5 text-center text-[10px] font-bold text-white shadow">{identity.label}</span>
-      {(identity.hpSummary || identity.conditionSummary) && (
+      {(hpLabel || acLabel || identity.conditionSummary) && (
         <span className="flex max-w-32 flex-wrap justify-center gap-1 text-[9px] font-semibold text-slate-700">
-          {identity.hpSummary && <span className="rounded bg-white/90 px-1 py-0.5 shadow">{identity.hpSummary}</span>}
+          {hpLabel && <span className="rounded bg-white/90 px-1 py-0.5 shadow">{hpLabel}</span>}
+          {acLabel && <span className="rounded bg-white/90 px-1 py-0.5 shadow">{acLabel}</span>}
           {identity.conditionSummary && <span className="max-w-20 truncate rounded bg-amber-100/95 px-1 py-0.5 text-amber-900 shadow">{identity.conditionSummary}</span>}
         </span>
       )}
@@ -548,6 +589,21 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     <span aria-hidden="true" className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#294966] shadow" style={anchorStyle(measurement.start)} />
     {measurementDistance && <span className="pointer-events-none absolute rounded bg-[#17130f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white" style={pointerLabelStyle(measurement.end)}>{measurementDistance.feet.toFixed(1)} ft</span>}
   </>;
+  const tokenMenuLayer = tokenMenu && <div
+    className="absolute z-40 w-40 rounded-lg border border-slate-300 bg-white/95 p-1.5 text-[11px] text-slate-800 shadow-xl backdrop-blur-sm"
+    style={{ left: `${tokenMenu.x}%`, top: `${tokenMenu.y}%` }}
+    onPointerDown={(event) => event.stopPropagation()}
+  >
+    <div className="truncate px-1.5 py-1 text-[10px] font-black text-slate-500">{tokenMenu.token.displayName ?? tokenMenu.token.name}</div>
+    <button type="button" onClick={() => { onInspectToken?.(tokenMenu.token); setTokenMenu(undefined); }} className="w-full rounded px-1.5 py-1.5 text-left font-bold hover:bg-slate-100">
+      {canManage ? '查看完整信息' : tokenMenu.token.relation === 'self' ? '查看角色' : '查看公开信息'}
+    </button>
+    {!canManage && tokenMenu.token.relation !== 'self' && <button type="button" onClick={() => { onInspectToken?.(tokenMenu.token); setTokenMenu(undefined); }} className="w-full rounded px-1.5 py-1.5 text-left font-bold hover:bg-slate-100">调查</button>}
+    <button type="button" onClick={() => { selectToken(tokenMenu.token); setTokenMenu(undefined); }} className="w-full rounded px-1.5 py-1.5 text-left font-bold hover:bg-slate-100">定位 Token</button>
+    {canManage && <div className="mt-1 border-t border-slate-200 pt-1">
+      {['加入战斗', '调整 HP', '调整 AC', '添加/移除状态', '揭示信息', '隐藏信息', '删除 Token'].map((label) => <button key={label} type="button" disabled className="w-full rounded px-1.5 py-1 text-left text-slate-400 disabled:cursor-not-allowed">{label} · 后续</button>)}
+    </div>}
+  </div>;
 
   if (presentation === 'runtime') {
     const toolButtonClass = (active: boolean) => `grid h-9 w-9 place-items-center rounded-lg border text-[#2f2a22] shadow-sm transition ${active ? 'border-[#58180d]/60 bg-[#fff0d6] text-[#58180d]' : 'border-white/70 bg-white/90 hover:bg-white'}`;
@@ -572,8 +628,9 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
           {templateDraftLayer}
           {measurementLayer}
           {sharedPreviewLayer}
-          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => { board.selectToken(token.id); const combatant = combatants.find((item) => item.id === token.combatantId || item.id === token.sourceCombatantId || item.mapTokenId === token.id); if (combatant) onSelectCombatant?.(combatant.id); }} className={`absolute flex max-w-36 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold ${mayMoveToken(token) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} ${isCurrentTurnToken(token) ? 'z-10 drop-shadow-[0_0_10px_rgba(245,197,24,.95)]' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={mayMoveToken(token) ? `${token.notes ? `${token.notes} · ` : ''}你的角色，可移动。` : `${token.notes ? `${token.notes} · ` : ''}该 Token 由主持人控制。`}>{tokenContents(token)}{isCurrentTurnToken(token) && <span className="rounded bg-[#f5c518] px-1 text-[9px] font-black text-[#17130f]">当前回合</span>}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
+          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => selectToken(token)} onContextMenu={(event) => openTokenMenu(event, token)} className={`absolute flex max-w-36 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold ${mayMoveToken(token) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} ${isCurrentTurnToken(token) ? 'z-10 drop-shadow-[0_0_10px_rgba(245,197,24,.95)]' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={canManage && token.notes ? token.notes : mayMoveToken(token) ? '你的角色，可移动。' : '查看 Token 信息'}>{tokenContents(token)}{isCurrentTurnToken(token) && <span className="rounded bg-[#f5c518] px-1 text-[9px] font-black text-[#17130f]">当前回合</span>}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
         </div>
+        {tokenMenuLayer}
       </div>
 
       <div className="absolute left-3 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-1.5 rounded-xl border border-slate-300/70 bg-slate-50/85 p-1.5 shadow-lg backdrop-blur-sm">

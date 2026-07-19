@@ -10,6 +10,7 @@ import {
   type MapToken,
   type MapTokenInput,
 } from './mapRuntimeTypes.js';
+import type { RuntimeAcDisplay, RuntimeHpDisplay, RuntimeTokenRelation, RuntimeVisibility } from '../platform/roomRuntimeVisibility.js';
 
 /**
  * Minimum append-only shape needed to rebuild a map board. Both the campaign
@@ -33,6 +34,27 @@ function stringValue(value: unknown): string | undefined {
 
 function numberValue(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function hpDisplayValue(value: unknown): RuntimeHpDisplay | undefined {
+  const input = record(value);
+  if (!input || typeof input.kind !== 'string') return undefined;
+  if (input.kind === 'exact') return {
+    kind: 'exact',
+    current: numberValue(input.current),
+    max: numberValue(input.max),
+    temporary: numberValue(input.temporary),
+  };
+  if (input.kind === 'stage' && (input.stage === 'uninjured' || input.stage === 'wounded' || input.stage === 'bloodied' || input.stage === 'nearDeath' || input.stage === 'defeated')) return { kind: 'stage', stage: input.stage };
+  if (input.kind === 'unknown') return { kind: 'unknown' };
+  return undefined;
+}
+
+function acDisplayValue(value: unknown): RuntimeAcDisplay | undefined {
+  const input = record(value);
+  if (!input || typeof input.kind !== 'string') return undefined;
+  if (input.kind === 'exact' && numberValue(input.value) !== undefined) return { kind: 'exact', value: numberValue(input.value) as number };
+  return input.kind === 'unknown' ? { kind: 'unknown' } : undefined;
 }
 
 function tokenInput(value: unknown, fallback?: MapToken): MapToken | null {
@@ -60,6 +82,10 @@ function tokenInput(value: unknown, fallback?: MapToken): MapToken | null {
     initials: stringValue(input?.initials) ?? fallback?.initials,
     kind: input?.kind === 'playerCharacter' || input?.kind === 'npc' || input?.kind === 'monster' || input?.kind === 'companion' || input?.kind === 'object' || input?.kind === 'unknown' ? input.kind : fallback?.kind,
     hpSummary: record(input?.hpSummary) ? { current: numberValue(record(input?.hpSummary)?.current), max: numberValue(record(input?.hpSummary)?.max), temporary: numberValue(record(input?.hpSummary)?.temporary) } : fallback?.hpSummary,
+    hpDisplay: hpDisplayValue(input?.hpDisplay) ?? fallback?.hpDisplay,
+    acDisplay: acDisplayValue(input?.acDisplay) ?? fallback?.acDisplay,
+    visibility: input?.visibility === 'hostFull' || input?.visibility === 'ownerFull' || input?.visibility === 'partyPublic' || input?.visibility === 'publicObserved' || input?.visibility === 'investigated' ? input.visibility as RuntimeVisibility : fallback?.visibility,
+    relation: input?.relation === 'self' || input?.relation === 'ally' || input?.relation === 'enemy' || input?.relation === 'npc' || input?.relation === 'object' || input?.relation === 'unknown' ? input.relation as RuntimeTokenRelation : fallback?.relation,
     conditionSummary: Array.isArray(input?.conditionSummary) ? input.conditionSummary.flatMap((item) => stringValue(item) ? [stringValue(item) as string] : []) : fallback?.conditionSummary,
     sourceCombatantId: stringValue(input?.sourceCombatantId) ?? fallback?.sourceCombatantId,
     sourceActorInstanceId: stringValue(input?.sourceActorInstanceId) ?? fallback?.sourceActorInstanceId,

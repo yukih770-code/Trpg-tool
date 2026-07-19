@@ -34,9 +34,10 @@ import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSce
 import { RuntimeMapStage } from './RuntimeMapStage';
 import { BasicMapBoard } from './BasicMapBoard';
 import { RoomRuntimeCombatPanel } from './RoomRuntimeCombatPanel';
+import { RuntimeTokenInspectPanel } from './RuntimeTokenInspectPanel';
 import { entryCharacterFromRoomBinding, entryCharacterToPresenceCandidate } from '../../lib/platform/entryCharacterRef';
 import type { MapTokenPresenceCandidate } from '../../lib/map/actorPresence';
-import type { MapInteractionPreview, MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
+import type { MapInteractionPreview, MapRuntimeEventDraft, MapToken } from '../../lib/map/mapRuntimeTypes';
 import { replayMapRuntimeEvents } from '../../lib/map/mapRuntimeReplay';
 import { createCombatRuntimeTableState, type CombatRuntimeEventDraft, type CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
 
@@ -167,19 +168,20 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const [roomCombatState, setRoomCombatState] = useState<CombatRuntimeTableState>(createCombatRuntimeTableState);
   const [selectedCombatantId, setSelectedCombatantId] = useState<string | undefined>();
   const [combatantToLocate, setCombatantToLocate] = useState<string | undefined>();
+  const [inspectedToken, setInspectedToken] = useState<MapToken | undefined>();
   const roomSocketRef = useRef<ReturnType<typeof createRoomSocketClient> | null>(null);
 
   const loadNotes = useCallback(() => {
     setNotesLoading(true);
     setNotesError(null);
-    listRoomRuntimeLog({ baseUrl: context.serverBaseUrl }, context.roomId)
+    listRoomRuntimeLog({ baseUrl: context.serverBaseUrl }, context.roomId, { memberId: context.currentMemberId })
       .then((result) => {
         setNoteEvents(result.events.filter(isNoteKind));
         setRecentEvents(result.events);
       })
       .catch((e) => setNotesError(e instanceof Error ? e.message : String(e)))
       .finally(() => setNotesLoading(false));
-  }, [context.serverBaseUrl, context.roomId]);
+  }, [context.currentMemberId, context.serverBaseUrl, context.roomId]);
 
   useEffect(() => {
     loadNotes();
@@ -231,14 +233,17 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       },
       onRuntimeLogAppended: (message) => {
         if (message.roomId !== context.roomId) return;
-        const publicEvents = message.events.filter((e) => e.visibility === 'public');
-        if (publicEvents.length === 0) return;
+        // RuntimeLog delivery has already been projected per room member by the
+        // server. Hosts may receive safe host-only entries, so do not discard
+        // them with an additional client-side filter.
+        const projectedEvents = message.events;
+        if (projectedEvents.length === 0) return;
         // Log drawer buffer (panel merges by eventId — the host's own HTTP-returned
         // event arriving again over the socket cannot duplicate).
-        setLogLiveEvents((prev) => [...prev, ...publicEvents]);
+        setLogLiveEvents((prev) => [...prev, ...projectedEvents]);
         // Feed mirror (same stream, eventId-deduped in mergeNoteEvent).
         let touchedFeeds = false;
-        for (const event of publicEvents) {
+        for (const event of projectedEvents) {
           if (isNoteKind(event)) {
             mergeNoteEvent(event);
             touchedFeeds = true;
@@ -247,7 +252,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         // Scene Board recent-activity mix (all public kinds, eventId-deduped).
         setRecentEvents((prev) => {
           const seen = new Set(prev.map((e) => e.eventId));
-          const added = publicEvents.filter((e) => !seen.has(e.eventId));
+          const added = projectedEvents.filter((e) => !seen.has(e.eventId));
           return added.length === 0 ? prev : [...prev, ...added].sort((a, b) => a.seq - b.seq);
         });
         if (touchedFeeds) setFeedJustUpdated(true);
@@ -647,6 +652,12 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
           <span>已准备 <b className="text-slate-800">{readyCount}</b></span>
         </div>
       </div>
+      {inspectedToken && <RuntimeTokenInspectPanel
+        token={inspectedToken}
+        combatant={roomCombatState.combatants.find((combatant) => combatant.mapTokenId === inspectedToken.id || combatant.id === inspectedToken.combatantId || combatant.id === inspectedToken.sourceCombatantId)}
+        role={shellMode}
+        onClose={() => setInspectedToken(undefined)}
+      />}
       <RoomRuntimeCombatPanel
         locale={readStoredLocale()}
         scopeKey={`room:${context.roomId}`}
@@ -768,6 +779,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       activeCombatantId={roomCombatState.turn.activeCombatantId}
       locateCombatantId={combatantToLocate}
       onSelectCombatant={setSelectedCombatantId}
+      onInspectToken={setInspectedToken}
       actorPresenceCandidates={roomEntryCharacterCandidates}
       fallbackBackgroundUrl={currentScene?.mapUrl}
       sceneTitle={currentScene?.title}

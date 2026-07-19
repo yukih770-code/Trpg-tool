@@ -75,5 +75,14 @@ export function tokenWithCombatProjection(token: MapToken, combatants: readonly 
   const combatant = id
     ? combatants.find((item) => item.id === id)
     : combatants.find((item) => item.mapTokenId === token.id);
-  return combatant ? { ...token, ...combatantTokenSummary(combatant) } : token;
+  return combatant
+    ? {
+        ...token,
+        ...combatantTokenSummary(combatant),
+        hpDisplay: combatant.hpDisplay ?? token.hpDisplay,
+        acDisplay: combatant.acDisplay ?? token.acDisplay,
+        visibility: combatant.visibility ?? token.visibility,
+        relation: combatant.relation ?? token.relation,
+      }
+    : token;
 }
