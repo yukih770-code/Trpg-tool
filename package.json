@@ -89,6 +89,7 @@
     "frontend:verify:scene-state": "tsx src/lib/api/sceneStateApiClientSmoke.ts",
     "frontend:verify:dnd-dice": "tsx src/lib/dnd/dndDiceRollerSmoke.ts",
     "frontend:verify:dnd-lite-actor": "tsx src/lib/dnd/dndLiteActorSheetSmoke.ts",
+    "frontend:verify:campaign-actor-overrides": "tsx src/lib/platform/campaignActorOverrideSmoke.ts",
     "frontend:verify:dnd-monsters": "tsx server/tools/privateDndMonsterImportSmoke.ts && tsx src/lib/api/dndMonsterTemplateApiClientSmoke.ts",
     "dnd:monster-import:dry-run": "tsx server/tools/importPrivateDndMonsters.ts --dry-run",
     "dnd:monster-import:apply": "tsx server/tools/importPrivateDndMonsters.ts --apply",

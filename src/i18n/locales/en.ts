@@ -318,7 +318,7 @@ export const en = {
   dndActorSheet: {
     eyebrow: 'DND runtime tools',
     title: 'DND Lite Actor Sheet',
-    note: 'Record abilities, actions, and common values for a campaign actor on the current page. Saving is local to this page; it does not write to the actor vault or server.',
+    note: 'Record abilities, actions, and common values for this campaign actor. Saving writes campaign-specific overrides and does not alter the Actor Vault.',
     hostOnly: 'Only the host can edit Lite Actor Sheets on this page right now.',
     noActors: 'There are no campaign actor records yet. Add one from the campaign actor section first.',
     selectActor: 'Select campaign actor',
@@ -363,10 +363,11 @@ export const en = {
     addToCombat: 'Add to combat',
     clear: 'Clear local draft',
     invalid: 'The actor sheet is incomplete or invalid. Check abilities, HP, and action formulas.',
-    savedLocal: 'Actor sheet saved to the current page.',
-    cleared: 'Cleared the actor sheet draft for this page.',
+    savedLocal: 'Actor sheet saved to this campaign.',
+    saveFailed: 'The actor sheet could not be saved. Please try again.',
+    cleared: 'Cleared the campaign actor sheet override.',
     actionCount: 'actions',
-    boundary: 'This is not a full character builder: it does not automate class, ancestry, spells, resources, or damage application, and does not write to the server.',
+    boundary: 'This is not a full character builder: it does not automate class, ancestry, spells, resources, or damage application. It only stores campaign-specific overrides.',
   },
   dndMonsters: {
     eyebrow: 'Private content', title: 'Private monster library', note: 'Manage private monster templates for this server. Imported content is not public platform material.', refresh: 'Refresh', hostOnly: 'Only server managers can create, archive, or add monsters to combat.', search: 'Search name, type, or tag', allTypes: 'All types', loading: 'Loading private monster templates…', unavailable: 'The private monster library is temporarily unavailable.', empty: 'There are no private monster templates yet. Create one manually or use the local importer.', unknownType: 'Unclassified', privateBadge: 'Private', ac: 'Armor class', hp: 'Hit points', speed: 'Speed', actions: 'Actions', senses: 'Senses', languages: 'Languages', addToCombat: 'Add to combat', createActor: 'Create actor draft', archive: 'Archive', select: 'Select a monster template to view its summary and available actions.', createManual: 'Create private monster', manualNote: 'This saves basic fields only. Use the local importer to write complete material to your private database.', name: 'Name', creatureType: 'Creature type', challengeRating: 'Challenge rating', create: 'Create template', created: 'Private monster template created.', updated: 'Basic fields updated.', editBasics: 'Edit basic fields', saveBasics: 'Save basic fields', actionFailed: 'The action could not be completed. Please try again.',

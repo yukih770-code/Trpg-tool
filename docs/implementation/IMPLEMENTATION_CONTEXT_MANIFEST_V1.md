@@ -267,7 +267,7 @@ bootstrap code is not the normal friend credential: a server-scoped personal
 invite binds to its first accepted user, creates membership, and may be revoked.
 It does not change server role permissions, Room authority, or Runtime access.
 
-## Actor Vault, Cloud Room Launch, and Lifecycle Recovery (P6.1-P6.6)
+## Actor Vault, Cloud Room Launch, Lifecycle Recovery, and Campaign Overrides (P6.1-P6.7)
 
 Read `P6_ACTOR_VAULT_ROOM_BINDING_FOUNDATION.md` before changing Actor Vault,
 Room actor submission, or `campaign_actor_instances`. Vault payloads are
@@ -283,3 +283,6 @@ cloud lobbies mirror a versioned, server-internal snapshot into their existing
 metadata API strips that snapshot. Runtime Log, map, combat, and WebSocket
 presence are still separate paths and are not represented as full runtime
 recovery.
+- P6.7 persists the DND Lite campaign actor sheet as a validated namespaced
+  campaign override. It is deliberately separate from Actor Vault source data,
+  room membership, and automated combat resolution.

@@ -30,6 +30,11 @@ import {
   entryCharacterFromDndLiteActor,
   entryCharacterToPresenceCandidate,
 } from '../../lib/platform/entryCharacterRef';
+import {
+  projectDndLiteActorSheets,
+  withDndLiteActorSheetOverride,
+  withoutDndLiteActorSheetOverride,
+} from '../../lib/platform/campaignActorOverride';
 import type { SceneRuntimeSnapshot } from '../../lib/scene/sceneRuntimeSnapshotTypes';
 import type { DndRuntimeEventDraft } from '../../lib/dnd/dndDiceTypes';
 import type { DndLiteActorSheet, DndLiteCombatantPrefill } from '../../lib/dnd/dndLiteActorTypes';
@@ -207,7 +212,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const [runtimeCombatState, setRuntimeCombatState] = useState<CombatRuntimeTableState>({ combatants: [], turn: { status: 'setup', roundNumber: 1, turnIndex: -1 } });
   const [combatantToLocate, setCombatantToLocate] = useState<string>();
   const [runtimeMapBoard, setRuntimeMapBoard] = useState<MapBoardState | undefined>();
-  const [dndActorSheets, setDndActorSheets] = useState<Record<string, DndLiteActorSheet>>({});
+  const [pendingDndActorSheets, setPendingDndActorSheets] = useState<Record<string, DndLiteActorSheet>>({});
   const [dndDicePreset, setDndDicePreset] = useState<{ actorInstanceId: string; actionId?: string; nonce: number }>();
   const [dndActorPrefill, setDndActorPrefill] = useState<(DndLiteCombatantPrefill & { nonce: number }) | undefined>();
   const [dndMonsterActionPreset, setDndMonsterActionPreset] = useState<{ monsterName: string; action: DndMonsterAction; nonce: number }>();
@@ -231,8 +236,15 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
     () => campaigns.find((item) => item.campaign.campaignId === selectedCampaignId),
     [campaigns, selectedCampaignId],
   );
+  useEffect(() => {
+    setPendingDndActorSheets({});
+  }, [selectedCampaignId]);
   const dndMonsters = useDndMonsterTemplates(isDndCampaign(selectedCampaign?.campaign.systemId) ? worldServerId : '');
   const campaignDetail = useCampaignDetail(worldServerId, selectedCampaignId, { enabled: selectedCampaignId !== '' });
+  const dndActorSheets = useMemo(
+    () => ({ ...projectDndLiteActorSheets(campaignDetail.actors), ...pendingDndActorSheets }),
+    [campaignDetail.actors, pendingDndActorSheets],
+  );
   const activeRooms = useMemo(
     () => campaignDetail.rooms.filter((room) => !room.closedAt && !['closed', 'archived', 'disbanded'].includes(room.roomStatus.toLowerCase())),
     [campaignDetail.rooms],
@@ -368,12 +380,24 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
     await runtimeEvents.appendEvent({ eventKind: event.eventKind, visibility: 'public', payload: event.payload });
   };
 
-  const handleSaveDndActorSheet = (actorInstanceId: string, sheet: DndLiteActorSheet) => {
-    setDndActorSheets((previous) => ({ ...previous, [actorInstanceId]: sheet }));
+  const handleSaveDndActorSheet = async (actorInstanceId: string, sheet: DndLiteActorSheet) => {
+    if (!selectedCampaignId || !canManageServer) throw new Error('Campaign actor editing is unavailable.');
+    const actor = campaignDetail.actors.find((item) => item.campaignActorInstanceId === actorInstanceId);
+    if (!actor) throw new Error('Campaign actor not found.');
+    await campaignRoomApiClient.updateCampaignActor(worldServerId, selectedCampaignId, actorInstanceId, {
+      overridePayload: withDndLiteActorSheetOverride(actor.overridePayload, sheet),
+    });
+    setPendingDndActorSheets((previous) => ({ ...previous, [actorInstanceId]: sheet }));
   };
 
-  const handleClearDndActorSheet = (actorInstanceId: string) => {
-    setDndActorSheets((previous) => {
+  const handleClearDndActorSheet = async (actorInstanceId: string) => {
+    if (!selectedCampaignId || !canManageServer) throw new Error('Campaign actor editing is unavailable.');
+    const actor = campaignDetail.actors.find((item) => item.campaignActorInstanceId === actorInstanceId);
+    if (!actor) throw new Error('Campaign actor not found.');
+    await campaignRoomApiClient.updateCampaignActor(worldServerId, selectedCampaignId, actorInstanceId, {
+      overridePayload: withoutDndLiteActorSheetOverride(actor.overridePayload),
+    });
+    setPendingDndActorSheets((previous) => {
       const next = { ...previous };
       delete next[actorInstanceId];
       return next;
@@ -387,8 +411,9 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
         displayName: monster.name,
         actorKind: 'monster',
         sourceActorId: `private-monster:${monster.monsterTemplateId}`,
+        overridePayload: withDndLiteActorSheetOverride({}, dndMonsterToLiteActorSheet(monster)),
       });
-      setDndActorSheets((previous) => ({ ...previous, [actor.campaignActorInstanceId]: dndMonsterToLiteActorSheet(monster) }));
+      setPendingDndActorSheets((previous) => ({ ...previous, [actor.campaignActorInstanceId]: dndMonsterToLiteActorSheet(monster) }));
       await campaignDetail.refresh();
     });
   };

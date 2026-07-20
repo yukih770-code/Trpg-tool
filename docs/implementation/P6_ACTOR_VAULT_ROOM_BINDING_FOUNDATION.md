@@ -74,7 +74,20 @@ surface supplies this durable context end to end.
   persistence/replay paths and are not represented as a claim of full runtime
   recovery.
 
+## P6.7 Durable DND Lite Campaign Actor Sheets
+
+- The DND Lite actor sheet now lives in a versioned namespaced entry of the
+  existing campaign actor `overridePayload`. It is a campaign-specific
+  projection: saving it never changes the owner Actor Vault baseline.
+- The campaign workspace validates the serialized projection before exposing it
+  to map presence, combat prefill, dice shortcuts, or the sheet editor. Invalid
+  or future-shaped JSON remains inert instead of becoming a runtime value.
+- Existing campaign-management permission remains the write boundary. This is
+  not a player self-service mutation command and does not introduce automatic
+  DND rules, damage settlement, inventory changes, or Room protocol changes.
+
 ## Follow-up Order
 
-1. Feed authorized override state into runtime map, combat, and action projections.
-2. Add per-system validated mutation commands after player/host permission rules are explicit.
+1. Feed approved campaign actor state into the linked Room Runtime projection.
+2. Add narrowly authorized per-system mutation commands after player/host
+   permission rules are explicit.

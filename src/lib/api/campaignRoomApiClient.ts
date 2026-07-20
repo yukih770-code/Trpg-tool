@@ -157,7 +157,7 @@ export type CampaignRoomApiClient = {
   restoreCampaign(worldServerId: string, campaignId: string): Promise<{ campaign: CampaignRecord; binding: CampaignBinding }>;
   listCampaignActors(worldServerId: string, campaignId: string): Promise<CampaignActorInstance[]>;
   getCampaignActor(worldServerId: string, campaignId: string, actorInstanceId: string): Promise<CampaignActorInstance>;
-  createCampaignActor(worldServerId: string, campaignId: string, input: { displayName: string; actorKind?: string; sourceActorId?: string }): Promise<CampaignActorInstance>;
+  createCampaignActor(worldServerId: string, campaignId: string, input: { displayName: string; actorKind?: string; sourceActorId?: string; overridePayload?: Record<string, unknown> }): Promise<CampaignActorInstance>;
   updateCampaignActor(worldServerId: string, campaignId: string, actorInstanceId: string, input: { displayName?: string; instanceStatus?: string; overridePayload?: Record<string, unknown> }): Promise<CampaignActorInstance>;
   archiveCampaignActor(worldServerId: string, campaignId: string, actorInstanceId: string): Promise<CampaignActorInstance | null>;
   listRooms(worldServerId: string, campaignId: string): Promise<RoomRecord[]>;

@@ -793,7 +793,7 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Do not turn an invite into a permanent shared password, expose raw codes to
   ordinary members, or infer Room/Runtime authority from invitation ownership.
 
-## Actor Vault, Cloud Room Launch, and Lifecycle Recovery (P6.1-P6.6)
+## Actor Vault, Cloud Room Launch, Lifecycle Recovery, and Campaign Overrides (P6.1-P6.7)
 - See `docs/implementation/P6_ACTOR_VAULT_ROOM_BINDING_FOUNDATION.md` before
   changing saved actors, Room actor bindings, or campaign actor instances.
 - Actor Vault records are owner-scoped. A submitted Room binding is resolved by
@@ -808,3 +808,7 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Do not expose full vault payloads through Room snapshots, treat an opaque
   campaign actor instance id as authority, or add Runtime HP/SAN writes until
   the cloud campaign launch path and validated mutation permissions exist.
+- P6.7 stores the DND Lite campaign actor projection in a namespaced
+  `campaign_actor_instances.overridePayload` entry. The source Actor Vault
+  record remains immutable from this path; only valid campaign-local
+  projections flow to the campaign workspace.

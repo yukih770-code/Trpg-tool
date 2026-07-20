@@ -318,7 +318,7 @@ export const zhCN = {
   dndActorSheet: {
     eyebrow: 'DND 运行工具',
     title: 'DND 轻量角色卡',
-    note: '为当前页面的战役角色记录属性、动作与常用数值。保存只保留在当前页面，不会写回角色库或服务器。',
+    note: '为当前战役角色记录属性、动作与常用数值。保存到本战役的角色覆写状态，不会改写角色库。',
     hostOnly: '当前只有主持人可以编辑轻量角色卡。',
     noActors: '还没有可用的战役角色记录。请先在战役角色区添加角色。',
     selectActor: '选择战役角色',
@@ -363,10 +363,11 @@ export const zhCN = {
     addToCombat: '加入战斗',
     clear: '清除本地草稿',
     invalid: '角色卡数据不完整或无效，请检查属性、生命值与动作公式。',
-    savedLocal: '角色卡已保存到当前页面。',
-    cleared: '已清除当前页面的角色卡草稿。',
+    savedLocal: '角色卡已保存到当前战役。',
+    saveFailed: '角色卡暂时无法保存，请稍后重试。',
+    cleared: '已清除本战役的角色卡覆写。',
     actionCount: '个动作',
-    boundary: '这不是完整角色构筑器：不会自动计算职业、种族、法术、资源或伤害应用，也不会写入服务器。',
+    boundary: '这不是完整角色构筑器：不会自动计算职业、种族、法术、资源或伤害应用。这里只保存本战役内的覆写状态。',
   },
   dndMonsters: {
     eyebrow: '私有资料', title: '私有怪物库', note: '管理当前服务器的私有怪物模板。导入内容不会作为平台公开资料。', refresh: '刷新', hostOnly: '只有服务器管理者可以创建、归档或加入战斗。', search: '搜索名称、类型或标签', allTypes: '全部类型', loading: '正在加载私有怪物模板…', unavailable: '私有怪物库暂时无法加载。', empty: '还没有私有怪物模板。你可以手动创建，或使用本地导入器。', unknownType: '未分类', privateBadge: '私有', ac: '护甲等级', hp: '生命值', speed: '速度', actions: '动作', senses: '感官', languages: '语言', addToCombat: '加入战斗', createActor: '创建角色草稿', archive: '归档', select: '选择一个怪物模板查看摘要与可用动作。', createManual: '手动创建私有怪物', manualNote: '仅保存基础字段；完整资料可通过本地导入器写入你的私有数据库。', name: '名称', creatureType: '生物类型', challengeRating: '挑战等级', create: '创建模板', created: '私有怪物模板已创建。', updated: '基础字段已更新。', editBasics: '编辑基础字段', saveBasics: '保存基础字段', actionFailed: '操作暂时未完成，请稍后重试。',
