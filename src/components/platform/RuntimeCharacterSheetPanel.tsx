@@ -272,13 +272,27 @@ export function RuntimeCharacterSheetPanel({ summary, role, inventory, dndAction
       {role === 'player' && dndActions.length > 0 && (
         <div className="rounded border border-slate-300/50 bg-white/70 p-2">
           <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">动作快捷掷骰</div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="space-y-1.5">
             {dndActions.map((action) => {
               const attack = action.attackBonus === undefined ? undefined : `d20${action.attackBonus >= 0 ? '+' : ''}${action.attackBonus}`;
-              return <button key={action.id} type="button" disabled={!attack || !onRollDndAction} onClick={() => attack && onRollDndAction?.({ expression: attack, label: `${summary.displayName} · ${action.name}` })} className="rounded border border-slate-400/45 bg-white px-2 py-1 text-[10px] font-bold text-slate-700 disabled:opacity-45">{action.name}{attack ? ` · ${attack}` : ''}</button>;
+              const damage = action.damageFormula;
+              return (
+                <div key={action.id} className="flex flex-wrap items-center justify-between gap-1.5 rounded border border-slate-200/80 bg-white/75 px-2 py-1.5">
+                  <span className="text-[10px] font-bold text-slate-700">{action.name}</span>
+                  <div className="flex flex-wrap gap-1">
+                    {attack && (
+                      <button type="button" disabled={!onRollDndAction} onClick={() => onRollDndAction?.({ expression: attack, label: `${summary.displayName} · ${action.name} 攻击` })} className="rounded border border-slate-400/45 bg-white px-2 py-1 text-[10px] font-bold text-slate-700 disabled:opacity-45">攻击 {attack}</button>
+                    )}
+                    {damage && (
+                      <button type="button" disabled={!onRollDndAction} onClick={() => onRollDndAction?.({ expression: damage, label: `${summary.displayName} · ${action.name} 伤害` })} className="rounded border border-amber-500/40 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800 disabled:opacity-45">伤害 {damage}</button>
+                    )}
+                    {!attack && !damage && <span className="text-[10px] text-slate-400">暂无可掷骰数值</span>}
+                  </div>
+                </div>
+              );
             })}
           </div>
-          <p className="mt-1 text-[9px] leading-relaxed text-slate-500">此处只发起服务器掷骰，不自动判定命中、伤害或修改生命值。</p>
+          <p className="mt-1 text-[9px] leading-relaxed text-slate-500">攻击与伤害都会写入服务器骰子日志；命中、伤害结算与生命值修改仍由主持人手动确认。</p>
         </div>
       )}
 
