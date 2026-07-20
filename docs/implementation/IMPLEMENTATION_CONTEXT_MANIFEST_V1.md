@@ -286,3 +286,11 @@ recovery.
 - P6.7 persists the DND Lite campaign actor sheet as a validated namespaced
   campaign override. It is deliberately separate from Actor Vault source data,
   room membership, and automated combat resolution.
+
+## Room Runtime Campaign Actor Projection (P6.8)
+
+Read `P6_ROOM_RUNTIME_CAMPAIGN_ACTOR_PROJECTION.md` before exposing persisted
+campaign actor data in Room Runtime. The dedicated Room endpoint is a narrow,
+permission-checked combat summary projection, not a proxy for the general
+campaign actor API. Keep full owner-scoped snapshots, inventory, actions,
+notes, source identifiers, and owner identifiers out of Room Runtime payloads.

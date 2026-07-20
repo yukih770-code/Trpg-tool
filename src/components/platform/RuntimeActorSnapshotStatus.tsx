@@ -14,9 +14,22 @@ export type RuntimeSnapshotConfidence = 'high' | 'medium' | 'low' | 'none';
 export interface RuntimeActorSnapshotStatusProps {
   confidence?: RuntimeSnapshotConfidence;
   sourceLabel?: string;
+  sourceKind?: 'campaignProjection';
 }
 
-export function RuntimeActorSnapshotStatus({ confidence, sourceLabel }: RuntimeActorSnapshotStatusProps) {
+export function RuntimeActorSnapshotStatus({ confidence, sourceLabel, sourceKind }: RuntimeActorSnapshotStatusProps) {
+  if (sourceKind === 'campaignProjection') {
+    return (
+      <div className="rounded border border-emerald-500/40 bg-emerald-50/50 px-2 py-1.5 text-[10px] leading-relaxed text-emerald-800">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+          <span className="font-bold">已连接战役角色状态</span>
+          {sourceLabel && <span className="opacity-70">· {sourceLabel}</span>}
+        </div>
+        <div className="mt-0.5 opacity-90">当前仅同步房间可显示的战斗摘要；完整角色资料仍保留在原有受保护位置。</div>
+      </div>
+    );
+  }
   if (!confidence || confidence === 'none') {
     return (
       <div className="rounded border border-slate-300/50 bg-white/60 px-2 py-1.5 text-[10px] leading-relaxed text-slate-500">

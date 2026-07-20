@@ -104,6 +104,7 @@ import { resolveOwnedRoomActorBinding } from './services/resolveOwnedRoomActorBi
 import { createPostgresPlatformFoundationRepository } from './adapters/postgresPlatformFoundationRepository.js';
 import { createPostgresWorldServerRepository } from './adapters/postgresWorldServerRepository.js';
 import { linkApprovedRoomBindingToCampaignActor } from './services/linkApprovedRoomBindingToCampaignActor.js';
+import { projectRoomRuntimeActorProjections } from './services/projectRoomRuntimeActorProjections.js';
 import { authorizeCloudRoomCreate } from './services/authorizeCloudRoomCreate.js';
 import {
   createLiveRoomLifecyclePersistenceCoordinator,
@@ -521,6 +522,18 @@ app.get('/rooms/:roomId/entry', (req, res) => {
     memberId: member.memberId,
     role: member.role,
   });
+});
+
+// Narrow Runtime read for safe combat-facing campaign actor facts. This route
+// deliberately does not reuse the general campaign actor API because that API
+// can return full owner-scoped source snapshots.
+app.get('/rooms/:roomId/runtime-actors', async (req, res) => {
+  const memberId = typeof req.query.memberId === 'string' ? req.query.memberId : undefined;
+  const room = requireRoomRuntimeAction(req, res, req.params.roomId, memberId, 'combat.view');
+  if (!room) return;
+
+  const result = await projectRoomRuntimeActorProjections({ room, repository: platformFoundationRepository });
+  res.json(result);
 });
 
 // Lobby snapshot read. The member id is bound to the authenticated viewer; a

@@ -7,12 +7,14 @@ import type { RoomMapEvent, RoomMapLivePreview } from '../../lib/platform/roomMa
 import {
   appendRoomMapEvent,
   appendRoomRuntimeLogEvent,
+  listRoomRuntimeActorProjections,
   listRoomMapEvents,
   listRoomRuntimeLog,
   rollSharedDice,
   setRoomMapMemberPermission,
   type RoomServerHttpClientConfig,
 } from '../../lib/platform/roomServerHttpClient';
+import type { RoomRuntimeActorProjection } from '../../lib/platform/roomRuntimeActorProjectionTypes';
 import { createRoomSocketClient, type RoomSocketConnectionState } from '../../lib/platform/roomSocketClient';
 import { resolveDevViewerUserId } from '../../lib/api/apiClient';
 import { resolveRoomRuntimePermissions } from '../../lib/platform/roomRuntimePermissions';
@@ -121,6 +123,20 @@ const CLEARANCE_LABEL: Record<string, string> = {
 
 type SharedMapPreview = Pick<RoomMapLivePreview, 'authorMemberId' | 'authorDisplayName' | 'preview'> & { updatedAt: number };
 
+function withCampaignRuntimeProjection(snapshot: unknown, projection: RoomRuntimeActorProjection | undefined): unknown {
+  if (!projection || projection.source !== 'campaignOverride') return snapshot;
+  const base = snapshot && typeof snapshot === 'object' && !Array.isArray(snapshot)
+    ? snapshot as Record<string, unknown>
+    : {};
+  return {
+    ...base,
+    acMod: projection.armorClass ?? base.acMod,
+    hpCurrent: projection.hpCurrent ?? base.hpCurrent,
+    hpMax: projection.hpMax ?? base.hpMax,
+    tempHp: projection.temporaryHp ?? base.tempHp,
+  };
+}
+
 export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLobby }: RoomRuntimeEntryBridgeProps) {
   // M32: the bridge owns a live socket while mounted (the lobby's socket closes
   // when the lobby unmounts). runtimeLogAppended feeds the log drawer AND the
@@ -166,6 +182,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const [mapError, setMapError] = useState<string | null>(null);
   const [sharedMapPreviews, setSharedMapPreviews] = useState<Record<string, SharedMapPreview>>({});
   const [roomCombatState, setRoomCombatState] = useState<CombatRuntimeTableState>(createCombatRuntimeTableState);
+  const [runtimeActorProjections, setRuntimeActorProjections] = useState<RoomRuntimeActorProjection[]>([]);
   const [selectedCombatantId, setSelectedCombatantId] = useState<string | undefined>();
   const [combatantToLocate, setCombatantToLocate] = useState<string | undefined>();
   const [inspectedToken, setInspectedToken] = useState<MapToken | undefined>();
@@ -209,6 +226,23 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   useEffect(() => {
     loadRoomMapEvents();
   }, [loadRoomMapEvents]);
+
+  useEffect(() => {
+    if (!context.currentMemberId) {
+      setRuntimeActorProjections([]);
+      return;
+    }
+    let cancelled = false;
+    listRoomRuntimeActorProjections({ baseUrl: context.serverBaseUrl }, context.roomId, context.currentMemberId)
+      .then((result) => {
+        if (!cancelled) setRuntimeActorProjections(result.actors);
+      })
+      .catch(() => {
+        // Existing compact room bindings remain safe offline fallbacks.
+        if (!cancelled) setRuntimeActorProjections([]);
+      });
+    return () => { cancelled = true; };
+  }, [context.currentMemberId, context.roomId, context.serverBaseUrl]);
 
   const mergeNoteEvent = (event: RoomRuntimeLogEvent) => {
     if (!isNoteKind(event)) return;
@@ -484,6 +518,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const myReadyState = readyStates.find((r) => r.memberId === context.currentMemberId)?.status ?? context.readyState;
   const myBinding = actorBindings.find((b) => b.memberId === context.currentMemberId);
   const myMember = members.find((m) => m.memberId === context.currentMemberId);
+  const myRuntimeActorProjection = runtimeActorProjections.find((projection) => projection.bindingId === myBinding?.bindingId);
 
   // Cleared room entries are display candidates only; room permissions still
   // govern every map action.
@@ -494,9 +529,23 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       const presenceCandidate = entryCharacter?.isApprovedForRoom
         ? entryCharacterToPresenceCandidate(entryCharacter)
         : undefined;
-      return presenceCandidate ? [presenceCandidate] : [];
+      if (!presenceCandidate) return [];
+      const projection = runtimeActorProjections.find((candidate) => candidate.bindingId === binding.bindingId);
+      return [{
+        ...presenceCandidate,
+        displayName: projection?.displayName ?? presenceCandidate.displayName,
+        campaignActorId: projection?.campaignActorInstanceId ?? presenceCandidate.campaignActorId,
+        hpSummary: projection && (projection.hpCurrent !== undefined || projection.hpMax !== undefined || projection.temporaryHp !== undefined)
+          ? {
+              current: projection.hpCurrent ?? projection.hpMax ?? 0,
+              max: projection.hpMax ?? projection.hpCurrent ?? 0,
+              temporary: projection.temporaryHp,
+            }
+          : presenceCandidate.hpSummary,
+        conditionSummary: projection?.conditions ?? presenceCandidate.conditionSummary,
+      }];
     }),
-    [actorBindings, members],
+    [actorBindings, members, runtimeActorProjections],
   );
 
   // M57 resolve a REAL character snapshot for the current player from the local
@@ -508,6 +557,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     actorId: context.actorRef?.actorId,
     displayName: context.actorRef?.displayName,
   });
+  const runtimeCharacterSnapshot = withCampaignRuntimeProjection(snapshotResult.snapshot, myRuntimeActorProjection);
 
   // M46/M49/M57 read-only Runtime Character Sheet summary — built by the safe
   // snapshot adapter from the resolved snapshot (or identity-only when none).
@@ -523,20 +573,23 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
           clearanceStatus: myBinding.clearance?.status,
         }
       : undefined,
-    snapshot: snapshotResult.snapshot,
+    snapshot: runtimeCharacterSnapshot,
     playerLabel: myMember?.displayName ?? context.currentRole,
     readyState: myReadyState,
     fallbackSystemId: context.systemId,
-    sourceLabel: snapshotResult.sourceKind === 'characterVault' ? snapshotResult.sourceLabel : undefined,
+    sourceLabel: myRuntimeActorProjection?.source === 'campaignOverride'
+      ? '战役角色状态 · 房间同步'
+      : snapshotResult.sourceKind === 'characterVault' ? snapshotResult.sourceLabel : undefined,
+    dataSourceKind: myRuntimeActorProjection?.source === 'campaignOverride' ? 'campaignProjection' : undefined,
     ownerId: snapshotResult.ownerId,
     ownershipLabel: snapshotResult.ownershipLabel,
     extraWarnings: snapshotResult.warnings,
-    matchConfidence: snapshotResult.matchConfidence,
+    matchConfidence: myRuntimeActorProjection?.source === 'campaignOverride' ? undefined : snapshotResult.matchConfidence,
   });
 
   // M55/M57 read-only inventory summary from the same resolved snapshot.
   const inventorySummary = buildRuntimeInventorySummary({
-    snapshot: snapshotResult.snapshot,
+    snapshot: runtimeCharacterSnapshot,
     systemId: characterSummary?.system ?? context.actorRef?.systemId ?? context.systemId,
   });
 

@@ -38,6 +38,8 @@ export interface RuntimeActorSnapshotInput {
   fallbackSystemId?: string;
   /** Human-facing provenance label for the resolved snapshot (M57/M60). */
   sourceLabel?: string;
+  /** A compact trusted campaign projection, distinct from a local character vault match. */
+  dataSourceKind?: 'campaignProjection';
   /** Optional Actor Vault owner id from read-side ownership registry. Not used for permission. */
   ownerId?: string;
   /** Product-facing ownership label; UI must not expose raw ownerId. */
@@ -282,6 +284,7 @@ export function buildRuntimeCharacterSummary(input: RuntimeActorSnapshotInput): 
     readyState: input.readyState,
     bindingStatus: input.binding?.status,
     dataSourceLabel: input.sourceLabel,
+    dataSourceKind: input.dataSourceKind,
     ownerId: input.ownerId,
     ownershipLabel: input.ownershipLabel,
     matchConfidence: input.matchConfidence,

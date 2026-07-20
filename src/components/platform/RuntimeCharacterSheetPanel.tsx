@@ -39,6 +39,8 @@ export interface RuntimeCharacterSummary {
   bindingStatus?: string;
   /** Human-facing provenance of the character data (M57/M60), e.g. 本地角色库 · DND 5E. */
   dataSourceLabel?: string;
+  /** Compact campaign-state projection; never a full remote character snapshot. */
+  dataSourceKind?: 'campaignProjection';
   /** Optional read-side owner id. Carried for projections only; never displayed raw. */
   ownerId?: string;
   /** Product-facing ownership label. */
@@ -213,7 +215,7 @@ export function RuntimeCharacterSheetPanel({ summary, role, inventory }: Runtime
       </div>
 
       {/* Snapshot match-confidence banner (M62). */}
-      <RuntimeActorSnapshotStatus confidence={summary.matchConfidence} sourceLabel={summary.dataSourceLabel} />
+      <RuntimeActorSnapshotStatus confidence={summary.matchConfidence} sourceLabel={summary.dataSourceLabel} sourceKind={summary.dataSourceKind} />
 
       {summary.sourceWarnings.length > 0 && (
         <div className="rounded border border-amber-500/30 bg-amber-50/60 px-2 py-1.5 text-[10px] leading-relaxed text-amber-800">

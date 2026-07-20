@@ -812,3 +812,13 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   `campaign_actor_instances.overridePayload` entry. The source Actor Vault
   record remains immutable from this path; only valid campaign-local
   projections flow to the campaign workspace.
+
+## Room Runtime Campaign Actor Projection (P6.8)
+- The Runtime reads `GET /rooms/:roomId/runtime-actors` only after the existing
+  authenticated active-member and `combat.view` checks.
+- The server projects only approved linked bindings and only compact DND Lite
+  combat facts (name, HP, temporary HP, AC). Full campaign actor snapshots,
+  actions, inventory, notes, source IDs, and owner IDs remain outside Room
+  Runtime transport.
+- Storage loss degrades to the existing compact Room binding; it never blocks a
+  member from opening the Runtime.

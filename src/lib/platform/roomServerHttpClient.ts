@@ -26,6 +26,7 @@ import type {
 import type { SharedDiceRollResponse } from './sharedDiceTypes';
 import type { AppendRoomMapEventInput, RoomMapEvent, RoomMapEventListResult } from './roomMapTypes';
 import type { CharacterClearanceDetails } from './characterClearanceDetails';
+import type { RoomRuntimeActorProjectionListResult } from './roomRuntimeActorProjectionTypes';
 import { resolveDevViewerUserId } from '../api/apiClient';
 
 export interface RoomServerHttpClientConfig {
@@ -250,6 +251,19 @@ export async function setRoomMemberReadyOnServer(
     method: 'POST',
     body: JSON.stringify({ ready }),
   });
+}
+
+/**
+ * Read the Room-safe combat projection for approved campaign actor bindings.
+ * This is intentionally narrower than the general campaign actor API.
+ */
+export async function listRoomRuntimeActorProjections(
+  config: RoomServerHttpClientConfig,
+  roomId: string,
+  memberId: string,
+): Promise<RoomRuntimeActorProjectionListResult> {
+  const query = new URLSearchParams({ memberId });
+  return request<RoomRuntimeActorProjectionListResult>(config, `/rooms/${encodeURIComponent(roomId)}/runtime-actors?${query.toString()}`);
 }
 
 // ── RuntimeLog server v0 (M21) ──────────────────────────────────────────────
