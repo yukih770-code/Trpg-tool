@@ -89,6 +89,8 @@ import { registerCampaignRoomApiRoutes } from './api/campaignRoomApiRoutes.js';
 import { createCampaignRoomApiHandlers } from './api/campaignRoomApiHandlers.js';
 import { registerDndPrivateMonsterApiRoutes } from './api/dndPrivateMonsterApiRoutes.js';
 import { createDndPrivateMonsterApiHandlers } from './api/dndPrivateMonsterApiHandlers.js';
+import { registerActorApiRoutes } from './api/actorApiRoutes.js';
+import { createActorApiHandlers } from './api/actorApiHandlers.js';
 import { createPrivateAlphaAuthService, readPrivateAlphaAuthConfigFromEnv } from './auth/privateAlphaAuth.js';
 import { getVerifiedViewer, setPrivateAlphaViewer } from './auth/requestViewer.js';
 import { createCurrentViewerContextFromAuthSession, type CurrentViewerContext } from './auth/currentViewerContext.js';
@@ -97,6 +99,16 @@ import type { RoomRuntimeAction } from '../src/lib/platform/roomRuntimePermissio
 import { createPrivateAlphaAuthApiHandlers } from './api/privateAlphaAuthApiHandlers.js';
 import { registerPrivateAlphaAuthApiRoutes } from './api/privateAlphaAuthApiRoutes.js';
 import { okResponse } from './api/apiResponse.js';
+import { createPostgresActorRepository } from './adapters/postgresActorRepository.js';
+import { resolveOwnedRoomActorBinding } from './services/resolveOwnedRoomActorBinding.js';
+import { createPostgresPlatformFoundationRepository } from './adapters/postgresPlatformFoundationRepository.js';
+import { createPostgresWorldServerRepository } from './adapters/postgresWorldServerRepository.js';
+import { linkApprovedRoomBindingToCampaignActor } from './services/linkApprovedRoomBindingToCampaignActor.js';
+import { authorizeCloudRoomCreate } from './services/authorizeCloudRoomCreate.js';
+import {
+  createLiveRoomLifecyclePersistenceCoordinator,
+  restoreLiveRoomLifecycles,
+} from './services/liveRoomLifecyclePersistence.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -210,14 +222,26 @@ registerDndPrivateMonsterApiRoutes(app, createDndPrivateMonsterApiHandlers({
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));
+registerActorApiRoutes(app, createActorApiHandlers({
+  allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
+  nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
+}));
 
-const registry = createInMemoryRoomRegistry();
 // Separate, memory-only RuntimeLog store — NOT part of RoomSnapshot (M21).
 const runtimeLogRegistry = createInMemoryRuntimeLogRegistry();
 // Separate, memory-only map event stream. Not RoomSnapshot and not RuntimeLog.
 const roomMapRegistry = createInMemoryRoomMapRegistry();
 // Memory-only ActorAdmission store for Character Clearance (M24.2b).
 const actorAdmissionRegistry = createInMemoryActorAdmissionRegistry();
+// The Vault repository remains independent from rooms. It is consulted only to
+// canonicalize an explicit persisted actorId during lobby binding submission.
+const actorVaultRepository = createPostgresActorRepository();
+const platformFoundationRepository = createPostgresPlatformFoundationRepository();
+const worldServerRepository = createPostgresWorldServerRepository();
+const liveRoomLifecyclePersistence = createLiveRoomLifecyclePersistenceCoordinator(platformFoundationRepository);
+const registry = createInMemoryRoomRegistry({
+  onRoomUpdated: (snapshot) => liveRoomLifecyclePersistence.queue(snapshot),
+});
 const PORT = serverRuntimeConfig.httpPort;
 
 // HTTP server + WebSocket transport scaffold (room snapshot broadcast only).
@@ -397,7 +421,7 @@ app.get('/rooms', (_req, res) => {
   });
 });
 
-app.post('/rooms/create', (req, res) => {
+app.post('/rooms/create', async (req, res) => {
   const body = req.body as CreateRoomInput | undefined;
   const viewer = resolveRoomRequestViewer(req);
   if (!viewer.isAuthenticated || !viewer.viewerUserId) {
@@ -409,13 +433,41 @@ app.post('/rooms/create', (req, res) => {
     return;
   }
   // Optional campaign linkage (M19 / M19.2): validate displayName, source enum,
-  // systemId enum, and system match. NOT a permission check.
+  // systemId enum, and system match.
   const campaignRefError = validateCampaignRef(body.campaignRef, body.systemId ?? 'dnd5e-2024');
   if (campaignRefError) {
     res.status(400).json({ error: campaignRefError });
     return;
   }
+  const worldServerId = body.campaignRef?.worldServerId?.trim();
+  const campaignId = body.campaignRef?.campaignId?.trim();
+  if (Boolean(worldServerId) !== Boolean(campaignId)) {
+    res.status(400).json({ error: 'worldServerId and campaignId must be supplied together.' });
+    return;
+  }
+  if (worldServerId && campaignId) {
+    const authorization = await authorizeCloudRoomCreate(worldServerRepository, {
+      worldServerId,
+      campaignId,
+      viewerUserId: viewer.viewerUserId,
+    });
+    if (authorization.status === 'unavailable') {
+      res.status(503).json({ error: 'worldContextUnavailable', message: 'The campaign context is temporarily unavailable.' });
+      return;
+    }
+    if (authorization.status === 'denied') {
+      res.status(403).json({ error: 'campaignRoomCreateDenied', message: 'You cannot create a live room for this campaign.' });
+      return;
+    }
+  }
   const result = createRoom({ ...body, hostUserId: viewer.viewerUserId });
+  if (worldServerId && campaignId) {
+    const persisted = await liveRoomLifecyclePersistence.persist(result.room);
+    if (persisted.decision !== 'persisted') {
+      res.status(503).json({ error: 'roomLifecycleUnavailable', message: 'The live room could not be prepared for recovery.' });
+      return;
+    }
+  }
   registry.create(result.room);
   roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'roomCreated');
   res.json(result);
@@ -442,6 +494,33 @@ app.post('/rooms/join', (req, res) => {
     if (room) roomSocketServer.broadcastRoomSnapshot(room.identity.roomId, room, 'memberJoined');
   }
   res.json(result);
+});
+
+// Re-enter a restored lobby without retaining a browser-side member id. The
+// signed-in user still has to match an active persisted room member.
+app.get('/rooms/:roomId/entry', (req, res) => {
+  const room = registry.get(req.params.roomId);
+  if (!room) {
+    res.status(404).json({ error: 'roomNotFound', roomId: req.params.roomId });
+    return;
+  }
+  const viewer = resolveRoomRequestViewer(req);
+  if (!viewer.isAuthenticated || !viewer.viewerUserId) {
+    res.status(401).json({ error: 'unauthenticated', message: 'Authentication required.' });
+    return;
+  }
+  const member = room.members.find((candidate) =>
+    candidate.userId === viewer.viewerUserId && candidate.status !== 'kicked' && candidate.status !== 'left' && candidate.status !== 'disconnected',
+  );
+  if (!member) {
+    res.status(403).json({ error: 'notAuthorized', message: 'An active room membership is required.' });
+    return;
+  }
+  res.json({
+    room: projectRoomSnapshotForViewer(room, member.memberId),
+    memberId: member.memberId,
+    role: member.role,
+  });
 });
 
 // Lobby snapshot read. The member id is bound to the authenticated viewer; a
@@ -532,26 +611,55 @@ app.post('/rooms/:roomId/members/:memberId/reject', (req, res) => {
 // Pre-session lobby state only. Host approve/reject here are SCAFFOLD actions,
 // NOT a real permission system. No Runtime / actor instance creation.
 
-app.post('/rooms/:roomId/actor-bindings/submit', (req, res) => {
+app.post('/rooms/:roomId/actor-bindings/submit', async (req, res) => {
   const body = (req.body ?? {}) as { memberId?: string; actorRef?: { systemId?: string; actorId?: string; displayName?: string; source?: unknown; summary?: string; hpCurrent?: number; hpMax?: number; armorClass?: number; details?: unknown } };
   if (typeof body.memberId !== 'string' || !body.actorRef || typeof body.actorRef.displayName !== 'string') {
     res.status(400).json({ error: 'memberId and actorRef.displayName are required.' });
     return;
   }
-  if (!requireRoomParticipant(req, res, req.params.roomId, body.memberId)) return;
+  // Preserve the runtime validation above in a concrete shape across the await
+  // below. It also makes the canonicalization seam explicit at this boundary.
+  const submittedActorRef = {
+    systemId: body.actorRef.systemId,
+    actorId: body.actorRef.actorId,
+    displayName: body.actorRef.displayName,
+    source: body.actorRef.source,
+    summary: body.actorRef.summary,
+    hpCurrent: body.actorRef.hpCurrent,
+    hpMax: body.actorRef.hpMax,
+    armorClass: body.actorRef.armorClass,
+    details: body.actorRef.details,
+  };
+  const room = requireRoomParticipant(req, res, req.params.roomId, body.memberId);
+  if (!room) return;
+  const viewer = resolveRoomRequestViewer(req);
+  if (!viewer.viewerUserId) {
+    res.status(401).json({ error: 'unauthenticated', message: 'Authentication required.' });
+    return;
+  }
+  const resolvedActor = await resolveOwnedRoomActorBinding(actorVaultRepository, {
+    viewerUserId: viewer.viewerUserId,
+    roomSystemId: room.identity.systemId,
+    actorRef: submittedActorRef,
+  });
+  if (resolvedActor.ok === false) {
+    const status = resolvedActor.code === 'unavailable' ? 503 : resolvedActor.code === 'system_mismatch' ? 400 : 404;
+    res.status(status).json({ error: resolvedActor.code, message: resolvedActor.message });
+    return;
+  }
   const result = submitActorBinding(registry, {
     roomId: req.params.roomId,
     memberId: body.memberId,
     actorRef: {
-      systemId: body.actorRef.systemId,
-      actorId: body.actorRef.actorId,
-      displayName: body.actorRef.displayName,
-      source: body.actorRef.source as never,
-      summary: body.actorRef.summary,
-      hpCurrent: body.actorRef.hpCurrent,
-      hpMax: body.actorRef.hpMax,
-      armorClass: body.actorRef.armorClass,
-      details: body.actorRef.details,
+      systemId: resolvedActor.actorRef.systemId,
+      actorId: resolvedActor.actorRef.actorId,
+      displayName: resolvedActor.actorRef.displayName,
+      source: resolvedActor.actorRef.source as never,
+      summary: resolvedActor.actorRef.summary,
+      hpCurrent: resolvedActor.actorRef.hpCurrent,
+      hpMax: resolvedActor.actorRef.hpMax,
+      armorClass: resolvedActor.actorRef.armorClass,
+      details: resolvedActor.actorRef.details,
     },
   });
   if (result.room) {
@@ -560,7 +668,7 @@ app.post('/rooms/:roomId/actor-bindings/submit', (req, res) => {
   res.status(result.decision === 'roomNotFound' ? 404 : result.decision === 'submitted' ? 200 : 400).json(result);
 });
 
-app.post('/rooms/:roomId/actor-bindings/:bindingId/approve', (req, res) => {
+app.post('/rooms/:roomId/actor-bindings/:bindingId/approve', async (req, res) => {
   const body = (req.body ?? {}) as { reviewerMemberId?: string };
   if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.reviewerMemberId, 'room.host.manage')) return;
   const result = approveActorBinding(registry, actorAdmissionRegistry, {
@@ -568,6 +676,18 @@ app.post('/rooms/:roomId/actor-bindings/:bindingId/approve', (req, res) => {
     bindingId: req.params.bindingId,
     reviewerMemberId: body.reviewerMemberId,
   });
+  let campaignActorLink: Awaited<ReturnType<typeof linkApprovedRoomBindingToCampaignActor>> | undefined;
+  const viewer = resolveRoomRequestViewer(req);
+  if (result.decision === 'approved' && viewer.viewerUserId) {
+    campaignActorLink = await linkApprovedRoomBindingToCampaignActor(
+      registry,
+      actorVaultRepository,
+      platformFoundationRepository,
+      worldServerRepository,
+      { roomId: req.params.roomId, bindingId: req.params.bindingId, reviewerUserId: viewer.viewerUserId },
+    );
+  }
+  if (campaignActorLink && result.room) result.room = registry.get(req.params.roomId) ?? result.room;
   if (result.room) {
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'actorBindingApproved');
   }
@@ -579,7 +699,7 @@ app.post('/rooms/:roomId/actor-bindings/:bindingId/approve', (req, res) => {
         : result.decision === 'reviewerNotHost' || result.decision === 'reviewerNotActive'
           ? 403
           : 400;
-  res.status(status).json(result);
+  res.status(status).json({ ...result, campaignActorLink });
 });
 
 app.post('/rooms/:roomId/actor-bindings/:bindingId/reject', (req, res) => {
@@ -898,6 +1018,12 @@ const onServerListening = () => {
   }
   // eslint-disable-next-line no-console
   console.log(`[room-server] database configured: ${databaseRuntimeConfig.configured}; dev auth enabled: ${serverRuntimeConfig.devUserApiEnabled === true}`);
+  void restoreLiveRoomLifecycles(platformFoundationRepository, registry).then((result) => {
+    if (result.decision === 'restored' && result.restoredCount > 0) {
+      // eslint-disable-next-line no-console
+      console.log(`[room-server] restored ${result.restoredCount} live room lobby/lobbies.`);
+    }
+  });
 };
 
 if (serverRuntimeConfig.lanAlpha?.enabled && serverRuntimeConfig.lanAlpha.bindHost !== '0.0.0.0') {

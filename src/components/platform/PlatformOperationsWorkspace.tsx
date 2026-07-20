@@ -6,6 +6,7 @@ type Props = {
   serverName: string;
   memberCount: number;
   onOpenProfile: () => void;
+  onOpenCampaigns: () => void;
 };
 
 export function PlatformOperationsWorkspace({
@@ -13,6 +14,7 @@ export function PlatformOperationsWorkspace({
   serverName,
   memberCount,
   onOpenProfile,
+  onOpenCampaigns,
 }: Props) {
   const isEn = locale === 'en';
   return (
@@ -25,6 +27,7 @@ export function PlatformOperationsWorkspace({
             <p className="mt-2 text-sm text-[#51483d]">{isEn ? `${memberCount} members · Browse server information or continue with your personal tools below.` : `${memberCount} 名成员 · 查看服务器资料，或使用下方的个人与资料入口。`}</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={onOpenCampaigns} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm font-bold text-[#51483d] hover:bg-[#2f2a22]/5">{isEn ? 'Campaigns & rooms' : '战役与房间'}</button>
             <button type="button" onClick={onOpenProfile} className="rounded-md bg-[#17130f] px-3 py-2 text-sm font-bold text-white hover:bg-[#2f2a22]">{isEn ? 'Server profile' : '服务器资料'} <ChevronRight className="ml-1 inline h-4 w-4" /></button>
           </div>
         </div>

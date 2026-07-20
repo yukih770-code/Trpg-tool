@@ -56,6 +56,8 @@ export async function runCampaignRoomApiClientSmoke(): Promise<SmokeCase[]> {
   await check('campaign_actor_write_paths', async () => {
     await client.createCampaignActor('server-1', 'campaign-1', { displayName: 'Actor' });
     assert(calls.at(-1)?.init?.method === 'POST', 'actor create was not POST');
+    await client.updateCampaignActor('server-1', 'campaign-1', 'actor-1', { overridePayload: { hpCurrent: 7 } });
+    assert(calls.at(-1)?.init?.method === 'PATCH' && calls.at(-1)?.url.endsWith('/actors/actor-1'), 'actor update path was incorrect');
     await client.archiveCampaignActor('server-1', 'campaign-1', 'actor-1');
     assert(calls.at(-1)?.url.endsWith('/archive'), 'actor archive path was incorrect');
   });

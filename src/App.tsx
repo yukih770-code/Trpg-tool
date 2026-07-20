@@ -36,8 +36,10 @@ import { useWorldServers } from './lib/worldServer/useWorldServers';
 import { useWorldServerDetail } from './lib/worldServer/useWorldServerDetail';
 import { PlatformOperationsWorkspace } from './components/platform/PlatformOperationsWorkspace';
 import { ServerProfileBoard } from './components/platform/ServerProfileBoard';
+import { ServerCampaignWorkspace } from './components/platform/ServerCampaignWorkspace';
 import { LocalDevIdentitySwitcher } from './components/platform/LocalDevIdentitySwitcher';
 import { PrivateAlphaLoginPanel } from './components/platform/PrivateAlphaLoginPanel';
+import { ServerInvitePanel } from './components/platform/ServerInvitePanel';
 
 type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop' | 'fanPlaza' | 'documents' | 'personalHub' | 'userProfile';
 type PlayStage = 'menu' | 'workspace';
@@ -756,6 +758,9 @@ export default function App() {
     );
   };
   const renderSettingsCategory = (cat: string) => {
+    if (cat === '邀请与加入申请' && selectedServerId && entryStage === 'platform') {
+      return <ServerInvitePanel worldServerId={selectedServerId} locale={locale} canManage={canManageSelectedServer} />;
+    }
     if (cat === '语言') {
       const isZh = locale === 'zh-CN';
       const isEn = locale === 'en';
@@ -1293,6 +1298,10 @@ export default function App() {
                 serverName={selectedApiServer.displayName}
                 memberCount={worldServerDetail.members.length}
                 onOpenProfile={() => setEntryStage('serverHome')}
+                onOpenCampaigns={() => {
+                  setActivePlaceholder('campaigns');
+                  setAppView('placeholder');
+                }}
               />
             )}
             <Home locale={locale} onEnterPlay={enterPlay} onOpenPlaceholder={openPlaceholder} />
@@ -1429,7 +1438,21 @@ export default function App() {
           </main>
         )}
 
-        {appView === 'placeholder' && activePlaceholder !== 'settings' && (
+        {appView === 'placeholder' && activePlaceholder === 'campaigns' && selectedApiServer && (
+          <main className="mx-auto w-full max-w-7xl px-4 py-8 md:px-8">
+            <ServerCampaignWorkspace
+              worldServerId={selectedApiServer.worldServerId}
+              locale={locale}
+              gameSystems={worldServerDetail.gameSystems}
+              defaultGameSystemId={selectedApiServer.defaultGameSystemId}
+              canManageServer={canManageSelectedServer}
+              viewerUserId={viewerUserId}
+              hostDisplayName={privateAlphaAuthState.user?.displayName ?? viewerAccount.displayName}
+            />
+          </main>
+        )}
+
+        {appView === 'placeholder' && activePlaceholder !== 'settings' && activePlaceholder !== 'campaigns' && (
           <main className="mx-auto w-full max-w-5xl px-4 py-8 md:px-8">
             <button
               type="button"

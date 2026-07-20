@@ -63,6 +63,7 @@ export function registerWorldServerApiRoutes(app: Express, handlers: WorldServer
 
   app.get(`${PREFIX}/:worldServerId/invites`, (req, res) => void invoke(res, handlers.listInvites, req));
   app.post(`${PREFIX}/:worldServerId/invites`, (req, res) => void invoke(res, handlers.createInvite, req));
+  app.post(`${PREFIX}/:worldServerId/invites/:inviteId/revoke`, (req, res) => void invoke(res, handlers.revokeInvite, req));
   app.get(`${PREFIX}/:worldServerId/join-requests`, (req, res) => void invoke(res, handlers.listJoinRequests, req));
   app.post(`${PREFIX}/:worldServerId/join-requests`, (req, res) => void invoke(res, handlers.createJoinRequest, req));
   app.patch(`${PREFIX}/:worldServerId/join-requests/:joinRequestId`, (req, res) => void invoke(res, handlers.reviewJoinRequest, req));

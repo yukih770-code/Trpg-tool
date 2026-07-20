@@ -148,6 +148,18 @@ export interface WorldServerInviteRecord {
   archivedAt?: string;
 }
 
+/**
+ * The small, safe result of accepting a private server invite. It deliberately
+ * excludes the invitation code so callers never need to retain or serialize it.
+ */
+export interface WorldServerInviteRedemptionRecord {
+  inviteId: string;
+  worldServerId: string;
+  membershipId: string;
+  membershipStatus: string;
+  roleKey: string;
+}
+
 export interface WorldServerJoinRequestRecord {
   joinRequestId: string;
   worldServerId: string;
@@ -357,6 +369,13 @@ export interface CreateWorldServerInviteInput {
   expiresAt?: string;
   payload?: Record<string, unknown>;
   schemaVersion?: number;
+}
+
+export interface RedeemWorldServerInviteInput {
+  inviteCode: string;
+  userId: string;
+  membershipId: string;
+  displayAlias?: string;
 }
 
 export interface UpdateWorldServerInviteInput {
@@ -827,6 +846,8 @@ export interface PostgresWorldServerRepository {
   getWorldServerInviteByCode(inviteCode: string): Promise<PostgresWorldServerRepositoryResult<WorldServerInviteRecord | null>>;
   listWorldServerInvites(worldServerId: string, options?: ListWorldServerInvitesOptions): Promise<PostgresWorldServerRepositoryResult<WorldServerInviteRecord[]>>;
   createWorldServerInvite(input: CreateWorldServerInviteInput): Promise<PostgresWorldServerRepositoryResult<WorldServerInviteRecord>>;
+  /** Atomically claims a one-person invite and creates or restores its membership. */
+  redeemWorldServerInvite(input: RedeemWorldServerInviteInput): Promise<PostgresWorldServerRepositoryResult<WorldServerInviteRedemptionRecord | null>>;
   updateWorldServerInvite(input: UpdateWorldServerInviteInput): Promise<PostgresWorldServerRepositoryResult<WorldServerInviteRecord | null>>;
   updateWorldServerInviteStatus(input: UpdateWorldServerInviteStatusInput): Promise<PostgresWorldServerRepositoryResult<WorldServerInviteRecord | null>>;
   archiveWorldServerInvite(inviteId: string, archivedAt?: string): Promise<PostgresWorldServerRepositoryResult<WorldServerInviteRecord | null>>;
@@ -1229,6 +1250,81 @@ export function createPostgresWorldServerRepository(
     }
   }
 
+  async function redeemWorldServerInvite(input: RedeemWorldServerInviteInput): Promise<PostgresWorldServerRepositoryResult<WorldServerInviteRedemptionRecord | null>> {
+    const now = new Date().toISOString();
+    try {
+      const result = await executor.query<{
+        invite_id: string;
+        world_server_id: string;
+        default_role_key: string;
+        membership_id: string;
+        membership_status: string;
+      }>(
+        `WITH eligible AS (
+           SELECT invite_id, world_server_id, default_role_key, target_user_id
+             FROM world_server_invites
+            WHERE invite_code = $1
+              AND archived_at IS NULL
+              AND (expires_at IS NULL OR expires_at > $5::timestamptz)
+              AND (
+                (target_user_id = $2 AND invite_status = 'used')
+                OR (
+                  target_user_id IS NULL
+                  AND invite_status = 'active'
+                  AND (max_uses IS NULL OR use_count < max_uses)
+                )
+              )
+            FOR UPDATE
+         ), claimed AS (
+           UPDATE world_server_invites AS invite
+              SET target_user_id = COALESCE(invite.target_user_id, $2),
+                  use_count = CASE WHEN invite.target_user_id IS NULL THEN invite.use_count + 1 ELSE invite.use_count END,
+                  invite_status = 'used',
+                  updated_at = $5
+             FROM eligible
+            WHERE invite.invite_id = eligible.invite_id
+          RETURNING invite.invite_id, invite.world_server_id, invite.default_role_key
+         ), membership AS (
+           INSERT INTO world_server_memberships (
+             membership_id, world_server_id, user_id, role_key, membership_status,
+             display_alias, invited_by_user_id, membership_payload, schema_version,
+             joined_at, created_at, updated_at
+           )
+           SELECT $3, claimed.world_server_id, $2, claimed.default_role_key, 'active',
+             $4, NULL, '{}'::jsonb, 1, $5, $5, $5
+             FROM claimed
+           ON CONFLICT (world_server_id, user_id) DO UPDATE
+             SET membership_status = 'active',
+                 role_key = EXCLUDED.role_key,
+                 display_alias = COALESCE(EXCLUDED.display_alias, world_server_memberships.display_alias),
+                 joined_at = COALESCE(world_server_memberships.joined_at, EXCLUDED.joined_at),
+                 updated_at = EXCLUDED.updated_at
+          RETURNING membership_id, world_server_id, membership_status, role_key
+         )
+         SELECT claimed.invite_id, claimed.world_server_id, claimed.default_role_key,
+           membership.membership_id, membership.membership_status
+           FROM claimed
+           INNER JOIN membership ON membership.world_server_id = claimed.world_server_id`,
+        [input.inviteCode, input.userId, input.membershipId, input.displayAlias ?? null, now],
+      );
+      const row = result.rows[0];
+      return row
+        ? {
+            ok: true,
+            value: {
+              inviteId: row.invite_id,
+              worldServerId: row.world_server_id,
+              membershipId: row.membership_id,
+              membershipStatus: row.membership_status,
+              roleKey: row.default_role_key,
+            },
+          }
+        : { ok: true, value: null };
+    } catch (error) {
+      return mapRepositoryError(error);
+    }
+  }
+
   const updateWorldServerInvite = (input: UpdateWorldServerInviteInput) =>
     one<InviteRow, WorldServerInviteRecord>(
       `UPDATE world_server_invites SET target_user_id = COALESCE($2, target_user_id), target_email = COALESCE($3, target_email), default_role_key = COALESCE($4, default_role_key), max_uses = COALESCE($5, max_uses), use_count = COALESCE($6, use_count), expires_at = COALESCE($7, expires_at), invite_payload = COALESCE($8::jsonb, invite_payload), updated_at = $9 WHERE invite_id = $1 RETURNING ${INVITE_COLS}`,
@@ -1333,7 +1429,7 @@ export function createPostgresWorldServerRepository(
     listWorldServerMembershipsForUser, createWorldServerMembership, updateWorldServerMembership,
     updateWorldServerMembershipStatus, archiveWorldServerMembership, restoreWorldServerMembership,
     getWorldServerInviteById, getWorldServerInviteByCode, listWorldServerInvites, createWorldServerInvite,
-    updateWorldServerInvite, updateWorldServerInviteStatus, archiveWorldServerInvite, restoreWorldServerInvite,
+    redeemWorldServerInvite, updateWorldServerInvite, updateWorldServerInviteStatus, archiveWorldServerInvite, restoreWorldServerInvite,
     getWorldServerJoinRequestById, listWorldServerJoinRequests, listWorldServerJoinRequestsForUser,
     createWorldServerJoinRequest, updateWorldServerJoinRequestStatus, archiveWorldServerJoinRequest,
     restoreWorldServerJoinRequest, checkReadiness,

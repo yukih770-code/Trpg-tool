@@ -60,6 +60,8 @@ export type WorldServerApiRepository = Pick<
   | 'updateWorldServerRole'
   | 'listWorldServerInvites'
   | 'createWorldServerInvite'
+  | 'getWorldServerInviteById'
+  | 'updateWorldServerInviteStatus'
   | 'listWorldServerJoinRequests'
   | 'listWorldServerJoinRequestsForUser'
   | 'getWorldServerJoinRequestById'
@@ -122,6 +124,7 @@ export interface WorldServerApiHandlers {
   updateMember(input: WorldServerApiRequest): Promise<ApiResult>;
   listInvites(input: WorldServerApiRequest): Promise<ApiResult>;
   createInvite(input: WorldServerApiRequest): Promise<ApiResult>;
+  revokeInvite(input: WorldServerApiRequest): Promise<ApiResult>;
   createJoinRequest(input: WorldServerApiRequest): Promise<ApiResult>;
   listJoinRequests(input: WorldServerApiRequest): Promise<ApiResult>;
   reviewJoinRequest(input: WorldServerApiRequest): Promise<ApiResult>;
@@ -529,7 +532,7 @@ export function createWorldServerApiHandlers(
     updateMember,
 
     async listInvites(input) {
-      const access = await getAuthorizedServer(input);
+      const access = await getAuthorizedServer(input, 'inviteMember');
       if (responseIs(access)) return access;
       const result = unwrapRepo(await repository.listWorldServerInvites(access.server.worldServerId, { limit: numberOf(input.query?.limit) }), input.requestId);
       return responseIs(result) ? result : okResponse(result, { requestId: input.requestId });
@@ -547,11 +550,28 @@ export function createWorldServerApiHandlers(
         targetUserId: stringOf(body.targetUserId),
         targetEmail: stringOf(body.targetEmail),
         defaultRoleKey: stringOf(body.defaultRoleKey),
-        maxUses: typeof body.maxUses === 'number' ? body.maxUses : undefined,
+        // Private-alpha invitations are intentionally person-scoped by default.
+        // The code becomes bound to its first successful recipient at redemption.
+        maxUses: typeof body.maxUses === 'number' ? body.maxUses : 1,
         expiresAt: stringOf(body.expiresAt),
         payload: optionalRecord(body.payload),
       }), input.requestId);
       return responseIs(result) ? result : okResponse(result, { statusCode: 201, requestId: input.requestId });
+    },
+
+    async revokeInvite(input) {
+      const inviteId = idParam(input, 'inviteId');
+      if (!inviteId) return requiredString('inviteId', input.requestId);
+      const target = await authorizeTarget(input, repository.getWorldServerInviteById(inviteId), 'inviteMember');
+      if (responseIs(target)) return target;
+      if (target.target.worldServerId !== target.access.server.worldServerId) {
+        return errorResponse(404, { kind: 'not_found', message: 'World server resource not found.' }, { requestId: input.requestId });
+      }
+      const result = unwrapRepo(await repository.updateWorldServerInviteStatus({
+        inviteId: target.target.inviteId,
+        inviteStatus: 'revoked',
+      }), input.requestId);
+      return responseIs(result) ? result : okResponse(result, { requestId: input.requestId });
     },
 
     async createJoinRequest(input) {

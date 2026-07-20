@@ -113,6 +113,24 @@ export async function runWorldServerApiClientSmoke(): Promise<SmokeCase[]> {
     assert(systems.length === 2, 'multiple game systems were collapsed');
   });
 
+  await check('revoke_invite_uses_server_scoped_route', async () => {
+    let path = '';
+    let method = '';
+    const client = createWorldServerApiClient({
+      baseUrl: 'https://api.example.test',
+      env: { DEV: false },
+      fetcher: async (input, init) => {
+        path = String(input);
+        method = init?.method ?? 'GET';
+        return jsonResponse({ ok: true, statusCode: 200, value: { inviteId: 'invite-1', inviteStatus: 'revoked' } });
+      },
+    });
+    const invite = await client.revokeInvite('ws-1', 'invite-1');
+    assert(method === 'POST', 'revoke method was not POST');
+    assert(path === 'https://api.example.test/api/world-servers/ws-1/invites/invite-1/revoke', 'revoke route was incorrect');
+    assert(invite.inviteStatus === 'revoked', 'revoke response was not returned');
+  });
+
   return cases;
 }
 

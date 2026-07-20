@@ -124,10 +124,13 @@ status and HTTP code, never configuration values.
 
 ## Friend smoke checklist
 
-1. Open the HTTPS application URL.
-2. Sign in with the private-alpha invite code.
-3. Host creates a server, campaign, and room.
-4. Friend opens the invite URL and joins the room.
+1. Open the HTTPS application URL and use the bootstrap code only to establish
+   the first host account when needed.
+2. The host creates a server, then creates one personal code per friend in
+   **Settings → Invitations and join requests**.
+3. Each friend signs in with their own code; first use binds that code to their
+   account and adds them to the server.
+4. Host creates a campaign and room; the friend joins the room.
 5. Friend chooses or creates a character and submits it.
 6. Host approves the character; friend marks ready and enters Runtime.
 7. Confirm the browser WebSocket connects at the configured `/ws` endpoint.
@@ -148,9 +151,9 @@ and `SameSite=Lax`. Use a single public origin for first alpha when possible.
 
 For rollback, redeploy the last known-good frontend and Node build. Leave the
 database unchanged unless a reviewed, provider-tested migration plan says
-otherwise. Rotate the invite code after an invite leak. Rotate the session
-secret after a session-secret leak; all existing browser sessions will need to
-sign in again.
+otherwise. Revoke a leaked personal server invite in server settings. Rotate the
+bootstrap code after a bootstrap-code leak. Rotate the session secret after a
+session-secret leak; all existing browser sessions will need to sign in again.
 
 ## Known limits for friends
 

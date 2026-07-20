@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 
 import { createPrivateAlphaAuthService, readPrivateAlphaAuthConfigFromEnv } from './privateAlphaAuth.js';
+import type { WorldServerInviteRecord } from '../adapters/postgresWorldServerRepository.js';
 
 type SmokeCase = { name: string; passed: boolean; detail?: string };
 
@@ -20,6 +21,13 @@ async function run(): Promise<SmokeCase[]> {
   const users = new Map<string, any>();
   const identities = new Map<string, any>();
   const sessions = new Map<string, any>();
+  const invites = new Map<string, WorldServerInviteRecord>([
+    ['friend-only-code', {
+      inviteId: 'invite_friend', worldServerId: 'ws_friend', inviteCode: 'friend-only-code',
+      createdByUserId: 'user_owner', defaultRoleKey: 'member', inviteStatus: 'active',
+      maxUses: 1, useCount: 0, payload: {}, schemaVersion: 1,
+    }],
+  ]);
   const service = createPrivateAlphaAuthService(readPrivateAlphaAuthConfigFromEnv({
     PRIVATE_ALPHA_AUTH_ENABLED: 'true',
     PRIVATE_ALPHA_INVITE_CODE: 'alpha-only-code',
@@ -50,6 +58,19 @@ async function run(): Promise<SmokeCase[]> {
         return ok(next);
       },
     } as never,
+    worldInviteRepository: {
+      async getWorldServerInviteByCode(code: string) { return ok(invites.get(code) ?? null); },
+      async redeemWorldServerInvite(input: { inviteCode: string; userId: string; membershipId: string }) {
+        const invite = invites.get(input.inviteCode);
+        if (!invite || (invite.targetUserId && invite.targetUserId !== input.userId) || (invite.inviteStatus !== 'active' && invite.inviteStatus !== 'used')) return ok(null);
+        if (!invite.targetUserId) {
+          invite.targetUserId = input.userId;
+          invite.useCount += 1;
+          invite.inviteStatus = 'used';
+        }
+        return ok({ inviteId: invite.inviteId, worldServerId: invite.worldServerId, membershipId: input.membershipId, membershipStatus: 'active', roleKey: invite.defaultRoleKey });
+      },
+    } as never,
   });
 
   let sessionToken = '';
@@ -61,6 +82,14 @@ async function run(): Promise<SmokeCase[]> {
     const result = await service.login({ displayName: 'Alpha User', accessCode: 'alpha-only-code' });
     assert(result.ok === true && result.user.userId.startsWith('user_'), 'login did not create a safe user');
     if (result.ok) sessionToken = result.sessionToken;
+  });
+  await check('personal_server_invite_creates_a_member_session', async () => {
+    const result = await service.login({ displayName: 'Friend One', accessCode: 'friend-only-code' });
+    assert(result.ok === true && invites.get('friend-only-code')?.targetUserId === result.user.userId, 'personal invite was not bound to its first user');
+  });
+  await check('personal_server_invite_cannot_be_claimed_by_a_second_name', async () => {
+    const result = await service.login({ displayName: 'Friend Two', accessCode: 'friend-only-code' });
+    assert(result.ok === false && result.kind === 'invalid_credentials', 'personal invite was reused by another user');
   });
   await check('resolves_signed_cookie_to_verified_viewer', async () => {
     const viewer = await service.resolveRequestViewer({ headers: { cookie: `trpg_private_alpha_session=${encodeURIComponent(sessionToken)}` } } as Request);

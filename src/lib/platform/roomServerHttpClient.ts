@@ -108,6 +108,14 @@ export async function getRoomServerRoom(
   return request<RoomSnapshot>(config, `/rooms/${encodeURIComponent(roomId)}${query}`);
 }
 
+/** Re-enter an existing room using the authenticated membership, not a cached member id. */
+export async function getRoomServerEntry(
+  config: RoomServerHttpClientConfig,
+  roomId: string,
+): Promise<{ room: RoomSnapshot; memberId: string; role: RoomMemberRole }> {
+  return request<{ room: RoomSnapshot; memberId: string; role: RoomMemberRole }>(config, `/rooms/${encodeURIComponent(roomId)}/entry`);
+}
+
 /** Minimal applicant-only status check. It intentionally contains no room or Lobby data. */
 export async function getRoomJoinStatus(
   config: RoomServerHttpClientConfig,

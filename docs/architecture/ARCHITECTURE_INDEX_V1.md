@@ -783,3 +783,28 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Hidden Token/template payloads and non-owner clearance/binding detail do not
   cross the non-host transport boundary.
 - Doc: `P5_TOKEN_INSPECT_SAFE_VISUAL_SURFACE`.
+
+## Private Alpha Personal Invites
+- See `docs/implementation/P5_PRIVATE_ALPHA_PERSONAL_INVITES.md` before
+  changing private-alpha login or server invitations.
+- Bootstrap access and friend invitations are distinct: server-scoped personal
+  invitations bind on first sign-in, create a membership, and are visible only
+  to server roles with invitation-management permission.
+- Do not turn an invite into a permanent shared password, expose raw codes to
+  ordinary members, or infer Room/Runtime authority from invitation ownership.
+
+## Actor Vault, Cloud Room Launch, and Lifecycle Recovery (P6.1-P6.6)
+- See `docs/implementation/P6_ACTOR_VAULT_ROOM_BINDING_FOUNDATION.md` before
+  changing saved actors, Room actor bindings, or campaign actor instances.
+- Actor Vault records are owner-scoped. A submitted Room binding is resolved by
+  the server and stores only a compact review projection. A persisted approved
+  binding may link to a durable `campaign_actor_instances` record only when the
+  live Room carries both World Server and campaign context. The cloud campaign
+  workspace is the current launch surface that supplies that context.
+- A cloud-created live lobby mirrors a versioned internal snapshot into its
+  existing durable room record and can restore that lobby after a Room Server
+  restart. This is lobby continuity only: it does not claim Runtime/map/log
+  replay or turn the metadata API into live Room authority.
+- Do not expose full vault payloads through Room snapshots, treat an opaque
+  campaign actor instance id as authority, or add Runtime HP/SAN writes until
+  the cloud campaign launch path and validated mutation permissions exist.

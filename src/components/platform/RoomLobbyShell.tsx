@@ -17,6 +17,11 @@ import {
   type RoomSocketConnectionState,
 } from '../../lib/platform/roomSocketClient';
 import { resolveDevViewerUserId } from '../../lib/api/apiClient';
+import {
+  createActorVaultApiClient,
+  type ActorVaultRecord as CloudActorVaultRecord,
+} from '../../lib/api/actorApiClient';
+import { ensureLocalActorInCloud } from '../../lib/platform/actorVaultCloudSync';
 import { getCharacterEntryActions, type CharacterEntryActionId } from '../../lib/platform/characterEntryCta';
 import {
   listActorVaultRecords,
@@ -170,6 +175,7 @@ export function RoomLobbyShell({
   // Actor binding draft form + submit state.
   const [bindingName, setBindingName] = useState('');
   const [bindingActorId, setBindingActorId] = useState('');
+  const [selectedCloudActorId, setSelectedCloudActorId] = useState<string | null>(null);
   const [bindingSource, setBindingSource] = useState<RoomActorBindingSource>('quickDraft');
   const [bindingSummary, setBindingSummary] = useState('');
   const [bindingHpCurrent, setBindingHpCurrent] = useState('');
@@ -190,16 +196,55 @@ export function RoomLobbyShell({
   const [copiedInviteAction, setCopiedInviteAction] = useState<'code' | 'info' | null>(null);
   const [disbandBusy, setDisbandBusy] = useState(false);
   const [disbandError, setDisbandError] = useState<string | null>(null);
+  const [cloudVaultRecords, setCloudVaultRecords] = useState<CloudActorVaultRecord[]>([]);
+  const [cloudVaultLoading, setCloudVaultLoading] = useState(false);
+  const [cloudVaultError, setCloudVaultError] = useState<string | null>(null);
+  const [cloudVaultReloadVersion, setCloudVaultReloadVersion] = useState(0);
 
   const config = useMemo<RoomServerHttpClientConfig>(() => ({ baseUrl }), [baseUrl]);
+  const actorVaultApiClient = useMemo(
+    () => createActorVaultApiClient({ baseUrl }),
+    [baseUrl],
+  );
   const vaultRecords = useMemo<ActorVaultRecord[]>(() => {
     const systemId = room?.identity.systemId;
     return isActorVaultSystemId(systemId)
       ? listActorVaultRecords(systemId).filter((record) => record.status === 'active')
       : [];
   }, [room?.identity.systemId]);
+  const selectedCloudActor = useMemo(
+    () => cloudVaultRecords.find((actor) => actor.actorId === selectedCloudActorId),
+    [cloudVaultRecords, selectedCloudActorId],
+  );
+
+  useEffect(() => {
+    let disposed = false;
+    const systemId = room?.identity.systemId;
+    if (!isActorVaultSystemId(systemId)) {
+      setCloudVaultRecords([]);
+      setCloudVaultError(null);
+      return () => { disposed = true; };
+    }
+    setCloudVaultLoading(true);
+    setCloudVaultError(null);
+    actorVaultApiClient.listActors({ systemId, limit: 200 })
+      .then((actors) => {
+        if (!disposed) setCloudVaultRecords(actors.filter((actor) => !actor.archivedAt));
+      })
+      .catch(() => {
+        if (!disposed) {
+          setCloudVaultRecords([]);
+          setCloudVaultError('暂时无法读取云端角色库；仍可选择本地角色，提交时会自动同步。');
+        }
+      })
+      .finally(() => {
+        if (!disposed) setCloudVaultLoading(false);
+      });
+    return () => { disposed = true; };
+  }, [actorVaultApiClient, cloudVaultReloadVersion, room?.identity.systemId]);
+
   const submissionDetails = useMemo(() => {
-    const snapshot = bindingSource === 'localActorVault' && bindingActorId.trim()
+    const localSnapshot = bindingSource === 'localActorVault' && bindingActorId.trim() && !selectedCloudActor
       ? resolveRuntimeActorSnapshot({ systemId: room?.identity.systemId, actorId: bindingActorId, displayName: bindingName })
       : undefined;
     return buildCharacterClearanceDetails({
@@ -210,9 +255,9 @@ export function RoomLobbyShell({
       hpCurrent: optionalNumber(bindingHpCurrent),
       hpMax: optionalNumber(bindingHpMax),
       armorClass: optionalNumber(bindingArmorClass),
-      snapshot: snapshot?.snapshot,
+      snapshot: selectedCloudActor?.payload ?? localSnapshot?.snapshot,
     });
-  }, [bindingActorId, bindingArmorClass, bindingHpCurrent, bindingHpMax, bindingName, bindingSource, bindingSummary, room?.identity.systemId]);
+  }, [bindingActorId, bindingArmorClass, bindingHpCurrent, bindingHpMax, bindingName, bindingSource, bindingSummary, room?.identity.systemId, selectedCloudActor]);
 
   // WebSocket: connect + subscribe to this room; clean up on unmount.
   useEffect(() => {
@@ -389,14 +434,45 @@ export function RoomLobbyShell({
     setBindingBusy(true);
     setBindingError(null);
     try {
+      let submittedActorId = bindingSource === 'localActorVault'
+        ? bindingActorId.trim() || undefined
+        : undefined;
+      let submittedName = bindingName.trim();
+      let submittedSummary = bindingSummary.trim() || undefined;
+      let submittedSource = bindingSource;
+
+      if (bindingSource === 'localActorVault' && selectedCloudActor) {
+        submittedActorId = selectedCloudActor.actorId;
+        submittedName = selectedCloudActor.displayName;
+        submittedSummary = undefined;
+      } else if (bindingSource === 'localActorVault') {
+        const selectedActor = vaultRecords.find((actor) => actor.id === bindingActorId);
+        if (!selectedActor) {
+          setBindingError('请先从当前系统的本地角色库选择一个角色。');
+          return;
+        }
+        const syncResult = await ensureLocalActorInCloud({
+          actor: selectedActor,
+          client: actorVaultApiClient,
+        });
+        if (syncResult.ok === false) {
+          setBindingError(syncResult.message);
+          return;
+        }
+        submittedActorId = syncResult.actor.actorId;
+        submittedName = syncResult.actor.displayName;
+        submittedSummary = selectedActor.subtitle || undefined;
+        submittedSource = 'localActorVault';
+      }
+
       await submitActorBindingToRoomServer(config, roomId, {
         memberId: currentMemberId,
         actorRef: {
-          displayName: bindingName.trim(),
-          actorId: bindingActorId.trim() || undefined,
+          displayName: submittedName,
+          actorId: submittedActorId,
           systemId: room?.identity.systemId,
-          source: bindingSource,
-          summary: bindingSummary.trim() || undefined,
+          source: submittedSource,
+          summary: submittedSummary,
           hpCurrent: optionalNumber(bindingHpCurrent),
           hpMax: optionalNumber(bindingHpMax),
           armorClass: optionalNumber(bindingArmorClass),
@@ -415,8 +491,20 @@ export function RoomLobbyShell({
     const actor = vaultRecords.find((record) => record.id === actorId);
     if (!actor) return;
     setBindingActorId(actor.id);
+    setSelectedCloudActorId(null);
     setBindingName(actor.displayName);
     setBindingSummary(actor.subtitle ?? '');
+    setBindingSource('localActorVault');
+    setEntryActionMode('existing');
+  };
+
+  const selectCloudVaultActor = (actorId: string) => {
+    const actor = cloudVaultRecords.find((record) => record.actorId === actorId);
+    if (!actor) return;
+    setSelectedCloudActorId(actor.actorId);
+    setBindingActorId(actor.actorId);
+    setBindingName(actor.displayName);
+    setBindingSummary('');
     setBindingSource('localActorVault');
     setEntryActionMode('existing');
   };
@@ -432,6 +520,7 @@ export function RoomLobbyShell({
     }
     if (actionId === 'quickDraft') {
       setBindingActorId('');
+      setSelectedCloudActorId(null);
       setBindingSource('quickDraft');
       setEntryActionMode('quickDraft');
       setEntryActionNotice('快速角色只用于当前房间的入场申请，不会写入角色库。');
@@ -675,20 +764,34 @@ export function RoomLobbyShell({
         {entryActionNotice && <p className="mb-3 rounded border border-slate-300/50 bg-white/70 px-2 py-1.5 text-[10px] text-slate-600">{entryActionNotice}</p>}
 
         <div className="space-y-2">
-            {entryActionMode === 'existing' && vaultRecords.length > 0 && (
-              <label className="flex max-w-md flex-col gap-0.5 text-[10px] text-slate-500">从本地角色库选择
+            {entryActionMode === 'existing' && (cloudVaultRecords.length > 0 || vaultRecords.length > 0 || cloudVaultLoading || cloudVaultError) && (
+              <label className="flex max-w-md flex-col gap-0.5 text-[10px] text-slate-500">从角色库选择
                 <select
                   className={input}
-                  value={bindingSource === 'localActorVault' ? bindingActorId : ''}
-                  onChange={(event) => selectVaultActor(event.target.value)}
+                  value={selectedCloudActor ? `cloud:${selectedCloudActor.actorId}` : bindingSource === 'localActorVault' ? `local:${bindingActorId}` : ''}
+                  onChange={(event) => {
+                    const [source, actorId] = event.target.value.split(':', 2);
+                    if (source === 'cloud') selectCloudVaultActor(actorId ?? '');
+                    if (source === 'local') selectVaultActor(actorId ?? '');
+                  }}
                 >
                   <option value="">选择已有角色</option>
-                  {vaultRecords.map((actor) => <option key={actor.id} value={actor.id}>{actor.displayName}{actor.subtitle ? ` · ${actor.subtitle}` : ''}</option>)}
+                  {cloudVaultRecords.length > 0 && <optgroup label="已同步到云端">
+                    {cloudVaultRecords.map((actor) => <option key={actor.actorId} value={`cloud:${actor.actorId}`}>{actor.displayName}</option>)}
+                  </optgroup>}
+                  {vaultRecords.length > 0 && <optgroup label="仅本地（提交时自动同步）">
+                    {vaultRecords.map((actor) => <option key={actor.id} value={`local:${actor.id}`}>{actor.displayName}{actor.subtitle ? ` · ${actor.subtitle}` : ''}</option>)}
+                  </optgroup>}
                 </select>
+                <span className="flex items-center gap-2 text-[9px] text-slate-500">
+                  {cloudVaultLoading ? '正在读取云端角色库…' : '已同步角色可在其他设备继续使用。'}
+                  <button type="button" className="underline" onClick={() => setCloudVaultReloadVersion((version) => version + 1)}>刷新角色库</button>
+                </span>
+                {cloudVaultError && <span className="text-[9px] text-amber-700">{cloudVaultError}</span>}
               </label>
             )}
-            {entryActionMode === 'existing' && vaultRecords.length === 0 && (
-              <p className="text-[10px] italic text-slate-500">当前系统没有可选的本地角色。可创建快速角色，或完成完整车卡创建后返回此处选择。</p>
+            {entryActionMode === 'existing' && vaultRecords.length === 0 && cloudVaultRecords.length === 0 && !cloudVaultLoading && !cloudVaultError && (
+              <p className="text-[10px] italic text-slate-500">当前账户没有可选角色。可创建快速角色，或完成完整车卡创建后返回此处选择。</p>
             )}
             {entryActionMode === 'existing' && bindingName.trim() && (
               <div className="rounded border border-slate-300/40 bg-white/50 px-2 py-1.5 text-[10px]">

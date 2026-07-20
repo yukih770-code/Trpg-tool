@@ -55,6 +55,7 @@ import {
 } from '../runtime/runtimeEventPersistenceBridge.js';
 import { createRuntimeEventRepositoryPort } from '../runtime/runtimeEventRepositoryPortAdapter.js';
 import { resolveRuntimeSessionContext } from '../runtime/runtimeSessionContext.js';
+import { LIVE_ROOM_SNAPSHOT_METADATA_KEY } from '../services/liveRoomLifecyclePersistence.js';
 
 type ApiResult = ServerApiResponse<unknown>;
 type BodyRecord = Record<string, unknown>;
@@ -77,6 +78,7 @@ type FoundationApiRepository = Pick<FoundationRepository,
   | 'getCampaignActorInstanceById'
   | 'listCampaignActorInstances'
   | 'createCampaignActorInstance'
+  | 'updateCampaignActorInstance'
   | 'archiveCampaignActorInstance'
   | 'createRoomRecord'
   | 'getRoomRecordByRoomId'
@@ -125,6 +127,7 @@ export interface CampaignRoomApiHandlers {
   listCampaignActors(input: CampaignRoomApiRequest): Promise<ApiResult>;
   getCampaignActor(input: CampaignRoomApiRequest): Promise<ApiResult>;
   createCampaignActor(input: CampaignRoomApiRequest): Promise<ApiResult>;
+  updateCampaignActor(input: CampaignRoomApiRequest): Promise<ApiResult>;
   archiveCampaignActor(input: CampaignRoomApiRequest): Promise<ApiResult>;
   listRooms(input: CampaignRoomApiRequest): Promise<ApiResult>;
   getRoom(input: CampaignRoomApiRequest): Promise<ApiResult>;
@@ -176,6 +179,12 @@ function bodyOf(input: CampaignRoomApiRequest): BodyRecord {
 
 function recordOf(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
+}
+
+/** The restart snapshot is server-internal; the durable room API exposes only normal metadata. */
+function publicRoomRecord(room: RoomRecord): RoomRecord {
+  const { [LIVE_ROOM_SNAPSHOT_METADATA_KEY]: _internalSnapshot, ...metadata } = room.metadata;
+  return { ...room, metadata };
 }
 
 function stringArrayOf(value: unknown): string[] | undefined {
@@ -541,6 +550,39 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
       return isApiResult(actor) ? actor : okResponse(actor, { statusCode: 201, requestId: requestIdOf(input) });
     },
 
+    async updateCampaignActor(input) {
+      const access = await authorizeCampaign(input, 'edit');
+      if (isApiResult(access)) return access;
+      const actorId = idParam(input, 'actorInstanceId');
+      if (!actorId) return requiredString('actorInstanceId', requestIdOf(input));
+      const actor = unwrap(await foundationRepository.getCampaignActorInstanceById(actorId), requestIdOf(input), 'Campaign actor');
+      if (isApiResult(actor)) return actor;
+      if (!actor || actor.campaignId !== access.campaign.campaignId) {
+        return errorResponse(404, { kind: 'not_found', message: 'Campaign actor not found.' }, { requestId: requestIdOf(input) });
+      }
+      const body = bodyOf(input);
+      const overridePayload = recordOf(body.overridePayload);
+      if (body.overridePayload !== undefined && !overridePayload) {
+        return errorResponse(400, { kind: 'validation', message: 'overridePayload must be an object.' }, { requestId: requestIdOf(input) });
+      }
+      const displayName = stringOf(body.displayName);
+      const instanceStatus = stringOf(body.instanceStatus);
+      if (displayName === undefined && instanceStatus === undefined && overridePayload === undefined) {
+        return errorResponse(400, { kind: 'validation', message: 'Campaign actor update is empty.' }, { requestId: requestIdOf(input) });
+      }
+      const updated = unwrap(await foundationRepository.updateCampaignActorInstance({
+        campaignActorInstanceId: actorId,
+        displayName,
+        instanceStatus,
+        overridePayload,
+      }), requestIdOf(input), 'Campaign actor');
+      return isApiResult(updated)
+        ? updated
+        : updated
+          ? okResponse(updated, { requestId: requestIdOf(input) })
+          : errorResponse(404, { kind: 'not_found', message: 'Campaign actor not found.' }, { requestId: requestIdOf(input) });
+    },
+
     async archiveCampaignActor(input) {
       const access = await authorizeCampaign(input, 'edit');
       if (isApiResult(access)) return access;
@@ -558,12 +600,12 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
       if (isApiResult(access)) return access;
       const rooms = unwrap(await foundationRepository.listRoomRecordsByCampaign(access.campaign.campaignId, numberOf(input.query?.limit)), requestIdOf(input), 'Room');
       if (isApiResult(rooms)) return rooms;
-      return okResponse(rooms.filter((room) => room.worldServerId === access.server.worldServerId), { requestId: requestIdOf(input) });
+      return okResponse(rooms.filter((room) => room.worldServerId === access.server.worldServerId).map(publicRoomRecord), { requestId: requestIdOf(input) });
     },
 
     async getRoom(input) {
       const room = await authorizeRoom(input);
-      return isApiResult(room) ? room : okResponse(room.room, { requestId: requestIdOf(input) });
+      return isApiResult(room) ? room : okResponse(publicRoomRecord(room.room), { requestId: requestIdOf(input) });
     },
 
     async createRoom(input) {
@@ -585,7 +627,7 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
         accessPolicy: recordOf(body.accessPolicy),
         metadata: recordOf(body.metadata),
       }), requestIdOf(input), 'Room');
-      return isApiResult(room) ? room : okResponse(room, { statusCode: 201, requestId: requestIdOf(input) });
+      return isApiResult(room) ? room : okResponse(room ? publicRoomRecord(room) : room, { statusCode: 201, requestId: requestIdOf(input) });
     },
 
     async updateRoom(input) {
@@ -603,7 +645,7 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
       };
       if (!update.roomCode && !update.roomStatus && !update.multiplayerMode && !update.accessPolicy && !update.metadata && !update.closedAt) return errorResponse(400, { kind: 'validation', message: 'Room update is empty.' }, { requestId: requestIdOf(input) });
       const updated = unwrap(await foundationRepository.updateRoomRecord(update), requestIdOf(input), 'Room');
-      return isApiResult(updated) ? updated : okResponse(updated, { requestId: requestIdOf(input) });
+      return isApiResult(updated) ? updated : okResponse(updated ? publicRoomRecord(updated) : updated, { requestId: requestIdOf(input) });
     },
 
     async listParticipants(input) {

@@ -54,6 +54,10 @@ export function validateCampaignRef(
 ): CampaignRefValidationError | null {
   if (!ref) return null;
   if (typeof ref.displayName !== 'string' || ref.displayName.trim() === '') return 'invalidCampaignRef';
+  if (ref.worldServerId !== undefined && (typeof ref.worldServerId !== 'string' || ref.worldServerId.trim() === '')) {
+    return 'invalidCampaignRef';
+  }
+  if (ref.worldServerId !== undefined && (!ref.campaignId || ref.campaignId.trim() === '')) return 'invalidCampaignRef';
   if (!VALID_ROOM_CAMPAIGN_SOURCES.includes(ref.source)) return 'invalidCampaignRef';
   if (!VALID_ROOM_SYSTEM_IDS.includes(ref.systemId)) return 'invalidCampaignRef';
   if (ref.systemId !== resolvedSystemId) return 'campaignSystemMismatch';

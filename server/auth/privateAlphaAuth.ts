@@ -10,6 +10,10 @@ import {
   type PostgresUserRecord,
   type PostgresUserRepository,
 } from '../adapters/postgresUserRepository.js';
+import {
+  createPostgresWorldServerRepository,
+  type WorldServerInviteRecord,
+} from '../adapters/postgresWorldServerRepository.js';
 import type { ServerDeploymentEnvironment, ServerRuntimeEnv } from '../config/serverRuntimeConfig.js';
 import { createCurrentViewerContextFromAuthSession, type CurrentViewerContext } from './currentViewerContext.js';
 
@@ -39,6 +43,11 @@ type AuthSessionRepository = Pick<
 type UserRepository = Pick<
   PostgresUserRepository,
   'getUserById' | 'getUserByIdentity' | 'createUserWithIdentity'
+>;
+
+type WorldInviteRepository = Pick<
+  ReturnType<typeof createPostgresWorldServerRepository>,
+  'getWorldServerInviteByCode' | 'redeemWorldServerInvite'
 >;
 
 export type PrivateAlphaAuthService = {
@@ -89,7 +98,9 @@ export function readPrivateAlphaAuthConfigFromEnv(
 }
 
 export function isPrivateAlphaAuthConfigured(config: PrivateAlphaAuthConfig): boolean {
-  return config.enabled && Boolean(config.inviteCode) && Boolean(config.sessionSecret);
+  // A deployment may use server-scoped personal invites without retaining a
+  // shared bootstrap code. The session secret remains mandatory.
+  return config.enabled && Boolean(config.sessionSecret);
 }
 
 function normalizeDisplayName(value: unknown): string | undefined {
@@ -107,6 +118,16 @@ function constantTimeMatches(candidate: unknown, expected: string | undefined): 
 
 function identitySubject(displayName: string, sessionSecret: string): string {
   return `private-alpha:${createHmac('sha256', sessionSecret).update(displayName.trim().toLocaleLowerCase()).digest('hex')}`;
+}
+
+function inviteIdentitySubject(displayName: string, inviteId: string, sessionSecret: string): string {
+  const input = `${inviteId}:${displayName.trim().toLocaleLowerCase()}`;
+  return `private-alpha-invite:${createHmac('sha256', sessionSecret).update(input).digest('hex')}`;
+}
+
+function inviteCanStartSignIn(invite: WorldServerInviteRecord): boolean {
+  if (invite.inviteStatus !== 'active' && invite.inviteStatus !== 'used') return false;
+  return !invite.expiresAt || Date.parse(invite.expiresAt) > Date.now();
 }
 
 function signSessionId(sessionId: string, sessionSecret: string): string {
@@ -166,10 +187,12 @@ export function createPrivateAlphaAuthService(
   options: {
     userRepository?: UserRepository;
     sessionRepository?: AuthSessionRepository;
+    worldInviteRepository?: WorldInviteRepository;
   } = {},
 ): PrivateAlphaAuthService {
   const userRepository = options.userRepository ?? createPostgresUserRepository();
   const sessionRepository = options.sessionRepository ?? createPostgresPlatformFoundationRepository();
+  const worldInviteRepository = options.worldInviteRepository ?? createPostgresWorldServerRepository();
 
   async function resolveRequestViewer(request: Request): Promise<PrivateAlphaViewer | null> {
     if (!isPrivateAlphaAuthConfigured(config)) return null;
@@ -204,15 +227,32 @@ export function createPrivateAlphaAuthService(
       if (!isPrivateAlphaAuthConfigured(config)) {
         return { ok: false, kind: 'unavailable', message: 'Private alpha sign-in is unavailable.' };
       }
-      if (!constantTimeMatches(input.accessCode, config.inviteCode)) {
-        return { ok: false, kind: 'invalid_credentials', message: 'The access code is invalid.' };
+      const providerKind = 'custom';
+      const usesBootstrapCode = constantTimeMatches(input.accessCode, config.inviteCode);
+      let invite: WorldServerInviteRecord | null = null;
+      if (!usesBootstrapCode) {
+        if (typeof input.accessCode !== 'string' || !input.accessCode.trim()) {
+          return { ok: false, kind: 'invalid_credentials', message: 'The access code is invalid.' };
+        }
+        const inviteResult = await worldInviteRepository.getWorldServerInviteByCode(input.accessCode.trim());
+        if (inviteResult.ok === false) {
+          return { ok: false, kind: 'unavailable', message: 'Private alpha sign-in is temporarily unavailable.' };
+        }
+        if (!inviteResult.value || !inviteCanStartSignIn(inviteResult.value)) {
+          return { ok: false, kind: 'invalid_credentials', message: 'The access code is invalid or has expired.' };
+        }
+        invite = inviteResult.value;
       }
 
-      const providerKind = 'custom';
-      const providerSubject = identitySubject(displayName, config.sessionSecret!);
+      const providerSubject = usesBootstrapCode
+        ? identitySubject(displayName, config.sessionSecret!)
+        : inviteIdentitySubject(displayName, invite!.inviteId, config.sessionSecret!);
       const existing = await userRepository.getUserByIdentity(providerKind, providerSubject);
       if (existing.ok === false) {
         return { ok: false, kind: 'unavailable', message: 'Private alpha sign-in is temporarily unavailable.' };
+      }
+      if (invite?.targetUserId && existing.value?.identity.userId !== invite.targetUserId) {
+        return { ok: false, kind: 'invalid_credentials', message: 'This personal invite belongs to another user.' };
       }
       const userResult = existing.value
         ? { ok: true as const, value: existing.value }
@@ -230,6 +270,21 @@ export function createPrivateAlphaAuthService(
         return { ok: false, kind: 'unavailable', message: 'Private alpha sign-in is temporarily unavailable.' };
       }
 
+      if (invite) {
+        const redemption = await worldInviteRepository.redeemWorldServerInvite({
+          inviteCode: invite.inviteCode,
+          userId: userResult.value.identity.userId,
+          membershipId: `wsm_${randomUUID()}`,
+          displayAlias: displayName,
+        });
+        if (redemption.ok === false) {
+          return { ok: false, kind: 'unavailable', message: 'Private alpha sign-in is temporarily unavailable.' };
+        }
+        if (!redemption.value) {
+          return { ok: false, kind: 'invalid_credentials', message: 'The access code is invalid, expired, or already assigned.' };
+        }
+      }
+
       const sessionId = `pas_${randomBytes(32).toString('base64url')}`;
       const expiresAt = new Date(Date.now() + config.sessionMaxAgeSeconds * 1000).toISOString();
       const session = await sessionRepository.createAuthSession({
@@ -238,7 +293,10 @@ export function createPrivateAlphaAuthService(
         sessionKind: 'browser',
         sessionStatus: 'active',
         trustLevel: 'private_alpha_invite',
-        metadata: { authSource: 'private_alpha_invite' },
+        metadata: {
+          authSource: usesBootstrapCode ? 'private_alpha_bootstrap' : 'world_server_invite',
+          ...(invite ? { worldServerInviteId: invite.inviteId } : {}),
+        },
         expiresAt,
       });
       if (session.ok === false) {

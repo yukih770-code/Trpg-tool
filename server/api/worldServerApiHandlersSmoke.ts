@@ -97,6 +97,8 @@ function createFakeRepositories(): { world: WorldServerApiRepository; foundation
     async updateWorldServerRole(input) { const value = roles.get(input.roleId); if (!value) return { ok: true, value: null }; Object.assign(value, { displayName: input.displayName ?? value.displayName, roleKind: input.roleKind ?? value.roleKind }); return { ok: true, value }; },
     async listWorldServerInvites(id) { return { ok: true, value: [...invites.values()].filter((item) => item.worldServerId === id) }; },
     async createWorldServerInvite(input) { const value: WorldServerInviteRecord = { inviteId: input.inviteId, worldServerId: input.worldServerId, inviteCode: input.inviteCode, createdByUserId: input.createdByUserId, targetUserId: input.targetUserId, targetEmail: input.targetEmail, defaultRoleKey: input.defaultRoleKey ?? 'member', inviteStatus: 'active', maxUses: input.maxUses, useCount: 0, expiresAt: input.expiresAt, payload: input.payload ?? {}, schemaVersion: 1 }; invites.set(input.inviteId, value); return { ok: true, value }; },
+    async getWorldServerInviteById(id) { return { ok: true, value: invites.get(id) ?? null }; },
+    async updateWorldServerInviteStatus(input) { const value = invites.get(input.inviteId); if (!value) return { ok: true, value: null }; value.inviteStatus = input.inviteStatus; return { ok: true, value }; },
     async listWorldServerJoinRequests(id) { return { ok: true, value: [...joinRequests.values()].filter((item) => item.worldServerId === id) }; },
     async listWorldServerJoinRequestsForUser(userId) { return { ok: true, value: [...joinRequests.values()].filter((item) => item.requesterUserId === userId) }; },
     async getWorldServerJoinRequestById(id) { return { ok: true, value: joinRequests.get(id) ?? null }; },
@@ -170,16 +172,24 @@ export async function runWorldServerApiHandlersSmoke(): Promise<{ total: number;
     await expectSuccess(() => handlers.updateRole(req(owner, { ...ws, roleId }, { displayName: 'Editor 2' })), 'update role');
   });
   await check('16_inactive_member_denied', async () => expectStatus(() => handlers.listMembers(req(inactive, ws)), 404));
-  await check('17_owner_create_invite', async () => expectSuccess(() => handlers.createInvite(req(owner, ws, {})), 'expected invite'));
+  await check('17_owner_create_personal_invite', async () => {
+    const value = await expectSuccess(() => handlers.createInvite(req(owner, ws, {})), 'expected invite') as WorldServerInviteRecord;
+    assert(value.maxUses === 1, 'personal invite must default to one use');
+  });
   await check('18_member_create_invite_denied', async () => expectStatus(() => handlers.createInvite(req(member, ws, {})), 403));
-  await check('19_authenticated_join_request', async () => expectSuccess(() => handlers.createJoinRequest(req(outsider, ws, { requestMessage: 'hello' })), 'expected join request'));
-  await check('20_anonymous_join_request_401', async () => expectStatus(() => handlers.createJoinRequest(req(anonymous, ws, {})), 401));
-  await check('21_admin_review_join_request', async () => {
+  await check('19_member_list_invites_denied', async () => expectStatus(() => handlers.listInvites(req(member, ws)), 403));
+  await check('20_owner_revoke_invite', async () => {
+    const value = await expectSuccess(() => handlers.listInvites(req(owner, ws)), 'expected invite list') as WorldServerInviteRecord[];
+    await expectSuccess(() => handlers.revokeInvite(req(owner, { ...ws, inviteId: value[0].inviteId })), 'expected revoke');
+  });
+  await check('21_authenticated_join_request', async () => expectSuccess(() => handlers.createJoinRequest(req(outsider, ws, { requestMessage: 'hello' })), 'expected join request'));
+  await check('22_anonymous_join_request_401', async () => expectStatus(() => handlers.createJoinRequest(req(anonymous, ws, {})), 401));
+  await check('23_admin_review_join_request', async () => {
     const value = await expectSuccess(() => handlers.listJoinRequests(req(owner, ws)), 'list');
     const id = (value as WorldServerJoinRequestRecord[])[0].joinRequestId;
     await expectSuccess(() => handlers.reviewJoinRequest(req(admin, { joinRequestId: id }, { requestStatus: 'approved' })), 'expected review');
   });
-  await check('22_member_review_join_request_denied', async () => {
+  await check('24_member_review_join_request_denied', async () => {
     const value = await expectSuccess(() => handlers.listJoinRequests(req(owner, ws)), 'list');
     const id = (value as WorldServerJoinRequestRecord[])[0].joinRequestId;
     await expectStatus(() => handlers.reviewJoinRequest(req(member, { joinRequestId: id }, { requestStatus: 'rejected' })), 403);

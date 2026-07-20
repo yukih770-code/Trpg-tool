@@ -164,6 +164,14 @@ async function runWritePath(executor: PostgresPlatformFoundationRepositoryExecut
   });
   if (instance.ok === false || !instance.value) return [...steps, failedStep('createCampaignActorInstance', instance.ok === false ? instance.error.kind : 'not_found')];
   ok('createCampaignActorInstance');
+  const updatedInstance = await repo.updateCampaignActorInstance({
+    campaignActorInstanceId: instance.value.campaignActorInstanceId,
+    overridePayload: { hpCurrent: 12, conditions: ['smoke'] },
+  });
+  if (updatedInstance.ok === false || updatedInstance.value?.snapshotHash !== 'hash:smoke' || updatedInstance.value.overridePayload.hpCurrent !== 12) {
+    return [...steps, failedStep('updateCampaignActorInstanceOverride', updatedInstance.ok === false ? updatedInstance.error.kind : 'stale_read')];
+  }
+  ok('updateCampaignActorInstanceOverride');
 
   const room = await repo.createRoomRecord({
     roomRecordId: 'roomRecord_platform_foundation_write_smoke',

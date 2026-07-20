@@ -168,6 +168,14 @@ export interface CreateCampaignActorInstanceInput {
   overridePayload?: Record<string, unknown>;
 }
 
+/** Mutable campaign/session state. The source snapshot remains immutable here. */
+export interface UpdateCampaignActorInstanceInput {
+  campaignActorInstanceId: string;
+  displayName?: string;
+  instanceStatus?: string;
+  overridePayload?: Record<string, unknown>;
+}
+
 export interface RoomRecord {
   roomRecordId: string;
   roomId: string;
@@ -662,6 +670,27 @@ export function createPostgresPlatformFoundationRepository(
   const listCampaignActorInstances = (campaignId: string, limit?: number) =>
     many<CampaignActorInstanceRecord>(`SELECT ${ACTOR_INSTANCE_COLS} FROM campaign_actor_instances WHERE campaign_id = $1 AND archived_at IS NULL ORDER BY updated_at DESC LIMIT $2`, [campaignId, limitOf(limit)], rowToActorInstance);
 
+  const updateCampaignActorInstance = (input: UpdateCampaignActorInstanceInput) => {
+    const now = new Date().toISOString();
+    return one<CampaignActorInstanceRecord>(
+      `UPDATE campaign_actor_instances
+       SET display_name = COALESCE($2, display_name),
+           instance_status = COALESCE($3, instance_status),
+           override_payload = COALESCE($4::jsonb, override_payload),
+           updated_at = $5
+       WHERE campaign_actor_instance_id = $1
+       RETURNING ${ACTOR_INSTANCE_COLS}`,
+      [
+        input.campaignActorInstanceId,
+        input.displayName ?? null,
+        input.instanceStatus ?? null,
+        input.overridePayload === undefined ? null : JSON.stringify(input.overridePayload),
+        now,
+      ],
+      rowToActorInstance,
+    );
+  };
+
   const archiveCampaignActorInstance = (campaignActorInstanceId: string, archivedAt?: string) =>
     one<CampaignActorInstanceRecord>(`UPDATE campaign_actor_instances SET archived_at = $2, updated_at = $2 WHERE campaign_actor_instance_id = $1 RETURNING ${ACTOR_INSTANCE_COLS}`, [campaignActorInstanceId, archivedAt ?? new Date().toISOString()], rowToActorInstance);
 
@@ -698,6 +727,15 @@ export function createPostgresPlatformFoundationRepository(
 
   const listRoomRecordsByCampaign = (campaignId: string, limit?: number) =>
     many<RoomRecord>(`SELECT ${ROOM_COLS} FROM room_records WHERE campaign_id = $1 AND archived_at IS NULL ORDER BY updated_at DESC LIMIT $2`, [campaignId, limitOf(limit)], rowToRoom);
+
+  const listRecoverableRoomRecords = (limit?: number) =>
+    many<RoomRecord>(
+      `SELECT ${ROOM_COLS} FROM room_records
+       WHERE archived_at IS NULL AND closed_at IS NULL AND room_status <> 'closed'
+       ORDER BY updated_at DESC LIMIT $1`,
+      [limitOf(limit)],
+      rowToRoom,
+    );
 
   const updateRoomRecordStatus = (roomRecordId: string, roomStatus: string, closedAt?: string) =>
     one<RoomRecord>(
@@ -871,12 +909,14 @@ export function createPostgresPlatformFoundationRepository(
     createCampaignActorInstance,
     getCampaignActorInstanceById,
     listCampaignActorInstances,
+    updateCampaignActorInstance,
     archiveCampaignActorInstance,
     restoreCampaignActorInstance,
     createRoomRecord,
     getRoomRecordById,
     getRoomRecordByRoomId,
     listRoomRecordsByCampaign,
+    listRecoverableRoomRecords,
     updateRoomRecordStatus,
     updateRoomRecord,
     createContentDocument,

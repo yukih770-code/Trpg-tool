@@ -158,6 +158,7 @@ export type CampaignRoomApiClient = {
   listCampaignActors(worldServerId: string, campaignId: string): Promise<CampaignActorInstance[]>;
   getCampaignActor(worldServerId: string, campaignId: string, actorInstanceId: string): Promise<CampaignActorInstance>;
   createCampaignActor(worldServerId: string, campaignId: string, input: { displayName: string; actorKind?: string; sourceActorId?: string }): Promise<CampaignActorInstance>;
+  updateCampaignActor(worldServerId: string, campaignId: string, actorInstanceId: string, input: { displayName?: string; instanceStatus?: string; overridePayload?: Record<string, unknown> }): Promise<CampaignActorInstance>;
   archiveCampaignActor(worldServerId: string, campaignId: string, actorInstanceId: string): Promise<CampaignActorInstance | null>;
   listRooms(worldServerId: string, campaignId: string): Promise<RoomRecord[]>;
   getRoom(worldServerId: string, campaignId: string, roomId: string): Promise<RoomRecord>;
@@ -209,6 +210,7 @@ export function createCampaignRoomApiClient(options: ApiClientOptions = {}): Cam
     listCampaignActors: (id, campaignId) => request(`${campaignRoot(id, campaignId)}/actors`),
     getCampaignActor: (id, campaignId, actorId) => request(`${campaignRoot(id, campaignId)}/actors/${segment(actorId)}`),
     createCampaignActor: (id, campaignId, input) => json('POST', `${campaignRoot(id, campaignId)}/actors`, input),
+    updateCampaignActor: (id, campaignId, actorId, input) => json('PATCH', `${campaignRoot(id, campaignId)}/actors/${segment(actorId)}`, input),
     archiveCampaignActor: (id, campaignId, actorId) => json('POST', `${campaignRoot(id, campaignId)}/actors/${segment(actorId)}/archive`),
     listRooms: (id, campaignId) => request(`${campaignRoot(id, campaignId)}/rooms`),
     getRoom: (id, campaignId, roomId) => request(roomRoot(id, campaignId, roomId)),

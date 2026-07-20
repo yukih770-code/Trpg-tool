@@ -4,8 +4,9 @@
  * AI-LANDMARK: ROOM_SERVER_SUBMIT_ACTOR_BINDING_V0
  *
  * Records a LIGHTWEIGHT pre-session actor binding SUMMARY for a member (not a
- * RuntimeActor / CampaignActorInstance — no actor library, no character vault,
- * no rules). Pre-session lobby state only. NO real auth / permission engine.
+ * RuntimeActor / CampaignActorInstance — it stores no full Actor Vault payload
+ * and no rules). Persisted actor ids are canonicalized by the HTTP boundary
+ * before this service runs. Pre-session lobby state only.
  *
  * Invariants (M15.2): only ACTIVE members may submit; actorRef.source must be a
  * known enum; actorRef.systemId (if given) must match the room's system (no

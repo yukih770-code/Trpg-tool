@@ -17,7 +17,12 @@ export interface RoomRegistry {
   list(): RoomSnapshot[];
 }
 
-export function createInMemoryRoomRegistry(): RoomRegistry {
+export interface InMemoryRoomRegistryOptions {
+  /** Best-effort observer for durable lifecycle adapters. Never affects a live mutation. */
+  onRoomUpdated?: (snapshot: RoomSnapshot) => void;
+}
+
+export function createInMemoryRoomRegistry(options: InMemoryRoomRegistryOptions = {}): RoomRegistry {
   const byId = new Map<string, RoomSnapshot>();
 
   return {
@@ -39,6 +44,11 @@ export function createInMemoryRoomRegistry(): RoomRegistry {
       if (!current) return undefined;
       const next = updater(current);
       byId.set(roomId, next);
+      try {
+        options.onRoomUpdated?.(next);
+      } catch {
+        // A persistence observer must never break a live lobby mutation.
+      }
       return next;
     },
     list() {

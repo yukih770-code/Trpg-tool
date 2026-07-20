@@ -58,6 +58,7 @@ export function registerCampaignRoomApiRoutes(app: Express, handlers: CampaignRo
   app.get(`${campaigns}/:campaignId/actors`, (req, res) => void invoke(res, handlers.listCampaignActors, req));
   app.post(`${campaigns}/:campaignId/actors`, (req, res) => void invoke(res, handlers.createCampaignActor, req));
   app.get(`${campaigns}/:campaignId/actors/:actorInstanceId`, (req, res) => void invoke(res, handlers.getCampaignActor, req));
+  app.patch(`${campaigns}/:campaignId/actors/:actorInstanceId`, (req, res) => void invoke(res, handlers.updateCampaignActor, req));
   app.post(`${campaigns}/:campaignId/actors/:actorInstanceId/archive`, (req, res) => void invoke(res, handlers.archiveCampaignActor, req));
 
   const rooms = `${campaigns}/:campaignId/rooms`;

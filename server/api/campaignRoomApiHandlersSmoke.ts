@@ -231,6 +231,18 @@ function makeFakeHandlers(options: {
       actors.set(actor.campaignActorInstanceId, actor);
       return ok(actor);
     },
+    updateCampaignActorInstance: async (input: { campaignActorInstanceId: string; displayName?: string; instanceStatus?: string; overridePayload?: Record<string, unknown> }) => {
+      const current = actors.get(input.campaignActorInstanceId);
+      if (!current) return ok(null);
+      const updated = {
+        ...current,
+        displayName: input.displayName ?? current.displayName,
+        instanceStatus: input.instanceStatus ?? current.instanceStatus,
+        overridePayload: input.overridePayload ?? current.overridePayload,
+      };
+      actors.set(updated.campaignActorInstanceId, updated);
+      return ok(updated);
+    },
     archiveCampaignActorInstance: async (id: string) => {
       const current = actors.get(id);
       return ok(current ? { ...current, archivedAt: '2026-01-02T00:00:00.000Z' } : null);
@@ -356,6 +368,7 @@ export async function runCampaignRoomApiHandlerSmoke(): Promise<{ total: number;
   }
   const base = (userId: string = OWNER) => request(userId, { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID });
   const room = (userId: string = OWNER) => request(userId, { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, roomId: ROOM_ID });
+  let createdActorInstanceId = '';
 
   await check('01_anonymous_campaign_list_401', async () => hasStatus(await handlers.listCampaigns({ params: { worldServerId: SERVER_ID } }), 401));
   await check('02_member_campaign_list_success', async () => isSuccess(await handlers.listCampaigns(base(MEMBER))));
@@ -371,10 +384,23 @@ export async function runCampaignRoomApiHandlerSmoke(): Promise<{ total: number;
   await check('12_archive_campaign', async () => isSuccess(await handlers.archiveCampaign(base())));
   await check('13_restore_campaign', async () => isSuccess(await handlers.restoreCampaign(base())));
   await check('14_campaign_actor_list', async () => isSuccess(await handlers.listCampaignActors(base())));
-  await check('15_campaign_actor_create', async () => hasStatus(await handlers.createCampaignActor({ ...base(), body: { displayName: 'Smoke Actor', sourceActorId: 'vault-1' } }), 201));
-  await check('16_campaign_actor_detail', async () => isSuccess(await handlers.getCampaignActor({ ...base(), params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, actorInstanceId: 'missing' } })) === false);
-  await check('17_campaign_actor_archive_missing_404', async () => hasStatus(await handlers.archiveCampaignActor({ ...base(), params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, actorInstanceId: 'missing' } }), 404));
-  await check('18_campaign_actor_source_is_metadata', async () => isSuccess(await handlers.createCampaignActor({ ...base(), body: { displayName: 'Metadata Actor', sourceActorId: 'vault-2', snapshotPayload: { hp: 10 } } })));
+  await check('15_campaign_actor_create', async () => {
+    const response = await handlers.createCampaignActor({ ...base(), body: { displayName: 'Smoke Actor', sourceActorId: 'vault-1' } });
+    if (!hasStatus(response, 201)) return false;
+    createdActorInstanceId = ((response as { value?: CampaignActorInstanceRecord }).value?.campaignActorInstanceId) ?? '';
+    return createdActorInstanceId !== '';
+  });
+  await check('16_campaign_actor_override_update', async () => {
+    if (!createdActorInstanceId) return false;
+    const response = await handlers.updateCampaignActor({ ...base(), params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, actorInstanceId: createdActorInstanceId }, body: { overridePayload: { hpCurrent: 7, conditions: ['poisoned'] } } });
+    return isSuccess(response) && (response as { value?: CampaignActorInstanceRecord }).value?.overridePayload.hpCurrent === 7;
+  });
+  await check('17_campaign_actor_update_rejects_non_object', async () => {
+    return createdActorInstanceId ? hasStatus(await handlers.updateCampaignActor({ ...base(), params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, actorInstanceId: createdActorInstanceId }, body: { overridePayload: 'nope' } }), 400) : false;
+  });
+  await check('18_campaign_actor_detail', async () => isSuccess(await handlers.getCampaignActor({ ...base(), params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, actorInstanceId: 'missing' } })) === false);
+  await check('19_campaign_actor_archive_missing_404', async () => hasStatus(await handlers.archiveCampaignActor({ ...base(), params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, actorInstanceId: 'missing' } }), 404));
+  await check('20_campaign_actor_source_is_metadata', async () => isSuccess(await handlers.createCampaignActor({ ...base(), body: { displayName: 'Metadata Actor', sourceActorId: 'vault-2', snapshotPayload: { hp: 10 } } })));
   await check('19_room_list_success', async () => isSuccess(await handlers.listRooms(base(MEMBER))));
   await check('20_room_create_member_success', async () => hasStatus(await handlers.createRoom({ ...base(MEMBER), body: { roomCode: 'NEW123' } }), 201));
   await check('21_anonymous_room_create_401', async () => hasStatus(await handlers.createRoom({ params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID }, body: {} }), 401));

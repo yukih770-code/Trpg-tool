@@ -199,6 +199,12 @@ export interface RoomActorBindingSummary {
   rejectionReason?: string;
   /** Optional future clearance/admission layer (M24.2a). Separate from `status`. */
   clearance?: RoomActorBindingClearanceSummary;
+  /**
+   * Server-owned reference to the durable campaign actor created from an approved
+   * persisted Vault actor. It is absent for quick drafts, local-only rooms, and
+   * legacy snapshots. It is not a permission grant or a character payload.
+   */
+  campaignActorInstanceId?: string;
 }
 
 export type RoomReadyStatus = 'notReady' | 'ready';
@@ -226,6 +232,12 @@ export type RoomCampaignRefSource = 'localCampaignLibrary' | 'imported' | 'works
 
 export interface RoomCampaignRef {
   source: RoomCampaignRefSource;
+  /**
+   * Optional durable World Server context. A room with this plus `campaignId`
+   * may bridge approved Vault actors into campaign_actor_instances; descriptive
+   * local campaign links deliberately leave it absent.
+   */
+  worldServerId?: string;
   campaignId?: string;
   displayName: string;
   systemId: RoomSystemId;

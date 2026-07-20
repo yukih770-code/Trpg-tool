@@ -174,6 +174,7 @@ export type WorldServerApiClient = {
   updateRole(worldServerId: string, roleId: string, input: Record<string, unknown>): Promise<WorldServerRole>;
   listInvites(worldServerId: string, limit?: number): Promise<WorldServerInvite[]>;
   createInvite(worldServerId: string, input: CreateInviteInput): Promise<WorldServerInvite>;
+  revokeInvite(worldServerId: string, inviteId: string): Promise<WorldServerInvite>;
   createJoinRequest(worldServerId: string, input: { requestedRoleKey?: string; requestMessage?: string }): Promise<WorldServerJoinRequest>;
   listJoinRequests(worldServerId: string, limit?: number): Promise<WorldServerJoinRequest[]>;
   reviewJoinRequest(worldServerId: string, joinRequestId: string, input: { requestStatus: string; responseMessage?: string }): Promise<WorldServerJoinRequest>;
@@ -210,6 +211,7 @@ export function createWorldServerApiClient(options: ApiClientOptions = {}): Worl
     updateRole: (id, roleId, input) => json('PATCH', `/api/world-servers/${encodeURIComponent(id)}/roles/${encodeURIComponent(roleId)}`, input),
     listInvites: (id, limit = 100) => request(`/api/world-servers/${encodeURIComponent(id)}/invites?limit=${limit}`),
     createInvite: (id, input) => json('POST', `/api/world-servers/${encodeURIComponent(id)}/invites`, input),
+    revokeInvite: (id, inviteId) => json('POST', `/api/world-servers/${encodeURIComponent(id)}/invites/${encodeURIComponent(inviteId)}/revoke`),
     createJoinRequest: (id, input) => json('POST', `/api/world-servers/${encodeURIComponent(id)}/join-requests`, input),
     listJoinRequests: (id, limit = 100) => request(`/api/world-servers/${encodeURIComponent(id)}/join-requests?limit=${limit}`),
     reviewJoinRequest: (id, requestId, input) => json('PATCH', `/api/world-servers/${encodeURIComponent(id)}/join-requests/${encodeURIComponent(requestId)}`, input),

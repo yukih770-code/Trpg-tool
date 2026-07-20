@@ -20,6 +20,7 @@ import { DndMonsterTemplateLibraryPanel } from './DndMonsterTemplateLibraryPanel
 import { SavedSceneLibraryPanel } from './SavedSceneLibraryPanel';
 import { SceneRuntimeSnapshotPanel } from './SceneRuntimeSnapshotPanel';
 import { LanRuntimeHostPanel } from './LanRuntimeHostPanel';
+import { HostedRoomLaunchPanel } from './HostedRoomLaunchPanel';
 import type { CombatRuntimeEventDraft, CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
 import type { CombatDamagePreset } from '../../lib/combat/combatComfort';
 import type { MapBoardState, MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
@@ -35,6 +36,13 @@ import type { DndLiteActorSheet, DndLiteCombatantPrefill } from '../../lib/dnd/d
 import { getDndLiteCombatantPrefill } from '../../lib/dnd/dndLiteActorSheet';
 import { dndMonsterToLiteActorSheet, type DndMonsterAction, type DndPrivateMonsterTemplate } from '../../lib/dnd/dndMonsterTemplateTypes';
 import { useDndMonsterTemplates } from '../../lib/dnd/useDndMonsterTemplates';
+import {
+  launchHostedRoomFromCampaign,
+  resumeHostedRoomFromCampaign,
+  type HostedRoomLaunchSession,
+  type RoomLaunchActionState,
+} from '../../lib/platform/hostedRoomLaunch';
+import type { RoomSystemId } from '../../lib/platform/roomTypes';
 
 type Props = {
   worldServerId: string;
@@ -42,6 +50,8 @@ type Props = {
   gameSystems: WorldServerGameSystemBinding[];
   defaultGameSystemId?: string;
   canManageServer: boolean;
+  viewerUserId?: string;
+  hostDisplayName?: string;
 };
 
 function errorText(error: ApiClientError | null, locale: Locale): string {
@@ -60,6 +70,14 @@ function roomLabel(room: { roomCode?: string; metadata: Record<string, unknown> 
   return 'Room';
 }
 
+function isRecoverableLiveLobby(room: { multiplayerMode: string; metadata: Record<string, unknown> }): boolean {
+  const lifecycle = room.metadata.liveRoomLifecycleV1;
+  return room.multiplayerMode === 'cloud'
+    && !!lifecycle
+    && typeof lifecycle === 'object'
+    && (lifecycle as { recoverable?: unknown }).recoverable === true;
+}
+
 function participantKey(participant: { participantId?: string; roomParticipantId?: string }): string {
   return participant.participantId ?? participant.roomParticipantId ?? 'participant';
 }
@@ -76,6 +94,14 @@ function actorLabel(actor: CampaignActorInstance, fallback: string): string {
 
 function isDndCampaign(systemId: string | undefined): boolean {
   return systemId?.toLowerCase().startsWith('dnd') ?? false;
+}
+
+function toRoomSystemId(systemId: string): RoomSystemId {
+  const normalized = systemId.trim().toLowerCase();
+  if (normalized === 'dnd5e-2024' || normalized.startsWith('dnd')) return 'dnd5e-2024';
+  if (normalized === 'coc7e' || normalized.startsWith('coc')) return 'coc7e';
+  if (normalized === 'cp-red' || normalized.includes('cyberpunk')) return 'cp-red';
+  return 'custom';
 }
 
 function runtimeEventLabel(eventKind: string, locale: Locale): string {
@@ -168,7 +194,7 @@ function runtimeEventSummary(item: RuntimeEvent, locale: Locale): string {
   return locale === 'en' ? 'Event data' : '事件数据';
 }
 
-export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, defaultGameSystemId, canManageServer }: Props) {
+export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, defaultGameSystemId, canManageServer, viewerUserId, hostDisplayName }: Props) {
   const { t } = createTranslator(locale);
   const { campaigns, loading, error, refresh, createCampaign } = useCampaigns(worldServerId);
   const [selectedCampaignId, setSelectedCampaignId] = useState('');
@@ -190,6 +216,9 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const [actorName, setActorName] = useState('');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiClientError | null>(null);
+  const [liveRoomSession, setLiveRoomSession] = useState<HostedRoomLaunchSession | null>(null);
+  const [liveRoomLaunchState, setLiveRoomLaunchState] = useState<RoomLaunchActionState>('idle');
+  const [liveRoomError, setLiveRoomError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedCampaignId && campaigns[0]) setSelectedCampaignId(campaigns[0].campaign.campaignId);
@@ -266,6 +295,47 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
       setRoomName('');
       setSelectedRoomId(room.roomId);
     });
+  };
+
+  const handleLaunchLiveRoom = async () => {
+    if (!selectedCampaign || !canManageServer) return;
+    setLiveRoomLaunchState('launching');
+    setLiveRoomError(null);
+    try {
+      const session = await launchHostedRoomFromCampaign({
+        campaign: {
+          id: selectedCampaign.campaign.campaignId,
+          title: selectedCampaign.campaign.title,
+          systemId: toRoomSystemId(selectedCampaign.campaign.systemId),
+          worldServerId,
+          campaignRefSource: 'unknown',
+        },
+        source: 'campaignDetail',
+        hostDisplayName: hostDisplayName?.trim() || 'GM',
+        roomDisplayName: roomName.trim() || undefined,
+      });
+      setRoomName('');
+      setLiveRoomSession(session);
+      await campaignDetail.refresh();
+      setLiveRoomLaunchState('idle');
+    } catch {
+      setLiveRoomLaunchState('failed');
+      setLiveRoomError(t('campaignRoom.liveLobbyFailed'));
+    }
+  };
+
+  const handleResumeLiveRoom = async (roomId: string) => {
+    if (!selectedCampaign || !canManageServer) return;
+    setLiveRoomLaunchState('launching');
+    setLiveRoomError(null);
+    try {
+      const session = await resumeHostedRoomFromCampaign({ roomId, campaignId: selectedCampaign.campaign.campaignId });
+      setLiveRoomSession(session);
+      setLiveRoomLaunchState('idle');
+    } catch {
+      setLiveRoomLaunchState('failed');
+      setLiveRoomError(t('campaignRoom.liveLobbyRecoveryFailed'));
+    }
   };
 
   const handleCreateRuntimeSession = async () => {
@@ -347,6 +417,26 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
       await campaignDetail.refresh();
     });
   };
+
+  if (liveRoomSession) {
+    return (
+      <HostedRoomLaunchPanel
+        baseUrl={liveRoomSession.baseUrl}
+        room={liveRoomSession.room}
+        hostMemberId={liveRoomSession.hostMemberId}
+        serverLabel={t('campaignRoom.liveLobbyServerLabel')}
+        backLabel={t('campaignRoom.backToWorkspace')}
+        exitLabel={t('campaignRoom.leaveLiveLobby')}
+        originLabel={t('campaignRoom.liveLobbyOrigin')}
+        originDetail={selectedCampaign?.campaign.title}
+        onClose={() => {
+          setLiveRoomSession(null);
+          void campaignDetail.refresh();
+        }}
+        panelClassName="rounded-2xl border border-[#2f2a22]/12 bg-white p-4 shadow-sm"
+      />
+    );
+  }
 
   return (
     <section className="flex flex-col gap-4">
@@ -469,9 +559,33 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                   <button type="submit" disabled={busy} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.createRoom')}</button>
                 </form>
               </div>
+              {canManageServer && (
+                <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[#58180d]/18 bg-[#fff8e6] p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-bold">{t('campaignRoom.liveLobbyTitle')}</div>
+                    <p className="mt-1 text-xs leading-5 text-[#51483d]">{t('campaignRoom.liveLobbyNote')}</p>
+                  </div>
+                  <button type="button" disabled={liveRoomLaunchState === 'launching'} onClick={() => void handleLaunchLiveRoom()} className="rounded-md bg-[#17130f] px-3 py-2 text-sm font-bold text-white disabled:opacity-40">
+                    {liveRoomLaunchState === 'launching' ? t('campaignRoom.liveLobbyStarting') : t('campaignRoom.liveLobbyLaunch')}
+                  </button>
+                  {liveRoomError && <p className="w-full text-xs text-[#8b3a2f]">{liveRoomError}</p>}
+                </div>
+              )}
               {activeRooms.length === 0 && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noRooms')}</p>}
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                {activeRooms.map((room) => <button key={room.roomId} type="button" onClick={() => setSelectedRoomId(room.roomId)} className={`rounded-xl border p-3 text-left ${room.roomId === selectedRoomId ? 'border-[#58180d]/45 bg-[#fff8e6]' : 'border-[#2f2a22]/10 bg-[#f7f3ea]'}`}><div className="font-bold">{roomLabel(room)}</div><div className="mt-1 text-xs text-[#51483d]">{room.roomStatus} · {room.multiplayerMode}</div></button>)}
+                {activeRooms.map((room) => (
+                  <div key={room.roomId} className={`rounded-xl border p-3 ${room.roomId === selectedRoomId ? 'border-[#58180d]/45 bg-[#fff8e6]' : 'border-[#2f2a22]/10 bg-[#f7f3ea]'}`}>
+                    <button type="button" onClick={() => setSelectedRoomId(room.roomId)} className="w-full text-left">
+                      <div className="font-bold">{roomLabel(room)}</div>
+                      <div className="mt-1 text-xs text-[#51483d]">{room.roomStatus} · {room.multiplayerMode}</div>
+                    </button>
+                    {canManageServer && viewerUserId === room.hostUserId && isRecoverableLiveLobby(room) && (
+                      <button type="button" disabled={liveRoomLaunchState === 'launching'} onClick={() => void handleResumeLiveRoom(room.roomId)} className="mt-3 rounded-md border border-[#2f2a22]/15 bg-white px-3 py-1.5 text-xs font-bold text-[#51483d] disabled:opacity-40">
+                        {t('campaignRoom.resumeLiveLobby')}
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}

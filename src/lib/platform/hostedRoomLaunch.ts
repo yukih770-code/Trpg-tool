@@ -1,7 +1,6 @@
-import { createRoomOnServer } from './roomServerHttpClient';
+import { createRoomOnServer, getRoomServerEntry } from './roomServerHttpClient';
 import { resolveRoomServerHttpUrl } from './roomServerEndpoint';
-import type { LocalCampaignSystemId } from './campaignLocalStore';
-import type { RoomSnapshot, RoomSystemId } from './roomTypes';
+import type { RoomCampaignRef, RoomSnapshot, RoomSystemId } from './roomTypes';
 
 export type RoomLaunchSource = 'campaignList' | 'campaignDetail' | 'runtimeSettings';
 
@@ -10,7 +9,11 @@ export type RoomLaunchActionState = 'idle' | 'launching' | 'failed';
 export interface HostedRoomLaunchCampaignRef {
   id: string;
   title: string;
-  systemId: LocalCampaignSystemId;
+  systemId: RoomSystemId;
+  /** Optional cloud context for the durable campaign/room bridge. */
+  worldServerId?: string;
+  /** Local libraries retain their existing source; cloud campaigns use `unknown` until the protocol grows a cloud source. */
+  campaignRefSource?: RoomCampaignRef['source'];
 }
 
 export interface HostedRoomLaunchSession {
@@ -26,6 +29,13 @@ export interface LaunchHostedRoomInput {
   source: RoomLaunchSource;
   baseUrl?: string;
   hostDisplayName?: string;
+  roomDisplayName?: string;
+}
+
+export interface ResumeHostedRoomInput {
+  roomId: string;
+  campaignId: string;
+  baseUrl?: string;
 }
 
 export async function launchHostedRoomFromCampaign({
@@ -33,17 +43,20 @@ export async function launchHostedRoomFromCampaign({
   source,
   baseUrl = resolveRoomServerHttpUrl(),
   hostDisplayName = 'GM',
+  roomDisplayName,
 }: LaunchHostedRoomInput): Promise<HostedRoomLaunchSession> {
   const { room } = await createRoomOnServer(
     { baseUrl },
     {
       hostDisplayName,
-      systemId: campaign.systemId as RoomSystemId,
+      displayName: roomDisplayName?.trim() || campaign.title,
+      systemId: campaign.systemId,
       campaignRef: {
-        source: 'localCampaignLibrary',
+        source: campaign.campaignRefSource ?? 'localCampaignLibrary',
+        worldServerId: campaign.worldServerId,
         campaignId: campaign.id,
         displayName: campaign.title,
-        systemId: campaign.systemId as RoomSystemId,
+        systemId: campaign.systemId,
       },
     },
   );
@@ -57,6 +70,25 @@ export async function launchHostedRoomFromCampaign({
     hostMemberId: host.memberId,
     sourceCampaignId: campaign.id,
     source,
+  };
+}
+
+/** Restores the host's existing durable lobby entry after a room-server restart. */
+export async function resumeHostedRoomFromCampaign({
+  roomId,
+  campaignId,
+  baseUrl = resolveRoomServerHttpUrl(),
+}: ResumeHostedRoomInput): Promise<HostedRoomLaunchSession> {
+  const entry = await getRoomServerEntry({ baseUrl }, roomId);
+  if (entry.role !== 'host') {
+    throw new Error('Only the room host can resume this lobby from the campaign workspace.');
+  }
+  return {
+    baseUrl,
+    room: entry.room,
+    hostMemberId: entry.memberId,
+    sourceCampaignId: campaignId,
+    source: 'campaignDetail',
   };
 }
 

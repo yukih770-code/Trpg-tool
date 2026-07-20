@@ -258,3 +258,28 @@ UI or exposing combat/character details from map Tokens. Current Room Map and
 public RuntimeLog payloads are not viewer-projected: React visibility is never
 a security boundary. First add server-side viewer projections, then layer public
 inspect, investigation reveals, and combat shortcuts on top.
+
+## Private Alpha Personal Invites
+
+Read `P5_PRIVATE_ALPHA_PERSONAL_INVITES.md` before changing private-alpha
+login, World Server invitation records, or friend onboarding. The global
+bootstrap code is not the normal friend credential: a server-scoped personal
+invite binds to its first accepted user, creates membership, and may be revoked.
+It does not change server role permissions, Room authority, or Runtime access.
+
+## Actor Vault, Cloud Room Launch, and Lifecycle Recovery (P6.1-P6.6)
+
+Read `P6_ACTOR_VAULT_ROOM_BINDING_FOUNDATION.md` before changing Actor Vault,
+Room actor submission, or `campaign_actor_instances`. Vault payloads are
+owner-only. Room bindings use server-derived compact projections; an approved
+persisted actor may receive only an opaque campaign actor instance id in a Room
+snapshot when the Room has real World Server and campaign context. That id is
+not a permission grant or a Runtime mutable-state payload.
+
+Cloud campaign managers can open a real lobby with that durable context. The
+live Room API independently authorizes the World Server/campaign pair. Open
+cloud lobbies mirror a versioned, server-internal snapshot into their existing
+`room_records` metadata and restore after a Room Server restart; the public
+metadata API strips that snapshot. Runtime Log, map, combat, and WebSocket
+presence are still separate paths and are not represented as full runtime
+recovery.

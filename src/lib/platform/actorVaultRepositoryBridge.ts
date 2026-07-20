@@ -187,6 +187,40 @@ export function getActorVaultRecord(
     resolveLegacyActorVaultAlias(systemId, actorId, records);
 }
 
+/**
+ * Reads a detached snapshot for the current browser owner's local vault actor.
+ * It is intentionally read-only and never exposes another user's character.
+ */
+export function getActorVaultLocalSnapshot(
+  systemId: ActorVaultSystemId,
+  actorId: string,
+): Record<string, unknown> | undefined {
+  const record = getActorVaultRecord(systemId, actorId);
+  const resolvedActorId = record?.id ?? actorId;
+  const snapshot = (() => {
+    switch (systemId) {
+      case 'dnd5e-2024': {
+        const state = useCharacterStore.getState();
+        return mergeDndActiveCharacter(state.characters, state.character, state.activeCharacterId)
+          .find((character) => character.id === resolvedActorId);
+      }
+      case 'coc7e': {
+        const state = useCocStore.getState();
+        return mergeCocActiveCharacter(state.characters, state.character, state.activeCharacterId)
+          .find((character) => character.id === resolvedActorId);
+      }
+      case 'cp-red': {
+        const state = useCpStore.getState();
+        return mergeCpActiveCharacter(state.characters, state.character, state.activeCharacterId)
+          .find((character) => character.id === resolvedActorId);
+      }
+    }
+  })();
+
+  // Do not return a mutable reference into a Zustand store to the API layer.
+  return snapshot ? JSON.parse(JSON.stringify(snapshot)) as Record<string, unknown> : undefined;
+}
+
 export function getActiveActorVaultRecord(
   systemId: ActorVaultSystemId,
 ): ActorVaultRecord | undefined {

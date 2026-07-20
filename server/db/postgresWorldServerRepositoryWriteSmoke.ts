@@ -60,6 +60,8 @@ const MEMBERSHIP_OWNER_ID = 'membership_world_write_smoke_owner';
 const MEMBERSHIP_MEMBER_ID = 'membership_world_write_smoke_member';
 const INVITE_ID = 'invite_world_write_smoke';
 const INVITE_CODE = 'invite_code_world_write_smoke';
+const PERSONAL_INVITE_ID = 'invite_world_write_smoke_personal';
+const PERSONAL_INVITE_CODE = 'invite_code_world_write_smoke_personal';
 const JOIN_REQUEST_ID = 'joinRequest_world_write_smoke';
 const BINDING_ID = 'binding_world_write_smoke';
 const GSB_FANTASY_ID = 'gsb_world_write_smoke_fantasy';
@@ -250,6 +252,30 @@ async function runWritePath(
   const inviteUpd = await repo.updateWorldServerInvite({ inviteId: INVITE_ID, useCount: 1, payload: { note: 'used once' } });
   if (inviteUpd.ok === false || !inviteUpd.value || inviteUpd.value.useCount !== 1) return [...steps, failedStep('updateWorldServerInvite', inviteUpd.ok === false ? inviteUpd.error.kind : 'stale_read')];
   ok('updateWorldServerInvite');
+
+  const personalInvite = await repo.createWorldServerInvite({
+    inviteId: PERSONAL_INVITE_ID,
+    worldServerId: SERVER_ID,
+    inviteCode: PERSONAL_INVITE_CODE,
+    createdByUserId: OWNER_USER_ID,
+    defaultRoleKey: 'member',
+    maxUses: 1,
+  });
+  if (personalInvite.ok === false) return [...steps, failedStep('createPersonalWorldServerInvite', personalInvite.error.kind)];
+  const redeemed = await repo.redeemWorldServerInvite({
+    inviteCode: PERSONAL_INVITE_CODE,
+    userId: REQUESTER_USER_ID,
+    membershipId: 'membership_world_write_smoke_redeemed',
+    displayAlias: 'World Requester',
+  });
+  if (redeemed.ok === false || !redeemed.value || redeemed.value.membershipStatus !== 'active') return [...steps, failedStep('redeemPersonalWorldServerInvite', redeemed.ok === false ? redeemed.error.kind : 'not_redeemed')];
+  const secondRedemption = await repo.redeemWorldServerInvite({
+    inviteCode: PERSONAL_INVITE_CODE,
+    userId: MEMBER_USER_ID,
+    membershipId: 'membership_world_write_smoke_blocked',
+  });
+  if (secondRedemption.ok === false || secondRedemption.value !== null) return [...steps, failedStep('personalInviteRejectsOtherUser', secondRedemption.ok === false ? secondRedemption.error.kind : 'reused')];
+  ok('redeemPersonalWorldServerInvite');
 
   const inviteStatus = await repo.updateWorldServerInviteStatus({ inviteId: INVITE_ID, inviteStatus: 'revoked' });
   if (inviteStatus.ok === false || !inviteStatus.value || inviteStatus.value.inviteStatus !== 'revoked') return [...steps, failedStep('updateWorldServerInviteStatus', inviteStatus.ok === false ? inviteStatus.error.kind : 'stale_read')];
