@@ -2,6 +2,7 @@ import { RuntimeActorBoundaryNote } from './RuntimeActorBoundaryNote';
 import { RuntimeInventoryBoundaryNote } from './RuntimeInventoryBoundaryNote';
 import { RuntimeActorSnapshotStatus } from './RuntimeActorSnapshotStatus';
 import type { RuntimeInventoryItem, RuntimeInventorySummary } from './runtimeInventoryAdapter';
+import type { RoomRuntimeDndActionShortcut } from '../../lib/platform/roomRuntimeActorProjectionTypes';
 
 /**
  * RuntimeCharacterSheetPanel (M46) — read-only runtime character sheet.
@@ -62,6 +63,8 @@ export interface RuntimeCharacterSheetPanelProps {
   role?: 'host' | 'player' | 'spectator';
   /** Read-only inventory / equipment summary (M55), built by runtimeInventoryAdapter. */
   inventory?: RuntimeInventorySummary | null;
+  dndActions?: RoomRuntimeDndActionShortcut[];
+  onRollDndAction?: (input: { expression: string; label: string }) => void;
 }
 
 const SYSTEM_LABEL: Record<string, string> = {
@@ -157,7 +160,7 @@ function InvGroup({ title, items }: { title: string; items: RuntimeInventoryItem
   );
 }
 
-export function RuntimeCharacterSheetPanel({ summary, role, inventory }: RuntimeCharacterSheetPanelProps) {
+export function RuntimeCharacterSheetPanel({ summary, role, inventory, dndActions = [], onRollDndAction }: RuntimeCharacterSheetPanelProps) {
   if (!hasCharacter(summary)) {
     return (
       <div className="space-y-2 text-left">
@@ -264,6 +267,18 @@ export function RuntimeCharacterSheetPanel({ summary, role, inventory }: Runtime
           <div className="mt-1.5">
             <RuntimeInventoryBoundaryNote variant="compact" />
           </div>
+        </div>
+      )}
+      {role === 'player' && dndActions.length > 0 && (
+        <div className="rounded border border-slate-300/50 bg-white/70 p-2">
+          <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">动作快捷掷骰</div>
+          <div className="flex flex-wrap gap-1.5">
+            {dndActions.map((action) => {
+              const attack = action.attackBonus === undefined ? undefined : `d20${action.attackBonus >= 0 ? '+' : ''}${action.attackBonus}`;
+              return <button key={action.id} type="button" disabled={!attack || !onRollDndAction} onClick={() => attack && onRollDndAction?.({ expression: attack, label: `${summary.displayName} · ${action.name}` })} className="rounded border border-slate-400/45 bg-white px-2 py-1 text-[10px] font-bold text-slate-700 disabled:opacity-45">{action.name}{attack ? ` · ${attack}` : ''}</button>;
+            })}
+          </div>
+          <p className="mt-1 text-[9px] leading-relaxed text-slate-500">此处只发起服务器掷骰，不自动判定命中、伤害或修改生命值。</p>
         </div>
       )}
 

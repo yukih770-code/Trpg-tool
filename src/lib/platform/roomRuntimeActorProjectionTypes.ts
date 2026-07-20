@@ -23,8 +23,18 @@ export interface RoomRuntimeActorProjection {
   source: RoomRuntimeActorProjectionSource;
 }
 
+/** Self-only DND Lite action shortcut. It intentionally has no target or effect. */
+export interface RoomRuntimeDndActionShortcut {
+  id: string;
+  name: string;
+  attackBonus?: number;
+  damageFormula?: string;
+}
+
 export interface RoomRuntimeActorProjectionListResult {
   actors: RoomRuntimeActorProjection[];
+  /** Returned only for the authenticated member's own approved binding. */
+  selfDndActions?: RoomRuntimeDndActionShortcut[];
   /** The read remains useful with compact room-binding fallbacks if storage is unavailable. */
   persistence: 'available' | 'unavailable' | 'notLinked';
 }

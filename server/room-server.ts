@@ -532,7 +532,7 @@ app.get('/rooms/:roomId/runtime-actors', async (req, res) => {
   const room = requireRoomRuntimeAction(req, res, req.params.roomId, memberId, 'combat.view');
   if (!room) return;
 
-  const result = await projectRoomRuntimeActorProjections({ room, repository: platformFoundationRepository });
+  const result = await projectRoomRuntimeActorProjections({ room, repository: platformFoundationRepository, currentMemberId: memberId });
   res.json(result);
 });
 

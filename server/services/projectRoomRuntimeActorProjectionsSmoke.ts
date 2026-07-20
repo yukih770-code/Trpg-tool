@@ -5,6 +5,7 @@ const sheet = {
   actorKind: 'pc',
   displayName: 'Maris',
   defenses: { armorClass: 16, currentHp: 11, maxHp: 17, temporaryHp: 3 },
+  actions: [{ id: 'sword', name: '长剑', attackBonus: 5, damageFormula: '1d8+3' }],
 };
 
 const room = {
@@ -27,7 +28,8 @@ const record = {
 
 async function main() {
   const result = await projectRoomRuntimeActorProjections({
-    room,
+  room,
+  currentMemberId: 'member-1',
     repository: { async getCampaignActorInstanceById() { return { ok: true as const, value: record }; } },
   });
   const projection = result.actors[0];
@@ -35,7 +37,8 @@ async function main() {
     result.persistence === 'available',
     projection.displayName === 'Maris',
     projection.hpCurrent === 11 && projection.hpMax === 17 && projection.temporaryHp === 3 && projection.armorClass === 16,
-    projection.source === 'campaignOverride',
+  projection.source === 'campaignOverride',
+  result.selfDndActions?.[0]?.name === '长剑' && result.selfDndActions[0].attackBonus === 5,
     !('snapshotPayload' in projection) && !('ownerId' in projection) && !('actions' in projection),
   ];
   if (checks.some((check) => !check)) throw new Error('Room Runtime actor projection smoke failed.');

@@ -14,7 +14,7 @@ import {
   setRoomMapMemberPermission,
   type RoomServerHttpClientConfig,
 } from '../../lib/platform/roomServerHttpClient';
-import type { RoomRuntimeActorProjection } from '../../lib/platform/roomRuntimeActorProjectionTypes';
+import type { RoomRuntimeActorProjection, RoomRuntimeDndActionShortcut } from '../../lib/platform/roomRuntimeActorProjectionTypes';
 import { createRoomSocketClient, type RoomSocketConnectionState } from '../../lib/platform/roomSocketClient';
 import { resolveDevViewerUserId } from '../../lib/api/apiClient';
 import { resolveRoomRuntimePermissions } from '../../lib/platform/roomRuntimePermissions';
@@ -183,6 +183,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const [sharedMapPreviews, setSharedMapPreviews] = useState<Record<string, SharedMapPreview>>({});
   const [roomCombatState, setRoomCombatState] = useState<CombatRuntimeTableState>(createCombatRuntimeTableState);
   const [runtimeActorProjections, setRuntimeActorProjections] = useState<RoomRuntimeActorProjection[]>([]);
+  const [selfDndActions, setSelfDndActions] = useState<RoomRuntimeDndActionShortcut[]>([]);
   const [selectedCombatantId, setSelectedCombatantId] = useState<string | undefined>();
   const [combatantToLocate, setCombatantToLocate] = useState<string | undefined>();
   const [inspectedToken, setInspectedToken] = useState<MapToken | undefined>();
@@ -235,11 +236,11 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     let cancelled = false;
     listRoomRuntimeActorProjections({ baseUrl: context.serverBaseUrl }, context.roomId, context.currentMemberId)
       .then((result) => {
-        if (!cancelled) setRuntimeActorProjections(result.actors);
+        if (!cancelled) { setRuntimeActorProjections(result.actors); setSelfDndActions(result.selfDndActions ?? []); }
       })
       .catch(() => {
         // Existing compact room bindings remain safe offline fallbacks.
-        if (!cancelled) setRuntimeActorProjections([]);
+        if (!cancelled) { setRuntimeActorProjections([]); setSelfDndActions([]); }
       });
     return () => { cancelled = true; };
   }, [context.currentMemberId, context.roomId, context.serverBaseUrl]);
@@ -945,7 +946,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                 ) : undefined,
               actorPanel:
                 shellMode === 'player' ? (
-                  <RuntimeCharacterSheetPanel summary={characterSummary} inventory={inventorySummary} role="player" />
+                  <RuntimeCharacterSheetPanel summary={characterSummary} inventory={inventorySummary} role="player" dndActions={selfDndActions} onRollDndAction={(input) => { void handleRoomDiceRoll(input); }} />
                 ) : undefined,
               scenePanel:
                 shellMode === 'host' ? (
