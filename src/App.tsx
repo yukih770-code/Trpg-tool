@@ -9,13 +9,15 @@ import { ensureCampaignOwnershipBackfill } from './lib/platform/campaignOwnershi
 import { getCurrentLocalProfileUserId } from './lib/platform/localViewerIdentity';
 // P5.10I: one current-viewer account projection drives all account surfaces.
 import { getCurrentViewerAccount } from './lib/platform/currentViewerAccount';
-import { ArrowLeft, HomeIcon, Library, MoreHorizontal, Palette, Settings, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, HomeIcon, Library, MoreHorizontal, Palette, Settings, Sparkles, Store, X } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Toaster } from '../components/ui/sonner';
 import { createTranslator, type Locale, readStoredLocale, writeStoredLocale } from './i18n';
 import { Home } from './pages/Home';
 import { SystemLibrary } from './pages/SystemLibrary';
+import { Workshop } from './pages/Workshop';
+import { FanPlaza } from './pages/FanPlaza';
 import { DocumentLibraryShell } from './components/platform/DocumentLibraryShell';
 import { PersonalContentHub } from './components/platform/PersonalContentHub';
 import { UserProfileSpace } from './components/platform/UserProfileSpace';
@@ -40,7 +42,7 @@ import { PrivateAlphaLoginPanel } from './components/platform/PrivateAlphaLoginP
 import { ServerInvitePanel } from './components/platform/ServerInvitePanel';
 import { DndPrivateSpeciesPackEditorPanel } from './components/platform/DndPrivateSpeciesPackEditorPanel';
 
-type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'documents' | 'personalHub' | 'userProfile';
+type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop' | 'fanPlaza' | 'documents' | 'personalHub' | 'userProfile';
 type PlayStage = 'menu' | 'workspace';
 type System = 'D&D' | 'CoC' | 'CP';
 type EntryStage = 'launcher' | 'serverSelect' | 'serverHome' | 'platform';
@@ -97,7 +99,7 @@ function areNavigationStatesEqual(left: NavigationState, right: NavigationState)
 // workflow pages (play workspace) use focus mode to reduce platform-nav pressure.
 // Platform nav switches top-level modules only; system + page navigation stay
 // inside their own surfaces.
-type PlatformNavKey = 'home' | 'systemLibrary' | 'personalHub';
+type PlatformNavKey = 'home' | 'systemLibrary' | 'personalHub' | 'workshop' | 'fanPlaza';
 
 // `labelKey` resolves via i18n; `label` is a literal fallback when no key exists
 // (e.g. personalHub has no shell.nav key yet — i18n locale files are out of scope).
@@ -105,6 +107,8 @@ const PRIMARY_NAV: { key: PlatformNavKey; labelKey?: string; label?: { zh: strin
   { key: 'home',          labelKey: 'shell.nav.home',          icon: HomeIcon },
   { key: 'systemLibrary', labelKey: 'shell.nav.systemLibrary', icon: Library  },
   { key: 'personalHub',   label: { zh: '我的资料库', en: 'My Library' }, icon: Sparkles },
+  { key: 'workshop',      labelKey: 'shell.nav.workshop',      icon: Store    },
+  { key: 'fanPlaza',      labelKey: 'shell.nav.fanPlaza',      icon: Palette  },
 ];
 
 const MOCK_WORLD_SERVERS: DisplayWorldServer[] = [
@@ -573,6 +577,14 @@ export default function App() {
       setAppView('systemLibrary');
       return;
     }
+    if (feature === 'workshop' || feature === 'community') {
+      setAppView('workshop');
+      return;
+    }
+    if (feature === 'fanPlaza') {
+      setAppView('fanPlaza');
+      return;
+    }
     // Personal Content Hub is a real platform space, not a placeholder.
     if (feature === 'personalHub') {
       setAppView('personalHub');
@@ -618,6 +630,8 @@ export default function App() {
   const mobileTitle =
     appView === 'home' ? t('shell.nav.home')
     : appView === 'systemLibrary' ? t('shell.nav.systemLibrary')
+    : appView === 'workshop' ? t('shell.nav.workshop')
+    : appView === 'fanPlaza' ? t('shell.nav.fanPlaza')
     : appView === 'documents' ? (locale === 'en' ? 'Documents' : '文档资料')
     : appView === 'personalHub' ? (locale === 'en' ? 'My Library' : '我的资料库')
     : appView === 'userProfile' ? (locale === 'en' ? 'Profile' : '用户主页')
@@ -1303,6 +1317,14 @@ export default function App() {
 
         {appView === 'systemLibrary' && (
           <SystemLibrary locale={locale} onEnterPlay={enterPlay} />
+        )}
+
+        {appView === 'workshop' && (
+          <Workshop locale={locale} />
+        )}
+
+        {appView === 'fanPlaza' && (
+          <FanPlaza locale={locale} />
         )}
 
         {appView === 'documents' && (

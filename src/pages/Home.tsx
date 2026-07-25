@@ -1,5 +1,5 @@
 // AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V2
-import { BookOpen, ChevronRight, Library, Megaphone, Play } from 'lucide-react';
+import { BookOpen, ChevronRight, Library, Megaphone, Palette, Play, Sparkles } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { createTranslator, type Locale } from '../i18n';
 import { useAppStore } from '../store/appStore';
@@ -46,7 +46,7 @@ const quickEntries: {
   label: [string, string];
   note: [string, string];
   icon: typeof Library;
-  action: 'systemLibrary' | 'currentSystem' | 'personalHub';
+  action: 'systemLibrary' | 'currentSystem' | 'workshop' | 'fanPlaza' | 'personalHub';
 }[] = [
   {
     key: 'systemLibrary',
@@ -61,6 +61,20 @@ const quickEntries: {
     note: ['回到当前系统继续角色流程。', 'Continue in the current game system.'],
     icon: Library,
     action: 'currentSystem',
+  },
+  {
+    key: 'workshop',
+    label: ['创意工坊', 'Workshop'],
+    note: ['浏览已公开的资料包与创作。', 'Browse published packs and creations.'],
+    icon: Sparkles,
+    action: 'workshop',
+  },
+  {
+    key: 'fanPlaza',
+    label: ['同人广场', 'Community plaza'],
+    note: ['浏览已公开的故事与分享。', 'Browse published stories and sharing.'],
+    icon: Palette,
+    action: 'fanPlaza',
   },
   {
     key: 'personalHub',

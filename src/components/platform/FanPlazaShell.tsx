@@ -95,6 +95,23 @@ export function FanPlazaShell({ t, locale }: FanPlazaShellProps) {
     return <FanWorkDetail work={detailWork} t={t} locale={locale} onBack={() => setDetailWorkId(null)} />;
   }
 
+  if (allWorks.length === 0) {
+    return (
+      <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
+        <header>
+          <h1 className="text-2xl font-bold">{t('fanPlaza.title')}</h1>
+          <p className="mt-2 max-w-3xl text-sm text-[#51483d]">{t('fanPlaza.subtitle')}</p>
+        </header>
+        <section className="mt-6 rounded-lg border border-[#2f2a22]/15 bg-white p-6 text-center">
+          <h2 className="text-base font-bold text-[#17130f]">{locale === 'en' ? 'No published works yet' : '暂无公开作品'}</h2>
+          <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[#51483d]">
+            {locale === 'en' ? 'Published community stories and creations will appear here when they are available.' : '公开发布的故事与创作将在这里显示。'}
+          </p>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
       <header>

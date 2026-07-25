@@ -65,14 +65,12 @@ import {
 } from './blockDocument';
 import { BLOCK_DOCUMENT_SEED, getBlockDocumentSeedById } from './blockDocumentSeed';
 import {
-  toWorkshopPackageSummary,
   validateWorkshopPackageManifest,
   type WorkshopPackageDetail,
   type WorkshopPackageManifest,
   type WorkshopPackageManifestValidationResult,
   type WorkshopPackageSummary,
 } from './workshopPackage';
-import { WORKSHOP_PACKAGE_SEED, getWorkshopPackageSeedById } from './workshopPackageSeed';
 import {
   decideProjection,
   projectNodeDetail,
@@ -110,9 +108,7 @@ const {
   getCurrentProfileUserId: getCurrentLocalProfileUserId,
   getCurrentUserProfile: getCurrentLocalUserProfile,
 } = defaultLocalViewerContextReader;
-import { FAN_WORKS } from '../platform/communityMockData';
 import type { FanWork } from '../platform/communityTypes';
-import { WORKSHOP_BROWSE_SAMPLES, WORKSHOP_SUBSCRIPTION_SAMPLES } from '../platform/workshopTypes';
 import type { WorkshopBrowseItem, WorkshopSubscriptionItem } from '../platform/workshopTypes';
 
 // ─── EntityGraphRepository ─────────────────────────────────────────────────
@@ -281,66 +277,52 @@ class MockEntityRepository implements EntityRepository {
   }
 }
 
-// ─── FanWork / WorkshopPackage (payload repos over existing mock shapes) ──────
+// ─── FanWork / WorkshopPackage (empty public surface until real publication) ──
 
 class MockFanWorkRepository implements FanWorkRepository {
   list(): FanWork[] {
-    return FAN_WORKS;
+    return [];
   }
-  getById(id: EntityId): FanWork | undefined {
-    return FAN_WORKS.find((w) => w.id === id);
+  getById(_id: EntityId): FanWork | undefined {
+    return undefined;
   }
 }
 
 class MockWorkshopPackageRepository implements WorkshopPackageRepository {
   // ── Legacy browse-item access (current Workshop UI) ──
   list(): WorkshopBrowseItem[] {
-    return WORKSHOP_BROWSE_SAMPLES;
+    return [];
   }
-  getById(id: EntityId): WorkshopBrowseItem | undefined {
-    return WORKSHOP_BROWSE_SAMPLES.find((w) => w.id === id);
+  getById(_id: EntityId): WorkshopBrowseItem | undefined {
+    return undefined;
   }
   listSubscriptions(): WorkshopSubscriptionItem[] {
-    return WORKSHOP_SUBSCRIPTION_SAMPLES;
+    return [];
   }
 
   // ── Manifest protocol (A4) ──
-  getPackageSummary(id: string): WorkshopPackageSummary | undefined {
-    const manifest = getWorkshopPackageSeedById(id);
-    return manifest ? toWorkshopPackageSummary(manifest) : undefined;
+  getPackageSummary(_id: string): WorkshopPackageSummary | undefined {
+    return undefined;
   }
 
-  getPackageDetail(id: string): WorkshopPackageDetail | undefined {
-    return getWorkshopPackageSeedById(id);
+  getPackageDetail(_id: string): WorkshopPackageDetail | undefined {
+    return undefined;
   }
 
-  listPackages(options?: { systemId?: string }): WorkshopPackageSummary[] {
-    return WORKSHOP_PACKAGE_SEED
-      .filter((m) => (options?.systemId ? m.systemId === options.systemId : true))
-      .map(toWorkshopPackageSummary);
+  listPackages(_options?: { systemId?: string }): WorkshopPackageSummary[] {
+    return [];
   }
 
-  getPackagesByEntity(entityId: EntityId): WorkshopPackageSummary[] {
-    return WORKSHOP_PACKAGE_SEED
-      .filter((m) =>
-        m.includedEntities.some((e) => e.entityId === entityId) ||
-        m.entryPoints.some((ep) => ep.kind === 'entity' && ep.ref === entityId) ||
-        m.dependencies.some((dep) => dep.kind === 'entity' && dep.ref === entityId),
-      )
-      .map(toWorkshopPackageSummary);
+  getPackagesByEntity(_entityId: EntityId): WorkshopPackageSummary[] {
+    return [];
   }
 
-  getPackagesByDocument(documentId: string): WorkshopPackageSummary[] {
-    return WORKSHOP_PACKAGE_SEED
-      .filter((m) =>
-        m.includedDocuments.some((d) => d.documentId === documentId) ||
-        m.entryPoints.some((ep) => ep.kind === 'blockDocument' && ep.ref === documentId),
-      )
-      .map(toWorkshopPackageSummary);
+  getPackagesByDocument(_documentId: string): WorkshopPackageSummary[] {
+    return [];
   }
 
-  getPackageManifest(id: string): WorkshopPackageManifest | undefined {
-    return getWorkshopPackageSeedById(id);
+  getPackageManifest(_id: string): WorkshopPackageManifest | undefined {
+    return undefined;
   }
 
   validateManifest(manifest: WorkshopPackageManifest): WorkshopPackageManifestValidationResult {
