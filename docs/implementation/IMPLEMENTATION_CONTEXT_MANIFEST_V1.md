@@ -326,3 +326,10 @@ Read `P6_PERSONAL_CONTENT_IMPORT.md` before extending import/export or pack
 authoring. JSON import is a bounded private authoring convenience with a local
 preview; the server remains the validation authority and imported data is not
 automatically shared with a Server or Room.
+
+## Personal Content Character Builder Provenance (P6.4)
+
+Read `P6_PERSONAL_CONTENT_CHARACTER_BUILDER.md` before connecting private
+content to D&D character creation. The current builder stores only a compact
+immutable-version reference; Room submission remains an explicit, server-
+verified, host-reviewed step.

@@ -138,7 +138,8 @@ export interface BackgroundDef {
 // Changelog:
 //   v1  Initial versioning (schemaVersion field added).
 //   v2  Added classResources: ResourceState[] and pactMagicState?: PactMagicState.
-export const CURRENT_DND_CHARACTER_SCHEMA_VERSION = 2;
+//   v3  Added personalContentReferences for private, immutable source-pack provenance.
+export const CURRENT_DND_CHARACTER_SCHEMA_VERSION = 3;
 
 // ─── Runtime resource state ───────────────────────────────────────────────────
 // These interfaces describe the CHARACTER'S CURRENT STATE, not the rule
@@ -168,6 +169,18 @@ export interface ResourceState {
   dice?: string;
   /** Free-form notes for edge cases or manual overrides. */
   notes?: string;
+}
+
+/**
+ * A compact reference to a private content-pack version used while building a
+ * character. It deliberately contains no pack entries, owner id, or executable
+ * rules. Room submission remains a separate, host-reviewed action.
+ */
+export interface DndPersonalContentReference {
+  packId: string;
+  packVersionId: string;
+  displayName: string;
+  versionLabel: string;
 }
 
 /**
@@ -230,6 +243,8 @@ export interface CharacterData {
   inventory: string[];
   activeMods?: string[];
   customModsData?: CustomMod[];
+  /** Optional private content-pack versions selected during character creation. */
+  personalContentReferences: DndPersonalContentReference[];
   feats: string[];
   coin: number; // in gp
   // Creation state

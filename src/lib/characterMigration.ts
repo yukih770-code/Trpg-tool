@@ -27,6 +27,8 @@
  *             Existing classResources arrays are preserved if valid.
  *             Existing pactMagicState objects are preserved if structurally
  *             sound (has numeric current / max / slotLevel fields).
+ *   v2 → v3  Added personalContentReferences: DndPersonalContentReference[]
+ *             (default []). Only compact pack/version provenance is kept.
  */
 
 import {
@@ -38,6 +40,7 @@ import {
   CustomMod,
   ResourceState,
   PactMagicState,
+  DndPersonalContentReference,
   CURRENT_DND_CHARACTER_SCHEMA_VERSION,
 } from './dnd-types';
 
@@ -112,6 +115,19 @@ function migratePactMagicState(v: unknown): PactMagicState | undefined {
     recoveryType: typeof p.recoveryType === 'string' ? p.recoveryType : 'shortRest',
     notes:        typeof p.notes === 'string' ? p.notes : undefined,
   };
+}
+
+function migratePersonalContentReferences(v: unknown): DndPersonalContentReference[] {
+  if (!Array.isArray(v)) return [];
+  return v.flatMap((value) => {
+    const reference = obj(value);
+    const packId = str(reference.packId, '').trim();
+    const packVersionId = str(reference.packVersionId, '').trim();
+    const displayName = str(reference.displayName, '').trim();
+    const versionLabel = str(reference.versionLabel, '').trim();
+    if (!packId || !packVersionId || !displayName || !versionLabel) return [];
+    return [{ packId, packVersionId, displayName, versionLabel }];
+  });
 }
 
 // ─── Attribute defaults ───────────────────────────────────────────────────────
@@ -228,6 +244,7 @@ export function migrateCharacter(data: unknown): CharacterData {
     inventory:       arr<string>(d.inventory),
     activeMods:      arr<string>(d.activeMods),
     customModsData:  arr<CustomMod>(d.customModsData),
+    personalContentReferences: migratePersonalContentReferences(d.personalContentReferences),
     feats:           arr<string>(d.feats),
     coin:            num(d.coin, 0),
 
@@ -289,6 +306,12 @@ export function migrateCharacter(data: unknown): CharacterData {
         //     (to be implemented in a future store action).
         version = 2;
         migrated.schemaVersion = 2;
+        break;
+
+      case 2:
+        // v2 → v3: personalContentReferences is already reconstructed above.
+        version = 3;
+        migrated.schemaVersion = 3;
         break;
 
       default:

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useCharacterStore } from '../store/characterStore';
 import { getAvailableRaces, getAvailableClasses, getAvailableFeats, getAvailableSpells } from '../lib/mod-utils';
@@ -7,6 +7,8 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { AttributeName } from '../lib/dnd-types';
+import { personalCompendiumPackApiClient, type PersonalCompendiumPack } from '../lib/api/personalCompendiumPackApiClient';
+import { ApiClientError } from '../lib/api/apiTypes';
 import { createTranslator, readStoredLocale } from '../i18n';
 import { toast } from 'sonner';
 
@@ -42,12 +44,33 @@ const ATTR_LABELS: Record<AttributeName, string> = {
 export function Creator({ onComplete }: { onComplete: () => void }) {
   const { t } = createTranslator(readStoredLocale());
   const [section, setSection] = useState<BuilderSection>('identity');
+  const [personalPacks, setPersonalPacks] = useState<PersonalCompendiumPack[]>([]);
+  const [personalPacksLoading, setPersonalPacksLoading] = useState(true);
+  const [personalPacksError, setPersonalPacksError] = useState('');
   const { character, updateField, updateAttrPointBuy, resetCreator } = useCharacterStore();
 
   const RACE_DATA = getAvailableRaces(character);
   const CLASS_DATA = getAvailableClasses(character);
   const FEAT_DATA = getAvailableFeats(character);
   const SPELL_DATA = getAvailableSpells(character);
+
+  useEffect(() => {
+    let disposed = false;
+    personalCompendiumPackApiClient.list()
+      .then((packs) => {
+        if (!disposed) setPersonalPacks(packs.filter((pack) => pack.latestVersion));
+      })
+      .catch((reason) => {
+        if (disposed) return;
+        setPersonalPacksError(reason instanceof ApiClientError && reason.statusCode === 401
+          ? '登录后可读取你的自定义资料包。'
+          : '暂时无法读取你的自定义资料包；你仍可继续使用基础资料创建角色。');
+      })
+      .finally(() => {
+        if (!disposed) setPersonalPacksLoading(false);
+      });
+    return () => { disposed = true; };
+  }, []);
 
   const goToValidationSection = (target: BuilderSection) => setSection(target);
 
@@ -232,6 +255,57 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
             </div>
           </div>
         ))}
+      </div>
+      <div className="mt-4 rounded-md border border-[#a35b11]/30 bg-[#fff1c7]/45 p-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-[#58180d]">我的自定义资料包（可选）</h3>
+            <p className="mt-1 text-xs leading-relaxed text-[#58180d]/70">
+              记录此角色创建时引用的个人资料版本。它不会自动执行自定义规则，也不会自动通过房间审核。
+            </p>
+          </div>
+          {character.personalContentReferences.length > 0 && (
+            <span className="rounded-full border border-[#a35b11]/30 bg-white/70 px-2 py-0.5 text-[10px] font-bold text-[#7a4610]">
+              已选择 1 个版本
+            </span>
+          )}
+        </div>
+        <label className="mt-3 block max-w-xl space-y-1.5">
+          <span className="text-xs font-bold text-[#58180d]">资料包版本</span>
+          <select
+            className="w-full rounded-md border border-[#58180d]/35 bg-white px-3 py-2 text-sm text-[#2c1810] disabled:cursor-not-allowed disabled:opacity-60"
+            value={character.personalContentReferences[0]?.packVersionId ?? ''}
+            disabled={personalPacksLoading}
+            onChange={(event) => {
+              const selected = personalPacks.find((pack) => pack.latestVersion?.packVersionId === event.target.value);
+              updateField('personalContentReferences', selected?.latestVersion
+                ? [{
+                    packId: selected.packId,
+                    packVersionId: selected.latestVersion.packVersionId,
+                    displayName: selected.displayName,
+                    versionLabel: selected.latestVersion.versionLabel,
+                  }]
+                : []);
+            }}
+          >
+            <option value="">只使用基础资料</option>
+            {personalPacks.map((pack) => pack.latestVersion && (
+              <option key={pack.latestVersion.packVersionId} value={pack.latestVersion.packVersionId}>
+                {pack.displayName} · {pack.latestVersion.versionLabel}
+              </option>
+            ))}
+          </select>
+        </label>
+        {personalPacksLoading && <p className="mt-2 text-xs text-[#58180d]/65">正在读取你的资料包…</p>}
+        {personalPacksError && <p className="mt-2 text-xs text-[#a52a2a]">{personalPacksError}</p>}
+        {!personalPacksLoading && !personalPacksError && personalPacks.length === 0 && (
+          <p className="mt-2 text-xs text-[#58180d]/65">你还没有个人资料包。可在角色库的“我的自定义资料”中创建或导入。</p>
+        )}
+        {character.personalContentReferences[0] && (
+          <p className="mt-3 rounded-md border border-dashed border-[#58180d]/20 bg-white/55 p-2 text-xs leading-relaxed text-[#58180d]/75">
+            当前引用：{character.personalContentReferences[0].displayName} · {character.personalContentReferences[0].versionLabel}。加入房间时，请在大厅随角色提交相同版本，由主持人审核。
+          </p>
+        )}
       </div>
       <p className="mt-4 rounded-md border border-dashed border-[#58180d]/25 bg-white/45 p-3 text-xs text-[#58180d]/70">
         {t('dndBuilder.sources.note')}
@@ -509,6 +583,9 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
               [t('dndBuilder.summary.class'), character.jobClass || unselected],
               [t('dndBuilder.summary.subclass'), character.subclass || unselected],
               [t('dndBuilder.summary.hpAc'), `${character.hpMax || '-'} / ${10 + character.acMod}`],
+              ['个人资料', character.personalContentReferences.length > 0
+                ? character.personalContentReferences.map((reference) => `${reference.displayName} · ${reference.versionLabel}`).join('、')
+                : '仅基础资料'],
             ]}
           />
         </div>

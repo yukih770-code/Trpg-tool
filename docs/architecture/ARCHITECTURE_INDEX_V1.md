@@ -873,3 +873,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - See `docs/implementation/P6_PERSONAL_CONTENT_IMPORT.md` before adding pack
   import/export. Import previews are client-side convenience only; all saved
   content remains owner-private and goes through the existing server checks.
+
+## Personal Content Character Builder Provenance (P6.4)
+
+- The D&D builder records selected personal-pack versions as compact character
+  provenance. It neither loads private entry bodies into the rule engine nor
+  grants Room admission.
+- See `docs/implementation/P6_PERSONAL_CONTENT_CHARACTER_BUILDER.md` before
+  connecting custom entries to any character-builder selector.

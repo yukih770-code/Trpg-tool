@@ -115,6 +115,7 @@ const defaultChar: CharacterData = {
   inventory: [],
   activeMods: ['玩家手册 2024 (基础规则已集成)'],
   customModsData: [],
+  personalContentReferences: [],
   feats: [],
   coin: 0,
   remainingPoints: 27,
