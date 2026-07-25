@@ -867,3 +867,9 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   A Room binding continues to identify the version approved for that table.
 - See `docs/implementation/P6_PERSONAL_CONTENT_VERSIONING.md` before extending
   personal authoring or import.
+
+## Personal Content Import (P6.3)
+
+- See `docs/implementation/P6_PERSONAL_CONTENT_IMPORT.md` before adding pack
+  import/export. Import previews are client-side convenience only; all saved
+  content remains owner-private and goes through the existing server checks.

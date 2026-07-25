@@ -319,3 +319,10 @@ or author identity.
 Read `P6_PERSONAL_CONTENT_VERSIONING.md` before altering private compendium
 editing. Personal changes append immutable versions; they must never rewrite a
 version already submitted to a Room.
+
+## Personal Content Import (P6.3)
+
+Read `P6_PERSONAL_CONTENT_IMPORT.md` before extending import/export or pack
+authoring. JSON import is a bounded private authoring convenience with a local
+preview; the server remains the validation authority and imported data is not
+automatically shared with a Server or Room.

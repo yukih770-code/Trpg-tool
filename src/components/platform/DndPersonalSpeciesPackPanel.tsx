@@ -7,6 +7,10 @@ import {
   type PersonalCompendiumPack,
   type PublishPersonalCompendiumPackInput,
 } from '../../lib/api/personalCompendiumPackApiClient';
+import {
+  parsePersonalCompendiumImport,
+  type PersonalCompendiumImportDraft,
+} from '../../lib/platform/personalCompendiumImport';
 
 type Props = { locale: Locale };
 type Fields = {
@@ -44,6 +48,9 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [versioningPackId, setVersioningPackId] = useState<string | null>(null);
+  const [importText, setImportText] = useState('');
+  const [importDraft, setImportDraft] = useState<PersonalCompendiumImportDraft | null>(null);
+  const [importError, setImportError] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -102,6 +109,49 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
       setNotice(reason instanceof ApiClientError
         ? reason.message
         : copy(locale, '保存失败，请稍后重试。', 'Saving failed. Please try again.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const previewImport = () => {
+    const result = parsePersonalCompendiumImport(importText);
+    if (result.ok === false) {
+      setImportDraft(null);
+      setImportError(result.message);
+      return;
+    }
+    setImportDraft(result.draft);
+    setImportError('');
+    setFields((previous) => ({
+      ...previous,
+      packName: versioningPackId ? previous.packName : result.draft.displayName,
+      versionLabel: result.draft.versionLabel || previous.versionLabel,
+    }));
+  };
+
+  const publishImport = async () => {
+    if (!importDraft || busy) return;
+    setBusy(true);
+    setNotice('');
+    try {
+      const draft: Omit<PublishPersonalCompendiumPackInput, 'displayName'> = {
+        versionLabel: fields.versionLabel.trim() || importDraft.versionLabel || '1.0.0',
+        metadata: { gameSystemId: 'dnd5e-2024', authoringKind: 'personal-content-import-v0', ...importDraft.metadata },
+        entries: importDraft.entries,
+      };
+      if (versioningPackId) await personalCompendiumPackApiClient.publishVersion(versioningPackId, draft);
+      else await personalCompendiumPackApiClient.publish({ ...draft, displayName: importDraft.displayName });
+      setImportText('');
+      setImportDraft(null);
+      setVersioningPackId(null);
+      setFields(initialFields);
+      setNotice(copy(locale, '导入内容已保存为不可变资料版本。房间仍会审核你提交的具体版本。', 'Imported content was saved as an immutable version. Rooms will still review the exact version you submit.'));
+      await refresh();
+    } catch (reason) {
+      setNotice(reason instanceof ApiClientError
+        ? reason.message
+        : copy(locale, '导入保存失败，请稍后重试。', 'Import saving failed. Please try again.'));
     } finally {
       setBusy(false);
     }
@@ -172,6 +222,30 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
                 {notice && <p className="text-xs leading-5 text-[#2c1810]/75">{notice}</p>}
               </div>
             </form>
+
+            <details className="mt-4 rounded-lg border border-[#58180d]/15 bg-white/70 p-3">
+              <summary className="cursor-pointer text-sm font-bold text-[#58180d]">{copy(locale, '导入个人资料包（JSON）', 'Import a personal pack (JSON)')}</summary>
+              <p className="mt-2 text-xs leading-5 text-[#2c1810]/65">
+                {copy(locale, '先在本地校验并预览条目，再保存为新的个人资料包或新的不可变版本。导入不会覆盖官方资料，也不会自动加入房间。', 'Validate and preview entries locally before saving a new personal pack or immutable version. Imports never overwrite official content or join a Room automatically.')}
+              </p>
+              <textarea
+                value={importText}
+                onChange={(event) => { setImportText(event.target.value); setImportDraft(null); setImportError(''); }}
+                placeholder={'{\n  "displayName": "我的资料包",\n  "versionLabel": "1.0.0",\n  "entries": [{ "entryKind": "species", "displayName": "自定义种族", "content": {} }]\n}'}
+                disabled={busy}
+                spellCheck={false}
+                className="mt-3 min-h-44 w-full rounded-md border border-[#58180d]/20 bg-[#17130f] px-3 py-2 font-mono text-xs leading-5 text-[#fff8e6] disabled:opacity-50"
+              />
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <button type="button" onClick={previewImport} disabled={busy || !importText.trim()} className="rounded-md border border-[#58180d]/25 bg-white px-3 py-2 text-sm font-bold text-[#58180d] disabled:opacity-40">{copy(locale, '校验并预览', 'Validate and preview')}</button>
+                {importDraft && <button type="button" onClick={() => void publishImport()} disabled={busy} className="rounded-md bg-[#58180d] px-3 py-2 text-sm font-bold text-white disabled:opacity-40">{busy ? copy(locale, '正在保存…', 'Saving…') : versioningPackId ? copy(locale, '导入为新版本', 'Import as new version') : copy(locale, '导入到我的资料库', 'Import to my library')}</button>}
+                {importError && <p className="text-xs font-semibold text-[#a52a2a]">{importError}</p>}
+              </div>
+              {importDraft && <div className="mt-3 rounded-md border border-[#2f7f68]/25 bg-[#f1fbf7] p-3 text-xs text-[#184f42]">
+                <p className="font-bold">{copy(locale, '导入预览', 'Import preview')} · {versioningPackId ? fields.packName : importDraft.displayName} · {fields.versionLabel.trim() || importDraft.versionLabel || '1.0.0'}</p>
+                <p className="mt-1">{copy(locale, `共 ${importDraft.entries.length} 个条目：`, `${importDraft.entries.length} entries:`)} {importDraft.entries.slice(0, 5).map((entry) => `${entry.displayName} (${entry.entryKind})`).join('、')}{importDraft.entries.length > 5 ? '…' : ''}</p>
+              </div>}
+            </details>
           </section>
         </div>
       )}

@@ -97,6 +97,7 @@
     "frontend:verify:dnd-monsters": "tsx server/tools/privateDndMonsterImportSmoke.ts && tsx src/lib/api/dndMonsterTemplateApiClientSmoke.ts",
     "frontend:verify:private-compendium": "tsx src/lib/api/privateCompendiumPackApiClientSmoke.ts",
     "frontend:verify:personal-compendium": "tsx src/lib/api/personalCompendiumPackApiClientSmoke.ts",
+    "frontend:verify:personal-compendium-import": "tsx src/lib/platform/personalCompendiumImportSmoke.ts",
     "runtime:verify:room-personal-content-refs": "tsx server/services/resolveOwnedPersonalContentReferencesSmoke.ts",
     "dnd:monster-import:dry-run": "tsx server/tools/importPrivateDndMonsters.ts --dry-run",
     "dnd:monster-import:apply": "tsx server/tools/importPrivateDndMonsters.ts --apply",
