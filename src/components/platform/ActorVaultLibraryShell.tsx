@@ -5,8 +5,9 @@
  *
  * Platform-level reusable shell for the Actor Vault Library.
  * Renders three views:
- *   'home'     — vault homepage with two entry cards (existing actors stats + add actor)
+ *   'home'     — vault homepage with manage, create, and import entry cards
  *   'existing' — searchable / filterable / sortable actor card list
+ *   'import'   — snapshot import preview and safe append actions
  *
  * Does NOT know about any game system's rule fields.
  * Consumes only: ActorVaultSummary[], ActorVaultStats, ActorVaultSortOption[],
@@ -16,7 +17,7 @@
  * Future: CocWorkspaceShell, CpWorkspaceShell via system-specific adapters.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type {
   ActorVaultPurpose,
   ActorVaultSummary,
@@ -46,7 +47,7 @@ import { ContextBar } from './ContextBar';
 
 // ─── Internal types ────────────────────────────────────────────────────────────
 
-type LibraryMode = 'home' | 'existing';
+type LibraryMode = 'home' | 'existing' | 'import';
 type FilterValue = 'all' | 'complete' | 'incomplete';
 type LifecycleFilterValue = 'active' | 'archived' | 'trashed';
 
@@ -114,6 +115,7 @@ export function ActorVaultLibraryShell({
   const [copyAsNewResult, setCopyAsNewResult] = useState<ActorVaultCopyAsNewResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [expandedMoreActorKey, setExpandedMoreActorKey] = useState<string | null>(null);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
   const lifecycleMetas = useActorVaultLifecycleStore((state) => state.metas);
   const archiveActor = useActorVaultLifecycleStore((state) => state.archiveActor);
   const trashActor = useActorVaultLifecycleStore((state) => state.trashActor);
@@ -223,6 +225,7 @@ export function ActorVaultLibraryShell({
 
   const handleImportPreviewFile = async (file: File | undefined) => {
     if (!file) return;
+    setMode('import');
     setImportPreviewFileName(file.name);
     try {
       const fileText = await file.text();
@@ -278,7 +281,7 @@ export function ActorVaultLibraryShell({
     return (
       <div className="flex flex-col gap-6">
         {contextBar}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
 
           {/* ── Existing actors card ── */}
           <button
@@ -319,6 +322,104 @@ export function ActorVaultLibraryShell({
             <p className={`mt-3 text-sm leading-relaxed ${t.text} opacity-65`}>{strings.addActorNote}</p>
           </button>
 
+          {isManagePurpose && (
+            <button
+              type="button"
+              onClick={() => importFileInputRef.current?.click()}
+              className={`min-h-48 border p-6 text-left transition hover:-translate-y-0.5 hover:shadow-md ${t.borderLight} ${t.bgCard} ${t.hoverBorder}`}
+            >
+              <h2 className={`text-lg font-bold ${t.text}`}>{strings.importPreview}</h2>
+              <p className={`mt-3 text-sm leading-relaxed ${t.text} opacity-65`}>{strings.importPreviewNote}</p>
+            </button>
+          )}
+
+        </div>
+        {isManagePurpose && (
+          <input
+            ref={importFileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(event) => {
+              void handleImportPreviewFile(event.currentTarget.files?.[0]);
+              event.currentTarget.value = '';
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (mode === 'import') {
+    return (
+      <div className="flex flex-col gap-4">
+        {contextBar}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className={`text-xs ${t.textMuted} opacity-65`}>
+              {strings.vaultBreadcrumbLabel}
+              <span className="mx-1.5 opacity-40">/</span>
+              {strings.importPreviewTitle}
+            </p>
+            <h2 className={`mt-1 text-xl font-bold ${t.text}`}>{strings.importPreviewTitle}</h2>
+            <p className={`mt-0.5 max-w-2xl text-xs leading-relaxed ${t.textMuted} opacity-70`}>
+              {strings.importPreviewNote}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMode('home')}
+            className={`border px-3 py-1.5 text-xs font-bold ${t.borderLight} ${t.text} ${t.bgHover} ${t.hoverBorder}`}
+          >
+            {strings.backToLibrary}
+          </button>
+        </div>
+
+        <div className={panelClassName}>
+          <div className={`flex flex-wrap items-center justify-between gap-3 border-b pb-3 ${t.borderLight}`}>
+            <div>
+              <div className={`text-sm font-bold ${t.text}`}>{strings.importPreviewChooseFile}</div>
+              <p className={`mt-1 text-xs ${t.textMuted}`}>{strings.importPreviewNoWrite}</p>
+            </div>
+            <label className={`cursor-pointer border px-3 py-1.5 text-xs font-bold ${t.borderLight} ${t.text} ${t.bgHover} ${t.hoverBorder}`}>
+              {strings.importPreviewChooseFile}
+              <input
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(event) => {
+                  void handleImportPreviewFile(event.currentTarget.files?.[0]);
+                  event.currentTarget.value = '';
+                }}
+              />
+            </label>
+          </div>
+
+          {importPreview ? (
+            <div className="mt-4">
+              <ActorVaultImportPreviewPanel
+                preview={importPreview}
+                fileName={importPreviewFileName}
+                result={importResult}
+                copyAsNewResult={copyAsNewResult}
+                isImporting={isImporting}
+                strings={strings}
+                colorTheme={t}
+                onSafeAppendImport={handleSafeAppendImport}
+                onCopyConflictsAsNew={handleCopyConflictsAsNew}
+                onClear={() => {
+                  setImportPreview(null);
+                  setImportPreviewFileName('');
+                  setImportPreviewText('');
+                  setImportResult(null);
+                  setCopyAsNewResult(null);
+                  setIsImporting(false);
+                }}
+              />
+            </div>
+          ) : (
+            <p className={`pt-4 text-sm ${t.textMuted}`}>{strings.importPreviewNote}</p>
+          )}
         </div>
       </div>
     );
@@ -379,49 +480,12 @@ export function ActorVaultLibraryShell({
                 >
                   {strings.exportSnapshot}
                 </button>
-                <label className={`cursor-pointer border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider opacity-80 ${t.borderLight} ${t.text} ${t.bgHover} ${t.hoverBorder}`}>
-                  {strings.importPreview}
-                  <input
-                    type="file"
-                    accept="application/json,.json"
-                    className="hidden"
-                    onChange={(event) => {
-                      void handleImportPreviewFile(event.currentTarget.files?.[0]);
-                      event.currentTarget.value = '';
-                    }}
-                  />
-                </label>
               </div>
               <p className={`mt-2 text-[11px] leading-relaxed ${t.textMuted}`}>
                 {strings.exportSnapshotNote}
               </p>
-              <p className={`mt-1 text-[11px] leading-relaxed ${t.textMuted}`}>
-                {strings.importPreviewNote}
-              </p>
             </div>
           </div>
-        )}
-
-        {isManagePurpose && importPreview && (
-          <ActorVaultImportPreviewPanel
-            preview={importPreview}
-            fileName={importPreviewFileName}
-            result={importResult}
-            copyAsNewResult={copyAsNewResult}
-            isImporting={isImporting}
-            strings={strings}
-            colorTheme={t}
-            onSafeAppendImport={handleSafeAppendImport}
-            onCopyConflictsAsNew={handleCopyConflictsAsNew}
-            onClear={() => {
-              setImportPreview(null);
-              setImportPreviewFileName('');
-              setImportPreviewText('');
-              setImportResult(null);
-              setCopyAsNewResult(null);
-              setIsImporting(false);
-            }}
-          />
         )}
 
         <div className="flex flex-wrap gap-3">
