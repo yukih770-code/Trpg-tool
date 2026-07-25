@@ -276,13 +276,31 @@ export function RuntimeCharacterSheetPanel({ summary, role, inventory, dndAction
         <div className="rounded border border-slate-300/50 bg-white/70 p-2">
           <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">动作快捷掷骰</div>
           {dndActionTargets.length > 0 ? (
-            <label className="mb-2 flex items-center gap-2 text-[10px] font-bold text-slate-600">
-              目标
-              <select value={selectedDndActionTargetId ?? ''} onChange={(event) => onSelectDndActionTarget?.(event.target.value || undefined)} className="min-w-0 flex-1 rounded border border-slate-300 bg-white px-1.5 py-1 text-[10px] font-medium text-slate-700">
-                <option value="">未选择目标</option>
-                {dndActionTargets.map((target) => <option key={target.id} value={target.id}>{target.label}</option>)}
-              </select>
-            </label>
+            (() => {
+              const selectedTarget = dndActionTargets.find((target) => target.id === selectedDndActionTargetId);
+              return (
+                <div className="mb-2 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50/80 px-2 py-1 text-[10px]">
+                    <span className="text-slate-500">当前目标</span>
+                    {selectedTarget ? (
+                      <span className="flex min-w-0 items-center gap-1.5 font-bold text-slate-700">
+                        <span className="truncate">{selectedTarget.label}</span>
+                        <button type="button" onClick={() => onSelectDndActionTarget?.(undefined)} className="rounded px-1 py-0.5 text-[9px] font-medium text-slate-500 hover:bg-slate-200 hover:text-slate-700">清除</button>
+                      </span>
+                    ) : (
+                      <span className="font-medium text-slate-400">未选择</span>
+                    )}
+                  </div>
+                  <label className="flex items-center gap-2 text-[10px] font-bold text-slate-600">
+                    选择目标
+                    <select value={selectedDndActionTargetId ?? ''} onChange={(event) => onSelectDndActionTarget?.(event.target.value || undefined)} className="min-w-0 flex-1 rounded border border-slate-300 bg-white px-1.5 py-1 text-[10px] font-medium text-slate-700">
+                      <option value="">未选择目标</option>
+                      {dndActionTargets.map((target) => <option key={target.id} value={target.id}>{target.label}</option>)}
+                    </select>
+                  </label>
+                </div>
+              );
+            })()
           ) : (
             <p className="mb-2 text-[9px] leading-relaxed text-slate-500">战斗开始后，可从地图或先攻栏选中一个目标。</p>
           )}
