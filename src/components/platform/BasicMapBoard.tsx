@@ -304,7 +304,11 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
 
   const selectToken = (token: MapToken) => {
     board.selectToken(token.id);
-    const combatant = combatants.find((item) => item.id === token.combatantId || item.id === token.sourceCombatantId || item.mapTokenId === token.id);
+    const combatant = combatants.find((item) => item.id === token.combatantId
+      || item.id === token.sourceCombatantId
+      || item.mapTokenId === token.id
+      || (!!token.sourceActorInstanceId && item.sourceActorInstanceId === token.sourceActorInstanceId)
+      || (!!token.campaignActorId && item.sourceActorInstanceId === token.campaignActorId));
     if (combatant) onSelectCombatant?.(combatant.id);
   };
 
