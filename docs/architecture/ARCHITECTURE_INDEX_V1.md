@@ -83,6 +83,18 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   visual slot. Asset upload/object storage and LAN runtime behavior remain separate slices.
 - Read when: changing server entry navigation, profile presentation, or campaign/room workspace placement.
 
+## Server Content Sets / Compendium Authoring
+- Files: `src/lib/platform/serverContentSet.ts`, `serverRulesetVersioning.ts`;
+  database seam: migration `0009_remaining_platform_foundation.sql`.
+- Docs: `SERVER_CONTENT_SET_RESOLUTION_V1`,
+  `SERVER_RULESET_VERSIONING_SOFT_UPDATE_UX_V1`.
+- Don't violate: source packs are immutable; server choices only enable, disable,
+  or select a separately versioned replacement. Existing character/campaign/room
+  snapshots keep exact content references. Never fall back by display name, mutate
+  an owner-source entry, or treat client UI visibility as permission enforcement.
+- Read when: adding a compendium editor, custom species/subclass/item/monster,
+  Workshop publishing, server content settings, or Creator catalog resolution.
+
 ## Postgres User First Slice (server-only)
 - Files: `server/db/**` (client, schema readiness, smokes, `migrations/0001_user_identity.sql`),
   `server/adapters/postgresUserRepository.ts`, `server/config/{databaseRuntimeConfig,serverRuntimeConfig}.ts`.
