@@ -897,3 +897,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   projections, never an executable custom-rule channel.
 - See `docs/implementation/P6_PERSONAL_CONTENT_BACKGROUND_FEAT_BUILDER.md`
   before extending a personal content kind or its builder integration.
+
+## Personal Content Spell Builder (P6.7)
+
+- Personal spell entries may populate only the selected character's local
+  known/prepared read lists. They do not grant spell execution, class access,
+  or Room authority.
+- See `docs/implementation/P6_PERSONAL_CONTENT_SPELL_BUILDER.md` before
+  changing spell selection or connecting it to Runtime.

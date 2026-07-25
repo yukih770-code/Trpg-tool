@@ -2,6 +2,7 @@ import {
   personalBackgroundEntriesToBackgroundDefs,
   personalFeatEntriesToFeatDefs,
   personalSpeciesEntriesToRaceDefs,
+  personalSpellEntriesToSpellInfo,
 } from './dndPersonalContentAdapter';
 
 function assert(condition: unknown, message: string): void {
@@ -29,4 +30,9 @@ const feats = personalFeatEntriesToFeatDefs([
 ]);
 assert(feats.length === 1 && feats[0]?.category === 'Origin', 'origin feat should remain selectable');
 assert(feats[0]?.checkPrereq({} as never) === true, 'personal feat must not evaluate custom rule code');
+
+const spells = personalSpellEntriesToSpellInfo([
+  { compendiumEntryId: 'spell_1', entryKind: 'spell', displayName: '海雾讯号', content: { name: '海雾讯号', level: 1, school: '惑控', castTime: '1 动作', range: '60 尺', duration: '1 分钟', components: 'V, S', summary: '在雾中传递一段短讯。' }, metadata: {}, schemaVersion: 1 },
+]);
+assert(spells.length === 1 && spells[0]?.level === 1 && spells[0]?.component.v && spells[0]?.component.s, 'basic personal spell facts should map to the spellbook shape');
 console.log('dnd-personal-content-adapter smoke: ok');

@@ -1,5 +1,5 @@
 import type { PersonalCompendiumPackVersionContent } from '../api/personalCompendiumPackApiClient';
-import type { BackgroundDef, FeatDef, RaceDef, SkillName } from '../dnd-types';
+import type { BackgroundDef, FeatDef, RaceDef, SkillName, SpellInfo } from '../dnd-types';
 
 type Entry = PersonalCompendiumPackVersionContent['entries'][number];
 type JsonRecord = Record<string, unknown>;
@@ -32,6 +32,20 @@ const SKILL_NAMES: readonly SkillName[] = [
 
 function skillList(value: unknown): SkillName[] {
   return textList(value, 4).filter((skill): skill is SkillName => SKILL_NAMES.includes(skill as SkillName));
+}
+
+function spellLevel(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= 9 ? parsed : 0;
+}
+
+function components(value: unknown): SpellInfo['component'] {
+  const source = typeof value === 'string' ? value.toUpperCase() : '';
+  return {
+    v: source.includes('V'),
+    s: source.includes('S'),
+    m: source.includes('M'),
+  };
 }
 
 /**
@@ -128,6 +142,37 @@ export function personalFeatEntriesToFeatDefs(entries: Entry[]): FeatDef[] {
       prerequisiteDesc: text(content.prerequisiteDesc, '房间审核时确认前置条件。'),
       category: text(content.category) === 'Origin' ? 'Origin' : 'General',
       checkPrereq: () => true,
+    }];
+  });
+}
+
+/**
+ * Projects a personal spell's declared display facts into the existing
+ * spellbook shape. Class legality, range resolution, damage, and casting are
+ * intentionally not derived from personal content here.
+ */
+export function personalSpellEntriesToSpellInfo(entries: Entry[]): SpellInfo[] {
+  const seen = new Set<string>();
+  return entries.flatMap((entry) => {
+    if (entry.entryKind !== 'spell') return [];
+    const content = record(entry.content);
+    const name = text(content.name, text(entry.displayName));
+    if (!name || seen.has(name)) return [];
+    seen.add(name);
+    return [{
+      id: `personal.${entry.compendiumEntryId}`,
+      nameCn: name,
+      name_cn: name,
+      name_en: text(content.nameEn, `Personal ${name}`),
+      level: spellLevel(content.level),
+      school: text(content.school, '自定义'),
+      is_ritual: false,
+      classes: [],
+      cast_time: text(content.castTime, '1 动作'),
+      range: text(content.range, '自身'),
+      component: components(content.components),
+      duration: text(content.duration, '立即'),
+      desc: text(content.summary, '个人资料包中的自定义法术。具体可用性以房间审核结果为准。'),
     }];
   });
 }

@@ -346,3 +346,10 @@ Read `P6_PERSONAL_CONTENT_BACKGROUND_FEAT_BUILDER.md` before wiring personal
 backgrounds or feats into character creation. The adapter must remain a
 whitelist projection: prerequisite and feature text may be displayed, but
 cannot run custom effects or imply Room approval.
+
+## Personal Content Spell Builder (P6.7)
+
+Read `P6_PERSONAL_CONTENT_SPELL_BUILDER.md` before adding personal spells to
+any other surface. The current builder path is a local known/prepared list;
+it is not a spellcasting engine, a class-legality decision, or a Room
+permission grant.

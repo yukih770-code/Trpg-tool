@@ -16,7 +16,7 @@ type Props = { locale: Locale };
 type Fields = {
   packName: string;
   versionLabel: string;
-  entryKind: 'species' | 'background' | 'feat';
+  entryKind: 'species' | 'background' | 'feat' | 'spell';
   entryName: string;
   size: string;
   speed: string;
@@ -29,11 +29,18 @@ type Fields = {
   featureDescription: string;
   featCategory: 'Origin' | 'General';
   prerequisite: string;
+  spellLevel: string;
+  spellSchool: string;
+  spellCastTime: string;
+  spellRange: string;
+  spellDuration: string;
+  spellComponents: string;
 };
 
 const initialFields: Fields = {
   packName: '', versionLabel: '1.0.0', entryKind: 'species', entryName: '', size: '中型', speed: '30', summary: '', traits: '', heritageOptions: '',
   backgroundSkills: '', backgroundTools: '', featureName: '', featureDescription: '', featCategory: 'Origin', prerequisite: '',
+  spellLevel: '0', spellSchool: '自定义', spellCastTime: '1 动作', spellRange: '自身', spellDuration: '立即', spellComponents: 'V',
 };
 
 function copy(locale: Locale, zh: string, en: string): string {
@@ -115,6 +122,24 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
           prerequisiteDesc: fields.prerequisite.trim() || undefined,
         },
         metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customFeat' },
+      };
+    }
+    if (fields.entryKind === 'spell') {
+      return {
+        entryKind: 'spell' as const,
+        displayName: name,
+        content: {
+          schema: 'dnd-personal-spell-v0',
+          name,
+          level: Math.max(0, Math.min(9, Number(fields.spellLevel) || 0)),
+          school: fields.spellSchool.trim() || '自定义',
+          castTime: fields.spellCastTime.trim() || '1 动作',
+          range: fields.spellRange.trim() || '自身',
+          duration: fields.spellDuration.trim() || '立即',
+          components: fields.spellComponents.trim().toUpperCase() || 'V',
+          summary: fields.summary.trim() || undefined,
+        },
+        metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customSpell' },
       };
     }
     return {
@@ -212,7 +237,7 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
         <div className="text-[10px] font-bold uppercase tracking-widest text-[#a35b11]">Personal content</div>
         <h2 className="mt-1 text-lg font-bold text-[#58180d]">{copy(locale, '我的自定义资料', 'My custom content')}</h2>
         <p className="mt-3 text-sm leading-relaxed text-[#2c1810]/65">
-          {copy(locale, '创建自己的种族、背景与专长。资料默认只属于你；加入房间时再由主持人审核。', 'Create your own species, backgrounds, and feats. Content is private to you until a Room host reviews it.')}
+          {copy(locale, '创建自己的种族、背景、专长与法术。资料默认只属于你；加入房间时再由主持人审核。', 'Create your own species, backgrounds, feats, and spells. Content is private to you until a Room host reviews it.')}
         </p>
       </button>
 
@@ -255,6 +280,7 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
                   <option value="species">{copy(locale, '种族', 'Species')}</option>
                   <option value="background">{copy(locale, '背景', 'Background')}</option>
                   <option value="feat">{copy(locale, '专长', 'Feat')}</option>
+                  <option value="spell">{copy(locale, '法术', 'Spell')}</option>
                 </select>
                 <input value={fields.entryName} onChange={(event) => update('entryName', event.target.value)} placeholder={copy(locale, '条目名称', 'Entry name')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
                 <input value={fields.versionLabel} onChange={(event) => update('versionLabel', event.target.value)} placeholder={copy(locale, '版本，例如：1.1.0', 'Version, e.g. 1.1.0')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
@@ -268,6 +294,14 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
                     <option value="General">{copy(locale, '通用专长（仅保留资料）', 'General feat (content only)')}</option>
                   </select>
                   <input value={fields.prerequisite} onChange={(event) => update('prerequisite', event.target.value)} placeholder={copy(locale, '前置条件说明（可选）', 'Prerequisite note (optional)')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                </>}
+                {fields.entryKind === 'spell' && <>
+                  <input value={fields.spellLevel} onChange={(event) => update('spellLevel', event.target.value)} inputMode="numeric" placeholder={copy(locale, '法术环阶（0-9）', 'Spell level (0-9)')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                  <input value={fields.spellSchool} onChange={(event) => update('spellSchool', event.target.value)} placeholder={copy(locale, '学派或类型', 'School or type')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                  <input value={fields.spellCastTime} onChange={(event) => update('spellCastTime', event.target.value)} placeholder={copy(locale, '施法时间', 'Casting time')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                  <input value={fields.spellRange} onChange={(event) => update('spellRange', event.target.value)} placeholder={copy(locale, '距离', 'Range')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                  <input value={fields.spellDuration} onChange={(event) => update('spellDuration', event.target.value)} placeholder={copy(locale, '持续时间', 'Duration')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                  <input value={fields.spellComponents} onChange={(event) => update('spellComponents', event.target.value)} placeholder={copy(locale, '构材，例如：V, S, M', 'Components, e.g. V, S, M')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
                 </>}
               </div>
               <textarea value={fields.summary} onChange={(event) => update('summary', event.target.value)} placeholder={copy(locale, '简短说明（可选）', 'Short description (optional)')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />

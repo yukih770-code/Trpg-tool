@@ -6,13 +6,14 @@ import { BACKGROUND_DATA } from '../data/backgrounds';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { ScrollArea } from '../../components/ui/scroll-area';
-import { AttributeName } from '../lib/dnd-types';
+import { AttributeName, SpellInfo } from '../lib/dnd-types';
 import { personalCompendiumPackApiClient, type PersonalCompendiumPack, type PersonalCompendiumPackVersionContent } from '../lib/api/personalCompendiumPackApiClient';
 import { ApiClientError } from '../lib/api/apiTypes';
 import {
   personalBackgroundEntriesToBackgroundDefs,
   personalFeatEntriesToFeatDefs,
   personalSpeciesEntriesToRaceDefs,
+  personalSpellEntriesToSpellInfo,
 } from '../lib/platform/dndPersonalContentAdapter';
 import { createTranslator, readStoredLocale } from '../i18n';
 import { toast } from 'sonner';
@@ -70,7 +71,10 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
   const personalFeatData = personalFeatEntriesToFeatDefs(selectedPersonalPackContent?.entries ?? [])
     .filter((feat) => !baseFeatData.some((baseFeat) => baseFeat.name === feat.name));
   const FEAT_DATA = [...baseFeatData, ...personalFeatData];
-  const SPELL_DATA = getAvailableSpells(character);
+  const baseSpellData = getAvailableSpells(character);
+  const personalSpellData = personalSpellEntriesToSpellInfo(selectedPersonalPackContent?.entries ?? [])
+    .filter((spell) => !baseSpellData.some((baseSpell) => baseSpell.name_cn === spell.name_cn));
+  const SPELL_DATA = [...baseSpellData, ...personalSpellData];
 
   useEffect(() => {
     let disposed = false;
@@ -186,6 +190,26 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
   const selectedBackground = AVAILABLE_BACKGROUND_DATA.find(b => b.name === character.background);
   const selectedFeatNames = character.feats ?? [];
   const unselected = t('dndBuilder.common.unselected');
+  const selectedPersonalSpells = character.spellbook.known.filter((spell) => personalSpellData.some((personalSpell) => personalSpell.name_cn === spell.name_cn));
+
+  const togglePersonalKnownSpell = (spell: SpellInfo) => {
+    const isKnown = character.spellbook.known.some((known) => known.name_cn === spell.name_cn);
+    const known = isKnown
+      ? character.spellbook.known.filter((known) => known.name_cn !== spell.name_cn)
+      : [...character.spellbook.known, spell];
+    const prepared = isKnown
+      ? character.spellbook.prepared.filter((name) => name !== spell.name_cn)
+      : character.spellbook.prepared;
+    updateField('spellbook', { ...character.spellbook, known, prepared });
+  };
+
+  const togglePersonalPreparedSpell = (spell: SpellInfo) => {
+    if (!character.spellbook.known.some((known) => known.name_cn === spell.name_cn)) return;
+    const prepared = character.spellbook.prepared.includes(spell.name_cn)
+      ? character.spellbook.prepared.filter((name) => name !== spell.name_cn)
+      : [...character.spellbook.prepared, spell.name_cn];
+    updateField('spellbook', { ...character.spellbook, prepared });
+  };
 
   const finalAttrValue = (attr: AttributeName) => {
     const stat = character.attrs[attr];
@@ -609,10 +633,42 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
   const renderSpells = () => (
     <section className={panelClass}>
       {renderSectionHeader(t('dndBuilder.sections.spells'), t('dndBuilder.descriptions.spells'))}
-      <div className="rounded-md border border-dashed border-[#58180d]/28 bg-white/45 p-4 text-sm text-[#58180d]/75">
+      {!selectedPersonalReference && <div className="rounded-md border border-dashed border-[#58180d]/28 bg-white/45 p-4 text-sm text-[#58180d]/75">
         <p>{t('dndBuilder.placeholders.spells')}</p>
-        <p className="mt-2 font-mono text-xs">{SPELL_DATA.length} runtime spell entries available; spell preparation stays in Gameplay.</p>
-      </div>
+        <p className="mt-2 text-xs">选择个人资料版本后，已声明的自定义法术会在这里出现。</p>
+      </div>}
+      {selectedPersonalReference && <>
+        <div className="rounded-md border border-[#a35b11]/25 bg-[#fff1c7]/45 p-3 text-xs leading-relaxed text-[#58180d]/75">
+          {selectedPersonalPackContentLoading ? '正在载入个人法术…' : '只显示当前个人资料版本中声明的法术。你可以手动加入已知/准备列表；职业合法性、施法效果与房间准入仍由后续流程审核。'}
+          {selectedPersonalPackContentError && <span className="mt-1 block text-[#a52a2a]">{selectedPersonalPackContentError}</span>}
+        </div>
+        {!selectedPersonalPackContentLoading && personalSpellData.length === 0 && !selectedPersonalPackContentError && (
+          <p className="mt-3 rounded-md border border-dashed border-[#58180d]/25 bg-white/45 p-3 text-sm text-[#58180d]/70">当前版本没有可选择的自定义法术。</p>
+        )}
+        <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {personalSpellData.map((spell) => {
+            const isKnown = selectedPersonalSpells.some((known) => known.name_cn === spell.name_cn);
+            const isPrepared = character.spellbook.prepared.includes(spell.name_cn);
+            return <article key={spell.id ?? spell.name_cn} className={`${subPanelClass} border-[#58180d]/20`}>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-bold text-[#58180d]">{spell.name_cn}</h3>
+                  <p className="mt-1 text-xs text-[#58180d]/70">{spell.level === 0 ? '戏法' : `${spell.level} 环`} · {spell.school} · {spell.cast_time}</p>
+                </div>
+                <span className="rounded-full border border-[#58180d]/20 bg-white px-2 py-0.5 text-[10px] font-bold text-[#58180d]">{spell.range}</span>
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-[#2c1810]/75">{spell.desc}</p>
+              <p className="mt-2 text-[11px] text-[#58180d]/65">构材：{[spell.component.v && 'V', spell.component.s && 'S', spell.component.m && 'M'].filter(Boolean).join(', ') || '无'} · 持续：{spell.duration}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button type="button" size="sm" variant={isKnown ? 'outline' : 'default'} onClick={() => togglePersonalKnownSpell(spell)}>{isKnown ? '移出已知' : '加入已知'}</Button>
+                {spell.level > 0 && <Button type="button" size="sm" variant="outline" disabled={!isKnown} onClick={() => togglePersonalPreparedSpell(spell)}>{isPrepared ? '取消准备' : '标记准备'}</Button>}
+              </div>
+            </article>;
+          })}
+        </div>
+        <p className="mt-3 text-xs text-[#58180d]/65">当前已从个人资料加入 {selectedPersonalSpells.length} 个法术；准备 {selectedPersonalSpells.filter((spell) => character.spellbook.prepared.includes(spell.name_cn)).length} 个。</p>
+      </>}
+      <p className="mt-3 font-mono text-[11px] text-[#58180d]/55">{SPELL_DATA.length} runtime spell entries available</p>
     </section>
   );
 
