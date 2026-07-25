@@ -9,7 +9,11 @@ import { ScrollArea } from '../../components/ui/scroll-area';
 import { AttributeName } from '../lib/dnd-types';
 import { personalCompendiumPackApiClient, type PersonalCompendiumPack, type PersonalCompendiumPackVersionContent } from '../lib/api/personalCompendiumPackApiClient';
 import { ApiClientError } from '../lib/api/apiTypes';
-import { personalSpeciesEntriesToRaceDefs } from '../lib/platform/dndPersonalContentAdapter';
+import {
+  personalBackgroundEntriesToBackgroundDefs,
+  personalFeatEntriesToFeatDefs,
+  personalSpeciesEntriesToRaceDefs,
+} from '../lib/platform/dndPersonalContentAdapter';
 import { createTranslator, readStoredLocale } from '../i18n';
 import { toast } from 'sonner';
 
@@ -59,7 +63,13 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
     .filter((race) => !baseRaceData.some((baseRace) => baseRace.name === race.name));
   const RACE_DATA = [...baseRaceData, ...personalRaceData];
   const CLASS_DATA = getAvailableClasses(character);
-  const FEAT_DATA = getAvailableFeats(character);
+  const personalBackgroundData = personalBackgroundEntriesToBackgroundDefs(selectedPersonalPackContent?.entries ?? [])
+    .filter((background) => !BACKGROUND_DATA.some((baseBackground) => baseBackground.name === background.name));
+  const AVAILABLE_BACKGROUND_DATA = [...BACKGROUND_DATA, ...personalBackgroundData];
+  const baseFeatData = getAvailableFeats(character);
+  const personalFeatData = personalFeatEntriesToFeatDefs(selectedPersonalPackContent?.entries ?? [])
+    .filter((feat) => !baseFeatData.some((baseFeat) => baseFeat.name === feat.name));
+  const FEAT_DATA = [...baseFeatData, ...personalFeatData];
   const SPELL_DATA = getAvailableSpells(character);
 
   useEffect(() => {
@@ -159,7 +169,7 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
       // isLegacyStarterSummary detectors in the inventory view-model.)
     }
 
-    const bg = BACKGROUND_DATA.find(b => b.name === character.background);
+    const bg = AVAILABLE_BACKGROUND_DATA.find(b => b.name === character.background);
     if (bg) {
       updateField('skillProficiencies', bg.skillProficiencies);
     }
@@ -173,7 +183,7 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
 
   const selectedRace = RACE_DATA.find(r => r.name === character.race);
   const selectedClass = CLASS_DATA.find(c => c.name === character.jobClass);
-  const selectedBackground = BACKGROUND_DATA.find(b => b.name === character.background);
+  const selectedBackground = AVAILABLE_BACKGROUND_DATA.find(b => b.name === character.background);
   const selectedFeatNames = character.feats ?? [];
   const unselected = t('dndBuilder.common.unselected');
 
@@ -292,7 +302,7 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
           <div>
             <h3 className="text-sm font-bold text-[#58180d]">我的自定义资料包（可选）</h3>
             <p className="mt-1 text-xs leading-relaxed text-[#58180d]/70">
-              已支持的种族基础字段会显示在种族选择中；复杂规则不会自动执行，也不会自动通过房间审核。
+              已支持的种族、背景与起源专长会显示在对应选择中；复杂规则不会自动执行，也不会自动通过房间审核。
             </p>
           </div>
           {character.personalContentReferences.length > 0 && (
@@ -432,9 +442,14 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
   const renderBackground = () => (
     <section className={panelClass}>
       {renderSectionHeader(t('dndBuilder.sections.background'), t('dndBuilder.descriptions.background'))}
+      {selectedPersonalReference && (
+        <p className="mb-3 rounded-md border border-[#a35b11]/25 bg-[#fff1c7]/45 px-3 py-2 text-xs leading-relaxed text-[#58180d]/75">
+          {selectedPersonalPackContentLoading ? '正在载入个人背景选项…' : '个人资料版本中的背景会在此与基础背景一起显示；只会填入已声明的技能与文字说明。'}
+        </p>
+      )}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)]">
         <ScrollArea className="max-h-[420px] rounded-md border border-[#58180d]/20 bg-white/45 p-3 md:max-h-[560px]">
-          {BACKGROUND_DATA.map(bg => (
+          {AVAILABLE_BACKGROUND_DATA.map(bg => (
             <button
               key={bg.name}
               type="button"
@@ -570,6 +585,11 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
   const renderFeats = () => (
     <section className={panelClass}>
       {renderSectionHeader(t('dndBuilder.sections.feats'), t('dndBuilder.descriptions.feats'))}
+      {selectedPersonalReference && (
+        <p className="mb-3 rounded-md border border-[#a35b11]/25 bg-[#fff1c7]/45 px-3 py-2 text-xs leading-relaxed text-[#58180d]/75">
+          个人资料版本中的起源专长会在此显示。说明与前置条件仅供审核与协商，不会自动执行效果。
+        </p>
+      )}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {FEAT_DATA.filter(feat => feat.category === 'Origin').map(feat => (
           <button

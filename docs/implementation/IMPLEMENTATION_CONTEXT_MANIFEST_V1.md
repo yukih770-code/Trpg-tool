@@ -339,3 +339,10 @@ verified, host-reviewed step.
 Read `P6_PERSONAL_CONTENT_SPECIES_BUILDER.md` before loading personal entries
 inside the D&D builder. The author-only version read is not a public content
 API, and its v0 adapter supports declared species basics only.
+
+## Personal Content Background and Feat Builder (P6.6)
+
+Read `P6_PERSONAL_CONTENT_BACKGROUND_FEAT_BUILDER.md` before wiring personal
+backgrounds or feats into character creation. The adapter must remain a
+whitelist projection: prerequisite and feature text may be displayed, but
+cannot run custom effects or imply Room approval.

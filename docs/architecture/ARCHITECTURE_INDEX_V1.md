@@ -889,3 +889,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   not evaluate arbitrary content as rules or bypass Room review.
 - See `docs/implementation/P6_PERSONAL_CONTENT_SPECIES_BUILDER.md` before
   adding custom content to another builder selector.
+
+## Personal Content Background and Feat Builder (P6.6)
+
+- A selected personal pack can provide bounded background and Origin-feat
+  display data to the D&D builder. These adapters are text/proficiency
+  projections, never an executable custom-rule channel.
+- See `docs/implementation/P6_PERSONAL_CONTENT_BACKGROUND_FEAT_BUILDER.md`
+  before extending a personal content kind or its builder integration.

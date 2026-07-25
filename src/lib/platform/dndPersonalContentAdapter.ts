@@ -1,5 +1,5 @@
 import type { PersonalCompendiumPackVersionContent } from '../api/personalCompendiumPackApiClient';
-import type { RaceDef } from '../dnd-types';
+import type { BackgroundDef, FeatDef, RaceDef, SkillName } from '../dnd-types';
 
 type Entry = PersonalCompendiumPackVersionContent['entries'][number];
 type JsonRecord = Record<string, unknown>;
@@ -23,6 +23,15 @@ function textList(value: unknown, limit = 12): string[] {
 function speedFeet(value: unknown): number {
   const parsed = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(parsed) && parsed >= 0 && parsed <= 120 ? Math.floor(parsed) : 30;
+}
+
+const SKILL_NAMES: readonly SkillName[] = [
+  '运动', '特技', '巧手', '隐匿', '奥秘', '历史', '调查', '自然', '宗教',
+  '驯兽', '洞察', '医药', '察觉', '生存', '欺瞒', '威吓', '表演', '游说',
+];
+
+function skillList(value: unknown): SkillName[] {
+  return textList(value, 4).filter((skill): skill is SkillName => SKILL_NAMES.includes(skill as SkillName));
 }
 
 /**
@@ -66,6 +75,59 @@ export function personalSpeciesEntriesToRaceDefs(entries: Entry[]): RaceDef[] {
         chaBonus: 0,
         features: [],
       })),
+    }];
+  });
+}
+
+/**
+ * Maps only display, proficiency, and feature text into the existing
+ * background selector. Personal background content cannot install an origin
+ * feat or otherwise grant executable effects through this adapter.
+ */
+export function personalBackgroundEntriesToBackgroundDefs(entries: Entry[]): BackgroundDef[] {
+  const seen = new Set<string>();
+  return entries.flatMap((entry) => {
+    if (entry.entryKind !== 'background') return [];
+    const content = record(entry.content);
+    const name = text(content.name, text(entry.displayName));
+    if (!name || seen.has(name)) return [];
+    seen.add(name);
+    const feature = record(content.feature);
+    return [{
+      id: `personal.${entry.compendiumEntryId}`,
+      name,
+      nameCn: name,
+      desc: text(content.summary, '个人资料包中的自定义背景。'),
+      skillProficiencies: skillList(content.skillProficiencies),
+      toolProficiencies: textList(content.toolProficiencies, 4),
+      feature: {
+        name: text(feature.name, '自定义背景特性'),
+        desc: text(feature.desc, '来自个人资料包；具体可用性以房间审核结果为准。'),
+      },
+    }];
+  });
+}
+
+/**
+ * Personal feats are informational choices. The builder may display an Origin
+ * feat, but its description is never evaluated as a rule or automation.
+ */
+export function personalFeatEntriesToFeatDefs(entries: Entry[]): FeatDef[] {
+  const seen = new Set<string>();
+  return entries.flatMap((entry) => {
+    if (entry.entryKind !== 'feat') return [];
+    const content = record(entry.content);
+    const name = text(content.name, text(entry.displayName));
+    if (!name || seen.has(name)) return [];
+    seen.add(name);
+    return [{
+      id: `personal.${entry.compendiumEntryId}`,
+      name,
+      nameCn: name,
+      desc: text(content.summary, '个人资料包中的自定义专长。'),
+      prerequisiteDesc: text(content.prerequisiteDesc, '房间审核时确认前置条件。'),
+      category: text(content.category) === 'Origin' ? 'Origin' : 'General',
+      checkPrereq: () => true,
     }];
   });
 }
