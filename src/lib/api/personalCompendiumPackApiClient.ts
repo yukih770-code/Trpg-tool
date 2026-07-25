@@ -34,8 +34,23 @@ export type PublishedPersonalCompendiumPack = {
   entries: Array<{ compendiumEntryId: string; entryKind: string; displayName: string }>;
 };
 
+/** Owner-only projection of one immutable personal-pack version. */
+export type PersonalCompendiumPackVersionContent = {
+  pack: Pick<PersonalCompendiumPack, 'packId' | 'displayName' | 'packKind' | 'visibilityScope' | 'lifecycleStatus' | 'metadata'>;
+  version: { packVersionId: string; packId: string; versionLabel: string; manifest: Record<string, unknown>; schemaVersion: number };
+  entries: Array<{
+    compendiumEntryId: string;
+    entryKind: string;
+    displayName: string;
+    content: Record<string, unknown>;
+    metadata: Record<string, unknown>;
+    schemaVersion: number;
+  }>;
+};
+
 export type PersonalCompendiumPackApiClient = {
   list(): Promise<PersonalCompendiumPack[]>;
+  getVersion(packId: string, packVersionId: string): Promise<PersonalCompendiumPackVersionContent>;
   publish(input: PublishPersonalCompendiumPackInput): Promise<PublishedPersonalCompendiumPack>;
   publishVersion(packId: string, input: Omit<PublishPersonalCompendiumPackInput, 'displayName'>): Promise<PublishedPersonalCompendiumPack>;
 };
@@ -46,6 +61,7 @@ export function createPersonalCompendiumPackApiClient(options: ApiClientOptions 
   const request = createApiClient(options).request;
   return {
     list: () => request(ROOT),
+    getVersion: (packId, packVersionId) => request(`${ROOT}/${encodeURIComponent(packId)}/versions/${encodeURIComponent(packVersionId)}`),
     publish: (input) => request(ROOT, { method: 'POST', body: JSON.stringify(input) }),
     publishVersion: (packId, input) => request(`${ROOT}/${encodeURIComponent(packId)}/versions`, { method: 'POST', body: JSON.stringify(input) }),
   };

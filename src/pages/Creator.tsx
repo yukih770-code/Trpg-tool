@@ -7,8 +7,9 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { AttributeName } from '../lib/dnd-types';
-import { personalCompendiumPackApiClient, type PersonalCompendiumPack } from '../lib/api/personalCompendiumPackApiClient';
+import { personalCompendiumPackApiClient, type PersonalCompendiumPack, type PersonalCompendiumPackVersionContent } from '../lib/api/personalCompendiumPackApiClient';
 import { ApiClientError } from '../lib/api/apiTypes';
+import { personalSpeciesEntriesToRaceDefs } from '../lib/platform/dndPersonalContentAdapter';
 import { createTranslator, readStoredLocale } from '../i18n';
 import { toast } from 'sonner';
 
@@ -47,9 +48,16 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
   const [personalPacks, setPersonalPacks] = useState<PersonalCompendiumPack[]>([]);
   const [personalPacksLoading, setPersonalPacksLoading] = useState(true);
   const [personalPacksError, setPersonalPacksError] = useState('');
+  const [selectedPersonalPackContent, setSelectedPersonalPackContent] = useState<PersonalCompendiumPackVersionContent | null>(null);
+  const [selectedPersonalPackContentLoading, setSelectedPersonalPackContentLoading] = useState(false);
+  const [selectedPersonalPackContentError, setSelectedPersonalPackContentError] = useState('');
   const { character, updateField, updateAttrPointBuy, resetCreator } = useCharacterStore();
 
-  const RACE_DATA = getAvailableRaces(character);
+  const selectedPersonalReference = character.personalContentReferences[0];
+  const baseRaceData = getAvailableRaces(character);
+  const personalRaceData = personalSpeciesEntriesToRaceDefs(selectedPersonalPackContent?.entries ?? [])
+    .filter((race) => !baseRaceData.some((baseRace) => baseRace.name === race.name));
+  const RACE_DATA = [...baseRaceData, ...personalRaceData];
   const CLASS_DATA = getAvailableClasses(character);
   const FEAT_DATA = getAvailableFeats(character);
   const SPELL_DATA = getAvailableSpells(character);
@@ -71,6 +79,29 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
       });
     return () => { disposed = true; };
   }, []);
+
+  useEffect(() => {
+    let disposed = false;
+    if (!selectedPersonalReference) {
+      setSelectedPersonalPackContent(null);
+      setSelectedPersonalPackContentError('');
+      setSelectedPersonalPackContentLoading(false);
+      return () => { disposed = true; };
+    }
+    setSelectedPersonalPackContentLoading(true);
+    setSelectedPersonalPackContentError('');
+    personalCompendiumPackApiClient.getVersion(selectedPersonalReference.packId, selectedPersonalReference.packVersionId)
+      .then((content) => { if (!disposed) setSelectedPersonalPackContent(content); })
+      .catch((reason) => {
+        if (disposed) return;
+        setSelectedPersonalPackContent(null);
+        setSelectedPersonalPackContentError(reason instanceof ApiClientError && reason.statusCode === 404
+          ? '找不到这个个人资料版本。可在资料来源中重新选择。'
+          : '暂时无法读取此个人资料版本；基础种族仍可使用。');
+      })
+      .finally(() => { if (!disposed) setSelectedPersonalPackContentLoading(false); });
+    return () => { disposed = true; };
+  }, [selectedPersonalReference?.packId, selectedPersonalReference?.packVersionId]);
 
   const goToValidationSection = (target: BuilderSection) => setSection(target);
 
@@ -261,7 +292,7 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
           <div>
             <h3 className="text-sm font-bold text-[#58180d]">我的自定义资料包（可选）</h3>
             <p className="mt-1 text-xs leading-relaxed text-[#58180d]/70">
-              记录此角色创建时引用的个人资料版本。它不会自动执行自定义规则，也不会自动通过房间审核。
+              已支持的种族基础字段会显示在种族选择中；复杂规则不会自动执行，也不会自动通过房间审核。
             </p>
           </div>
           {character.personalContentReferences.length > 0 && (
@@ -316,6 +347,13 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
   const renderSpecies = () => (
     <section className={panelClass}>
       {renderSectionHeader(t('dndBuilder.sections.species'), t('dndBuilder.descriptions.species'))}
+      {selectedPersonalReference && (
+        <div className="mb-4 rounded-md border border-[#a35b11]/25 bg-[#fff1c7]/45 px-3 py-2 text-xs leading-relaxed text-[#58180d]/75">
+          正在使用个人资料版本：<span className="font-bold">{selectedPersonalReference.displayName} · {selectedPersonalReference.versionLabel}</span>。
+          {selectedPersonalPackContentLoading && ' 正在载入其中支持的种族选项…'}
+          {selectedPersonalPackContentError && <span className="block mt-1 text-[#a52a2a]">{selectedPersonalPackContentError}</span>}
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)]">
         <ScrollArea className="max-h-[420px] rounded-md border border-[#58180d]/20 bg-white/45 p-3 md:max-h-[560px]">
           {RACE_DATA.map(race => (

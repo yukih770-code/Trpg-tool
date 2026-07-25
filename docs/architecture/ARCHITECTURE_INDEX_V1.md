@@ -881,3 +881,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   grants Room admission.
 - See `docs/implementation/P6_PERSONAL_CONTENT_CHARACTER_BUILDER.md` before
   connecting custom entries to any character-builder selector.
+
+## Personal Content Species Builder (P6.5)
+
+- Only the authenticated author can read a private pack-version projection.
+  The D&D builder may adapt its declared species basics for selection, but must
+  not evaluate arbitrary content as rules or bypass Room review.
+- See `docs/implementation/P6_PERSONAL_CONTENT_SPECIES_BUILDER.md` before
+  adding custom content to another builder selector.

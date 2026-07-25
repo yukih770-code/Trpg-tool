@@ -333,3 +333,9 @@ Read `P6_PERSONAL_CONTENT_CHARACTER_BUILDER.md` before connecting private
 content to D&D character creation. The current builder stores only a compact
 immutable-version reference; Room submission remains an explicit, server-
 verified, host-reviewed step.
+
+## Personal Content Species Builder (P6.5)
+
+Read `P6_PERSONAL_CONTENT_SPECIES_BUILDER.md` before loading personal entries
+inside the D&D builder. The author-only version read is not a public content
+API, and its v0 adapter supports declared species basics only.

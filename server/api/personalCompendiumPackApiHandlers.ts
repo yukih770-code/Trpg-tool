@@ -13,7 +13,7 @@ import { errorResponse, okResponse, type ServerApiResponse } from './apiResponse
 
 type ApiResult = ServerApiResponse<unknown>;
 type Body = Record<string, unknown>;
-type CompendiumRepository = Pick<ReturnType<typeof createPostgresPlatformFoundationRepository>, 'listUserPrivateCompendiumPacksByOwner' | 'listCompendiumPackVersions'>;
+type CompendiumRepository = Pick<ReturnType<typeof createPostgresPlatformFoundationRepository>, 'listUserPrivateCompendiumPacksByOwner' | 'listCompendiumPackVersions' | 'listCompendiumEntries'>;
 
 export type PersonalCompendiumPackApiRequest = {
   requestId?: string;
@@ -24,6 +24,7 @@ export type PersonalCompendiumPackApiRequest = {
 
 export type PersonalCompendiumPackApiHandlers = {
   listPacks(input: PersonalCompendiumPackApiRequest): Promise<ApiResult>;
+  getPackVersion(packId: string, packVersionId: string, input: PersonalCompendiumPackApiRequest): Promise<ApiResult>;
   publishPack(input: PersonalCompendiumPackApiRequest): Promise<ApiResult>;
   publishVersion(packId: string, input: PersonalCompendiumPackApiRequest): Promise<ApiResult>;
 };
@@ -118,6 +119,52 @@ export function createPersonalCompendiumPackApiHandlers(
         return errorResponse(503, { kind: 'unavailable', message: 'Personal content pack service is unavailable.' }, { requestId: input.requestId });
       }
       return okResponse(summaries, { requestId: input.requestId });
+    },
+    async getPackVersion(packId, packVersionId, input) {
+      const viewer = authenticatedViewer(input, options);
+      if (isResponse(viewer)) return viewer;
+      if (!text(packId, 160) || !text(packVersionId, 160)) {
+        return errorResponse(400, { kind: 'validation', message: 'packId and packVersionId are required.' }, { requestId: input.requestId });
+      }
+      // Resolve ownership before reading entries. A private pack/version is never
+      // discoverable through this endpoint to another authenticated user.
+      const packs = await compendium.listUserPrivateCompendiumPacksByOwner(viewer.viewerUserId!, 100);
+      if (packs.ok === false) return repositoryFailure(packs.error, input.requestId);
+      const pack = packs.value.find((candidate) => candidate.packId === packId);
+      if (!pack) return errorResponse(404, { kind: 'not_found', message: 'Personal content pack version was not found.' }, { requestId: input.requestId });
+
+      const versions = await compendium.listCompendiumPackVersions(packId, 100);
+      if (versions.ok === false) return repositoryFailure(versions.error, input.requestId);
+      const version = versions.value.find((candidate) => candidate.packVersionId === packVersionId);
+      if (!version) return errorResponse(404, { kind: 'not_found', message: 'Personal content pack version was not found.' }, { requestId: input.requestId });
+
+      const entries = await compendium.listCompendiumEntries(packVersionId, 60);
+      if (entries.ok === false) return repositoryFailure(entries.error, input.requestId);
+      return okResponse({
+        pack: {
+          packId: pack.packId,
+          displayName: pack.displayName,
+          packKind: pack.packKind,
+          visibilityScope: pack.visibilityScope,
+          lifecycleStatus: pack.lifecycleStatus,
+          metadata: pack.metadata,
+        },
+        version: {
+          packVersionId: version.packVersionId,
+          packId: version.packId,
+          versionLabel: version.versionLabel,
+          manifest: version.manifest,
+          schemaVersion: version.schemaVersion,
+        },
+        entries: entries.value.map((entry) => ({
+          compendiumEntryId: entry.compendiumEntryId,
+          entryKind: entry.entryKind,
+          displayName: entry.displayName,
+          content: entry.contentRef,
+          metadata: entry.metadata,
+          schemaVersion: entry.schemaVersion,
+        })),
+      }, { requestId: input.requestId });
     },
     async publishPack(input) {
       const viewer = authenticatedViewer(input, options);
