@@ -77,6 +77,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
   const table = useCombatRuntimeTable(scopeKey);
   const restoredKeyRef = useRef('');
   const [error, setError] = useState<string | null>(null);
+  const [hpAdjustment, setHpAdjustment] = useState('');
   const zh = locale !== 'en';
   const canManage = role === 'host';
   const combatEvents = useMemo<CombatRuntimeReplayEvent[]>(() => roomEvents
@@ -134,6 +135,35 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
   };
 
   const update = (combatant: Combatant, patch: Partial<Omit<Combatant, 'id'>>) => persist(table.updateCombatant(combatant.id, patch));
+  const applyHpAdjustment = (combatant: Combatant, kind: 'damage' | 'healing') => {
+    const adjustment = numberValue(hpAdjustment);
+    if (adjustment === undefined || adjustment <= 0 || combatant.hpCurrent === undefined) return;
+
+    if (kind === 'damage') {
+      const temporaryHp = Math.max(0, combatant.temporaryHp ?? 0);
+      const absorbed = Math.min(temporaryHp, adjustment);
+      const hpCurrent = Math.max(0, combatant.hpCurrent - (adjustment - absorbed));
+      update(combatant, {
+        temporaryHp: temporaryHp - absorbed,
+        hpCurrent,
+        hitPoints: hpCurrent,
+        isDefeated: hpCurrent === 0,
+        status: hpCurrent === 0 ? 'defeated' : 'active',
+      });
+    } else {
+      const hpCurrent = combatant.hpMax === undefined
+        ? combatant.hpCurrent + adjustment
+        : Math.min(combatant.hpMax, combatant.hpCurrent + adjustment);
+      update(combatant, {
+        hpCurrent,
+        hitPoints: hpCurrent,
+        isDefeated: false,
+        status: 'active',
+      });
+    }
+
+    setHpAdjustment('');
+  };
   const linkedToken = active ? placedTokens.find((token) => linkedCombatant(token, table.state.combatants)?.id === active.id) : undefined;
 
   return (
@@ -207,6 +237,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
         return <div key={combatant.id} className={`rounded border px-2 py-2 ${current ? 'border-amber-400/55 bg-amber-50/70' : 'border-slate-300/45 bg-white/70'}`}>
           <button type="button" onClick={() => { onSelectCombatant(combatant.id); onLocateCombatant(combatant.id); }} className="flex w-full items-center justify-between gap-2 text-left"><span className="min-w-0 truncate text-[11px] font-bold text-slate-800">{current ? '● ' : ''}{combatant.displayName}</span><span className="text-[10px] font-black text-slate-600">{zh ? '先攻' : 'Init'} {combatant.initiative ?? '—'}</span></button>
           <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-slate-600"><span>{combatHpLabel(combatant, zh)}</span>{combatant.hpDisplay?.kind !== 'stage' && <><span>·</span><span>{zh ? '临时' : 'Temp'} {combatant.temporaryHp ?? 0}</span></>}<span>·</span><span>{combatAcLabel(combatant, zh)}</span>{combatant.conditions.length > 0 && <><span>·</span><span>{combatant.conditions.join('、')}</span></>}</div>
+          {canManage && selectedNow && <div className="mt-2 rounded border border-slate-300/70 bg-slate-50 p-2"><div className="text-[10px] font-bold text-slate-700">{zh ? '主持人确认结算' : 'Host-confirmed adjustment'}</div><div className="mt-1 flex flex-wrap items-center gap-1.5"><input value={hpAdjustment} onChange={(event) => setHpAdjustment(event.target.value)} type="number" min="0" placeholder={zh ? '数值' : 'Amount'} className="w-20 rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><button type="button" disabled={combatant.hpCurrent === undefined || !numberValue(hpAdjustment) || numberValue(hpAdjustment)! <= 0} onClick={() => applyHpAdjustment(combatant, 'damage')} className="rounded border border-red-300 bg-white px-2 py-1 text-[10px] font-bold text-red-700 disabled:opacity-40">{zh ? '应用伤害' : 'Apply damage'}</button><button type="button" disabled={combatant.hpCurrent === undefined || !numberValue(hpAdjustment) || numberValue(hpAdjustment)! <= 0} onClick={() => applyHpAdjustment(combatant, 'healing')} className="rounded border border-emerald-300 bg-white px-2 py-1 text-[10px] font-bold text-emerald-700 disabled:opacity-40">{zh ? '应用治疗' : 'Apply healing'}</button></div><p className="mt-1 text-[10px] text-slate-500">{combatant.hpCurrent === undefined ? (zh ? '先填写当前 HP，才能使用快捷结算。' : 'Set current HP before using quick adjustments.') : (zh ? '伤害会先抵扣临时 HP，并以现有战斗记录同步。' : 'Damage consumes temporary HP first and uses the existing combat log.')}</p></div>}
           {canManage && selectedNow && <div className="mt-2 grid grid-cols-2 gap-1.5"><input defaultValue={combatant.initiative ?? ''} onBlur={(event) => update(combatant, { initiative: numberValue(event.target.value) })} type="number" placeholder={zh ? '先攻' : 'Initiative'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.hpCurrent ?? ''} onBlur={(event) => update(combatant, { hpCurrent: numberValue(event.target.value), hitPoints: numberValue(event.target.value) })} type="number" placeholder="HP" className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.hpMax ?? ''} onBlur={(event) => update(combatant, { hpMax: numberValue(event.target.value), maxHitPoints: numberValue(event.target.value) })} type="number" placeholder={zh ? '最大 HP' : 'Max HP'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.temporaryHp ?? ''} onBlur={(event) => update(combatant, { temporaryHp: numberValue(event.target.value) })} type="number" placeholder={zh ? '临时 HP' : 'Temp HP'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.armorClass ?? ''} onBlur={(event) => update(combatant, { armorClass: numberValue(event.target.value) })} type="number" placeholder="AC" className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.conditions.join(', ')} onBlur={(event) => update(combatant, { conditions: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) })} placeholder={zh ? '状态，逗号分隔' : 'Conditions'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /></div>}
         </div>;
       })}</div>}
