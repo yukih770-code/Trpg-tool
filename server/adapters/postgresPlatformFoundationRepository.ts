@@ -1,6 +1,6 @@
 import type { QueryResult, QueryResultRow } from 'pg';
 
-import { PostgresDatabaseError, queryPostgres } from '../db/postgresClient.js';
+import { PostgresDatabaseError, queryPostgres, withPostgresClient } from '../db/postgresClient.js';
 
 /**
  * Remaining platform Postgres foundation repository (P5.DB-CLOSURE) — server-only.
@@ -137,6 +137,75 @@ export interface CreateCompendiumPackInput {
   visibilityScope?: string;
   lifecycleStatus?: string;
   metadata?: Record<string, unknown>;
+}
+
+export interface CompendiumPackVersionRecord {
+  packVersionId: string;
+  packId: string;
+  versionLabel: string;
+  manifest: Record<string, unknown>;
+  source: Record<string, unknown>;
+  rights: Record<string, unknown>;
+  schemaVersion: number;
+  createdAt?: string;
+  publishedAt?: string;
+  archivedAt?: string;
+}
+
+export interface CompendiumEntryRecord {
+  compendiumEntryId: string;
+  packVersionId: string;
+  entryKind: string;
+  displayName: string;
+  sourceRef: Record<string, unknown>;
+  contentRef: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  schemaVersion: number;
+  createdAt?: string;
+  archivedAt?: string;
+}
+
+export interface WorldServerPackBindingRecord {
+  packBindingId: string;
+  worldServerId: string;
+  packVersionId: string;
+  bindingStatus: string;
+  createdByUserId?: string;
+  schemaVersion: number;
+  createdAt?: string;
+  archivedAt?: string;
+}
+
+export interface PrivateCompendiumEntryPublishInput {
+  compendiumEntryId: string;
+  entryKind: string;
+  displayName: string;
+  sourceRef?: Record<string, unknown>;
+  contentRef?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  schemaVersion?: number;
+}
+
+export interface PublishPrivateCompendiumPackInput {
+  packId: string;
+  packVersionId: string;
+  packBindingId: string;
+  ownerId: string;
+  worldServerId: string;
+  displayName: string;
+  versionLabel: string;
+  metadata?: Record<string, unknown>;
+  manifest?: Record<string, unknown>;
+  source?: Record<string, unknown>;
+  rights?: Record<string, unknown>;
+  entries: PrivateCompendiumEntryPublishInput[];
+}
+
+export interface PublishedPrivateCompendiumPack {
+  pack: CompendiumPackRecord;
+  version: CompendiumPackVersionRecord;
+  entries: CompendiumEntryRecord[];
+  binding: WorldServerPackBindingRecord;
 }
 
 export interface CampaignActorInstanceRecord {
@@ -398,6 +467,49 @@ function rowToCompendiumPack(row: GenericRow): CompendiumPackRecord {
   };
 }
 
+function rowToCompendiumPackVersion(row: GenericRow): CompendiumPackVersionRecord {
+  return {
+    packVersionId: String(row.pack_version_id),
+    packId: String(row.pack_id),
+    versionLabel: String(row.version_label),
+    manifest: toPayload(row.manifest_payload),
+    source: toPayload(row.source_payload),
+    rights: toPayload(row.rights_payload),
+    schemaVersion: Number(row.schema_version),
+    createdAt: toIso(row.created_at),
+    publishedAt: toIso(row.published_at),
+    archivedAt: toIso(row.archived_at),
+  };
+}
+
+function rowToCompendiumEntry(row: GenericRow): CompendiumEntryRecord {
+  return {
+    compendiumEntryId: String(row.compendium_entry_id),
+    packVersionId: String(row.pack_version_id),
+    entryKind: String(row.entry_kind),
+    displayName: String(row.display_name),
+    sourceRef: toPayload(row.source_ref_payload),
+    contentRef: toPayload(row.content_ref_payload),
+    metadata: toPayload(row.metadata_payload),
+    schemaVersion: Number(row.schema_version),
+    createdAt: toIso(row.created_at),
+    archivedAt: toIso(row.archived_at),
+  };
+}
+
+function rowToWorldServerPackBinding(row: GenericRow): WorldServerPackBindingRecord {
+  return {
+    packBindingId: String(row.pack_binding_id),
+    worldServerId: String(row.world_server_id),
+    packVersionId: String(row.pack_version_id),
+    bindingStatus: String(row.binding_status),
+    createdByUserId: row.created_by_user_id ? String(row.created_by_user_id) : undefined,
+    schemaVersion: Number(row.schema_version),
+    createdAt: toIso(row.created_at),
+    archivedAt: toIso(row.archived_at),
+  };
+}
+
 function rowToActorInstance(row: GenericRow): CampaignActorInstanceRecord {
   return {
     campaignActorInstanceId: String(row.campaign_actor_instance_id),
@@ -487,6 +599,9 @@ const AUTH_SESSION_COLS = 'session_id,user_id,session_kind,session_status,trust_
 const SETTINGS_VERSION_COLS = 'settings_version_id,world_server_id,created_by_user_id,version_number,settings_payload,soft_update_policy_payload,change_summary,created_at,archived_at';
 const RULESET_VERSION_COLS = 'ruleset_version_id,world_server_id,game_system_id,version_label,lifecycle_status,ruleset_payload,compatibility_payload,created_by_user_id,schema_version,created_at,published_at,archived_at';
 const COMPENDIUM_PACK_COLS = 'pack_id,owner_id,world_server_id,campaign_id,display_name,pack_kind,visibility_scope,lifecycle_status,metadata_payload,created_at,updated_at,archived_at';
+const COMPENDIUM_PACK_VERSION_COLS = 'pack_version_id,pack_id,version_label,manifest_payload,source_payload,rights_payload,schema_version,created_at,published_at,archived_at';
+const COMPENDIUM_ENTRY_COLS = 'compendium_entry_id,pack_version_id,entry_kind,display_name,source_ref_payload,content_ref_payload,metadata_payload,schema_version,created_at,archived_at';
+const WORLD_SERVER_PACK_BINDING_COLS = 'pack_binding_id,world_server_id,pack_version_id,binding_status,created_by_user_id,schema_version,created_at,archived_at';
 const ACTOR_INSTANCE_COLS = 'campaign_actor_instance_id,campaign_id,source_actor_id,owner_id,actor_kind,display_name,instance_status,snapshot_hash,snapshot_payload,override_payload,created_at,updated_at,archived_at';
 const ROOM_COLS = 'room_record_id,room_id,world_server_id,campaign_id,host_user_id,room_code,room_status,multiplayer_mode,access_policy_payload,metadata_payload,created_at,updated_at,closed_at,archived_at';
 const CONTENT_DOCUMENT_COLS = 'content_document_id,owner_id,world_server_id,campaign_id,asset_id,document_kind,title,body_text,metadata_payload,created_at,updated_at,archived_at';
@@ -635,6 +750,15 @@ export function createPostgresPlatformFoundationRepository(
 
   const listCompendiumPacksByOwner = (ownerId: string, limit?: number) =>
     many<CompendiumPackRecord>(`SELECT ${COMPENDIUM_PACK_COLS} FROM compendium_packs WHERE owner_id = $1 AND archived_at IS NULL ORDER BY updated_at DESC LIMIT $2`, [ownerId, limitOf(limit)], rowToCompendiumPack);
+
+  const listCompendiumPacksByWorldServer = (worldServerId: string, limit?: number) =>
+    many<CompendiumPackRecord>(`SELECT ${COMPENDIUM_PACK_COLS} FROM compendium_packs WHERE world_server_id = $1 AND archived_at IS NULL ORDER BY updated_at DESC LIMIT $2`, [worldServerId, limitOf(limit)], rowToCompendiumPack);
+
+  const listCompendiumPackVersions = (packId: string, limit?: number) =>
+    many<CompendiumPackVersionRecord>(`SELECT ${COMPENDIUM_PACK_VERSION_COLS} FROM compendium_pack_versions WHERE pack_id = $1 AND archived_at IS NULL ORDER BY created_at DESC LIMIT $2`, [packId, limitOf(limit)], rowToCompendiumPackVersion);
+
+  const listCompendiumEntries = (packVersionId: string, limit?: number) =>
+    many<CompendiumEntryRecord>(`SELECT ${COMPENDIUM_ENTRY_COLS} FROM compendium_entries WHERE pack_version_id = $1 AND archived_at IS NULL ORDER BY created_at ASC LIMIT $2`, [packVersionId, limitOf(limit)], rowToCompendiumEntry);
 
   const archiveCompendiumPack = (packId: string, archivedAt?: string) =>
     one<CompendiumPackRecord>(`UPDATE compendium_packs SET archived_at = $2, updated_at = $2 WHERE pack_id = $1 RETURNING ${COMPENDIUM_PACK_COLS}`, [packId, archivedAt ?? new Date().toISOString()], rowToCompendiumPack);
@@ -904,6 +1028,9 @@ export function createPostgresPlatformFoundationRepository(
     createCompendiumPack,
     getCompendiumPackById,
     listCompendiumPacksByOwner,
+    listCompendiumPacksByWorldServer,
+    listCompendiumPackVersions,
+    listCompendiumEntries,
     archiveCompendiumPack,
     restoreCompendiumPack,
     createCampaignActorInstance,
@@ -933,6 +1060,71 @@ export function createPostgresPlatformFoundationRepository(
     updateUserNotificationStatus,
     checkReadiness,
   };
+}
+
+/**
+ * Atomically publish a private server-scoped pack. Published versions and their
+ * entries are append-only: a later edit must create another pack version rather
+ * than update these rows in place.
+ */
+export async function publishPrivateCompendiumPack(
+  input: PublishPrivateCompendiumPackInput,
+): Promise<PostgresPlatformFoundationRepositoryResult<PublishedPrivateCompendiumPack>> {
+  try {
+    return await withPostgresClient(async (client) => {
+      try {
+        await client.query('BEGIN');
+        const now = new Date().toISOString();
+        const packResult = await client.query<GenericRow>(
+          `INSERT INTO compendium_packs (pack_id,owner_id,world_server_id,campaign_id,display_name,pack_kind,visibility_scope,lifecycle_status,metadata_payload,created_at,updated_at)
+           VALUES ($1,$2,$3,NULL,$4,'private','server','published',$5::jsonb,$6,$6)
+           RETURNING ${COMPENDIUM_PACK_COLS}`,
+          [input.packId, input.ownerId, input.worldServerId, input.displayName, JSON.stringify(input.metadata ?? {}), now],
+        );
+        const versionResult = await client.query<GenericRow>(
+          `INSERT INTO compendium_pack_versions (pack_version_id,pack_id,version_label,manifest_payload,source_payload,rights_payload,schema_version,created_at,published_at)
+           VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6::jsonb,1,$7,$7)
+           RETURNING ${COMPENDIUM_PACK_VERSION_COLS}`,
+          [input.packVersionId, input.packId, input.versionLabel, JSON.stringify(input.manifest ?? {}), JSON.stringify(input.source ?? { sourceKind: 'private' }), JSON.stringify(input.rights ?? { visibilityScope: 'server' }), now],
+        );
+        const entries: CompendiumEntryRecord[] = [];
+        for (const entry of input.entries) {
+          const entryResult = await client.query<GenericRow>(
+            `INSERT INTO compendium_entries (compendium_entry_id,pack_version_id,entry_kind,display_name,source_ref_payload,content_ref_payload,metadata_payload,schema_version,created_at)
+             VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::jsonb,$8,$9)
+             RETURNING ${COMPENDIUM_ENTRY_COLS}`,
+            [entry.compendiumEntryId, input.packVersionId, entry.entryKind, entry.displayName, JSON.stringify(entry.sourceRef ?? { sourceKind: 'private' }), JSON.stringify(entry.contentRef ?? {}), JSON.stringify(entry.metadata ?? {}), entry.schemaVersion ?? 1, now],
+          );
+          if (!entryResult.rows[0]) throw new Error('missing_compendium_entry');
+          entries.push(rowToCompendiumEntry(entryResult.rows[0]));
+        }
+        const bindingResult = await client.query<GenericRow>(
+          `INSERT INTO world_server_pack_bindings (pack_binding_id,world_server_id,pack_version_id,binding_status,created_by_user_id,schema_version,created_at)
+           VALUES ($1,$2,$3,'enabled',$4,1,$5)
+           RETURNING ${WORLD_SERVER_PACK_BINDING_COLS}`,
+          [input.packBindingId, input.worldServerId, input.packVersionId, input.ownerId, now],
+        );
+        if (!packResult.rows[0] || !versionResult.rows[0] || !bindingResult.rows[0]) {
+          throw new Error('missing_compendium_publish_result');
+        }
+        await client.query('COMMIT');
+        return {
+          ok: true,
+          value: {
+            pack: rowToCompendiumPack(packResult.rows[0]),
+            version: rowToCompendiumPackVersion(versionResult.rows[0]),
+            entries,
+            binding: rowToWorldServerPackBinding(bindingResult.rows[0]),
+          },
+        };
+      } catch (error) {
+        try { await client.query('ROLLBACK'); } catch { /* original error wins */ }
+        return mapRepositoryError(error);
+      }
+    });
+  } catch (error) {
+    return mapRepositoryError(error);
+  }
 }
 
 const defaultPostgresPlatformFoundationRepository = createPostgresPlatformFoundationRepository();

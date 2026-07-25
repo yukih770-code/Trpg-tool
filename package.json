@@ -46,6 +46,7 @@
     "api:verify:world": "tsx server/api/verifyWorldServerApiHandlers.ts",
     "api:verify:campaign-room": "tsx server/api/verifyCampaignRoomApiHandlers.ts",
     "api:verify:dnd-monsters": "tsx server/api/verifyDndPrivateMonsterApiHandlers.ts",
+    "api:verify:private-compendium": "tsx server/api/verifyPrivateCompendiumPackApiHandlers.ts",
     "api:verify:actors": "tsx server/api/verifyActorApiHandlers.ts",
     "frontend:verify:world": "tsx src/lib/api/worldServerApiClientSmoke.ts",
     "frontend:verify:actors": "tsx src/lib/api/actorApiClientSmoke.ts",

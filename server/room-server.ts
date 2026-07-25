@@ -89,6 +89,8 @@ import { registerCampaignRoomApiRoutes } from './api/campaignRoomApiRoutes.js';
 import { createCampaignRoomApiHandlers } from './api/campaignRoomApiHandlers.js';
 import { registerDndPrivateMonsterApiRoutes } from './api/dndPrivateMonsterApiRoutes.js';
 import { createDndPrivateMonsterApiHandlers } from './api/dndPrivateMonsterApiHandlers.js';
+import { registerPrivateCompendiumPackApiRoutes } from './api/privateCompendiumPackApiRoutes.js';
+import { createPrivateCompendiumPackApiHandlers } from './api/privateCompendiumPackApiHandlers.js';
 import { registerActorApiRoutes } from './api/actorApiRoutes.js';
 import { createActorApiHandlers } from './api/actorApiHandlers.js';
 import { createPrivateAlphaAuthService, readPrivateAlphaAuthConfigFromEnv } from './auth/privateAlphaAuth.js';
@@ -220,6 +222,10 @@ registerCampaignRoomApiRoutes(app, createCampaignRoomApiHandlers({
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));
 registerDndPrivateMonsterApiRoutes(app, createDndPrivateMonsterApiHandlers({
+  allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
+  nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
+}));
+registerPrivateCompendiumPackApiRoutes(app, createPrivateCompendiumPackApiHandlers({
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));

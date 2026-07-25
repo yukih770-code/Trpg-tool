@@ -85,7 +85,10 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 
 ## Server Content Sets / Compendium Authoring
 - Files: `src/lib/platform/serverContentSet.ts`, `serverRulesetVersioning.ts`;
-  database seam: migration `0009_remaining_platform_foundation.sql`.
+  server publication seam: `server/api/privateCompendiumPackApiHandlers.ts`,
+  `privateCompendiumPackApiRoutes.ts`, and
+  `adapters/postgresPlatformFoundationRepository.ts`; database seam: migration
+  `0009_remaining_platform_foundation.sql`.
 - Docs: `SERVER_CONTENT_SET_RESOLUTION_V1`,
   `SERVER_RULESET_VERSIONING_SOFT_UPDATE_UX_V1`.
 - Don't violate: source packs are immutable; server choices only enable, disable,
@@ -94,6 +97,9 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   an owner-source entry, or treat client UI visibility as permission enforcement.
 - Read when: adding a compendium editor, custom species/subclass/item/monster,
   Workshop publishing, server content settings, or Creator catalog resolution.
+- Private server packs publish a new pack/version/entry set atomically. Publish
+  requires `manageServerSettings`; read requires server `view`. This is neither a
+  public Workshop route nor permission-free frontend storage.
 
 ## Postgres User First Slice (server-only)
 - Files: `server/db/**` (client, schema readiness, smokes, `migrations/0001_user_identity.sql`),
