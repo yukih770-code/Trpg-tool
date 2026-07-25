@@ -208,6 +208,26 @@ export interface PublishedPrivateCompendiumPack {
   binding: WorldServerPackBindingRecord;
 }
 
+/** A private pack owned by one user, without a World Server binding. */
+export interface PublishUserPrivateCompendiumPackInput {
+  packId: string;
+  packVersionId: string;
+  ownerId: string;
+  displayName: string;
+  versionLabel: string;
+  metadata?: Record<string, unknown>;
+  manifest?: Record<string, unknown>;
+  source?: Record<string, unknown>;
+  rights?: Record<string, unknown>;
+  entries: PrivateCompendiumEntryPublishInput[];
+}
+
+export interface PublishedUserPrivateCompendiumPack {
+  pack: CompendiumPackRecord;
+  version: CompendiumPackVersionRecord;
+  entries: CompendiumEntryRecord[];
+}
+
 export interface CampaignActorInstanceRecord {
   campaignActorInstanceId: string;
   campaignId: string;
@@ -751,6 +771,9 @@ export function createPostgresPlatformFoundationRepository(
   const listCompendiumPacksByOwner = (ownerId: string, limit?: number) =>
     many<CompendiumPackRecord>(`SELECT ${COMPENDIUM_PACK_COLS} FROM compendium_packs WHERE owner_id = $1 AND archived_at IS NULL ORDER BY updated_at DESC LIMIT $2`, [ownerId, limitOf(limit)], rowToCompendiumPack);
 
+  const listUserPrivateCompendiumPacksByOwner = (ownerId: string, limit?: number) =>
+    many<CompendiumPackRecord>(`SELECT ${COMPENDIUM_PACK_COLS} FROM compendium_packs WHERE owner_id = $1 AND world_server_id IS NULL AND visibility_scope = 'user_private' AND archived_at IS NULL ORDER BY updated_at DESC LIMIT $2`, [ownerId, limitOf(limit)], rowToCompendiumPack);
+
   const listCompendiumPacksByWorldServer = (worldServerId: string, limit?: number) =>
     many<CompendiumPackRecord>(`SELECT ${COMPENDIUM_PACK_COLS} FROM compendium_packs WHERE world_server_id = $1 AND archived_at IS NULL ORDER BY updated_at DESC LIMIT $2`, [worldServerId, limitOf(limit)], rowToCompendiumPack);
 
@@ -1028,6 +1051,7 @@ export function createPostgresPlatformFoundationRepository(
     createCompendiumPack,
     getCompendiumPackById,
     listCompendiumPacksByOwner,
+    listUserPrivateCompendiumPacksByOwner,
     listCompendiumPacksByWorldServer,
     listCompendiumPackVersions,
     listCompendiumEntries,
@@ -1115,6 +1139,63 @@ export async function publishPrivateCompendiumPack(
             version: rowToCompendiumPackVersion(versionResult.rows[0]),
             entries,
             binding: rowToWorldServerPackBinding(bindingResult.rows[0]),
+          },
+        };
+      } catch (error) {
+        try { await client.query('ROLLBACK'); } catch { /* original error wins */ }
+        return mapRepositoryError(error);
+      }
+    });
+  } catch (error) {
+    return mapRepositoryError(error);
+  }
+}
+
+/**
+ * Atomically create an owner-scoped private pack. Unlike the server-scoped
+ * publisher above, this deliberately creates no World Server binding: a Room
+ * may later review a submitted version reference, but a personal draft never
+ * becomes server content merely because its author joined a server.
+ */
+export async function publishUserPrivateCompendiumPack(
+  input: PublishUserPrivateCompendiumPackInput,
+): Promise<PostgresPlatformFoundationRepositoryResult<PublishedUserPrivateCompendiumPack>> {
+  try {
+    return await withPostgresClient(async (client) => {
+      try {
+        await client.query('BEGIN');
+        const now = new Date().toISOString();
+        const packResult = await client.query<GenericRow>(
+          `INSERT INTO compendium_packs (pack_id,owner_id,world_server_id,campaign_id,display_name,pack_kind,visibility_scope,lifecycle_status,metadata_payload,created_at,updated_at)
+           VALUES ($1,$2,NULL,NULL,$3,'private','user_private','published',$4::jsonb,$5,$5)
+           RETURNING ${COMPENDIUM_PACK_COLS}`,
+          [input.packId, input.ownerId, input.displayName, JSON.stringify(input.metadata ?? {}), now],
+        );
+        const versionResult = await client.query<GenericRow>(
+          `INSERT INTO compendium_pack_versions (pack_version_id,pack_id,version_label,manifest_payload,source_payload,rights_payload,schema_version,created_at,published_at)
+           VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6::jsonb,1,$7,$7)
+           RETURNING ${COMPENDIUM_PACK_VERSION_COLS}`,
+          [input.packVersionId, input.packId, input.versionLabel, JSON.stringify(input.manifest ?? {}), JSON.stringify(input.source ?? { sourceKind: 'private' }), JSON.stringify(input.rights ?? { visibilityScope: 'user_private' }), now],
+        );
+        const entries: CompendiumEntryRecord[] = [];
+        for (const entry of input.entries) {
+          const entryResult = await client.query<GenericRow>(
+            `INSERT INTO compendium_entries (compendium_entry_id,pack_version_id,entry_kind,display_name,source_ref_payload,content_ref_payload,metadata_payload,schema_version,created_at)
+             VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::jsonb,$8,$9)
+             RETURNING ${COMPENDIUM_ENTRY_COLS}`,
+            [entry.compendiumEntryId, input.packVersionId, entry.entryKind, entry.displayName, JSON.stringify(entry.sourceRef ?? { sourceKind: 'private' }), JSON.stringify(entry.contentRef ?? {}), JSON.stringify(entry.metadata ?? {}), entry.schemaVersion ?? 1, now],
+          );
+          if (!entryResult.rows[0]) throw new Error('missing_compendium_entry');
+          entries.push(rowToCompendiumEntry(entryResult.rows[0]));
+        }
+        if (!packResult.rows[0] || !versionResult.rows[0]) throw new Error('missing_personal_compendium_publish_result');
+        await client.query('COMMIT');
+        return {
+          ok: true,
+          value: {
+            pack: rowToCompendiumPack(packResult.rows[0]),
+            version: rowToCompendiumPackVersion(versionResult.rows[0]),
+            entries,
           },
         };
       } catch (error) {

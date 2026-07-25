@@ -843,3 +843,12 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   Runtime transport.
 - Storage loss degrades to the existing compact Room binding; it never blocks a
   member from opening the Runtime.
+
+## Personal Private DND Content (P6)
+
+- Personal creative content is owner-scoped and separate from World Server
+  shared content. A user does not need a Server role to author a private pack.
+- Personal pack publishing creates no World Server binding and cannot alter
+  official source data, Room admission, or Runtime authority.
+- See `docs/implementation/P6_PERSONAL_PRIVATE_DND_CONTENT.md` before adding
+  creator integration or room-reviewed personal content references.

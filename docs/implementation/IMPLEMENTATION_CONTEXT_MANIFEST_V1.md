@@ -298,3 +298,11 @@ campaign actor data in Room Runtime. The dedicated Room endpoint is a narrow,
 permission-checked combat summary projection, not a proxy for the general
 campaign actor API. Keep full owner-scoped snapshots, inventory, actions,
 notes, source identifiers, and owner identifiers out of Room Runtime payloads.
+
+## Personal Private DND Content (P6)
+
+Read `P6_PERSONAL_PRIVATE_DND_CONTENT.md` before changing personal custom
+content, private compendium APIs, or future Room content review. Personal packs
+are owned by the authenticated user and are intentionally not Server-bound.
+Never make Server owner/admin status a prerequisite for personal authoring, and
+never infer Room approval from ownership of a personal pack.

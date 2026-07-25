@@ -1,0 +1,169 @@
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+
+import type { Locale } from '../../i18n';
+import { ApiClientError } from '../../lib/api/apiTypes';
+import {
+  personalCompendiumPackApiClient,
+  type PersonalCompendiumPack,
+} from '../../lib/api/personalCompendiumPackApiClient';
+
+type Props = { locale: Locale };
+type Fields = {
+  packName: string;
+  speciesName: string;
+  size: string;
+  speed: string;
+  summary: string;
+  traits: string;
+  heritageOptions: string;
+};
+
+const initialFields: Fields = {
+  packName: '', speciesName: '', size: '中型', speed: '30', summary: '', traits: '', heritageOptions: '',
+};
+
+function copy(locale: Locale, zh: string, en: string): string {
+  return locale === 'en' ? en : zh;
+}
+
+function listFromLines(value: string): string[] {
+  return value.split('\n').map((item) => item.trim()).filter(Boolean).slice(0, 12);
+}
+
+/**
+ * Personal authoring lives next to the Actor Vault, not Server Settings.
+ * This slice only persists private metadata; it never activates a pack in a Room.
+ */
+export function DndPersonalSpeciesPackPanel({ locale }: Props) {
+  const [open, setOpen] = useState(false);
+  const [packs, setPacks] = useState<PersonalCompendiumPack[]>([]);
+  const [fields, setFields] = useState<Fields>(initialFields);
+  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState('');
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setNotice('');
+    try {
+      setPacks(await personalCompendiumPackApiClient.list());
+    } catch (reason) {
+      const message = reason instanceof ApiClientError && reason.statusCode === 401
+        ? copy(locale, '需要先登录，才能读取你的自定义资料。', 'Sign in to load your custom content.')
+        : copy(locale, '我的自定义资料暂时无法加载。', 'Your custom content is unavailable right now.');
+      setNotice(message);
+    } finally {
+      setLoading(false);
+    }
+  }, [locale]);
+
+  useEffect(() => {
+    if (open) void refresh();
+  }, [open, refresh]);
+
+  const traitList = useMemo(() => listFromLines(fields.traits), [fields.traits]);
+  const heritageList = useMemo(() => listFromLines(fields.heritageOptions), [fields.heritageOptions]);
+  const update = (key: keyof Fields, value: string) => setFields((previous) => ({ ...previous, [key]: value }));
+
+  const publish = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!fields.packName.trim() || !fields.speciesName.trim() || busy) return;
+    setBusy(true);
+    setNotice('');
+    try {
+      await personalCompendiumPackApiClient.publish({
+        displayName: fields.packName.trim(),
+        versionLabel: '1.0.0',
+        metadata: { gameSystemId: 'dnd5e-2024', authoringKind: 'dnd-personal-species-v0' },
+        entries: [{
+          entryKind: 'species',
+          displayName: fields.speciesName.trim(),
+          content: {
+            schema: 'dnd-personal-species-v0',
+            name: fields.speciesName.trim(),
+            size: fields.size.trim() || undefined,
+            speedFeet: Number(fields.speed) || undefined,
+            summary: fields.summary.trim() || undefined,
+            traits: traitList,
+            heritageOptions: heritageList,
+          },
+          metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customSpecies' },
+        }],
+      });
+      setFields(initialFields);
+      setNotice(copy(locale, '已保存到“我的自定义资料”。将角色提交给房间时，主持人仍会审核允许的资料版本。', 'Saved to My Custom Content. When you submit a character to a Room, the host will still review allowed content versions.'));
+      await refresh();
+    } catch (reason) {
+      setNotice(reason instanceof ApiClientError
+        ? reason.message
+        : copy(locale, '保存失败，请稍后重试。', 'Saving failed. Please try again.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="min-h-48 border border-[#58180d]/30 bg-[#fff8e6]/80 p-6 text-left transition hover:-translate-y-0.5 hover:border-[#58180d]/60 hover:shadow-md"
+      >
+        <div className="text-[10px] font-bold uppercase tracking-widest text-[#a35b11]">Personal content</div>
+        <h2 className="mt-1 text-lg font-bold text-[#58180d]">{copy(locale, '我的自定义资料', 'My custom content')}</h2>
+        <p className="mt-3 text-sm leading-relaxed text-[#2c1810]/65">
+          {copy(locale, '创建自己的种族与传承选项。资料默认只属于你；加入房间时再由主持人审核。', 'Create your own species and heritage options. Content is private to you until a Room host reviews it.')}
+        </p>
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#17130f]/45 p-4" role="presentation">
+          <section role="dialog" aria-modal="true" aria-label={copy(locale, '我的自定义资料', 'My custom content')} className="max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-xl border border-[#58180d]/30 bg-[#fffaf0] p-5 shadow-2xl">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[#a35b11]">Personal D&D content</div>
+                <h2 className="mt-1 text-xl font-black text-[#58180d]">{copy(locale, '我的自定义资料', 'My custom content')}</h2>
+                <p className="mt-1 max-w-2xl text-xs leading-5 text-[#2c1810]/70">
+                  {copy(locale, '个人资料不会改写官方资料库，也不会自动加入服务器或房间。房间准入与可用内容由主持人后续审核。', 'Personal content never changes the official library and is not automatically added to a Server or Room. Room admission and allowed content remain host-reviewed.')}
+                </p>
+              </div>
+              <button type="button" onClick={() => setOpen(false)} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-xs font-bold text-[#58180d]">{copy(locale, '关闭', 'Close')}</button>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-[#58180d]/15 bg-white/70 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-bold text-[#58180d]">{copy(locale, '已保存的资料包', 'Saved packs')}</h3>
+                <button type="button" onClick={() => void refresh()} disabled={loading || busy} className="rounded-md border border-[#58180d]/20 bg-white px-2.5 py-1.5 text-xs font-bold text-[#58180d] disabled:opacity-40">{copy(locale, '刷新', 'Refresh')}</button>
+              </div>
+              {loading && <p className="mt-2 text-xs text-[#2c1810]/65">{copy(locale, '正在加载…', 'Loading…')}</p>}
+              {!loading && packs.length === 0 && !notice && <p className="mt-2 text-xs text-[#2c1810]/65">{copy(locale, '尚未创建个人资料包。', 'No personal packs yet.')}</p>}
+              {!loading && packs.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{packs.map((pack) => <span key={pack.packId} className="rounded-full bg-[#fff1c7] px-2.5 py-1 text-xs font-semibold text-[#7a4610]">{pack.displayName}</span>)}</div>}
+            </div>
+
+            <form onSubmit={(event) => void publish(event)} className="mt-4 grid gap-3 rounded-lg border border-dashed border-[#a35b11]/35 bg-white/70 p-3">
+              <div>
+                <h3 className="text-sm font-bold text-[#58180d]">{copy(locale, '创建自定义种族', 'Create a custom species')}</h3>
+                <p className="mt-1 text-xs leading-5 text-[#2c1810]/65">{copy(locale, '这是个人资料条目编辑，不生成可执行规则效果，也不会修改已有角色。', 'This is personal content authoring. It creates no executable rules and does not alter existing characters.')}</p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input value={fields.packName} onChange={(event) => update('packName', event.target.value)} placeholder={copy(locale, '资料包名称，例如：港湾自定义选项', 'Pack name, e.g. Harbor options')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                <input value={fields.speciesName} onChange={(event) => update('speciesName', event.target.value)} placeholder={copy(locale, '种族名称', 'Species name')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                <input value={fields.size} onChange={(event) => update('size', event.target.value)} placeholder={copy(locale, '体型，例如：中型', 'Size, e.g. Medium')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                <input value={fields.speed} onChange={(event) => update('speed', event.target.value)} inputMode="numeric" placeholder={copy(locale, '速度（尺）', 'Speed (ft)')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+              </div>
+              <textarea value={fields.summary} onChange={(event) => update('summary', event.target.value)} placeholder={copy(locale, '简短背景或设计说明（可选）', 'Short background or design note (optional)')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <textarea value={fields.traits} onChange={(event) => update('traits', event.target.value)} placeholder={copy(locale, '特性，每行一项（可选）', 'Traits, one per line (optional)')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                <textarea value={fields.heritageOptions} onChange={(event) => update('heritageOptions', event.target.value)} placeholder={copy(locale, '传承或血统选项，每行一项（可选）', 'Heritage options, one per line (optional)')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <button type="submit" disabled={busy || !fields.packName.trim() || !fields.speciesName.trim()} className="rounded-md bg-[#58180d] px-3 py-2 text-sm font-bold text-white disabled:opacity-40">{busy ? copy(locale, '正在保存…', 'Saving…') : copy(locale, '保存到我的资料库', 'Save to my library')}</button>
+                {notice && <p className="text-xs leading-5 text-[#2c1810]/75">{notice}</p>}
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+    </>
+  );
+}

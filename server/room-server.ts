@@ -91,6 +91,8 @@ import { registerDndPrivateMonsterApiRoutes } from './api/dndPrivateMonsterApiRo
 import { createDndPrivateMonsterApiHandlers } from './api/dndPrivateMonsterApiHandlers.js';
 import { registerPrivateCompendiumPackApiRoutes } from './api/privateCompendiumPackApiRoutes.js';
 import { createPrivateCompendiumPackApiHandlers } from './api/privateCompendiumPackApiHandlers.js';
+import { registerPersonalCompendiumPackApiRoutes } from './api/personalCompendiumPackApiRoutes.js';
+import { createPersonalCompendiumPackApiHandlers } from './api/personalCompendiumPackApiHandlers.js';
 import { registerActorApiRoutes } from './api/actorApiRoutes.js';
 import { createActorApiHandlers } from './api/actorApiHandlers.js';
 import { createPrivateAlphaAuthService, readPrivateAlphaAuthConfigFromEnv } from './auth/privateAlphaAuth.js';
@@ -226,6 +228,10 @@ registerDndPrivateMonsterApiRoutes(app, createDndPrivateMonsterApiHandlers({
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));
 registerPrivateCompendiumPackApiRoutes(app, createPrivateCompendiumPackApiHandlers({
+  allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
+  nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
+}));
+registerPersonalCompendiumPackApiRoutes(app, createPersonalCompendiumPackApiHandlers({
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));

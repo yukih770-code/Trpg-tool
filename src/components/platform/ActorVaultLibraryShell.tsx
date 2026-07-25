@@ -17,7 +17,7 @@
  * Future: CocWorkspaceShell, CpWorkspaceShell via system-specific adapters.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type {
   ActorVaultPurpose,
   ActorVaultSummary,
@@ -83,6 +83,8 @@ export type ActorVaultLibraryShellProps = {
   /** Panel wrapper className (e.g. the system's rounded-border card style). */
   panelClassName: string;
   contextBarClassName?: string;
+  /** System-specific personal authoring cards. Rendered only in the vault's manage home. */
+  homeCards?: ReactNode;
 };
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -102,6 +104,7 @@ export function ActorVaultLibraryShell({
   colorTheme: t,
   panelClassName,
   contextBarClassName,
+  homeCards,
 }: ActorVaultLibraryShellProps) {
   const [mode, setMode] = useState<LibraryMode>('home');
   const [search, setSearch] = useState('');
@@ -332,6 +335,8 @@ export function ActorVaultLibraryShell({
               <p className={`mt-3 text-sm leading-relaxed ${t.text} opacity-65`}>{strings.importPreviewNote}</p>
             </button>
           )}
+
+          {isManagePurpose && homeCards}
 
         </div>
         {isManagePurpose && (
