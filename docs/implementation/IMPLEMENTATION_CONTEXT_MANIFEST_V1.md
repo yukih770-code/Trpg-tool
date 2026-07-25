@@ -313,3 +313,9 @@ Read `P6_ROOM_PERSONAL_CONTENT_REFERENCES.md` before changing Room actor
 binding content metadata. A Room may carry only the owner-verified pack name
 and exact version reference selected at submission time, never private entries
 or author identity.
+
+## Personal Content Versioning (P6.2)
+
+Read `P6_PERSONAL_CONTENT_VERSIONING.md` before altering private compendium
+editing. Personal changes append immutable versions; they must never rewrite a
+version already submitted to a Room.

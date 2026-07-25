@@ -25,6 +25,13 @@ async function run(): Promise<Case[]> {
     assert(calls.at(-1)?.init?.method === 'POST', 'publish must use POST');
     assert(calls.at(-1)?.init?.body === JSON.stringify(input), 'publish payload changed');
   });
+  await check('publish_version_targets_a_personal_pack_only', async () => {
+    const input = { versionLabel: '1.1.0', entries: [{ entryKind: 'species' as const, displayName: 'Updated Harbor Folk', content: { speed: 35 } }] };
+    await client.publishVersion('pack_personal', input);
+    assert(calls.at(-1)?.url.endsWith('/api/me/private-compendium-packs/pack_personal/versions'), 'version route changed');
+    assert(calls.at(-1)?.init?.method === 'POST', 'version publish must use POST');
+    assert(calls.at(-1)?.init?.body === JSON.stringify(input), 'version payload changed');
+  });
   return cases;
 }
 

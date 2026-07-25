@@ -860,3 +860,10 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   or Runtime data.
 - See `docs/implementation/P6_ROOM_PERSONAL_CONTENT_REFERENCES.md` before
   extending content review or player-authored content flows.
+
+## Personal Content Versioning (P6.2)
+
+- Personal custom content evolves by immutable versions, not in-place edits.
+  A Room binding continues to identify the version approved for that table.
+- See `docs/implementation/P6_PERSONAL_CONTENT_VERSIONING.md` before extending
+  personal authoring or import.

@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 
 import {
   createPostgresPlatformFoundationRepository,
+  appendUserPrivateCompendiumPackVersion,
   publishUserPrivateCompendiumPack,
+  type AppendUserPrivateCompendiumPackVersionInput,
   type PublishUserPrivateCompendiumPackInput,
 } from '../adapters/postgresPlatformFoundationRepository.js';
 import { createCurrentViewerContextFromAuthSession, type CurrentViewerContext } from '../auth/currentViewerContext.js';
@@ -23,11 +25,13 @@ export type PersonalCompendiumPackApiRequest = {
 export type PersonalCompendiumPackApiHandlers = {
   listPacks(input: PersonalCompendiumPackApiRequest): Promise<ApiResult>;
   publishPack(input: PersonalCompendiumPackApiRequest): Promise<ApiResult>;
+  publishVersion(packId: string, input: PersonalCompendiumPackApiRequest): Promise<ApiResult>;
 };
 
 export type CreatePersonalCompendiumPackApiHandlersOptions = {
   compendiumRepository?: CompendiumRepository;
   publish?: (input: PublishUserPrivateCompendiumPackInput) => ReturnType<typeof publishUserPrivateCompendiumPack>;
+  appendVersion?: (input: AppendUserPrivateCompendiumPackVersionInput) => ReturnType<typeof appendUserPrivateCompendiumPackVersion>;
   allowDevAuthHeaders?: boolean;
   nodeEnv?: string;
 };
@@ -74,6 +78,27 @@ export function createPersonalCompendiumPackApiHandlers(
 ): PersonalCompendiumPackApiHandlers {
   const compendium = options.compendiumRepository ?? createPostgresPlatformFoundationRepository();
   const publish = options.publish ?? publishUserPrivateCompendiumPack;
+  const appendVersion = options.appendVersion ?? appendUserPrivateCompendiumPackVersion;
+
+  const draftFrom = (body: Body, viewerUserId: string): { ok: true; displayName?: string; versionLabel: string; entries: PublishUserPrivateCompendiumPackInput['entries']; metadata: Body } | { ok: false; response: ApiResult } => {
+    const displayName = text(body.displayName, 120);
+    const versionLabel = text(body.versionLabel, 64) ?? '1.0.0';
+    const rawEntries = Array.isArray(body.entries) ? body.entries : [];
+    if (rawEntries.length === 0 || rawEntries.length > 50) return { ok: false, response: errorResponse(400, { kind: 'validation', message: 'entries must contain between 1 and 50 items.' }) };
+    const entries: PublishUserPrivateCompendiumPackInput['entries'] = [];
+    for (const rawEntry of rawEntries) {
+      const candidate = record(rawEntry);
+      const entryKind = text(candidate.entryKind, 40);
+      const entryName = text(candidate.displayName, 160);
+      const contentRef = jsonRecord(candidate.contentRef ?? candidate.content);
+      const metadata = jsonRecord(candidate.metadata);
+      if (!entryKind || !ENTRY_KINDS.has(entryKind) || !entryName || (candidate.contentRef !== undefined || candidate.content !== undefined) && !contentRef) {
+        return { ok: false, response: errorResponse(400, { kind: 'validation', message: 'Each entry requires a supported entryKind, displayName, and a bounded object content payload when supplied.' }) };
+      }
+      entries.push({ compendiumEntryId: randomUUID(), entryKind, displayName: entryName, sourceRef: { sourceKind: 'private', authorUserId: viewerUserId }, contentRef: contentRef ?? {}, metadata: metadata ?? {}, schemaVersion: 1 });
+    }
+    return { ok: true, displayName, versionLabel, entries, metadata: jsonRecord(body.metadata) ?? {} };
+  };
 
   return {
     async listPacks(input) {
@@ -98,35 +123,28 @@ export function createPersonalCompendiumPackApiHandlers(
       const viewer = authenticatedViewer(input, options);
       if (isResponse(viewer)) return viewer;
       const body = record(input.body);
-      const displayName = text(body.displayName, 120);
-      const versionLabel = text(body.versionLabel, 64) ?? '1.0.0';
-      const rawEntries = Array.isArray(body.entries) ? body.entries : [];
-      if (!displayName) return errorResponse(400, { kind: 'validation', message: 'displayName is required.' }, { requestId: input.requestId });
-      if (rawEntries.length === 0 || rawEntries.length > 50) return errorResponse(400, { kind: 'validation', message: 'entries must contain between 1 and 50 items.' }, { requestId: input.requestId });
-
-      const entries: PublishUserPrivateCompendiumPackInput['entries'] = [];
-      for (const rawEntry of rawEntries) {
-        const candidate = record(rawEntry);
-        const entryKind = text(candidate.entryKind, 40);
-        const entryName = text(candidate.displayName, 160);
-        const contentRef = jsonRecord(candidate.contentRef ?? candidate.content);
-        const metadata = jsonRecord(candidate.metadata);
-        if (!entryKind || !ENTRY_KINDS.has(entryKind) || !entryName || (candidate.contentRef !== undefined || candidate.content !== undefined) && !contentRef) {
-          return errorResponse(400, { kind: 'validation', message: 'Each entry requires a supported entryKind, displayName, and a bounded object content payload when supplied.' }, { requestId: input.requestId });
-        }
-        entries.push({
-          compendiumEntryId: randomUUID(), entryKind, displayName: entryName,
-          sourceRef: { sourceKind: 'private', authorUserId: viewer.viewerUserId },
-          contentRef: contentRef ?? {}, metadata: metadata ?? {}, schemaVersion: 1,
-        });
-      }
-      const metadata = jsonRecord(body.metadata);
+      const draft = draftFrom(body, viewer.viewerUserId!);
+      if (draft.ok === false) return { ...draft.response, requestId: input.requestId };
+      if (!draft.displayName) return errorResponse(400, { kind: 'validation', message: 'displayName is required.' }, { requestId: input.requestId });
       const result = await publish({
         packId: randomUUID(), packVersionId: randomUUID(), ownerId: viewer.viewerUserId!,
-        displayName, versionLabel, metadata: metadata ?? {},
-        manifest: { entryCount: entries.length, schema: 'personal-private-compendium-pack-v1' },
+        displayName: draft.displayName, versionLabel: draft.versionLabel, metadata: draft.metadata,
+        manifest: { entryCount: draft.entries.length, schema: 'personal-private-compendium-pack-v1' },
         source: { sourceKind: 'private', authorUserId: viewer.viewerUserId },
-        rights: { visibilityScope: 'user_private' }, entries,
+        rights: { visibilityScope: 'user_private' }, entries: draft.entries,
+      });
+      return result.ok === false ? repositoryFailure(result.error, input.requestId) : okResponse(result.value, { statusCode: 201, requestId: input.requestId });
+    },
+    async publishVersion(packId, input) {
+      const viewer = authenticatedViewer(input, options);
+      if (isResponse(viewer)) return viewer;
+      if (!text(packId, 160)) return errorResponse(400, { kind: 'validation', message: 'packId is required.' }, { requestId: input.requestId });
+      const draft = draftFrom(record(input.body), viewer.viewerUserId!);
+      if (draft.ok === false) return { ...draft.response, requestId: input.requestId };
+      const result = await appendVersion({
+        packId, packVersionId: randomUUID(), ownerId: viewer.viewerUserId!, versionLabel: draft.versionLabel,
+        manifest: { entryCount: draft.entries.length, schema: 'personal-private-compendium-pack-v1' },
+        source: { sourceKind: 'private', authorUserId: viewer.viewerUserId }, rights: { visibilityScope: 'user_private' }, entries: draft.entries,
       });
       return result.ok === false ? repositoryFailure(result.error, input.requestId) : okResponse(result.value, { statusCode: 201, requestId: input.requestId });
     },

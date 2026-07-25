@@ -5,11 +5,13 @@ import { ApiClientError } from '../../lib/api/apiTypes';
 import {
   personalCompendiumPackApiClient,
   type PersonalCompendiumPack,
+  type PublishPersonalCompendiumPackInput,
 } from '../../lib/api/personalCompendiumPackApiClient';
 
 type Props = { locale: Locale };
 type Fields = {
   packName: string;
+  versionLabel: string;
   speciesName: string;
   size: string;
   speed: string;
@@ -19,7 +21,7 @@ type Fields = {
 };
 
 const initialFields: Fields = {
-  packName: '', speciesName: '', size: '中型', speed: '30', summary: '', traits: '', heritageOptions: '',
+  packName: '', versionLabel: '1.0.0', speciesName: '', size: '中型', speed: '30', summary: '', traits: '', heritageOptions: '',
 };
 
 function copy(locale: Locale, zh: string, en: string): string {
@@ -41,6 +43,7 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [versioningPackId, setVersioningPackId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -71,9 +74,8 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
     setBusy(true);
     setNotice('');
     try {
-      await personalCompendiumPackApiClient.publish({
-        displayName: fields.packName.trim(),
-        versionLabel: '1.0.0',
+      const draft: Omit<PublishPersonalCompendiumPackInput, 'displayName'> = {
+        versionLabel: fields.versionLabel.trim() || '1.0.0',
         metadata: { gameSystemId: 'dnd5e-2024', authoringKind: 'dnd-personal-species-v0' },
         entries: [{
           entryKind: 'species',
@@ -89,9 +91,12 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
           },
           metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customSpecies' },
         }],
-      });
+      };
+      if (versioningPackId) await personalCompendiumPackApiClient.publishVersion(versioningPackId, draft);
+      else await personalCompendiumPackApiClient.publish({ ...draft, displayName: fields.packName.trim() });
       setFields(initialFields);
-      setNotice(copy(locale, '已保存到“我的自定义资料”。将角色提交给房间时，主持人仍会审核允许的资料版本。', 'Saved to My Custom Content. When you submit a character to a Room, the host will still review allowed content versions.'));
+      setVersioningPackId(null);
+      setNotice(copy(locale, '已保存为不可变资料版本。将角色提交给房间时，主持人仍会审核所选版本。', 'Saved as an immutable content version. When you submit a character to a Room, the host will still review the selected version.'));
       await refresh();
     } catch (reason) {
       setNotice(reason instanceof ApiClientError
@@ -137,17 +142,22 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
               </div>
               {loading && <p className="mt-2 text-xs text-[#2c1810]/65">{copy(locale, '正在加载…', 'Loading…')}</p>}
               {!loading && packs.length === 0 && !notice && <p className="mt-2 text-xs text-[#2c1810]/65">{copy(locale, '尚未创建个人资料包。', 'No personal packs yet.')}</p>}
-              {!loading && packs.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{packs.map((pack) => <span key={pack.packId} className="rounded-full bg-[#fff1c7] px-2.5 py-1 text-xs font-semibold text-[#7a4610]">{pack.displayName}</span>)}</div>}
+              {!loading && packs.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{packs.map((pack) => (
+                <button key={pack.packId} type="button" disabled={busy} onClick={() => { setVersioningPackId(pack.packId); setFields((previous) => ({ ...previous, packName: pack.displayName, versionLabel: '1.1.0' })); setNotice(copy(locale, `正在为“${pack.displayName}”创建新版本；已有版本不会被改写。`, `Creating a new version of ${pack.displayName}; existing versions will not change.`)); }} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${versioningPackId === pack.packId ? 'bg-[#58180d] text-white' : 'bg-[#fff1c7] text-[#7a4610]'}`}>
+                  {pack.displayName}{pack.latestVersion ? ` · ${pack.latestVersion.versionLabel}` : ''}
+                </button>
+              ))}</div>}
             </div>
 
             <form onSubmit={(event) => void publish(event)} className="mt-4 grid gap-3 rounded-lg border border-dashed border-[#a35b11]/35 bg-white/70 p-3">
               <div>
-                <h3 className="text-sm font-bold text-[#58180d]">{copy(locale, '创建自定义种族', 'Create a custom species')}</h3>
-                <p className="mt-1 text-xs leading-5 text-[#2c1810]/65">{copy(locale, '这是个人资料条目编辑，不生成可执行规则效果，也不会修改已有角色。', 'This is personal content authoring. It creates no executable rules and does not alter existing characters.')}</p>
+                <h3 className="text-sm font-bold text-[#58180d]">{versioningPackId ? copy(locale, '创建新的资料版本', 'Create a new content version') : copy(locale, '创建自定义种族', 'Create a custom species')}</h3>
+                <p className="mt-1 text-xs leading-5 text-[#2c1810]/65">{versioningPackId ? copy(locale, '正在保存为新版本，已被房间引用的旧版本不会被改写。', 'This saves a new version; an older version already referenced by a Room will not change.') : copy(locale, '这是个人资料条目编辑，不生成可执行规则效果，也不会修改已有角色。', 'This is personal content authoring. It creates no executable rules and does not alter existing characters.')}</p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
-                <input value={fields.packName} onChange={(event) => update('packName', event.target.value)} placeholder={copy(locale, '资料包名称，例如：港湾自定义选项', 'Pack name, e.g. Harbor options')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                <input value={fields.packName} onChange={(event) => update('packName', event.target.value)} placeholder={copy(locale, '资料包名称，例如：港湾自定义选项', 'Pack name, e.g. Harbor options')} disabled={busy || !!versioningPackId} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
                 <input value={fields.speciesName} onChange={(event) => update('speciesName', event.target.value)} placeholder={copy(locale, '种族名称', 'Species name')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                <input value={fields.versionLabel} onChange={(event) => update('versionLabel', event.target.value)} placeholder={copy(locale, '版本，例如：1.1.0', 'Version, e.g. 1.1.0')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
                 <input value={fields.size} onChange={(event) => update('size', event.target.value)} placeholder={copy(locale, '体型，例如：中型', 'Size, e.g. Medium')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
                 <input value={fields.speed} onChange={(event) => update('speed', event.target.value)} inputMode="numeric" placeholder={copy(locale, '速度（尺）', 'Speed (ft)')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
               </div>
@@ -157,7 +167,8 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
                 <textarea value={fields.heritageOptions} onChange={(event) => update('heritageOptions', event.target.value)} placeholder={copy(locale, '传承或血统选项，每行一项（可选）', 'Heritage options, one per line (optional)')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
               </div>
               <div className="flex flex-wrap items-center gap-3">
-                <button type="submit" disabled={busy || !fields.packName.trim() || !fields.speciesName.trim()} className="rounded-md bg-[#58180d] px-3 py-2 text-sm font-bold text-white disabled:opacity-40">{busy ? copy(locale, '正在保存…', 'Saving…') : copy(locale, '保存到我的资料库', 'Save to my library')}</button>
+                {versioningPackId && <button type="button" disabled={busy} onClick={() => { setVersioningPackId(null); setFields(initialFields); setNotice(''); }} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-bold text-[#58180d]">{copy(locale, '改为新建资料包', 'Create a new pack instead')}</button>}
+                <button type="submit" disabled={busy || !fields.packName.trim() || !fields.speciesName.trim()} className="rounded-md bg-[#58180d] px-3 py-2 text-sm font-bold text-white disabled:opacity-40">{busy ? copy(locale, '正在保存…', 'Saving…') : versioningPackId ? copy(locale, '保存为新版本', 'Save as new version') : copy(locale, '保存到我的资料库', 'Save to my library')}</button>
                 {notice && <p className="text-xs leading-5 text-[#2c1810]/75">{notice}</p>}
               </div>
             </form>

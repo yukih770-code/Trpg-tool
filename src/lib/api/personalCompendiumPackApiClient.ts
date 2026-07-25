@@ -37,6 +37,7 @@ export type PublishedPersonalCompendiumPack = {
 export type PersonalCompendiumPackApiClient = {
   list(): Promise<PersonalCompendiumPack[]>;
   publish(input: PublishPersonalCompendiumPackInput): Promise<PublishedPersonalCompendiumPack>;
+  publishVersion(packId: string, input: Omit<PublishPersonalCompendiumPackInput, 'displayName'>): Promise<PublishedPersonalCompendiumPack>;
 };
 
 const ROOT = '/api/me/private-compendium-packs';
@@ -46,6 +47,7 @@ export function createPersonalCompendiumPackApiClient(options: ApiClientOptions 
   return {
     list: () => request(ROOT),
     publish: (input) => request(ROOT, { method: 'POST', body: JSON.stringify(input) }),
+    publishVersion: (packId, input) => request(`${ROOT}/${encodeURIComponent(packId)}/versions`, { method: 'POST', body: JSON.stringify(input) }),
   };
 }
 

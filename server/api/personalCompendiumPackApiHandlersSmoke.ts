@@ -1,5 +1,5 @@
 import type { CurrentViewerContext } from '../auth/currentViewerContext.js';
-import type { CompendiumPackRecord, PublishUserPrivateCompendiumPackInput } from '../adapters/postgresPlatformFoundationRepository.js';
+import type { AppendUserPrivateCompendiumPackVersionInput, CompendiumPackRecord, PublishUserPrivateCompendiumPackInput } from '../adapters/postgresPlatformFoundationRepository.js';
 import { createPersonalCompendiumPackApiHandlers } from './personalCompendiumPackApiHandlers.js';
 import type { ServerApiResponse } from './apiResponse.js';
 
@@ -13,6 +13,7 @@ function hasStatus(response: ServerApiResponse<unknown>, statusCode: number): bo
 
 export async function runPersonalCompendiumPackApiHandlersSmoke(): Promise<{ total: number; passed: number; failed: number; cases: Array<{ name: string; passed: boolean; details?: string }> }> {
   let captured: PublishUserPrivateCompendiumPackInput | undefined;
+  let appended: AppendUserPrivateCompendiumPackVersionInput | undefined;
   const handlers = createPersonalCompendiumPackApiHandlers({
     compendiumRepository: {
       async listUserPrivateCompendiumPacksByOwner(ownerId) {
@@ -28,6 +29,17 @@ export async function runPersonalCompendiumPackApiHandlersSmoke(): Promise<{ tot
         ok: true,
         value: {
           pack: { ...userPack, packId: input.packId, displayName: input.displayName, ownerId: input.ownerId, worldServerId: undefined },
+          version: { packVersionId: input.packVersionId, packId: input.packId, versionLabel: input.versionLabel, manifest: input.manifest ?? {}, source: input.source ?? {}, rights: input.rights ?? {}, schemaVersion: 1 },
+          entries: input.entries.map((entry) => ({ compendiumEntryId: entry.compendiumEntryId, packVersionId: input.packVersionId, entryKind: entry.entryKind, displayName: entry.displayName, sourceRef: entry.sourceRef ?? {}, contentRef: entry.contentRef ?? {}, metadata: entry.metadata ?? {}, schemaVersion: entry.schemaVersion ?? 1 })),
+        },
+      };
+    },
+    async appendVersion(input) {
+      appended = input;
+      return {
+        ok: true,
+        value: {
+          pack: userPack,
           version: { packVersionId: input.packVersionId, packId: input.packId, versionLabel: input.versionLabel, manifest: input.manifest ?? {}, source: input.source ?? {}, rights: input.rights ?? {}, schemaVersion: 1 },
           entries: input.entries.map((entry) => ({ compendiumEntryId: entry.compendiumEntryId, packVersionId: input.packVersionId, entryKind: entry.entryKind, displayName: entry.displayName, sourceRef: entry.sourceRef ?? {}, contentRef: entry.contentRef ?? {}, metadata: entry.metadata ?? {}, schemaVersion: entry.schemaVersion ?? 1 })),
         },
@@ -61,6 +73,13 @@ export async function runPersonalCompendiumPackApiHandlersSmoke(): Promise<{ tot
     const result = await handlers.publishPack({ viewer: owner, body: { displayName: 'Invalid', entries: [{ entryKind: 'official_override', displayName: 'No' }] } });
     assert(hasStatus(result, 400), 'expected 400');
     assert(captured === before, 'invalid entry must not reach publish seam');
+  });
+  await check('05_owner_can_append_an_immutable_personal_pack_version', async () => {
+    const result = await handlers.publishVersion('pack_a', { viewer: owner, body: { versionLabel: '1.1.0', entries: [{ entryKind: 'species', displayName: 'Updated Harbor Folk', content: { speed: 35 } }] } });
+    assert(result.ok === true && result.statusCode === 201, 'expected 201');
+    assert(appended?.packId === 'pack_a' && appended.ownerId === 'user_a', 'append must be owner-scoped');
+    assert(appended?.versionLabel === '1.1.0', 'version label should be preserved');
+    assert(appended?.rights?.visibilityScope === 'user_private', 'append must remain private');
   });
   const passed = cases.filter((item) => item.passed).length;
   return { total: cases.length, passed, failed: cases.length - passed, cases };

@@ -27,4 +27,5 @@ async function invoke(res: Response, handler: (value: PersonalCompendiumPackApiR
 export function registerPersonalCompendiumPackApiRoutes(app: Express, handlers: PersonalCompendiumPackApiHandlers): void {
   app.get(PREFIX, (req, res) => void invoke(res, handlers.listPacks, req));
   app.post(PREFIX, (req, res) => void invoke(res, handlers.publishPack, req));
+  app.post(`${PREFIX}/:packId/versions`, (req, res) => void invoke(res, (input) => handlers.publishVersion(req.params.packId, input), req));
 }

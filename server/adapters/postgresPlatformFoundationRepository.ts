@@ -228,6 +228,17 @@ export interface PublishedUserPrivateCompendiumPack {
   entries: CompendiumEntryRecord[];
 }
 
+export interface AppendUserPrivateCompendiumPackVersionInput {
+  packId: string;
+  packVersionId: string;
+  ownerId: string;
+  versionLabel: string;
+  manifest?: Record<string, unknown>;
+  source?: Record<string, unknown>;
+  rights?: Record<string, unknown>;
+  entries: PrivateCompendiumEntryPublishInput[];
+}
+
 export interface CampaignActorInstanceRecord {
   campaignActorInstanceId: string;
   campaignId: string;
@@ -1202,6 +1213,61 @@ export async function publishUserPrivateCompendiumPack(
             entries,
           },
         };
+      } catch (error) {
+        try { await client.query('ROLLBACK'); } catch { /* original error wins */ }
+        return mapRepositoryError(error);
+      }
+    });
+  } catch (error) {
+    return mapRepositoryError(error);
+  }
+}
+
+/** Append an immutable version to an existing owner-scoped private pack. */
+export async function appendUserPrivateCompendiumPackVersion(
+  input: AppendUserPrivateCompendiumPackVersionInput,
+): Promise<PostgresPlatformFoundationRepositoryResult<PublishedUserPrivateCompendiumPack>> {
+  try {
+    return await withPostgresClient(async (client) => {
+      try {
+        await client.query('BEGIN');
+        const packResult = await client.query<GenericRow>(
+          `SELECT ${COMPENDIUM_PACK_COLS} FROM compendium_packs WHERE pack_id = $1 FOR UPDATE`,
+          [input.packId],
+        );
+        const packRow = packResult.rows[0];
+        const pack = packRow ? rowToCompendiumPack(packRow) : null;
+        if (!pack || pack.archivedAt || pack.ownerId !== input.ownerId || pack.worldServerId
+          || pack.visibilityScope !== 'user_private' || pack.lifecycleStatus !== 'published') {
+          await client.query('ROLLBACK');
+          return { ok: false, error: { kind: 'not_found', message: 'Personal content pack is unavailable.' } };
+        }
+        const now = new Date().toISOString();
+        const versionResult = await client.query<GenericRow>(
+          `INSERT INTO compendium_pack_versions (pack_version_id,pack_id,version_label,manifest_payload,source_payload,rights_payload,schema_version,created_at,published_at)
+           VALUES ($1,$2,$3,$4::jsonb,$5::jsonb,$6::jsonb,1,$7,$7)
+           RETURNING ${COMPENDIUM_PACK_VERSION_COLS}`,
+          [input.packVersionId, input.packId, input.versionLabel, JSON.stringify(input.manifest ?? {}), JSON.stringify(input.source ?? { sourceKind: 'private' }), JSON.stringify(input.rights ?? { visibilityScope: 'user_private' }), now],
+        );
+        const entries: CompendiumEntryRecord[] = [];
+        for (const entry of input.entries) {
+          const entryResult = await client.query<GenericRow>(
+            `INSERT INTO compendium_entries (compendium_entry_id,pack_version_id,entry_kind,display_name,source_ref_payload,content_ref_payload,metadata_payload,schema_version,created_at)
+             VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::jsonb,$8,$9)
+             RETURNING ${COMPENDIUM_ENTRY_COLS}`,
+            [entry.compendiumEntryId, input.packVersionId, entry.entryKind, entry.displayName, JSON.stringify(entry.sourceRef ?? { sourceKind: 'private' }), JSON.stringify(entry.contentRef ?? {}), JSON.stringify(entry.metadata ?? {}), entry.schemaVersion ?? 1, now],
+          );
+          if (!entryResult.rows[0]) throw new Error('missing_compendium_entry');
+          entries.push(rowToCompendiumEntry(entryResult.rows[0]));
+        }
+        if (!versionResult.rows[0]) throw new Error('missing_personal_compendium_version_result');
+        const updatedPackResult = await client.query<GenericRow>(
+          `UPDATE compendium_packs SET updated_at = $2 WHERE pack_id = $1 RETURNING ${COMPENDIUM_PACK_COLS}`,
+          [input.packId, now],
+        );
+        if (!updatedPackResult.rows[0]) throw new Error('missing_personal_compendium_pack_result');
+        await client.query('COMMIT');
+        return { ok: true, value: { pack: rowToCompendiumPack(updatedPackResult.rows[0]), version: rowToCompendiumPackVersion(versionResult.rows[0]), entries } };
       } catch (error) {
         try { await client.query('ROLLBACK'); } catch { /* original error wins */ }
         return mapRepositoryError(error);
