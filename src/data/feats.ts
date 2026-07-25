@@ -13,13 +13,13 @@ const DND_FEAT_MANIFEST_REF =
   'docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md';
 
 const originFeatMeta = (note?: string): RuleDataMetadata => ({
-  source: 'dnd5echm-srd52-primary',
-  trustLevel: 'source-labeled',
+  source: 'dnd-local-chm-primary',
+  trustLevel: 'owner-source-matched',
   usagePolicy: 'needs-human-verification',
-  sourceRef: `${DND_FEAT_MANIFEST_REF}#item-起源专长`,
+  sourceRef: 'dnd-local-chm-primary:玩家手册2024/专长/起源专长.htm',
   sourceNote:
     note ??
-    'DND 2024 origin feat category source is located. Individual feat effects remain pending heading/table extraction and human verification.',
+    `DND 2024 origin feat identity and shallow summary are matched to the local CHM primary source. Detailed choices and executable effects remain deferred. Secondary manifest reference: ${DND_FEAT_MANIFEST_REF}#item-起源专长.`,
 });
 
 const generalFeatMeta = (note?: string): RuleDataMetadata => ({
@@ -44,6 +44,8 @@ const tcoeFeatMeta = (note?: string): RuleDataMetadata => ({
 
 const FEAT_METADATA_BY_NAME: Record<string, RuleDataMetadata> = {
   '警觉 (Alert)': originFeatMeta(),
+  '巧匠 (Crafter)': originFeatMeta(),
+  '医疗师 (Healer)': originFeatMeta(),
   '音乐家 (Musician)': originFeatMeta('Origin feat source-linked. Confirmed separate from 健壮 (Tough); existing app effect text remains pending verification.'),
   '魔法学徒 (Magic Initiate)': originFeatMeta('Minimal placeholder added to repair DND 2024 background originFeat links. Effect details and spell-selection workflow remain deferred.'),
   '酒馆斗士 (Tavern Brawler)': originFeatMeta(),
@@ -64,6 +66,8 @@ const FEAT_METADATA_BY_NAME: Record<string, RuleDataMetadata> = {
 
 const FEAT_IDENTITY_BY_NAME: Record<string, { id: string; nameCn: string }> = {
   '警觉 (Alert)': { id: 'feat.origin.alert', nameCn: '警觉' },
+  '巧匠 (Crafter)': { id: 'feat.origin.crafter', nameCn: '巧匠' },
+  '医疗师 (Healer)': { id: 'feat.origin.healer', nameCn: '医疗师' },
   '音乐家 (Musician)': { id: 'feat.origin.musician', nameCn: '音乐家' },
   '魔法学徒 (Magic Initiate)': { id: 'feat.origin.magic-initiate', nameCn: '魔法学徒' },
   '酒馆斗士 (Tavern Brawler)': { id: 'feat.origin.tavern-brawler', nameCn: '酒馆斗士' },
@@ -84,6 +88,8 @@ const FEAT_IDENTITY_BY_NAME: Record<string, { id: string; nameCn: string }> = {
 
 export const DND_BACKGROUND_ORIGIN_FEAT_LINK_REPORT = {
   originFeatReferences: [
+    '巧匠 (Crafter)',
+    '医疗师 (Healer)',
     '魔法学徒 (Magic Initiate)',
     '野蛮打击者 (Savage Attacker)',
     '警觉 (Alert)',
@@ -91,8 +97,8 @@ export const DND_BACKGROUND_ORIGIN_FEAT_LINK_REPORT = {
     '熟练 (Skilled)',
     '幸运 (Lucky)',
   ],
-  missingBeforeCorrection: ['魔法学徒 (Magic Initiate)'],
-  linkStatus: 'resolved-by-minimal-placeholder',
+  missingBeforeCorrection: ['魔法学徒 (Magic Initiate)', '巧匠 (Crafter)', '医疗师 (Healer)'],
+  linkStatus: 'all-dnd2024-background-origin-feat-links-resolved',
   note:
     'Background originFeat strings are expected to match FEATS_DATA.name. This report records the v1 link correction without adding feat effects automation.',
 };
@@ -127,6 +133,20 @@ export const FEATS_DATA: FeatDef[] = applyDndFeatMetadata([
   {
     name: '音乐家 (Musician)',
     desc: '你在乐器上极具才华。完成休息后，你可以给至多等同于你熟练加值的自愿盟友分发英雄灵感 (Heroic Inspiration)。',
+    prerequisiteDesc: '无 (出身专长)',
+    category: 'Origin',
+    checkPrereq: () => true
+  },
+  {
+    name: '巧匠 (Crafter)',
+    desc: '获得一项工匠工具熟练；制作非魔法物品时享有折扣，并可在休息时进行快速制作。具体工具选择与制作流程待专用选择/制作系统承载。',
+    prerequisiteDesc: '无 (出身专长)',
+    category: 'Origin',
+    checkPrereq: () => true
+  },
+  {
+    name: '医疗师 (Healer)',
+    desc: '获得战场医疗与治疗重掷能力。医疗工具的消耗、目标选择与治疗数值仍由主持人手动确认，暂不自动执行。',
     prerequisiteDesc: '无 (出身专长)',
     category: 'Origin',
     checkPrereq: () => true

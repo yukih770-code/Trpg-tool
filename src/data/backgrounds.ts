@@ -68,14 +68,14 @@ function makeChmBackground(
 
 export const DND_2024_BACKGROUND_DATA: BackgroundDef[] = [
   makeChmBackground('background.acolyte', '侍僧', 'Acolyte', '侍僧.htm', '在寺庙或圣所侍奉，学习祭仪与祈祷。', ["洞察", "宗教"] as SkillName[], ["书法工具"], "魔法学徒 (Magic Initiate)"),
-  makeChmBackground('background.artisan', '工匠', 'Artisan', '工匠.htm', '在工坊成长，熟悉手艺和市井消息。', ["调查", "游说"] as SkillName[], ["工匠工具（任选一种）"], "巧匠"),
+  makeChmBackground('background.artisan', '工匠', 'Artisan', '工匠.htm', '在工坊成长，熟悉手艺和市井消息。', ["调查", "游说"] as SkillName[], ["工匠工具（任选一种）"], "巧匠 (Crafter)"),
   makeChmBackground('background.charlatan', '骗子', 'Charlatan', '骗子.htm', '游走酒馆与市井，擅长话术和伪装。', ["欺瞒", "巧手"] as SkillName[], ["文书伪造工具"], "熟练 (Skilled)"),
   makeChmBackground('background.criminal', '罪犯', 'Criminal', '罪犯.htm', '在阴暗街巷求生，熟悉盗贼行当。', ["巧手", "隐匿"] as SkillName[], ["盗贼工具"], "警觉 (Alert)"),
   makeChmBackground('background.entertainer', '艺人', 'Entertainer', '艺人.htm', '在巡演与嘉年华中磨炼表演技艺。', ["特技", "表演"] as SkillName[], ["乐器（任选一种）"], "音乐家 (Musician)"),
   makeChmBackground('background.farmer', '农民', 'Farmer', '农民.htm', '在农地和牲畜间长大，熟悉自然劳作。', ["驯兽", "自然"] as SkillName[], ["木匠工具"], "健壮 (Tough)"),
   makeChmBackground('background.guard', '警卫', 'Guard', '警卫.htm', '长期站岗巡守，习惯观察威胁。', ["运动", "察觉"] as SkillName[], ["赌具（任选一种）"], "警觉 (Alert)"),
   makeChmBackground('background.guide', '向导', 'Guide', '向导.htm', '在荒野中成长，熟悉野外探索。', ["隐匿", "生存"] as SkillName[], ["制图工具"], "魔法学徒 (Magic Initiate)"),
-  makeChmBackground('background.hermit', '隐士', 'Hermit', '隐士.htm', '远离聚居地生活，沉思自然与信仰。', ["医药", "宗教"] as SkillName[], ["草药工具"], "医疗师"),
+  makeChmBackground('background.hermit', '隐士', 'Hermit', '隐士.htm', '远离聚居地生活，沉思自然与信仰。', ["医药", "宗教"] as SkillName[], ["草药工具"], "医疗师 (Healer)"),
   makeChmBackground('background.merchant', '商人', 'Merchant', '商人.htm', '随商队和货物流动，熟悉交易往来。', ["驯兽", "游说"] as SkillName[], ["领航工具"], "幸运 (Lucky)"),
   makeChmBackground('background.noble', '贵族', 'Noble', '贵族.htm', '在权势与礼仪中成长，受过良好教育。', ["历史", "游说"] as SkillName[], ["赌具（任选一种）"], "熟练 (Skilled)"),
   makeChmBackground('background.sage', '智者', 'Sage', '智者.htm', '在书籍与图书馆之间求知探索。', ["奥秘", "历史"] as SkillName[], ["书法工具"], "魔法学徒 (Magic Initiate)"),

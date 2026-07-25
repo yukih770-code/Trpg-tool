@@ -20,6 +20,8 @@ DND Class / Subclass Correction v1 started the class/subclass metadata correctio
 
 DND Feat / Background Link Correction v1 completed the first origin-feat link pass. Background `originFeat` values are checked against `FEATS_DATA`; `魔法学徒 (Magic Initiate)` was added as a minimal source-linked placeholder so the 2024 Acolyte/Sage background links resolve. Existing feat effect text remains unverified unless later corrected from owner sources. Feat effect automation, Magic Initiate spell selection, prerequisite redesign, Action Registry integration, schema, and migration changes remain deferred.
 
+DND Origin Feat Local CHM Completion v1 completed the identity-level baseline for the 10 DND 2024 origin feats in `玩家手册2024/专长/起源专长.htm`. `巧匠 (Crafter)` and `医疗师 (Healer)` are now present in `FEATS_DATA`, and the 工匠 / 隐士 background links use their matching stable display names. Detailed choice flows and executable feat effects remain deferred; no character schema, migration, Runtime, or automation changed.
+
 DND Spell Manifest Correction v1 completed the first spell identity/source pass. The current 20 runtime spell entries are retained for compatibility and now carry source/trust metadata; the owner manifest's 507 spell entries are recorded as a deferred full-index gap rather than imported into Gameplay. Known translation anomalies (`Revivify`, `True Strike`, `Hold Person`) are marked `needs-human-check` because the owner manifest confirms identity/level but leaves Chinese names, schools, class lists, and effect text for later checked extraction. No spell effects automation, concentration, damage, target, schema, migration, or gameplay behavior changed.
 
 DND Artificer Source Completion v1 completed the class-gap source indexing pass. `奇械师 / Artificer` is source-indexed from TCoE with related spell-list, infusion, and subclass source paths, but remains runtime-deferred. It is not added to `CLASS_DATA` or Creator because progression, spellcasting, infusions, and subclass automation still require source-level verification.
@@ -48,7 +50,7 @@ Local CHM audit summary:
 |---|---:|---:|---:|---|---|
 | Species | 9 | 9 | 10 | incomplete | Add/check `阿斯莫 / Aasimar`; task: `DND CHM Species Runtime Source Correction v1` |
 | Backgrounds | 16 | 5 legacy sparse index rows (runtime now local-CHM complete) | 16 standard backgrounds | runtime-ready / needs-human-check | Verify detailed mechanics, skill mappings, origin feats, equipment, and ability options |
-| Origin Feats | 8 runtime-like origin entries | category file only | 10 PHB origin feats | incomplete | Extract 10 origin feat identities from `起源专长.htm` |
+| Origin Feats | 10 source-linked identity entries | individual headings in local CHM | 10 PHB origin feats | identity-complete / mechanics deferred | Add dedicated choice and effect contracts before automation |
 | General / Fighting / Epic Feats | 9 general runtime-like entries | category file only | 43 general + 10 fighting style + 12 epic boon PHB headings | incomplete | Build CHM feat manifest; TCoE/XGtE extension feats require de-dup/scope review |
 | Classes | 12 | Artificer source-indexed only | 13 (12 PHB + TCoE Artificer) | source-indexed / runtime-deferred | Promote Artificer only after progression/spellcasting/infusions are verified |
 | Subclasses | 46 | partial metadata/index only | 48 PHB core subclass pages + XGtE/TCoE subclass-related pages | incomplete / needs-human-check | Dedicated subclass de-dup/source classification audit; raw extension pages include non-subclass support pages |
