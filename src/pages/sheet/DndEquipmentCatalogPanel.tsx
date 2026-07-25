@@ -1,6 +1,7 @@
 import {
   DND_BASIC_ARMOR,
   DND_BASIC_GEAR,
+  DND_BASIC_PACKS,
   DND_BASIC_TOOLS,
   DND_BASIC_WEAPONS,
 } from '../../data/dnd2024/equipment';
@@ -157,6 +158,17 @@ export function DndEquipmentCatalogPanel() {
           </h4>
           <div className="space-y-1.5">
             {DND_BASIC_TOOLS.map(item => (
+              <div key={item.id}>
+                <GearRow item={item} />
+              </div>
+            ))}
+          </div>
+          <h4 className="mb-1.5 mt-4 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[#58180d]">
+            冒险套装 Packs
+            <span className="rounded-full bg-[#58180d]/10 px-1.5 py-0.5 text-[9px] font-bold text-[#58180d]/70">{DND_BASIC_PACKS.length}</span>
+          </h4>
+          <div className="space-y-1.5">
+            {DND_BASIC_PACKS.map(item => (
               <div key={item.id}>
                 <GearRow item={item} />
               </div>

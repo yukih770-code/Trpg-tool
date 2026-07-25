@@ -90,6 +90,21 @@ function tool(
   };
 }
 
+function pack(
+  id: string,
+  nameCn: string,
+  name: string,
+  weight: number,
+  cost: string,
+  aliases?: string[],
+): DndGearItem {
+  return {
+    id, nameCn, name, category: 'adventuringGear', weight, cost, aliases,
+    source: 'dnd-local-chm-primary',
+    sourceRef: `${LOCAL_CHM_EQUIPMENT_REF}/冒险装备.htm`,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 武器 Weapons
 // ─────────────────────────────────────────────────────────────────────────────
@@ -161,16 +176,6 @@ export const DND_BASIC_ARMOR: DndArmorItem[] = [
 
 export const DND_BASIC_GEAR: DndGearItem[] = [
   {
-    id: 'gear.explorers-pack',
-    name: "Explorer's Pack",
-    nameCn: '探索者背包',
-    category: 'adventuringGear',
-    source: 'dnd2024-basic',
-    description: '常用冒险补给合集（内容物不展开建模）',
-    weight: 55,
-    cost: '10 GP',
-  },
-  {
     id: 'gear.rope-50ft',
     name: 'Rope (50 ft)',
     nameCn: '绳索（50 尺）',
@@ -188,6 +193,20 @@ export const DND_BASIC_GEAR: DndGearItem[] = [
     weight: 1,
     cost: '1 CP',
   },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 冒险套装 Packs
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const DND_BASIC_PACKS: DndGearItem[] = [
+  pack('pack.burglars-pack', '窃贼套组', "Burglar's Pack", 42, '16 GP', ['盗贼套件']),
+  pack('pack.diplomats-pack', '外交套组', "Diplomat's Pack", 39, '39 GP', ['外交官套件', '外交官包']),
+  pack('pack.dungeoneers-pack', '地城套组', "Dungeoneer's Pack", 55, '12 GP', ['地下城套件']),
+  pack('pack.entertainers-pack', '艺人套组', "Entertainer's Pack", 58.5, '40 GP', ['艺人套件', '表演者套件', '艺人包']),
+  pack('gear.explorers-pack', '探索套组', "Explorer's Pack", 55, '10 GP', ['探索者套件', '探险者套件', '探索者背包']),
+  pack('pack.priests-pack', '祭司套组', "Priest's Pack", 29, '33 GP', ['牧师套件']),
+  pack('pack.scholars-pack', '学者套组', "Scholar's Pack", 22, '40 GP'),
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -230,6 +249,7 @@ export const DND_EQUIPMENT_CATALOG: DndEquipmentItem[] = [
   ...DND_BASIC_WEAPONS,
   ...DND_BASIC_ARMOR,
   ...DND_BASIC_TOOLS,
+  ...DND_BASIC_PACKS,
   ...DND_BASIC_GEAR,
 ];
 

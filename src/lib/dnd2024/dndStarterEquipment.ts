@@ -7,7 +7,7 @@
  * INSTANCE. Identity comes from the Item Registry: when a name resolves to a
  * `DndItemDefinition`, the instance carries that `definitionId` (+ sourceStatus,
  * + any sourced stats). It does NOT invent rule values: a pending-source
- * definition (e.g. Rapier) yields an instance with a definitionId but no
+ * definition yields an instance with a definitionId but no
  * fabricated damage/weight, and an unresolved name yields a real instance with
  * a "待核对" note. No RuntimeLog, no AC/attack/damage computation, no purchase.
  */

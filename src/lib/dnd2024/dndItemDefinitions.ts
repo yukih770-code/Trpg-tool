@@ -4,13 +4,11 @@
  * AI-LANDMARK: DND_ITEM_DEFINITIONS
  *
  * Promotes the read-only `DND_EQUIPMENT_CATALOG` rows into the long-term
- * `DndItemDefinition` shape and adds pending-source stubs only for starter
- * packs that are outside the currently extracted catalog.
+ * `DndItemDefinition` shape. Starter packs in the current class data are
+ * sourced from the catalog; their contents remain intentionally unmodeled.
  *
- * No official numeric values are invented here: stubs carry
- * `sourceStatus: 'pending-source'` and omit damage / weight / value / contents.
- * Only structural facts that do not require a source (a rapier is a weapon that
- * can be held in a hand; a pack is a container) are encoded.
+ * No official numeric values are invented here. Pack contents remain omitted
+ * until a dedicated owner-source extraction defines them.
  */
 
 import { DND_EQUIPMENT_CATALOG } from '../../data/dnd2024/equipment';
@@ -162,36 +160,7 @@ const SOURCED_WITH_GAMEPLAY: DndItemDefinition[] = SOURCED.map((def) =>
   def.id === 'weapon.dagger' ? { ...def, ...DAGGER_GAMEPLAY } : def,
 );
 
-/**
- * Pending-source stubs for starter items missing from the sourced catalog.
- * Structural facts only — NO fabricated damage / weight / value / contents.
- */
-const PENDING_STUBS: DndItemDefinition[] = [
-  {
-    id: 'pack.diplomats-pack',
-    system: 'dnd5e-2024',
-    sourceStatus: 'pending-source',
-    nameCn: '外交官套件',
-    nameEn: "Diplomat's Pack",
-    aliases: ["Diplomat's Pack", 'Diplomat Pack', '外交官包'],
-    category: 'pack',
-    pack: { isContainer: true },
-    notes: '内容物 / 重量 / 价值待核对（contents 需读取 owner source）。',
-  },
-  {
-    id: 'pack.entertainers-pack',
-    system: 'dnd5e-2024',
-    sourceStatus: 'pending-source',
-    nameCn: '艺人套件',
-    nameEn: "Entertainer's Pack",
-    aliases: ["Entertainer's Pack", 'Entertainer Pack', '艺人包', '表演者套件'],
-    category: 'pack',
-    pack: { isContainer: true },
-    notes: '内容物 / 重量 / 价值待核对（contents 需读取 owner source）。',
-  },
-];
-
-export const DND_ITEM_DEFINITIONS: DndItemDefinition[] = [...SOURCED_WITH_GAMEPLAY, ...PENDING_STUBS];
+export const DND_ITEM_DEFINITIONS: DndItemDefinition[] = SOURCED_WITH_GAMEPLAY;
 
 /** Map a definition category onto the inventory view-model category. */
 export function inventoryCategoryForDefinition(category: DndItemCategory): string {
