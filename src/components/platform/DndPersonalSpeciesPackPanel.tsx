@@ -12,7 +12,11 @@ import {
   type PersonalCompendiumImportDraft,
 } from '../../lib/platform/personalCompendiumImport';
 
-type Props = { locale: Locale };
+type Props = {
+  locale: Locale;
+  presentation?: 'card' | 'workbench';
+  onCloseWorkbench?: () => void;
+};
 type Fields = {
   packName: string;
   versionLabel: string;
@@ -55,8 +59,8 @@ function listFromLines(value: string): string[] {
  * Personal authoring lives next to the Actor Vault, not Server Settings.
  * This slice only persists private metadata; it never activates a pack in a Room.
  */
-export function DndPersonalSpeciesPackPanel({ locale }: Props) {
-  const [open, setOpen] = useState(false);
+export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onCloseWorkbench }: Props) {
+  const [open, setOpen] = useState(presentation === 'workbench');
   const [packs, setPacks] = useState<PersonalCompendiumPack[]>([]);
   const [fields, setFields] = useState<Fields>(initialFields);
   const [loading, setLoading] = useState(false);
@@ -229,7 +233,7 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
 
   return (
     <>
-      <button
+      {presentation === 'card' && <button
         type="button"
         onClick={() => setOpen(true)}
         className="min-h-48 border border-[#58180d]/30 bg-[#fff8e6]/80 p-6 text-left transition hover:-translate-y-0.5 hover:border-[#58180d]/60 hover:shadow-md"
@@ -239,11 +243,11 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
         <p className="mt-3 text-sm leading-relaxed text-[#2c1810]/65">
           {copy(locale, '创建自己的种族、背景、专长与法术。资料默认只属于你；加入房间时再由主持人审核。', 'Create your own species, backgrounds, feats, and spells. Content is private to you until a Room host reviews it.')}
         </p>
-      </button>
+      </button>}
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#17130f]/45 p-4" role="presentation">
-          <section role="dialog" aria-modal="true" aria-label={copy(locale, '我的自定义资料', 'My custom content')} className="max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-xl border border-[#58180d]/30 bg-[#fffaf0] p-5 shadow-2xl">
+        <div className={presentation === 'card' ? 'fixed inset-0 z-50 flex items-center justify-center bg-[#17130f]/45 p-4' : ''} role={presentation === 'card' ? 'presentation' : undefined}>
+          <section role={presentation === 'card' ? 'dialog' : undefined} aria-modal={presentation === 'card' ? true : undefined} aria-label={copy(locale, '我的自定义资料', 'My custom content')} className={presentation === 'card' ? 'max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-xl border border-[#58180d]/30 bg-[#fffaf0] p-5 shadow-2xl' : 'w-full rounded-xl border border-[#58180d]/25 bg-[#fffaf0] p-5 shadow-sm'}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-widest text-[#a35b11]">Personal D&D content</div>
@@ -252,7 +256,8 @@ export function DndPersonalSpeciesPackPanel({ locale }: Props) {
                   {copy(locale, '个人资料不会改写官方资料库，也不会自动加入服务器或房间。房间准入与可用内容由主持人后续审核。', 'Personal content never changes the official library and is not automatically added to a Server or Room. Room admission and allowed content remain host-reviewed.')}
                 </p>
               </div>
-              <button type="button" onClick={() => setOpen(false)} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-xs font-bold text-[#58180d]">{copy(locale, '关闭', 'Close')}</button>
+              {presentation === 'card' && <button type="button" onClick={() => setOpen(false)} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-xs font-bold text-[#58180d]">{copy(locale, '关闭', 'Close')}</button>}
+              {presentation === 'workbench' && onCloseWorkbench && <button type="button" onClick={onCloseWorkbench} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-xs font-bold text-[#58180d]">{copy(locale, '返回车卡', 'Return to builder')}</button>}
             </div>
 
             <div className="mt-4 rounded-lg border border-[#58180d]/15 bg-white/70 p-3">

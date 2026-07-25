@@ -31,7 +31,7 @@
  * Scaffold only: no real subscription, download, import, update,
  * dependency check, conflict detection, rule override, or preflight logic.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Locale } from '../../i18n';
 import {
   WORKSHOP_ATTRIBUTE_TAGS,
@@ -55,12 +55,15 @@ import {
 import { platformRepo } from '../../lib/architecture/repositoryComposition';
 import { PreviewArt } from './PreviewArt';
 import { WorkshopItemDetail } from './WorkshopItemDetail';
+import { DndPersonalSpeciesPackPanel } from './DndPersonalSpeciesPackPanel';
 
-type WorkshopTab = 'browse' | 'subscriptions';
+export type WorkshopTab = 'browse' | 'subscriptions' | 'myContent';
 
 export type WorkshopShellProps = {
   t: (key: string) => string;
   locale: Locale;
+  initialTab?: WorkshopTab;
+  onReturnToCreator?: () => void;
 };
 
 const cardCls = 'rounded-lg border border-[#2f2a22]/15 bg-white p-4 shadow-sm';
@@ -156,9 +159,13 @@ function statusBadgeCls(status: WorkshopSubscriptionStatusKey): string {
   }
 }
 
-export function WorkshopShell({ t, locale }: WorkshopShellProps) {
+export function WorkshopShell({ t, locale, initialTab = 'browse', onReturnToCreator }: WorkshopShellProps) {
   // ── Tab ──────────────────────────────────────────────────────────────────
-  const [tab, setTab] = useState<WorkshopTab>('browse');
+  const [tab, setTab] = useState<WorkshopTab>(initialTab);
+
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
 
   // ── Browse state ─────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
@@ -288,23 +295,6 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
     return <WorkshopItemDetail item={detailItem} t={t} locale={locale} onBack={() => setDetailId(null)} />;
   }
 
-  if (browseItems.length === 0 && subscriptionItems.length === 0) {
-    return (
-      <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
-        <header>
-          <h1 className="text-2xl font-bold">{t('workshop.title')}</h1>
-          <p className="mt-2 max-w-3xl text-sm text-[#51483d]">{t('workshop.subtitle')}</p>
-        </header>
-        <section className="mt-6 rounded-lg border border-[#2f2a22]/15 bg-white p-6 text-center">
-          <h2 className="text-base font-bold text-[#17130f]">{locale === 'en' ? 'No published packs yet' : '暂无公开资料包'}</h2>
-          <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[#51483d]">
-            {locale === 'en' ? 'Published creator packs will appear here when they are available.' : '创作者公开发布的资料包将在这里显示。'}
-          </p>
-        </section>
-      </main>
-    );
-  }
-
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-8 md:px-8">
@@ -314,9 +304,9 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
         <p className="mt-2 max-w-3xl text-sm text-[#51483d]">{t('workshop.subtitle')}</p>
       </header>
 
-      {/* Tabs — browse / subscriptions only */}
+      {/* Discovery stays separate from the private personal authoring workbench. */}
       <div className="mt-5 flex flex-wrap gap-2 border-b border-[#2f2a22]/12 pb-2">
-        {(['browse', 'subscriptions'] as WorkshopTab[]).map((key) => (
+        {(['browse', 'subscriptions', 'myContent'] as WorkshopTab[]).map((key) => (
           <button
             key={key}
             type="button"
@@ -325,10 +315,34 @@ export function WorkshopShell({ t, locale }: WorkshopShellProps) {
               tab === key ? 'bg-[#17130f] text-white' : 'text-[#51483d] hover:bg-[#2f2a22]/8'
             }`}
           >
-            {t(`workshop.tabs.${key}`)}
+            {key === 'myContent'
+              ? (locale === 'en' ? 'My creations' : '我的创作')
+              : t(`workshop.tabs.${key}`)}
           </button>
         ))}
       </div>
+
+      {tab === 'myContent' && (
+        <div className="mt-5 space-y-4">
+          <section className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-[#a35b11]/25 bg-[#fff1c7]/45 p-5">
+            <div className="max-w-3xl">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[#a35b11]">Personal authoring</div>
+              <h2 className="mt-1 text-xl font-bold text-[#58180d]">{locale === 'en' ? 'My personal content' : '我的个人资料'}</h2>
+              <p className="mt-2 text-sm leading-6 text-[#58180d]/75">
+                {locale === 'en'
+                  ? 'Create, import, and manage private D&D content here. Character Builder only selects a version; Rooms still review it separately.'
+                  : '在这里创建、导入并管理私人的 D&D 资料。车卡只选择资料版本；加入房间后仍需独立审核。'}
+              </p>
+            </div>
+            {onReturnToCreator && (
+              <button type="button" onClick={onReturnToCreator} className="rounded-md border border-[#58180d]/25 bg-white px-3 py-2 text-sm font-bold text-[#58180d]">
+                {locale === 'en' ? 'Return to builder' : '返回车卡'}
+              </button>
+            )}
+          </section>
+          <DndPersonalSpeciesPackPanel locale={locale} presentation="workbench" onCloseWorkbench={onReturnToCreator} />
+        </div>
+      )}
 
       {/* ════════════════════ BROWSE ════════════════════ */}
       {tab === 'browse' && (

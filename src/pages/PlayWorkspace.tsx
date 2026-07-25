@@ -419,6 +419,7 @@ type PlayWorkspaceProps = {
   onBack?: () => void;
   canGoBack?: boolean;
   onBackOverrideChange?: (override: PlayWorkspaceBackOverride | null) => void;
+  onOpenPersonalContentWorkshop?: () => void;
 };
 
 export const defaultPlayWorkspaceNavigationState: PlayWorkspaceNavigationState = {
@@ -435,6 +436,7 @@ export function PlayWorkspace({
   onBack,
   canGoBack = false,
   onBackOverrideChange,
+  onOpenPersonalContentWorkshop,
 }: PlayWorkspaceProps) {
   const [tab, setTab] = useState(navigationState?.tab ?? defaultPlayWorkspaceNavigationState.tab);
   // AI-LANDMARK: DND_PRODUCT_SHELL_PHASE_1
@@ -516,7 +518,12 @@ export function PlayWorkspace({
         <div className={`${THEMES['D&D'].panelBg} relative min-h-[70vh] overflow-hidden rounded-lg p-3 md:p-5`}>
           <DndBackground />
           <div className="relative z-10">
-            {tab === 'creator' && <Creator onComplete={() => openDndPlayTab('sheet')} />}
+            {tab === 'creator' && (
+              <Creator
+                onComplete={() => openDndPlayTab('sheet')}
+                onOpenPersonalContentWorkshop={onOpenPersonalContentWorkshop}
+              />
+            )}
             {/* AI-LANDMARK: ACTOR_VAULT_RESPONSIBILITY_CLEANUP_HIDE_RUNTIME_CTA_V1 — onStartPlaying not passed; runtime entry gated. */}
             {tab === 'sheet' && <Sheet />}
             {tab === 'gameplay' && <Gameplay />}

@@ -353,3 +353,9 @@ Read `P6_PERSONAL_CONTENT_SPELL_BUILDER.md` before adding personal spells to
 any other surface. The current builder path is a local known/prepared list;
 it is not a spellcasting engine, a class-legality decision, or a Room
 permission grant.
+
+## Personal Content Workshop IA (P6.8)
+
+Read `P6_PERSONAL_CONTENT_WORKSHOP_IA.md` before changing personal content
+navigation. `我的创作` is the private authoring workbench; Character Builder
+only selects an immutable version and must not grow a competing editor.

@@ -47,7 +47,13 @@ const ATTR_LABELS: Record<AttributeName, string> = {
  * but presents them through a responsive Builder Workbench: section navigation,
  * current editor, and live summary. Placeholder sections are display-only.
  */
-export function Creator({ onComplete }: { onComplete: () => void }) {
+export function Creator({
+  onComplete,
+  onOpenPersonalContentWorkshop,
+}: {
+  onComplete: () => void;
+  onOpenPersonalContentWorkshop?: () => void;
+}) {
   const { t } = createTranslator(readStoredLocale());
   const [section, setSection] = useState<BuilderSection>('identity');
   const [personalPacks, setPersonalPacks] = useState<PersonalCompendiumPack[]>([]);
@@ -324,11 +330,20 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
       <div className="mt-4 rounded-md border border-[#a35b11]/30 bg-[#fff1c7]/45 p-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h3 className="text-sm font-bold text-[#58180d]">我的自定义资料包（可选）</h3>
+            <h3 className="text-sm font-bold text-[#58180d]">个人资料来源（可选）</h3>
             <p className="mt-1 text-xs leading-relaxed text-[#58180d]/70">
-              已支持的种族、背景与起源专长会显示在对应选择中；复杂规则不会自动执行，也不会自动通过房间审核。
+              选择一个个人资料版本用于本次车卡；创建、导入与版本管理统一在创意工坊中完成。复杂规则不会自动执行，也不会自动通过房间审核。
             </p>
           </div>
+          {onOpenPersonalContentWorkshop && (
+            <button
+              type="button"
+              onClick={onOpenPersonalContentWorkshop}
+              className="rounded-md border border-[#58180d]/25 bg-white px-3 py-2 text-xs font-bold text-[#58180d]"
+            >
+              管理或导入个人资料
+            </button>
+          )}
           {character.personalContentReferences.length > 0 && (
             <span className="rounded-full border border-[#a35b11]/30 bg-white/70 px-2 py-0.5 text-[10px] font-bold text-[#7a4610]">
               已选择 1 个版本
@@ -364,7 +379,7 @@ export function Creator({ onComplete }: { onComplete: () => void }) {
         {personalPacksLoading && <p className="mt-2 text-xs text-[#58180d]/65">正在读取你的资料包…</p>}
         {personalPacksError && <p className="mt-2 text-xs text-[#a52a2a]">{personalPacksError}</p>}
         {!personalPacksLoading && !personalPacksError && personalPacks.length === 0 && (
-          <p className="mt-2 text-xs text-[#58180d]/65">你还没有个人资料包。可在角色库的“我的自定义资料”中创建或导入。</p>
+          <p className="mt-2 text-xs text-[#58180d]/65">你还没有个人资料包。可前往创意工坊的“我的创作”创建或导入。</p>
         )}
         {character.personalContentReferences[0] && (
           <p className="mt-3 rounded-md border border-dashed border-[#58180d]/20 bg-white/55 p-2 text-xs leading-relaxed text-[#58180d]/75">

@@ -230,6 +230,7 @@ export default function App() {
   const [navigationStack, setNavigationStack] = useState<NavigationState[]>([]);
   const [playWorkspaceBackOverride, setPlayWorkspaceBackOverride] =
     useState<PlayWorkspaceBackOverride | null>(null);
+  const [workshopReturnToCreator, setWorkshopReturnToCreator] = useState(false);
   const system = useAppStore((state) => state.system as System);
   const setSystem = useAppStore((state) => state.setSystem);
   useEffect(() => {
@@ -578,6 +579,7 @@ export default function App() {
       return;
     }
     if (feature === 'workshop' || feature === 'community') {
+      setWorkshopReturnToCreator(false);
       setAppView('workshop');
       return;
     }
@@ -592,6 +594,17 @@ export default function App() {
     }
     setActivePlaceholder(normalizeFeatureKey(feature));
     setAppView('placeholder');
+  };
+
+  const openPersonalContentWorkshop = () => {
+    setWorkshopReturnToCreator(true);
+    setAppView('workshop');
+  };
+
+  const returnToCreatorFromWorkshop = () => {
+    setWorkshopReturnToCreator(false);
+    setPlayStage('workspace');
+    setAppView('play');
   };
 
   const setLocalePreference = (nextLocale: Locale) => {
@@ -1320,7 +1333,11 @@ export default function App() {
         )}
 
         {appView === 'workshop' && (
-          <Workshop locale={locale} />
+          <Workshop
+            locale={locale}
+            initialTab={workshopReturnToCreator ? 'myContent' : 'browse'}
+            onReturnToCreator={workshopReturnToCreator ? returnToCreatorFromWorkshop : undefined}
+          />
         )}
 
         {appView === 'fanPlaza' && (
@@ -1370,6 +1387,7 @@ export default function App() {
               onBack={goBack}
               canGoBack={navigationStack.length > 0}
               onBackOverrideChange={setPlayWorkspaceBackOverride}
+              onOpenPersonalContentWorkshop={openPersonalContentWorkshop}
             />
           </div>
         )}

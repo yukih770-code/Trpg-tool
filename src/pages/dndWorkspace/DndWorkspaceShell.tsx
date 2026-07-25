@@ -17,7 +17,6 @@ import { CampaignLibraryShell } from '../../components/platform/CampaignLibraryS
 import { JoinCampaignPanel } from '../../components/platform/JoinCampaignPanel';
 import { CampaignRuntimeShell } from '../../components/platform/CampaignRuntimeShell';
 import { HostedRoomLaunchPanel } from '../../components/platform/HostedRoomLaunchPanel';
-import { DndPersonalSpeciesPackPanel } from '../../components/platform/DndPersonalSpeciesPackPanel';
 import type { LocalCampaign } from '../../lib/platform/campaignLocalStore';
 import {
   launchHostedRoomFromCampaign,
@@ -725,7 +724,6 @@ export function DndWorkspaceShell({
               colorTheme={DND_VAULT_COLOR_THEME}
               panelClassName={panelClass}
               contextBarClassName="border-[#58180d]/30 bg-white/50 text-[#58180d]"
-              homeCards={<DndPersonalSpeciesPackPanel locale={locale} />}
             />
           )}
 

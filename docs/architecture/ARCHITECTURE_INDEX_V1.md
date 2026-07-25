@@ -905,3 +905,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   or Room authority.
 - See `docs/implementation/P6_PERSONAL_CONTENT_SPELL_BUILDER.md` before
   changing spell selection or connecting it to Runtime.
+
+## Personal Content Workshop IA (P6.8)
+
+- Personal content authoring and import live in Workshop's private `我的创作`
+  workbench. Character Builder only selects a version and can return to this
+  workbench without losing its local draft.
+- See `docs/implementation/P6_PERSONAL_CONTENT_WORKSHOP_IA.md` before adding
+  publishing, server adoption, or another character-builder content editor.

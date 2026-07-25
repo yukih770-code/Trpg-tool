@@ -7,18 +7,20 @@
  * provides Home.
  */
 import { createTranslator, type Locale } from '../i18n';
-import { WorkshopShell } from '../components/platform/WorkshopShell';
+import { WorkshopShell, type WorkshopTab } from '../components/platform/WorkshopShell';
 
 export type WorkshopProps = {
   locale: Locale;
+  initialTab?: WorkshopTab;
+  onReturnToCreator?: () => void;
 };
 
-export function Workshop({ locale }: WorkshopProps) {
+export function Workshop({ locale, initialTab, onReturnToCreator }: WorkshopProps) {
   const { t } = createTranslator(locale);
 
   return (
     <div className="min-h-screen">
-      <WorkshopShell t={t} locale={locale} />
+      <WorkshopShell t={t} locale={locale} initialTab={initialTab} onReturnToCreator={onReturnToCreator} />
     </div>
   );
 }
