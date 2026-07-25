@@ -138,30 +138,10 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
   const applyHpAdjustment = (combatant: Combatant, kind: 'damage' | 'healing') => {
     const adjustment = numberValue(hpAdjustment);
     if (adjustment === undefined || adjustment <= 0 || combatant.hpCurrent === undefined) return;
-
-    if (kind === 'damage') {
-      const temporaryHp = Math.max(0, combatant.temporaryHp ?? 0);
-      const absorbed = Math.min(temporaryHp, adjustment);
-      const hpCurrent = Math.max(0, combatant.hpCurrent - (adjustment - absorbed));
-      update(combatant, {
-        temporaryHp: temporaryHp - absorbed,
-        hpCurrent,
-        hitPoints: hpCurrent,
-        isDefeated: hpCurrent === 0,
-        status: hpCurrent === 0 ? 'defeated' : 'active',
-      });
-    } else {
-      const hpCurrent = combatant.hpMax === undefined
-        ? combatant.hpCurrent + adjustment
-        : Math.min(combatant.hpMax, combatant.hpCurrent + adjustment);
-      update(combatant, {
-        hpCurrent,
-        hitPoints: hpCurrent,
-        isDefeated: false,
-        status: 'active',
-      });
-    }
-
+    const sourceName = zh ? '主持人确认' : 'Host confirmed';
+    persist(kind === 'damage'
+      ? table.damage(combatant.id, adjustment, { sourceName })
+      : table.heal(combatant.id, adjustment, { sourceName }));
     setHpAdjustment('');
   };
   const linkedToken = active ? placedTokens.find((token) => linkedCombatant(token, table.state.combatants)?.id === active.id) : undefined;
