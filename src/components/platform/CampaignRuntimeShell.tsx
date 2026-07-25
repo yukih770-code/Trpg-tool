@@ -30,7 +30,7 @@ import { rollSharedDiceExpression, formatSharedDiceRoll } from '../../lib/platfo
 import type { RoomLaunchActionState } from '../../lib/platform/hostedRoomLaunch';
 import type { MapRuntimeEventDraft, MapToken, MapTokenHpSummary } from '../../lib/map/mapRuntimeTypes';
 import type { MapRuntimeReplayEvent } from '../../lib/map/mapRuntimeReplay';
-import { entryCharacterFromCampaignSuggestedActor, entryCharacterToPresenceCandidate } from '../../lib/platform/entryCharacterRef';
+import { entryCharacterFromCampaignSuggestedActor, entryCharacterFromManualSummary, entryCharacterToPresenceCandidate } from '../../lib/platform/entryCharacterRef';
 import type { RuntimeAcDisplay, RuntimeHpDisplay } from '../../lib/platform/roomRuntimeVisibility';
 
 // Dev-only: the Runtime Layout Shell Preview (RuntimeSlotShell + DND combat dev
@@ -354,13 +354,23 @@ export function CampaignRuntimeShell({
   const localMapDisplay = context.systemId === 'dnd5e-2024' ? localDndMapDisplay(snapshotResult.snapshot) : {};
   // A local host may carry the selected campaign-entry character into the
   // local map. This is not a Room Lobby submission or remote-player approval.
+  const localEntryCharacter = entryCharacterFromCampaignSuggestedActor(
+    context.selectedActorId && context.selectedActorName
+      ? { actorId: context.selectedActorId, actorName: context.selectedActorName }
+      : undefined,
+    { systemId: context.systemId, isHostCarried: true, ...localMapDisplay },
+  ) ?? entryCharacterFromManualSummary({
+    id: context.selectedActorId,
+    displayName: context.selectedActorName,
+    systemId: context.systemId,
+  });
   const localHostCarriedCandidate = isHost
-    ? entryCharacterToPresenceCandidate(entryCharacterFromCampaignSuggestedActor(
-      context.selectedActorId && context.selectedActorName
-        ? { actorId: context.selectedActorId, actorName: context.selectedActorName }
-        : undefined,
-      { systemId: context.systemId, isHostCarried: true, ...localMapDisplay },
-    ))
+    ? entryCharacterToPresenceCandidate(localEntryCharacter && {
+      ...localEntryCharacter,
+      kind: 'playerCharacter',
+      isHostCarried: true,
+      ...localMapDisplay,
+    })
     : undefined;
 
   // ── M67 local scene focus (local RuntimeLog, no server) ────────────────────
