@@ -4,8 +4,8 @@
  * AI-LANDMARK: DND_ITEM_DEFINITIONS
  *
  * Promotes the read-only `DND_EQUIPMENT_CATALOG` rows into the long-term
- * `DndItemDefinition` shape and adds pending-source stubs only for the starter
- * items that are outside the currently extracted catalog (packs and instruments).
+ * `DndItemDefinition` shape and adds pending-source stubs only for starter
+ * packs that are outside the currently extracted catalog.
  *
  * No official numeric values are invented here: stubs carry
  * `sourceStatus: 'pending-source'` and omit damage / weight / value / contents.
@@ -188,20 +188,6 @@ const PENDING_STUBS: DndItemDefinition[] = [
     category: 'pack',
     pack: { isContainer: true },
     notes: '内容物 / 重量 / 价值待核对（contents 需读取 owner source）。',
-  },
-  {
-    id: 'tool.musical-instrument',
-    system: 'dnd5e-2024',
-    sourceStatus: 'pending-source',
-    nameCn: '乐器',
-    nameEn: 'Musical Instrument',
-    aliases: ['Musical Instrument', 'Instrument', '乐器(任意)'],
-    category: 'musicalInstrument',
-    subCategory: 'musicalInstrument',
-    equipSlots: ['instrument'],
-    equipProfile: { allowedSlots: ['instrument'], defaultSlot: 'instrument', slotUsage: 'utility' },
-    tool: { toolCategory: 'musicalInstrument', proficiencyType: 'tool' },
-    notes: '具体乐器 / 数值 / 来源待核对。',
   },
 ];
 

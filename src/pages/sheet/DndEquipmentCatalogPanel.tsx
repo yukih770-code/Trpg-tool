@@ -1,6 +1,7 @@
 import {
   DND_BASIC_ARMOR,
   DND_BASIC_GEAR,
+  DND_BASIC_TOOLS,
   DND_BASIC_WEAPONS,
 } from '../../data/dnd2024/equipment';
 import type {
@@ -13,7 +14,7 @@ import type {
  * DndEquipmentCatalogPanel
  *
  * Read-only equipment catalog for the DND Sheet (data layer v1).
- * Displays the owner-source weapon / armor catalog plus the small gear sample.
+ * Displays the owner-source weapon / armor / tool catalog plus the small gear sample.
  * It does NOT write to the character store, does not equip items,
  * does not change AC, attacks, damage, resources, or RuntimeLogEntry.
  */
@@ -117,7 +118,7 @@ export function DndEquipmentCatalogPanel() {
     <div className="rounded-lg border border-[#58180d]/20 bg-white/45 p-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-b border-[#58180d]/12 pb-2">
         <h3 className="text-sm font-black uppercase tracking-wide text-[#58180d]">装备资料 Equipment Catalog</h3>
-        <span className="rounded-full bg-[#58180d]/8 px-2 py-0.5 text-[10px] text-[#2c1810]/55">武器/护甲来自本地资料 · 不自动结算 AC / 攻击</span>
+        <span className="rounded-full bg-[#58180d]/8 px-2 py-0.5 text-[10px] text-[#2c1810]/55">武器/护甲/工具来自本地资料 · 不自动结算 AC / 攻击 / 检定</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-sans">
@@ -151,7 +152,18 @@ export function DndEquipmentCatalogPanel() {
 
         <div>
           <h4 className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[#58180d]">
-            工具与冒险装备 Gear &amp; Tools
+            工具 Tools
+            <span className="rounded-full bg-[#58180d]/10 px-1.5 py-0.5 text-[9px] font-bold text-[#58180d]/70">{DND_BASIC_TOOLS.length}</span>
+          </h4>
+          <div className="space-y-1.5">
+            {DND_BASIC_TOOLS.map(item => (
+              <div key={item.id}>
+                <GearRow item={item} />
+              </div>
+            ))}
+          </div>
+          <h4 className="mb-1.5 mt-4 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[#58180d]">
+            冒险装备样例 Gear Samples
             <span className="rounded-full bg-[#58180d]/10 px-1.5 py-0.5 text-[9px] font-bold text-[#58180d]/70">{DND_BASIC_GEAR.length}</span>
           </h4>
           <div className="space-y-1.5">

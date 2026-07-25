@@ -74,6 +74,22 @@ function armor(
   };
 }
 
+function tool(
+  id: string,
+  nameCn: string,
+  name: string,
+  cost: string,
+  weight: number | undefined,
+  sourceFile: '工匠工具.htm' | '其他工具.htm',
+  aliases?: string[],
+): DndGearItem {
+  return {
+    id, nameCn, name, category: 'tool', cost, weight, aliases,
+    source: 'dnd-local-chm-primary',
+    sourceRef: `${LOCAL_CHM_EQUIPMENT_REF}/${sourceFile}`,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 武器 Weapons
 // ─────────────────────────────────────────────────────────────────────────────
@@ -172,15 +188,38 @@ export const DND_BASIC_GEAR: DndGearItem[] = [
     weight: 1,
     cost: '1 CP',
   },
-  {
-    id: 'gear.thieves-tools',
-    name: "Thieves' Tools",
-    nameCn: '盗贼工具',
-    category: 'tool',
-    source: 'dnd2024-basic',
-    weight: 1,
-    cost: '25 GP',
-  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 工具 Tools
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const DND_BASIC_TOOLS: DndGearItem[] = [
+  tool('tool.alchemists-supplies', '炼金工具', "Alchemist's Supplies", '50 GP', 8, '工匠工具.htm'),
+  tool('tool.brewers-supplies', '酿酒工具', "Brewer's Supplies", '20 GP', 9, '工匠工具.htm'),
+  tool('tool.calligraphers-supplies', '书法工具', "Calligrapher's Supplies", '10 GP', 5, '工匠工具.htm'),
+  tool('tool.carpenters-tools', '木匠工具', "Carpenter's Tools", '8 GP', 6, '工匠工具.htm'),
+  tool('tool.cartographers-tools', '制图工具', "Cartographer's Tools", '15 GP', 6, '工匠工具.htm'),
+  tool('tool.cobblers-tools', '鞋匠工具', "Cobbler's Tools", '5 GP', 5, '工匠工具.htm'),
+  tool('tool.cooks-utensils', '厨师工具', "Cook's Utensils", '1 GP', 8, '工匠工具.htm'),
+  tool('tool.glassblowers-tools', '玻璃匠工具', "Glassblower's Tools", '30 GP', 5, '工匠工具.htm'),
+  tool('tool.jewelers-tools', '珠宝匠工具', "Jeweler's Tools", '25 GP', 2, '工匠工具.htm'),
+  tool('tool.leatherworkers-tools', '皮匠工具', "Leatherworker's Tools", '5 GP', 5, '工匠工具.htm'),
+  tool('tool.masons-tools', '石匠工具', "Mason's Tools", '10 GP', 8, '工匠工具.htm'),
+  tool('tool.painters-supplies', '画家工具', "Painter's Supplies", '10 GP', 5, '工匠工具.htm'),
+  tool('tool.potters-tools', '陶匠工具', "Potter's Tools", '10 GP', 3, '工匠工具.htm'),
+  tool('tool.smiths-tools', '铁匠工具', "Smith's Tools", '20 GP', 8, '工匠工具.htm'),
+  tool('tool.tinkers-tools', '修补工具', "Tinker's Tools", '50 GP', 10, '工匠工具.htm'),
+  tool('tool.weavers-tools', '织布工具', "Weaver's Tools", '1 GP', 5, '工匠工具.htm'),
+  tool('tool.woodcarvers-tools', '木雕工具', "Woodcarver's Tools", '1 GP', 5, '工匠工具.htm'),
+  tool('tool.disguise-kit', '易容工具', 'Disguise Kit', '25 GP', 3, '其他工具.htm'),
+  tool('tool.forgery-kit', '文书伪造工具', 'Forgery Kit', '15 GP', 5, '其他工具.htm'),
+  tool('tool.gaming-set', '赌具（多种）', 'Gaming Set', '价格不定', undefined, '其他工具.htm', ['赌具（任选一种）']),
+  tool('tool.herbalism-kit', '草药工具', 'Herbalism Kit', '5 GP', 3, '其他工具.htm'),
+  tool('tool.musical-instrument', '乐器（多类）', 'Musical Instrument', '价格不定', undefined, '其他工具.htm', ['乐器', '乐器（任选一种）', '乐器(任意)']),
+  tool('tool.navigators-tools', '领航工具', "Navigator's Tools", '25 GP', 2, '其他工具.htm'),
+  tool('tool.poisoners-kit', '毒药工具', "Poisoner's Kit", '50 GP', 2, '其他工具.htm'),
+  tool('tool.thieves-tools', '盗贼工具', "Thieves' Tools", '25 GP', 1, '其他工具.htm'),
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,6 +229,7 @@ export const DND_BASIC_GEAR: DndGearItem[] = [
 export const DND_EQUIPMENT_CATALOG: DndEquipmentItem[] = [
   ...DND_BASIC_WEAPONS,
   ...DND_BASIC_ARMOR,
+  ...DND_BASIC_TOOLS,
   ...DND_BASIC_GEAR,
 ];
 
