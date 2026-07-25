@@ -13,7 +13,7 @@ import type {
  * DndEquipmentCatalogPanel
  *
  * Read-only equipment catalog for the DND Sheet (data layer v1).
- * Displays the structured basic weapon / armor / gear sample data.
+ * Displays the owner-source weapon / armor catalog plus the small gear sample.
  * It does NOT write to the character store, does not equip items,
  * does not change AC, attacks, damage, resources, or RuntimeLogEntry.
  */
@@ -64,6 +64,7 @@ function WeaponRow({ item }: { item: DndWeaponItem }) {
           item.damageDice && `伤害 ${item.damageDice} ${item.damageType ?? ''}`.trim(),
           item.range && `射程 ${item.range}`,
           item.properties.length > 0 && `属性 ${item.properties.join('、')}`,
+          item.mastery && `精通 ${item.mastery}`,
           item.weight !== undefined && `${item.weight} lb`,
           item.cost,
         ]}
@@ -116,7 +117,7 @@ export function DndEquipmentCatalogPanel() {
     <div className="rounded-lg border border-[#58180d]/20 bg-white/45 p-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 border-b border-[#58180d]/12 pb-2">
         <h3 className="text-sm font-black uppercase tracking-wide text-[#58180d]">装备资料 Equipment Catalog</h3>
-        <span className="rounded-full bg-[#58180d]/8 px-2 py-0.5 text-[10px] text-[#2c1810]/55">只读资料层 v1 · 不写入角色，不影响 AC / 攻击 / 背包</span>
+        <span className="rounded-full bg-[#58180d]/8 px-2 py-0.5 text-[10px] text-[#2c1810]/55">武器/护甲来自本地资料 · 不自动结算 AC / 攻击</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-sans">

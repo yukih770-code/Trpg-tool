@@ -55,6 +55,10 @@ export interface DndEquipmentItemBase {
   category: DndEquipmentCategory;
   /** Data provenance tag, e.g. `dnd2024-basic` for the built-in sample set. */
   source: 'dnd2024-basic' | string;
+  /** Stable owner-source path for an extracted catalog row. */
+  sourceRef?: string;
+  /** Alternate spellings retained for inventory and starter-equipment resolution. */
+  aliases?: string[];
   /** Weight in pounds. */
   weight?: number;
   /** Display cost string, e.g. `15 GP`. */
@@ -74,6 +78,8 @@ export interface DndWeaponItem extends DndEquipmentItemBase {
   properties: string[];
   /** e.g. `20/60 ft`. */
   range?: string;
+  /** Weapon mastery label. Display-only until the combat resolver supports it. */
+  mastery?: string;
 }
 
 export interface DndArmorItem extends DndEquipmentItemBase {

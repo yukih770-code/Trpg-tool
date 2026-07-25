@@ -3,10 +3,9 @@
  *
  * AI-LANDMARK: DND_ITEM_DEFINITIONS
  *
- * Promotes the read-only `DND_EQUIPMENT_CATALOG` sample rows into the long-term
- * `DndItemDefinition` shape and adds a small set of pending-source stubs for
- * items that the class starter strings reference but that are not yet in the
- * sourced catalog (Rapier, Diplomat's / Entertainer's Pack, Musical Instrument).
+ * Promotes the read-only `DND_EQUIPMENT_CATALOG` rows into the long-term
+ * `DndItemDefinition` shape and adds pending-source stubs only for the starter
+ * items that are outside the currently extracted catalog (packs and instruments).
  *
  * No official numeric values are invented here: stubs carry
  * `sourceStatus: 'pending-source'` and omit damage / weight / value / contents.
@@ -51,9 +50,11 @@ function fromCatalog(row: DndEquipmentItem): DndItemDefinition {
     id,
     system: 'dnd5e-2024',
     source: row.source,
+    sourceRef: row.sourceRef,
     sourceStatus: 'sourced',
     nameCn,
     nameEn: row.name,
+    aliases: row.aliases,
     category: 'adventuringGear',
     weight: row.weight,
     value: row.cost,
@@ -64,7 +65,7 @@ function fromCatalog(row: DndEquipmentItem): DndItemDefinition {
     base.category = 'weapon';
     base.equipSlots = ['mainHand', 'offHand'];
     const props = Array.isArray(anyRow.properties) ? (anyRow.properties as string[]) : [];
-    const twoHanded = props.some((p) => /two-?hand/i.test(p));
+    const twoHanded = props.some((p) => /two-?hand|双手/i.test(p));
     base.equipProfile = twoHanded
       ? { allowedSlots: ['mainHand'], defaultSlot: 'mainHand', occupiedSlots: ['mainHand', 'offHand'], slotUsage: 'twoHands' }
       : { allowedSlots: ['mainHand', 'offHand'], defaultSlot: 'mainHand', slotUsage: 'oneHand' };
@@ -74,6 +75,7 @@ function fromCatalog(row: DndEquipmentItem): DndItemDefinition {
       properties: props.length > 0 ? props : undefined,
       range: typeof anyRow.range === 'string' ? anyRow.range : undefined,
       weaponCategory: mapWeaponCategory(anyRow.weaponCategory as string | undefined),
+      mastery: typeof anyRow.mastery === 'string' ? anyRow.mastery : undefined,
     };
     base.tags = props.length > 0 ? props : undefined;
     return base;
@@ -165,18 +167,6 @@ const SOURCED_WITH_GAMEPLAY: DndItemDefinition[] = SOURCED.map((def) =>
  * Structural facts only — NO fabricated damage / weight / value / contents.
  */
 const PENDING_STUBS: DndItemDefinition[] = [
-  {
-    id: 'weapon.rapier',
-    system: 'dnd5e-2024',
-    sourceStatus: 'pending-source',
-    nameCn: '细剑',
-    nameEn: 'Rapier',
-    aliases: ['Rapier', '刺剑'],
-    category: 'weapon',
-    equipSlots: ['mainHand', 'offHand'],
-    equipProfile: { allowedSlots: ['mainHand', 'offHand'], defaultSlot: 'mainHand', slotUsage: 'oneHand' },
-    notes: '数值 / 来源待核对（damage / weight / value 需读取 owner source）。',
-  },
   {
     id: 'pack.diplomats-pack',
     system: 'dnd5e-2024',
