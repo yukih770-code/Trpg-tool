@@ -69,6 +69,24 @@ function combatAcLabel(combatant: Combatant, zh: boolean): string {
   return `AC ${combatant.armorClass ?? '—'}`;
 }
 
+function visibleHpRatio(combatant: Combatant): number | undefined {
+  if (combatant.hpDisplay && combatant.hpDisplay.kind !== 'exact') return undefined;
+  const current = combatant.hpDisplay?.kind === 'exact' ? combatant.hpDisplay.current : combatant.hpCurrent;
+  const max = combatant.hpDisplay?.kind === 'exact' ? combatant.hpDisplay.max : combatant.hpMax;
+  if (current === undefined || max === undefined || max <= 0) return undefined;
+  return Math.max(0, Math.min(1, current / max));
+}
+
+function CombatHpBar({ combatant, zh }: { combatant: Combatant; zh: boolean }) {
+  const ratio = visibleHpRatio(combatant);
+  if (ratio === undefined) return null;
+  return <div className="mt-1.5" title={combatHpLabel(combatant, zh)}>
+    <div className="h-1.5 overflow-hidden rounded-full bg-slate-700/25" aria-label={combatHpLabel(combatant, zh)}>
+      <div className="h-full rounded-full bg-red-600 transition-[width] duration-200" style={{ width: `${ratio * 100}%` }} />
+    </div>
+  </div>;
+}
+
 const QUICK_CONDITIONS = ['倒地', '中毒', '擒抱', '束缚', '恐慌', '震慑', '隐形', '昏迷'];
 
 function diceRollFromEvent(event: RoomRuntimeLogEvent): SharedDiceRollResult | undefined {
@@ -203,6 +221,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
             <span className="rounded bg-white px-1.5 py-1">{combatAcLabel(active, zh)}</span>
             <span className="rounded bg-white px-1.5 py-1">{active.conditions.length ? active.conditions.join('、') : (zh ? '无状态' : 'No conditions')}</span>
           </div>
+          <CombatHpBar combatant={active} zh={zh} />
           <div className="mt-2 flex flex-wrap gap-1.5">
             <button type="button" onClick={() => { onSelectCombatant(active.id); onLocateCombatant(active.id); }} className="rounded border border-slate-400/40 bg-white px-2 py-1 text-[10px] font-bold text-slate-700">{zh ? '定位 Token' : 'Locate token'}</button>
             {role === 'player' && myCombatant?.id === active.id && onQuickRoll && <button type="button" onClick={() => void onQuickRoll({ expression: '1d20', label: `${active.displayName} ${zh ? '检定' : 'check'}` })} className="rounded border border-slate-400/40 bg-white px-2 py-1 text-[10px] font-bold text-slate-700">{zh ? '掷 d20' : 'Roll d20'}</button>}
@@ -237,6 +256,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
         return <div key={combatant.id} className={`rounded border px-2 py-2 ${current ? 'border-amber-400/55 bg-amber-50/70' : 'border-slate-300/45 bg-white/70'}`}>
           <button type="button" onClick={() => { onSelectCombatant(combatant.id); onLocateCombatant(combatant.id); }} className="flex w-full items-center justify-between gap-2 text-left"><span className="min-w-0 truncate text-[11px] font-bold text-slate-800">{current ? '● ' : ''}{combatant.displayName}</span><span className="text-[10px] font-black text-slate-600">{zh ? '先攻' : 'Init'} {combatant.initiative ?? '—'}</span></button>
           <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-slate-600"><span>{combatHpLabel(combatant, zh)}</span>{combatant.hpDisplay?.kind !== 'stage' && <><span>·</span><span>{zh ? '临时' : 'Temp'} {combatant.temporaryHp ?? 0}</span></>}<span>·</span><span>{combatAcLabel(combatant, zh)}</span>{combatant.conditions.length > 0 && <><span>·</span><span>{combatant.conditions.join('、')}</span></>}</div>
+          <CombatHpBar combatant={combatant} zh={zh} />
           {canManage && selectedNow && (
             <div className="mt-2 rounded border border-slate-300/70 bg-slate-50 p-2">
               <div className="text-[10px] font-bold text-slate-700">{zh ? '主持人确认结算' : 'Host-confirmed adjustment'}</div>
