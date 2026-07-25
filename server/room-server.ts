@@ -105,6 +105,7 @@ import { registerPrivateAlphaAuthApiRoutes } from './api/privateAlphaAuthApiRout
 import { okResponse } from './api/apiResponse.js';
 import { createPostgresActorRepository } from './adapters/postgresActorRepository.js';
 import { resolveOwnedRoomActorBinding } from './services/resolveOwnedRoomActorBinding.js';
+import { resolveOwnedPersonalContentReferences } from './services/resolveOwnedPersonalContentReferences.js';
 import { createPostgresPlatformFoundationRepository } from './adapters/postgresPlatformFoundationRepository.js';
 import { createPostgresWorldServerRepository } from './adapters/postgresWorldServerRepository.js';
 import { linkApprovedRoomBindingToCampaignActor } from './services/linkApprovedRoomBindingToCampaignActor.js';
@@ -637,7 +638,7 @@ app.post('/rooms/:roomId/members/:memberId/reject', (req, res) => {
 // NOT a real permission system. No Runtime / actor instance creation.
 
 app.post('/rooms/:roomId/actor-bindings/submit', async (req, res) => {
-  const body = (req.body ?? {}) as { memberId?: string; actorRef?: { systemId?: string; actorId?: string; displayName?: string; source?: unknown; summary?: string; hpCurrent?: number; hpMax?: number; armorClass?: number; details?: unknown } };
+  const body = (req.body ?? {}) as { memberId?: string; actorRef?: { systemId?: string; actorId?: string; displayName?: string; source?: unknown; summary?: string; hpCurrent?: number; hpMax?: number; armorClass?: number; details?: unknown; contentReferences?: unknown } };
   if (typeof body.memberId !== 'string' || !body.actorRef || typeof body.actorRef.displayName !== 'string') {
     res.status(400).json({ error: 'memberId and actorRef.displayName are required.' });
     return;
@@ -654,6 +655,7 @@ app.post('/rooms/:roomId/actor-bindings/submit', async (req, res) => {
     hpMax: body.actorRef.hpMax,
     armorClass: body.actorRef.armorClass,
     details: body.actorRef.details,
+    contentReferences: body.actorRef.contentReferences,
   };
   const room = requireRoomParticipant(req, res, req.params.roomId, body.memberId);
   if (!room) return;
@@ -662,10 +664,19 @@ app.post('/rooms/:roomId/actor-bindings/submit', async (req, res) => {
     res.status(401).json({ error: 'unauthenticated', message: 'Authentication required.' });
     return;
   }
+  const resolvedContent = await resolveOwnedPersonalContentReferences(platformFoundationRepository, {
+    viewerUserId: viewer.viewerUserId,
+    references: submittedActorRef.contentReferences,
+  });
+  if (resolvedContent.ok === false) {
+    res.status(resolvedContent.code === 'unavailable' ? 503 : resolvedContent.code === 'invalid' ? 400 : 404)
+      .json({ error: resolvedContent.code, message: resolvedContent.message });
+    return;
+  }
   const resolvedActor = await resolveOwnedRoomActorBinding(actorVaultRepository, {
     viewerUserId: viewer.viewerUserId,
     roomSystemId: room.identity.systemId,
-    actorRef: submittedActorRef,
+    actorRef: { ...submittedActorRef, contentReferences: resolvedContent.references },
   });
   if (resolvedActor.ok === false) {
     const status = resolvedActor.code === 'unavailable' ? 503 : resolvedActor.code === 'system_mismatch' ? 400 : 404;
@@ -685,6 +696,7 @@ app.post('/rooms/:roomId/actor-bindings/submit', async (req, res) => {
       hpMax: resolvedActor.actorRef.hpMax,
       armorClass: resolvedActor.actorRef.armorClass,
       details: resolvedActor.actorRef.details,
+      contentReferences: resolvedActor.actorRef.contentReferences,
     },
   });
   if (result.room) {

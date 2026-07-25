@@ -768,6 +768,9 @@ export function createPostgresPlatformFoundationRepository(
   const getCompendiumPackById = (packId: string) =>
     one<CompendiumPackRecord>(`SELECT ${COMPENDIUM_PACK_COLS} FROM compendium_packs WHERE pack_id = $1 LIMIT 1`, [packId], rowToCompendiumPack);
 
+  const getCompendiumPackVersionById = (packVersionId: string) =>
+    one<CompendiumPackVersionRecord>(`SELECT ${COMPENDIUM_PACK_VERSION_COLS} FROM compendium_pack_versions WHERE pack_version_id = $1 LIMIT 1`, [packVersionId], rowToCompendiumPackVersion);
+
   const listCompendiumPacksByOwner = (ownerId: string, limit?: number) =>
     many<CompendiumPackRecord>(`SELECT ${COMPENDIUM_PACK_COLS} FROM compendium_packs WHERE owner_id = $1 AND archived_at IS NULL ORDER BY updated_at DESC LIMIT $2`, [ownerId, limitOf(limit)], rowToCompendiumPack);
 
@@ -1050,6 +1053,7 @@ export function createPostgresPlatformFoundationRepository(
     listWorldServerRulesetVersions,
     createCompendiumPack,
     getCompendiumPackById,
+    getCompendiumPackVersionById,
     listCompendiumPacksByOwner,
     listUserPrivateCompendiumPacksByOwner,
     listCompendiumPacksByWorldServer,
@@ -1220,6 +1224,10 @@ export async function getAuthSessionById(sessionId: string): Promise<PostgresPla
 
 export async function getCompendiumPackById(packId: string): Promise<PostgresPlatformFoundationRepositoryResult<CompendiumPackRecord | null>> {
   return defaultPostgresPlatformFoundationRepository.getCompendiumPackById(packId);
+}
+
+export async function getCompendiumPackVersionById(packVersionId: string): Promise<PostgresPlatformFoundationRepositoryResult<CompendiumPackVersionRecord | null>> {
+  return defaultPostgresPlatformFoundationRepository.getCompendiumPackVersionById(packVersionId);
 }
 
 export async function getCampaignActorInstanceById(campaignActorInstanceId: string): Promise<PostgresPlatformFoundationRepositoryResult<CampaignActorInstanceRecord | null>> {

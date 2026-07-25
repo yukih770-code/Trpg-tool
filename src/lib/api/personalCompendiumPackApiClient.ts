@@ -11,6 +11,7 @@ export type PersonalCompendiumPack = {
   metadata: Record<string, unknown>;
   createdAt?: string;
   updatedAt?: string;
+  latestVersion?: { packVersionId: string; versionLabel: string };
 };
 
 export type PersonalCompendiumEntryInput = {

@@ -11,7 +11,7 @@ import { errorResponse, okResponse, type ServerApiResponse } from './apiResponse
 
 type ApiResult = ServerApiResponse<unknown>;
 type Body = Record<string, unknown>;
-type CompendiumRepository = Pick<ReturnType<typeof createPostgresPlatformFoundationRepository>, 'listUserPrivateCompendiumPacksByOwner'>;
+type CompendiumRepository = Pick<ReturnType<typeof createPostgresPlatformFoundationRepository>, 'listUserPrivateCompendiumPacksByOwner' | 'listCompendiumPackVersions'>;
 
 export type PersonalCompendiumPackApiRequest = {
   requestId?: string;
@@ -80,7 +80,19 @@ export function createPersonalCompendiumPackApiHandlers(
       const viewer = authenticatedViewer(input, options);
       if (isResponse(viewer)) return viewer;
       const result = await compendium.listUserPrivateCompendiumPacksByOwner(viewer.viewerUserId!, 100);
-      return result.ok === false ? repositoryFailure(result.error, input.requestId) : okResponse(result.value, { requestId: input.requestId });
+      if (result.ok === false) return repositoryFailure(result.error, input.requestId);
+      const summaries = await Promise.all(result.value.map(async (pack) => {
+        const versions = await compendium.listCompendiumPackVersions(pack.packId, 1);
+        if (versions.ok === false) return null;
+        const latestVersion = versions.value[0];
+        return latestVersion
+          ? { ...pack, latestVersion: { packVersionId: latestVersion.packVersionId, versionLabel: latestVersion.versionLabel } }
+          : { ...pack };
+      }));
+      if (summaries.some((summary) => summary === null)) {
+        return errorResponse(503, { kind: 'unavailable', message: 'Personal content pack service is unavailable.' }, { requestId: input.requestId });
+      }
+      return okResponse(summaries, { requestId: input.requestId });
     },
     async publishPack(input) {
       const viewer = authenticatedViewer(input, options);

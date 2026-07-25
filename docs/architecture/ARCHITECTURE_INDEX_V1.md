@@ -852,3 +852,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   official source data, Room admission, or Runtime authority.
 - See `docs/implementation/P6_PERSONAL_PRIVATE_DND_CONTENT.md` before adding
   creator integration or room-reviewed personal content references.
+
+## Room Personal Content References (P6.1)
+
+- A room binding may expose a server-verified personal pack name and immutable
+  version label for host review. It is not a pack export, a permissions grant,
+  or Runtime data.
+- See `docs/implementation/P6_ROOM_PERSONAL_CONTENT_REFERENCES.md` before
+  extending content review or player-authored content flows.

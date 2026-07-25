@@ -18,6 +18,9 @@ export async function runPersonalCompendiumPackApiHandlersSmoke(): Promise<{ tot
       async listUserPrivateCompendiumPacksByOwner(ownerId) {
         return { ok: true, value: ownerId === 'user_a' ? [userPack] : [] };
       },
+      async listCompendiumPackVersions(packId) {
+        return { ok: true, value: [{ packVersionId: `version_${packId}`, packId, versionLabel: '1.0.0', manifest: {}, source: {}, rights: {}, schemaVersion: 1 }] };
+      },
     },
     async publish(input) {
       captured = input;

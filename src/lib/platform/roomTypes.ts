@@ -159,6 +159,16 @@ export interface RoomActorRefSummary {
   armorClass?: number;
   /** Optional compact review metadata. It is not a character sheet or rules engine. */
   details?: CharacterClearanceDetails;
+  /** Compact, server-verified references. Room state never carries pack entries. */
+  contentReferences?: RoomPersonalContentReferenceSummary[];
+}
+
+export interface RoomPersonalContentReferenceSummary {
+  packId: string;
+  packVersionId: string;
+  displayName: string;
+  versionLabel: string;
+  contentKind: 'personalCompendiumPack';
 }
 
 // ── Clearance summary (M24.2a, OPTIONAL future layer) ───────────────────────

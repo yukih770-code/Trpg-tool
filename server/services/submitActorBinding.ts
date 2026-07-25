@@ -26,6 +26,7 @@ import type {
   RoomActorBindingSummary,
   RoomLobbyState,
   RoomMemberReadyState,
+  RoomPersonalContentReferenceSummary,
   RoomSystemId,
 } from '../../src/lib/platform/roomTypes.js';
 import { normalizeCharacterClearanceDetails } from '../../src/lib/platform/characterClearanceDetails.js';
@@ -45,6 +46,7 @@ export interface SubmitActorBindingInput {
     hpMax?: number;
     armorClass?: number;
     details?: unknown;
+    contentReferences?: RoomPersonalContentReferenceSummary[];
   };
 }
 
@@ -117,6 +119,7 @@ export function submitActorBinding(registry: RoomRegistry, input: SubmitActorBin
         hpMax: Number.isFinite(input.actorRef.hpMax) ? input.actorRef.hpMax : undefined,
         armorClass: Number.isFinite(input.actorRef.armorClass) ? input.actorRef.armorClass : undefined,
         details: normalizeCharacterClearanceDetails(input.actorRef.details),
+        contentReferences: input.actorRef.contentReferences?.length ? input.actorRef.contentReferences : undefined,
       },
       status: 'pendingHostApproval',
       submittedAt: now,

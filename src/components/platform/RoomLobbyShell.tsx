@@ -21,6 +21,10 @@ import {
   createActorVaultApiClient,
   type ActorVaultRecord as CloudActorVaultRecord,
 } from '../../lib/api/actorApiClient';
+import {
+  createPersonalCompendiumPackApiClient,
+  type PersonalCompendiumPack,
+} from '../../lib/api/personalCompendiumPackApiClient';
 import { ensureLocalActorInCloud } from '../../lib/platform/actorVaultCloudSync';
 import { getCharacterEntryActions, type CharacterEntryActionId } from '../../lib/platform/characterEntryCta';
 import {
@@ -32,6 +36,7 @@ import type {
   RoomActorBindingSource,
   RoomMemberIdentity,
   RoomMemberRole,
+  RoomPersonalContentReferenceSummary,
   RoomReadyStatus,
   RoomSnapshot,
   RoomSystemId,
@@ -200,12 +205,16 @@ export function RoomLobbyShell({
   const [cloudVaultLoading, setCloudVaultLoading] = useState(false);
   const [cloudVaultError, setCloudVaultError] = useState<string | null>(null);
   const [cloudVaultReloadVersion, setCloudVaultReloadVersion] = useState(0);
+  const [personalPacks, setPersonalPacks] = useState<PersonalCompendiumPack[]>([]);
+  const [selectedPersonalPackVersionId, setSelectedPersonalPackVersionId] = useState('');
+  const [personalPacksError, setPersonalPacksError] = useState<string | null>(null);
 
   const config = useMemo<RoomServerHttpClientConfig>(() => ({ baseUrl }), [baseUrl]);
   const actorVaultApiClient = useMemo(
     () => createActorVaultApiClient({ baseUrl }),
     [baseUrl],
   );
+  const personalPackApiClient = useMemo(() => createPersonalCompendiumPackApiClient({ baseUrl }), [baseUrl]);
   const vaultRecords = useMemo<ActorVaultRecord[]>(() => {
     const systemId = room?.identity.systemId;
     return isActorVaultSystemId(systemId)
@@ -216,6 +225,21 @@ export function RoomLobbyShell({
     () => cloudVaultRecords.find((actor) => actor.actorId === selectedCloudActorId),
     [cloudVaultRecords, selectedCloudActorId],
   );
+  const selectedPersonalPack = useMemo(
+    () => personalPacks.find((pack) => pack.latestVersion?.packVersionId === selectedPersonalPackVersionId),
+    [personalPacks, selectedPersonalPackVersionId],
+  );
+
+  const selectedPersonalContentReferences = useMemo<RoomPersonalContentReferenceSummary[] | undefined>(() => {
+    if (!selectedPersonalPack?.latestVersion) return undefined;
+    return [{
+      packId: selectedPersonalPack.packId,
+      packVersionId: selectedPersonalPack.latestVersion.packVersionId,
+      displayName: selectedPersonalPack.displayName,
+      versionLabel: selectedPersonalPack.latestVersion.versionLabel,
+      contentKind: 'personalCompendiumPack',
+    }];
+  }, [selectedPersonalPack]);
 
   useEffect(() => {
     let disposed = false;
@@ -242,6 +266,20 @@ export function RoomLobbyShell({
       });
     return () => { disposed = true; };
   }, [actorVaultApiClient, cloudVaultReloadVersion, room?.identity.systemId]);
+
+  useEffect(() => {
+    let disposed = false;
+    if (room?.identity.systemId !== 'dnd5e-2024') {
+      setPersonalPacks([]);
+      setSelectedPersonalPackVersionId('');
+      setPersonalPacksError(null);
+      return () => { disposed = true; };
+    }
+    personalPackApiClient.list()
+      .then((packs) => { if (!disposed) setPersonalPacks(packs.filter((pack) => pack.latestVersion)); })
+      .catch(() => { if (!disposed) setPersonalPacksError('暂时无法读取个人自定义资料；仍可不带资料提交角色。'); });
+    return () => { disposed = true; };
+  }, [personalPackApiClient, room?.identity.systemId]);
 
   const submissionDetails = useMemo(() => {
     const localSnapshot = bindingSource === 'localActorVault' && bindingActorId.trim() && !selectedCloudActor
@@ -477,6 +515,7 @@ export function RoomLobbyShell({
           hpMax: optionalNumber(bindingHpMax),
           armorClass: optionalNumber(bindingArmorClass),
           details: submissionDetails,
+          contentReferences: selectedPersonalContentReferences,
         },
       });
       await refreshSnapshot();
@@ -763,6 +802,22 @@ export function RoomLobbyShell({
         </div>
         {entryActionNotice && <p className="mb-3 rounded border border-slate-300/50 bg-white/70 px-2 py-1.5 text-[10px] text-slate-600">{entryActionNotice}</p>}
 
+        {room?.identity.systemId === 'dnd5e-2024' && entryActionMode !== null && (
+          <label className="mb-3 flex max-w-md flex-col gap-0.5 text-[10px] text-slate-500">
+            随角色提交的自定义资料（可选）
+            <select className={input} value={selectedPersonalPackVersionId} onChange={(event) => setSelectedPersonalPackVersionId(event.target.value)}>
+              <option value="">不带入个人资料包</option>
+              {personalPacks.map((pack) => pack.latestVersion && (
+                <option key={pack.latestVersion.packVersionId} value={pack.latestVersion.packVersionId}>
+                  {pack.displayName} · {pack.latestVersion.versionLabel}
+                </option>
+              ))}
+            </select>
+            <span className="text-[9px] text-slate-500">房间只会看到名称与版本；资料正文仍在你的个人资料库。主持人会随角色申请一并审核。</span>
+            {personalPacksError && <span className="text-[9px] text-amber-700">{personalPacksError}</span>}
+          </label>
+        )}
+
         <div className="space-y-2">
             {entryActionMode === 'existing' && (cloudVaultRecords.length > 0 || vaultRecords.length > 0 || cloudVaultLoading || cloudVaultError) && (
               <label className="flex max-w-md flex-col gap-0.5 text-[10px] text-slate-500">从角色库选择
@@ -803,6 +858,7 @@ export function RoomLobbyShell({
                   </button>
                 </div>
                 <CharacterClearanceDetailsPanel title="将提交给主持人的角色信息" details={submissionDetails} />
+                {selectedPersonalPack && <p className="mt-1 text-[10px] text-slate-600">随申请提交：{selectedPersonalPack.displayName} · {selectedPersonalPack.latestVersion?.versionLabel}。资料正文不会复制到房间。</p>}
               </div>
             )}
             {entryActionMode === 'quickDraft' && <div className="flex flex-wrap items-end gap-2">
@@ -837,6 +893,7 @@ export function RoomLobbyShell({
             {entryActionMode === 'quickDraft' && bindingName.trim() && (
               <div className="rounded border border-slate-300/40 bg-white/50 px-2 py-1.5">
                 <CharacterClearanceDetailsPanel title="将提交给主持人的角色信息" details={submissionDetails} />
+                {selectedPersonalPack && <p className="mt-1 text-[10px] text-slate-600">随申请提交：{selectedPersonalPack.displayName} · {selectedPersonalPack.latestVersion?.versionLabel}。资料正文不会复制到房间。</p>}
                 <p className="mt-1 text-[10px] text-slate-500">快速角色不会写入角色库；缺少装备或特性信息允许提交，但主持人可要求补充。</p>
               </div>
             )}
@@ -878,6 +935,7 @@ export function RoomLobbyShell({
                     {binding.actorRef.summary && <span className="max-w-[180px] truncate text-[10px] text-slate-500">{binding.actorRef.summary}</span>}
                     {binding.actorRef.hpMax !== undefined && <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">HP {binding.actorRef.hpCurrent ?? binding.actorRef.hpMax}/{binding.actorRef.hpMax}</span>}
                     {binding.actorRef.armorClass !== undefined && <span className="rounded-full bg-white/70 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">AC {binding.actorRef.armorClass}</span>}
+                    {binding.actorRef.contentReferences?.map((reference) => <span key={reference.packVersionId} className="rounded-full bg-violet-500/10 px-1.5 py-0.5 text-[9px] font-bold text-violet-700">资料：{reference.displayName} · {reference.versionLabel}</span>)}
                     <span className="ml-auto flex items-center gap-1">
                       <button type="button" className={`${reviewBtn} border-emerald-500/50 text-emerald-700`} disabled={reviewBindingId === binding.bindingId} onClick={() => reviewBinding(binding.bindingId, 'approve')}>
                         {reviewBindingId === binding.bindingId ? '处理中…' : '批准'}

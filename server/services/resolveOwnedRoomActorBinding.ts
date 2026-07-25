@@ -8,7 +8,7 @@
 
 import type { PostgresActorRepository } from '../adapters/postgresActorRepository.js';
 import { buildCharacterClearanceDetails } from '../../src/lib/platform/characterClearanceDetails.js';
-import type { RoomActorBindingSource, RoomSystemId } from '../../src/lib/platform/roomTypes.js';
+import type { RoomActorBindingSource, RoomPersonalContentReferenceSummary, RoomSystemId } from '../../src/lib/platform/roomTypes.js';
 
 export interface SubmittedRoomActorReference {
   systemId?: string;
@@ -20,6 +20,7 @@ export interface SubmittedRoomActorReference {
   hpMax?: number;
   armorClass?: number;
   details?: unknown;
+  contentReferences?: RoomPersonalContentReferenceSummary[];
 }
 
 export type OwnedRoomActorBindingResolution =
@@ -75,6 +76,7 @@ export async function resolveOwnedRoomActorBinding(
       hpMax: details.combat.hpMax,
       armorClass: details.combat.ac,
       details,
+      contentReferences: input.actorRef.contentReferences,
       // Do not trust client-provided summary/HP/details for a persisted Vault
       // record. A future campaign actor instance will project safe live fields.
     },

@@ -306,3 +306,10 @@ content, private compendium APIs, or future Room content review. Personal packs
 are owned by the authenticated user and are intentionally not Server-bound.
 Never make Server owner/admin status a prerequisite for personal authoring, and
 never infer Room approval from ownership of a personal pack.
+
+## Room Personal Content References (P6.1)
+
+Read `P6_ROOM_PERSONAL_CONTENT_REFERENCES.md` before changing Room actor
+binding content metadata. A Room may carry only the owner-verified pack name
+and exact version reference selected at submission time, never private entries
+or author identity.

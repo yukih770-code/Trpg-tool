@@ -15,6 +15,7 @@ import type {
   RoomJoinRequest,
   RoomJoinResult,
   RoomMemberRole,
+  RoomPersonalContentReferenceSummary,
   RoomSnapshot,
   RoomSystemId,
 } from './roomTypes';
@@ -204,6 +205,7 @@ export async function submitActorBindingToRoomServer(
       hpMax?: number;
       armorClass?: number;
       details?: CharacterClearanceDetails;
+      contentReferences?: RoomPersonalContentReferenceSummary[];
     };
   },
 ): Promise<unknown> {
