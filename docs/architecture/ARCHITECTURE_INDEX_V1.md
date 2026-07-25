@@ -100,6 +100,9 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Private server packs publish a new pack/version/entry set atomically. Publish
   requires `manageServerSettings`; read requires server `view`. This is neither a
   public Workshop route nor permission-free frontend storage.
+- First UI surface: `DndPrivateSpeciesPackEditorPanel.tsx` in Server Settings →
+  图鉴与资料包. It publishes `dnd-private-species-v0` authoring metadata only;
+  it must not be mistaken for a Creator/runtime rules integration.
 
 ## Postgres User First Slice (server-only)
 - Files: `server/db/**` (client, schema readiness, smokes, `migrations/0001_user_identity.sql`),

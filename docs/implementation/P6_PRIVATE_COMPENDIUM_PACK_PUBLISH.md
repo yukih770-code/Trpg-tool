@@ -38,9 +38,22 @@ Published content is private to the server. A future edit creates a later pack
 revision/version rather than mutating the published entry or any content reference
 already pinned by a character, campaign, room, or runtime snapshot.
 
+## First authoring surface
+
+`DndPrivateSpeciesPackEditorPanel` appears inside the current server's
+**图鉴与资料包** settings category. It is visible as a read surface to members
+and only permits owner/admin publication through the existing API guard.
+
+The first form publishes one DND 5e 2024 custom-species entry with an optional
+summary, size, speed, traits, and heritage-option names. Its compact content
+schema is intentionally `dnd-private-species-v0`: authoring data only, not an
+executable rules definition. It is not yet offered by the character creator.
+
 ## Explicitly deferred
 
-- Creator/editor UI and schema-specific DND forms.
+- Creator catalog resolution and a full schema-specific DND editor suite
+  (subclasses, feats, spells, items, structured heritage choices, validation,
+  revision/update UI).
 - Public Workshop discovery, sharing, moderation, or publication review.
 - Updating, replacing, archiving, or resolving packs in a character creator.
 - Executable rules/effects, automatic validation, AI generation, or runtime wiring.

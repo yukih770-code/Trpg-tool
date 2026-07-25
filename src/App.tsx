@@ -40,6 +40,7 @@ import { ServerCampaignWorkspace } from './components/platform/ServerCampaignWor
 import { LocalDevIdentitySwitcher } from './components/platform/LocalDevIdentitySwitcher';
 import { PrivateAlphaLoginPanel } from './components/platform/PrivateAlphaLoginPanel';
 import { ServerInvitePanel } from './components/platform/ServerInvitePanel';
+import { DndPrivateSpeciesPackEditorPanel } from './components/platform/DndPrivateSpeciesPackEditorPanel';
 
 type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop' | 'fanPlaza' | 'documents' | 'personalHub' | 'userProfile';
 type PlayStage = 'menu' | 'workspace';
@@ -760,6 +761,14 @@ export default function App() {
   const renderSettingsCategory = (cat: string) => {
     if (cat === '邀请与加入申请' && selectedServerId && entryStage === 'platform') {
       return <ServerInvitePanel worldServerId={selectedServerId} locale={locale} canManage={canManageSelectedServer} />;
+    }
+    if (cat === '图鉴与资料包' && selectedServerId && entryStage === 'platform') {
+      return <DndPrivateSpeciesPackEditorPanel
+        locale={locale}
+        worldServerId={selectedServerId}
+        canManage={canManageSelectedServer}
+        dndEnabled={worldServerDetail.gameSystems.some((binding) => binding.bindingStatus !== 'archived' && binding.gameSystemId === 'dnd5e-2024')}
+      />;
     }
     if (cat === '语言') {
       const isZh = locale === 'zh-CN';
