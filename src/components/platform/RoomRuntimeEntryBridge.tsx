@@ -655,6 +655,10 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   // The combat table projects onto the append-only room map; it does not own a
   // second token store or rewrite map presence.
   const roomMapBoard = useMemo(() => replayMapRuntimeEvents(roomMapEvents, roomMapId), [roomMapEvents, roomMapId]);
+  const dndActionTargets = useMemo(
+    () => roomCombatState.combatants.map((combatant) => ({ id: combatant.id, label: combatant.displayName })),
+    [roomCombatState.combatants],
+  );
 
   const card = 'rounded border border-slate-400/30 bg-white/60 p-3';
   const label = 'text-[11px] font-bold uppercase tracking-wide text-slate-600';
@@ -946,7 +950,16 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                 ) : undefined,
               actorPanel:
                 shellMode === 'player' ? (
-                  <RuntimeCharacterSheetPanel summary={characterSummary} inventory={inventorySummary} role="player" dndActions={selfDndActions} onRollDndAction={(input) => { void handleRoomDiceRoll(input); }} />
+                  <RuntimeCharacterSheetPanel
+                    summary={characterSummary}
+                    inventory={inventorySummary}
+                    role="player"
+                    dndActions={selfDndActions}
+                    dndActionTargets={dndActionTargets}
+                    selectedDndActionTargetId={selectedCombatantId}
+                    onSelectDndActionTarget={setSelectedCombatantId}
+                    onRollDndAction={(input) => { void handleRoomDiceRoll(input); }}
+                  />
                 ) : undefined,
               scenePanel:
                 shellMode === 'host' ? (
