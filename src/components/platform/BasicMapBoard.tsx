@@ -422,7 +422,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     } else if (tokenId) {
       const token = board.state.tokens.find((item) => item.id === tokenId);
       if (token) {
-        board.selectToken(tokenId);
+        selectToken(token);
         if (mayMoveToken(token)) {
           dragRef.current = { kind: 'token', tokenId, startX: event.clientX, startY: event.clientY, originX: token.x, originY: token.y, last: { x: token.x, y: token.y } };
         } else {
@@ -724,7 +724,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
         {templateDraftLayer}
         {measurementLayer}
         {sharedPreviewLayer}
-          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => board.selectToken(token.id)} onDoubleClick={() => onInspectToken?.(token)} onContextMenu={(event) => openTokenMenu(event, token)} className={`group absolute z-20 flex max-w-40 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold hover:z-30 focus-visible:z-30 ${token.isHidden ? 'opacity-70' : ''} ${isCurrentTurnToken(token) ? 'drop-shadow-[0_0_10px_rgba(245,197,24,.95)]' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title="双击或右键查看信息">{tokenContents(token)}{isCurrentTurnToken(token) && <span className="rounded bg-[#f5c518] px-1 text-[9px] font-black text-[#17130f]">当前回合</span>}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
+          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => selectToken(token)} onDoubleClick={() => onInspectToken?.(token)} onContextMenu={(event) => openTokenMenu(event, token)} className={`group absolute z-20 flex max-w-40 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold hover:z-30 focus-visible:z-30 ${token.isHidden ? 'opacity-70' : ''} ${isCurrentTurnToken(token) ? 'drop-shadow-[0_0_10px_rgba(245,197,24,.95)]' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title="双击或右键查看信息">{tokenContents(token)}{isCurrentTurnToken(token) && <span className="rounded bg-[#f5c518] px-1 text-[9px] font-black text-[#17130f]">当前回合</span>}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
       </div>
       {tokenMenuLayer}
       {measurementDistance && <div className="absolute bottom-3 left-3 rounded-md bg-[#17130f]/85 px-2 py-1 text-xs font-bold text-white">{measurementDistance.feet.toFixed(1)} ft · {measurementDistance.squares.toFixed(1)} {t('mapRuntime.squares')}</div>}
