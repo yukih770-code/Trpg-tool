@@ -78,7 +78,9 @@ export function tokenWithCombatProjection(token: MapToken, combatants: readonly 
   const id = token.combatantId ?? token.sourceCombatantId;
   const combatant = id
     ? combatants.find((item) => item.id === id)
-    : combatants.find((item) => item.mapTokenId === token.id);
+    : combatants.find((item) => item.mapTokenId === token.id
+      || (!!token.campaignActorId && item.sourceActorInstanceId === token.campaignActorId)
+      || (!!token.sourceActorInstanceId && item.sourceActorInstanceId === token.sourceActorInstanceId));
   return combatant
     ? {
         ...token,
