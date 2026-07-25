@@ -5,6 +5,7 @@ import type { DndLiteActorSheet } from '../dnd/dndLiteActorTypes';
 import type { MapTokenPresenceCandidate } from '../map/actorPresence';
 import { tokenInitials } from '../map/actorPresence';
 import type { MapTokenHpSummary, MapTokenKind, MapTokenSourceType } from '../map/mapRuntimeTypes';
+import type { RuntimeAcDisplay, RuntimeHpDisplay } from './roomRuntimeVisibility';
 import type { ActorVaultRecord } from './actorVaultRepositoryBridge';
 import type { RoomActorBindingSummary, RoomMemberIdentity } from './roomTypes';
 
@@ -35,6 +36,9 @@ export interface EntryCharacterRef {
   initials?: string;
   kind?: MapTokenKind;
   hpSummary?: MapTokenHpSummary;
+  /** Local or server-projected display data only; never use it as an authority source. */
+  hpDisplay?: RuntimeHpDisplay;
+  acDisplay?: RuntimeAcDisplay;
   summary?: string;
   armorClass?: number;
   conditionSummary?: string[];
@@ -56,7 +60,16 @@ function withInitials(ref: Omit<EntryCharacterRef, 'initials'>): EntryCharacterR
 
 export function entryCharacterFromCampaignSuggestedActor(
   actor: CampaignSuggestedActorLike | undefined,
-  options: { systemId?: string; ownerUserId?: string; isHostCarried?: boolean } = {},
+  options: {
+    systemId?: string;
+    ownerUserId?: string;
+    isHostCarried?: boolean;
+    hpSummary?: MapTokenHpSummary;
+    hpDisplay?: RuntimeHpDisplay;
+    acDisplay?: RuntimeAcDisplay;
+    armorClass?: number;
+    conditionSummary?: string[];
+  } = {},
 ): EntryCharacterRef | undefined {
   const actorId = actor?.actorId?.trim();
   const displayName = actor?.actorName?.trim();
@@ -71,6 +84,11 @@ export function entryCharacterFromCampaignSuggestedActor(
     ownerUserId: options.ownerUserId,
     controlledByUserId: options.ownerUserId,
     kind: 'playerCharacter',
+    hpSummary: options.hpSummary,
+    hpDisplay: options.hpDisplay,
+    acDisplay: options.acDisplay,
+    armorClass: options.armorClass,
+    conditionSummary: options.conditionSummary,
     isLocalDraft: true,
     isHostCarried: options.isHostCarried,
   });
@@ -206,6 +224,8 @@ export function entryCharacterToPresenceCandidate(ref: EntryCharacterRef | undef
     roomMemberId: ref.roomMemberId,
     actorBindingId: ref.actorBindingId,
     hpSummary: ref.hpSummary,
+    hpDisplay: ref.hpDisplay,
+    acDisplay: ref.acDisplay,
     conditionSummary: ref.conditionSummary,
     campaignActorId: ref.sourceType === 'campaignActor' || ref.sourceType === 'dndLiteActor' ? ref.id : undefined,
   };

@@ -28,13 +28,53 @@ import { describeRuntimeMode } from './runtimeModeContract';
 import { CharacterClearanceSummary } from './CharacterClearanceSummary';
 import { rollSharedDiceExpression, formatSharedDiceRoll } from '../../lib/platform/sharedDiceExpression';
 import type { RoomLaunchActionState } from '../../lib/platform/hostedRoomLaunch';
-import type { MapRuntimeEventDraft, MapToken } from '../../lib/map/mapRuntimeTypes';
+import type { MapRuntimeEventDraft, MapToken, MapTokenHpSummary } from '../../lib/map/mapRuntimeTypes';
 import type { MapRuntimeReplayEvent } from '../../lib/map/mapRuntimeReplay';
 import { entryCharacterFromCampaignSuggestedActor, entryCharacterToPresenceCandidate } from '../../lib/platform/entryCharacterRef';
+import type { RuntimeAcDisplay, RuntimeHpDisplay } from '../../lib/platform/roomRuntimeVisibility';
 
 // Dev-only: the Runtime Layout Shell Preview (RuntimeSlotShell + DND combat dev
 // panel) is hidden from normal Runtime; flip to true only for layout debugging.
 const SHOW_RUNTIME_LAYOUT_DEV_PREVIEW = false;
+
+type LocalDndMapDisplay = {
+  hpSummary?: MapTokenHpSummary;
+  hpDisplay?: RuntimeHpDisplay;
+  acDisplay?: RuntimeAcDisplay;
+  armorClass?: number;
+  conditionSummary?: string[];
+};
+
+function finiteNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * Local Runtime may read the selected local DND character directly. This is a
+ * display projection for its Token, not a second character state or a room
+ * visibility rule.
+ */
+function localDndMapDisplay(snapshot: unknown): LocalDndMapDisplay {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return {};
+  const value = snapshot as Record<string, unknown>;
+  const current = finiteNumber(value.hpCurrent ?? value.currentHp ?? value.hp);
+  const max = finiteNumber(value.hpMax ?? value.maxHp ?? value.maxHitPoints);
+  const temporary = finiteNumber(value.tempHp ?? value.temporaryHp);
+  const armorClass = finiteNumber(value.acMod ?? value.ac ?? value.armorClass);
+  const conditions = Array.isArray(value.conditions)
+    ? value.conditions.filter((item): item is string => typeof item === 'string' && item.trim() !== '').map((item) => item.trim()).slice(0, 8)
+    : undefined;
+  const hpSummary = current !== undefined || max !== undefined || temporary !== undefined
+    ? { current, max, temporary }
+    : undefined;
+  return {
+    hpSummary,
+    hpDisplay: hpSummary ? { kind: 'exact', current, max, temporary } : undefined,
+    acDisplay: armorClass === undefined ? undefined : { kind: 'exact', value: armorClass },
+    armorClass,
+    conditionSummary: conditions && conditions.length > 0 ? conditions : undefined,
+  };
+}
 
 /** Unbiased in-browser RNG in [1, sides] (crypto if available; Math.random fallback). */
 function browserDiceRng(sides: number): number {
@@ -311,6 +351,7 @@ export function CampaignRuntimeShell({
     matchConfidence: snapshotResult.matchConfidence,
   });
   const inventorySummary = buildRuntimeInventorySummary({ snapshot: snapshotResult.snapshot, systemId: context.systemId });
+  const localMapDisplay = context.systemId === 'dnd5e-2024' ? localDndMapDisplay(snapshotResult.snapshot) : {};
   // A local host may carry the selected campaign-entry character into the
   // local map. This is not a Room Lobby submission or remote-player approval.
   const localHostCarriedCandidate = isHost
@@ -318,7 +359,7 @@ export function CampaignRuntimeShell({
       context.selectedActorId && context.selectedActorName
         ? { actorId: context.selectedActorId, actorName: context.selectedActorName }
         : undefined,
-      { systemId: context.systemId, isHostCarried: true },
+      { systemId: context.systemId, isHostCarried: true, ...localMapDisplay },
     ))
     : undefined;
 

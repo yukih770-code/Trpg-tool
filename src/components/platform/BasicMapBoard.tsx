@@ -524,11 +524,6 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     const hpRatio = exactHp?.current !== undefined && exactHp.max !== undefined && exactHp.max > 0
       ? Math.max(0, Math.min(1, exactHp.current / exactHp.max))
       : undefined;
-    const healthRingStyle: CSSProperties = {
-      background: hpRatio === undefined
-        ? 'linear-gradient(135deg, #475569, #94a3b8)'
-        : `conic-gradient(#dc2626 0deg ${Math.round(hpRatio * 360)}deg, #64748b ${Math.round(hpRatio * 360)}deg 360deg)`,
-    };
     const tooltipStats = [hpLabel, acLabel, identity.conditionSummary ? `状态：${identity.conditionSummary}` : undefined].filter((value): value is string => Boolean(value));
     const hoverVerticalPlacement = token.y < 20 ? 'top-full mt-2' : 'bottom-full mb-2';
     const hoverHorizontalPlacement = token.x < 18
@@ -537,7 +532,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
         ? 'right-0'
         : 'left-1/2 -translate-x-1/2';
     return <>
-      <span className={`relative grid h-12 w-12 place-items-center rounded-full p-[3px] shadow-md ${token.isHidden ? 'opacity-70' : ''} ${board.state.selectedTokenId === token.id ? 'ring-4 ring-[#f5c518]/80 ring-offset-2 ring-offset-transparent' : ''}`} style={healthRingStyle}>
+      <span className={`relative grid h-12 w-12 place-items-center rounded-full border-2 border-slate-500/80 bg-slate-700 p-[2px] shadow-md ${token.isHidden ? 'opacity-70' : ''} ${board.state.selectedTokenId === token.id ? 'ring-4 ring-[#f5c518]/80 ring-offset-2 ring-offset-transparent' : ''}`}>
         <span className="relative grid h-full w-full place-items-center overflow-hidden rounded-full border border-white/90 bg-[#294966] text-[12px] font-black text-white">
           {identity.imageUrl ? (
             <img
@@ -552,6 +547,11 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
           <span aria-label={locale === 'en' ? 'Linked combatant' : '已关联战斗'} className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full border border-white bg-slate-900 text-[8px] text-white shadow">⚔</span>
         )}
       </span>
+      {hpRatio !== undefined && (
+        <span aria-label={hpLabel} className="h-1.5 w-12 overflow-hidden rounded-full border border-slate-950/45 bg-slate-600 shadow">
+          <span className="block h-full bg-red-600 transition-[width] duration-200" style={{ width: `${Math.round(hpRatio * 100)}%` }} />
+        </span>
+      )}
       <span className="max-w-28 truncate rounded bg-slate-950/80 px-1.5 py-0.5 text-center text-[10px] font-bold text-white shadow">{identity.label}</span>
       <span className={`pointer-events-none absolute z-30 hidden w-48 rounded-lg border border-slate-700/70 bg-slate-950/95 px-2.5 py-2 text-left text-[10px] leading-4 text-slate-100 shadow-xl group-hover:block group-focus-visible:block ${hoverVerticalPlacement} ${hoverHorizontalPlacement}`}>
         <span className="block truncate text-[11px] font-black text-white">{identity.label}</span>

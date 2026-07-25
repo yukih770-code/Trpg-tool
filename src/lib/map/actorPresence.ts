@@ -1,5 +1,6 @@
 import type { Combatant } from '../combat/combatRuntimeTypes';
 import type { MapToken, MapTokenHpSummary, MapTokenKind, MapTokenSize, MapTokenSourceType } from './mapRuntimeTypes';
+import type { RuntimeAcDisplay, RuntimeHpDisplay } from '../platform/roomRuntimeVisibility';
 
 /** Lightweight display prototype, not a second Actor persistence model. */
 export type MapTokenPresenceCandidate = {
@@ -17,6 +18,8 @@ export type MapTokenPresenceCandidate = {
   roomMemberId?: string;
   actorBindingId?: string;
   hpSummary?: MapTokenHpSummary;
+  hpDisplay?: RuntimeHpDisplay;
+  acDisplay?: RuntimeAcDisplay;
   conditionSummary?: string[];
 };
 
@@ -57,6 +60,7 @@ export function toMapTokenPrototype(candidate: MapTokenPresenceCandidate, positi
     ownerUserId: candidate.ownerUserId, controlledByUserId: candidate.controlledByUserId, imageUrl: candidate.imageUrl,
     roomMemberId: candidate.roomMemberId, actorBindingId: candidate.actorBindingId,
     initials: candidate.initials ?? tokenInitials(candidate.displayName), kind: candidate.kind ?? 'unknown', hpSummary: candidate.hpSummary,
+    hpDisplay: candidate.hpDisplay, acDisplay: candidate.acDisplay,
     conditionSummary: candidate.conditionSummary ? [...candidate.conditionSummary] : undefined, isHidden: false,
   };
 }
