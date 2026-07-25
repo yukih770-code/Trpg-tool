@@ -69,6 +69,8 @@ function combatAcLabel(combatant: Combatant, zh: boolean): string {
   return `AC ${combatant.armorClass ?? '—'}`;
 }
 
+const QUICK_CONDITIONS = ['倒地', '中毒', '擒抱', '束缚', '恐慌', '震慑', '隐形', '昏迷'];
+
 function diceRollFromEvent(event: RoomRuntimeLogEvent): SharedDiceRollResult | undefined {
   if (event.kind !== 'dice.roll' || !event.payload || typeof event.payload !== 'object' || Array.isArray(event.payload)) return undefined;
   const payload = event.payload as Partial<SharedDiceRollResult>;
@@ -151,13 +153,15 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
   };
 
   const update = (combatant: Combatant, patch: Partial<Omit<Combatant, 'id'>>) => persist(table.updateCombatant(combatant.id, patch));
-  const applyHpAdjustment = (combatant: Combatant, kind: 'damage' | 'healing') => {
+  const applyHpAdjustment = (combatant: Combatant, kind: 'damage' | 'healing' | 'temporaryHp') => {
     const adjustment = numberValue(hpAdjustment);
     if (adjustment === undefined || adjustment <= 0 || combatant.hpCurrent === undefined) return;
     const sourceName = zh ? '主持人确认' : 'Host confirmed';
     persist(kind === 'damage'
       ? table.damage(combatant.id, adjustment, { sourceName })
-      : table.heal(combatant.id, adjustment, { sourceName }));
+      : kind === 'healing'
+        ? table.heal(combatant.id, adjustment, { sourceName })
+        : table.temporaryHp(combatant.id, adjustment, false, { sourceName }));
     setHpAdjustment('');
   };
   const linkedToken = active ? placedTokens.find((token) => linkedCombatant(token, table.state.combatants)?.id === active.id) : undefined;
@@ -233,7 +237,39 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
         return <div key={combatant.id} className={`rounded border px-2 py-2 ${current ? 'border-amber-400/55 bg-amber-50/70' : 'border-slate-300/45 bg-white/70'}`}>
           <button type="button" onClick={() => { onSelectCombatant(combatant.id); onLocateCombatant(combatant.id); }} className="flex w-full items-center justify-between gap-2 text-left"><span className="min-w-0 truncate text-[11px] font-bold text-slate-800">{current ? '● ' : ''}{combatant.displayName}</span><span className="text-[10px] font-black text-slate-600">{zh ? '先攻' : 'Init'} {combatant.initiative ?? '—'}</span></button>
           <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-slate-600"><span>{combatHpLabel(combatant, zh)}</span>{combatant.hpDisplay?.kind !== 'stage' && <><span>·</span><span>{zh ? '临时' : 'Temp'} {combatant.temporaryHp ?? 0}</span></>}<span>·</span><span>{combatAcLabel(combatant, zh)}</span>{combatant.conditions.length > 0 && <><span>·</span><span>{combatant.conditions.join('、')}</span></>}</div>
-          {canManage && selectedNow && <div className="mt-2 rounded border border-slate-300/70 bg-slate-50 p-2"><div className="text-[10px] font-bold text-slate-700">{zh ? '主持人确认结算' : 'Host-confirmed adjustment'}</div>{recentDiceRolls.length > 0 && <div className="mt-1.5 rounded bg-white/75 p-1.5"><div className="text-[9px] font-bold text-slate-500">{zh ? '近期公开骰子' : 'Recent public rolls'}</div><div className="mt-1 flex flex-wrap gap-1">{recentDiceRolls.map(({ event, roll }) => <button key={event.eventId} type="button" onClick={() => setHpAdjustment(String(roll.total))} className="max-w-full rounded border border-indigo-300/60 bg-indigo-50 px-1.5 py-1 text-left text-[9px] font-bold text-indigo-800"><span className="truncate">{roll.label || roll.normalizedExpression}</span><span className="ml-1">= {roll.total}</span></button>)}</div></div>}<div className="mt-1 flex flex-wrap items-center gap-1.5"><input value={hpAdjustment} onChange={(event) => setHpAdjustment(event.target.value)} type="number" min="0" placeholder={zh ? '数值' : 'Amount'} className="w-20 rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><button type="button" disabled={combatant.hpCurrent === undefined || !numberValue(hpAdjustment) || numberValue(hpAdjustment)! <= 0} onClick={() => applyHpAdjustment(combatant, 'damage')} className="rounded border border-red-300 bg-white px-2 py-1 text-[10px] font-bold text-red-700 disabled:opacity-40">{zh ? '应用伤害' : 'Apply damage'}</button><button type="button" disabled={combatant.hpCurrent === undefined || !numberValue(hpAdjustment) || numberValue(hpAdjustment)! <= 0} onClick={() => applyHpAdjustment(combatant, 'healing')} className="rounded border border-emerald-300 bg-white px-2 py-1 text-[10px] font-bold text-emerald-700 disabled:opacity-40">{zh ? '应用治疗' : 'Apply healing'}</button></div><p className="mt-1 text-[10px] text-slate-500">{combatant.hpCurrent === undefined ? (zh ? '先填写当前 HP，才能使用快捷结算。' : 'Set current HP before using quick adjustments.') : (zh ? '点击骰子结果只会填入数值；伤害会先抵扣临时 HP，仍需主持人确认应用。' : 'A roll only fills the value. Damage consumes temporary HP first and still needs host confirmation.')}</p></div>}
+          {canManage && selectedNow && (
+            <div className="mt-2 rounded border border-slate-300/70 bg-slate-50 p-2">
+              <div className="text-[10px] font-bold text-slate-700">{zh ? '主持人确认结算' : 'Host-confirmed adjustment'}</div>
+              {recentDiceRolls.length > 0 && (
+                <div className="mt-1.5 rounded bg-white/75 p-1.5">
+                  <div className="text-[9px] font-bold text-slate-500">{zh ? '近期公开骰子' : 'Recent public rolls'}</div>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {recentDiceRolls.map(({ event, roll }) => (
+                      <button key={event.eventId} type="button" onClick={() => setHpAdjustment(String(roll.total))} className="max-w-full rounded border border-indigo-300/60 bg-indigo-50 px-1.5 py-1 text-left text-[9px] font-bold text-indigo-800">
+                        <span className="truncate">{roll.label || roll.normalizedExpression}</span><span className="ml-1">= {roll.total}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <input value={hpAdjustment} onChange={(event) => setHpAdjustment(event.target.value)} type="number" min="0" placeholder={zh ? '数值' : 'Amount'} className="w-20 rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" />
+                <button type="button" disabled={combatant.hpCurrent === undefined || !numberValue(hpAdjustment) || numberValue(hpAdjustment)! <= 0} onClick={() => applyHpAdjustment(combatant, 'damage')} className="rounded border border-red-300 bg-white px-2 py-1 text-[10px] font-bold text-red-700 disabled:opacity-40">{zh ? '应用伤害' : 'Apply damage'}</button>
+                <button type="button" disabled={combatant.hpCurrent === undefined || !numberValue(hpAdjustment) || numberValue(hpAdjustment)! <= 0} onClick={() => applyHpAdjustment(combatant, 'healing')} className="rounded border border-emerald-300 bg-white px-2 py-1 text-[10px] font-bold text-emerald-700 disabled:opacity-40">{zh ? '应用治疗' : 'Apply healing'}</button>
+                <button type="button" disabled={!numberValue(hpAdjustment) || numberValue(hpAdjustment)! <= 0} onClick={() => applyHpAdjustment(combatant, 'temporaryHp')} className="rounded border border-sky-300 bg-white px-2 py-1 text-[10px] font-bold text-sky-700 disabled:opacity-40">{zh ? '给予临时 HP' : 'Grant temp HP'}</button>
+              </div>
+              <div className="mt-2 border-t border-slate-300/60 pt-1.5">
+                <div className="text-[9px] font-bold text-slate-500">{zh ? '常用状态标记' : 'Common condition markers'}</div>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {QUICK_CONDITIONS.map((condition) => {
+                    const activeCondition = combatant.conditions.includes(condition);
+                    return <button key={condition} type="button" onClick={() => persist(table.setCondition(combatant.id, condition))} className={`rounded border px-1.5 py-1 text-[9px] font-bold ${activeCondition ? 'border-amber-400/60 bg-amber-100 text-amber-900' : 'border-slate-300 bg-white text-slate-600'}`}>{condition}</button>;
+                  })}
+                </div>
+              </div>
+              <p className="mt-1 text-[10px] text-slate-500">{combatant.hpCurrent === undefined ? (zh ? '先填写当前 HP，才能使用伤害或治疗快捷结算。' : 'Set current HP before using damage or healing adjustments.') : (zh ? '点击骰子结果只会填入数值；伤害会先抵扣临时 HP，所有改变仍需主持人确认。' : 'A roll only fills the value. Damage consumes temporary HP first; every change still needs host confirmation.')}</p>
+            </div>
+          )}
           {canManage && selectedNow && <div className="mt-2 grid grid-cols-2 gap-1.5"><input defaultValue={combatant.initiative ?? ''} onBlur={(event) => update(combatant, { initiative: numberValue(event.target.value) })} type="number" placeholder={zh ? '先攻' : 'Initiative'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.hpCurrent ?? ''} onBlur={(event) => update(combatant, { hpCurrent: numberValue(event.target.value), hitPoints: numberValue(event.target.value) })} type="number" placeholder="HP" className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.hpMax ?? ''} onBlur={(event) => update(combatant, { hpMax: numberValue(event.target.value), maxHitPoints: numberValue(event.target.value) })} type="number" placeholder={zh ? '最大 HP' : 'Max HP'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.temporaryHp ?? ''} onBlur={(event) => update(combatant, { temporaryHp: numberValue(event.target.value) })} type="number" placeholder={zh ? '临时 HP' : 'Temp HP'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.armorClass ?? ''} onBlur={(event) => update(combatant, { armorClass: numberValue(event.target.value) })} type="number" placeholder="AC" className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.conditions.join(', ')} onBlur={(event) => update(combatant, { conditions: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) })} placeholder={zh ? '状态，逗号分隔' : 'Conditions'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /></div>}
         </div>;
       })}</div>}
