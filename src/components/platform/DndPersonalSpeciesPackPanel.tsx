@@ -5,6 +5,7 @@ import { ApiClientError } from '../../lib/api/apiTypes';
 import {
   personalCompendiumPackApiClient,
   type PersonalCompendiumPack,
+  type PersonalCompendiumPackVersionContent,
   type PublishPersonalCompendiumPackInput,
 } from '../../lib/api/personalCompendiumPackApiClient';
 import {
@@ -67,6 +68,10 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [versioningPackId, setVersioningPackId] = useState<string | null>(null);
+  const [inspectedPackId, setInspectedPackId] = useState<string | null>(null);
+  const [inspectedVersion, setInspectedVersion] = useState<PersonalCompendiumPackVersionContent | null>(null);
+  const [inspectLoading, setInspectLoading] = useState(false);
+  const [inspectError, setInspectError] = useState('');
   const [importText, setImportText] = useState('');
   const [importDraft, setImportDraft] = useState<PersonalCompendiumImportDraft | null>(null);
   const [importError, setImportError] = useState('');
@@ -93,6 +98,35 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
   const traitList = useMemo(() => listFromLines(fields.traits), [fields.traits]);
   const heritageList = useMemo(() => listFromLines(fields.heritageOptions), [fields.heritageOptions]);
   const update = (key: keyof Fields, value: string) => setFields((previous) => ({ ...previous, [key]: value }));
+
+  const inspectPack = async (pack: PersonalCompendiumPack) => {
+    if (!pack.latestVersion || busy) return;
+    if (inspectedPackId === pack.packId) {
+      setInspectedPackId(null);
+      setInspectedVersion(null);
+      setInspectError('');
+      return;
+    }
+    setInspectedPackId(pack.packId);
+    setInspectedVersion(null);
+    setInspectError('');
+    setInspectLoading(true);
+    try {
+      setInspectedVersion(await personalCompendiumPackApiClient.getVersion(pack.packId, pack.latestVersion.packVersionId));
+    } catch (reason) {
+      setInspectError(reason instanceof ApiClientError && reason.statusCode === 401
+        ? copy(locale, '需要先登录，才能查看个人资料版本。', 'Sign in to view this personal content version.')
+        : copy(locale, '该资料版本暂时无法读取。', 'This content version is unavailable right now.'));
+    } finally {
+      setInspectLoading(false);
+    }
+  };
+
+  const beginNewVersion = (pack: PersonalCompendiumPack) => {
+    setVersioningPackId(pack.packId);
+    setFields((previous) => ({ ...previous, packName: pack.displayName, versionLabel: '1.1.0' }));
+    setNotice(copy(locale, `正在为“${pack.displayName}”创建新版本；已有版本不会被改写。`, `Creating a new version of ${pack.displayName}; existing versions will not change.`));
+  };
 
   const entryFromFields = () => {
     const name = fields.entryName.trim();
@@ -267,11 +301,38 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
               </div>
               {loading && <p className="mt-2 text-xs text-[#2c1810]/65">{copy(locale, '正在加载…', 'Loading…')}</p>}
               {!loading && packs.length === 0 && !notice && <p className="mt-2 text-xs text-[#2c1810]/65">{copy(locale, '尚未创建个人资料包。', 'No personal packs yet.')}</p>}
-              {!loading && packs.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{packs.map((pack) => (
-                <button key={pack.packId} type="button" disabled={busy} onClick={() => { setVersioningPackId(pack.packId); setFields((previous) => ({ ...previous, packName: pack.displayName, versionLabel: '1.1.0' })); setNotice(copy(locale, `正在为“${pack.displayName}”创建新版本；已有版本不会被改写。`, `Creating a new version of ${pack.displayName}; existing versions will not change.`)); }} className={`rounded-full px-2.5 py-1 text-xs font-semibold ${versioningPackId === pack.packId ? 'bg-[#58180d] text-white' : 'bg-[#fff1c7] text-[#7a4610]'}`}>
-                  {pack.displayName}{pack.latestVersion ? ` · ${pack.latestVersion.versionLabel}` : ''}
-                </button>
+              {!loading && packs.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{packs.map((pack) => (
+                <article key={pack.packId} className={`rounded-md border p-3 ${versioningPackId === pack.packId ? 'border-[#a35b11]/60 bg-[#fff1c7]/55' : 'border-[#58180d]/16 bg-white/65'}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-bold text-[#58180d]">{pack.displayName}</h4>
+                      <p className="mt-1 text-[11px] text-[#2c1810]/60">{pack.latestVersion ? `${copy(locale, '当前版本', 'Current version')} · ${pack.latestVersion.versionLabel}` : copy(locale, '尚无可读取版本', 'No readable version yet')}</p>
+                    </div>
+                    <span className="rounded-full border border-[#58180d]/15 bg-[#fff8e6] px-2 py-0.5 text-[10px] font-bold text-[#7a4610]">{copy(locale, '仅自己可见', 'Private')}</span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" disabled={busy || !pack.latestVersion} onClick={() => void inspectPack(pack)} className="rounded-md border border-[#58180d]/20 bg-white px-2.5 py-1.5 text-xs font-bold text-[#58180d] disabled:opacity-40">
+                      {inspectedPackId === pack.packId ? copy(locale, '收起内容', 'Hide contents') : copy(locale, '查看内容', 'View contents')}
+                    </button>
+                    <button type="button" disabled={busy} onClick={() => beginNewVersion(pack)} className="rounded-md border border-[#a35b11]/25 bg-[#fff1c7]/55 px-2.5 py-1.5 text-xs font-bold text-[#7a4610] disabled:opacity-40">
+                      {copy(locale, '基于此包创建新版本', 'Create a new version')}
+                    </button>
+                  </div>
+                </article>
               ))}</div>}
+              {inspectedPackId && <div className="mt-3 rounded-md border border-[#2f7f68]/25 bg-[#f1fbf7] p-3 text-xs text-[#184f42]">
+                {inspectLoading && <p>{copy(locale, '正在读取资料版本…', 'Loading content version…')}</p>}
+                {inspectError && <p className="font-semibold text-[#a52a2a]">{inspectError}</p>}
+                {inspectedVersion && <>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-bold">{inspectedVersion.pack.displayName} · {inspectedVersion.version.versionLabel}</p>
+                    <span>{copy(locale, '已发布版本不可直接修改', 'Published versions are immutable')}</span>
+                  </div>
+                  {inspectedVersion.entries.length === 0 ? <p className="mt-2">{copy(locale, '此版本没有可显示的条目。', 'This version has no displayable entries.')}</p> : <ul className="mt-2 space-y-1.5">
+                    {inspectedVersion.entries.map((entry) => <li key={entry.compendiumEntryId} className="flex flex-wrap items-center justify-between gap-2 rounded border border-[#2f7f68]/15 bg-white/65 px-2 py-1.5"><span className="font-semibold">{entry.displayName}</span><span className="rounded-full bg-[#2f7f68]/10 px-2 py-0.5 text-[10px] font-bold">{entry.entryKind}</span></li>)}
+                  </ul>}
+                </>}
+              </div>}
             </div>
 
             <form onSubmit={(event) => void publish(event)} className="mt-4 grid gap-3 rounded-lg border border-dashed border-[#a35b11]/35 bg-white/70 p-3">

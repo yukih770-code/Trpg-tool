@@ -359,3 +359,9 @@ permission grant.
 Read `P6_PERSONAL_CONTENT_WORKSHOP_IA.md` before changing personal content
 navigation. `我的创作` is the private authoring workbench; Character Builder
 only selects an immutable version and must not grow a competing editor.
+
+## Personal Content Workbench Inspection (P6.9)
+
+Read `P6_PERSONAL_CONTENT_WORKBENCH_INSPECTION.md` before adding management
+actions. This surface reads the owner's latest version for orientation only;
+immutable content is never edited in place or exposed to Rooms.

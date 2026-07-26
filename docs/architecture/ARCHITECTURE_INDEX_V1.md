@@ -913,3 +913,10 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   workbench without losing its local draft.
 - See `docs/implementation/P6_PERSONAL_CONTENT_WORKSHOP_IA.md` before adding
   publishing, server adoption, or another character-builder content editor.
+
+## Personal Content Workbench Inspection (P6.9)
+
+- The Workshop workbench may inspect only the author's latest private pack
+  version and show compact entry identity. Published versions remain immutable.
+- See `docs/implementation/P6_PERSONAL_CONTENT_WORKBENCH_INSPECTION.md` before
+  adding editing, deletion, export, or public sharing.
