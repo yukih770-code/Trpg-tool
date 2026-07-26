@@ -373,3 +373,10 @@ flow. Hand-authored entries may be composed in a local-only draft, and a
 new-version draft begins with an explicit owner-only copy of the latest pack
 version. This is not unpublished-draft persistence, collaboration, or a Room
 content channel.
+
+## Personal Class and Subclass Builder Projection (P6.11)
+
+Read `P6_PERSONAL_CONTENT_WORKSHOP_IA.md` before changing personal class or
+subclass data. The adapter may project bounded class facts for Character
+Builder, but it must not evaluate feature text, generate runtime actions,
+grant equipment, or bypass Room host review.

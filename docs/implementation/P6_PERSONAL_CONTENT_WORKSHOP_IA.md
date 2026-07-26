@@ -44,6 +44,18 @@ permissions or resources; and trait text never installs executable effects.
   or local persistence contract. Leaving the workbench discards an unpublished
   draft.
 
+## Personal class and subclass projection
+
+- The workbench may author a bounded D&D class record with hit die, primary
+  ability, saving throws, weapon/armor proficiency text, starting-equipment
+  note, and a level-one feature description.
+- A subclass is a separate entry and names its parent class exactly. The
+  builder groups it under that matching personal class and respects its stated
+  unlock level.
+- The builder uses the class hit die for first-level HP and persists declared
+  save/proficiency facts. It does not infer spellcasting, materialize starting
+  equipment, run feature text, or create class resources.
+
 ## Deferred
 
 - Public publishing, sharing, rating, and moderation.
@@ -51,5 +63,7 @@ permissions or resources; and trait text never installs executable effects.
 - Rich multi-entry editing of arbitrary imported schemas. Imported entries can
   be previewed and published as a complete version, but this workbench only
   authors the bounded D&D entry types listed above.
+- Automated class advancement, spellcasting, feature actions, and resource
+  systems for personal classes or subclasses.
 - Class legality, spell execution, or arbitrary rule effects.
 - Server adoption of a personal pack.

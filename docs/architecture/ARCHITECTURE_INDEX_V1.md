@@ -930,3 +930,13 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - See `docs/implementation/P6_PERSONAL_CONTENT_WORKSHOP_IA.md` before adding
   collaboration, persistence of unpublished drafts, arbitrary schema editing,
   or public sharing.
+
+## Personal Class and Subclass Builder Projection (P6.11)
+
+- A selected private pack may project bounded personal class and subclass data
+  into D&D Character Builder. This provides first-level HP, saving throws,
+  proficiency facts, and reference text only.
+- Never treat personal class metadata as executable rules, spellcasting
+  authority, item grants, Room approval, or a Runtime action source.
+- See `docs/implementation/P6_PERSONAL_CONTENT_WORKSHOP_IA.md` before adding
+  class advancement or custom-rule execution.

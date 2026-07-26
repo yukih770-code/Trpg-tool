@@ -22,7 +22,7 @@ type Props = {
 type Fields = {
   packName: string;
   versionLabel: string;
-  entryKind: 'species' | 'background' | 'feat' | 'spell';
+  entryKind: 'species' | 'class' | 'subclass' | 'background' | 'feat' | 'spell';
   entryName: string;
   size: string;
   speed: string;
@@ -41,12 +41,24 @@ type Fields = {
   spellRange: string;
   spellDuration: string;
   spellComponents: string;
+  classPrimaryAbility: 'Str' | 'Dex' | 'Con' | 'Int' | 'Wis' | 'Cha';
+  classHitDice: 'D4' | 'D6' | 'D8' | 'D10' | 'D12';
+  classSavingThrows: string;
+  classWeaponProficiencies: string;
+  classArmorProficiencies: string;
+  classStartingEquipment: string;
+  classFeatureSummary: string;
+  subclassParentClass: string;
+  subclassUnlockLevel: string;
+  subclassFeatureSummary: string;
 };
 
 const initialFields: Fields = {
   packName: '', versionLabel: '1.0.0', entryKind: 'species', entryName: '', size: '中型', speed: '30', summary: '', traits: '', heritageOptions: '',
   backgroundSkills: '', backgroundTools: '', featureName: '', featureDescription: '', featCategory: 'Origin', prerequisite: '',
   spellLevel: '0', spellSchool: '自定义', spellCastTime: '1 动作', spellRange: '自身', spellDuration: '立即', spellComponents: 'V',
+  classPrimaryAbility: 'Str', classHitDice: 'D8', classSavingThrows: '', classWeaponProficiencies: '', classArmorProficiencies: '', classStartingEquipment: '', classFeatureSummary: '',
+  subclassParentClass: '', subclassUnlockLevel: '1', subclassFeatureSummary: '',
 };
 
 function blankEntryFields(previous: Fields): Fields {
@@ -87,6 +99,14 @@ function entryKindGuidance(locale: Locale, entryKind: Fields['entryKind']): { ti
   if (entryKind === 'background') return {
     title: copy(locale, '背景：熟练项与背景特性', 'Background: proficiencies and feature'),
     body: copy(locale, '技能、工具与背景特性会作为车卡资料显示；背景特性不会自动授予资源或权限。', 'Skills, tools, and background feature text appear in the builder; the feature never grants resources or permissions automatically.'),
+  };
+  if (entryKind === 'class') return {
+    title: copy(locale, '职业：车卡基础与说明特性', 'Class: builder basics and reference features'),
+    body: copy(locale, '会提供生命骰、主属性、豁免和熟练项。这里只保存资料，不自动判断施法、装备选择或职业资源。', 'Provides hit die, primary ability, saves, and proficiencies. This saves reference data only; it does not automate casting, equipment choices, or class resources.'),
+  };
+  if (entryKind === 'subclass') return {
+    title: copy(locale, '子职业：挂接到个人职业', 'Subclass: attached to a personal class'),
+    body: copy(locale, '必须填写所属职业的准确名称。解锁等级和特性只供车卡与主持人阅读，不自动施加规则效果。', 'Enter the exact parent class name. Unlock level and feature text are for the builder and host to read; they do not execute rules automatically.'),
   };
   if (entryKind === 'feat') return {
     title: copy(locale, '专长：选择资料与前置说明', 'Feat: selection data and prerequisite note'),
@@ -213,6 +233,44 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
         metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customBackground' },
       };
     }
+    if (fields.entryKind === 'class') {
+      return {
+        entryKind: 'class' as const,
+        displayName: name,
+        content: {
+          schema: 'dnd-personal-class-v0',
+          name,
+          summary: fields.summary.trim() || undefined,
+          primaryAbility: fields.classPrimaryAbility,
+          hitDice: fields.classHitDice,
+          savingThrows: listFromLines(fields.classSavingThrows),
+          weaponProficiencies: listFromLines(fields.classWeaponProficiencies),
+          armorProficiencies: listFromLines(fields.classArmorProficiencies),
+          startingEquipment: fields.classStartingEquipment.trim() || undefined,
+          features: fields.classFeatureSummary.trim()
+            ? [{ name: '职业特性说明', desc: fields.classFeatureSummary.trim(), unlockLevel: 1 }]
+            : [],
+        },
+        metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customClass' },
+      };
+    }
+    if (fields.entryKind === 'subclass') {
+      return {
+        entryKind: 'subclass' as const,
+        displayName: name,
+        content: {
+          schema: 'dnd-personal-subclass-v0',
+          name,
+          className: fields.subclassParentClass.trim(),
+          summary: fields.summary.trim() || undefined,
+          unlockLevel: Math.max(1, Math.min(20, Number(fields.subclassUnlockLevel) || 1)),
+          features: fields.subclassFeatureSummary.trim()
+            ? [{ name: '子职业特性说明', desc: fields.subclassFeatureSummary.trim(), unlockLevel: Math.max(1, Math.min(20, Number(fields.subclassUnlockLevel) || 1)) }]
+            : [],
+        },
+        metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customSubclass' },
+      };
+    }
     if (fields.entryKind === 'feat') {
       return {
         entryKind: 'feat' as const,
@@ -263,6 +321,10 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
 
   const addCurrentEntryToDraft = () => {
     if (!fields.packName.trim() || !fields.entryName.trim() || busy) return;
+    if (fields.entryKind === 'subclass' && !fields.subclassParentClass.trim()) {
+      setNotice(copy(locale, '请先填写子职业所属的职业名称。', 'Enter the parent class name before adding a subclass.'));
+      return;
+    }
     const entry = entryFromFields();
     setDraftEntries((previous) => {
       const existingIndex = previous.findIndex((candidate) => candidate.entryKind === entry.entryKind && candidate.displayName === entry.displayName);
@@ -448,6 +510,8 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                 <FormField label={copy(locale, '资料类型', 'Content type')} required hint={copy(locale, '决定车卡会在哪个选择区显示这份资料。', 'Controls which builder selector can display this content.')}>
                   <select value={fields.entryKind} onChange={(event) => update('entryKind', event.target.value)} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50">
                     <option value="species">{copy(locale, '种族', 'Species')}</option>
+                    <option value="class">{copy(locale, '职业', 'Class')}</option>
+                    <option value="subclass">{copy(locale, '子职业', 'Subclass')}</option>
                     <option value="background">{copy(locale, '背景', 'Background')}</option>
                     <option value="feat">{copy(locale, '专长', 'Feat')}</option>
                     <option value="spell">{copy(locale, '法术', 'Spell')}</option>
@@ -476,6 +540,24 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                   </FormField>
                   <FormField label={copy(locale, '前置条件说明', 'Prerequisite note')} hint={copy(locale, '给玩家与主持人阅读的条件文字，不会自动判断是否满足。', 'A note for players and the host; eligibility is not automatically evaluated.')}>
                     <input value={fields.prerequisite} onChange={(event) => update('prerequisite', event.target.value)} placeholder={copy(locale, '可选，例如：4 级以上', 'Optional, e.g. level 4 or higher')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                </>}
+                {fields.entryKind === 'class' && <>
+                  <FormField label={copy(locale, '主属性', 'Primary ability')} hint={copy(locale, '车卡用于提示该职业的核心属性；不会自动限制属性分配。', 'Shown as the class core ability in the builder; it does not restrict attribute allocation.')}>
+                    <select value={fields.classPrimaryAbility} onChange={(event) => update('classPrimaryAbility', event.target.value)} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50">
+                      <option value="Str">{copy(locale, '力量（Str）', 'Strength (Str)')}</option><option value="Dex">{copy(locale, '敏捷（Dex）', 'Dexterity (Dex)')}</option><option value="Con">{copy(locale, '体质（Con）', 'Constitution (Con)')}</option><option value="Int">{copy(locale, '智力（Int）', 'Intelligence (Int)')}</option><option value="Wis">{copy(locale, '感知（Wis）', 'Wisdom (Wis)')}</option><option value="Cha">{copy(locale, '魅力（Cha）', 'Charisma (Cha)')}</option>
+                    </select>
+                  </FormField>
+                  <FormField label={copy(locale, '生命骰', 'Hit die')} hint={copy(locale, '用于完成车卡时计算 1 级生命值。', 'Used to calculate level-one hit points when completing the builder.')}>
+                    <select value={fields.classHitDice} onChange={(event) => update('classHitDice', event.target.value)} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50"><option value="D4">D4</option><option value="D6">D6</option><option value="D8">D8</option><option value="D10">D10</option><option value="D12">D12</option></select>
+                  </FormField>
+                </>}
+                {fields.entryKind === 'subclass' && <>
+                  <FormField label={copy(locale, '所属职业名称', 'Parent class name')} required hint={copy(locale, '必须与同一资料包中职业条目的名称完全一致，才能出现在该职业下。', 'Must exactly match a class entry name in this pack to appear under that class.')}>
+                    <input value={fields.subclassParentClass} onChange={(event) => update('subclassParentClass', event.target.value)} placeholder={copy(locale, '例如：港湾守卫', 'e.g. Harbor Warden')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '解锁等级', 'Unlock level')} hint={copy(locale, '填 1 至 20。只有 1 级解锁的子职业会在新角色车卡中要求选择。', 'Enter 1 through 20. Only subclasses unlocked at level 1 are required during new-character creation.')}>
+                    <input value={fields.subclassUnlockLevel} onChange={(event) => update('subclassUnlockLevel', event.target.value)} inputMode="numeric" placeholder="1" disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
                   </FormField>
                 </>}
                 {fields.entryKind === 'spell' && <>
@@ -528,6 +610,30 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                   </FormField>
                 </div>
               </>}
+              {fields.entryKind === 'class' && <>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <FormField label={copy(locale, '豁免熟练', 'Saving throw proficiencies')} hint={copy(locale, '每行一项，使用 Str、Dex、Con、Int、Wis 或 Cha。无效名称不会进入车卡。', 'One per line: Str, Dex, Con, Int, Wis, or Cha. Unknown values do not enter the builder.')}>
+                    <textarea value={fields.classSavingThrows} onChange={(event) => update('classSavingThrows', event.target.value)} placeholder={'Str\nCon'} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '起始装备说明', 'Starting equipment note')} hint={copy(locale, '给玩家与主持人阅读的起始装备计划；不会直接把物品加入背包。', 'A starting-equipment plan for players and the host; it does not add items directly to inventory.')}>
+                    <textarea value={fields.classStartingEquipment} onChange={(event) => update('classStartingEquipment', event.target.value)} placeholder={copy(locale, '例如：长剑或短剑、皮甲、探索者套装', 'e.g. longsword or shortsword, leather armor, explorer pack')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <FormField label={copy(locale, '武器熟练项', 'Weapon proficiencies')} hint={copy(locale, '每行一项，只作为车卡资料显示。', 'One per line; shown as character-sheet reference only.')}>
+                    <textarea value={fields.classWeaponProficiencies} onChange={(event) => update('classWeaponProficiencies', event.target.value)} placeholder={copy(locale, '例如：简单武器\n军用近战武器', 'e.g. Simple weapons\nMartial melee weapons')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '护甲熟练项', 'Armor proficiencies')} hint={copy(locale, '每行一项，只作为车卡资料显示。', 'One per line; shown as character-sheet reference only.')}>
+                    <textarea value={fields.classArmorProficiencies} onChange={(event) => update('classArmorProficiencies', event.target.value)} placeholder={copy(locale, '例如：轻甲\n盾牌', 'e.g. Light armor\nShields')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                </div>
+                <FormField label={copy(locale, '1 级职业特性说明', 'Level-one class feature note')} hint={copy(locale, '用文字概述核心特性。不会自动添加动作、法术、伤害或资源。', 'Summarize the core feature in text. It does not add actions, spells, damage, or resources automatically.')}>
+                  <textarea value={fields.classFeatureSummary} onChange={(event) => update('classFeatureSummary', event.target.value)} placeholder={copy(locale, '可选：说明该职业的核心玩法与首级能力', 'Optional: explain the class core and level-one capability')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+              </>}
+              {fields.entryKind === 'subclass' && <FormField label={copy(locale, '子职业特性说明', 'Subclass feature note')} hint={copy(locale, '用文字说明该子职业的主要能力；不会自动创建动作、效果或资源。', 'Describe the subclass core in text; it does not create actions, effects, or resources automatically.')}>
+                <textarea value={fields.subclassFeatureSummary} onChange={(event) => update('subclassFeatureSummary', event.target.value)} placeholder={copy(locale, '可选：说明该子职业的主题与主要能力', 'Optional: explain the subclass theme and main ability')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+              </FormField>}
               <div className="flex flex-wrap items-center gap-3">
                 {versioningPackId && <button type="button" disabled={busy} onClick={() => { setVersioningPackId(null); setDraftEntries([]); setFields(initialFields); setNotice(''); }} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-bold text-[#58180d]">{copy(locale, '改为新建资料包', 'Create a new pack instead')}</button>}
                 <button type="button" onClick={addCurrentEntryToDraft} disabled={busy || !fields.packName.trim() || !fields.entryName.trim()} className="rounded-md border border-[#58180d]/30 bg-white px-3 py-2 text-sm font-bold text-[#58180d] disabled:opacity-40">{copy(locale, '加入资料包草稿', 'Add to pack draft')}</button>

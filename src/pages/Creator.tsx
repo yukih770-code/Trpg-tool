@@ -11,6 +11,7 @@ import { personalCompendiumPackApiClient, type PersonalCompendiumPack, type Pers
 import { ApiClientError } from '../lib/api/apiTypes';
 import {
   personalBackgroundEntriesToBackgroundDefs,
+  personalClassEntriesToClassDefs,
   personalFeatEntriesToFeatDefs,
   personalSpeciesEntriesToRaceDefs,
   personalSpellEntriesToSpellInfo,
@@ -69,7 +70,10 @@ export function Creator({
   const personalRaceData = personalSpeciesEntriesToRaceDefs(selectedPersonalPackContent?.entries ?? [])
     .filter((race) => !baseRaceData.some((baseRace) => baseRace.name === race.name));
   const RACE_DATA = [...baseRaceData, ...personalRaceData];
-  const CLASS_DATA = getAvailableClasses(character);
+  const baseClassData = getAvailableClasses(character);
+  const personalClassData = personalClassEntriesToClassDefs(selectedPersonalPackContent?.entries ?? [])
+    .filter((cls) => !baseClassData.some((baseClass) => baseClass.name === cls.name));
+  const CLASS_DATA = [...baseClassData, ...personalClassData];
   const personalBackgroundData = personalBackgroundEntriesToBackgroundDefs(selectedPersonalPackContent?.entries ?? [])
     .filter((background) => !BACKGROUND_DATA.some((baseBackground) => baseBackground.name === background.name));
   const AVAILABLE_BACKGROUND_DATA = [...BACKGROUND_DATA, ...personalBackgroundData];
@@ -156,7 +160,8 @@ export function Creator({
     const conVal = character.attrs.Con.base + character.attrs.Con.pointbuy + character.attrs.Con.racebonus;
     const conMod = Math.floor((conVal - 10) / 2);
     const hitDiceSizes: Record<string, number> = { '野蛮人': 12, '战士': 10, '圣武士': 10, '游侠': 10, '法师': 6, '术士': 6, '护法': 10, '武僧': 8, '吟游诗人': 8, '牧师': 8, '德鲁伊': 8, '邪术师': 8, '游荡者': 8 };
-    const hd = hitDiceSizes[character.jobClass] || 8;
+    const classHitDie = cls ? Number(cls.hitDice.slice(1)) : 0;
+    const hd = classHitDie || hitDiceSizes[character.jobClass] || 8;
     const initialHp = hd + conMod;
     const isCaster = ['法师', '吟游诗人', '牧师', '术士', '邪术师', '德鲁伊'].includes(character.jobClass);
 
@@ -526,6 +531,10 @@ export function Creator({
   const renderClass = () => (
     <section className={panelClass}>
       {renderSectionHeader(t('dndBuilder.sections.class'), t('dndBuilder.descriptions.class'))}
+      {selectedPersonalReference && <div className="mb-3 rounded-md border border-[#a35b11]/25 bg-[#fff1c7]/45 p-3 text-xs leading-relaxed text-[#58180d]/75">
+        {selectedPersonalPackContentLoading ? '正在载入个人职业与子职业选项…' : '个人资料版本中的职业会提供生命骰、豁免与熟练项；特性文字不会自动生成动作、法术或职业资源。'}
+        {selectedPersonalPackContentError && <span className="mt-1 block text-[#a52a2a]">{selectedPersonalPackContentError}</span>}
+      </div>}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)]">
         <ScrollArea className="max-h-[420px] rounded-md border border-[#58180d]/20 bg-white/45 p-3 md:max-h-[560px]">
           {CLASS_DATA.map(cls => (

@@ -1,5 +1,5 @@
 import type { PersonalCompendiumPackVersionContent } from '../api/personalCompendiumPackApiClient';
-import type { BackgroundDef, FeatDef, RaceDef, SkillName, SpellInfo } from '../dnd-types';
+import type { AttributeName, BackgroundDef, ClassDef, ClassFeature, FeatDef, HitDiceType, RaceDef, SkillName, SpellInfo, SubclassDef } from '../dnd-types';
 
 type Entry = PersonalCompendiumPackVersionContent['entries'][number];
 type JsonRecord = Record<string, unknown>;
@@ -46,6 +46,87 @@ function components(value: unknown): SpellInfo['component'] {
     s: source.includes('S'),
     m: source.includes('M'),
   };
+}
+
+const ATTRIBUTE_NAMES: readonly AttributeName[] = ['Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha'];
+const HIT_DICE: readonly HitDiceType[] = ['D4', 'D6', 'D8', 'D10', 'D12'];
+
+function attribute(value: unknown, fallback: AttributeName): AttributeName {
+  return typeof value === 'string' && ATTRIBUTE_NAMES.includes(value as AttributeName)
+    ? value as AttributeName
+    : fallback;
+}
+
+function attributeList(value: unknown): AttributeName[] {
+  return textList(value, 2).filter((item): item is AttributeName => ATTRIBUTE_NAMES.includes(item as AttributeName));
+}
+
+function hitDie(value: unknown): HitDiceType {
+  return typeof value === 'string' && HIT_DICE.includes(value as HitDiceType)
+    ? value as HitDiceType
+    : 'D8';
+}
+
+function featureList(value: unknown, fallbackName: string, fallbackDescription: string, unlockLevel: number): ClassFeature[] {
+  if (!Array.isArray(value)) return fallbackDescription ? [{ name: fallbackName, desc: fallbackDescription, unlockLevel }] : [];
+  return value.flatMap((rawFeature) => {
+    const feature = record(rawFeature);
+    const name = text(feature.name);
+    const desc = text(feature.desc);
+    if (!name || !desc) return [];
+    const parsedLevel = Number(feature.unlockLevel);
+    return [{ name, desc, unlockLevel: Number.isInteger(parsedLevel) && parsedLevel >= 1 && parsedLevel <= 20 ? parsedLevel : unlockLevel }];
+  }).slice(0, 12);
+}
+
+/**
+ * Projects the bounded personal class/subclass content shape into the existing
+ * builder contract. These fields give the builder enough declarative class
+ * facts for first-level HP and proficiencies, but never execute homebrew rules.
+ */
+export function personalClassEntriesToClassDefs(entries: Entry[]): ClassDef[] {
+  const subclassEntries = entries.filter((entry) => entry.entryKind === 'subclass');
+  const seenClassNames = new Set<string>();
+  return entries.flatMap((entry) => {
+    if (entry.entryKind !== 'class') return [];
+    const content = record(entry.content);
+    const name = text(content.name, text(entry.displayName));
+    if (!name || seenClassNames.has(name)) return [];
+    seenClassNames.add(name);
+    const primaryAbility = attribute(content.primaryAbility, 'Str');
+    const subclasses: SubclassDef[] = [];
+    const seenSubclassNames = new Set<string>();
+    for (const subclassEntry of subclassEntries) {
+      const subclassContent = record(subclassEntry.content);
+      if (text(subclassContent.className) !== name) continue;
+      const subclassName = text(subclassContent.name, text(subclassEntry.displayName));
+      if (!subclassName || seenSubclassNames.has(subclassName)) continue;
+      seenSubclassNames.add(subclassName);
+      const unlockLevel = Math.max(1, Math.min(20, Number(subclassContent.unlockLevel) || 1));
+      const description = text(subclassContent.summary, '个人资料包中的自定义子职业。');
+      subclasses.push({
+        id: `personal.${subclassEntry.compendiumEntryId}`,
+        name: subclassName,
+        desc: description,
+        unlockLevel,
+        features: featureList(subclassContent.features, '子职业特性说明', description, unlockLevel),
+      });
+    }
+    const description = text(content.summary, '个人资料包中的自定义职业。');
+    return [{
+      id: `personal.${entry.compendiumEntryId}`,
+      name,
+      desc: description,
+      primaryAbility,
+      savingThrows: attributeList(content.savingThrows),
+      hitDice: hitDie(content.hitDice),
+      weaponProficiencies: textList(content.weaponProficiencies, 12),
+      armorProficiencies: textList(content.armorProficiencies, 12),
+      startingEquipment: text(content.startingEquipment, '具体起始装备以房间审核结果为准。'),
+      features: featureList(content.features, '职业特性说明', description, 1),
+      subclasses,
+    }];
+  });
 }
 
 /**
