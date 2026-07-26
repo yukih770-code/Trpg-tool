@@ -32,9 +32,24 @@ whether it is a builder projection or reference-only text. In particular,
 spell range does not control map measurement; background features do not grant
 permissions or resources; and trait text never installs executable effects.
 
+## Pack draft and new-version flow
+
+- Hand-authored entries first live in a browser-local pack draft. A draft may
+  combine the supported species, background, feat, and spell entries before it
+  is published once as an immutable version.
+- Creating a new version reads the author's current version and copies its
+  entries into that draft. The author can remove or replace entries explicitly;
+  publishing never mutates the old version.
+- The draft is an authoring convenience, not a shared workspace, Room payload,
+  or local persistence contract. Leaving the workbench discards an unpublished
+  draft.
+
 ## Deferred
 
 - Public publishing, sharing, rating, and moderation.
 - Pack collaboration and granular edit permissions.
+- Rich multi-entry editing of arbitrary imported schemas. Imported entries can
+  be previewed and published as a complete version, but this workbench only
+  authors the bounded D&D entry types listed above.
 - Class legality, spell execution, or arbitrary rule effects.
 - Server adoption of a personal pack.

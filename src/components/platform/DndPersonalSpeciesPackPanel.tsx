@@ -5,6 +5,7 @@ import { ApiClientError } from '../../lib/api/apiTypes';
 import {
   personalCompendiumPackApiClient,
   type PersonalCompendiumPack,
+  type PersonalCompendiumEntryInput,
   type PersonalCompendiumPackVersionContent,
   type PublishPersonalCompendiumPackInput,
 } from '../../lib/api/personalCompendiumPackApiClient';
@@ -47,6 +48,10 @@ const initialFields: Fields = {
   backgroundSkills: '', backgroundTools: '', featureName: '', featureDescription: '', featCategory: 'Origin', prerequisite: '',
   spellLevel: '0', spellSchool: '自定义', spellCastTime: '1 动作', spellRange: '自身', spellDuration: '立即', spellComponents: 'V',
 };
+
+function blankEntryFields(previous: Fields): Fields {
+  return { ...initialFields, packName: previous.packName, versionLabel: previous.versionLabel };
+}
 
 function copy(locale: Locale, zh: string, en: string): string {
   return locale === 'en' ? en : zh;
@@ -116,6 +121,7 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
   const [importText, setImportText] = useState('');
   const [importDraft, setImportDraft] = useState<PersonalCompendiumImportDraft | null>(null);
   const [importError, setImportError] = useState('');
+  const [draftEntries, setDraftEntries] = useState<PersonalCompendiumEntryInput[]>([]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -163,13 +169,31 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
     }
   };
 
-  const beginNewVersion = (pack: PersonalCompendiumPack) => {
-    setVersioningPackId(pack.packId);
-    setFields((previous) => ({ ...previous, packName: pack.displayName, versionLabel: '1.1.0' }));
-    setNotice(copy(locale, `正在为“${pack.displayName}”创建新版本；已有版本不会被改写。`, `Creating a new version of ${pack.displayName}; existing versions will not change.`));
+  const beginNewVersion = async (pack: PersonalCompendiumPack) => {
+    if (!pack.latestVersion || busy) return;
+    setBusy(true);
+    setNotice('');
+    try {
+      const source = await personalCompendiumPackApiClient.getVersion(pack.packId, pack.latestVersion.packVersionId);
+      setVersioningPackId(pack.packId);
+      setDraftEntries(source.entries.map((entry) => ({
+        entryKind: entry.entryKind as PersonalCompendiumEntryInput['entryKind'],
+        displayName: entry.displayName,
+        content: entry.content,
+        metadata: entry.metadata,
+      })));
+      setFields((previous) => ({ ...previous, packName: pack.displayName, versionLabel: '1.1.0' }));
+      setNotice(copy(locale, `已将“${pack.displayName}”的当前版本复制到草稿。你可以增删条目后发布新版本；旧版本不会被改写。`, `Copied the current ${pack.displayName} version into a draft. Add or remove entries, then publish a new version; the old version will not change.`));
+    } catch (reason) {
+      setNotice(reason instanceof ApiClientError && reason.statusCode === 401
+        ? copy(locale, '需要先登录，才能基于已有资料包创建新版本。', 'Sign in to create a new version from an existing pack.')
+        : copy(locale, '无法读取当前资料版本，尚未创建新版本草稿。', 'The current content version could not be loaded, so no new-version draft was created.'));
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const entryFromFields = () => {
+  const entryFromFields = (): PersonalCompendiumEntryInput => {
     const name = fields.entryName.trim();
     if (fields.entryKind === 'background') {
       return {
@@ -237,20 +261,37 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
     };
   };
 
+  const addCurrentEntryToDraft = () => {
+    if (!fields.packName.trim() || !fields.entryName.trim() || busy) return;
+    const entry = entryFromFields();
+    setDraftEntries((previous) => {
+      const existingIndex = previous.findIndex((candidate) => candidate.entryKind === entry.entryKind && candidate.displayName === entry.displayName);
+      if (existingIndex < 0) return [...previous, entry].slice(0, 50);
+      return previous.map((candidate, index) => index === existingIndex ? entry : candidate);
+    });
+    setFields((previous) => blankEntryFields(previous));
+    setNotice(copy(locale, `已将“${entry.displayName}”加入资料包草稿；同名同类型条目会被当前内容替换。`, `Added ${entry.displayName} to the pack draft; an entry with the same name and type is replaced by the current content.`));
+  };
+
+  const removeDraftEntry = (index: number) => {
+    setDraftEntries((previous) => previous.filter((_, entryIndex) => entryIndex !== index));
+  };
+
   const publish = async (event: FormEvent) => {
     event.preventDefault();
-    if (!fields.packName.trim() || !fields.entryName.trim() || busy) return;
+    if (!fields.packName.trim() || draftEntries.length === 0 || busy) return;
     setBusy(true);
     setNotice('');
     try {
       const draft: Omit<PublishPersonalCompendiumPackInput, 'displayName'> = {
         versionLabel: fields.versionLabel.trim() || '1.0.0',
-        metadata: { gameSystemId: 'dnd5e-2024', authoringKind: `dnd-personal-${fields.entryKind}-v0` },
-        entries: [entryFromFields()],
+        metadata: { gameSystemId: 'dnd5e-2024', authoringKind: 'dnd-personal-pack-draft-v0' },
+        entries: draftEntries,
       };
       if (versioningPackId) await personalCompendiumPackApiClient.publishVersion(versioningPackId, draft);
       else await personalCompendiumPackApiClient.publish({ ...draft, displayName: fields.packName.trim() });
       setFields(initialFields);
+      setDraftEntries([]);
       setVersioningPackId(null);
       setNotice(copy(locale, '已保存为不可变资料版本。将角色提交给房间时，主持人仍会审核所选版本。', 'Saved as an immutable content version. When you submit a character to a Room, the host will still review the selected version.'));
       await refresh();
@@ -293,6 +334,7 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
       else await personalCompendiumPackApiClient.publish({ ...draft, displayName: importDraft.displayName });
       setImportText('');
       setImportDraft(null);
+      setDraftEntries([]);
       setVersioningPackId(null);
       setFields(initialFields);
       setNotice(copy(locale, '导入内容已保存为不可变资料版本。房间仍会审核你提交的具体版本。', 'Imported content was saved as an immutable version. Rooms will still review the exact version you submit.'));
@@ -355,7 +397,7 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                     <button type="button" disabled={busy || !pack.latestVersion} onClick={() => void inspectPack(pack)} className="rounded-md border border-[#58180d]/20 bg-white px-2.5 py-1.5 text-xs font-bold text-[#58180d] disabled:opacity-40">
                       {inspectedPackId === pack.packId ? copy(locale, '收起内容', 'Hide contents') : copy(locale, '查看内容', 'View contents')}
                     </button>
-                    <button type="button" disabled={busy} onClick={() => beginNewVersion(pack)} className="rounded-md border border-[#a35b11]/25 bg-[#fff1c7]/55 px-2.5 py-1.5 text-xs font-bold text-[#7a4610] disabled:opacity-40">
+                    <button type="button" disabled={busy || !pack.latestVersion} onClick={() => void beginNewVersion(pack)} className="rounded-md border border-[#a35b11]/25 bg-[#fff1c7]/55 px-2.5 py-1.5 text-xs font-bold text-[#7a4610] disabled:opacity-40">
                       {copy(locale, '基于此包创建新版本', 'Create a new version')}
                     </button>
                   </div>
@@ -378,12 +420,26 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
 
             <form onSubmit={(event) => void publish(event)} className="mt-4 grid gap-3 rounded-lg border border-dashed border-[#a35b11]/35 bg-white/70 p-3">
               <div>
-                <h3 className="text-sm font-bold text-[#58180d]">{versioningPackId ? copy(locale, '创建新的资料版本', 'Create a new content version') : copy(locale, '创建个人资料条目', 'Create a personal content entry')}</h3>
-                <p className="mt-1 text-xs leading-5 text-[#2c1810]/65">{versioningPackId ? copy(locale, '正在保存为新版本，已被房间引用的旧版本不会被改写。', 'This saves a new version; an older version already referenced by a Room will not change.') : copy(locale, '这是个人资料条目编辑，不生成可执行规则效果，也不会修改已有角色。', 'This is personal content authoring. It creates no executable rules and does not alter existing characters.')}</p>
+                <h3 className="text-sm font-bold text-[#58180d]">{versioningPackId ? copy(locale, '编辑新的资料版本草稿', 'Edit a new content-version draft') : copy(locale, '编辑个人资料包草稿', 'Edit a personal content-pack draft')}</h3>
+                <p className="mt-1 text-xs leading-5 text-[#2c1810]/65">{versioningPackId ? copy(locale, '草稿已从当前版本复制而来。增删条目后发布，新版本会完整替代此资料包在车卡中的可选内容；旧版本不会被改写。', 'The draft starts as a copy of the current version. Add or remove entries, then publish; the new version becomes the pack content available to the builder, while older versions stay unchanged.') : copy(locale, '先把多个条目加入草稿，再一次保存为个人资料包。它不会生成可执行规则效果，也不会修改已有角色。', 'Add several entries to a draft, then save it once as a personal pack. It creates no executable rules and does not alter existing characters.')}</p>
               </div>
               <div className="rounded-md border border-[#a35b11]/22 bg-[#fff1c7]/40 p-3 text-xs leading-5 text-[#58180d]/80">
                 <p className="font-bold text-[#58180d]">{entryKindGuidance(locale, fields.entryKind).title}</p>
                 <p className="mt-1">{entryKindGuidance(locale, fields.entryKind).body}</p>
+              </div>
+              <div className="rounded-md border border-[#2f7f68]/25 bg-[#f1fbf7] p-3 text-xs text-[#184f42]">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-bold">{copy(locale, `资料包草稿 · ${draftEntries.length} 个条目`, `Pack draft · ${draftEntries.length} entries`)}</p>
+                  {draftEntries.length > 0 && <button type="button" onClick={() => setDraftEntries([])} disabled={busy} className="rounded border border-[#2f7f68]/25 bg-white px-2 py-1 text-[11px] font-bold text-[#184f42] disabled:opacity-40">{copy(locale, '清空草稿', 'Clear draft')}</button>}
+                </div>
+                {draftEntries.length === 0
+                  ? <p className="mt-1 leading-5">{copy(locale, '填写下方条目后，选择“加入草稿”。发布资料包前可以继续添加不同类型的内容。', 'Fill in an entry below and choose “Add to draft.” You can keep adding different content types before publishing the pack.')}</p>
+                  : <ul className="mt-2 space-y-1.5">
+                    {draftEntries.map((entry, index) => <li key={`${entry.entryKind}-${entry.displayName}-${index}`} className="flex flex-wrap items-center justify-between gap-2 rounded border border-[#2f7f68]/15 bg-white/70 px-2 py-1.5">
+                      <span><span className="font-semibold">{entry.displayName}</span> <span className="ml-1 rounded-full bg-[#2f7f68]/10 px-1.5 py-0.5 text-[10px] font-bold">{entry.entryKind}</span></span>
+                      <button type="button" onClick={() => removeDraftEntry(index)} disabled={busy} className="text-[11px] font-bold text-[#a52a2a] disabled:opacity-40">{copy(locale, '移除', 'Remove')}</button>
+                    </li>)}
+                  </ul>}
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <FormField label={copy(locale, '资料包名称', 'Pack name')} required hint={versioningPackId ? copy(locale, '当前正在为这个资料包新增版本，名称不能修改。', 'You are adding a version to this pack; its name cannot change.') : copy(locale, '用于把相关的自定义资料归在一起，例如“港湾自定义选项”。', 'Groups related personal content, for example “Harbor options”.')}>
@@ -473,8 +529,9 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                 </div>
               </>}
               <div className="flex flex-wrap items-center gap-3">
-                {versioningPackId && <button type="button" disabled={busy} onClick={() => { setVersioningPackId(null); setFields(initialFields); setNotice(''); }} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-bold text-[#58180d]">{copy(locale, '改为新建资料包', 'Create a new pack instead')}</button>}
-                <button type="submit" disabled={busy || !fields.packName.trim() || !fields.entryName.trim()} className="rounded-md bg-[#58180d] px-3 py-2 text-sm font-bold text-white disabled:opacity-40">{busy ? copy(locale, '正在保存…', 'Saving…') : versioningPackId ? copy(locale, '保存为新版本', 'Save as new version') : copy(locale, '保存到我的资料库', 'Save to my library')}</button>
+                {versioningPackId && <button type="button" disabled={busy} onClick={() => { setVersioningPackId(null); setDraftEntries([]); setFields(initialFields); setNotice(''); }} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-bold text-[#58180d]">{copy(locale, '改为新建资料包', 'Create a new pack instead')}</button>}
+                <button type="button" onClick={addCurrentEntryToDraft} disabled={busy || !fields.packName.trim() || !fields.entryName.trim()} className="rounded-md border border-[#58180d]/30 bg-white px-3 py-2 text-sm font-bold text-[#58180d] disabled:opacity-40">{copy(locale, '加入资料包草稿', 'Add to pack draft')}</button>
+                <button type="submit" disabled={busy || !fields.packName.trim() || draftEntries.length === 0} className="rounded-md bg-[#58180d] px-3 py-2 text-sm font-bold text-white disabled:opacity-40">{busy ? copy(locale, '正在保存…', 'Saving…') : versioningPackId ? copy(locale, `发布新版本（${draftEntries.length}）`, `Publish new version (${draftEntries.length})`) : copy(locale, `保存资料包（${draftEntries.length}）`, `Save pack (${draftEntries.length})`)}</button>
                 {notice && <p className="text-xs leading-5 text-[#2c1810]/75">{notice}</p>}
               </div>
             </form>

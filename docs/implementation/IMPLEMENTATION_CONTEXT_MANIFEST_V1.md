@@ -365,3 +365,11 @@ only selects an immutable version and must not grow a competing editor.
 Read `P6_PERSONAL_CONTENT_WORKBENCH_INSPECTION.md` before adding management
 actions. This surface reads the owner's latest version for orientation only;
 immutable content is never edited in place or exposed to Rooms.
+
+## Personal Content Pack Drafts (P6.10)
+
+Read `P6_PERSONAL_CONTENT_WORKSHOP_IA.md` before changing the workbench draft
+flow. Hand-authored entries may be composed in a local-only draft, and a
+new-version draft begins with an explicit owner-only copy of the latest pack
+version. This is not unpublished-draft persistence, collaboration, or a Room
+content channel.

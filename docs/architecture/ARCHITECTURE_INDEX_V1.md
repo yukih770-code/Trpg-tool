@@ -920,3 +920,13 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   version and show compact entry identity. Published versions remain immutable.
 - See `docs/implementation/P6_PERSONAL_CONTENT_WORKBENCH_INSPECTION.md` before
   adding editing, deletion, export, or public sharing.
+
+## Personal Content Pack Drafts (P6.10)
+
+- The private Workshop workbench may compose multiple bounded D&D entries in a
+  browser-local draft before publishing an immutable personal pack version.
+- A new version explicitly begins as a copy of the author's latest version;
+  no published version is edited in place and no draft crosses a Room boundary.
+- See `docs/implementation/P6_PERSONAL_CONTENT_WORKSHOP_IA.md` before adding
+  collaboration, persistence of unpublished drafts, arbitrary schema editing,
+  or public sharing.
