@@ -1742,6 +1742,21 @@ export const en = {
       equipment: 'Equipment is kept as a planned Builder section.',
       equipmentBoundary: 'Backpack, equipment, and combat automation are not available yet.',
     },
+    equipment: {
+      selectClass: 'Choose a class to view its starting-equipment plan.',
+      planFor: 'Starting-equipment plan',
+      chooseOne: 'Choose after creation',
+      choiceGroup: 'Choice',
+      fixed: 'Included items',
+      nextTitle: 'Next: generate real items after creation',
+      afterCreate: 'This page only previews the plan and does not write to the inventory. After creating the character, use the character sheet Inventory page to choose and generate real item instances.',
+      personalBoundary: 'Personal-class equipment text is planning reference only. Unresolved entries need confirmation in Inventory or through room review.',
+      status: {
+        resolved: 'Matched to item data',
+        'partially-resolved': 'Partially pending',
+        unresolved: 'Pending confirmation',
+      },
+    },
     summary: {
       title: 'Character Summary',
       name: 'Name',

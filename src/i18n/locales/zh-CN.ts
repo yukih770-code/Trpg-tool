@@ -1742,6 +1742,21 @@ export const zhCN = {
       equipment: '装备入口先作为建卡工作台栏目保留。',
       equipmentBoundary: '背包、装备和战斗自动化暂未开放。',
     },
+    equipment: {
+      selectClass: '先选择职业，即可查看该职业的起始装备计划。',
+      planFor: '起始装备计划',
+      chooseOne: '创建后需要选择的装备',
+      choiceGroup: '选择',
+      fixed: '固定获得',
+      nextTitle: '下一步：创建后生成真实物品',
+      afterCreate: '本页只展示计划，不会提前写入背包。完成建卡后，请前往角色卡的背包页选择并生成真实装备实例。',
+      personalBoundary: '个人职业的装备文本仅作为计划参考；无法解析的条目需要在背包页或房间审核中确认。',
+      status: {
+        resolved: '资料已匹配',
+        'partially-resolved': '部分待确认',
+        unresolved: '待确认',
+      },
+    },
     summary: {
       title: '角色摘要',
       name: '名称',

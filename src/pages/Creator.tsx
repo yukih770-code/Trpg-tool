@@ -17,6 +17,7 @@ import {
   personalSpellEntriesToSpellInfo,
 } from '../lib/platform/dndPersonalContentAdapter';
 import { createTranslator, readStoredLocale } from '../i18n';
+import { buildStarterEquipmentPlan } from '../lib/dnd2024/dndStarterEquipmentPlan';
 import { toast } from 'sonner';
 
 type BuilderSection =
@@ -198,6 +199,9 @@ export function Creator({
 
   const selectedRace = RACE_DATA.find(r => r.name === character.race);
   const selectedClass = CLASS_DATA.find(c => c.name === character.jobClass);
+  const selectedStarterEquipmentPlan = selectedClass?.startingEquipment
+    ? buildStarterEquipmentPlan(selectedClass.startingEquipment)
+    : null;
   const selectedBackground = AVAILABLE_BACKGROUND_DATA.find(b => b.name === character.background);
   const selectedFeatNames = character.feats ?? [];
   const unselected = t('dndBuilder.common.unselected');
@@ -699,10 +703,63 @@ export function Creator({
   const renderEquipment = () => (
     <section className={panelClass}>
       {renderSectionHeader(t('dndBuilder.sections.equipment'), t('dndBuilder.descriptions.equipment'))}
-      <div className="rounded-md border border-dashed border-[#58180d]/28 bg-white/45 p-4 text-sm text-[#58180d]/75">
-        <p>{t('dndBuilder.placeholders.equipment')}</p>
-        <p className="mt-2 text-xs">{t('dndBuilder.placeholders.equipmentBoundary')}</p>
-      </div>
+      {!selectedClass || !selectedStarterEquipmentPlan ? (
+        <div className="rounded-md border border-dashed border-[#58180d]/28 bg-white/45 p-4 text-sm text-[#58180d]/75">
+          <p>{t('dndBuilder.equipment.selectClass')}</p>
+          <p className="mt-2 text-xs">{t('dndBuilder.equipment.afterCreate')}</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="rounded-md border border-[#a35b11]/25 bg-[#fff1c7]/45 p-3 text-sm text-[#58180d]/80">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="font-bold text-[#58180d]">{selectedClass.name} · {t('dndBuilder.equipment.planFor')}</p>
+                <p className="mt-1 text-xs leading-relaxed">{selectedStarterEquipmentPlan.sourceText}</p>
+              </div>
+              <span className="rounded-full border border-[#a35b11]/25 bg-white/70 px-2 py-0.5 text-[10px] font-bold">
+                {t(`dndBuilder.equipment.status.${selectedStarterEquipmentPlan.status}`)}
+              </span>
+            </div>
+          </div>
+
+          {selectedStarterEquipmentPlan.choices.length > 0 && (
+            <div className={`${subPanelClass} space-y-3`}>
+              <h3 className="text-sm font-bold text-[#58180d]">{t('dndBuilder.equipment.chooseOne')}</h3>
+              {selectedStarterEquipmentPlan.choices.map((group, index) => (
+                <div key={group.id} className="rounded-md border border-[#58180d]/14 bg-[#fffdf8]/70 p-3">
+                  <p className="text-xs font-bold text-[#58180d]/80">{t('dndBuilder.equipment.choiceGroup')} {index + 1}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {group.options.map((option) => (
+                      <span key={`${group.id}-${option.label}`} className={`rounded-full border px-2.5 py-1 text-xs ${option.vague || option.pendingSource ? 'border-[#a35b11]/30 bg-[#fff1c7]/55 text-[#7c4a13]' : 'border-[#2f6b4f]/25 bg-[#e9f6ed] text-[#24573e]'}`}>
+                        {option.quantity > 1 ? `${option.quantity} × ` : ''}{option.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {selectedStarterEquipmentPlan.fixed.length > 0 && (
+            <div className={subPanelClass}>
+              <h3 className="text-sm font-bold text-[#58180d]">{t('dndBuilder.equipment.fixed')}</h3>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {selectedStarterEquipmentPlan.fixed.map((item) => (
+                  <span key={item.label} className={`rounded-full border px-2.5 py-1 text-xs ${item.pendingSource ? 'border-[#a35b11]/30 bg-[#fff1c7]/55 text-[#7c4a13]' : 'border-[#2f6b4f]/25 bg-[#e9f6ed] text-[#24573e]'}`}>
+                    {item.quantity > 1 ? `${item.quantity} × ` : ''}{item.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-md border border-dashed border-[#58180d]/28 bg-white/45 p-3 text-xs leading-relaxed text-[#58180d]/75">
+            <p className="font-bold text-[#58180d]">{t('dndBuilder.equipment.nextTitle')}</p>
+            <p className="mt-1">{t('dndBuilder.equipment.afterCreate')}</p>
+            {selectedPersonalReference && <p className="mt-2">{t('dndBuilder.equipment.personalBoundary')}</p>}
+          </div>
+        </div>
+      )}
     </section>
   );
 
