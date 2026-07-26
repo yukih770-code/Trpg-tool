@@ -25,6 +25,13 @@ content editor.
 - Room submission and host review remain independent. Selecting or authoring
   content never grants Room approval or executes custom rules.
 
+## Authoring clarity
+
+The workbench labels every editable field with its player-facing purpose and
+whether it is a builder projection or reference-only text. In particular,
+spell range does not control map measurement; background features do not grant
+permissions or resources; and trait text never installs executable effects.
+
 ## Deferred
 
 - Public publishing, sharing, rating, and moderation.

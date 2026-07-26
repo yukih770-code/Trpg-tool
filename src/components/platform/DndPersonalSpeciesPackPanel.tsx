@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 
 import type { Locale } from '../../i18n';
 import { ApiClientError } from '../../lib/api/apiTypes';
@@ -50,6 +50,47 @@ const initialFields: Fields = {
 
 function copy(locale: Locale, zh: string, en: string): string {
   return locale === 'en' ? en : zh;
+}
+
+function FormField({
+  label,
+  hint,
+  required = false,
+  children,
+}: {
+  label: string;
+  hint: string;
+  required?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <label className="grid gap-1.5 text-sm font-bold text-[#58180d]">
+      <span>
+        {label}{required && <span className="ml-1 text-[#a52a2a]">*</span>}
+      </span>
+      <span className="text-[11px] font-normal leading-4 text-[#2c1810]/65">{hint}</span>
+      {children}
+    </label>
+  );
+}
+
+function entryKindGuidance(locale: Locale, entryKind: Fields['entryKind']): { title: string; body: string } {
+  if (entryKind === 'species') return {
+    title: copy(locale, '种族：基础资料与血统选项', 'Species: identity and heritage options'),
+    body: copy(locale, '会在车卡的种族选择中显示。特性与血统是说明性资料，不会自动施加规则效果。', 'Shown in the builder species selector. Traits and heritages are descriptive data and do not execute rules automatically.'),
+  };
+  if (entryKind === 'background') return {
+    title: copy(locale, '背景：熟练项与背景特性', 'Background: proficiencies and feature'),
+    body: copy(locale, '技能、工具与背景特性会作为车卡资料显示；背景特性不会自动授予资源或权限。', 'Skills, tools, and background feature text appear in the builder; the feature never grants resources or permissions automatically.'),
+  };
+  if (entryKind === 'feat') return {
+    title: copy(locale, '专长：选择资料与前置说明', 'Feat: selection data and prerequisite note'),
+    body: copy(locale, '起源专长可在车卡中选择；通用专长当前只保存说明，所有效果仍须由房间协商与审核。', 'Origin feats can be selected in the builder. General feats are informational for now; all effects remain subject to Room review.'),
+  };
+  return {
+    title: copy(locale, '法术：施法资料卡', 'Spell: casting reference card'),
+    body: copy(locale, '会加入车卡的已知/准备法术列表；不保存伤害公式、豁免或自动施法效果。', 'Appears in the builder known/prepared list. Damage formulas, saves, and automated casting are not stored here.'),
+  };
 }
 
 function listFromLines(value: string): string[] {
@@ -340,49 +381,95 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                 <h3 className="text-sm font-bold text-[#58180d]">{versioningPackId ? copy(locale, '创建新的资料版本', 'Create a new content version') : copy(locale, '创建个人资料条目', 'Create a personal content entry')}</h3>
                 <p className="mt-1 text-xs leading-5 text-[#2c1810]/65">{versioningPackId ? copy(locale, '正在保存为新版本，已被房间引用的旧版本不会被改写。', 'This saves a new version; an older version already referenced by a Room will not change.') : copy(locale, '这是个人资料条目编辑，不生成可执行规则效果，也不会修改已有角色。', 'This is personal content authoring. It creates no executable rules and does not alter existing characters.')}</p>
               </div>
+              <div className="rounded-md border border-[#a35b11]/22 bg-[#fff1c7]/40 p-3 text-xs leading-5 text-[#58180d]/80">
+                <p className="font-bold text-[#58180d]">{entryKindGuidance(locale, fields.entryKind).title}</p>
+                <p className="mt-1">{entryKindGuidance(locale, fields.entryKind).body}</p>
+              </div>
               <div className="grid gap-2 sm:grid-cols-2">
-                <input value={fields.packName} onChange={(event) => update('packName', event.target.value)} placeholder={copy(locale, '资料包名称，例如：港湾自定义选项', 'Pack name, e.g. Harbor options')} disabled={busy || !!versioningPackId} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
-                <select value={fields.entryKind} onChange={(event) => update('entryKind', event.target.value)} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50">
-                  <option value="species">{copy(locale, '种族', 'Species')}</option>
-                  <option value="background">{copy(locale, '背景', 'Background')}</option>
-                  <option value="feat">{copy(locale, '专长', 'Feat')}</option>
-                  <option value="spell">{copy(locale, '法术', 'Spell')}</option>
-                </select>
-                <input value={fields.entryName} onChange={(event) => update('entryName', event.target.value)} placeholder={copy(locale, '条目名称', 'Entry name')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
-                <input value={fields.versionLabel} onChange={(event) => update('versionLabel', event.target.value)} placeholder={copy(locale, '版本，例如：1.1.0', 'Version, e.g. 1.1.0')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                <FormField label={copy(locale, '资料包名称', 'Pack name')} required hint={versioningPackId ? copy(locale, '当前正在为这个资料包新增版本，名称不能修改。', 'You are adding a version to this pack; its name cannot change.') : copy(locale, '用于把相关的自定义资料归在一起，例如“港湾自定义选项”。', 'Groups related personal content, for example “Harbor options”.')}>
+                  <input value={fields.packName} onChange={(event) => update('packName', event.target.value)} placeholder={copy(locale, '例如：港湾自定义选项', 'e.g. Harbor options')} disabled={busy || !!versioningPackId} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '资料类型', 'Content type')} required hint={copy(locale, '决定车卡会在哪个选择区显示这份资料。', 'Controls which builder selector can display this content.')}>
+                  <select value={fields.entryKind} onChange={(event) => update('entryKind', event.target.value)} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50">
+                    <option value="species">{copy(locale, '种族', 'Species')}</option>
+                    <option value="background">{copy(locale, '背景', 'Background')}</option>
+                    <option value="feat">{copy(locale, '专长', 'Feat')}</option>
+                    <option value="spell">{copy(locale, '法术', 'Spell')}</option>
+                  </select>
+                </FormField>
+                <FormField label={copy(locale, '条目名称', 'Entry name')} required hint={copy(locale, '玩家在车卡中看到和选择的名称。', 'The name players see and select in Character Builder.')}>
+                  <input value={fields.entryName} onChange={(event) => update('entryName', event.target.value)} placeholder={copy(locale, '例如：潮汐精灵', 'e.g. Tide Elf')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '版本标签', 'Version label')} hint={copy(locale, '发布后不可改写。首次可用 1.0.0，后续使用 1.1.0 等新标签。', 'Immutable after publishing. Use 1.0.0 first, then a new label such as 1.1.0.')}>
+                  <input value={fields.versionLabel} onChange={(event) => update('versionLabel', event.target.value)} placeholder={copy(locale, '例如：1.0.0', 'e.g. 1.0.0')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
                 {fields.entryKind === 'species' && <>
-                  <input value={fields.size} onChange={(event) => update('size', event.target.value)} placeholder={copy(locale, '体型，例如：中型', 'Size, e.g. Medium')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
-                  <input value={fields.speed} onChange={(event) => update('speed', event.target.value)} inputMode="numeric" placeholder={copy(locale, '速度（尺）', 'Speed (ft)')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                  <FormField label={copy(locale, '体型', 'Size')} hint={copy(locale, '角色卡上显示的体型文字，例如“中型”。', 'Display size on the character sheet, for example “Medium”.')}>
+                    <input value={fields.size} onChange={(event) => update('size', event.target.value)} placeholder={copy(locale, '例如：中型', 'e.g. Medium')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '基础速度（尺）', 'Base speed (ft)')} hint={copy(locale, '车卡显示的基础步行速度，只填数字，例如 30。', 'Base walking speed displayed in the builder. Enter a number only, such as 30.')}>
+                    <input value={fields.speed} onChange={(event) => update('speed', event.target.value)} inputMode="numeric" placeholder="30" disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
                 </>}
                 {fields.entryKind === 'feat' && <>
-                  <select value={fields.featCategory} onChange={(event) => update('featCategory', event.target.value)} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50">
-                    <option value="Origin">{copy(locale, '起源专长（可在车卡选择）', 'Origin feat (selectable in builder)')}</option>
-                    <option value="General">{copy(locale, '通用专长（仅保留资料）', 'General feat (content only)')}</option>
-                  </select>
-                  <input value={fields.prerequisite} onChange={(event) => update('prerequisite', event.target.value)} placeholder={copy(locale, '前置条件说明（可选）', 'Prerequisite note (optional)')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                  <FormField label={copy(locale, '专长分类', 'Feat category')} hint={copy(locale, '起源专长会进入车卡选择；通用专长目前仅作为资料保留。', 'Origin feats enter the builder selector; general feats are stored as reference only for now.')}>
+                    <select value={fields.featCategory} onChange={(event) => update('featCategory', event.target.value)} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50">
+                      <option value="Origin">{copy(locale, '起源专长（可在车卡选择）', 'Origin feat (selectable in builder)')}</option>
+                      <option value="General">{copy(locale, '通用专长（仅保留资料）', 'General feat (content only)')}</option>
+                    </select>
+                  </FormField>
+                  <FormField label={copy(locale, '前置条件说明', 'Prerequisite note')} hint={copy(locale, '给玩家与主持人阅读的条件文字，不会自动判断是否满足。', 'A note for players and the host; eligibility is not automatically evaluated.')}>
+                    <input value={fields.prerequisite} onChange={(event) => update('prerequisite', event.target.value)} placeholder={copy(locale, '可选，例如：4 级以上', 'Optional, e.g. level 4 or higher')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
                 </>}
                 {fields.entryKind === 'spell' && <>
-                  <input value={fields.spellLevel} onChange={(event) => update('spellLevel', event.target.value)} inputMode="numeric" placeholder={copy(locale, '法术环阶（0-9）', 'Spell level (0-9)')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
-                  <input value={fields.spellSchool} onChange={(event) => update('spellSchool', event.target.value)} placeholder={copy(locale, '学派或类型', 'School or type')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
-                  <input value={fields.spellCastTime} onChange={(event) => update('spellCastTime', event.target.value)} placeholder={copy(locale, '施法时间', 'Casting time')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
-                  <input value={fields.spellRange} onChange={(event) => update('spellRange', event.target.value)} placeholder={copy(locale, '距离', 'Range')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
-                  <input value={fields.spellDuration} onChange={(event) => update('spellDuration', event.target.value)} placeholder={copy(locale, '持续时间', 'Duration')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
-                  <input value={fields.spellComponents} onChange={(event) => update('spellComponents', event.target.value)} placeholder={copy(locale, '构材，例如：V, S, M', 'Components, e.g. V, S, M')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                  <FormField label={copy(locale, '法术环阶', 'Spell level')} hint={copy(locale, '填 0 至 9；0 代表戏法。', 'Enter 0 through 9; 0 means a cantrip.')}>
+                    <input value={fields.spellLevel} onChange={(event) => update('spellLevel', event.target.value)} inputMode="numeric" placeholder="0" disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '学派或类型', 'School or type')} hint={copy(locale, '用于资料卡的分类显示，例如“塑能”或“仪式”。', 'A display category for the reference card, such as “Evocation” or “Ritual”.')}>
+                    <input value={fields.spellSchool} onChange={(event) => update('spellSchool', event.target.value)} placeholder={copy(locale, '例如：塑能', 'e.g. Evocation')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '施法时间', 'Casting time')} hint={copy(locale, '资料卡显示，例如“1 动作”或“反应”。', 'Shown on the reference card, for example “1 action” or “reaction”.')}>
+                    <input value={fields.spellCastTime} onChange={(event) => update('spellCastTime', event.target.value)} placeholder={copy(locale, '例如：1 动作', 'e.g. 1 action')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '施法距离', 'Range')} hint={copy(locale, '资料卡显示，例如“60 尺”或“自身”。不连接地图测距。', 'Shown on the reference card, e.g. “60 ft” or “Self”. It does not control map measurement.')}>
+                    <input value={fields.spellRange} onChange={(event) => update('spellRange', event.target.value)} placeholder={copy(locale, '例如：60 尺', 'e.g. 60 ft')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '持续时间', 'Duration')} hint={copy(locale, '资料卡显示，例如“1 分钟”或“立即”。', 'Shown on the reference card, e.g. “1 minute” or “Instantaneous”.')}>
+                    <input value={fields.spellDuration} onChange={(event) => update('spellDuration', event.target.value)} placeholder={copy(locale, '例如：1 分钟', 'e.g. 1 minute')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '施法成分', 'Components')} hint={copy(locale, '资料卡显示，使用 V、S、M 等简写；不校验材料消耗。', 'Displayed as V, S, M, etc. Material consumption is not validated.')}>
+                    <input value={fields.spellComponents} onChange={(event) => update('spellComponents', event.target.value)} placeholder="V, S, M" disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
                 </>}
               </div>
-              <textarea value={fields.summary} onChange={(event) => update('summary', event.target.value)} placeholder={copy(locale, '简短说明（可选）', 'Short description (optional)')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+              <FormField label={copy(locale, '简短说明', 'Short summary')} hint={copy(locale, '给车卡与主持人快速阅读的简介。不要填写自动结算、伤害公式或隐藏权限。', 'A quick description for the builder and host. Do not put automation, damage formulas, or hidden permissions here.')}>
+                <textarea value={fields.summary} onChange={(event) => update('summary', event.target.value)} placeholder={copy(locale, '可选：用一两句话说明主题与玩法感受', 'Optional: summarize the theme in one or two sentences')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+              </FormField>
               {fields.entryKind === 'species' && <div className="grid gap-2 sm:grid-cols-2">
-                <textarea value={fields.traits} onChange={(event) => update('traits', event.target.value)} placeholder={copy(locale, '特性，每行一项（可选）', 'Traits, one per line (optional)')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
-                <textarea value={fields.heritageOptions} onChange={(event) => update('heritageOptions', event.target.value)} placeholder={copy(locale, '传承或血统选项，每行一项（可选）', 'Heritage options, one per line (optional)')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                <FormField label={copy(locale, '种族特性说明', 'Species trait notes')} hint={copy(locale, '每行一项。会在车卡详情中显示为文字，不会自动产生效果。', 'One per line. Appears as text in the builder and never executes automatically.')}>
+                  <textarea value={fields.traits} onChange={(event) => update('traits', event.target.value)} placeholder={copy(locale, '例如：潮汐呼吸\n夜视', 'e.g. Tidal breathing\nDarkvision')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '传承或血统选项', 'Heritage options')} hint={copy(locale, '每行一项。会在选择此种族后作为子种族选项出现。', 'One per line. Appears as a subrace option after this species is selected.')}>
+                  <textarea value={fields.heritageOptions} onChange={(event) => update('heritageOptions', event.target.value)} placeholder={copy(locale, '例如：礁石血统\n深海血统', 'e.g. Reef heritage\nDeepwater heritage')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
               </div>}
               {fields.entryKind === 'background' && <>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <textarea value={fields.backgroundSkills} onChange={(event) => update('backgroundSkills', event.target.value)} placeholder={copy(locale, '技能熟练项，每行一项（只接受现有技能名称）', 'Skill proficiencies, one per line (known skill names only)')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
-                  <textarea value={fields.backgroundTools} onChange={(event) => update('backgroundTools', event.target.value)} placeholder={copy(locale, '工具熟练项，每行一项（可选）', 'Tool proficiencies, one per line (optional)')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                  <FormField label={copy(locale, '技能熟练项', 'Skill proficiencies')} hint={copy(locale, '每行一项，必须使用现有技能名称；不认识的名称会被忽略。', 'One per line and use existing skill names; unknown names are ignored.')}>
+                    <textarea value={fields.backgroundSkills} onChange={(event) => update('backgroundSkills', event.target.value)} placeholder={copy(locale, '例如：洞悉\n调查', 'e.g. Insight\nInvestigation')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '工具熟练项', 'Tool proficiencies')} hint={copy(locale, '每行一项，作为背景资料显示；具体规则由房间决定。', 'One per line. Displayed as background data; the Room decides the actual rules.')}>
+                    <textarea value={fields.backgroundTools} onChange={(event) => update('backgroundTools', event.target.value)} placeholder={copy(locale, '例如：草药工具\n制图工具', 'e.g. Herbalism kit\nCartographer tools')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <input value={fields.featureName} onChange={(event) => update('featureName', event.target.value)} placeholder={copy(locale, '背景特性名称（可选）', 'Background feature name (optional)')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
-                  <textarea value={fields.featureDescription} onChange={(event) => update('featureDescription', event.target.value)} placeholder={copy(locale, '背景特性说明（文字说明，不自动执行）', 'Feature description (text only, not automated)')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm disabled:opacity-50" />
+                  <FormField label={copy(locale, '背景特性名称', 'Background feature name')} hint={copy(locale, '可选的标题，例如“港口人脉”。', 'Optional display title, such as “Harbor contacts”.')}>
+                    <input value={fields.featureName} onChange={(event) => update('featureName', event.target.value)} placeholder={copy(locale, '例如：港口人脉', 'e.g. Harbor contacts')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '背景特性说明', 'Background feature description')} hint={copy(locale, '只写叙事或协商说明；不会自动修改资源、检定或权限。', 'Narrative and agreement text only; it cannot modify resources, checks, or permissions automatically.')}>
+                    <textarea value={fields.featureDescription} onChange={(event) => update('featureDescription', event.target.value)} placeholder={copy(locale, '可选：说明这个背景特性适合如何在跑团中使用', 'Optional: explain how this feature may be used at the table')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
                 </div>
               </>}
               <div className="flex flex-wrap items-center gap-3">
