@@ -224,6 +224,10 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const [liveRoomSession, setLiveRoomSession] = useState<HostedRoomLaunchSession | null>(null);
   const [liveRoomLaunchState, setLiveRoomLaunchState] = useState<RoomLaunchActionState>('idle');
   const [liveRoomError, setLiveRoomError] = useState<string | null>(null);
+  const lanConnectionTitle = locale === 'en' ? 'LAN connection' : '局域网连接';
+  const lanConnectionNote = locale === 'en'
+    ? 'Use this only when your group is connecting through a local network.'
+    : '仅在同一局域网内联机时使用，不影响正常的战役房间。';
 
   useEffect(() => {
     if (!selectedCampaignId && campaigns[0]) setSelectedCampaignId(campaigns[0].campaign.campaignId);
@@ -476,12 +480,6 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
         </button>
       </div>
 
-      <LanRuntimeHostPanel
-        locale={locale}
-        canManageServer={canManageServer}
-        contextLabel={selectedRoom ? `${selectedCampaign?.campaign.title ?? ''} / ${roomLabel(selectedRoom)}`.replace(/^\s*\/\s*|\s*\/\s*$/g, '') : selectedCampaign?.campaign.title}
-      />
-
       <div className="grid gap-4 xl:grid-cols-[minmax(16rem,0.75fr)_minmax(0,1.25fr)]">
         <div className="flex flex-col gap-3">
           <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-4 shadow-sm">
@@ -612,6 +610,21 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                   </div>
                 ))}
               </div>
+              {canManageServer && (
+                <details className="mt-5 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3">
+                  <summary className="cursor-pointer list-none font-bold text-[#2f2a22]">
+                    {lanConnectionTitle}
+                  </summary>
+                  <p className="mt-2 text-xs leading-5 text-[#51483d]">{lanConnectionNote}</p>
+                  <div className="mt-3">
+                    <LanRuntimeHostPanel
+                      locale={locale}
+                      canManageServer={canManageServer}
+                      contextLabel={selectedRoom ? `${selectedCampaign?.campaign.title ?? ''} / ${roomLabel(selectedRoom)}`.replace(/^\s*\/\s*|\s*\/\s*$/g, '') : selectedCampaign?.campaign.title}
+                    />
+                  </div>
+                </details>
+              )}
             </div>
           )}
 
