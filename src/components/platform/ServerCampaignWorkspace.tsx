@@ -109,6 +109,16 @@ function toRoomSystemId(systemId: string): RoomSystemId {
   return 'custom';
 }
 
+function gameSystemLabel(systemId: string, gameSystems: WorldServerGameSystemBinding[], locale: Locale): string {
+  return gameSystems.find((system) => system.gameSystemId === systemId)?.displayName
+    ?? (locale === 'en' ? 'Custom system' : '自定义系统');
+}
+
+function roomAvailabilityLabel(room: { multiplayerMode: string; metadata: Record<string, unknown> }, locale: Locale): string {
+  if (isRecoverableLiveLobby(room)) return locale === 'en' ? 'Live lobby available' : '联机大厅可恢复';
+  return locale === 'en' ? 'Room ready' : '房间已准备';
+}
+
 function runtimeEventLabel(eventKind: string, locale: Locale): string {
   const labels: Record<string, [string, string]> = {
     'system.note': ['公开记录', 'Public note'],
@@ -228,6 +238,10 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const lanConnectionNote = locale === 'en'
     ? 'Use this only when your group is connecting through a local network.'
     : '仅在同一局域网内联机时使用，不影响正常的战役房间。';
+  const sessionToolsTitle = locale === 'en' ? 'Session tools' : '会话工具';
+  const sessionToolsNote = locale === 'en'
+    ? 'Use these tools to prepare a local session. Multiplayer play begins from the live lobby above.'
+    : '用于准备本地会话；多人跑团请从上方的联机大厅进入。';
 
   useEffect(() => {
     if (!selectedCampaignId && campaigns[0]) setSelectedCampaignId(campaigns[0].campaign.campaignId);
@@ -500,9 +514,9 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                 <button key={campaign.campaignId} type="button" onClick={() => { setSelectedCampaignId(campaign.campaignId); setSelectedRoomId(''); }} className={`rounded-xl border p-3 text-left transition ${campaign.campaignId === selectedCampaignId ? 'border-[#58180d]/45 bg-[#fff8e6]' : 'border-[#2f2a22]/10 bg-[#f7f3ea] hover:border-[#58180d]/30'}`}>
                   <div className="flex items-start justify-between gap-2">
                     <span className="font-bold">{campaign.title}</span>
-                    <span className="text-[11px] text-[#51483d]">{campaign.status}</span>
+                    <span className="text-[11px] text-[#51483d]">{gameSystemLabel(campaign.systemId, gameSystems, locale)}</span>
                   </div>
-                  <div className="mt-1 text-xs text-[#51483d]">{campaign.systemId} · {campaign.lifecycleStatus}</div>
+                  <div className="mt-1 text-xs text-[#51483d]">{campaign.description || t('campaignRoom.noDescription')}</div>
                 </button>
               ))}
             </div>
@@ -539,11 +553,9 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                   <h3 className="mt-1 text-2xl font-black">{campaignDetail.detail.campaign.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-[#51483d]">{campaignDetail.detail.campaign.description || t('campaignRoom.noDescription')}</p>
                 </div>
-                <div className="flex flex-wrap gap-2 text-[11px] font-bold text-[#51483d]">
-                  <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">{campaignDetail.detail.campaign.status}</span>
-                  <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">{campaignDetail.detail.campaign.lifecycleStatus}</span>
-                  <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1">{campaignDetail.detail.campaign.systemId}</span>
-                </div>
+                <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1 text-[11px] font-bold text-[#51483d]">
+                  {gameSystemLabel(campaignDetail.detail.campaign.systemId, gameSystems, locale)}
+                </span>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.actorCount')}</strong><div className="mt-1 text-[#51483d]">{campaignDetail.actors.length}</div></div>
@@ -600,7 +612,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                   <div key={room.roomId} className={`rounded-xl border p-3 ${room.roomId === selectedRoomId ? 'border-[#58180d]/45 bg-[#fff8e6]' : 'border-[#2f2a22]/10 bg-[#f7f3ea]'}`}>
                     <button type="button" onClick={() => setSelectedRoomId(room.roomId)} className="w-full text-left">
                       <div className="font-bold">{roomLabel(room)}</div>
-                      <div className="mt-1 text-xs text-[#51483d]">{room.roomStatus} · {room.multiplayerMode}</div>
+                      <div className="mt-1 text-xs text-[#51483d]">{roomAvailabilityLabel(room, locale)}</div>
                     </button>
                     {canManageServer && viewerUserId === room.hostUserId && isRecoverableLiveLobby(room) && (
                       <button type="button" disabled={liveRoomLaunchState === 'launching'} onClick={() => void handleResumeLiveRoom(room.roomId)} className="mt-3 rounded-md border border-[#2f2a22]/15 bg-white px-3 py-1.5 text-xs font-bold text-[#51483d] disabled:opacity-40">
@@ -640,7 +652,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div><div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{t('campaignRoom.roomDetail')}</div><h3 className="mt-1 text-xl font-bold">{roomLabel(roomDetail.room)}</h3></div>
                 <button type="button" onClick={() => void roomDetail.refresh()} className="text-xs font-bold underline">{t('campaignRoom.refresh')}</button>
-                <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1 text-xs font-bold text-[#51483d]">{roomDetail.room.roomStatus}</span>
+                <span className="rounded-full bg-[#2f2a22]/8 px-2.5 py-1 text-xs font-bold text-[#51483d]">{roomAvailabilityLabel(roomDetail.room, locale)}</span>
               </div>
               <p className="mt-2 text-xs leading-5 text-[#51483d]">{t('campaignRoom.metadataNote')}</p>
               {roomDetail.loading && <p className="mt-3 text-sm text-[#51483d]">{t('campaignRoom.loadingDetail')}</p>}
@@ -655,8 +667,13 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
               <div className="mt-5 border-t border-[#2f2a22]/10 pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{t('campaignRoom.runtimeSession')}</h4>{!roomDetail.runtimeSession && canManageServer && <button type="button" disabled={busy} onClick={() => void handleCreateRuntimeSession()} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-xs font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.createSession')}</button>}</div>
                 {!roomDetail.runtimeSession && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noSession')}</p>}
-                {roomDetail.runtimeSession && <>
-                  <p className="mt-2 text-sm text-[#51483d]">{roomDetail.runtimeSession.session.title || t('campaignRoom.untitledSession')} · {roomDetail.runtimeSession.session.status}</p>
+                {roomDetail.runtimeSession && (
+                  <details className="mt-3 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3">
+                    <summary className="cursor-pointer list-none font-bold text-[#2f2a22]">
+                      {sessionToolsTitle}
+                    </summary>
+                    <p className="mt-2 text-xs leading-5 text-[#51483d]">{sessionToolsNote}</p>
+                    <div className="mt-3">
                   <BasicMapBoard
                     locale={locale}
                     mapId={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`}
@@ -759,7 +776,9 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     <form onSubmit={(event) => void handleAppendEvent(event)} className="mt-3 flex gap-2"><input value={eventText} onChange={(event) => setEventText(event.target.value)} placeholder={t('campaignRoom.eventPlaceholder')} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm" /><button type="submit" disabled={busy || !eventText.trim()} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{t('campaignRoom.appendEvent')}</button></form>
                     <p className="mt-2 text-[11px] text-[#51483d]">{t('campaignRoom.appendOnlyNote')}</p>
                   </div>
-                </>}
+                    </div>
+                  </details>
+                )}
               </div>
             </div>
           )}
