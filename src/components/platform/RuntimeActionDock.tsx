@@ -5,8 +5,8 @@ import { useState, type ReactNode } from 'react';
  *
  * AI-LANDMARK: RUNTIME_ACTION_DOCK_V0
  *
- * A single row of SAME-WEIGHT tool buttons (投骰 / 场景 / Handout / NPC / 地图 /
- * 设置). Clicking a tool expands ONE floating panel above the row; clicking the
+ * A single row of SAME-WEIGHT tool buttons (投骰 / 场景 / 公开信息 / 状态记录).
+ * Clicking a tool expands ONE floating panel above the row; clicking the
  * active tool again collapses it. Only one panel is open at a time. Panels float
  * (absolute) and never sit in document flow / compress the Main Stage.
  *
@@ -30,12 +30,11 @@ export interface RuntimeActionDockProps {
   className?: string;
 }
 
-/** Small consistent placeholder body for not-yet-available tools (product tone). */
+/** Small consistent fallback body when a caller has not supplied a panel yet. */
 export function RuntimeActionPlaceholder({ body }: { body: string }) {
   return (
     <div className="text-[11px] leading-relaxed text-slate-500">
       {body}
-      <div className="mt-1 text-[10px] font-bold text-amber-700">即将推出 · 该功能将在后续版本开放。</div>
     </div>
   );
 }
@@ -48,7 +47,6 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
   const baseBtn = 'rounded border px-2 py-1 text-[11px] font-bold transition';
   const idle = 'border-slate-400/50 bg-white/70 text-slate-700 hover:bg-white';
   const activeCls = 'border-emerald-500/60 bg-emerald-500/15 text-emerald-800';
-  // "即将推出" tools read as secondary so the real, usable tools lead.
   const comingSoon = 'border-slate-300/50 bg-white/40 text-slate-400 hover:bg-white/60';
 
   const panelActions = actions.filter((a) => a.panel !== undefined || a.disabledReason);
@@ -83,7 +81,9 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
           <button
             key={a.id}
             type="button"
-            onClick={() => toggle(a.id)}
+            onClick={() => {
+              if (!a.disabled) toggle(a.id);
+            }}
             aria-pressed={activeId === a.id}
             title={a.disabledReason ?? (a.disabled ? '即将推出' : undefined)}
             className={`${baseBtn} ${activeId === a.id ? activeCls : a.disabled ? comingSoon : idle}`}
@@ -97,12 +97,6 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
 }
 
 export type RuntimeActionMode = 'host' | 'player' | 'spectator';
-
-const LOG_ACTION: RuntimeDockAction = {
-  id: 'log',
-  label: '日志',
-  panel: <RuntimeActionPlaceholder body="日志：完整运行日志在左下角的日志抽屉中，包括投骰、公开信息和状态记录。" />,
-};
 
 /** Optional real panels injected by the caller (M29). When provided they replace
  * the corresponding placeholder; when omitted the dock falls back to a
@@ -126,7 +120,7 @@ const PUBLIC_INFO_FALLBACK = (
  * Role-scoped unified Runtime dock actions (M25.1b / M29). 投骰 is one same-weight
  * tool. The caller supplies the dice panel and (M29) the real 公开信息 / 状态记录
  * panels, so the same dock works in local and multiplayer. Players do NOT see
- * host tools (状态记录 / 场景 / 更多); a spectator does not roll by default.
+ * host tools (状态记录 / 场景); a spectator does not roll by default.
  */
 export function buildRuntimeDockActions(
   mode: RuntimeActionMode,
@@ -141,11 +135,7 @@ export function buildRuntimeDockActions(
   };
 
   if (mode === 'spectator') {
-    return [
-      publicInfo,
-      LOG_ACTION,
-      { id: 'view', label: '视角', disabled: true, panel: <RuntimeActionPlaceholder body="视角：跟随地图镜头、聚焦当前场景。" /> },
-    ];
+    return [publicInfo];
   }
   if (mode === 'player') {
     return [
@@ -159,7 +149,6 @@ export function buildRuntimeDockActions(
         ),
       },
       publicInfo,
-      LOG_ACTION,
     ];
   }
   // host
@@ -182,7 +171,5 @@ export function buildRuntimeDockActions(
         <RuntimeActionPlaceholder body="状态记录：随手记下伤害、线索与重要变化，全桌可见。" />
       ),
     },
-    LOG_ACTION,
-    { id: 'more', label: '更多', disabled: true, panel: <RuntimeActionPlaceholder body="更多：局内设置、联机管理、结束本次会话。" /> },
   ];
 }
