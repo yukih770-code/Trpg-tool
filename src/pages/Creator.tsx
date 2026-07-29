@@ -18,6 +18,8 @@ import {
 } from '../lib/platform/dndPersonalContentAdapter';
 import { createTranslator, readStoredLocale } from '../i18n';
 import { buildStarterEquipmentPlan } from '../lib/dnd2024/dndStarterEquipmentPlan';
+import { getDndCharacterSpellIndex } from '../lib/dnd2024/dndSpellAvailability';
+import { getDndSpellPreparationModel } from '../lib/dnd2024/spell-preparation-model';
 import { toast } from 'sonner';
 
 type BuilderSection =
@@ -41,6 +43,29 @@ const ATTR_LABELS: Record<AttributeName, string> = {
   Wis: '感知',
   Cha: '魅力',
 };
+
+function makeSpellSlotState(
+  slots: ReturnType<typeof getDndSpellPreparationModel>['spellSlots'],
+): { [level: number]: { max: number; current: number } } {
+  if (!slots) return {};
+
+  const values = [
+    slots.level1,
+    slots.level2,
+    slots.level3,
+    slots.level4,
+    slots.level5,
+    slots.level6,
+    slots.level7,
+    slots.level8,
+    slots.level9,
+  ];
+
+  return values.reduce<{ [level: number]: { max: number; current: number } }>((result, max, index) => {
+    if (max > 0) result[index + 1] = { max, current: max };
+    return result;
+  }, {});
+}
 
 /**
  * AI-LANDMARK: DND_CHARACTER_BUILDER_RESPONSIVE_WORKBENCH_PHASE_1
@@ -164,14 +189,8 @@ export function Creator({
     const classHitDie = cls ? Number(cls.hitDice.slice(1)) : 0;
     const hd = classHitDie || hitDiceSizes[character.jobClass] || 8;
     const initialHp = hd + conMod;
-    const isCaster = ['法师', '吟游诗人', '牧师', '术士', '邪术师', '德鲁伊'].includes(character.jobClass);
-
     const spellbook = { ...character.spellbook };
-    if (isCaster) {
-      spellbook.slots = { 1: { max: 2, current: 2 } };
-    } else {
-      spellbook.slots = {};
-    }
+    spellbook.slots = makeSpellSlotState(getDndSpellPreparationModel(character).spellSlots);
 
     if (cls) {
       updateField('weaponProficiencies', cls.weaponProficiencies);
@@ -206,6 +225,26 @@ export function Creator({
   const selectedFeatNames = character.feats ?? [];
   const unselected = t('dndBuilder.common.unselected');
   const selectedKnownSpells = character.spellbook.known;
+  const spellPreparationModel = getDndSpellPreparationModel(character);
+  const selectableSpellLevels = [
+    0,
+    ...Object.entries(makeSpellSlotState(spellPreparationModel.spellSlots)).map(([level]) => Number(level)),
+  ];
+  const spellAvailability = selectedClass
+    ? getDndCharacterSpellIndex({
+        className: selectedClass.name,
+        classLevel: character.level,
+        subclassName: character.subclass,
+        availableSpellLevels: selectableSpellLevels,
+      })
+    : null;
+  const availableBaseSpellNames = new Set(
+    spellAvailability?.characterSpellIndex.map((spell) => spell.nameEn) ?? [],
+  );
+  const selectableSpells = [
+    ...baseSpellData.filter((spell) => availableBaseSpellNames.has(spell.name_en)),
+    ...personalSpellData,
+  ];
 
   const toggleKnownSpell = (spell: SpellInfo) => {
     const isKnown = character.spellbook.known.some((known) => known.name_cn === spell.name_cn);
@@ -662,12 +701,15 @@ export function Creator({
     <section className={panelClass}>
       {renderSectionHeader(t('dndBuilder.sections.spells'), t('dndBuilder.descriptions.spells'))}
       <div className="rounded-md border border-[#a35b11]/25 bg-[#fff1c7]/45 p-3 text-xs leading-relaxed text-[#58180d]/75">
-        <p>{selectedPersonalPackContentLoading ? '正在载入个人法术…' : '在这里选择当前已接入运行时的基础法术，以及你个人资料包中声明的自定义法术。已知与准备状态会保存到角色卡。'}</p>
-        <p className="mt-1">职业合法性、完整法术列表与施法效果仍需要由房间审核和后续规则资料补齐；这里只展示当前可以安全使用的法术条目。</p>
+        <p>{selectedPersonalPackContentLoading ? '正在载入个人法术…' : '基础法术会按当前职业与可用法术环阶筛选；个人资料包中的自定义法术会单独保留，供房间审核。已知与准备状态会保存到角色卡。'}</p>
+        {!selectedClass && <p className="mt-1">请先选择职业，才能查看当前角色可用的基础法术。</p>}
+        {selectedClass && <p className="mt-1">{spellAvailability?.reason}</p>}
+        {spellPreparationModel.isCaster && <p className="mt-1">当前施法模式：{spellPreparationModel.ruleHint}</p>}
+        <p className="mt-1">完整职业法术表、子职业赠法术与施法效果仍需要后续规则资料补齐；这里只展示当前可安全映射的条目。</p>
         {selectedPersonalPackContentError && <span className="mt-1 block text-[#a52a2a]">{selectedPersonalPackContentError}</span>}
       </div>
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        {SPELL_DATA.map((spell) => {
+        {selectableSpells.map((spell) => {
           const isKnown = selectedKnownSpells.some((known) => known.name_cn === spell.name_cn);
           const isPrepared = character.spellbook.prepared.includes(spell.name_cn);
           const isPersonalSpell = personalSpellData.some((personalSpell) => personalSpell.name_cn === spell.name_cn);
@@ -688,8 +730,10 @@ export function Creator({
           </article>;
         })}
       </div>
-      {SPELL_DATA.length === 0 && (
-        <p className="mt-3 rounded-md border border-dashed border-[#58180d]/25 bg-white/45 p-3 text-sm text-[#58180d]/70">当前没有可选择的法术条目。</p>
+      {selectableSpells.length === 0 && (
+        <p className="mt-3 rounded-md border border-dashed border-[#58180d]/25 bg-white/45 p-3 text-sm text-[#58180d]/70">
+          {selectedClass ? '当前职业和等级没有可安全映射的基础法术。可在个人资料包加入自定义法术，并在进入房间后交由主持人审核。' : '请先选择职业，或在个人资料包中准备自定义法术。'}
+        </p>
       )}
       <p className="mt-3 text-xs text-[#58180d]/65">当前已知 {selectedKnownSpells.length} 个法术；准备 {selectedKnownSpells.filter((spell) => character.spellbook.prepared.includes(spell.name_cn)).length} 个。</p>
     </section>
