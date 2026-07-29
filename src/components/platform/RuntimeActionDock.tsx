@@ -110,6 +110,8 @@ export interface RuntimeDockExtraPanels {
   actorPanel?: ReactNode;
   /** 当前场景 focus editor (M42) — host dock only. */
   scenePanel?: ReactNode;
+  /** Keeper-only session notes — supplied only by a server-safe room runtime. */
+  privateNotesPanel?: ReactNode;
 }
 
 const PUBLIC_INFO_FALLBACK = (
@@ -168,11 +170,17 @@ export function buildRuntimeDockActions(
     publicInfo,
     {
       id: 'stateLog',
-      label: isCoc ? 'Keeper 记录' : '状态记录',
+      label: isCoc ? '公开记录' : '状态记录',
       shortLabel: '记录',
       panel: extras?.stateLogPanel ?? (
         <RuntimeActionPlaceholder body="状态记录：随手记下伤害、线索与重要变化，全桌可见。" />
       ),
     },
+    ...(isCoc && extras?.privateNotesPanel ? [{
+      id: 'keeperNotes',
+      label: 'Keeper 笔记',
+      shortLabel: '笔记',
+      panel: extras.privateNotesPanel,
+    }] : []),
   ];
 }

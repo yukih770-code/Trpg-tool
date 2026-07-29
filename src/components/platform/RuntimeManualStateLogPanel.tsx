@@ -15,8 +15,8 @@ import {
  * 血迹通向仓库"). This is a manual record only — it NEVER touches character
  * sheets / actor stores and does no rules math. Authority is injected via
  * `onRecord`: local shell writes the local RuntimeLog; room bridge calls the
- * server append endpoint. Records are public in v0 (server has no safe
- * hostOnly projection yet, so no hostOnly UI exists here).
+ * server append endpoint. This panel deliberately records public table state;
+ * private host records use a separate server-projected surface.
  */
 
 export interface RuntimeStateLogItem {

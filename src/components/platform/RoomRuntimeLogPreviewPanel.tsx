@@ -23,7 +23,8 @@ import type { SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
  * events handed down by the lobby (it does NOT open its own WebSocket), and lets
  * an active member send a minimal public chat.message. This is NOT formal Runtime,
  * NOT CampaignRuntimeShell, NOT the local RuntimeLog store, NOT map/token/action
- * intent. hostOnly/actorPrivate are shown only as labels and are NOT real privacy.
+ * intent. The server projects hostOnly records only to the authenticated active
+ * host; actorPrivate remains unsupported.
  * System-agnostic (no DND import, no rule parsing).
  */
 
@@ -95,7 +96,7 @@ const KIND_TONE: Record<RoomRuntimeLogEventKind, string> = {
 
 const VISIBILITY_LABEL: Record<RoomRuntimeLogVisibility, string> = {
   public: '公开',
-  hostOnly: '主持人可见（v0 不投递）',
+  hostOnly: '仅主持人可见',
   actorPrivate: '私密（v0 不支持）',
 };
 

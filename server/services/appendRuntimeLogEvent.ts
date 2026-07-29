@@ -12,10 +12,9 @@
  * active author; host.note, hostOnly, and combat.* require an active HOST
  * author; system.note / dice.roll / state.manualChange may be author-less.
  *
- * visibility is a forward-compat field, NOT security isolation in v0: actorPrivate
- * is rejected; hostOnly is STORED BUT NOT PROJECTED (not broadcast, not returned by
- * the public list) — no client may rely on it for privacy until real auth /
- * projection exists. NO host projection / recipient filtering implemented here.
+ * actorPrivate is rejected because there is no actor-recipient projection yet.
+ * hostOnly is stored and delivered only through the authenticated active-host
+ * projection used by the HTTP and WebSocket routes.
  */
 
 import { randomUUID } from 'node:crypto';

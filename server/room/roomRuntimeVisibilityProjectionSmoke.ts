@@ -67,7 +67,10 @@ const combatants = [
   { id: 'goblin-combat', displayName: 'Goblin', sourceType: 'manual_npc', kind: 'npc', mapTokenId: 'goblin', initiative: 12, initiativeModifier: 2, hpCurrent: 3, hpMax: 7, armorClass: 15, conditions: ['Poisoned'], notes: 'legendary secret' },
   { id: 'ogre-combat', displayName: 'Ogre', sourceType: 'manual_npc', kind: 'npc', mapTokenId: 'public-ogre', initiative: 8, initiativeModifier: 0, hpCurrent: 40, hpMax: 59, armorClass: 11, conditions: ['Slowed'], notes: 'secret tactics' },
 ];
-const logEvents: RoomRuntimeLogEvent[] = [{ eventId: 'runtime-1', roomId: room.identity.roomId, seq: 1, createdAt: now, authorMemberId: host.memberId, kind: 'combat.started', visibility: 'public', text: 'Combat started', payload: { combatants, roundNumber: 1, turnIndex: 0, activeCombatantId: 'hero-combat' } }];
+const logEvents: RoomRuntimeLogEvent[] = [
+  { eventId: 'runtime-1', roomId: room.identity.roomId, seq: 1, createdAt: now, authorMemberId: host.memberId, kind: 'combat.started', visibility: 'public', text: 'Combat started', payload: { combatants, roundNumber: 1, turnIndex: 0, activeCombatantId: 'hero-combat' } },
+  { eventId: 'runtime-host-only', roomId: room.identity.roomId, seq: 2, createdAt: now, authorMemberId: host.memberId, kind: 'host.note', visibility: 'hostOnly', text: 'Keeper note', payload: { noteKind: 'keeperNote', body: 'private truth' } },
+];
 const playerLog = projectRuntimeLogEventsForViewer(room, joinedPlayer.memberId, logEvents, mapEvents);
 const hostLog = projectRuntimeLogEventsForViewer(room, host.memberId, logEvents, mapEvents);
 const playerCombatants = (playerLog[0]?.payload as { combatants?: Array<{ id: string; hpCurrent?: number; hpMax?: number; armorClass?: number; notes?: unknown; hpDisplay?: { kind?: string }; acDisplay?: { kind?: string } }> }).combatants ?? [];
@@ -77,9 +80,11 @@ expect(playerEnemy?.hpDisplay?.kind === 'exact' && playerEnemy.hpCurrent === und
 expect(playerPublicOgre?.hpDisplay?.kind === 'exact' && playerPublicOgre.acDisplay?.kind === 'exact' && playerPublicOgre.hpCurrent === undefined && playerPublicOgre.armorClass === undefined, 'public monster combat display is exact without raw combat fields');
 const hostEnemy = ((hostLog[0]?.payload as { combatants?: Array<{ id: string; hpCurrent?: number; armorClass?: number }> }).combatants ?? []).find((combatant) => combatant.id === 'goblin-combat');
 expect(hostEnemy?.hpCurrent === 3 && hostEnemy.armorClass === 15, 'host receives full combat data');
+expect(!playerLog.some((event) => event.eventId === 'runtime-host-only'), 'player never receives host-only runtime records');
+expect(hostLog.some((event) => event.eventId === 'runtime-host-only'), 'active host receives host-only runtime records');
 
 const projectedSnapshot = projectRoomSnapshotForViewer(room, joinedPlayer.memberId);
 expect(projectedSnapshot.members.every((member) => member.userId === undefined && member.reconnectTokenId === undefined), 'non-host snapshot strips account and reconnect ids');
 expect(projectRoomSnapshotForViewer(room, host.memberId) === room, 'host snapshot remains authoritative view');
 
-console.log('Runtime visibility projection smoke passed: member guard model, map redaction, combat projection, and snapshot redaction.');
+console.log('Runtime visibility projection smoke passed: member guard model, map redaction, combat projection, host-only records, and snapshot redaction.');

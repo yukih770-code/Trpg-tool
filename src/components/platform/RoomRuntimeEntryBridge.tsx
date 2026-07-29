@@ -26,6 +26,7 @@ import { RuntimeActionDock, buildRuntimeDockActions } from './RuntimeActionDock'
 import { RoomRuntimeLogPreviewPanel } from './RoomRuntimeLogPreviewPanel';
 import { RuntimePublicInfoPanel, type RuntimePublicInfoItem } from './RuntimePublicInfoPanel';
 import { RuntimeManualStateLogPanel, type RuntimeStateLogItem } from './RuntimeManualStateLogPanel';
+import { RuntimeKeeperNotesPanel, type RuntimeKeeperNoteItem } from './RuntimeKeeperNotesPanel';
 import { RuntimeCharacterSheetPanel } from './RuntimeCharacterSheetPanel';
 import { RuntimeActorRosterPanel, type RuntimeActorRosterEntry } from './RuntimeActorRosterPanel';
 import { buildRuntimeCharacterSummary } from './runtimeActorSnapshotAdapter';
@@ -355,11 +356,12 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     kind: 'host.note' | 'state.manualChange';
     text: string;
     payload: unknown;
+    visibility?: 'public' | 'hostOnly';
   }) => {
     if (!context.currentMemberId) throw new Error('需要成员身份才能发布。');
     const { event } = await appendRoomRuntimeLogEvent({ baseUrl: context.serverBaseUrl }, context.roomId, {
       kind: input.kind,
-      visibility: 'public',
+      visibility: input.visibility ?? 'public',
       text: input.text,
       payload: input.payload,
       authorMemberId: context.currentMemberId,
@@ -463,17 +465,26 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     });
   };
 
+  const handleRecordKeeperNote = async (input: { title?: string; body: string }) => {
+    await appendNote({
+      kind: 'host.note',
+      visibility: 'hostOnly',
+      text: input.title ? `【${input.title}】${input.body}` : input.body,
+      payload: { noteKind: 'keeperNote', title: input.title, body: input.body },
+    });
+  };
+
   // Public info feed excludes scene-focus host.notes (those drive the Scene Board,
   // not the 公开信息 list) so the two surfaces stay clean.
   const publicInfoItems: RuntimePublicInfoItem[] = noteEvents
-    .filter((e) => e.kind === 'host.note' && sceneFromPayload(e.payload) === null)
+    .filter((e) => e.visibility === 'public' && e.kind === 'host.note' && sceneFromPayload(e.payload) === null)
     .map((e) => {
       const p = (e.payload ?? {}) as { title?: string; body?: string };
       return { id: e.eventId, title: p.title, body: p.body ?? e.text ?? '', createdAt: e.createdAt, authorLabel: '主持人' };
     });
 
   // Current scene = latest public host.note with noteKind==='sceneFocus'.
-  const sceneEvents = noteEvents.filter((e) => e.kind === 'host.note' && sceneFromPayload(e.payload) !== null);
+  const sceneEvents = noteEvents.filter((e) => e.visibility === 'public' && e.kind === 'host.note' && sceneFromPayload(e.payload) !== null);
   const latestSceneEvent = sceneEvents.length > 0 ? sceneEvents[sceneEvents.length - 1] : undefined;
   const currentScene: RuntimeSceneFocus | null = latestSceneEvent
     ? {
@@ -506,6 +517,16 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         changeKind: p.changeKind,
       };
     });
+
+  const keeperNoteItems: RuntimeKeeperNoteItem[] = noteEvents
+    .filter((event) => event.visibility === 'hostOnly' && event.kind === 'host.note')
+    .map((event) => {
+      const payload = (event.payload ?? {}) as { noteKind?: string; title?: string; body?: string };
+      return payload.noteKind === 'keeperNote'
+        ? { id: event.eventId, title: payload.title, body: payload.body ?? event.text ?? '', createdAt: event.createdAt }
+        : null;
+    })
+    .filter((item): item is RuntimeKeeperNoteItem => item !== null);
 
   // M34 presence: prefer the LIVE snapshot (bridge socket) over the entry-time prop.
   const presenceRoom = liveRoom ?? room;
@@ -733,7 +754,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
           <div className="space-y-0.5 text-[11px] text-slate-700">
             <div>身份：<b>主持人</b></div>
             <div>当前场景：<span className="text-slate-700">{currentScene ? (currentScene.title?.trim() || '（未命名场景）') : '未设置'}</span></div>
-            <div>公开信息 <b>{publicInfoItems.length}</b> 条 · 状态记录 <b>{stateLogItems.length}</b> 条</div>
+            <div>公开信息 <b>{publicInfoItems.length}</b> 条 · 状态记录 <b>{stateLogItems.length}</b> 条{context.systemId === 'coc7e' ? <> · Keeper 笔记 <b>{keeperNoteItems.length}</b> 条</> : null}</div>
             <div>
               同步：<b className={syncDown ? 'text-amber-700' : 'text-emerald-700'}>{syncLabel}</b>
               {lastSyncAt && (
@@ -956,6 +977,18 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                     justUpdated={feedJustUpdated}
                     contextHint={syncDown ? '实时同步暂不可用，此列表可能不是最新。' : null}
                     candidateTargets={stateLogTargets}
+                  />
+                ) : undefined,
+              privateNotesPanel:
+                context.systemId === 'coc7e' && shellMode === 'host' ? (
+                  <RuntimeKeeperNotesPanel
+                    canRecord={!!context.currentMemberId}
+                    items={keeperNoteItems}
+                    onRecord={handleRecordKeeperNote}
+                    onRefresh={loadNotes}
+                    loading={notesLoading}
+                    feedError={notesError}
+                    contextHint={syncDown ? '实时同步暂不可用，此列表可能不是最新。' : null}
                   />
                 ) : undefined,
               actorPanel:

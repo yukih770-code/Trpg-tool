@@ -59,6 +59,6 @@ export interface RoomRuntimeLogListResult {
    * re-fetches.
    */
   latestSeq: number;
-  /** v0: public events only (no real projection). */
+  /** Server-projected events for the verified reader; an active host may also receive hostOnly records. */
   events: RoomRuntimeLogEvent[];
 }
