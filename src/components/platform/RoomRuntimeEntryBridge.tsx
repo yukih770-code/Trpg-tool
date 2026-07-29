@@ -932,6 +932,16 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                   feedError={notesError}
                   justUpdated={feedJustUpdated}
                   contextHint={syncDown ? '实时同步暂不可用，此列表可能不是最新。' : null}
+                  labels={context.systemId === 'coc7e' ? {
+                    publishTitle: '发布公开线索',
+                    publishHint: '调查员和旁观者都能看到，并会记入会话日志。',
+                    titlePlaceholder: '标题（可选），例如：档案摘录 / 现场发现 / 已确认线索',
+                    bodyPlaceholder: '想让调查员看到的线索或说明…',
+                    feedTitle: '已公开的线索',
+                    emptyHost: '还没有公开线索。发布第一条，让调查员掌握已确认的发现。',
+                    emptyParticipant: 'Keeper 还没有公开线索。公开后会显示在这里。',
+                    itemFallbackTitle: '公开线索',
+                  } : undefined}
                 />
               ),
               stateLogPanel:
@@ -974,6 +984,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                   />
                 ) : undefined,
             },
+            context.systemId,
           )}
         />
       }

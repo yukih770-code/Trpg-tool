@@ -35,7 +35,29 @@ export interface RuntimePublicInfoPanelProps {
   contextHint?: string | null;
   /** Brief live-sync perception: shows a "刚刚更新" chip (M33). */
   justUpdated?: boolean;
+  /** Optional system-facing terminology; behavior and event shape stay unchanged. */
+  labels?: Partial<{
+    publishTitle: string;
+    publishHint: string;
+    titlePlaceholder: string;
+    bodyPlaceholder: string;
+    feedTitle: string;
+    emptyHost: string;
+    emptyParticipant: string;
+    itemFallbackTitle: string;
+  }>;
 }
+
+const DEFAULT_LABELS = {
+  publishTitle: '发布公开信息',
+  publishHint: '所有玩家和旁观者都能看到，并会记入日志。',
+  titlePlaceholder: '标题（可选），例如：线索 / 场景描述 / 规则说明',
+  bodyPlaceholder: '想让所有人看到的内容…',
+  feedTitle: '已发布的公开信息',
+  emptyHost: '还没有公开信息。发布第一条，让玩家知道当前的场景、线索或要点。',
+  emptyParticipant: '主持人还没有发布公开信息。发布后会显示在这里。',
+  itemFallbackTitle: '公开信息',
+};
 
 function formatTime(value?: string): string {
   if (!value) return '';
@@ -52,6 +74,7 @@ export function RuntimePublicInfoPanel({
   feedError,
   contextHint,
   justUpdated,
+  labels,
 }: RuntimePublicInfoPanelProps) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -80,25 +103,26 @@ export function RuntimePublicInfoPanel({
 
   const input = 'w-full rounded border border-slate-400/40 bg-white/80 px-2 py-1 text-[12px] outline-none focus:border-emerald-500/60';
   const newestFirst = [...items].reverse();
+  const copy = { ...DEFAULT_LABELS, ...labels };
 
   return (
     <div className="space-y-2 text-left">
       {canPublish && (
         <div className="rounded border border-slate-300/60 bg-white/70 p-2">
-          <div className="text-[11px] font-bold text-slate-700">发布公开信息</div>
-          <p className="mt-0.5 text-[10px] text-slate-500">所有玩家和旁观者都能看到，并会记入日志。</p>
+          <div className="text-[11px] font-bold text-slate-700">{copy.publishTitle}</div>
+          <p className="mt-0.5 text-[10px] text-slate-500">{copy.publishHint}</p>
           <input
             className={`${input} mt-1.5`}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="标题（可选），例如：线索 / 场景描述 / 规则说明"
+            placeholder={copy.titlePlaceholder}
             disabled={publishing}
           />
           <textarea
             className={`${input} mt-1.5 min-h-[64px] resize-y`}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="想让所有人看到的内容…"
+            placeholder={copy.bodyPlaceholder}
             disabled={publishing}
           />
           <div className="mt-1.5 flex items-center gap-2">
@@ -118,7 +142,7 @@ export function RuntimePublicInfoPanel({
 
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
-          已发布的公开信息（{items.length}）
+          {copy.feedTitle}（{items.length}）
           {justUpdated && (
             <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">刚刚更新</span>
           )}
@@ -140,8 +164,8 @@ export function RuntimePublicInfoPanel({
       {newestFirst.length === 0 ? (
         <div className="rounded border border-dashed border-slate-400/40 bg-white/40 p-3 text-center text-[11px] text-slate-500">
           {canPublish
-            ? '还没有公开信息。发布第一条，让玩家知道当前的场景、线索或要点。'
-            : '主持人还没有发布公开信息。发布后会显示在这里。'}
+            ? copy.emptyHost
+            : copy.emptyParticipant}
         </div>
       ) : (
         <div className="max-h-56 space-y-1.5 overflow-y-auto">
@@ -151,7 +175,7 @@ export function RuntimePublicInfoPanel({
                 {item.title ? (
                   <span className="text-[12px] font-bold text-slate-800">{item.title}</span>
                 ) : (
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-700">公开信息</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-700">{copy.itemFallbackTitle}</span>
                 )}
                 <span className="ml-auto text-[9px] text-slate-400">
                   {item.authorLabel ?? '主持人'}{item.createdAt ? ` · ${formatTime(item.createdAt)}` : ''}

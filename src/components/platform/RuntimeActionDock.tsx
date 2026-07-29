@@ -126,11 +126,14 @@ export function buildRuntimeDockActions(
   mode: RuntimeActionMode,
   dicePanel: ReactNode,
   extras?: RuntimeDockExtraPanels,
+  systemId?: string,
 ): RuntimeDockAction[] {
+  const isCoc = systemId === 'coc7e';
+  const publicInfoLabel = isCoc ? '公开线索' : '公开信息';
   const publicInfo: RuntimeDockAction = {
     id: 'publicInfo',
-    label: '公开信息',
-    shortLabel: '信息',
+    label: publicInfoLabel,
+    shortLabel: isCoc ? '线索' : '信息',
     panel: extras?.publicInfoPanel ?? PUBLIC_INFO_FALLBACK,
   };
 
@@ -142,7 +145,7 @@ export function buildRuntimeDockActions(
       { id: 'dice', label: '投骰', panel: dicePanel },
       {
         id: 'actor',
-        label: '我的角色',
+        label: isCoc ? '我的调查员' : '我的角色',
         shortLabel: '角色',
         panel: extras?.actorPanel ?? (
           <RuntimeActionPlaceholder body="我的角色：查看并管理你的角色卡与角色状态。" />
@@ -156,8 +159,8 @@ export function buildRuntimeDockActions(
     { id: 'dice', label: '投骰', panel: dicePanel },
     {
       id: 'scene',
-      label: '当前场景',
-      shortLabel: '场景',
+      label: isCoc ? '当前地点' : '当前场景',
+      shortLabel: isCoc ? '地点' : '场景',
       panel: extras?.scenePanel ?? (
         <RuntimeActionPlaceholder body="当前场景：设置本场的地点、氛围与参考图，同步给所有人。" />
       ),
@@ -165,7 +168,7 @@ export function buildRuntimeDockActions(
     publicInfo,
     {
       id: 'stateLog',
-      label: '状态记录',
+      label: isCoc ? 'Keeper 记录' : '状态记录',
       shortLabel: '记录',
       panel: extras?.stateLogPanel ?? (
         <RuntimeActionPlaceholder body="状态记录：随手记下伤害、线索与重要变化，全桌可见。" />
