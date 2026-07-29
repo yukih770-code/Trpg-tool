@@ -27,6 +27,7 @@ import { CharacterCampaignCta, useCharacterCampaignCta } from '../components/pla
 
 type SheetProps = {
   onStartPlaying?: () => void;
+  initialSection?: string;
 };
 
 // Static character-sheet sections (display/management only; no runtime actions).
@@ -38,10 +39,10 @@ const DND_SHEET_SECTIONS: CharacterSheetSectionDefinition[] = [
   { id: 'spellbook', label: '法术书 Spellbook' },
 ];
 
-export function Sheet({ onStartPlaying }: SheetProps = {}) {
+export function Sheet({ onStartPlaying, initialSection }: SheetProps = {}) {
   const { t } = createTranslator(readStoredLocale());
   const campaignCta = useCharacterCampaignCta();
-  const [sheetSection, setSheetSection] = useState<string>('overview');
+  const [sheetSection, setSheetSection] = useState<string>(initialSection ?? 'overview');
   const {
     character,
     updateField,

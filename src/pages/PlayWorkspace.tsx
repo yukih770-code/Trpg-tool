@@ -453,6 +453,7 @@ export function PlayWorkspace({
   const [plannedSlotTitleKey, setPlannedSlotTitleKey] = useState<string>(
     navigationState?.plannedSlotTitleKey ?? defaultPlayWorkspaceNavigationState.plannedSlotTitleKey,
   );
+  const [dndSheetInitialSection, setDndSheetInitialSection] = useState<string | undefined>();
   const { system } = useAppStore();
   const theme = THEMES[system];
 
@@ -496,10 +497,11 @@ export function PlayWorkspace({
       setSystemWorkspaceView('play');
     });
   };
-  const openDndPlayTab = (nextTab: 'creator' | 'sheet' | 'gameplay') => {
+  const openDndPlayTab = (nextTab: 'creator' | 'sheet' | 'gameplay', sheetInitialSection?: string) => {
     navigatePlayWorkspace({ tab: nextTab, dndWorkspaceView: 'play' }, () => {
       setTab(nextTab);
       setDndWorkspaceView('play');
+      setDndSheetInitialSection(nextTab === 'sheet' ? sheetInitialSection : undefined);
     });
   };
   const openWorkspaceView = (nextView: NonDndWorkspaceView) => {
@@ -520,12 +522,12 @@ export function PlayWorkspace({
           <div className="relative z-10">
             {tab === 'creator' && (
               <Creator
-                onComplete={() => openDndPlayTab('sheet')}
+                onComplete={() => openDndPlayTab('sheet', 'equipment')}
                 onOpenPersonalContentWorkshop={onOpenPersonalContentWorkshop}
               />
             )}
             {/* AI-LANDMARK: ACTOR_VAULT_RESPONSIBILITY_CLEANUP_HIDE_RUNTIME_CTA_V1 — onStartPlaying not passed; runtime entry gated. */}
-            {tab === 'sheet' && <Sheet />}
+            {tab === 'sheet' && <Sheet initialSection={dndSheetInitialSection} />}
             {tab === 'gameplay' && <Gameplay />}
           </div>
         </div>
