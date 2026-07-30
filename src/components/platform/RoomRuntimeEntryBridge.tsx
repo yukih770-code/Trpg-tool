@@ -28,6 +28,7 @@ import { RuntimePublicInfoPanel, type RuntimePublicInfoItem } from './RuntimePub
 import { RuntimeManualStateLogPanel, type RuntimeStateLogItem } from './RuntimeManualStateLogPanel';
 import { RuntimeKeeperNotesPanel, type RuntimeKeeperNoteItem } from './RuntimeKeeperNotesPanel';
 import { RuntimeCharacterSheetPanel } from './RuntimeCharacterSheetPanel';
+import { RuntimeDndActionPanel } from './RuntimeDndActionPanel';
 import { RuntimeActorRosterPanel, type RuntimeActorRosterEntry } from './RuntimeActorRosterPanel';
 import { buildRuntimeCharacterSummary } from './runtimeActorSnapshotAdapter';
 import { buildRuntimeInventorySummary } from './runtimeInventoryAdapter';
@@ -997,11 +998,17 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                     summary={characterSummary}
                     inventory={inventorySummary}
                     role="player"
-                    dndActions={selfDndActions}
-                    dndActionTargets={dndActionTargets}
-                    selectedDndActionTargetId={selectedCombatantId}
-                    onSelectDndActionTarget={setSelectedCombatantId}
-                    onRollDndAction={(input) => { void handleRoomDiceRoll(input); }}
+                  />
+                ) : undefined,
+              dndActionPanel:
+                context.systemId === 'dnd5e-2024' && shellMode === 'player' ? (
+                  <RuntimeDndActionPanel
+                    characterName={characterSummary?.displayName ?? context.actorRef?.displayName}
+                    actions={selfDndActions}
+                    targets={dndActionTargets}
+                    selectedTargetId={selectedCombatantId}
+                    onSelectTarget={setSelectedCombatantId}
+                    onRoll={(input) => { void handleRoomDiceRoll(input); }}
                   />
                 ) : undefined,
               scenePanel:

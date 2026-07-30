@@ -112,6 +112,8 @@ export interface RuntimeDockExtraPanels {
   scenePanel?: ReactNode;
   /** Keeper-only session notes — supplied only by a server-safe room runtime. */
   privateNotesPanel?: ReactNode;
+  /** DND player action palette; it only launches existing server-authoritative rolls. */
+  dndActionPanel?: ReactNode;
 }
 
 const PUBLIC_INFO_FALLBACK = (
@@ -131,6 +133,7 @@ export function buildRuntimeDockActions(
   systemId?: string,
 ): RuntimeDockAction[] {
   const isCoc = systemId === 'coc7e';
+  const isDnd = systemId === 'dnd5e-2024';
   const publicInfoLabel = isCoc ? '公开线索' : '公开信息';
   const publicInfo: RuntimeDockAction = {
     id: 'publicInfo',
@@ -144,6 +147,7 @@ export function buildRuntimeDockActions(
   }
   if (mode === 'player') {
     return [
+      ...(isDnd && extras?.dndActionPanel ? [{ id: 'dndActions', label: '动作', shortLabel: '动作', panel: extras.dndActionPanel }] : []),
       { id: 'dice', label: '投骰', panel: dicePanel },
       {
         id: 'actor',
