@@ -28,6 +28,16 @@ export function RuntimeDndActionPanel({
   const labelPrefix = characterName?.trim() || '我的角色';
   const targetSuffix = selectedTarget ? ` → ${selectedTarget.label}` : '';
 
+  const actionPresentation = (action: RoomRuntimeDndActionShortcut) => {
+    switch (action.kind) {
+      case 'weapon_attack': return { badge: '武器', tone: 'bg-[#8b3a2f]/10 text-[#8b3a2f]', summary: '武器攻击' };
+      case 'spell_attack': return { badge: '法术', tone: 'bg-violet-100 text-violet-800', summary: '法术攻击' };
+      case 'save_dc': return { badge: '豁免', tone: 'bg-sky-100 text-sky-800', summary: action.saveDc === undefined ? '豁免检定' : `${action.saveAbility ? `${saveAbilityLabel(action.saveAbility)}豁免 ` : ''}DC ${action.saveDc}` };
+      case 'damage_only': return { badge: '伤害', tone: 'bg-amber-100 text-amber-900', summary: '效果伤害' };
+      default: return { badge: '动作', tone: 'bg-slate-200 text-slate-700', summary: '自定义动作' };
+    }
+  };
+
   return (
     <div className="space-y-3 text-left">
       <header className="rounded-md border border-[#8b3a2f]/25 bg-[#fff5ed] p-2.5">
@@ -59,19 +69,20 @@ export function RuntimeDndActionPanel({
         <div className="grid gap-2">
           {actions.map((action) => {
             const attack = action.attackBonus === undefined ? undefined : `d20${action.attackBonus >= 0 ? '+' : ''}${action.attackBonus}`;
+            const presentation = actionPresentation(action);
             return (
               <article key={action.id} className="rounded-md border border-slate-300/65 bg-white/85 p-2.5 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <h4 className="text-[12px] font-black text-slate-800">{action.name}</h4>
                     <p className="mt-0.5 text-[9px] text-slate-500">
-                      {attack ? `攻击 ${attack}` : '未配置攻击骰'}{action.damageFormula ? ` · 伤害 ${action.damageFormula}` : ''}
+                      {presentation.summary}{attack ? ` · 攻击 ${attack}` : ''}{action.damageFormula ? ` · 伤害 ${action.damageFormula}${action.damageType ? ` ${action.damageType}` : ''}` : ''}
                     </p>
                   </div>
-                  <span className="rounded-full bg-[#8b3a2f]/10 px-2 py-0.5 text-[9px] font-bold text-[#8b3a2f]">动作</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${presentation.tone}`}>{presentation.badge}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {attack && <button type="button" disabled={!onRoll} onClick={() => onRoll?.({ expression: attack, label: `${labelPrefix} · ${action.name} 攻击${targetSuffix}` })} className="rounded border border-[#8b3a2f]/45 bg-white px-2.5 py-1.5 text-[10px] font-bold text-[#6b281d] disabled:opacity-45">攻击掷骰</button>}
+                  {attack && <button type="button" disabled={!onRoll} onClick={() => onRoll?.({ expression: attack, label: `${labelPrefix} · ${action.name} 攻击${targetSuffix}` })} className="rounded border border-[#8b3a2f]/45 bg-white px-2.5 py-1.5 text-[10px] font-bold text-[#6b281d] disabled:opacity-45">{action.kind === 'spell_attack' ? '法术攻击' : '攻击掷骰'}</button>}
                   {action.damageFormula && <button type="button" disabled={!onRoll} onClick={() => onRoll?.({ expression: action.damageFormula!, label: `${labelPrefix} · ${action.name} 伤害${targetSuffix}` })} className="rounded border border-amber-500/45 bg-amber-50 px-2.5 py-1.5 text-[10px] font-bold text-amber-900 disabled:opacity-45">掷伤害 {action.damageFormula}</button>}
                 </div>
               </article>
@@ -89,4 +100,11 @@ export function RuntimeDndActionPanel({
       </div>
     </div>
   );
+}
+
+function saveAbilityLabel(ability: NonNullable<RoomRuntimeDndActionShortcut['saveAbility']>): string {
+  const labels: Record<NonNullable<RoomRuntimeDndActionShortcut['saveAbility']>, string> = {
+    strength: '力量', dexterity: '敏捷', constitution: '体质', intelligence: '智力', wisdom: '感知', charisma: '魅力',
+  };
+  return labels[ability];
 }

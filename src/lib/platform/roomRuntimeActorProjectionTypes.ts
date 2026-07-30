@@ -23,12 +23,23 @@ export interface RoomRuntimeActorProjection {
   source: RoomRuntimeActorProjectionSource;
 }
 
+/**
+ * Narrow action categories carried from an approved DND Lite campaign actor.
+ * They drive presentation only; target resolution and effects stay outside
+ * this room-safe projection.
+ */
+export type RoomRuntimeDndActionKind = 'weapon_attack' | 'spell_attack' | 'save_dc' | 'damage_only' | 'utility';
+
 /** Self-only DND Lite action shortcut. It intentionally has no target or effect. */
 export interface RoomRuntimeDndActionShortcut {
   id: string;
   name: string;
+  kind: RoomRuntimeDndActionKind;
   attackBonus?: number;
   damageFormula?: string;
+  damageType?: string;
+  saveAbility?: 'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma';
+  saveDc?: number;
 }
 
 export interface RoomRuntimeActorProjectionListResult {

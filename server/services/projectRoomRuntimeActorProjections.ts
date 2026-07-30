@@ -33,6 +33,18 @@ function safeInteger(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 100000 ? value : undefined;
 }
 
+function actionKind(value: unknown): RoomRuntimeDndActionShortcut['kind'] {
+  return value === 'weapon_attack' || value === 'spell_attack' || value === 'save_dc' || value === 'damage_only' || value === 'utility'
+    ? value
+    : 'utility';
+}
+
+function saveAbility(value: unknown): RoomRuntimeDndActionShortcut['saveAbility'] {
+  return value === 'strength' || value === 'dexterity' || value === 'constitution' || value === 'intelligence' || value === 'wisdom' || value === 'charisma'
+    ? value
+    : undefined;
+}
+
 function readDndLiteCombatSummary(payload: Record<string, unknown>): {
   displayName: string;
   actorKind: 'pc' | 'npc' | 'monster' | 'unknown';
@@ -66,9 +78,11 @@ function readDndLiteActionShortcuts(payload: Record<string, unknown>): RoomRunti
     const id = typeof action?.id === 'string' ? action.id.trim() : '';
     const name = typeof action?.name === 'string' ? action.name.trim() : '';
     if (!id || !name) return [];
-    const attackBonus = typeof action.attackBonus === 'number' && Number.isInteger(action.attackBonus) ? action.attackBonus : undefined;
+    const attackBonus = typeof action.attackBonus === 'number' && Number.isInteger(action.attackBonus) && action.attackBonus >= -100 && action.attackBonus <= 100 ? action.attackBonus : undefined;
     const damageFormula = typeof action.damageFormula === 'string' && /^[0-9dD+\-\s]+$/.test(action.damageFormula) ? action.damageFormula.replace(/\s+/g, '') : undefined;
-    return [{ id, name, attackBonus, damageFormula }];
+    const damageType = typeof action.damageType === 'string' && action.damageType.trim().length <= 48 ? action.damageType.trim() || undefined : undefined;
+    const saveDc = typeof action.saveDc === 'number' && Number.isInteger(action.saveDc) && action.saveDc >= 0 && action.saveDc <= 100 ? action.saveDc : undefined;
+    return [{ id, name, kind: actionKind(action.kind), attackBonus, damageFormula, damageType, saveAbility: saveAbility(action.saveAbility), saveDc }];
   }).slice(0, 12);
 }
 
