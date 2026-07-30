@@ -32,6 +32,7 @@ export function RuntimeDndActionPanel({
     switch (action.kind) {
       case 'weapon_attack': return { badge: '武器', tone: 'bg-[#8b3a2f]/10 text-[#8b3a2f]', summary: '武器攻击' };
       case 'spell_attack': return { badge: '法术', tone: 'bg-violet-100 text-violet-800', summary: '法术攻击' };
+      case 'spell_cast': return { badge: action.availability === 'prepared' ? '已准备' : '已知法术', tone: 'bg-indigo-100 text-indigo-800', summary: `${action.spellLevel === 0 ? '戏法' : action.spellLevel === undefined ? '法术' : `${action.spellLevel} 环法术`}${action.activation ? ` · ${action.activation}` : ''}${action.range ? ` · ${action.range}` : ''}` };
       case 'save_dc': return { badge: '豁免', tone: 'bg-sky-100 text-sky-800', summary: action.saveDc === undefined ? '豁免检定' : `${action.saveAbility ? `${saveAbilityLabel(action.saveAbility)}豁免 ` : ''}DC ${action.saveDc}` };
       case 'damage_only': return { badge: '伤害', tone: 'bg-amber-100 text-amber-900', summary: '效果伤害' };
       default: return { badge: '动作', tone: 'bg-slate-200 text-slate-700', summary: '自定义动作' };
@@ -84,6 +85,7 @@ export function RuntimeDndActionPanel({
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {attack && <button type="button" disabled={!onRoll} onClick={() => onRoll?.({ expression: attack, label: `${labelPrefix} · ${action.name} 攻击${targetSuffix}` })} className="rounded border border-[#8b3a2f]/45 bg-white px-2.5 py-1.5 text-[10px] font-bold text-[#6b281d] disabled:opacity-45">{action.kind === 'spell_attack' ? '法术攻击' : '攻击掷骰'}</button>}
                   {action.damageFormula && <button type="button" disabled={!onRoll} onClick={() => onRoll?.({ expression: action.damageFormula!, label: `${labelPrefix} · ${action.name} 伤害${targetSuffix}` })} className="rounded border border-amber-500/45 bg-amber-50 px-2.5 py-1.5 text-[10px] font-bold text-amber-900 disabled:opacity-45">掷伤害 {action.damageFormula}</button>}
+                  {action.kind === 'spell_cast' && <span className="rounded border border-indigo-300/60 bg-indigo-50 px-2.5 py-1.5 text-[10px] font-bold text-indigo-800">施放效果由主持人确认</span>}
                 </div>
               </article>
             );

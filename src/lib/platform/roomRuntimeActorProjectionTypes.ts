@@ -28,7 +28,7 @@ export interface RoomRuntimeActorProjection {
  * They drive presentation only; target resolution and effects stay outside
  * this room-safe projection.
  */
-export type RoomRuntimeDndActionKind = 'weapon_attack' | 'spell_attack' | 'save_dc' | 'damage_only' | 'utility';
+export type RoomRuntimeDndActionKind = 'weapon_attack' | 'spell_attack' | 'spell_cast' | 'save_dc' | 'damage_only' | 'utility';
 
 /** Self-only DND Lite action shortcut. It intentionally has no target or effect. */
 export interface RoomRuntimeDndActionShortcut {
@@ -40,6 +40,11 @@ export interface RoomRuntimeDndActionShortcut {
   damageType?: string;
   saveAbility?: 'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma';
   saveDc?: number;
+  /** A compact self-only spellbook projection; no description or full snapshot is returned. */
+  spellLevel?: number;
+  activation?: string;
+  range?: string;
+  availability?: 'prepared' | 'known';
 }
 
 export interface RoomRuntimeActorProjectionListResult {

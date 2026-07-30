@@ -34,7 +34,7 @@ function safeInteger(value: unknown): number | undefined {
 }
 
 function actionKind(value: unknown): RoomRuntimeDndActionShortcut['kind'] {
-  return value === 'weapon_attack' || value === 'spell_attack' || value === 'save_dc' || value === 'damage_only' || value === 'utility'
+  return value === 'weapon_attack' || value === 'spell_attack' || value === 'spell_cast' || value === 'save_dc' || value === 'damage_only' || value === 'utility'
     ? value
     : 'utility';
 }
@@ -83,6 +83,43 @@ function readDndLiteActionShortcuts(payload: Record<string, unknown>): RoomRunti
     const damageType = typeof action.damageType === 'string' && action.damageType.trim().length <= 48 ? action.damageType.trim() || undefined : undefined;
     const saveDc = typeof action.saveDc === 'number' && Number.isInteger(action.saveDc) && action.saveDc >= 0 && action.saveDc <= 100 ? action.saveDc : undefined;
     return [{ id, name, kind: actionKind(action.kind), attackBonus, damageFormula, damageType, saveAbility: saveAbility(action.saveAbility), saveDc }];
+  }).slice(0, 12);
+}
+
+/**
+ * Extracts only a player's compact spellbook labels from their approved
+ * campaign-actor snapshot. Full spell descriptions, components, private notes,
+ * and the source snapshot never leave the server projection.
+ */
+function readDndSpellbookActionShortcuts(payload: Record<string, unknown>): RoomRuntimeDndActionShortcut[] {
+  const spellbook = record(payload.spellbook);
+  if (!spellbook || !Array.isArray(spellbook.known)) return [];
+  const preparedNames = new Set(
+    Array.isArray(spellbook.prepared)
+      ? spellbook.prepared.filter((value): value is string => typeof value === 'string').map((value) => value.trim()).filter(Boolean)
+      : [],
+  );
+  const seen = new Set<string>();
+  return spellbook.known.flatMap((value, index) => {
+    const spell = record(value);
+    if (!spell) return [];
+    const name = typeof spell.nameCn === 'string' && spell.nameCn.trim()
+      ? spell.nameCn.trim()
+      : typeof spell.name_cn === 'string' && spell.name_cn.trim()
+        ? spell.name_cn.trim()
+        : typeof spell.name_en === 'string' && spell.name_en.trim()
+          ? spell.name_en.trim()
+          : '';
+    if (!name || seen.has(name)) return [];
+    seen.add(name);
+    const identity = typeof spell.id === 'string' && spell.id.trim() ? spell.id.trim() : `spell-${index}-${name}`;
+    const spellLevel = typeof spell.level === 'number' && Number.isInteger(spell.level) && spell.level >= 0 && spell.level <= 9 ? spell.level : undefined;
+    const activation = typeof spell.cast_time === 'string' && spell.cast_time.trim().length <= 48 ? spell.cast_time.trim() : undefined;
+    const range = typeof spell.range === 'string' && spell.range.trim().length <= 48 ? spell.range.trim() : undefined;
+    const prepared = preparedNames.has(name)
+      || (typeof spell.name_cn === 'string' && preparedNames.has(spell.name_cn.trim()))
+      || (typeof spell.name_en === 'string' && preparedNames.has(spell.name_en.trim()));
+    return [{ id: `spellbook:${identity}`, name, kind: 'spell_cast' as const, spellLevel, activation, range, availability: prepared ? 'prepared' as const : 'known' as const }];
   }).slice(0, 12);
 }
 
@@ -145,7 +182,9 @@ export async function projectRoomRuntimeActorProjections(input: {
         return fallback;
       }
       if (binding.memberId === input.currentMemberId && binding.actorRef.systemId === 'dnd5e-2024') {
-        selfDndActions = readDndLiteActionShortcuts(record.overridePayload);
+        const explicitActions = readDndLiteActionShortcuts(record.overridePayload);
+        const spellbookActions = readDndSpellbookActionShortcuts(record.snapshotPayload);
+        selfDndActions = [...explicitActions, ...spellbookActions].slice(0, 16);
       }
       return fromCampaignOverride(binding, record);
     } catch {

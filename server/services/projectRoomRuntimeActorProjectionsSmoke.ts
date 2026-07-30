@@ -25,7 +25,17 @@ const room = {
 
 const record = {
   campaignActorInstanceId: 'instance-1', campaignId: 'campaign-1', ownerId: 'user-1', actorKind: 'pc', displayName: 'Maris',
-  instanceStatus: 'active', snapshotPayload: { private: 'never project this' },
+  instanceStatus: 'active',
+  snapshotPayload: {
+    private: 'never project this',
+    spellbook: {
+      prepared: ['魔法飞弹'],
+      known: [
+        { id: 'spell.fire-bolt', name_cn: '火焰箭', name_en: 'Fire Bolt', level: 0, cast_time: '动作', range: '120尺', desc: 'Do not project this.' },
+        { id: 'spell.magic-missile', name_cn: '魔法飞弹', name_en: 'Magic Missile', level: 1, cast_time: '动作', range: '120尺', desc: 'Do not project this either.' },
+      ],
+    },
+  },
   overridePayload: { dndLiteActorSheetV1: sheet },
 };
 
@@ -43,6 +53,8 @@ async function main() {
   projection.source === 'campaignOverride',
   result.selfDndActions?.[0]?.name === '长剑' && result.selfDndActions[0].kind === 'weapon_attack' && result.selfDndActions[0].attackBonus === 5 && result.selfDndActions[0].damageType === 'slashing',
   result.selfDndActions?.[1]?.kind === 'save_dc' && result.selfDndActions[1].saveAbility === 'dexterity' && result.selfDndActions[1].saveDc === 13,
+  result.selfDndActions?.some((action) => action.name === '火焰箭' && action.kind === 'spell_cast' && action.spellLevel === 0 && action.range === '120尺' && action.availability === 'known'),
+  result.selfDndActions?.some((action) => action.name === '魔法飞弹' && action.kind === 'spell_cast' && action.availability === 'prepared'),
     !('snapshotPayload' in projection) && !('ownerId' in projection) && !('actions' in projection),
   ];
   if (checks.some((check) => !check)) throw new Error('Room Runtime actor projection smoke failed.');
