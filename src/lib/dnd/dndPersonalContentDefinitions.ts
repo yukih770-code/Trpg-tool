@@ -12,7 +12,9 @@ export type DndPersonalEditorEntryKind =
   | 'feat'
   | 'spell'
   | 'item'
-  | 'monster';
+  | 'monster'
+  | 'rule'
+  | 'other';
 
 export type DndPersonalFeatureDraft = {
   unlockLevel: number;
@@ -23,6 +25,38 @@ export type DndPersonalFeatureDraft = {
 export type DndPersonalNamedRuleDraft = {
   name: string;
   desc: string;
+};
+
+/** A declared resource, for example spell slots, charges, ki, or Soul Thread. */
+export type DndPersonalResourceDraft = {
+  name: string;
+  maximum: string;
+  recovery: string;
+  desc: string;
+};
+
+/** A declared action fact. It is intentionally not an executable Runtime intent. */
+export type DndPersonalActionDraft = {
+  name: string;
+  activation: string;
+  range: string;
+  cost: string;
+  desc: string;
+};
+
+/** A bounded choice group, such as an invocation, ancestry, fighting style, or item mode. */
+export type DndPersonalChoiceDraft = {
+  name: string;
+  requirement: string;
+  selection: string;
+  options: string[];
+};
+
+export type DndPersonalRuleComponents = {
+  resources: DndPersonalResourceDraft[];
+  actions: DndPersonalActionDraft[];
+  choices: DndPersonalChoiceDraft[];
+  triggers: DndPersonalNamedRuleDraft[];
 };
 
 function boundedLevel(value: string, fallback: number): number {
@@ -55,6 +89,51 @@ export function parseDndPersonalNamedRuleLines(value: string, limit = 40): DndPe
     const desc = parts.slice(1).join(' | ');
     return name && desc ? [{ name, desc }] : [];
   }).slice(0, limit);
+}
+
+/** One resource per line: `名称 | 上限或公式 | 恢复 | 说明`. */
+export function parseDndPersonalResourceLines(value: string, limit = 20): DndPersonalResourceDraft[] {
+  return value.split('\n').flatMap((line) => {
+    const parts = line.split('|').map((part) => part.trim());
+    const [name, maximum, recovery, ...description] = parts;
+    if (!name || !maximum || !recovery) return [];
+    return [{ name, maximum, recovery, desc: description.filter(Boolean).join(' | ') }];
+  }).slice(0, limit);
+}
+
+/** One action per line: `名称 | 动作类型 | 射程 | 消耗 | 说明`. */
+export function parseDndPersonalActionLines(value: string, limit = 40): DndPersonalActionDraft[] {
+  return value.split('\n').flatMap((line) => {
+    const parts = line.split('|').map((part) => part.trim());
+    const [name, activation, range, cost, ...description] = parts;
+    if (!name || !activation) return [];
+    return [{ name, activation, range: range || '未说明', cost: cost || '无', desc: description.filter(Boolean).join(' | ') }];
+  }).slice(0, limit);
+}
+
+/** One choice group per line: `名称 | 前置条件 | 选择数量 | 选项 1；选项 2`. */
+export function parseDndPersonalChoiceLines(value: string, limit = 20): DndPersonalChoiceDraft[] {
+  return value.split('\n').flatMap((line) => {
+    const parts = line.split('|').map((part) => part.trim());
+    const [name, requirement, selection, optionText] = parts;
+    if (!name || !optionText) return [];
+    const options = optionText.split(/[；;]/).map((option) => option.trim()).filter(Boolean).slice(0, 20);
+    return options.length > 0 ? [{ name, requirement: requirement || '无', selection: selection || '选择一项', options }] : [];
+  }).slice(0, limit);
+}
+
+export function parseDndPersonalRuleComponents(input: {
+  resources: string;
+  actions: string;
+  choices: string;
+  triggers: string;
+}): DndPersonalRuleComponents {
+  return {
+    resources: parseDndPersonalResourceLines(input.resources),
+    actions: parseDndPersonalActionLines(input.actions),
+    choices: parseDndPersonalChoiceLines(input.choices),
+    triggers: parseDndPersonalNamedRuleLines(input.triggers),
+  };
 }
 
 /**

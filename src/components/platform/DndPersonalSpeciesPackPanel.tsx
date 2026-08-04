@@ -17,6 +17,7 @@ import {
   deriveDndPersonalLibraryName,
   parseDndPersonalFeatureLines,
   parseDndPersonalNamedRuleLines,
+  parseDndPersonalRuleComponents,
   type DndPersonalEditorEntryKind,
 } from '../../lib/dnd/dndPersonalContentDefinitions';
 
@@ -77,6 +78,39 @@ type Fields = {
   monsterActions: string;
   monsterReactions: string;
   monsterLegendaryActions: string;
+  ruleResources: string;
+  ruleActions: string;
+  ruleChoices: string;
+  ruleTriggers: string;
+  speciesLanguages: string;
+  speciesSenses: string;
+  speciesAbilityOptions: string;
+  backgroundEquipment: string;
+  backgroundLanguages: string;
+  classSkillChoices: string;
+  classSkillChoiceCount: string;
+  classToolChoices: string;
+  classSpellcastingProgression: string;
+  classMulticlassNote: string;
+  spellTarget: string;
+  spellSave: string;
+  spellArea: string;
+  spellEffect: string;
+  spellScaling: string;
+  itemAttunement: string;
+  itemCharges: string;
+  itemRequirements: string;
+  itemEffects: string;
+  monsterAbilityScores: string;
+  monsterSavingThrows: string;
+  monsterSkills: string;
+  monsterDamageVulnerabilities: string;
+  monsterDamageResistances: string;
+  monsterDamageImmunities: string;
+  monsterConditionImmunities: string;
+  monsterSenses: string;
+  monsterLanguages: string;
+  monsterProficiencyBonus: string;
 };
 
 const initialFields: Fields = {
@@ -87,6 +121,13 @@ const initialFields: Fields = {
   subclassParentClass: '', subclassUnlockLevel: '1', subclassFeatureLines: '',
   itemCategory: 'weapon', itemRarity: '', itemWeight: '', itemCost: '', itemDamage: '', itemDamageType: '', itemProperties: '', itemArmorClass: '', itemUsage: '',
   monsterSize: '中型', monsterType: '类人生物', monsterAlignment: '', monsterArmorClass: '', monsterHp: '', monsterSpeed: '30 尺', monsterChallenge: '', monsterTraits: '', monsterActions: '', monsterReactions: '', monsterLegendaryActions: '',
+  ruleResources: '', ruleActions: '', ruleChoices: '', ruleTriggers: '',
+  speciesLanguages: '', speciesSenses: '', speciesAbilityOptions: '',
+  backgroundEquipment: '', backgroundLanguages: '',
+  classSkillChoices: '', classSkillChoiceCount: '2', classToolChoices: '', classSpellcastingProgression: '', classMulticlassNote: '',
+  spellTarget: '', spellSave: '', spellArea: '', spellEffect: '', spellScaling: '',
+  itemAttunement: '', itemCharges: '', itemRequirements: '', itemEffects: '',
+  monsterAbilityScores: '', monsterSavingThrows: '', monsterSkills: '', monsterDamageVulnerabilities: '', monsterDamageResistances: '', monsterDamageImmunities: '', monsterConditionImmunities: '', monsterSenses: '', monsterLanguages: '', monsterProficiencyBonus: '',
 };
 
 function blankEntryFields(previous: Fields): Fields {
@@ -148,6 +189,14 @@ function entryKindGuidance(locale: Locale, entryKind: Fields['entryKind']): { ti
     title: copy(locale, '怪物：战斗资料卡', 'Monster: combat reference card'),
     body: copy(locale, '可保存基础防御、生命、特性和动作说明，供主持人准备遭遇。不会自动创建 Token 或执行怪物动作。', 'Stores defenses, HP, traits, and action text for host encounter preparation. It does not auto-create Tokens or execute monster actions.'),
   };
+  if (entryKind === 'rule') return {
+    title: copy(locale, '规则模块：可复用的桌面规则说明', 'Rule module: reusable table-rule notes'),
+    body: copy(locale, '适合保存休息、灵感、制作、声望或其他非实体规则。使用下方通用组件表达资源、动作、选择与限制；不会直接改变房间权限。', 'Use this for rest, inspiration, crafting, reputation, or another non-entity rule. The shared components describe resources, actions, choices, and limits; they never change Room permissions directly.'),
+  };
+  if (entryKind === 'other') return {
+    title: copy(locale, '其他资料：尚无专用编辑器的原创内容', 'Other reference: original content without a dedicated editor yet'),
+    body: copy(locale, '先用说明和通用规则组件保存。后续可在不丢失版本历史的前提下迁移到专用编辑器。', 'Save it with a summary and shared rule components first. A later dedicated editor can migrate it without losing version history.'),
+  };
   return {
     title: copy(locale, '法术：施法资料卡', 'Spell: casting reference card'),
     body: copy(locale, '会加入车卡的已知/准备法术列表；不保存伤害公式、豁免或自动施法效果。', 'Appears in the builder known/prepared list. Damage formulas, saves, and automated casting are not stored here.'),
@@ -201,6 +250,12 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
   const traitList = useMemo(() => listFromLines(fields.traits), [fields.traits]);
   const heritageList = useMemo(() => listFromLines(fields.heritageOptions), [fields.heritageOptions]);
   const update = (key: keyof Fields, value: string) => setFields((previous) => ({ ...previous, [key]: value }));
+  const ruleComponents = () => parseDndPersonalRuleComponents({
+    resources: fields.ruleResources,
+    actions: fields.ruleActions,
+    choices: fields.ruleChoices,
+    triggers: fields.ruleTriggers,
+  });
 
   const inspectPack = async (pack: PersonalCompendiumPack) => {
     if (!pack.latestVersion || busy) return;
@@ -257,10 +312,13 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
         displayName: name,
         content: {
           schema: 'dnd-personal-background-v0',
+          ruleComponents: ruleComponents(),
           name,
           summary: fields.summary.trim() || undefined,
           skillProficiencies: listFromLines(fields.backgroundSkills),
           toolProficiencies: listFromLines(fields.backgroundTools),
+          equipmentNote: fields.backgroundEquipment.trim() || undefined,
+          languages: listFromLines(fields.backgroundLanguages),
           feature: {
             name: fields.featureName.trim() || '自定义背景特性',
             desc: fields.featureDescription.trim() || '具体可用性以房间审核结果为准。',
@@ -274,7 +332,8 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
         entryKind: 'class' as const,
         displayName: name,
         content: {
-          schema: 'dnd-personal-class-v0',
+          schema: 'dnd-personal-class-v1',
+          ruleComponents: ruleComponents(),
           name,
           summary: fields.summary.trim() || undefined,
           primaryAbility: fields.classPrimaryAbility,
@@ -283,6 +342,11 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
           weaponProficiencies: listFromLines(fields.classWeaponProficiencies),
           armorProficiencies: listFromLines(fields.classArmorProficiencies),
           startingEquipment: fields.classStartingEquipment.trim() || undefined,
+          skillChoices: listFromLines(fields.classSkillChoices),
+          skillChoiceCount: Math.max(0, Math.min(6, Number(fields.classSkillChoiceCount) || 0)) || undefined,
+          toolChoices: listFromLines(fields.classToolChoices),
+          spellcastingProgression: fields.classSpellcastingProgression.trim() || undefined,
+          multiclassNote: fields.classMulticlassNote.trim() || undefined,
           features: parseDndPersonalFeatureLines(fields.classFeatureLines),
         },
         metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customClass' },
@@ -293,7 +357,8 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
         entryKind: 'subclass' as const,
         displayName: name,
         content: {
-          schema: 'dnd-personal-subclass-v0',
+          schema: 'dnd-personal-subclass-v1',
+          ruleComponents: ruleComponents(),
           name,
           className: fields.subclassParentClass.trim(),
           summary: fields.summary.trim() || undefined,
@@ -312,6 +377,7 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
         displayName: name,
         content: {
           schema: 'dnd-personal-feat-v0',
+          ruleComponents: ruleComponents(),
           name,
           summary: fields.summary.trim() || undefined,
           category: fields.featCategory,
@@ -325,7 +391,8 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
         entryKind: 'spell' as const,
         displayName: name,
         content: {
-          schema: 'dnd-personal-spell-v0',
+          schema: 'dnd-personal-spell-v1',
+          ruleComponents: ruleComponents(),
           name,
           level: Math.max(0, Math.min(9, Number(fields.spellLevel) || 0)),
           school: fields.spellSchool.trim() || '自定义',
@@ -334,6 +401,11 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
           duration: fields.spellDuration.trim() || '立即',
           components: fields.spellComponents.trim().toUpperCase() || 'V',
           summary: fields.summary.trim() || undefined,
+          target: fields.spellTarget.trim() || undefined,
+          savingThrow: fields.spellSave.trim() || undefined,
+          area: fields.spellArea.trim() || undefined,
+          effect: fields.spellEffect.trim() || undefined,
+          scaling: fields.spellScaling.trim() || undefined,
         },
         metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customSpell' },
       };
@@ -343,7 +415,8 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
         entryKind: 'item' as const,
         displayName: name,
         content: {
-          schema: 'dnd-personal-item-v1',
+          schema: 'dnd-personal-item-v2',
+          ruleComponents: ruleComponents(),
           name,
           summary: fields.summary.trim() || undefined,
           category: fields.itemCategory,
@@ -359,6 +432,10 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
             baseAc: Number(fields.itemArmorClass) || undefined,
           } : undefined,
           usage: fields.itemUsage.trim() || undefined,
+          attunement: fields.itemAttunement.trim() || undefined,
+          charges: fields.itemCharges.trim() || undefined,
+          requirements: fields.itemRequirements.trim() || undefined,
+          effects: parseDndPersonalNamedRuleLines(fields.itemEffects),
         },
         metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customItem' },
       };
@@ -368,7 +445,8 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
         entryKind: 'monster' as const,
         displayName: name,
         content: {
-          schema: 'dnd-personal-monster-v1',
+          schema: 'dnd-personal-monster-v2',
+          ruleComponents: ruleComponents(),
           name,
           summary: fields.summary.trim() || undefined,
           size: fields.monsterSize.trim() || undefined,
@@ -378,6 +456,16 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
           hitPoints: Number(fields.monsterHp) || undefined,
           speed: fields.monsterSpeed.trim() || undefined,
           challengeRating: fields.monsterChallenge.trim() || undefined,
+          abilityScores: fields.monsterAbilityScores.trim() || undefined,
+          savingThrows: fields.monsterSavingThrows.trim() || undefined,
+          skills: fields.monsterSkills.trim() || undefined,
+          damageVulnerabilities: listFromLines(fields.monsterDamageVulnerabilities),
+          damageResistances: listFromLines(fields.monsterDamageResistances),
+          damageImmunities: listFromLines(fields.monsterDamageImmunities),
+          conditionImmunities: listFromLines(fields.monsterConditionImmunities),
+          senses: fields.monsterSenses.trim() || undefined,
+          languages: fields.monsterLanguages.trim() || undefined,
+          proficiencyBonus: fields.monsterProficiencyBonus.trim() || undefined,
           traits: parseDndPersonalNamedRuleLines(fields.monsterTraits),
           actions: parseDndPersonalNamedRuleLines(fields.monsterActions),
           reactions: parseDndPersonalNamedRuleLines(fields.monsterReactions),
@@ -386,17 +474,34 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
         metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customMonster' },
       };
     }
+    if (fields.entryKind === 'rule' || fields.entryKind === 'other') {
+      return {
+        entryKind: fields.entryKind,
+        displayName: name,
+        content: {
+          schema: fields.entryKind === 'rule' ? 'dnd-personal-rule-module-v1' : 'dnd-personal-other-reference-v1',
+          name,
+          summary: fields.summary.trim() || undefined,
+          ruleComponents: ruleComponents(),
+        },
+        metadata: { gameSystemId: 'dnd5e-2024', entryRole: fields.entryKind === 'rule' ? 'customRuleModule' : 'customReference' },
+      };
+    }
     return {
       entryKind: 'species' as const,
       displayName: name,
       content: {
-        schema: 'dnd-personal-species-v0',
+        schema: 'dnd-personal-species-v1',
+        ruleComponents: ruleComponents(),
         name,
         size: fields.size.trim() || undefined,
         speedFeet: Number(fields.speed) || undefined,
         summary: fields.summary.trim() || undefined,
         traits: traitList,
         heritageOptions: heritageList,
+        languages: listFromLines(fields.speciesLanguages),
+        senses: fields.speciesSenses.trim() || undefined,
+        abilityOptions: fields.speciesAbilityOptions.trim() || undefined,
       },
       metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customSpecies' },
     };
@@ -600,6 +705,8 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                     <option value="spell">{copy(locale, '法术', 'Spell')}</option>
                     <option value="item">{copy(locale, '物品与装备', 'Item & equipment')}</option>
                     <option value="monster">{copy(locale, '怪物', 'Monster')}</option>
+                    <option value="rule">{copy(locale, '规则模块', 'Rule module')}</option>
+                    <option value="other">{copy(locale, '其他原创资料', 'Other original reference')}</option>
                   </select>
                 </FormField>
                 <FormField label={copy(locale, '条目名称', 'Entry name')} required hint={copy(locale, '玩家在车卡中看到和选择的名称。', 'The name players see and select in Character Builder.')}>
@@ -725,6 +832,57 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
               <FormField label={copy(locale, '简短说明', 'Short summary')} hint={copy(locale, '给车卡与主持人快速阅读的简介。不要填写自动结算、伤害公式或隐藏权限。', 'A quick description for the builder and host. Do not put automation, damage formulas, or hidden permissions here.')}>
                 <textarea value={fields.summary} onChange={(event) => update('summary', event.target.value)} placeholder={copy(locale, '可选：用一两句话说明主题与玩法感受', 'Optional: summarize the theme in one or two sentences')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
               </FormField>
+              <details className="rounded-md border border-[#a35b11]/25 bg-[#fff8e6] p-3">
+                <summary className="cursor-pointer text-sm font-bold text-[#58180d]">{copy(locale, '通用规则组件（可选）', 'Shared rule components (optional)')}</summary>
+                <p className="mt-1 text-xs leading-5 text-[#2c1810]/65">{copy(locale, '资源、动作、选择与触发可以被任意原创内容复用。它们会作为结构化、可审核的资料保存；当前不会自动施法、扣除资源或执行效果。', 'Resources, actions, choices, and triggers can be reused by any original content. They are stored as structured, reviewable facts and do not currently cast, spend resources, or execute effects automatically.')}</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <FormField label={copy(locale, '资源', 'Resources')} hint={copy(locale, '每行：名称 | 上限或公式 | 恢复 | 说明。例如“魂丝 | 职业等级 + 魅力调整值 | 长休；短休一次 | 强化魂艺”。', 'One per line: name | maximum or formula | recovery | description.')}>
+                    <textarea value={fields.ruleResources} onChange={(event) => update('ruleResources', event.target.value)} placeholder={copy(locale, '魂丝 | 职业等级 + 魅力调整值 + 熟练加值 | 长休；短休一次 | 用于魂艺与牵魂', 'Soul Thread | class level + Charisma modifier + proficiency bonus | long rest; once per short rest | used for soul arts')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '动作与能力', 'Actions and abilities')} hint={copy(locale, '每行：名称 | 动作类型 | 射程 | 消耗 | 说明。例如“魂击 | 附赠动作命令 | 5 尺 | 无 | 魂器攻击”。', 'One per line: name | activation | range | cost | description.')}>
+                    <textarea value={fields.ruleActions} onChange={(event) => update('ruleActions', event.target.value)} placeholder={copy(locale, '魂击 | 附赠动作命令 | 5 尺 | 无 | 魂器进行攻击', 'Soul strike | bonus-action command | 5 ft. | none | the vessel attacks')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '选择组', 'Choice groups')} hint={copy(locale, '每行：名称 | 前置条件 | 选择数量 | 选项 1；选项 2。例如“魂艺 | 2级 | 选择两项 | 空壳之眼；灵魂换位”。', 'One per line: name | prerequisite | selection | option 1; option 2.')}>
+                    <textarea value={fields.ruleChoices} onChange={(event) => update('ruleChoices', event.target.value)} placeholder={copy(locale, '魂艺 | 2级 | 选择两项 | 空壳之眼；灵魂换位', 'Soul arts | level 2 | choose two | Empty Vessel Eye; Soul Swap')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '触发与限制', 'Triggers and limits')} hint={copy(locale, '每行：名称 | 说明。适合记录“每回合一次”“命中后”等限制。', 'One per line: name | description. Use this for facts such as once per turn or on hit.')}>
+                    <textarea value={fields.ruleTriggers} onChange={(event) => update('ruleTriggers', event.target.value)} placeholder={copy(locale, '每回合一次 | 同一命中只能消耗一项魂艺', 'Once per turn | One soul art may be spent for the same hit')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                </div>
+              </details>
+              {fields.entryKind === 'spell' && <div className="grid gap-2 rounded-md border border-[#644a9b]/20 bg-[#f7f3ff] p-3 sm:grid-cols-2">
+                <div className="sm:col-span-2"><p className="text-sm font-bold text-[#4d3278]">{copy(locale, '法术细节', 'Spell details')}</p><p className="mt-1 text-xs leading-5 text-[#2c1810]/65">{copy(locale, '将法术的目标、豁免、范围和成长分开填写，方便主持人审核与日后接入范围工具。当前不自动结算命中或效果。', 'Record targets, saves, areas, and scaling separately for host review and future range tooling. It does not resolve hits or effects automatically yet.')}</p></div>
+                <FormField label={copy(locale, '目标', 'Target')} hint={copy(locale, '例如“一个你能看见的生物”或“自己”。', 'For example one creature you can see, or Self.')}>
+                  <input value={fields.spellTarget} onChange={(event) => update('spellTarget', event.target.value)} placeholder={copy(locale, '例如：一个你能看见的生物', 'e.g. one creature you can see')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '豁免或攻击检定', 'Save or attack')} hint={copy(locale, '例如“感知豁免”“远程法术攻击”，没有则留空。', 'For example Wisdom save or ranged spell attack. Leave blank when none.')}>
+                  <input value={fields.spellSave} onChange={(event) => update('spellSave', event.target.value)} placeholder={copy(locale, '例如：感知豁免', 'e.g. Wisdom save')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '区域与模板', 'Area and template')} hint={copy(locale, '例如“15 尺锥形”“20 尺半径”。仅保存资料，不自动放置地图模板。', 'For example 15-foot cone or 20-foot radius. It does not place a map template automatically.')}>
+                  <input value={fields.spellArea} onChange={(event) => update('spellArea', event.target.value)} placeholder={copy(locale, '可选，例如：20 尺半径', 'Optional, e.g. 20-foot radius')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '效果与伤害说明', 'Effect and damage note')} hint={copy(locale, '写清命中/失败效果、伤害类型或状态，但不自动执行。', 'Describe hit/failure effects, damage type, or conditions, without automatic execution.')}>
+                  <textarea value={fields.spellEffect} onChange={(event) => update('spellEffect', event.target.value)} placeholder={copy(locale, '例如：失败受到 3d6 心灵伤害并恐惧至下回合开始', 'e.g. Failed save: 3d6 psychic damage and frightened until next turn')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '升环或等级成长', 'Upcast or level scaling')} hint={copy(locale, '例如“每高于 1 环一级，伤害增加 1d6”。', 'For example, damage increases by 1d6 for every slot level above 1st.')}>
+                  <textarea value={fields.spellScaling} onChange={(event) => update('spellScaling', event.target.value)} placeholder={copy(locale, '可选：每高一环增加 1d6 伤害', 'Optional: add 1d6 damage per slot level')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+              </div>}
+              {fields.entryKind === 'item' && <div className="grid gap-2 rounded-md border border-[#2f7f68]/20 bg-[#f1fbf7] p-3 sm:grid-cols-2">
+                <div className="sm:col-span-2"><p className="text-sm font-bold text-[#184f42]">{copy(locale, '魔法物品与使用细节', 'Magic-item and use details')}</p><p className="mt-1 text-xs leading-5 text-[#2c1810]/65">{copy(locale, '充能、协调和效果会作为可审核资料保存；背包、装备位和自动效果将由后续车卡切片处理。', 'Charges, attunement, and effects are saved for review. Inventory, equipment slots, and automated effects stay deferred to a later character-sheet slice.')}</p></div>
+                <FormField label={copy(locale, '协调要求', 'Attunement')} hint={copy(locale, '例如“需要协调：施法者”或“不需要”。', 'For example requires attunement by a spellcaster, or no attunement.')}>
+                  <input value={fields.itemAttunement} onChange={(event) => update('itemAttunement', event.target.value)} placeholder={copy(locale, '可选，例如：需要协调', 'Optional, e.g. requires attunement')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '充能与恢复', 'Charges and recovery')} hint={copy(locale, '例如“7 充能；黎明恢复 1d6+1”。', 'For example 7 charges; regains 1d6+1 at dawn.')}>
+                  <input value={fields.itemCharges} onChange={(event) => update('itemCharges', event.target.value)} placeholder={copy(locale, '可选，例如：7 充能；黎明恢复 1d6+1', 'Optional, e.g. 7 charges; regains 1d6+1 at dawn')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '使用前置与限制', 'Requirements and limits')} hint={copy(locale, '记录职业、等级、种族、次数或其他限制。', 'Record class, level, ancestry, use limits, or other requirements.')}>
+                  <textarea value={fields.itemRequirements} onChange={(event) => update('itemRequirements', event.target.value)} placeholder={copy(locale, '例如：仅限善良阵营角色；每长休一次', 'e.g. good-aligned character only; once per long rest')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '效果列表', 'Effect list')} hint={copy(locale, '每行“名称 | 说明”。例如“月辉 | 命中时额外造成光耀伤害”。', 'One per line: name | description. For example Moonlight | Deals extra radiant damage on a hit.')}>
+                  <textarea value={fields.itemEffects} onChange={(event) => update('itemEffects', event.target.value)} placeholder={copy(locale, '月辉 | 命中时额外造成光耀伤害', 'Moonlight | Deals extra radiant damage on a hit')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+              </div>}
               {fields.entryKind === 'monster' && <div className="grid gap-2 sm:grid-cols-2">
                 <FormField label={copy(locale, '特性', 'Traits')} hint={copy(locale, '每行“名称 | 说明”。例如“敏锐嗅觉 | 依赖嗅觉的察觉检定具有优势”。', 'One line per entry: name | description. For example Keen Smell | Has advantage on Perception checks that rely on smell.')}>
                   <textarea value={fields.monsterTraits} onChange={(event) => update('monsterTraits', event.target.value)} placeholder={copy(locale, '敏锐嗅觉 | 依赖嗅觉的察觉检定具有优势', 'Keen Smell | Has advantage on Perception checks that rely on smell')} disabled={busy} className="min-h-28 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
@@ -739,12 +897,57 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                   <textarea value={fields.monsterLegendaryActions} onChange={(event) => update('monsterLegendaryActions', event.target.value)} placeholder={copy(locale, '移动 | 移动至多一半速度', 'Move | Move up to half speed')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
                 </FormField>
               </div>}
+              {fields.entryKind === 'monster' && <details className="rounded-md border border-[#7f3a3a]/20 bg-[#fff6f2] p-3">
+                <summary className="cursor-pointer text-sm font-bold text-[#6c2727]">{copy(locale, '完整怪物属性块（可选）', 'Full monster stat block (optional)')}</summary>
+                <p className="mt-1 text-xs leading-5 text-[#2c1810]/65">{copy(locale, '这些是完整怪物资料的常用区块。保存后可供主持人阅读、审核和未来遭遇工具使用；不会自动创建怪物或开启自动战斗。', 'These are the common sections of a complete monster record. They are saved for host review and future encounter tooling; they do not auto-create a monster or start automated combat.')}</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <FormField label={copy(locale, '六项属性', 'Six ability scores')} hint={copy(locale, '例如“力量 14，敏捷 12，体质 16，智力 8，感知 10，魅力 6”。', 'For example Strength 14, Dexterity 12, Constitution 16, Intelligence 8, Wisdom 10, Charisma 6.')}>
+                    <textarea value={fields.monsterAbilityScores} onChange={(event) => update('monsterAbilityScores', event.target.value)} placeholder={copy(locale, '力量 14，敏捷 12，体质 16，智力 8，感知 10，魅力 6', 'Str 14, Dex 12, Con 16, Int 8, Wis 10, Cha 6')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '熟练加值', 'Proficiency bonus')} hint={copy(locale, '例如“+2”。可留空。', 'For example +2. Optional.')}>
+                    <input value={fields.monsterProficiencyBonus} onChange={(event) => update('monsterProficiencyBonus', event.target.value)} placeholder="+2" disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '豁免熟练', 'Saving throws')} hint={copy(locale, '例如“敏捷 +5，感知 +3”。', 'For example Dex +5, Wis +3.')}>
+                    <textarea value={fields.monsterSavingThrows} onChange={(event) => update('monsterSavingThrows', event.target.value)} placeholder={copy(locale, '敏捷 +5，感知 +3', 'Dex +5, Wis +3')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '技能', 'Skills')} hint={copy(locale, '例如“隐匿 +7，察觉 +4”。', 'For example Stealth +7, Perception +4.')}>
+                    <textarea value={fields.monsterSkills} onChange={(event) => update('monsterSkills', event.target.value)} placeholder={copy(locale, '隐匿 +7，察觉 +4', 'Stealth +7, Perception +4')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '伤害易伤', 'Damage vulnerabilities')} hint={copy(locale, '每行一项。没有时留空。', 'One per line. Leave blank when none.')}>
+                    <textarea value={fields.monsterDamageVulnerabilities} onChange={(event) => update('monsterDamageVulnerabilities', event.target.value)} placeholder={copy(locale, '例如：火焰', 'e.g. Fire')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '伤害抗性', 'Damage resistances')} hint={copy(locale, '每行一项，例如“非魔法钝击、穿刺、挥砍”。', 'One per line, e.g. nonmagical bludgeoning, piercing, and slashing.')}>
+                    <textarea value={fields.monsterDamageResistances} onChange={(event) => update('monsterDamageResistances', event.target.value)} placeholder={copy(locale, '例如：寒冷\n闪电', 'e.g. Cold\nLightning')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '伤害免疫', 'Damage immunities')} hint={copy(locale, '每行一项。', 'One per line.')}>
+                    <textarea value={fields.monsterDamageImmunities} onChange={(event) => update('monsterDamageImmunities', event.target.value)} placeholder={copy(locale, '例如：毒素', 'e.g. Poison')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '状态免疫', 'Condition immunities')} hint={copy(locale, '每行一项。', 'One per line.')}>
+                    <textarea value={fields.monsterConditionImmunities} onChange={(event) => update('monsterConditionImmunities', event.target.value)} placeholder={copy(locale, '例如：中毒\n魅惑', 'e.g. Poisoned\nCharmed')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '感官', 'Senses')} hint={copy(locale, '例如“黑暗视觉 60 尺；被动察觉 14”。', 'For example darkvision 60 ft.; passive Perception 14.')}>
+                    <textarea value={fields.monsterSenses} onChange={(event) => update('monsterSenses', event.target.value)} placeholder={copy(locale, '黑暗视觉 60 尺；被动察觉 14', 'Darkvision 60 ft.; passive Perception 14')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '语言', 'Languages')} hint={copy(locale, '例如“通用语、深渊语；心灵感应 60 尺”。', 'For example Common, Abyssal; telepathy 60 ft.')}>
+                    <textarea value={fields.monsterLanguages} onChange={(event) => update('monsterLanguages', event.target.value)} placeholder={copy(locale, '通用语、深渊语', 'Common, Abyssal')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                </div>
+              </details>}
               {fields.entryKind === 'species' && <div className="grid gap-2 sm:grid-cols-2">
                 <FormField label={copy(locale, '种族特性说明', 'Species trait notes')} hint={copy(locale, '每行一项。会在车卡详情中显示为文字，不会自动产生效果。', 'One per line. Appears as text in the builder and never executes automatically.')}>
                   <textarea value={fields.traits} onChange={(event) => update('traits', event.target.value)} placeholder={copy(locale, '例如：潮汐呼吸\n夜视', 'e.g. Tidal breathing\nDarkvision')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
                 </FormField>
                 <FormField label={copy(locale, '传承或血统选项', 'Heritage options')} hint={copy(locale, '每行一项。会在选择此种族后作为子种族选项出现。', 'One per line. Appears as a subrace option after this species is selected.')}>
                   <textarea value={fields.heritageOptions} onChange={(event) => update('heritageOptions', event.target.value)} placeholder={copy(locale, '例如：礁石血统\n深海血统', 'e.g. Reef heritage\nDeepwater heritage')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '语言', 'Languages')} hint={copy(locale, '每行一项，例如“通用语”“深渊语”。会作为车卡资料显示。', 'One per line, such as Common or Abyssal. Shown as character-sheet reference.')}>
+                  <textarea value={fields.speciesLanguages} onChange={(event) => update('speciesLanguages', event.target.value)} placeholder={copy(locale, '通用语\n深渊语', 'Common\nAbyssal')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '感官与特殊感知', 'Senses')} hint={copy(locale, '例如“黑暗视觉 60 尺；灵魂嗅觉 30 尺”。描述性保存，不自动揭示地图信息。', 'For example Darkvision 60 ft.; Soul Scent 30 ft. Stored descriptively and never reveals map data automatically.')}>
+                  <textarea value={fields.speciesSenses} onChange={(event) => update('speciesSenses', event.target.value)} placeholder={copy(locale, '黑暗视觉 60 尺\n灵魂嗅觉 30 尺', 'Darkvision 60 ft.\nSoul scent 30 ft.')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '属性加值或选择说明', 'Ability bonus or choice note')} hint={copy(locale, '例如“魅力 +2、体质 +1；或按 2024 规则自由分配”。当前不自动修改属性。', 'For example Charisma +2, Constitution +1; or assign freely under 2024 rules. It does not modify ability scores automatically yet.')}>
+                  <textarea value={fields.speciesAbilityOptions} onChange={(event) => update('speciesAbilityOptions', event.target.value)} placeholder={copy(locale, '魅力 +2，体质 +1', 'Charisma +2, Constitution +1')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
                 </FormField>
               </div>}
               {fields.entryKind === 'background' && <>
@@ -762,6 +965,14 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                   </FormField>
                   <FormField label={copy(locale, '背景特性说明', 'Background feature description')} hint={copy(locale, '只写叙事或协商说明；不会自动修改资源、检定或权限。', 'Narrative and agreement text only; it cannot modify resources, checks, or permissions automatically.')}>
                     <textarea value={fields.featureDescription} onChange={(event) => update('featureDescription', event.target.value)} placeholder={copy(locale, '可选：说明这个背景特性适合如何在跑团中使用', 'Optional: explain how this feature may be used at the table')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <FormField label={copy(locale, '背景装备与财富', 'Background equipment and wealth')} hint={copy(locale, '写明可选起始物品、工具、资金或替代方案；当前不会直接写入背包。', 'Describe starting items, tools, funds, or alternatives. It does not write directly to inventory.')}>
+                    <textarea value={fields.backgroundEquipment} onChange={(event) => update('backgroundEquipment', event.target.value)} placeholder={copy(locale, '例如：制图工具、探险家套组、15 GP', 'e.g. cartographer tools, explorer pack, 15 GP')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '额外语言或沟通方式', 'Additional languages or communication')} hint={copy(locale, '每行一项。仅作为背景资料，不自动授予可执行能力。', 'One per line. Stored as background reference and grants no executable ability automatically.')}>
+                    <textarea value={fields.backgroundLanguages} onChange={(event) => update('backgroundLanguages', event.target.value)} placeholder={copy(locale, '例如：矮人语\n盗贼黑话', 'e.g. Dwarvish\nThieves’ Cant')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
                   </FormField>
                 </div>
               </>}
@@ -782,8 +993,25 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                     <textarea value={fields.classArmorProficiencies} onChange={(event) => update('classArmorProficiencies', event.target.value)} placeholder={copy(locale, '例如：轻甲\n盾牌', 'e.g. Light armor\nShields')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
                   </FormField>
                 </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <FormField label={copy(locale, '可选技能', 'Skill choices')} hint={copy(locale, '每行一项，列出该职业可以选择的技能。', 'One per line. List skills this class may choose from.')}>
+                    <textarea value={fields.classSkillChoices} onChange={(event) => update('classSkillChoices', event.target.value)} placeholder={copy(locale, '奥秘\n洞悉\n调查\n察觉', 'Arcana\nInsight\nInvestigation\nPerception')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '选择技能数量', 'Number of skills chosen')} hint={copy(locale, '填 0 到 6。当前显示为创作资料，车卡选择器尚未自动限制数量。', 'Enter 0 through 6. This is authoring data; the builder does not yet enforce the number automatically.')}>
+                    <input value={fields.classSkillChoiceCount} onChange={(event) => update('classSkillChoiceCount', event.target.value)} inputMode="numeric" placeholder="2" disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '工具选择', 'Tool choices')} hint={copy(locale, '每行一项，可记录“任选一种工匠工具”等选择池。', 'One per line; use this for pools such as choose one artisan tool.')}>
+                    <textarea value={fields.classToolChoices} onChange={(event) => update('classToolChoices', event.target.value)} placeholder={copy(locale, '任选一种工匠工具\n任选一种乐器或游戏用具', 'Choose one artisan tool\nChoose one instrument or gaming set')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '多职业说明', 'Multiclass note')} hint={copy(locale, '前置属性、熟练变化和资源计算等资料说明；不会自动裁定多职业合法性。', 'Record prerequisites, proficiency changes, and resource notes. Multiclass legality is not automated.')}>
+                    <textarea value={fields.classMulticlassNote} onChange={(event) => update('classMulticlassNote', event.target.value)} placeholder={copy(locale, '例如：多职业时魂丝只计算赋魂师等级', 'e.g. Soul Thread counts Soulwright levels only when multiclassing')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                </div>
                 <FormField label={copy(locale, '职业特性进阶', 'Class feature progression')} hint={copy(locale, '每行一项：等级 | 特性名称 | 说明。例如“1 | 战斗风格 | 选择一种战斗风格”。这会保存可读进阶资料，不会自动执行效果。', 'One per line: level | feature name | description. For example: “1 | Fighting Style | Choose a fighting style.” This saves readable progression facts and never executes effects.')}>
                   <textarea value={fields.classFeatureLines} onChange={(event) => update('classFeatureLines', event.target.value)} placeholder={copy(locale, '1 | 港口巡防 | 熟悉码头上的危险\n3 | 潮汐守望 | 在雾中保持警觉', '1 | Harbor patrol | Know the dangers of a dock\n3 | Tidal watch | Stay alert in fog')} disabled={busy} className="min-h-28 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '施法或成长表说明', 'Spellcasting or progression table note')} hint={copy(locale, '可填写戏法、已知法术、法术位、资源或其他 1–20 级成长表。当前保留为结构化资料的补充说明，尚不自动计算。', 'Use this for cantrips, known spells, spell slots, resources, or another level 1-20 table. It is reference data and is not calculated automatically yet.')}>
+                  <textarea value={fields.classSpellcastingProgression} onChange={(event) => update('classSpellcastingProgression', event.target.value)} placeholder={copy(locale, '1级：2 戏法、2 已知法术、2 个 1环位\n5级：5 已知法术、4 个 1环位、2 个 2环位', 'Level 1: 2 cantrips, 2 known spells, two level-1 slots\nLevel 5: 5 known spells, four level-1 slots, two level-2 slots')} disabled={busy} className="min-h-28 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
                 </FormField>
               </>}
               {fields.entryKind === 'subclass' && <FormField label={copy(locale, '子职业特性进阶', 'Subclass feature progression')} hint={copy(locale, '每行一项：等级 | 特性名称 | 说明。未填写等级时会使用上方的解锁等级。', 'One per line: level | feature name | description. A line without a level uses the unlock level above.')}>

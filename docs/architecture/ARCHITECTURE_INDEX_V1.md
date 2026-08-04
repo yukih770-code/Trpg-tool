@@ -944,10 +944,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 ## Personal DND Content Studio (P6.12)
 
 - The authoring surface is entry-first: one-off species, classes, subclasses,
-  backgrounds, feats, spells, items, and monsters do not require a visible
-  pack-name step. The immutable pack/version model remains an internal storage
-  and history boundary.
-- Progression, item, and monster fields are declarative facts only. They do
+  backgrounds, feats, spells, items, monsters, rule modules, and other
+  references do not require a visible pack-name step. The immutable
+  pack/version model remains an internal storage and history boundary.
+- Shared resources, actions, choice groups, triggers, progression, item, and
+  monster fields are declarative facts only. They do
   not equip items, create Tokens, execute actions, alter character state, or
   bypass Room host review.
 - See `docs/implementation/P6_DND_PERSONAL_CONTENT_STUDIO.md` before adding

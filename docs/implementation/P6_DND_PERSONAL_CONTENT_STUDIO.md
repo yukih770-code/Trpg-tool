@@ -31,10 +31,34 @@ background, feat, spell, item, or monster.
 - Items: category, rarity, weight, cost, weapon/armor facts, and usage note.
 - Monsters: basic combat facts plus repeatable trait/action/reaction/legendary
   action text.
+- Rule modules and other references: a safe home for original table rules that
+  do not belong to one of the above entity types.
+
+## Shared Rule Components
+
+Every entity type may declare the same four bounded components, with clear
+author-facing fields rather than raw JSON:
+
+- **Resources**: name, maximum or formula, recovery cadence, and description.
+- **Actions**: name, activation, range, cost, and description.
+- **Choice groups**: name, prerequisite, selection count, and bounded options.
+- **Triggers and limits**: a named trigger with a readable restriction.
+
+These components let a complex class such as Soulwright describe Soul Thread,
+Soul Vessel commands, Soul Arts, and once-per-turn limits without making those
+concepts class-exclusive. Species, feats, spells, items, monsters, and table
+rules can use the same vocabulary.
 
 All fields are declarative reference data. Personal entries do not automatically
 equip a character, modify AC/HP, create Tokens, roll attacks, consume spell
 slots, or execute effects.
+
+The editor also exposes focused detail groups where DND authors expect them:
+species languages/senses/ability notes; background equipment and languages;
+class skill/tool choices, multiclass notes, and spellcasting progression;
+spell targets/saves/areas/effect/scaling; magic-item attunement/charges/effects;
+and a fuller monster stat block with abilities, skills, defenses, senses, and
+languages.
 
 ## Authority Boundary
 

@@ -385,6 +385,7 @@ grant equipment, or bypass Room host review.
 
 Read `P6_DND_PERSONAL_CONTENT_STUDIO.md` before expanding the private DND
 workbench. Authors create entries, not visible packs: pack/version remains the
-immutable internal storage boundary. Class progressions, items, and monsters
-are declarative reference data only; no executable effects, inventory writes,
-Token creation, Runtime action generation, or Room-review bypass is allowed.
+immutable internal storage boundary. Shared resources, actions, choice groups,
+and triggers let every entity type describe complex rules. They remain
+declarative reference data only; no executable effects, inventory writes, Token
+creation, Runtime action generation, or Room-review bypass is allowed.
