@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { CharacterData, AttributeName, SkillName, SpellInfo, CustomMod, CURRENT_DND_CHARACTER_SCHEMA_VERSION } from '../lib/dnd-types';
 import { migrateCharacter } from '../lib/characterMigration';
 import { initializeClassResourcesForCharacter, refreshClassResourcesForCharacter } from '../lib/dnd2024/resource-utils';
+import { incrementPrimaryDndClassLevel } from '../lib/dnd2024/multiclass';
 
 export type DndSpellcastingResourceConsumption = {
   ok: boolean;
@@ -80,6 +81,7 @@ const defaultChar: CharacterData = {
   subrace: '',
   jobClass: '',
   subclass: '',
+  classLevels: [],
   background: '',
   description: '',
   appearanceDescription: '',
@@ -333,6 +335,11 @@ export const useCharacterStore = create<CharacterState>()(
         const leveledCharacter: CharacterData = {
           ...char,
           level: nextLvl,
+          classLevels: incrementPrimaryDndClassLevel(char.classLevels, {
+            className: char.jobClass,
+            level: char.level,
+            subclass: newSubclass || char.subclass,
+          }),
           hpMax: char.hpMax + hpIncrease,
           hpCurrent: char.hpCurrent + hpIncrease,
           hitDiceCurrent: char.hitDiceCurrent + 1,

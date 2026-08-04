@@ -596,6 +596,11 @@ export function Creator({
               className={`mb-3 block w-full rounded-md border p-3 text-left transition ${character.jobClass === cls.name ? selectedClassName : optionClassName}`}
               onClick={() => {
                 updateField('jobClass', cls.name);
+                updateField('classLevels', [{
+                  className: cls.name,
+                  classId: cls.id,
+                  level: Math.max(1, character.level),
+                }]);
                 updateField('hitDiceCurrent', 1);
                 updateField('subclass', '');
               }}

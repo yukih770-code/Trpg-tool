@@ -403,3 +403,9 @@ turn this surface into a Runtime authority path.
 Read `P6_DND_LEVEL_ADVANCEMENT_FOUNDATION.md` before changing Gameplay level-up.
 The advancement summary is a pure single-class preview. Do not use it to add
 multiclass levels, execute feature text, or grant Room/Runtime authority.
+
+## DND Multiclass Foundation (P6.15)
+
+Read `P6_DND_MULTICLASS_FOUNDATION.md` before changing class allocation.
+`classLevels` preserves per-class levels locally, but it does not calculate
+combined spellcasting, evaluate prerequisites, or bypass Room review.

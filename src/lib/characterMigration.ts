@@ -29,6 +29,8 @@
  *             sound (has numeric current / max / slotLevel fields).
  *   v2 → v3  Added personalContentReferences: DndPersonalContentReference[]
  *             (default []). Only compact pack/version provenance is kept.
+ *   v3 → v4  Added classLevels: DndClassLevel[]. Existing single-class saves
+ *             become one allocation using jobClass/subclass/current level.
  */
 
 import {
@@ -43,6 +45,7 @@ import {
   DndPersonalContentReference,
   CURRENT_DND_CHARACTER_SCHEMA_VERSION,
 } from './dnd-types';
+import { normalizeDndClassLevels } from './dnd2024/multiclass';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -207,6 +210,11 @@ export function migrateCharacter(data: unknown): CharacterData {
     subrace:     str(d.subrace, ''),
     jobClass:    str(d.jobClass, ''),
     subclass:    str(d.subclass, ''),
+    classLevels: normalizeDndClassLevels(d.classLevels, {
+      className: str(d.jobClass, ''),
+      level: num(d.level, 1),
+      subclass: str(d.subclass, ''),
+    }),
     background:  str(d.background, ''),
     description: str(d.description, ''),
 
@@ -312,6 +320,13 @@ export function migrateCharacter(data: unknown): CharacterData {
         // v2 → v3: personalContentReferences is already reconstructed above.
         version = 3;
         migrated.schemaVersion = 3;
+        break;
+
+      case 3:
+        // v3 → v4: classLevels was already reconstructed from legacy primary
+        // class fields above. This only stamps the additive migration.
+        version = 4;
+        migrated.schemaVersion = 4;
         break;
 
       default:

@@ -971,3 +971,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Partial progression coverage is shown honestly; multiclassing remains a
   separate schema and migration concern.
 - See `docs/implementation/P6_DND_LEVEL_ADVANCEMENT_FOUNDATION.md`.
+
+## DND Multiclass Foundation (P6.15)
+
+- DND character saves retain a normalized class-by-class allocation in
+  `classLevels`, while legacy `jobClass` remains the primary-class compatibility
+  field.
+- This is not combined rules calculation or Room authority.
+- See `docs/implementation/P6_DND_MULTICLASS_FOUNDATION.md`.

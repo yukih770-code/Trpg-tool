@@ -139,7 +139,8 @@ export interface BackgroundDef {
 //   v1  Initial versioning (schemaVersion field added).
 //   v2  Added classResources: ResourceState[] and pactMagicState?: PactMagicState.
 //   v3  Added personalContentReferences for private, immutable source-pack provenance.
-export const CURRENT_DND_CHARACTER_SCHEMA_VERSION = 3;
+//   v4  Added classLevels for a class-by-class level allocation record.
+export const CURRENT_DND_CHARACTER_SCHEMA_VERSION = 4;
 
 // ─── Runtime resource state ───────────────────────────────────────────────────
 // These interfaces describe the CHARACTER'S CURRENT STATE, not the rule
@@ -184,6 +185,20 @@ export interface DndPersonalContentReference {
 }
 
 /**
+ * One class contribution to a DND character's total level.
+ *
+ * `jobClass` remains the legacy primary-class display field. `classLevels` is
+ * the source for future multiclass allocation, but v4 does not calculate
+ * combined spell slots, feature effects, or Room authority from it.
+ */
+export interface DndClassLevel {
+  className: string;
+  classId?: string;
+  level: number;
+  subclass?: string;
+}
+
+/**
  * Runtime state for Warlock Pact Magic slots.
  *
  * Pact slots are structurally separate from the standard spellbook.slots pool
@@ -215,6 +230,8 @@ export interface CharacterData {
   subrace: string;
   jobClass: string;
   subclass: string;
+  /** v4: class-by-class level allocation; a single-class character has one entry. */
+  classLevels: DndClassLevel[];
   background: string;
   description: string;
   /** Optional physical appearance text (v-append; backward compatible, defaults to ''). */
