@@ -995,3 +995,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Do not turn these names and numbers into automatic transformation, movement,
   or combat effects without a dedicated rules-engine boundary.
 - See `docs/implementation/P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_2.md`.
+
+## DND Owner-Source Class Progression Batch 3 (P6.18)
+
+- Paladin and Ranger level-table facts use the locally sourced half-caster
+  table, including level-one spell slots.
+- This remains a data display surface, never automatic spell, aura, or combat
+  execution.
+- See `docs/implementation/P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_3.md`.

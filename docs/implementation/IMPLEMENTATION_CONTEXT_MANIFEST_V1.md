@@ -423,3 +423,10 @@ Read `P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_2.md` before extending Druid
 or Monk. These are owner-source matched, table-only reference facts. They do
 not execute Wild Shape, Focus Point, movement, spell preparation, or Room
 authority behavior.
+
+## DND Owner-Source Class Progression Batch 3 (P6.18)
+
+Read `P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_3.md` before extending
+Paladin or Ranger. Their first-level half-caster data is source-table reference
+only; do not calculate multiclass slots, execute class features, or change Room
+authority from this module.

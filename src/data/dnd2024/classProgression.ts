@@ -97,6 +97,31 @@ const FULL_CASTER_SLOT_TABLE: (SpellSlotProgression | null)[] = [
   { level1: 4, level2: 3, level3: 3, level4: 3, level5: 3, level6: 2, level7: 2, level8: 1, level9: 2 },
 ];
 
+// 本机 2024 圣武士 / 游侠等级表使用的半施法者法术位进阶。
+// 两职业均从 1 级开始具有 1 环法术位。
+const HALF_CASTER_SLOT_TABLE: (SpellSlotProgression | null)[] = [
+  { level1: 2, level2: 0, level3: 0, level4: 0, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 2, level2: 0, level3: 0, level4: 0, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 3, level2: 0, level3: 0, level4: 0, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 3, level2: 0, level3: 0, level4: 0, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 2, level3: 0, level4: 0, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 2, level3: 0, level4: 0, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 3, level3: 0, level4: 0, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 3, level3: 0, level4: 0, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 3, level3: 2, level4: 0, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 3, level3: 2, level4: 0, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 3, level3: 3, level4: 0, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 3, level3: 3, level4: 0, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 3, level3: 3, level4: 1, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 3, level3: 3, level4: 1, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 3, level3: 3, level4: 2, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 3, level3: 3, level4: 2, level5: 0, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 3, level3: 3, level4: 3, level5: 1, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 3, level3: 3, level4: 3, level5: 1, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 3, level3: 3, level4: 3, level5: 2, level6: 0, level7: 0, level8: 0, level9: 0 },
+  { level1: 4, level2: 3, level3: 3, level4: 3, level5: 2, level6: 0, level7: 0, level8: 0, level9: 0 },
+];
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ████  BARBARIAN（野蛮人）
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1205,6 +1230,113 @@ const MONK_PROGRESSION: Dnd2024ClassProgression = {
   }),
 };
 
+const HALF_CASTER_PREPARED_SPELLS = [2, 3, 4, 5, 6, 6, 7, 7, 9, 9, 10, 10, 11, 11, 12, 12, 14, 14, 15, 15];
+
+const PALADIN_SPELLCASTING: SpellcastingProgression = {
+  mode: 'fullListPrepared',
+  ability: 'charisma',
+  casterType: 'half',
+  cantripsKnown: Array.from({ length: 20 }, () => null),
+  preparedSpellCount: HALF_CASTER_PREPARED_SPELLS,
+  spellSlotTable: HALF_CASTER_SLOT_TABLE,
+  pactMagic: null,
+  ritualCasting: 'none',
+  notes: '准备法术与法术位数量来自本机 DND 2024 圣武士等级表；本数据不执行准备、圣武斩或灵光效果。',
+};
+
+const PALADIN_FEATURES_BY_LEVEL: string[][] = [
+  ['圣疗', '施法', '武器精通'],
+  ['战斗风格', '圣武斩'],
+  ['引导神力', '圣武士子职'],
+  ['属性值提升'],
+  ['额外攻击', '信实坐骑'],
+  ['守护灵光'],
+  ['子职特性'],
+  ['属性值提升'],
+  ['弃绝众敌'],
+  ['勇气灵光'],
+  ['光耀打击'],
+  ['属性值提升'],
+  [],
+  ['复原之触'],
+  ['子职特性'],
+  ['属性值提升'],
+  [],
+  ['灵光增效'],
+  ['传奇恩惠'],
+  ['子职特性'],
+];
+
+const PALADIN_PROGRESSION: Dnd2024ClassProgression = {
+  classKey: 'paladin',
+  classNameCn: '圣武士',
+  classNameEn: 'Paladin',
+  hitDie: 10,
+  spellcasting: PALADIN_SPELLCASTING,
+  levels: PALADIN_FEATURES_BY_LEVEL.map((features, index) => {
+    const level = index + 1;
+    return buildSourceTableLevel(
+      level,
+      features,
+      [PALADIN_LAY_ON_HANDS, PALADIN_CHANNEL_DIVINITY]
+        .filter(resource => resource.unlockLevel === level),
+      HALF_CASTER_SLOT_TABLE[index] ?? null,
+    );
+  }),
+};
+
+const RANGER_SPELLCASTING: SpellcastingProgression = {
+  mode: 'fullListPrepared',
+  ability: 'wisdom',
+  casterType: 'half',
+  cantripsKnown: Array.from({ length: 20 }, () => null),
+  preparedSpellCount: HALF_CASTER_PREPARED_SPELLS,
+  spellSlotTable: HALF_CASTER_SLOT_TABLE,
+  pactMagic: null,
+  ritualCasting: 'none',
+  notes: '准备法术与法术位数量来自本机 DND 2024 游侠等级表；本数据不执行准备、宿敌施法或职业特性效果。',
+};
+
+const RANGER_FEATURES_BY_LEVEL: string[][] = [
+  ['施法', '宿敌', '武器精通'],
+  ['熟练探险家', '战斗风格'],
+  ['游侠子职业'],
+  ['属性值提升'],
+  ['额外攻击'],
+  ['越野'],
+  ['子职特性'],
+  ['属性值提升'],
+  ['专精'],
+  ['不知疲倦'],
+  ['子职特性'],
+  ['属性值提升'],
+  ['永恒追猎'],
+  ['自然面纱'],
+  ['子职特性'],
+  ['属性值提升'],
+  ['致命猎杀'],
+  ['野性感官'],
+  ['传奇恩惠'],
+  ['屠灭众敌'],
+];
+
+const RANGER_PROGRESSION: Dnd2024ClassProgression = {
+  classKey: 'ranger',
+  classNameCn: '游侠',
+  classNameEn: 'Ranger',
+  hitDie: 10,
+  spellcasting: RANGER_SPELLCASTING,
+  levels: RANGER_FEATURES_BY_LEVEL.map((features, index) => {
+    const level = index + 1;
+    return buildSourceTableLevel(
+      level,
+      features,
+      level === RANGER_FAVORED_ENEMY_CHARGES.unlockLevel ? [RANGER_FAVORED_ENEMY_CHARGES] : [],
+      HALF_CASTER_SLOT_TABLE[index] ?? null,
+    );
+  }),
+};
+
 function makePlaceholder(
   classKey: DndClassKey,
   classNameCn: string,
@@ -1251,13 +1383,10 @@ export const DND2024_CLASS_PROGRESSIONS: Partial<Record<DndClassKey, Dnd2024Clas
   fighter: FIGHTER_PROGRESSION,
   druid: DRUID_PROGRESSION,
   monk: MONK_PROGRESSION,
+  paladin: PALADIN_PROGRESSION,
+  ranger: RANGER_PROGRESSION,
 
   // 占位职业（待后续补全）
-  paladin: makePlaceholder('paladin', '圣武士', 'Paladin', 10, [
-    PALADIN_LAY_ON_HANDS,
-    PALADIN_CHANNEL_DIVINITY,
-  ]),
-  ranger: makePlaceholder('ranger', '游侠', 'Ranger', 10, [RANGER_FAVORED_ENEMY_CHARGES]),
   rogue: makePlaceholder('rogue', '游荡者', 'Rogue', 8),
   sorcerer: makePlaceholder('sorcerer', '术士', 'Sorcerer', 6, [
     SORCERER_INNATE_SORCERY,
@@ -1275,5 +1404,8 @@ export {
   FIGHTER_PROGRESSION,
   DRUID_PROGRESSION,
   MONK_PROGRESSION,
+  PALADIN_PROGRESSION,
+  RANGER_PROGRESSION,
   FULL_CASTER_SLOT_TABLE,
+  HALF_CASTER_SLOT_TABLE,
 };
