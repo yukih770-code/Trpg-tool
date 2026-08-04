@@ -380,3 +380,11 @@ Read `P6_PERSONAL_CONTENT_WORKSHOP_IA.md` before changing personal class or
 subclass data. The adapter may project bounded class facts for Character
 Builder, but it must not evaluate feature text, generate runtime actions,
 grant equipment, or bypass Room host review.
+
+## Personal DND Content Studio (P6.12)
+
+Read `P6_DND_PERSONAL_CONTENT_STUDIO.md` before expanding the private DND
+workbench. Authors create entries, not visible packs: pack/version remains the
+immutable internal storage boundary. Class progressions, items, and monsters
+are declarative reference data only; no executable effects, inventory writes,
+Token creation, Runtime action generation, or Room-review bypass is allowed.

@@ -3,8 +3,10 @@
 ## Purpose
 
 Give every authenticated user a personal DND authoring surface without making
-World Server ownership a prerequisite for creativity. The first v0 authoring
-form creates a small custom species metadata entry.
+World Server ownership a prerequisite for creativity. The workbench is
+entry-first: authors create species, classes, subclasses, backgrounds, feats,
+spells, items, or monsters without first naming a pack. See
+`P6_DND_PERSONAL_CONTENT_STUDIO` for the current editor contract.
 
 ## Product Boundary
 
@@ -26,6 +28,10 @@ form creates a small custom species metadata entry.
 - DND Actor Vault has a **My Custom Content** card next to existing characters,
   character creation, and snapshot import. It is intentionally not in Server
   Settings.
+- The underlying pack/version remains an immutable storage boundary. Normal
+  authoring derives its display title from the entries; importing JSON and
+  publishing a follow-up version are the only workflows that expose a library
+  container intentionally.
 
 ## Non-goals
 

@@ -13,6 +13,12 @@ import {
   parsePersonalCompendiumImport,
   type PersonalCompendiumImportDraft,
 } from '../../lib/platform/personalCompendiumImport';
+import {
+  deriveDndPersonalLibraryName,
+  parseDndPersonalFeatureLines,
+  parseDndPersonalNamedRuleLines,
+  type DndPersonalEditorEntryKind,
+} from '../../lib/dnd/dndPersonalContentDefinitions';
 
 type Props = {
   locale: Locale;
@@ -22,7 +28,7 @@ type Props = {
 type Fields = {
   packName: string;
   versionLabel: string;
-  entryKind: 'species' | 'class' | 'subclass' | 'background' | 'feat' | 'spell';
+  entryKind: DndPersonalEditorEntryKind;
   entryName: string;
   size: string;
   speed: string;
@@ -47,18 +53,40 @@ type Fields = {
   classWeaponProficiencies: string;
   classArmorProficiencies: string;
   classStartingEquipment: string;
-  classFeatureSummary: string;
+  classFeatureLines: string;
   subclassParentClass: string;
   subclassUnlockLevel: string;
-  subclassFeatureSummary: string;
+  subclassFeatureLines: string;
+  itemCategory: 'weapon' | 'armor' | 'gear' | 'consumable' | 'magicItem';
+  itemRarity: string;
+  itemWeight: string;
+  itemCost: string;
+  itemDamage: string;
+  itemDamageType: string;
+  itemProperties: string;
+  itemArmorClass: string;
+  itemUsage: string;
+  monsterSize: string;
+  monsterType: string;
+  monsterAlignment: string;
+  monsterArmorClass: string;
+  monsterHp: string;
+  monsterSpeed: string;
+  monsterChallenge: string;
+  monsterTraits: string;
+  monsterActions: string;
+  monsterReactions: string;
+  monsterLegendaryActions: string;
 };
 
 const initialFields: Fields = {
   packName: '', versionLabel: '1.0.0', entryKind: 'species', entryName: '', size: '中型', speed: '30', summary: '', traits: '', heritageOptions: '',
   backgroundSkills: '', backgroundTools: '', featureName: '', featureDescription: '', featCategory: 'Origin', prerequisite: '',
   spellLevel: '0', spellSchool: '自定义', spellCastTime: '1 动作', spellRange: '自身', spellDuration: '立即', spellComponents: 'V',
-  classPrimaryAbility: 'Str', classHitDice: 'D8', classSavingThrows: '', classWeaponProficiencies: '', classArmorProficiencies: '', classStartingEquipment: '', classFeatureSummary: '',
-  subclassParentClass: '', subclassUnlockLevel: '1', subclassFeatureSummary: '',
+  classPrimaryAbility: 'Str', classHitDice: 'D8', classSavingThrows: '', classWeaponProficiencies: '', classArmorProficiencies: '', classStartingEquipment: '', classFeatureLines: '',
+  subclassParentClass: '', subclassUnlockLevel: '1', subclassFeatureLines: '',
+  itemCategory: 'weapon', itemRarity: '', itemWeight: '', itemCost: '', itemDamage: '', itemDamageType: '', itemProperties: '', itemArmorClass: '', itemUsage: '',
+  monsterSize: '中型', monsterType: '类人生物', monsterAlignment: '', monsterArmorClass: '', monsterHp: '', monsterSpeed: '30 尺', monsterChallenge: '', monsterTraits: '', monsterActions: '', monsterReactions: '', monsterLegendaryActions: '',
 };
 
 function blankEntryFields(previous: Fields): Fields {
@@ -111,6 +139,14 @@ function entryKindGuidance(locale: Locale, entryKind: Fields['entryKind']): { ti
   if (entryKind === 'feat') return {
     title: copy(locale, '专长：选择资料与前置说明', 'Feat: selection data and prerequisite note'),
     body: copy(locale, '起源专长可在车卡中选择；通用专长当前只保存说明，所有效果仍须由房间协商与审核。', 'Origin feats can be selected in the builder. General feats are informational for now; all effects remain subject to Room review.'),
+  };
+  if (entryKind === 'item') return {
+    title: copy(locale, '物品：装备资料与使用说明', 'Item: equipment facts and use notes'),
+    body: copy(locale, '会保存物品的类别、重量、价格、武器或护甲资料。当前不会自动装备、改变 AC 或结算伤害。', 'Stores category, weight, cost, and weapon or armor facts. It does not yet auto-equip, alter AC, or resolve damage.'),
+  };
+  if (entryKind === 'monster') return {
+    title: copy(locale, '怪物：战斗资料卡', 'Monster: combat reference card'),
+    body: copy(locale, '可保存基础防御、生命、特性和动作说明，供主持人准备遭遇。不会自动创建 Token 或执行怪物动作。', 'Stores defenses, HP, traits, and action text for host encounter preparation. It does not auto-create Tokens or execute monster actions.'),
   };
   return {
     title: copy(locale, '法术：施法资料卡', 'Spell: casting reference card'),
@@ -247,9 +283,7 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
           weaponProficiencies: listFromLines(fields.classWeaponProficiencies),
           armorProficiencies: listFromLines(fields.classArmorProficiencies),
           startingEquipment: fields.classStartingEquipment.trim() || undefined,
-          features: fields.classFeatureSummary.trim()
-            ? [{ name: '职业特性说明', desc: fields.classFeatureSummary.trim(), unlockLevel: 1 }]
-            : [],
+          features: parseDndPersonalFeatureLines(fields.classFeatureLines),
         },
         metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customClass' },
       };
@@ -264,9 +298,10 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
           className: fields.subclassParentClass.trim(),
           summary: fields.summary.trim() || undefined,
           unlockLevel: Math.max(1, Math.min(20, Number(fields.subclassUnlockLevel) || 1)),
-          features: fields.subclassFeatureSummary.trim()
-            ? [{ name: '子职业特性说明', desc: fields.subclassFeatureSummary.trim(), unlockLevel: Math.max(1, Math.min(20, Number(fields.subclassUnlockLevel) || 1)) }]
-            : [],
+          features: parseDndPersonalFeatureLines(
+            fields.subclassFeatureLines,
+            Math.max(1, Math.min(20, Number(fields.subclassUnlockLevel) || 1)),
+          ),
         },
         metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customSubclass' },
       };
@@ -303,6 +338,54 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
         metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customSpell' },
       };
     }
+    if (fields.entryKind === 'item') {
+      return {
+        entryKind: 'item' as const,
+        displayName: name,
+        content: {
+          schema: 'dnd-personal-item-v1',
+          name,
+          summary: fields.summary.trim() || undefined,
+          category: fields.itemCategory,
+          rarity: fields.itemRarity.trim() || undefined,
+          weight: Number(fields.itemWeight) || undefined,
+          cost: fields.itemCost.trim() || undefined,
+          weapon: fields.itemCategory === 'weapon' ? {
+            damage: fields.itemDamage.trim() || undefined,
+            damageType: fields.itemDamageType.trim() || undefined,
+            properties: listFromLines(fields.itemProperties),
+          } : undefined,
+          armor: fields.itemCategory === 'armor' ? {
+            baseAc: Number(fields.itemArmorClass) || undefined,
+          } : undefined,
+          usage: fields.itemUsage.trim() || undefined,
+        },
+        metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customItem' },
+      };
+    }
+    if (fields.entryKind === 'monster') {
+      return {
+        entryKind: 'monster' as const,
+        displayName: name,
+        content: {
+          schema: 'dnd-personal-monster-v1',
+          name,
+          summary: fields.summary.trim() || undefined,
+          size: fields.monsterSize.trim() || undefined,
+          creatureType: fields.monsterType.trim() || undefined,
+          alignment: fields.monsterAlignment.trim() || undefined,
+          armorClass: Number(fields.monsterArmorClass) || undefined,
+          hitPoints: Number(fields.monsterHp) || undefined,
+          speed: fields.monsterSpeed.trim() || undefined,
+          challengeRating: fields.monsterChallenge.trim() || undefined,
+          traits: parseDndPersonalNamedRuleLines(fields.monsterTraits),
+          actions: parseDndPersonalNamedRuleLines(fields.monsterActions),
+          reactions: parseDndPersonalNamedRuleLines(fields.monsterReactions),
+          legendaryActions: parseDndPersonalNamedRuleLines(fields.monsterLegendaryActions),
+        },
+        metadata: { gameSystemId: 'dnd5e-2024', entryRole: 'customMonster' },
+      };
+    }
     return {
       entryKind: 'species' as const,
       displayName: name,
@@ -320,7 +403,7 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
   };
 
   const addCurrentEntryToDraft = () => {
-    if (!fields.packName.trim() || !fields.entryName.trim() || busy) return;
+    if (!fields.entryName.trim() || busy) return;
     if (fields.entryKind === 'subclass' && !fields.subclassParentClass.trim()) {
       setNotice(copy(locale, '请先填写子职业所属的职业名称。', 'Enter the parent class name before adding a subclass.'));
       return;
@@ -331,8 +414,8 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
       if (existingIndex < 0) return [...previous, entry].slice(0, 50);
       return previous.map((candidate, index) => index === existingIndex ? entry : candidate);
     });
-    setFields((previous) => blankEntryFields(previous));
-    setNotice(copy(locale, `已将“${entry.displayName}”加入资料包草稿；同名同类型条目会被当前内容替换。`, `Added ${entry.displayName} to the pack draft; an entry with the same name and type is replaced by the current content.`));
+    setFields((previous) => blankEntryFields({ ...previous, packName: previous.packName || entry.displayName }));
+    setNotice(copy(locale, `已将“${entry.displayName}”加入待保存内容；同名同类型条目会被当前内容替换。`, `Added ${entry.displayName} to the pending content; an entry with the same name and type is replaced by the current content.`));
   };
 
   const removeDraftEntry = (index: number) => {
@@ -341,7 +424,7 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
 
   const publish = async (event: FormEvent) => {
     event.preventDefault();
-    if (!fields.packName.trim() || draftEntries.length === 0 || busy) return;
+    if (draftEntries.length === 0 || busy) return;
     setBusy(true);
     setNotice('');
     try {
@@ -351,7 +434,7 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
         entries: draftEntries,
       };
       if (versioningPackId) await personalCompendiumPackApiClient.publishVersion(versioningPackId, draft);
-      else await personalCompendiumPackApiClient.publish({ ...draft, displayName: fields.packName.trim() });
+      else await personalCompendiumPackApiClient.publish({ ...draft, displayName: deriveDndPersonalLibraryName(draftEntries) });
       setFields(initialFields);
       setDraftEntries([]);
       setVersioningPackId(null);
@@ -418,19 +501,19 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
         className="min-h-48 border border-[#58180d]/30 bg-[#fff8e6]/80 p-6 text-left transition hover:-translate-y-0.5 hover:border-[#58180d]/60 hover:shadow-md"
       >
         <div className="text-[10px] font-bold uppercase tracking-widest text-[#a35b11]">Personal content</div>
-        <h2 className="mt-1 text-lg font-bold text-[#58180d]">{copy(locale, '我的自定义资料', 'My custom content')}</h2>
+        <h2 className="mt-1 text-lg font-bold text-[#58180d]">{copy(locale, '我的 D&D 规则内容', 'My D&D rules content')}</h2>
         <p className="mt-3 text-sm leading-relaxed text-[#2c1810]/65">
-          {copy(locale, '创建自己的种族、背景、专长与法术。资料默认只属于你；加入房间时再由主持人审核。', 'Create your own species, backgrounds, feats, and spells. Content is private to you until a Room host reviews it.')}
+          {copy(locale, '创建种族、职业、专长、物品或怪物。每项默认归入你的私人资料库，提交角色时再由房间主持人审核。', 'Create species, classes, feats, items, or monsters. Each stays in your private library until a Room host reviews a character submission.')}
         </p>
       </button>}
 
       {open && (
         <div className={presentation === 'card' ? 'fixed inset-0 z-50 flex items-center justify-center bg-[#17130f]/45 p-4' : ''} role={presentation === 'card' ? 'presentation' : undefined}>
-          <section role={presentation === 'card' ? 'dialog' : undefined} aria-modal={presentation === 'card' ? true : undefined} aria-label={copy(locale, '我的自定义资料', 'My custom content')} className={presentation === 'card' ? 'max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-xl border border-[#58180d]/30 bg-[#fffaf0] p-5 shadow-2xl' : 'w-full rounded-xl border border-[#58180d]/25 bg-[#fffaf0] p-5 shadow-sm'}>
+          <section role={presentation === 'card' ? 'dialog' : undefined} aria-modal={presentation === 'card' ? true : undefined} aria-label={copy(locale, '我的 D&D 规则内容', 'My D&D rules content')} className={presentation === 'card' ? 'max-h-[calc(100vh-2rem)] w-full max-w-4xl overflow-y-auto rounded-xl border border-[#58180d]/30 bg-[#fffaf0] p-5 shadow-2xl' : 'w-full rounded-xl border border-[#58180d]/25 bg-[#fffaf0] p-5 shadow-sm'}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-widest text-[#a35b11]">Personal D&D content</div>
-                <h2 className="mt-1 text-xl font-black text-[#58180d]">{copy(locale, '我的自定义资料', 'My custom content')}</h2>
+                <h2 className="mt-1 text-xl font-black text-[#58180d]">{copy(locale, '我的 D&D 规则内容', 'My D&D rules content')}</h2>
                 <p className="mt-1 max-w-2xl text-xs leading-5 text-[#2c1810]/70">
                   {copy(locale, '个人资料不会改写官方资料库，也不会自动加入服务器或房间。房间准入与可用内容由主持人后续审核。', 'Personal content never changes the official library and is not automatically added to a Server or Room. Room admission and allowed content remain host-reviewed.')}
                 </p>
@@ -441,11 +524,11 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
 
             <div className="mt-4 rounded-lg border border-[#58180d]/15 bg-white/70 p-3">
               <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-bold text-[#58180d]">{copy(locale, '已保存的资料包', 'Saved packs')}</h3>
+                <h3 className="text-sm font-bold text-[#58180d]">{copy(locale, '已保存的自定义内容', 'Saved custom content')}</h3>
                 <button type="button" onClick={() => void refresh()} disabled={loading || busy} className="rounded-md border border-[#58180d]/20 bg-white px-2.5 py-1.5 text-xs font-bold text-[#58180d] disabled:opacity-40">{copy(locale, '刷新', 'Refresh')}</button>
               </div>
               {loading && <p className="mt-2 text-xs text-[#2c1810]/65">{copy(locale, '正在加载…', 'Loading…')}</p>}
-              {!loading && packs.length === 0 && !notice && <p className="mt-2 text-xs text-[#2c1810]/65">{copy(locale, '尚未创建个人资料包。', 'No personal packs yet.')}</p>}
+              {!loading && packs.length === 0 && !notice && <p className="mt-2 text-xs text-[#2c1810]/65">{copy(locale, '尚未创建自定义内容。创建一项后会自动保存到你的私人资料库。', 'No custom content yet. Your first entry will be saved to a private library automatically.')}</p>}
               {!loading && packs.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{packs.map((pack) => (
                 <article key={pack.packId} className={`rounded-md border p-3 ${versioningPackId === pack.packId ? 'border-[#a35b11]/60 bg-[#fff1c7]/55' : 'border-[#58180d]/16 bg-white/65'}`}>
                   <div className="flex flex-wrap items-start justify-between gap-2">
@@ -482,8 +565,8 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
 
             <form onSubmit={(event) => void publish(event)} className="mt-4 grid gap-3 rounded-lg border border-dashed border-[#a35b11]/35 bg-white/70 p-3">
               <div>
-                <h3 className="text-sm font-bold text-[#58180d]">{versioningPackId ? copy(locale, '编辑新的资料版本草稿', 'Edit a new content-version draft') : copy(locale, '编辑个人资料包草稿', 'Edit a personal content-pack draft')}</h3>
-                <p className="mt-1 text-xs leading-5 text-[#2c1810]/65">{versioningPackId ? copy(locale, '草稿已从当前版本复制而来。增删条目后发布，新版本会完整替代此资料包在车卡中的可选内容；旧版本不会被改写。', 'The draft starts as a copy of the current version. Add or remove entries, then publish; the new version becomes the pack content available to the builder, while older versions stay unchanged.') : copy(locale, '先把多个条目加入草稿，再一次保存为个人资料包。它不会生成可执行规则效果，也不会修改已有角色。', 'Add several entries to a draft, then save it once as a personal pack. It creates no executable rules and does not alter existing characters.')}</p>
+                <h3 className="text-sm font-bold text-[#58180d]">{versioningPackId ? copy(locale, '编辑新的内容版本', 'Edit a new content version') : copy(locale, '新建 D&D 规则内容', 'Create D&D rules content')}</h3>
+                <p className="mt-1 text-xs leading-5 text-[#2c1810]/65">{versioningPackId ? copy(locale, '当前版本会先复制为草稿。发布后旧版本保持不变，车卡与房间可继续引用原版本。', 'The current version is copied into a draft. Publishing keeps the old version immutable so existing characters and Rooms can keep referencing it.') : copy(locale, '先添加一项或多项规则内容，再保存到你的私人资料库。普通创建不需要填写整合包名称。', 'Add one or more rules entries, then save to your private library. Ordinary creation never asks you to name a content pack.')}</p>
               </div>
               <div className="rounded-md border border-[#a35b11]/22 bg-[#fff1c7]/40 p-3 text-xs leading-5 text-[#58180d]/80">
                 <p className="font-bold text-[#58180d]">{entryKindGuidance(locale, fields.entryKind).title}</p>
@@ -491,11 +574,11 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
               </div>
               <div className="rounded-md border border-[#2f7f68]/25 bg-[#f1fbf7] p-3 text-xs text-[#184f42]">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-bold">{copy(locale, `资料包草稿 · ${draftEntries.length} 个条目`, `Pack draft · ${draftEntries.length} entries`)}</p>
+                  <p className="font-bold">{copy(locale, `待保存内容 · ${draftEntries.length} 项`, `Pending content · ${draftEntries.length} entries`)}</p>
                   {draftEntries.length > 0 && <button type="button" onClick={() => setDraftEntries([])} disabled={busy} className="rounded border border-[#2f7f68]/25 bg-white px-2 py-1 text-[11px] font-bold text-[#184f42] disabled:opacity-40">{copy(locale, '清空草稿', 'Clear draft')}</button>}
                 </div>
                 {draftEntries.length === 0
-                  ? <p className="mt-1 leading-5">{copy(locale, '填写下方条目后，选择“加入草稿”。发布资料包前可以继续添加不同类型的内容。', 'Fill in an entry below and choose “Add to draft.” You can keep adding different content types before publishing the pack.')}</p>
+                  ? <p className="mt-1 leading-5">{copy(locale, '填写下方条目后，选择“加入待保存内容”。你可以继续添加不同类型，再统一保存。', 'Fill in an entry below and choose “Add to pending content.” You can continue adding types, then save them together.')}</p>
                   : <ul className="mt-2 space-y-1.5">
                     {draftEntries.map((entry, index) => <li key={`${entry.entryKind}-${entry.displayName}-${index}`} className="flex flex-wrap items-center justify-between gap-2 rounded border border-[#2f7f68]/15 bg-white/70 px-2 py-1.5">
                       <span><span className="font-semibold">{entry.displayName}</span> <span className="ml-1 rounded-full bg-[#2f7f68]/10 px-1.5 py-0.5 text-[10px] font-bold">{entry.entryKind}</span></span>
@@ -504,9 +587,9 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                   </ul>}
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
-                <FormField label={copy(locale, '资料包名称', 'Pack name')} required hint={versioningPackId ? copy(locale, '当前正在为这个资料包新增版本，名称不能修改。', 'You are adding a version to this pack; its name cannot change.') : copy(locale, '用于把相关的自定义资料归在一起，例如“港湾自定义选项”。', 'Groups related personal content, for example “Harbor options”.')}>
-                  <input value={fields.packName} onChange={(event) => update('packName', event.target.value)} placeholder={copy(locale, '例如：港湾自定义选项', 'e.g. Harbor options')} disabled={busy || !!versioningPackId} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
-                </FormField>
+                {versioningPackId && <FormField label={copy(locale, '正在更新的资料库', 'Library being updated')} hint={copy(locale, '版本容器只用于保存不可变历史，普通编辑不需要管理它。', 'The version container only preserves immutable history; ordinary editing does not require managing it.')}>
+                  <input value={fields.packName} disabled className="rounded-md border border-[#58180d]/20 bg-[#fff8e6] px-3 py-2 text-sm font-normal disabled:opacity-70" />
+                </FormField>}
                 <FormField label={copy(locale, '资料类型', 'Content type')} required hint={copy(locale, '决定车卡会在哪个选择区显示这份资料。', 'Controls which builder selector can display this content.')}>
                   <select value={fields.entryKind} onChange={(event) => update('entryKind', event.target.value)} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50">
                     <option value="species">{copy(locale, '种族', 'Species')}</option>
@@ -515,6 +598,8 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                     <option value="background">{copy(locale, '背景', 'Background')}</option>
                     <option value="feat">{copy(locale, '专长', 'Feat')}</option>
                     <option value="spell">{copy(locale, '法术', 'Spell')}</option>
+                    <option value="item">{copy(locale, '物品与装备', 'Item & equipment')}</option>
+                    <option value="monster">{copy(locale, '怪物', 'Monster')}</option>
                   </select>
                 </FormField>
                 <FormField label={copy(locale, '条目名称', 'Entry name')} required hint={copy(locale, '玩家在车卡中看到和选择的名称。', 'The name players see and select in Character Builder.')}>
@@ -553,7 +638,7 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                   </FormField>
                 </>}
                 {fields.entryKind === 'subclass' && <>
-                  <FormField label={copy(locale, '所属职业名称', 'Parent class name')} required hint={copy(locale, '必须与同一资料包中职业条目的名称完全一致，才能出现在该职业下。', 'Must exactly match a class entry name in this pack to appear under that class.')}>
+                  <FormField label={copy(locale, '所属职业名称', 'Parent class name')} required hint={copy(locale, '必须与同一次保存的个人职业名称完全一致，才能出现在该职业下。', 'Must exactly match a personal class saved in the same library version to appear under that class.')}>
                     <input value={fields.subclassParentClass} onChange={(event) => update('subclassParentClass', event.target.value)} placeholder={copy(locale, '例如：港湾守卫', 'e.g. Harbor Warden')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
                   </FormField>
                   <FormField label={copy(locale, '解锁等级', 'Unlock level')} hint={copy(locale, '填 1 至 20。只有 1 级解锁的子职业会在新角色车卡中要求选择。', 'Enter 1 through 20. Only subclasses unlocked at level 1 are required during new-character creation.')}>
@@ -580,10 +665,80 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                     <input value={fields.spellComponents} onChange={(event) => update('spellComponents', event.target.value)} placeholder="V, S, M" disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
                   </FormField>
                 </>}
+                {fields.entryKind === 'item' && <>
+                  <FormField label={copy(locale, '物品分类', 'Item category')} hint={copy(locale, '分类决定需要填写哪些可读资料。它不会自动装备或产生规则效果。', 'The category controls which readable facts you enter. It does not auto-equip or create rule effects.')}>
+                    <select value={fields.itemCategory} onChange={(event) => update('itemCategory', event.target.value)} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50">
+                      <option value="weapon">{copy(locale, '武器', 'Weapon')}</option><option value="armor">{copy(locale, '护甲或盾牌', 'Armor or shield')}</option><option value="gear">{copy(locale, '冒险装备', 'Adventuring gear')}</option><option value="consumable">{copy(locale, '消耗品', 'Consumable')}</option><option value="magicItem">{copy(locale, '魔法物品', 'Magic item')}</option>
+                    </select>
+                  </FormField>
+                  <FormField label={copy(locale, '稀有度', 'Rarity')} hint={copy(locale, '可选的资料分类，例如“普通”或“珍稀”。', 'Optional reference classification, such as Common or Rare.')}>
+                    <input value={fields.itemRarity} onChange={(event) => update('itemRarity', event.target.value)} placeholder={copy(locale, '可选，例如：珍稀', 'Optional, e.g. Rare')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '重量（磅）', 'Weight (lb)')} hint={copy(locale, '可选数字；当前不会自动计算负重。', 'Optional number; encumbrance is not calculated automatically yet.')}>
+                    <input value={fields.itemWeight} onChange={(event) => update('itemWeight', event.target.value)} inputMode="decimal" placeholder="3" disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '价值', 'Cost')} hint={copy(locale, '可选显示文字，例如“15 GP”。', 'Optional display text, e.g. 15 GP.')}>
+                    <input value={fields.itemCost} onChange={(event) => update('itemCost', event.target.value)} placeholder="15 GP" disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  {fields.itemCategory === 'weapon' && <>
+                    <FormField label={copy(locale, '伤害骰', 'Damage dice')} hint={copy(locale, '例如“1d8”。当前只保存资料，不会自动攻击。', 'For example 1d8. Stored as reference only; it does not attack automatically.')}>
+                      <input value={fields.itemDamage} onChange={(event) => update('itemDamage', event.target.value)} placeholder="1d8" disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                    </FormField>
+                    <FormField label={copy(locale, '伤害类型', 'Damage type')} hint={copy(locale, '例如“挥砍”或“穿刺”。', 'For example slashing or piercing.')}>
+                      <input value={fields.itemDamageType} onChange={(event) => update('itemDamageType', event.target.value)} placeholder={copy(locale, '例如：挥砍', 'e.g. Slashing')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                    </FormField>
+                    <FormField label={copy(locale, '武器属性', 'Weapon properties')} hint={copy(locale, '每行一项，例如“灵巧”“双手”。目前只做资料展示。', 'One per line, such as Finesse or Two-Handed. Reference display only for now.')}>
+                      <textarea value={fields.itemProperties} onChange={(event) => update('itemProperties', event.target.value)} placeholder={copy(locale, '灵巧\n轻型', 'Finesse\nLight')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                    </FormField>
+                  </>}
+                  {fields.itemCategory === 'armor' && <FormField label={copy(locale, '基础 AC', 'Base AC')} hint={copy(locale, '可选数字；当前不会自动重算角色 AC。', 'Optional number; character AC is not automatically recalculated yet.')}>
+                    <input value={fields.itemArmorClass} onChange={(event) => update('itemArmorClass', event.target.value)} inputMode="numeric" placeholder="14" disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>}
+                  <FormField label={copy(locale, '使用与限制说明', 'Use and limits')} hint={copy(locale, '可选。描述消耗、充能、协调或主持人裁定事项，不执行自动效果。', 'Optional. Describe uses, charges, attunement, or host rulings without automatic effects.')}>
+                    <textarea value={fields.itemUsage} onChange={(event) => update('itemUsage', event.target.value)} placeholder={copy(locale, '可选：使用方式、次数或主持人裁定', 'Optional: use, charges, or host ruling')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                </>}
+                {fields.entryKind === 'monster' && <>
+                  <FormField label={copy(locale, '体型', 'Size')} hint={copy(locale, '例如“小型”“大型”。', 'For example Small or Large.')}>
+                    <input value={fields.monsterSize} onChange={(event) => update('monsterSize', event.target.value)} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '生物类型', 'Creature type')} hint={copy(locale, '例如“野兽”“亡灵”或“类人生物”。', 'For example Beast, Undead, or Humanoid.')}>
+                    <input value={fields.monsterType} onChange={(event) => update('monsterType', event.target.value)} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '阵营', 'Alignment')} hint={copy(locale, '可选资料文字。', 'Optional reference text.')}>
+                    <input value={fields.monsterAlignment} onChange={(event) => update('monsterAlignment', event.target.value)} placeholder={copy(locale, '可选，例如：混乱中立', 'Optional, e.g. Chaotic Neutral')} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '挑战等级', 'Challenge rating')} hint={copy(locale, '可选资料文字，不自动计算遭遇难度。', 'Optional reference text; encounter difficulty is not calculated automatically.')}>
+                    <input value={fields.monsterChallenge} onChange={(event) => update('monsterChallenge', event.target.value)} placeholder="1/4" disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '护甲等级', 'Armor class')} hint={copy(locale, '可选数字，主持人放入战斗时可参考。', 'Optional number for host combat preparation.')}>
+                    <input value={fields.monsterArmorClass} onChange={(event) => update('monsterArmorClass', event.target.value)} inputMode="numeric" placeholder="13" disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '生命值', 'Hit points')} hint={copy(locale, '可选数字，主持人可据此预填战斗单位。', 'Optional number that a host may use to prefill a combatant.')}>
+                    <input value={fields.monsterHp} onChange={(event) => update('monsterHp', event.target.value)} inputMode="numeric" placeholder="22" disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                  <FormField label={copy(locale, '速度', 'Speed')} hint={copy(locale, '例如“30 尺，游泳 30 尺”。', 'For example 30 ft., swim 30 ft.')}>
+                    <input value={fields.monsterSpeed} onChange={(event) => update('monsterSpeed', event.target.value)} disabled={busy} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                  </FormField>
+                </>}
               </div>
               <FormField label={copy(locale, '简短说明', 'Short summary')} hint={copy(locale, '给车卡与主持人快速阅读的简介。不要填写自动结算、伤害公式或隐藏权限。', 'A quick description for the builder and host. Do not put automation, damage formulas, or hidden permissions here.')}>
                 <textarea value={fields.summary} onChange={(event) => update('summary', event.target.value)} placeholder={copy(locale, '可选：用一两句话说明主题与玩法感受', 'Optional: summarize the theme in one or two sentences')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
               </FormField>
+              {fields.entryKind === 'monster' && <div className="grid gap-2 sm:grid-cols-2">
+                <FormField label={copy(locale, '特性', 'Traits')} hint={copy(locale, '每行“名称 | 说明”。例如“敏锐嗅觉 | 依赖嗅觉的察觉检定具有优势”。', 'One line per entry: name | description. For example Keen Smell | Has advantage on Perception checks that rely on smell.')}>
+                  <textarea value={fields.monsterTraits} onChange={(event) => update('monsterTraits', event.target.value)} placeholder={copy(locale, '敏锐嗅觉 | 依赖嗅觉的察觉检定具有优势', 'Keen Smell | Has advantage on Perception checks that rely on smell')} disabled={busy} className="min-h-28 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '动作', 'Actions')} hint={copy(locale, '每行“名称 | 说明”。保存为怪物资料，不会自动掷骰或结算伤害。', 'One line per entry: name | description. Saved as monster reference; it does not roll or resolve damage automatically.')}>
+                  <textarea value={fields.monsterActions} onChange={(event) => update('monsterActions', event.target.value)} placeholder={copy(locale, '短剑 | 近战武器攻击；命中后造成穿刺伤害', 'Shortsword | Melee weapon attack; deals piercing damage on a hit')} disabled={busy} className="min-h-28 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '反应', 'Reactions')} hint={copy(locale, '每行“名称 | 说明”。没有时可留空。', 'One line per entry: name | description. Leave blank when none.')}>
+                  <textarea value={fields.monsterReactions} onChange={(event) => update('monsterReactions', event.target.value)} placeholder={copy(locale, '招架 | 受到近战攻击命中时提高 AC', 'Parry | Raises AC when hit by a melee attack')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+                <FormField label={copy(locale, '传奇动作', 'Legendary actions')} hint={copy(locale, '每行“名称 | 说明”。没有时可留空。', 'One line per entry: name | description. Leave blank when none.')}>
+                  <textarea value={fields.monsterLegendaryActions} onChange={(event) => update('monsterLegendaryActions', event.target.value)} placeholder={copy(locale, '移动 | 移动至多一半速度', 'Move | Move up to half speed')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                </FormField>
+              </div>}
               {fields.entryKind === 'species' && <div className="grid gap-2 sm:grid-cols-2">
                 <FormField label={copy(locale, '种族特性说明', 'Species trait notes')} hint={copy(locale, '每行一项。会在车卡详情中显示为文字，不会自动产生效果。', 'One per line. Appears as text in the builder and never executes automatically.')}>
                   <textarea value={fields.traits} onChange={(event) => update('traits', event.target.value)} placeholder={copy(locale, '例如：潮汐呼吸\n夜视', 'e.g. Tidal breathing\nDarkvision')} disabled={busy} className="min-h-24 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
@@ -627,17 +782,17 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                     <textarea value={fields.classArmorProficiencies} onChange={(event) => update('classArmorProficiencies', event.target.value)} placeholder={copy(locale, '例如：轻甲\n盾牌', 'e.g. Light armor\nShields')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
                   </FormField>
                 </div>
-                <FormField label={copy(locale, '1 级职业特性说明', 'Level-one class feature note')} hint={copy(locale, '用文字概述核心特性。不会自动添加动作、法术、伤害或资源。', 'Summarize the core feature in text. It does not add actions, spells, damage, or resources automatically.')}>
-                  <textarea value={fields.classFeatureSummary} onChange={(event) => update('classFeatureSummary', event.target.value)} placeholder={copy(locale, '可选：说明该职业的核心玩法与首级能力', 'Optional: explain the class core and level-one capability')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+                <FormField label={copy(locale, '职业特性进阶', 'Class feature progression')} hint={copy(locale, '每行一项：等级 | 特性名称 | 说明。例如“1 | 战斗风格 | 选择一种战斗风格”。这会保存可读进阶资料，不会自动执行效果。', 'One per line: level | feature name | description. For example: “1 | Fighting Style | Choose a fighting style.” This saves readable progression facts and never executes effects.')}>
+                  <textarea value={fields.classFeatureLines} onChange={(event) => update('classFeatureLines', event.target.value)} placeholder={copy(locale, '1 | 港口巡防 | 熟悉码头上的危险\n3 | 潮汐守望 | 在雾中保持警觉', '1 | Harbor patrol | Know the dangers of a dock\n3 | Tidal watch | Stay alert in fog')} disabled={busy} className="min-h-28 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
                 </FormField>
               </>}
-              {fields.entryKind === 'subclass' && <FormField label={copy(locale, '子职业特性说明', 'Subclass feature note')} hint={copy(locale, '用文字说明该子职业的主要能力；不会自动创建动作、效果或资源。', 'Describe the subclass core in text; it does not create actions, effects, or resources automatically.')}>
-                <textarea value={fields.subclassFeatureSummary} onChange={(event) => update('subclassFeatureSummary', event.target.value)} placeholder={copy(locale, '可选：说明该子职业的主题与主要能力', 'Optional: explain the subclass theme and main ability')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
+              {fields.entryKind === 'subclass' && <FormField label={copy(locale, '子职业特性进阶', 'Subclass feature progression')} hint={copy(locale, '每行一项：等级 | 特性名称 | 说明。未填写等级时会使用上方的解锁等级。', 'One per line: level | feature name | description. A line without a level uses the unlock level above.')}>
+                <textarea value={fields.subclassFeatureLines} onChange={(event) => update('subclassFeatureLines', event.target.value)} placeholder={copy(locale, '3 | 潮汐呼应 | 与港湾潮声保持同步\n7 | 深海壁垒 | 获得额外防护', '3 | Tidal resonance | Keep pace with harbor tides\n7 | Deepwater bulwark | Gain added protection')} disabled={busy} className="min-h-28 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
               </FormField>}
               <div className="flex flex-wrap items-center gap-3">
-                {versioningPackId && <button type="button" disabled={busy} onClick={() => { setVersioningPackId(null); setDraftEntries([]); setFields(initialFields); setNotice(''); }} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-bold text-[#58180d]">{copy(locale, '改为新建资料包', 'Create a new pack instead')}</button>}
-                <button type="button" onClick={addCurrentEntryToDraft} disabled={busy || !fields.packName.trim() || !fields.entryName.trim()} className="rounded-md border border-[#58180d]/30 bg-white px-3 py-2 text-sm font-bold text-[#58180d] disabled:opacity-40">{copy(locale, '加入资料包草稿', 'Add to pack draft')}</button>
-                <button type="submit" disabled={busy || !fields.packName.trim() || draftEntries.length === 0} className="rounded-md bg-[#58180d] px-3 py-2 text-sm font-bold text-white disabled:opacity-40">{busy ? copy(locale, '正在保存…', 'Saving…') : versioningPackId ? copy(locale, `发布新版本（${draftEntries.length}）`, `Publish new version (${draftEntries.length})`) : copy(locale, `保存资料包（${draftEntries.length}）`, `Save pack (${draftEntries.length})`)}</button>
+                {versioningPackId && <button type="button" disabled={busy} onClick={() => { setVersioningPackId(null); setDraftEntries([]); setFields(initialFields); setNotice(''); }} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-bold text-[#58180d]">{copy(locale, '改为新建内容', 'Create new content instead')}</button>}
+                <button type="button" onClick={addCurrentEntryToDraft} disabled={busy || !fields.entryName.trim()} className="rounded-md border border-[#58180d]/30 bg-white px-3 py-2 text-sm font-bold text-[#58180d] disabled:opacity-40">{copy(locale, '加入待保存内容', 'Add to pending content')}</button>
+                <button type="submit" disabled={busy || draftEntries.length === 0} className="rounded-md bg-[#58180d] px-3 py-2 text-sm font-bold text-white disabled:opacity-40">{busy ? copy(locale, '正在保存…', 'Saving…') : versioningPackId ? copy(locale, `发布新版本（${draftEntries.length}）`, `Publish new version (${draftEntries.length})`) : copy(locale, `保存到我的规则内容（${draftEntries.length}）`, `Save to my rules content (${draftEntries.length})`)}</button>
                 {notice && <p className="text-xs leading-5 text-[#2c1810]/75">{notice}</p>}
               </div>
             </form>
