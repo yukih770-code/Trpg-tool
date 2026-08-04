@@ -1042,3 +1042,10 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   feature-name tables for character selection and advancement preview.
 - Compatibility names are retained where older saved characters depend on them.
 - See `docs/implementation/P6_DND_OWNER_SOURCE_SUBCLASS_BATCH_2.md`.
+
+## DND Owner-Source Subclass Batch 3 (P6.24)
+
+- Paladin and Ranger now expose locally sourced 2024 subclass unlock and
+  feature-name tables for character selection and advancement preview.
+- Compatibility names are retained where older saved characters depend on them.
+- See `docs/implementation/P6_DND_OWNER_SOURCE_SUBCLASS_BATCH_3.md`.

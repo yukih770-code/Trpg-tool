@@ -464,3 +464,10 @@ Read `P6_DND_OWNER_SOURCE_SUBCLASS_BATCH_2.md` before changing Monk or Druid
 subclass entries. Their source-matched names and levels are display data only;
 they do not automate Focus Point, Wild Shape, spell, combat, or Room Runtime
 behavior.
+
+## DND Owner-Source Subclass Batch 3 (P6.24)
+
+Read `P6_DND_OWNER_SOURCE_SUBCLASS_BATCH_3.md` before changing Paladin or
+Ranger subclass entries. Their local-source names and levels are display data
+only; do not automate Oaths, companions, combat, spells, or Room Runtime
+behavior from this module.

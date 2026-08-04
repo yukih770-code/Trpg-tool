@@ -127,15 +127,17 @@ const SUBCLASS_METADATA_BY_CLASS: Record<string, Record<string, RuleDataMetadata
     奥法诡术师: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
   },
   圣武士: {
-    奉献之誓: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2'),
-    古贤之誓: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
-    复仇之誓: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+    奉献之誓: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '奉献之誓'),
+    古贤之誓: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '古贤之誓'),
+    复仇之誓: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '复仇之誓'),
+    荣耀之誓: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '荣耀之誓'),
     破誓者: outOfSourceMeta('Explicitly quarantined: not found in the declared owner-source scope for this correction pass. Do not treat as verified class/subclass data.'),
   },
   游侠: {
-    猎人: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2'),
-    驯兽师: conflictMeta('Existing subclass retained; TCoE companion-related source support may exist, but the subclass entry needs owner-source path confirmation.'),
-    幽域追踪者: subclassSourceMeta('dnd5echm-xgte', 'XGtE'),
+    猎人: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '猎人'),
+    驯兽师: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '驯兽师'),
+    妖精漫游者: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '妖精漫游者'),
+    幽域追踪者: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '幽域追猎者；保留现有名称以兼容既有角色。'),
   },
   邪术师: {
     邪魔: conflictMeta('Owner source manifest uses 魔契师 / 邪魔宗主 while the app uses 邪术师 / 邪魔 and unlockLevel 1. Naming and 2024 unlock timing need human confirmation.'),
@@ -382,9 +384,35 @@ export const CLASS_DATA: ClassDef[] = applyDndClassSubclassMetadata([
       { name: "至圣斩", desc: "近战命中后灌注法术力对敌方摧毁光发伤害。", unlockLevel: 2 }
     ],
     subclasses: [
-      { name: "奉献之誓", desc: "坚守光与正义的白骑士。", unlockLevel: 3, features: [{ name: "神圣武器", desc: "为武具附上神圣威力极大幅度增强命中并照明。", unlockLevel: 3 }] },
-      { name: "古贤之誓", desc: "崇尚自然生命循环的骑士保护者。", unlockLevel: 3, features: [{ name: "被守护之愿", desc: "用以神力禁锢锁死敌人。", unlockLevel: 3 }] },
-      { name: "复仇之誓", desc: "对极罪之人施加怒火审判。", unlockLevel: 3, features: [{ name: "憎恶宣扬", desc: "对单独一名重罪之人施加极强的命中锁定优势。", unlockLevel: 3 }] },
+      { name: "奉献之誓", desc: "以正义、秩序与守护为信条的圣武士。", unlockLevel: 3, features: [
+        { name: "奉献之誓法术", desc: "誓言法术始终准备。", unlockLevel: 3 },
+        { name: "圣洁武器", desc: "消耗引导神力强化近战武器。", unlockLevel: 3 },
+        { name: "奉献灵光", desc: "守护灵光内的盟友免疫魅惑。", unlockLevel: 7 },
+        { name: "卫护斩", desc: "施展至圣斩后暂时强化守护灵光。", unlockLevel: 15 },
+        { name: "至圣光轮", desc: "强化守护灵光并获得光耀与防护效果。", unlockLevel: 20 },
+      ] },
+      { name: "古贤之誓", desc: "守护生命、光明与自然世界的圣武士。", unlockLevel: 3, features: [
+        { name: "自然之怒", desc: "消耗引导神力以灵体藤蔓束缚生物。", unlockLevel: 3 },
+        { name: "古贤之誓法术", desc: "誓言法术始终准备。", unlockLevel: 3 },
+        { name: "守御灵光", desc: "守护灵光内获得指定伤害抗性。", unlockLevel: 7 },
+        { name: "不灭哨卫", desc: "濒死时可维持生命并恢复生命值。", unlockLevel: 15 },
+        { name: "上古斗士", desc: "强化守护灵光与施法能力。", unlockLevel: 20 },
+      ] },
+      { name: "复仇之誓", desc: "以追猎并惩戒重大邪恶为使命的圣武士。", unlockLevel: 3, features: [
+        { name: "复仇之誓法术", desc: "誓言法术始终准备。", unlockLevel: 3 },
+        { name: "仇敌誓言", desc: "消耗引导神力使你对目标攻击具有优势。", unlockLevel: 3 },
+        { name: "坚韧复仇", desc: "借机攻击命中后可限制目标并移动。", unlockLevel: 7 },
+        { name: "复仇之魂", desc: "受仇敌誓言影响的目标攻击后可触发反应攻击。", unlockLevel: 15 },
+        { name: "复仇天使", desc: "获得飞行与恐惧灵光。", unlockLevel: 20 },
+      ] },
+      { name: "荣耀之誓", desc: "以英勇、奋进与激励同伴为目标的圣武士。", unlockLevel: 3, features: [
+        { name: "鼓舞斩", desc: "至圣斩后可消耗引导神力分配临时生命值。", unlockLevel: 3 },
+        { name: "荣耀之誓法术", desc: "誓言法术始终准备。", unlockLevel: 3 },
+        { name: "绝伦健将", desc: "消耗引导神力强化运动与特技。", unlockLevel: 3 },
+        { name: "迅捷灵光", desc: "提高自己与盟友的速度。", unlockLevel: 7 },
+        { name: "辉煌防御", desc: "以反应提高防御并可能反击。", unlockLevel: 15 },
+        { name: "现世传说", desc: "获得魅力、豁免与攻击强化。", unlockLevel: 20 },
+      ] },
       { name: "破誓者", desc: "违反大义而坠入黑暗禁地的幽冥之刃。", unlockLevel: 3, features: [{ name: "引导神力：苦痛", desc: "施加让敌人退怯并极具威吓折磨的能力。", unlockLevel: 3 }] }
     ]
   },
@@ -402,9 +430,35 @@ export const CLASS_DATA: ClassDef[] = applyDndClassSubclassMetadata([
       { name: "游侠法术与战斗", desc: "可以掌握多项战斗体系（箭术防御）及初级的低级法术。", unlockLevel: 2 }
     ],
     subclasses: [
-      { name: "猎人", desc: "针对怪兽群进行特制狩猎技术。", unlockLevel: 3, features: [{ name: "猎人猎物", desc: "对巨大怪物或者大规模群体目标能发挥极强力清杀优势。", unlockLevel: 3 }] },
-      { name: "驯兽师", desc: "荒野伴侣随从者。", unlockLevel: 3, features: [{ name: "动物伙伴", desc: "拥有狼熊野猪等常伴身边共同击败强敌，且随等级增强同步成长。", unlockLevel: 3 }] },
-      { name: "幽域追踪者", desc: "暗影首个回合夺命死神者。", unlockLevel: 3, features: [{ name: "幽域伏击", desc: "掌握高级黑视并且在进入战斗的头一个回合获得极大力度的额外一击和爆发速度与伤害。", unlockLevel: 3 }] }
+      { name: "猎人", desc: "保护自然与人民、追猎强敌的游侠。", unlockLevel: 3, features: [
+        { name: "猎人学识", desc: "可识别猎人印记目标的免疫、抗性或易伤。", unlockLevel: 3 },
+        { name: "猎杀技艺", desc: "选择并可在休息后替换猎杀选项。", unlockLevel: 3 },
+        { name: "防守战术", desc: "选择并可替换防守选项。", unlockLevel: 7 },
+        { name: "高阶猎杀技艺", desc: "强化对猎人印记目标造成伤害后的效果。", unlockLevel: 11 },
+        { name: "高阶防守战术", desc: "以反应获得当次伤害类型抗性。", unlockLevel: 15 },
+      ] },
+      { name: "驯兽师", desc: "与原初野兽建立魔法联结的游侠。", unlockLevel: 3, features: [
+        { name: "原初行侣", desc: "召唤并指挥一只原初野兽。", unlockLevel: 3 },
+        { name: "特效训练", desc: "强化对原初行侣的附赠动作命令。", unlockLevel: 7 },
+        { name: "兽性狂怒", desc: "强化原初行侣的攻击与猎人印记互动。", unlockLevel: 11 },
+        { name: "法术共享", desc: "可让指定自身的法术同时作用于原初行侣。", unlockLevel: 15 },
+      ] },
+      { name: "妖精漫游者", desc: "驾驭妖精荒野魔法与情绪之力的游侠。", unlockLevel: 3, features: [
+        { name: "哀惧灵袭", desc: "武器命中时可额外造成心灵伤害。", unlockLevel: 3 },
+        { name: "妖精漫游者魔法", desc: "子职业法术始终准备。", unlockLevel: 3 },
+        { name: "妖冶娴都", desc: "强化魅力检定并获得一项社交技能熟练。", unlockLevel: 3 },
+        { name: "妖思魅缕", desc: "强化对魅惑与恐惧的豁免并可反应转移效果。", unlockLevel: 7 },
+        { name: "精宸所与", desc: "强化妖精召唤术的施展。", unlockLevel: 11 },
+        { name: "雾行漫游", desc: "强化迷踪步并可携带自愿生物传送。", unlockLevel: 15 },
+      ] },
+      { name: "幽域追踪者", desc: "本地资料中的幽域追猎者；操纵阴影发起伏击。", unlockLevel: 3, features: [
+        { name: "恐惧伏击", desc: "首回合获得移动、心灵伤害与先攻增益。", unlockLevel: 3 },
+        { name: "幽域追猎者魔法", desc: "子职业法术始终准备。", unlockLevel: 3 },
+        { name: "阴影视野", desc: "获得并强化黑暗视觉，黑暗中更难被察觉。", unlockLevel: 3 },
+        { name: "钢铁意志", desc: "获得感知豁免熟练或替代选择。", unlockLevel: 7 },
+        { name: "追猎如风", desc: "强化恐惧打击并获得额外效果选择。", unlockLevel: 11 },
+        { name: "如影随行", desc: "以反应施加攻击劣势并传送。", unlockLevel: 15 },
+      ] }
     ]
   },
   {
