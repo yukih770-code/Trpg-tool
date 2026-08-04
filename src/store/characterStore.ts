@@ -3,7 +3,12 @@ import { persist } from 'zustand/middleware';
 import { CharacterData, AttributeName, SkillName, SpellInfo, CustomMod, CURRENT_DND_CHARACTER_SCHEMA_VERSION } from '../lib/dnd-types';
 import { migrateCharacter } from '../lib/characterMigration';
 import { initializeClassResourcesForCharacter, refreshClassResourcesForCharacter } from '../lib/dnd2024/resource-utils';
-import { incrementPrimaryDndClassLevel } from '../lib/dnd2024/multiclass';
+import {
+  canAllocateDndClassLevel,
+  incrementDndClassLevel,
+  normalizeDndClassLevels,
+  type DndClassLevelTarget,
+} from '../lib/dnd2024/multiclass';
 
 export type DndSpellcastingResourceConsumption = {
   ok: boolean;
@@ -161,7 +166,13 @@ interface CharacterState {
   updateAttrPointBuy: (attr: AttributeName, value: number) => void;
   restShort: () => void;
   restLong: () => void;
-  levelUp: (hpIncrease: number, subclass?: string, attrs?: AttributeName[], feat?: string) => void;
+  levelUp: (
+    hpIncrease: number,
+    subclass?: string,
+    attrs?: AttributeName[],
+    feat?: string,
+    targetClass?: DndClassLevelTarget,
+  ) => void;
   modifyHp: (amount: number) => void;
   updateSpellbook: (known: SpellInfo[], prepared: string[]) => void;
   consumeSpellcastingResource: (spellLevel: number) => DndSpellcastingResourceConsumption;
@@ -306,10 +317,31 @@ export const useCharacterStore = create<CharacterState>()(
         };
       }),
 
-      levelUp: (hpIncrease, newSubclass, extraAttrs, newFeat) => set((state) => {
+      levelUp: (hpIncrease, newSubclass, extraAttrs, newFeat, targetClass) => set((state) => {
         const char = state.character;
+        const primary = {
+          className: char.jobClass,
+          level: char.level,
+          subclass: char.subclass,
+        };
+        const selectedTarget = targetClass?.className.trim()
+          ? targetClass
+          : primary;
+        const normalizedClassLevels = normalizeDndClassLevels(char.classLevels, primary);
+        if (!canAllocateDndClassLevel(normalizedClassLevels, selectedTarget).allowed) {
+          return state;
+        }
+        const nextClassLevels = incrementDndClassLevel(
+          normalizedClassLevels,
+          { ...selectedTarget, subclass: newSubclass || selectedTarget.subclass },
+          primary,
+        );
+        const isPrimaryAllocation = selectedTarget.className === char.jobClass;
+        // No combined-caster calculation exists yet. Preserve resources once a
+        // character has more than one class instead of inventing slot totals.
+        const hasSingleClassAllocation = nextClassLevels.length === 1;
         const nextLvl = char.level + 1;
-        const isCaster = ['法师', '吟游诗人', '牧师', '邪术师', '德鲁伊', '术士'].includes(char.jobClass);
+        const isCaster = hasSingleClassAllocation && ['法师', '吟游诗人', '牧师', '邪术师', '德鲁伊', '术士'].includes(char.jobClass);
         const newSlots = { ...char.spellbook.slots };
         
         if (isCaster) {
@@ -335,15 +367,11 @@ export const useCharacterStore = create<CharacterState>()(
         const leveledCharacter: CharacterData = {
           ...char,
           level: nextLvl,
-          classLevels: incrementPrimaryDndClassLevel(char.classLevels, {
-            className: char.jobClass,
-            level: char.level,
-            subclass: newSubclass || char.subclass,
-          }),
+          classLevels: nextClassLevels,
           hpMax: char.hpMax + hpIncrease,
           hpCurrent: char.hpCurrent + hpIncrease,
           hitDiceCurrent: char.hitDiceCurrent + 1,
-          subclass: newSubclass || char.subclass,
+          subclass: isPrimaryAllocation ? (newSubclass || char.subclass) : char.subclass,
           attrs: newAttrs,
           feats: newFeats,
           spellbook: {
@@ -352,7 +380,12 @@ export const useCharacterStore = create<CharacterState>()(
           }
         };
 
-        const refreshedResources = refreshClassResourcesForCharacter(leveledCharacter);
+        const refreshedResources = hasSingleClassAllocation
+          ? refreshClassResourcesForCharacter(leveledCharacter)
+          : {
+            classResources: leveledCharacter.classResources,
+            pactMagicState: leveledCharacter.pactMagicState,
+          };
 
         return {
           character: {

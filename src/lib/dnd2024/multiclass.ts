@@ -7,6 +7,17 @@ type LegacyClassFallback = {
   subclass?: string;
 };
 
+export type DndClassLevelTarget = {
+  className: string;
+  classId?: string;
+  subclass?: string;
+};
+
+export type DndClassLevelAllocationCheck = {
+  allowed: boolean;
+  reason?: 'character-level-cap' | 'class-level-cap' | 'missing-class';
+};
+
 function positiveLevel(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   const level = Math.floor(value);
@@ -62,25 +73,68 @@ export function getDndCharacterTotalLevel(classLevels: DndClassLevel[]): number 
   return classLevels.reduce((total, classLevel) => total + classLevel.level, 0);
 }
 
+export function getDndClassLevelAllocation(
+  classLevels: DndClassLevel[],
+  target: Pick<DndClassLevelTarget, 'className' | 'classId'>,
+): DndClassLevel | undefined {
+  return classLevels.find((classLevel) =>
+    (target.classId && classLevel.classId === target.classId) ||
+    classLevel.className === target.className,
+  );
+}
+
+/**
+ * Structural guard only. Multiclass prerequisites and combined spell slots are
+ * deliberately outside this persistence helper and remain a table/DM check.
+ */
+export function canAllocateDndClassLevel(
+  classLevels: DndClassLevel[],
+  target: DndClassLevelTarget,
+): DndClassLevelAllocationCheck {
+  if (!target.className.trim()) return { allowed: false, reason: 'missing-class' };
+  if (getDndCharacterTotalLevel(classLevels) >= 20) {
+    return { allowed: false, reason: 'character-level-cap' };
+  }
+  if ((getDndClassLevelAllocation(classLevels, target)?.level ?? 0) >= 20) {
+    return { allowed: false, reason: 'class-level-cap' };
+  }
+  return { allowed: true };
+}
+
+export function incrementDndClassLevel(
+  classLevels: DndClassLevel[],
+  target: DndClassLevelTarget,
+  fallback: LegacyClassFallback,
+): DndClassLevel[] {
+  const normalized = normalizeDndClassLevels(classLevels, fallback);
+  const check = canAllocateDndClassLevel(normalized, target);
+  if (!check.allowed) return normalized;
+
+  const targetIndex = normalized.findIndex((classLevel) =>
+    (target.classId && classLevel.classId === target.classId) ||
+    classLevel.className === target.className,
+  );
+  if (targetIndex < 0) {
+    return [...normalized, {
+      className: target.className.trim(),
+      classId: target.classId,
+      level: 1,
+      subclass: target.subclass?.trim() || undefined,
+    }];
+  }
+  return normalized.map((classLevel, index) => index === targetIndex
+    ? {
+      ...classLevel,
+      level: Math.min(20, classLevel.level + 1),
+      subclass: target.subclass?.trim() || classLevel.subclass,
+    }
+    : classLevel);
+}
+
 /** Increments only the legacy primary class, preserving any future secondary rows. */
 export function incrementPrimaryDndClassLevel(
   classLevels: DndClassLevel[],
   primary: LegacyClassFallback,
 ): DndClassLevel[] {
-  const normalized = normalizeDndClassLevels(classLevels, primary);
-  const targetIndex = normalized.findIndex((classLevel) =>
-    (primary.classId && classLevel.classId === primary.classId) ||
-    classLevel.className === primary.className,
-  );
-  if (targetIndex < 0) {
-    return [...normalized, {
-      className: primary.className,
-      classId: primary.classId,
-      level: 1,
-      subclass: primary.subclass?.trim() || undefined,
-    }];
-  }
-  return normalized.map((classLevel, index) => index === targetIndex
-    ? { ...classLevel, level: Math.min(20, classLevel.level + 1), subclass: primary.subclass || classLevel.subclass }
-    : classLevel);
+  return incrementDndClassLevel(classLevels, primary, primary);
 }

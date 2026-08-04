@@ -1,5 +1,7 @@
 import {
+  canAllocateDndClassLevel,
   getDndCharacterTotalLevel,
+  incrementDndClassLevel,
   incrementPrimaryDndClassLevel,
   normalizeDndClassLevels,
 } from './multiclass';
@@ -21,5 +23,13 @@ assert(getDndCharacterTotalLevel(allocated) === 5, 'Class allocations should sum
 const advanced = incrementPrimaryDndClassLevel(allocated, fallback);
 assert(advanced.find((entry) => entry.classId === 'fighter')?.level === 4, 'Primary level should increment');
 assert(advanced.find((entry) => entry.classId === 'wizard')?.level === 2, 'Secondary level should remain untouched');
+
+const wizardAdvance = incrementDndClassLevel(allocated, { className: '法师', classId: 'wizard' }, fallback);
+assert(wizardAdvance.find((entry) => entry.classId === 'fighter')?.level === 3, 'Selected secondary allocation should not change primary');
+assert(wizardAdvance.find((entry) => entry.classId === 'wizard')?.level === 3, 'Selected secondary allocation should increment');
+
+const newClassAdvance = incrementDndClassLevel(allocated, { className: '牧师', classId: 'cleric' }, fallback);
+assert(newClassAdvance.find((entry) => entry.classId === 'cleric')?.level === 1, 'A new class allocation should begin at level 1');
+assert(canAllocateDndClassLevel([{ className: '战士', classId: 'fighter', level: 20 }], { className: '法师', classId: 'wizard' }).allowed === false, 'Total level 20 should block allocations');
 
 console.log('DND multiclass foundation smoke passed.');

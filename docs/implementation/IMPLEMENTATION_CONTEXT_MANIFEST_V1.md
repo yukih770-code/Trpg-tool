@@ -443,3 +443,10 @@ Read `P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_5.md` before changing the
 standard class tables. All twelve source-matched tables are display data only;
 do not infer feature execution, choice persistence, multiclass computation, or
 Room authority from their presence.
+
+## DND Multiclass Level Allocation (P6.21)
+
+Read `P6_DND_MULTICLASS_LEVEL_ALLOCATION.md` before changing Gameplay level-up
+or `classLevels`. The UI records an explicit allocation target and preserves
+existing resources for multiclass characters; it does not evaluate
+prerequisites, combine spell slots, or alter Room authority.

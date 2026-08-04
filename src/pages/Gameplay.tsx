@@ -13,6 +13,11 @@ import { DND_ACTION_REGISTRY } from '../lib/dnd2024/actionRegistry';
 import type { DndActionDefinition, ResourceCost } from '../lib/dnd2024/action-registry-types';
 import { getDndSpellPreparationModel } from '../lib/dnd2024/spell-preparation-model';
 import { getDndClassAdvancementSummary } from '../lib/dnd2024/classAdvancementSummary';
+import {
+  canAllocateDndClassLevel,
+  getDndClassLevelAllocation,
+  normalizeDndClassLevels,
+} from '../lib/dnd2024/multiclass';
 import { ActionsPanel } from './gameplay/ActionsPanel';
 import { ChecksPanel } from './gameplay/ChecksPanel';
 import { ClassResourcePanel } from './gameplay/ClassResourcePanel';
@@ -132,6 +137,7 @@ export function Gameplay() {
   const [showLevelUp, setShowLevelUp] = useState(false);
   const [showSpellManager, setShowSpellManager] = useState(false);
   const [selectedSubclass, setSelectedSubclass] = useState<string>('');
+  const [selectedLevelClassName, setSelectedLevelClassName] = useState<string>('');
   const [asiChoices, setAsiChoices] = useState<AttributeName[]>([]);
   const [selectedFeat, setSelectedFeat] = useState<string | null>(null);
   const [combatLog, setCombatLog] = useState<RuntimeLogEntry[]>([
@@ -333,12 +339,33 @@ export function Gameplay() {
   };
 
   const classDef = CLASS_DATA.find(c => c.name === character.jobClass);
+  const normalizedClassLevels = normalizeDndClassLevels(character.classLevels, {
+    className: character.jobClass,
+    level: character.level,
+    subclass: character.subclass,
+  });
+  const selectedLevelClass = CLASS_DATA.find((item) => item.name === (selectedLevelClassName || character.jobClass)) || classDef;
+  const selectedLevelTarget = selectedLevelClass
+    ? { className: selectedLevelClass.name, classId: selectedLevelClass.id }
+    : undefined;
+  const selectedLevelAllocation = selectedLevelTarget
+    ? getDndClassLevelAllocation(normalizedClassLevels, selectedLevelTarget)
+    : undefined;
+  const selectedClassCurrentLevel = selectedLevelAllocation?.level ?? 0;
+  const selectedClassNextLevel = selectedClassCurrentLevel + 1;
+  const selectedClassHasSubclass = Boolean(
+    selectedLevelAllocation?.subclass ||
+    (selectedLevelClass?.name === character.jobClass && character.subclass),
+  );
+  const levelAllocationCheck = selectedLevelTarget
+    ? canAllocateDndClassLevel(normalizedClassLevels, selectedLevelTarget)
+    : { allowed: false as const, reason: 'missing-class' as const };
   const nextLvl = character.level + 1;
-  const isAsiLevel = [4, 8, 12, 16, 19].includes(nextLvl);
+  const isAsiLevel = [4, 8, 12, 16, 19].includes(selectedClassNextLevel);
   const advancement = getDndClassAdvancementSummary({
-    classDef,
-    currentLevel: character.level,
-    hasSelectedSubclass: Boolean(character.subclass),
+    classDef: selectedLevelClass,
+    currentLevel: selectedClassCurrentLevel,
+    hasSelectedSubclass: selectedClassHasSubclass,
   });
   const subclassOptions = advancement.subclassOptions;
 
@@ -572,7 +599,7 @@ export function Gameplay() {
   };
 
   const handleLevelUpConfirm = () => {
-    if (!advancement.canLevelUp) {
+    if (!selectedLevelClass || !levelAllocationCheck.allowed || !advancement.canLevelUp) {
       toast(advancement.coverageNote || '该角色已达 20 级，不能继续升级。');
       return;
     }
@@ -588,12 +615,25 @@ export function Gameplay() {
     const conMod = Math.floor((character.attrs.Con.base + character.attrs.Con.pointbuy + character.attrs.Con.racebonus + character.attrs.Con.extrabonus - 10) / 2);
     const hpIncrease = Math.max(1, advancement.averageHitPointIncrease + conMod);
 
-    levelUp(hpIncrease, selectedSubclass, asiChoices, selectedFeat || undefined);
+    levelUp(hpIncrease, selectedSubclass, asiChoices, selectedFeat || undefined, {
+      className: selectedLevelClass.name,
+      classId: selectedLevelClass.id,
+      subclass: selectedSubclass || selectedLevelAllocation?.subclass,
+    });
     setShowLevelUp(false);
+    setSelectedSubclass('');
+    setSelectedLevelClassName('');
+    setAsiChoices([]);
+    setSelectedFeat(null);
+    toast(`成功升至 Level ${nextLvl}!`, { description: `${selectedLevelClass.name} 升至职业等级 ${selectedClassNextLevel}；最大生命值增加了 ${hpIncrease}${selectedFeat ? `，获得了专长：${selectedFeat}` : ''}。`});
+  };
+
+  const openLevelUp = () => {
+    setSelectedLevelClassName(character.jobClass);
     setSelectedSubclass('');
     setAsiChoices([]);
     setSelectedFeat(null);
-    toast(`成功升至 Level ${nextLvl}!`, { description: `最大生命值增加了 ${hpIncrease}${selectedFeat ? `，获得了专长：${selectedFeat}` : ''}。`});
+    setShowLevelUp(true);
   };
 
   const handleAsiChange = (attr: AttributeName, increment: number) => {
@@ -621,8 +661,8 @@ export function Gameplay() {
       {/* ... existing header ... */}
       <div className="flex justify-between items-center border-b-2 border-[#58180d] mb-2 pb-2">
         <h2 className="text-2xl font-bold uppercase tracking-tighter text-[#58180d]">战斗与游玩面板</h2>
-        <Button onClick={() => setShowLevelUp(true)} disabled={!advancement.canLevelUp} className="bg-[#58180d] text-[#fdf6e3] hover:opacity-90 uppercase text-sm font-bold rounded-none">
-          ✨ {advancement.canLevelUp ? `升级至 Lv.${advancement.nextLevel}` : '已达最高等级'}
+        <Button onClick={openLevelUp} disabled={character.level >= 20} className="bg-[#58180d] text-[#fdf6e3] hover:opacity-90 uppercase text-sm font-bold rounded-none">
+          ✨ {character.level < 20 ? `分配等级（总等级 Lv.${nextLvl}）` : '已达最高等级'}
         </Button>
       </div>
 
@@ -704,12 +744,48 @@ export function Gameplay() {
           <div className="bg-[#fdf6e3] border-4 border-[#58180d] p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col gap-6">
             <h2 className="text-3xl font-black uppercase text-[#58180d] border-b-2 border-[#58180d] pb-2 text-center">系统提示: 等级提升</h2>
             
-            <p className="text-center font-bold">你准备好升至 <span className="text-xl text-[#58180d]">Level {nextLvl}</span> 了吗？</p>
+            <p className="text-center font-bold">本次将升至 <span className="text-xl text-[#58180d]">总等级 {nextLvl}</span>。</p>
+
+            <div className="border border-[#58180d]/40 bg-white/50 p-4 space-y-2">
+              <label className="block text-sm font-bold uppercase text-[#58180d]" htmlFor="level-up-class-target">本次等级分配</label>
+              <select
+                id="level-up-class-target"
+                value={selectedLevelClass?.name || ''}
+                className="w-full border border-[#58180d]/50 bg-white px-3 py-2 font-bold text-[#2c1810]"
+                onChange={(event) => {
+                  setSelectedLevelClassName(event.target.value);
+                  setSelectedSubclass('');
+                  setAsiChoices([]);
+                  setSelectedFeat(null);
+                }}
+              >
+                {CLASS_DATA.map((item) => {
+                  const allocation = getDndClassLevelAllocation(normalizedClassLevels, {
+                    className: item.name,
+                    classId: item.id,
+                  });
+                  return (
+                    <option key={item.id || item.name} value={item.name}>
+                      {allocation ? `继续 ${item.name}（职业等级 ${allocation.level} -> ${allocation.level + 1}）` : `新增兼职：${item.name}（职业等级 1）`}
+                    </option>
+                  );
+                })}
+              </select>
+              <p className="text-xs text-[#58180d]/75">
+                当前分配：{normalizedClassLevels.map((item) => `${item.className} ${item.level}`).join(' / ') || '尚未记录职业等级'}。
+                兼职前置条件、施法位合并与职业效果仍请按桌规和主持人审核确认。
+              </p>
+              {!levelAllocationCheck.allowed && (
+                <p className="text-xs font-bold text-red-700">
+                  {levelAllocationCheck.reason === 'character-level-cap' ? '总等级已达 20，不能再分配等级。' : '该职业等级已达上限，不能继续提升。'}
+                </p>
+              )}
+            </div>
 
             <div className="border border-[#58180d]/40 bg-white/50 p-4 space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-sm font-bold uppercase text-[#58180d]">升级预览</h3>
-                <span className="text-xs font-bold text-[#58180d]">生命值：平均 +{advancement.averageHitPointIncrease} + 体质调整值</span>
+                <span className="text-xs font-bold text-[#58180d]">{selectedLevelClass?.name || '职业'}等级 {selectedClassNextLevel}：生命值平均 +{advancement.averageHitPointIncrease} + 体质调整值</span>
               </div>
               {advancement.features.length > 0 ? (
                 <ul className="space-y-1 text-sm">
@@ -793,8 +869,8 @@ export function Gameplay() {
             )}
             
             <div className="flex justify-end gap-3 mt-4 border-t-2 border-[#58180d] pt-4">
-               <button className="px-4 py-2 border border-[#58180d] text-[#58180d] font-bold uppercase" onClick={() => { setShowLevelUp(false); setSelectedSubclass(''); setAsiChoices([]); setSelectedFeat(null); }}>取消</button>
-               <button className="px-4 py-2 bg-[#58180d] text-white font-bold uppercase" onClick={handleLevelUpConfirm}>确认跃升</button>
+               <button className="px-4 py-2 border border-[#58180d] text-[#58180d] font-bold uppercase" onClick={() => { setShowLevelUp(false); setSelectedSubclass(''); setSelectedLevelClassName(''); setAsiChoices([]); setSelectedFeat(null); }}>取消</button>
+               <button className="px-4 py-2 bg-[#58180d] text-white font-bold uppercase disabled:opacity-50" onClick={handleLevelUpConfirm} disabled={!levelAllocationCheck.allowed || !advancement.canLevelUp}>确认跃升</button>
             </div>
           </div>
         </div>

@@ -1018,3 +1018,12 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - This does not make class features executable; options, subclass detail,
   multiclass calculations, and runtime authority remain separate boundaries.
 - See `docs/implementation/P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_5.md`.
+
+## DND Multiclass Level Allocation (P6.21)
+
+- Gameplay makes each total-level increase target an explicit class allocation,
+  and previews the selected class level rather than treating total level as a
+  class level.
+- Structural caps are enforced, while prerequisites and combined spellcasting
+  remain deliberately outside this boundary.
+- See `docs/implementation/P6_DND_MULTICLASS_LEVEL_ALLOCATION.md`.
