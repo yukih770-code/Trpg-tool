@@ -19,14 +19,27 @@ const fighter: ClassDef = {
   subclasses: [],
 };
 
-const partial = getDndClassAdvancementSummary({
+const sourceBacked = getDndClassAdvancementSummary({
   classDef: fighter,
   currentLevel: 1,
   hasSelectedSubclass: false,
 });
-assert(partial.averageHitPointIncrease === 6, 'D10 should use average 6 HP');
-assert(partial.coverage === 'partial', 'Placeholder class should be marked partial');
-assert(partial.features.some((feature) => feature.name === '测试特性'), 'Class features should appear at their unlock level');
+assert(sourceBacked.averageHitPointIncrease === 6, 'D10 should use average 6 HP');
+assert(sourceBacked.coverage === 'source-backed', 'Fighter should use the owner-source level table');
+assert(sourceBacked.features.some((feature) => feature.name === '测试特性'), 'Class features should appear at their unlock level');
+
+const druid: ClassDef = {
+  ...fighter,
+  id: 'druid',
+  name: '德鲁伊',
+  hitDice: 'D8',
+};
+const partial = getDndClassAdvancementSummary({
+  classDef: druid,
+  currentLevel: 1,
+  hasSelectedSubclass: false,
+});
+assert(partial.coverage === 'partial', 'Unverified placeholder classes should remain partial');
 
 const personal: ClassDef = {
   ...fighter,

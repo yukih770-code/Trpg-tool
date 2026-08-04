@@ -8,7 +8,8 @@
  *   - warlock（邪术师）：契约魔法施法者样例
  *   - wizard（法师）：法术书准备施法者样例
  *
- * 其余 8 个职业为最小占位数据（待后续补全）。
+ * 战士与牧师另依据本机所有者资料源补齐了 1-20 级的等级表。
+ * 其余 6 个职业为最小占位数据（待后续补全）。
  *
  * 数据来源：DND 2024 玩家手册
  */
@@ -995,6 +996,124 @@ const SORCERER_SORCERY_POINTS: ClassResourceDefinition = {
     '最大值 = 术士等级。用于超魔和法术位转换；本轮不实现 Metamagic 或转换规则。',
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 所有者资料源等级表：战士 / 牧师
+//
+// 资料源：C:\TRPG_CHM_WORK\extracted\玩家手册2024\角色职业\战士\战士.htm
+//         C:\TRPG_CHM_WORK\extracted\玩家手册2024\角色职业\牧师\牧师.htm
+// 这里只保留等级表中的特性名和数值列，不复制规则段落，也不实现效果。
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildSourceTableLevel(
+  level: number,
+  features: string[],
+  resources: ClassResourceDefinition[] = [],
+  spellcasting: SpellSlotProgression | null = null,
+): Dnd2024LevelProgression {
+  return {
+    level,
+    proficiencyBonus: profBonus(level),
+    features,
+    resources,
+    actions: [],
+    passiveFeatures: [],
+    conditions: [],
+    spellcasting,
+  };
+}
+
+const FIGHTER_FEATURES_BY_LEVEL: string[][] = [
+  ['战斗风格', '回气', '武器精通'],
+  ['动作如潮（一次）', '战术思维'],
+  ['战士子职'],
+  ['属性值提升'],
+  ['额外攻击', '战术转进'],
+  ['属性值提升'],
+  ['子职特性'],
+  ['属性值提升'],
+  ['不屈（一次）', '战术主宰'],
+  ['子职特性'],
+  ['额外攻击（二）'],
+  ['属性值提升'],
+  ['不屈（两次）', '究明攻击'],
+  ['属性值提升'],
+  ['子职特性'],
+  ['属性值提升'],
+  ['动作如潮（两次）', '不屈（三次）'],
+  ['子职特性'],
+  ['传奇恩惠'],
+  ['额外攻击（三）'],
+];
+
+const FIGHTER_PROGRESSION: Dnd2024ClassProgression = {
+  classKey: 'fighter',
+  classNameCn: '战士',
+  classNameEn: 'Fighter',
+  hitDie: 10,
+  spellcasting: null,
+  levels: FIGHTER_FEATURES_BY_LEVEL.map((features, index) => {
+    const level = index + 1;
+    return buildSourceTableLevel(
+      level,
+      features,
+      [FIGHTER_SECOND_WIND, FIGHTER_ACTION_SURGE, FIGHTER_INDOMITABLE]
+        .filter(resource => resource.unlockLevel === level),
+    );
+  }),
+};
+
+const CLERIC_SPELLCASTING: SpellcastingProgression = {
+  mode: 'fullListPrepared',
+  ability: 'wisdom',
+  casterType: 'full',
+  cantripsKnown: [3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+  preparedSpellCount: [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  spellSlotTable: FULL_CASTER_SLOT_TABLE,
+  pactMagic: null,
+  ritualCasting: 'ifPrepared',
+  notes: '戏法、准备法术和法术位数量来自本机 DND 2024 牧师等级表；本数据不执行施法或准备流程。',
+};
+
+const CLERIC_FEATURES_BY_LEVEL: string[][] = [
+  ['施法', '圣职'],
+  ['引导神力'],
+  ['牧师子职'],
+  ['属性值提升'],
+  ['灼净亡灵'],
+  ['子职特性'],
+  ['受祝击'],
+  ['属性值提升'],
+  [],
+  ['神圣干预'],
+  [],
+  ['属性值提升'],
+  [],
+  ['精通受祝击'],
+  [],
+  ['属性值提升'],
+  ['子职特性'],
+  [],
+  ['传奇恩惠'],
+  ['进阶神圣干预'],
+];
+
+const CLERIC_PROGRESSION: Dnd2024ClassProgression = {
+  classKey: 'cleric',
+  classNameCn: '牧师',
+  classNameEn: 'Cleric',
+  hitDie: 8,
+  spellcasting: CLERIC_SPELLCASTING,
+  levels: CLERIC_FEATURES_BY_LEVEL.map((features, index) => {
+    const level = index + 1;
+    return buildSourceTableLevel(
+      level,
+      features,
+      level === CLERIC_CHANNEL_DIVINITY.unlockLevel ? [CLERIC_CHANNEL_DIVINITY] : [],
+      FULL_CASTER_SLOT_TABLE[index] ?? null,
+    );
+  }),
+};
+
 function makePlaceholder(
   classKey: DndClassKey,
   classNameCn: string,
@@ -1036,14 +1155,12 @@ export const DND2024_CLASS_PROGRESSIONS: Partial<Record<DndClassKey, Dnd2024Clas
   warlock: WARLOCK_PROGRESSION,
   wizard: WIZARD_PROGRESSION,
 
+  // 所有者资料源已核对的等级表
+  cleric: CLERIC_PROGRESSION,
+  fighter: FIGHTER_PROGRESSION,
+
   // 占位职业（待后续补全）
-  cleric: makePlaceholder('cleric', '牧师', 'Cleric', 8, [CLERIC_CHANNEL_DIVINITY]),
   druid: makePlaceholder('druid', '德鲁伊', 'Druid', 8, [DRUID_WILD_SHAPE]),
-  fighter: makePlaceholder('fighter', '战士', 'Fighter', 10, [
-    FIGHTER_SECOND_WIND,
-    FIGHTER_ACTION_SURGE,
-    FIGHTER_INDOMITABLE,
-  ]),
   monk: makePlaceholder('monk', '武僧', 'Monk', 8, [MONK_FOCUS_POINTS]),
   paladin: makePlaceholder('paladin', '圣武士', 'Paladin', 10, [
     PALADIN_LAY_ON_HANDS,
@@ -1063,5 +1180,7 @@ export {
   BARD_PROGRESSION,
   WARLOCK_PROGRESSION,
   WIZARD_PROGRESSION,
+  CLERIC_PROGRESSION,
+  FIGHTER_PROGRESSION,
   FULL_CASTER_SLOT_TABLE,
 };

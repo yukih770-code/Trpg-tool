@@ -979,3 +979,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   field.
 - This is not combined rules calculation or Room authority.
 - See `docs/implementation/P6_DND_MULTICLASS_FOUNDATION.md`.
+
+## DND Owner-Source Class Progression Batch 1 (P6.16)
+
+- Fighter and Cleric level-table facts are locally sourced reference data,
+  suitable for display and preview only.
+- Do not convert feature names into automatic actions or effects without a
+  dedicated rules-engine boundary.
+- See `docs/implementation/P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_1.md`.

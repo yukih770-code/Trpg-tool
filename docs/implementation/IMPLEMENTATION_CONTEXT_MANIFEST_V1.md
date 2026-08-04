@@ -409,3 +409,10 @@ multiclass levels, execute feature text, or grant Room/Runtime authority.
 Read `P6_DND_MULTICLASS_FOUNDATION.md` before changing class allocation.
 `classLevels` preserves per-class levels locally, but it does not calculate
 combined spellcasting, evaluate prerequisites, or bypass Room review.
+
+## DND Owner-Source Class Progression Batch 1 (P6.16)
+
+Read `P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_1.md` before adding class
+tables. Fighter and Cleric are owner-source matched, table-only reference data;
+the feature names, spell slots, and resource references do not execute rules or
+alter Room authority.
