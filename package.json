@@ -106,6 +106,7 @@
     "frontend:verify:dnd-class-progression-batch-2": "tsx src/lib/dnd2024/classProgressionBatch2Smoke.ts",
     "frontend:verify:dnd-class-progression-batch-3": "tsx src/lib/dnd2024/classProgressionBatch3Smoke.ts",
     "frontend:verify:dnd-class-progression-batch-4": "tsx src/lib/dnd2024/classProgressionBatch4Smoke.ts",
+    "frontend:verify:dnd-class-progression-batch-5": "tsx src/lib/dnd2024/classProgressionBatch5Smoke.ts",
     "frontend:verify:dnd-multiclass-foundation": "tsx src/lib/dnd2024/multiclassSmoke.ts",
     "runtime:verify:room-personal-content-refs": "tsx server/services/resolveOwnedPersonalContentReferencesSmoke.ts",
     "dnd:monster-import:dry-run": "tsx server/tools/importPrivateDndMonsters.ts --dry-run",

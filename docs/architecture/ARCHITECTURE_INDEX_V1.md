@@ -1010,3 +1010,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - This improves preview coverage only; it is not a Sneak Attack, Metamagic, or
   spellcasting automation system.
 - See `docs/implementation/P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_4.md`.
+
+## DND Owner-Source Class Progression Batch 5 (P6.20)
+
+- All twelve standard DND classes now have locally matched 1-20 table facts for
+  display and level-up preview.
+- This does not make class features executable; options, subclass detail,
+  multiclass calculations, and runtime authority remain separate boundaries.
+- See `docs/implementation/P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_5.md`.

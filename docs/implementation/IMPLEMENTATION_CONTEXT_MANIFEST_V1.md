@@ -436,3 +436,10 @@ authority from this module.
 Read `P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_4.md` before extending Rogue
 or Sorcerer. Their level tables are source-matched display data, not automatic
 combat, spell, resource-conversion, multiclass, or Room-authority behavior.
+
+## DND Owner-Source Class Progression Batch 5 (P6.20)
+
+Read `P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_5.md` before changing the
+standard class tables. All twelve source-matched tables are display data only;
+do not infer feature execution, choice persistence, multiclass computation, or
+Room authority from their presence.

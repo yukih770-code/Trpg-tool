@@ -28,13 +28,13 @@ import {
 import type { RuleDataMetadata } from '../../lib/rules/rule-data-metadata';
 
 export const DND_CLASS_PROGRESSION_ACCURACY: RuleDataMetadata = {
-  source: 'dnd5echm-srd52-primary',
-  trustLevel: 'needs-human-check',
+  source: 'dnd-local-chm-primary',
+  trustLevel: 'owner-source-matched',
   usagePolicy: 'core-runtime-ok',
   sourceRef:
     'docs/rule-sources/dnd-manifest/DND_OWNER_SOURCE_ENTRY_MANIFEST.md#class-resource--progression',
   sourceNote:
-    'Runtime progression data retained. Manifest source paths exist, but individual values require follow-up verification before being treated as owner-source matched.',
+    'All twelve standard-class level-table facts are matched to the local DND 2024 owner source. Existing declarative action and passive detail remains separately bounded and is not automatic rules execution.',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -280,6 +280,29 @@ const BARBARIAN_RAGING_CONDITION: ConditionDefinition = {
 };
 
 // 构建等级进阶
+const BARBARIAN_SOURCE_FEATURES_BY_LEVEL: string[][] = [
+  ['狂暴', '无甲防御', '武器精通'],
+  ['危险感应', '鲁莽攻击'],
+  ['野蛮人子职', '原初学识'],
+  ['属性值提升'],
+  ['额外攻击', '快速移动'],
+  ['子职特性'],
+  ['野性直觉', '莽驰'],
+  ['属性值提升'],
+  ['凶蛮打击'],
+  ['子职特性'],
+  ['坚韧狂暴'],
+  ['属性值提升'],
+  ['强化凶蛮打击'],
+  ['子职特性'],
+  ['持久狂暴'],
+  ['属性值提升', '狂暴伤害提升（+4）'],
+  ['强化凶蛮打击'],
+  ['不屈勇武'],
+  ['传奇恩惠'],
+  ['原初斗士'],
+];
+
 function buildBarbarianLevel(level: number): Dnd2024LevelProgression {
   const features: string[] = [];
   const resources: ClassResourceDefinition[] = [];
@@ -312,13 +335,12 @@ function buildBarbarianLevel(level: number): Dnd2024LevelProgression {
   return {
     level,
     proficiencyBonus: profBonus(level),
-    features,
+    features: BARBARIAN_SOURCE_FEATURES_BY_LEVEL[level - 1] ?? features,
     resources,
     actions,
     passiveFeatures,
     conditions,
     spellcasting: null,
-    notes: level > 5 ? '（1-5 级以上为占位，待后续补全）' : undefined,
   };
 }
 
@@ -380,10 +402,10 @@ const BARD_SPELLCASTING: SpellcastingProgression = {
     4, 4, 4, 4, 4, // 16-20
   ],
   preparedSpellCount: [
-    4, 5, 6, 7, 8, // 1-5
-    9, 10, 11, 12, 14, // 6-10（DND 2024 诗人已知法术数）
-    15, 15, 16, 18, 19, // 11-15
-    19, 20, 22, 22, 22, // 16-20
+    4, 5, 6, 7, 9, // 1-5
+    10, 11, 12, 14, 15, // 6-10
+    16, 16, 17, 17, 18, // 11-15
+    18, 19, 20, 21, 22, // 16-20
   ],
   preparedSpellFormula:
     'Fixed known spells table. 升级时可用 1 个已知法术替换为同等级或更低环级的职业法术。',
@@ -469,6 +491,29 @@ const BARD_INSPIRED_CONDITION: ConditionDefinition = {
   notes: '每名生物同一时间只能持有 1 个激励骰。',
 };
 
+const BARD_SOURCE_FEATURES_BY_LEVEL: string[][] = [
+  ['吟游诗人激励', '施法'],
+  ['专精', '万事通'],
+  ['吟游诗人子职'],
+  ['属性值提升'],
+  ['激励之源'],
+  ['子职特性'],
+  ['反迷惑'],
+  ['属性值提升'],
+  ['专精'],
+  ['魔法奥秘'],
+  [],
+  ['属性值提升'],
+  [],
+  ['子职特性'],
+  [],
+  ['属性值提升'],
+  [],
+  ['先发激励'],
+  ['传奇恩惠'],
+  ['创生圣言'],
+];
+
 // 构建等级进阶
 function buildBardLevel(level: number): Dnd2024LevelProgression {
   const features: string[] = [];
@@ -485,7 +530,7 @@ function buildBardLevel(level: number): Dnd2024LevelProgression {
   }
   if (level === 2) {
     features.push('万事通', '休憩之歌');
-    passiveFeatures.push(BARD_JACK_OF_ALL_TRADES, BARD_SONG_OF_REST);
+    passiveFeatures.push(BARD_JACK_OF_ALL_TRADES);
   }
   if (level === 3) {
     features.push('精通专项', '吟游诗人子职业');
@@ -502,13 +547,12 @@ function buildBardLevel(level: number): Dnd2024LevelProgression {
   return {
     level,
     proficiencyBonus: profBonus(level),
-    features,
+    features: BARD_SOURCE_FEATURES_BY_LEVEL[level - 1] ?? features,
     resources,
     actions,
     passiveFeatures,
     conditions,
     spellcasting: FULL_CASTER_SLOT_TABLE[level - 1] ?? null,
-    notes: level > 5 ? '（1-5 级以上为占位，待后续补全）' : undefined,
   };
 }
 
@@ -584,13 +628,13 @@ const WARLOCK_ELDRITCH_INVOCATIONS: ClassResourceDefinition = {
   nameCn: '祈求',
   nameEn: 'Eldritch Invocations',
   sourceFeature: '祈求 (Eldritch Invocations)',
-  unlockLevel: 2,
+  unlockLevel: 1,
   maxUses: 'table',
   maxUsesByLevel: [
-    0, 2, 2, 3, 3, // 1-5
-    4, 4, 5, 5, 5, // 6-10
-    5, 6, 6, 6, 6, // 11-15
-    6, 7, 7, 7, 8, // 16-20
+    1, 3, 3, 3, 5, // 1-5
+    5, 6, 6, 7, 7, // 6-10
+    7, 8, 8, 8, 9, // 11-15
+    9, 9, 10, 10, 10, // 16-20
   ],
   recoveryType: 'never',
   notes:
@@ -643,6 +687,29 @@ const WARLOCK_PACT_MAGIC_PASSIVE: PassiveFeatureDefinition = {
 
 // 状态定义（暂无专属状态，祈求效果按需添加）
 
+const WARLOCK_SOURCE_FEATURES_BY_LEVEL: string[][] = [
+  ['魔能祈唤', '契约魔法'],
+  ['秘法回流'],
+  ['魔契师子职'],
+  ['属性值提升'],
+  [],
+  ['子职特性'],
+  [],
+  ['属性值提升'],
+  ['联络宗主'],
+  ['子职特性'],
+  ['玄奥秘法（六环）'],
+  ['属性值提升'],
+  ['玄奥秘法（七环）'],
+  ['子职特性'],
+  ['玄奥秘法（八环）'],
+  ['属性值提升'],
+  ['玄奥秘法（九环）'],
+  [],
+  ['传奇恩惠'],
+  ['魔能掌控'],
+];
+
 // 构建等级进阶
 function buildWarlockLevel(level: number): Dnd2024LevelProgression {
   const features: string[] = [];
@@ -653,8 +720,8 @@ function buildWarlockLevel(level: number): Dnd2024LevelProgression {
 
   if (level === 1) {
     features.push('秘主（来自守护者）', '契约魔法');
-    actions.push(WARLOCK_ELDRITCH_BLAST_ACTION);
-    passiveFeatures.push(WARLOCK_PACT_MAGIC_PASSIVE, WARLOCK_DARK_ONES_BLESSING);
+    resources.push(WARLOCK_ELDRITCH_INVOCATIONS);
+    passiveFeatures.push(WARLOCK_PACT_MAGIC_PASSIVE);
   }
   if (level === 2) {
     features.push('邪术师祈求');
@@ -672,13 +739,12 @@ function buildWarlockLevel(level: number): Dnd2024LevelProgression {
   return {
     level,
     proficiencyBonus: profBonus(level),
-    features,
+    features: WARLOCK_SOURCE_FEATURES_BY_LEVEL[level - 1] ?? features,
     resources,
     actions,
     passiveFeatures,
     conditions,
     spellcasting: null, // 邪术师法术位通过 pactMagic 字段读取，不用 spellSlotTable
-    notes: level > 5 ? '（1-5 级以上为占位，待后续补全）' : undefined,
   };
 }
 
@@ -698,9 +764,9 @@ const WARLOCK_PROGRESSION: Dnd2024ClassProgression = {
 // 资源定义
 const WIZARD_ARCANE_RECOVERY: ClassResourceDefinition = {
   id: 'wizard_arcane_recovery',
-  nameCn: '奥术回能',
+  nameCn: '奥术回想',
   nameEn: 'Arcane Recovery',
-  sourceFeature: '奥术回能 (Arcane Recovery)',
+  sourceFeature: '奥术回想 (Arcane Recovery)',
   unlockLevel: 1,
   maxUses: 1,
   recoveryType: 'special',
@@ -721,10 +787,12 @@ const WIZARD_SPELLCASTING: SpellcastingProgression = {
     5, 5, 5, 5, 5, // 11-15
     5, 5, 5, 5, 5, // 16-20
   ],
-  preparedSpellCount: Array(20).fill(null),
-  preparedSpellFormula:
-    'INT modifier + wizard level (minimum 1). ' +
-    '每日长休后，从法术书中重新准备任意数量的法师法术（不超过上限）。',
+  preparedSpellCount: [
+    4, 5, 6, 7, 9, // 1-5
+    10, 11, 12, 14, 15, // 6-10
+    16, 16, 17, 18, 19, // 11-15
+    21, 22, 23, 24, 25, // 16-20
+  ],
   spellSlotTable: FULL_CASTER_SLOT_TABLE,
   pactMagic: null,
   ritualCasting: 'fromSpellbook',
@@ -800,6 +868,29 @@ const WIZARD_MEMORIZE_SPELL: PassiveFeatureDefinition = {
     '下次长休后此临时准备失效。',
 };
 
+const WIZARD_SOURCE_FEATURES_BY_LEVEL: string[][] = [
+  ['施法', '仪式学家', '奥术回想'],
+  ['学者'],
+  ['法师子职'],
+  ['属性值提升'],
+  ['记忆法术'],
+  ['子职特性'],
+  [],
+  ['属性值提升'],
+  [],
+  ['子职特性'],
+  [],
+  ['属性值提升'],
+  [],
+  ['子职特性'],
+  [],
+  ['属性值提升'],
+  [],
+  ['法术精通'],
+  ['传奇恩惠'],
+  ['招牌法术'],
+];
+
 // 构建等级进阶
 function buildWizardLevel(level: number): Dnd2024LevelProgression {
   const features: string[] = [];
@@ -833,13 +924,12 @@ function buildWizardLevel(level: number): Dnd2024LevelProgression {
   return {
     level,
     proficiencyBonus: profBonus(level),
-    features,
+    features: WIZARD_SOURCE_FEATURES_BY_LEVEL[level - 1] ?? features,
     resources,
     actions,
     passiveFeatures,
     conditions,
     spellcasting: FULL_CASTER_SLOT_TABLE[level - 1] ?? null,
-    notes: level > 5 ? '（1-5 级以上为占位，待后续补全）' : undefined,
   };
 }
 

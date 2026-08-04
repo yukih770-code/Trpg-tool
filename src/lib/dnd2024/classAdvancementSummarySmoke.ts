@@ -34,12 +34,15 @@ const barbarian: ClassDef = {
   name: '野蛮人',
   hitDice: 'D12',
 };
-const partial = getDndClassAdvancementSummary({
+const barbarianSummary = getDndClassAdvancementSummary({
   classDef: barbarian,
   currentLevel: 5,
   hasSelectedSubclass: false,
 });
-assert(partial.coverage === 'partial', 'Unverified placeholder classes should remain partial');
+assert(
+  barbarianSummary.coverage === 'source-backed',
+  'Barbarian should use the completed owner-source level table',
+);
 
 const personal: ClassDef = {
   ...fighter,
