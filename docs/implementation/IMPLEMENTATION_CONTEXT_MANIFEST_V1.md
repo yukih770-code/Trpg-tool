@@ -397,3 +397,9 @@ Character Builder summary for authored class data. It is a selected-class,
 current-level read projection only: resources, actions, choices, features, and
 triggers remain declarative. Do not persist selections, calculate effects, or
 turn this surface into a Runtime authority path.
+
+## DND Level Advancement Foundation (P6.14)
+
+Read `P6_DND_LEVEL_ADVANCEMENT_FOUNDATION.md` before changing Gameplay level-up.
+The advancement summary is a pure single-class preview. Do not use it to add
+multiclass levels, execute feature text, or grant Room/Runtime authority.

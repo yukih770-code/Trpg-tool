@@ -963,3 +963,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   formula evaluator, Room approval, or Runtime-action source.
 - See `docs/implementation/P6_PERSONAL_CONTENT_CHARACTER_RULE_PROJECTION.md`
   before changing the projection or connecting it to any other surface.
+
+## DND Level Advancement Foundation (P6.14)
+
+- The Gameplay level-up dialog consumes a pure, single-class advancement
+  summary for preview only. It does not turn data text into executable rules.
+- Partial progression coverage is shown honestly; multiclassing remains a
+  separate schema and migration concern.
+- See `docs/implementation/P6_DND_LEVEL_ADVANCEMENT_FOUNDATION.md`.

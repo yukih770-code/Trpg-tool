@@ -12,6 +12,7 @@ import type { RuntimeLogEntry, RuntimeLogKind } from '../lib/runtime-log-types';
 import { DND_ACTION_REGISTRY } from '../lib/dnd2024/actionRegistry';
 import type { DndActionDefinition, ResourceCost } from '../lib/dnd2024/action-registry-types';
 import { getDndSpellPreparationModel } from '../lib/dnd2024/spell-preparation-model';
+import { getDndClassAdvancementSummary } from '../lib/dnd2024/classAdvancementSummary';
 import { ActionsPanel } from './gameplay/ActionsPanel';
 import { ChecksPanel } from './gameplay/ChecksPanel';
 import { ClassResourcePanel } from './gameplay/ClassResourcePanel';
@@ -334,7 +335,12 @@ export function Gameplay() {
   const classDef = CLASS_DATA.find(c => c.name === character.jobClass);
   const nextLvl = character.level + 1;
   const isAsiLevel = [4, 8, 12, 16, 19].includes(nextLvl);
-  const subclassOptions = classDef?.subclasses.filter(sc => sc.unlockLevel === nextLvl && !character.subclass) || [];
+  const advancement = getDndClassAdvancementSummary({
+    classDef,
+    currentLevel: character.level,
+    hasSelectedSubclass: Boolean(character.subclass),
+  });
+  const subclassOptions = advancement.subclassOptions;
 
   const getAttrScore = (attr: AttributeName) => {
     const statBlock = character.attrs[attr];
@@ -566,6 +572,10 @@ export function Gameplay() {
   };
 
   const handleLevelUpConfirm = () => {
+    if (!advancement.canLevelUp) {
+      toast(advancement.coverageNote || '该角色已达 20 级，不能继续升级。');
+      return;
+    }
     if (subclassOptions.length > 0 && !selectedSubclass) {
       toast("请选择子职业");
       return;
@@ -576,9 +586,7 @@ export function Gameplay() {
     }
 
     const conMod = Math.floor((character.attrs.Con.base + character.attrs.Con.pointbuy + character.attrs.Con.racebonus + character.attrs.Con.extrabonus - 10) / 2);
-    const hitDiceSizes: Record<string, number> = { '野蛮人': 7, '战士': 6, '圣武士': 6, '游侠': 6, '法师': 4, '术士': 4, '牧师': 5, '吟游诗人': 5, '邪术师': 5, '武僧': 5, '德鲁伊': 5, '游荡者': 5 };
-    const baseHpIncrease = hitDiceSizes[character.jobClass] || 5;
-    const hpIncrease = Math.max(1, baseHpIncrease + conMod);
+    const hpIncrease = Math.max(1, advancement.averageHitPointIncrease + conMod);
 
     levelUp(hpIncrease, selectedSubclass, asiChoices, selectedFeat || undefined);
     setShowLevelUp(false);
@@ -613,8 +621,8 @@ export function Gameplay() {
       {/* ... existing header ... */}
       <div className="flex justify-between items-center border-b-2 border-[#58180d] mb-2 pb-2">
         <h2 className="text-2xl font-bold uppercase tracking-tighter text-[#58180d]">战斗与游玩面板</h2>
-        <Button onClick={() => setShowLevelUp(true)} className="bg-[#58180d] text-[#fdf6e3] hover:opacity-90 uppercase text-sm font-bold rounded-none">
-          ✨ 升级 (当前 Lv.{character.level})
+        <Button onClick={() => setShowLevelUp(true)} disabled={!advancement.canLevelUp} className="bg-[#58180d] text-[#fdf6e3] hover:opacity-90 uppercase text-sm font-bold rounded-none">
+          ✨ {advancement.canLevelUp ? `升级至 Lv.${advancement.nextLevel}` : '已达最高等级'}
         </Button>
       </div>
 
@@ -697,6 +705,30 @@ export function Gameplay() {
             <h2 className="text-3xl font-black uppercase text-[#58180d] border-b-2 border-[#58180d] pb-2 text-center">系统提示: 等级提升</h2>
             
             <p className="text-center font-bold">你准备好升至 <span className="text-xl text-[#58180d]">Level {nextLvl}</span> 了吗？</p>
+
+            <div className="border border-[#58180d]/40 bg-white/50 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-bold uppercase text-[#58180d]">升级预览</h3>
+                <span className="text-xs font-bold text-[#58180d]">生命值：平均 +{advancement.averageHitPointIncrease} + 体质调整值</span>
+              </div>
+              {advancement.features.length > 0 ? (
+                <ul className="space-y-1 text-sm">
+                  {advancement.features.map((feature) => (
+                    <li key={feature.name}><span className="font-bold">{feature.name}</span>{feature.description ? `：${feature.description}` : ''}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-[#58180d]/70">当前入库资料没有列出本级新增特性。</p>
+              )}
+              {(advancement.resources.length > 0 || advancement.actions.length > 0 || advancement.passiveFeatures.length > 0) && (
+                <div className="text-xs space-y-1 text-[#58180d]/80">
+                  {advancement.resources.length > 0 && <p>资源：{advancement.resources.join('、')}</p>}
+                  {advancement.actions.length > 0 && <p>动作：{advancement.actions.join('、')}</p>}
+                  {advancement.passiveFeatures.length > 0 && <p>被动：{advancement.passiveFeatures.join('、')}</p>}
+                </div>
+              )}
+              {advancement.coverageNote && <p className="text-xs text-amber-800">{advancement.coverageNote}</p>}
+            </div>
 
             {subclassOptions.length > 0 && (
                <div className="border border-[#58180d] p-4 bg-white/50">
