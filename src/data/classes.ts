@@ -143,13 +143,16 @@ const SUBCLASS_METADATA_BY_CLASS: Record<string, Record<string, RuleDataMetadata
     妖精: conflictMeta('Owner-source mapping and 2024 unlock timing need human confirmation; retained for continuity only.'),
   },
   武僧: {
-    散打宗: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2', '散打武者；existing app name 散打宗 needs naming confirmation.'),
-    暗影宗: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
-    四象宗: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+    散打宗: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '散打武者；保留现有名称以兼容既有角色。'),
+    暗影宗: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '暗影武者；保留现有名称以兼容既有角色。'),
+    命流武者: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '命流武者'),
+    四象宗: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '四象武者；保留现有名称以兼容既有角色。'),
   },
   德鲁伊: {
-    大地结社: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2'),
-    月亮结社: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+    大地结社: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '大地结社'),
+    月亮结社: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '月亮结社'),
+    海洋结社: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '海洋结社'),
+    星辰结社: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '星辰结社'),
     孢子结社: subclassSourceMeta('dnd5echm-tcoe', 'TCoE'),
   },
   术士: {
@@ -437,9 +440,33 @@ export const CLASS_DATA: ClassDef[] = applyDndClassSubclassMetadata([
       { name: "武术气力", desc: "用以极大量短休补充气池接连出拳或是接放暗箭连避攻击", unlockLevel: 2 }
     ],
     subclasses: [
-      { name: "散打宗", desc: "徒手肉推拳控制流。", unlockLevel: 3, features: [{ name: "散打开背", desc: "可以在施展疾风三连时额外带上强制剥夺反应或者推移数尺摔倒。", unlockLevel: 3 }] },
-      { name: "暗影宗", desc: "忍冬刺客形隐秘大师。", unlockLevel: 3, features: [{ name: "影踪迷步", desc: "消耗气能散布大范围阴影并在暗影处顺身跳转如履平地。", unlockLevel: 3 }] },
-      { name: "四象宗", desc: "控火流水御风神功者。", unlockLevel: 3, features: [{ name: "四大元素之式", desc: "直接运用真气放出犹如火焰拳或是引力推波的大宗秘招。", unlockLevel: 3 }] }
+      { name: "散打宗", desc: "本地资料中的散打武者；保留旧名称以兼容既有角色。", unlockLevel: 3, features: [
+        { name: "散打技巧", desc: "疾风连击命中时可附加慌神、推离或失衡效应。", unlockLevel: 3 },
+        { name: "混元体", desc: "以附赠动作恢复生命值。", unlockLevel: 6 },
+        { name: "流星步", desc: "特定附赠动作后可使用疾步如风。", unlockLevel: 11 },
+        { name: "渗透劲", desc: "可将暗劲打入目标并在之后结束效果。", unlockLevel: 17 },
+      ] },
+      { name: "暗影宗", desc: "本地资料中的暗影武者；专精黑暗与传送。", unlockLevel: 3, features: [
+        { name: "暗影技艺", desc: "获得黑暗术、黑暗视觉与幻影术。", unlockLevel: 3 },
+        { name: "暗影步", desc: "在微光或黑暗中传送并获得近战攻击优势。", unlockLevel: 6 },
+        { name: "无影步", desc: "强化暗影步并可在传送后徒手打击。", unlockLevel: 11 },
+        { name: "幽影斗篷", desc: "以功力获得隐形、虚化与强化疾风连击。", unlockLevel: 17 },
+      ] },
+      { name: "命流武者", desc: "兼具治疗与暗蚀打击的命流行者。", unlockLevel: 3, features: [
+        { name: "夺命之手", desc: "徒手命中后可消耗功力造成额外暗蚀伤害。", unlockLevel: 3 },
+        { name: "予命之手", desc: "消耗功力治疗触及的生物。", unlockLevel: 3 },
+        { name: "操命本事", desc: "获得洞悉、医药与草药工具熟练。", unlockLevel: 3 },
+        { name: "生死之触", desc: "强化夺命之手与予命之手。", unlockLevel: 6 },
+        { name: "生杀予夺", desc: "强化疾风连击中的治疗与伤害。", unlockLevel: 11 },
+        { name: "命极之手", desc: "消耗功力使近期死亡的生物复生。", unlockLevel: 17 },
+      ] },
+      { name: "四象宗", desc: "本地资料中的四象武者；驾驭元素能量。", unlockLevel: 3, features: [
+        { name: "元素同调", desc: "消耗功力强化徒手触及、伤害与推拉。", unlockLevel: 3 },
+        { name: "掌控元素", desc: "习得四象法门戏法。", unlockLevel: 3 },
+        { name: "元素爆破拳", desc: "消耗功力制造元素爆发。", unlockLevel: 6 },
+        { name: "四象遁术", desc: "元素同调期间获得飞行与游泳速度。", unlockLevel: 11 },
+        { name: "四象神通", desc: "元素同调期间获得抗性与强化效果。", unlockLevel: 17 },
+      ] }
     ]
   },
   {
@@ -456,8 +483,34 @@ export const CLASS_DATA: ClassDef[] = applyDndClassSubclassMetadata([
       { name: "荒野变化", desc: "把自己从普通人形随心化作各色野外动物。", unlockLevel: 2 }
     ],
     subclasses: [
-      { name: "大地结社", desc: "专精自然界元素和地脉恢复者。", unlockLevel: 2, features: [{ name: "额外魔法池修养", desc: "短休恢复极数法术，且掌握更多专有荒野地脉大范围魔法。", unlockLevel: 2 }] },
-      { name: "月亮结社", desc: "极致狂暴变形肉搏巨怪德师。", unlockLevel: 2, features: [{ name: "高级月之德鲁伊化", desc: "化身强大极巨的猛兽且可以直接变成近战机器大魔熊打斗。", unlockLevel: 2 }] },
+      { name: "大地结社", desc: "以地形法术与自然力量守护荒野。", unlockLevel: 3, features: [
+        { name: "大地结社法术", desc: "长休时选择地形，获得对应始终准备法术。", unlockLevel: 3 },
+        { name: "大地之援", desc: "消耗荒野变形制造伤害与治疗区域。", unlockLevel: 3 },
+        { name: "自然恢复", desc: "恢复指定法术位并获得免费结社法术施放。", unlockLevel: 6 },
+        { name: "自然守御", desc: "获得中毒免疫与地形对应伤害抗性。", unlockLevel: 10 },
+        { name: "自然庇护", desc: "消耗荒野变形创造可移动的掩护区域。", unlockLevel: 14 },
+      ] },
+      { name: "月亮结社", desc: "以月之魔力强化荒野变形。", unlockLevel: 3, features: [
+        { name: "结社形态", desc: "强化荒野变形的挑战等级、护甲与临时生命值。", unlockLevel: 3 },
+        { name: "月亮结社法术", desc: "结社法术始终准备，且可在荒野变形下施展。", unlockLevel: 3 },
+        { name: "进阶结社形态", desc: "强化荒野变形的攻击与体质豁免。", unlockLevel: 6 },
+        { name: "月光飞步", desc: "以附赠动作传送并获得攻击优势。", unlockLevel: 10 },
+        { name: "月辉形态", desc: "强化月耀攻击与月光飞步。", unlockLevel: 14 },
+      ] },
+      { name: "海洋结社", desc: "以海潮、风暴与水域力量塑造光环。", unlockLevel: 3, features: [
+        { name: "海洋结社法术", desc: "结社法术始终准备。", unlockLevel: 3 },
+        { name: "瀚海之怒", desc: "消耗荒野变形显现寒冷与推离光环。", unlockLevel: 3 },
+        { name: "水生亲和", desc: "扩大光环并获得游泳速度。", unlockLevel: 6 },
+        { name: "风暴降生", desc: "激活光环时获得飞行与伤害抗性。", unlockLevel: 10 },
+        { name: "大洋慨赠", desc: "可将光环赋予其他自愿生物。", unlockLevel: 14 },
+      ] },
+      { name: "星辰结社", desc: "以星图与星耀形态驾驭天穹之力。", unlockLevel: 3, features: [
+        { name: "星图", desc: "制作施法法器并获得指定法术与免费施放。", unlockLevel: 3 },
+        { name: "星耀形态", desc: "消耗荒野变形展现三种星座形态。", unlockLevel: 3 },
+        { name: "宇宙预兆", desc: "长休后获得影响附近 d20 检定的反应。", unlockLevel: 6 },
+        { name: "闪烁星座", desc: "强化星耀形态并可切换星座。", unlockLevel: 10 },
+        { name: "灿若繁星", desc: "星耀形态期间获得物理伤害抗性。", unlockLevel: 14 },
+      ] },
       { name: "孢子结社", desc: "操纵致命毒雾生杀活死的真菌神派。", unlockLevel: 2, features: [{ name: "共生孢子", desc: "释放强力防御真菌加附武器之并拉起僵尸兵队。", unlockLevel: 2 }] }
     ]
   },

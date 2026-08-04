@@ -457,3 +457,10 @@ Read `P6_DND_OWNER_SOURCE_SUBCLASS_BATCH_1.md` before changing the Fighter or
 Cleric subclass entries. Their unlock and feature-name lists are local-source
 display data only; do not turn them into automatic combat, spell, resource, or
 Room Runtime effects.
+
+## DND Owner-Source Subclass Batch 2 (P6.23)
+
+Read `P6_DND_OWNER_SOURCE_SUBCLASS_BATCH_2.md` before changing Monk or Druid
+subclass entries. Their source-matched names and levels are display data only;
+they do not automate Focus Point, Wild Shape, spell, combat, or Room Runtime
+behavior.
