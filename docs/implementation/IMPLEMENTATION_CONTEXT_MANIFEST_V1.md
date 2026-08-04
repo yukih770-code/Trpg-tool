@@ -450,3 +450,10 @@ Read `P6_DND_MULTICLASS_LEVEL_ALLOCATION.md` before changing Gameplay level-up
 or `classLevels`. The UI records an explicit allocation target and preserves
 existing resources for multiclass characters; it does not evaluate
 prerequisites, combine spell slots, or alter Room authority.
+
+## DND Owner-Source Subclass Batch 1 (P6.22)
+
+Read `P6_DND_OWNER_SOURCE_SUBCLASS_BATCH_1.md` before changing the Fighter or
+Cleric subclass entries. Their unlock and feature-name lists are local-source
+display data only; do not turn them into automatic combat, spell, resource, or
+Room Runtime effects.

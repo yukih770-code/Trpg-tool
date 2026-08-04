@@ -107,18 +107,19 @@ const SUBCLASS_METADATA_BY_CLASS: Record<string, Record<string, RuleDataMetadata
     变化学派: conflictMeta('2014/2024 subclass scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
   },
   牧师: {
-    生命领域: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2'),
-    光明领域: conflictMeta('2014/2024 domain scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+    生命领域: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '生命领域'),
+    光明领域: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '光明领域'),
     自然领域: conflictMeta('2014/2024 domain scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
     风暴领域: conflictMeta('2014/2024 domain scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
-    诡术领域: conflictMeta('2014/2024 domain scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
-    战争领域: conflictMeta('2014/2024 domain scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
+    诡术领域: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '诡术领域'),
+    战争领域: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '战争领域'),
     知识领域: conflictMeta('2014/2024 domain scope conflict. Retained for continuity, not verified as owner-source DND 2024 core data.'),
   },
   战士: {
-    冠军武士: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2', '勇士；existing app name 冠军武士 needs naming confirmation.'),
-    战斗大师: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
-    奥法骑士: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+    冠军武士: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '勇士；保留现有名称以兼容既有角色。'),
+    战斗大师: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '战斗大师'),
+    奥法骑士: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '奥法骑士'),
+    灵能武士: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '灵能武士'),
   },
   游荡者: {
     盗贼: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2'),
@@ -263,12 +264,36 @@ export const CLASS_DATA: ClassDef[] = applyDndClassSubclassMetadata([
       { name: "引导神力", desc: "消耗引导神力次数，使用驱散亡灵或你的领域特有能力。", unlockLevel: 2 }
     ],
     subclasses: [
-      { name: "生命领域", desc: "专注恢复，保护盟友。", unlockLevel: 1, features: [{ name: "生命门徒", desc: "你的治疗法术获得显着加强，精通重甲。", unlockLevel: 1 }] },
-      { name: "光明领域", desc: "施展火与光的严惩惩戒。", unlockLevel: 1, features: [{ name: "守御闪光", desc: "在被攻击时致盲敌人，使其极难击中你。", unlockLevel: 1 }] },
+      { name: "生命领域", desc: "专注于治疗与维持生命的神圣领域。", unlockLevel: 3, features: [
+        { name: "生命门徒", desc: "用法术位施展的治疗法术获得额外治疗。", unlockLevel: 3 },
+        { name: "生命领域法术", desc: "领域法术始终准备。", unlockLevel: 3 },
+        { name: "维持生命", desc: "消耗引导神力分配治疗。", unlockLevel: 3 },
+        { name: "神祝医者", desc: "为他人施展治疗法术时治疗自己。", unlockLevel: 6 },
+        { name: "极效治疗", desc: "治疗骰取最高结果。", unlockLevel: 17 },
+      ] },
+      { name: "光明领域", desc: "以火焰、光耀与启示驱散黑暗。", unlockLevel: 3, features: [
+        { name: "光明领域法术", desc: "领域法术始终准备。", unlockLevel: 3 },
+        { name: "黎明曙光", desc: "消耗引导神力释放光耀爆发并驱散魔法黑暗。", unlockLevel: 3 },
+        { name: "守御之光", desc: "以反应使可见生物的一次攻击检定具有劣势。", unlockLevel: 3 },
+        { name: "精通守御之光", desc: "守御之光的恢复与临时生命值效果增强。", unlockLevel: 6 },
+        { name: "光冕", desc: "发出日光并削弱敌人对相关豁免的抵抗。", unlockLevel: 17 },
+      ] },
       { name: "自然领域", desc: "受荒野保护的代行牧师。", unlockLevel: 1, features: [{ name: "自然神术", desc: "掌握德鲁伊法术，精通重甲及多种自然生存技能。", unlockLevel: 1 }] },
       { name: "风暴领域", desc: "掌握暴风与闪电。", unlockLevel: 1, features: [{ name: "风暴之怒", desc: "被近战击中时利用雷电元素反击，精通军用武器与重甲。", unlockLevel: 1 }] },
-      { name: "诡术领域", desc: "信仰欺诈或暗影的神明。", unlockLevel: 1, features: [{ name: "神圣祝福", desc: "为盟友带来潜行优势，获得强大的伪装与欺瞒法术。", unlockLevel: 1 }] },
-      { name: "战争领域", desc: "信仰战争与荣誉。", unlockLevel: 1, features: [{ name: "战争祭司", desc: "利用附赠动作可发动额外的武器攻击，精通军武与重甲。", unlockLevel: 1 }] },
+      { name: "诡术领域", desc: "驾驭欺诈、幻觉与隐匿的神圣领域。", unlockLevel: 3, features: [
+        { name: "诡术祝福", desc: "给予自己或自愿生物隐匿检定优势。", unlockLevel: 3 },
+        { name: "召现分身", desc: "消耗引导神力创造可施法与干扰目标的幻象。", unlockLevel: 3 },
+        { name: "诡术领域法术", desc: "领域法术始终准备。", unlockLevel: 3 },
+        { name: "诡诈换位", desc: "创造或移动幻象时可与其传送换位。", unlockLevel: 6 },
+        { name: "精通分身", desc: "分身获得共享干扰与治愈幻象效果。", unlockLevel: 17 },
+      ] },
+      { name: "战争领域", desc: "以武器、神术与战场支援取胜的领域。", unlockLevel: 3, features: [
+        { name: "导引打击", desc: "消耗引导神力为一次失手的攻击提供加值。", unlockLevel: 3 },
+        { name: "战争领域法术", desc: "领域法术始终准备。", unlockLevel: 3 },
+        { name: "战争祭司", desc: "以附赠动作发动武器或徒手攻击。", unlockLevel: 3 },
+        { name: "战神祝福", desc: "以引导神力施展指定领域法术。", unlockLevel: 6 },
+        { name: "战争化身", desc: "获得钝击、穿刺与挥砍伤害抗性。", unlockLevel: 17 },
+      ] },
       { name: "知识领域", desc: "尊崇求知与学识之神。", unlockLevel: 1, features: [{ name: "知识的赐福", desc: "掌握多国语言并且加倍对应两项学识技能熟练加值。", unlockLevel: 1 }] }
     ]
   },
@@ -287,9 +312,37 @@ export const CLASS_DATA: ClassDef[] = applyDndClassSubclassMetadata([
       { name: "动作如风", desc: "在回合中获得一次额外动作，短休充能。", unlockLevel: 2 }
     ],
     subclasses: [
-      { name: "冠军武士", desc: "极简的终极战士。", unlockLevel: 3, features: [{ name: "精进重击", desc: "武器攻击只要掷出19就算重大暴击。", unlockLevel: 3 }] },
-      { name: "战斗大师", desc: "掌握极具战术素养的卓越战技。", unlockLevel: 3, features: [{ name: "卓越体势", desc: "学会使用卓越骰来增伤并附加推离、击倒、反击等特效。", unlockLevel: 3 }] },
-      { name: "奥法骑士", desc: "融合了奥术施法基础的重甲法师。", unlockLevel: 3, features: [{ name: "初级奥术", desc: "学会防护及塑能学派的部分法师法术。", unlockLevel: 3 }] }
+      { name: "冠军武士", desc: "本地资料中的勇士；保留旧名称以兼容既有角色。", unlockLevel: 3, features: [
+        { name: "精通重击", desc: "武器或徒手打击的重击范围扩大。", unlockLevel: 3 },
+        { name: "运动健将", desc: "先攻与力量（运动）检定具有优势。", unlockLevel: 3 },
+        { name: "额外战斗风格", desc: "获得另一个战斗风格专长。", unlockLevel: 7 },
+        { name: "勇战英豪", desc: "战斗中可获得英雄激励。", unlockLevel: 10 },
+        { name: "高效重击", desc: "重击范围再次扩大。", unlockLevel: 15 },
+        { name: "百折不挠", desc: "死亡豁免与浴血状态下的恢复能力增强。", unlockLevel: 18 },
+      ] },
+      { name: "战斗大师", desc: "研习战技与卓越骰的战术专家。", unlockLevel: 3, features: [
+        { name: "卓越战技", desc: "习得战技并获得可消耗的卓越骰。", unlockLevel: 3 },
+        { name: "战争学者", desc: "获得工匠工具与战士技能熟练。", unlockLevel: 3 },
+        { name: "料敌机先", desc: "可识别可见生物的抗性、免疫或易伤。", unlockLevel: 7 },
+        { name: "精通战技", desc: "卓越骰提升为 d10。", unlockLevel: 10 },
+        { name: "坚韧", desc: "每回合一次可用 d8 代替消耗卓越骰。", unlockLevel: 15 },
+        { name: "究极战技", desc: "卓越骰提升为 d12。", unlockLevel: 18 },
+      ] },
+      { name: "奥法骑士", desc: "以法师法术补强武技的战士。", unlockLevel: 3, features: [
+        { name: "施法", desc: "获得法师戏法、准备法术与奥法骑士法术位。", unlockLevel: 3 },
+        { name: "战争联结", desc: "与至多两把武器建立魔法联结。", unlockLevel: 3 },
+        { name: "战争魔法", desc: "攻击动作可替换一次攻击为法师戏法。", unlockLevel: 7 },
+        { name: "奥法打击", desc: "武器命中后削弱目标对你法术的豁免。", unlockLevel: 10 },
+        { name: "奥能冲锋", desc: "使用动作如潮时可传送。", unlockLevel: 15 },
+        { name: "精通战争魔法", desc: "攻击动作可替换两次攻击为指定法术。", unlockLevel: 18 },
+      ] },
+      { name: "灵能武士", desc: "将灵能骰注入武技与防护的战士。", unlockLevel: 3, features: [
+        { name: "灵能力量", desc: "获得灵能骰与灵能异能。", unlockLevel: 3 },
+        { name: "念力精通", desc: "获得灵力跃动与念力突刺。", unlockLevel: 7 },
+        { name: "意念守护", desc: "获得心灵伤害抗性与状态解除能力。", unlockLevel: 10 },
+        { name: "力场壁垒", desc: "以附赠动作给予生物半身掩护。", unlockLevel: 15 },
+        { name: "念力宗师", desc: "可无消耗施展心灵遥控并配合武器攻击。", unlockLevel: 18 },
+      ] }
     ]
   },
   {

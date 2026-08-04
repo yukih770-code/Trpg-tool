@@ -1027,3 +1027,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Structural caps are enforced, while prerequisites and combined spellcasting
   remain deliberately outside this boundary.
 - See `docs/implementation/P6_DND_MULTICLASS_LEVEL_ALLOCATION.md`.
+
+## DND Owner-Source Subclass Batch 1 (P6.22)
+
+- Fighter and Cleric now expose locally sourced 2024 subclass unlock and
+  feature-name tables for character selection and advancement preview.
+- These entries are declarative reference data, not automatic combat, spell, or
+  Runtime effects.
+- See `docs/implementation/P6_DND_OWNER_SOURCE_SUBCLASS_BATCH_1.md`.

@@ -102,6 +102,7 @@
     "frontend:verify:personal-character-rules": "tsx src/lib/platform/dndPersonalContentAdapterSmoke.ts",
     "frontend:verify:dnd-personal-content-definitions": "tsx src/lib/dnd/dndPersonalContentDefinitionsSmoke.ts",
     "frontend:verify:dnd-class-advancement": "tsx src/lib/dnd2024/classAdvancementSummarySmoke.ts",
+    "frontend:verify:dnd-class-subclass-source-batch-1": "tsx src/lib/dnd2024/classSubclassSourceBatch1Smoke.ts",
     "frontend:verify:dnd-class-progression-batch-1": "tsx src/lib/dnd2024/classProgressionBatch1Smoke.ts",
     "frontend:verify:dnd-class-progression-batch-2": "tsx src/lib/dnd2024/classProgressionBatch2Smoke.ts",
     "frontend:verify:dnd-class-progression-batch-3": "tsx src/lib/dnd2024/classProgressionBatch3Smoke.ts",
