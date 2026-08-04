@@ -430,3 +430,9 @@ Read `P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_3.md` before extending
 Paladin or Ranger. Their first-level half-caster data is source-table reference
 only; do not calculate multiclass slots, execute class features, or change Room
 authority from this module.
+
+## DND Owner-Source Class Progression Batch 4 (P6.19)
+
+Read `P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_4.md` before extending Rogue
+or Sorcerer. Their level tables are source-matched display data, not automatic
+combat, spell, resource-conversion, multiclass, or Room-authority behavior.

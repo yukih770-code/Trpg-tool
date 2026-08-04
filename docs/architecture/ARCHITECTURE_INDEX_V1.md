@@ -1003,3 +1003,10 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - This remains a data display surface, never automatic spell, aura, or combat
   execution.
 - See `docs/implementation/P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_3.md`.
+
+## DND Owner-Source Class Progression Batch 4 (P6.19)
+
+- Rogue and Sorcerer now have locally sourced 1-20 level-table reference data.
+- This improves preview coverage only; it is not a Sneak Attack, Metamagic, or
+  spellcasting automation system.
+- See `docs/implementation/P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_4.md`.

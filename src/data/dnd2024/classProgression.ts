@@ -999,9 +999,9 @@ const RANGER_FAVORED_ENEMY_CHARGES: ClassResourceDefinition = {
 
 const SORCERER_INNATE_SORCERY: ClassResourceDefinition = {
   id: 'sorcerer_innate_sorcery',
-  nameCn: '内在魔法',
+  nameCn: '天生术法',
   nameEn: 'Innate Sorcery',
-  sourceFeature: '内在魔法 (Innate Sorcery)',
+  sourceFeature: '天生术法 (Innate Sorcery)',
   unlockLevel: 1,
   maxUses: 2,
   recoveryType: 'longRest',
@@ -1337,6 +1337,93 @@ const RANGER_PROGRESSION: Dnd2024ClassProgression = {
   }),
 };
 
+const ROGUE_FEATURES_BY_LEVEL: string[][] = [
+  ['专精', '偷袭（1d6）', '盗贼黑话', '武器精通'],
+  ['灵巧动作'],
+  ['游荡者子职', '稳定瞄准', '偷袭提升（2d6）'],
+  ['属性值提升'],
+  ['诡诈打击', '直觉闪避', '偷袭提升（3d6）'],
+  ['专精'],
+  ['反射闪避', '可靠才能', '偷袭提升（4d6）'],
+  ['属性值提升'],
+  ['子职特性', '偷袭提升（5d6）'],
+  ['属性值提升'],
+  ['进阶诡诈打击', '偷袭提升（6d6）'],
+  ['属性值提升'],
+  ['子职特性', '偷袭提升（7d6）'],
+  ['凶狡打击'],
+  ['圆滑心智', '偷袭提升（8d6）'],
+  ['属性值提升'],
+  ['子职特性', '偷袭提升（9d6）'],
+  ['飘忽不定'],
+  ['传奇恩惠', '偷袭提升（10d6）'],
+  ['幸运一击'],
+];
+
+const ROGUE_PROGRESSION: Dnd2024ClassProgression = {
+  classKey: 'rogue',
+  classNameCn: '游荡者',
+  classNameEn: 'Rogue',
+  hitDie: 8,
+  spellcasting: null,
+  levels: ROGUE_FEATURES_BY_LEVEL.map((features, index) =>
+    buildSourceTableLevel(index + 1, features),
+  ),
+};
+
+const SORCERER_SPELLCASTING: SpellcastingProgression = {
+  mode: 'fixedPreparedUpgradeReplace',
+  ability: 'charisma',
+  casterType: 'full',
+  cantripsKnown: [4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6],
+  preparedSpellCount: [2, 4, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  spellSlotTable: FULL_CASTER_SLOT_TABLE,
+  pactMagic: null,
+  ritualCasting: 'none',
+  notes: '戏法、准备法术和法术位数量来自本机 DND 2024 术士等级表；本数据不执行超魔、术法点转换或法术选择。',
+};
+
+const SORCERER_FEATURES_BY_LEVEL: string[][] = [
+  ['施法', '天生术法'],
+  ['魔力泉涌', '超魔法'],
+  ['术士子职'],
+  ['属性值提升'],
+  ['术法复苏'],
+  ['子职特性'],
+  ['术法化身'],
+  ['属性值提升'],
+  [],
+  ['超魔法'],
+  [],
+  ['属性值提升'],
+  [],
+  ['子职特性'],
+  [],
+  ['属性值提升'],
+  ['超魔法'],
+  ['子职特性'],
+  ['传奇恩惠'],
+  ['奥术化神'],
+];
+
+const SORCERER_PROGRESSION: Dnd2024ClassProgression = {
+  classKey: 'sorcerer',
+  classNameCn: '术士',
+  classNameEn: 'Sorcerer',
+  hitDie: 6,
+  spellcasting: SORCERER_SPELLCASTING,
+  levels: SORCERER_FEATURES_BY_LEVEL.map((features, index) => {
+    const level = index + 1;
+    return buildSourceTableLevel(
+      level,
+      features,
+      [SORCERER_INNATE_SORCERY, SORCERER_SORCERY_POINTS]
+        .filter(resource => resource.unlockLevel === level),
+      FULL_CASTER_SLOT_TABLE[index] ?? null,
+    );
+  }),
+};
+
 function makePlaceholder(
   classKey: DndClassKey,
   classNameCn: string,
@@ -1385,13 +1472,10 @@ export const DND2024_CLASS_PROGRESSIONS: Partial<Record<DndClassKey, Dnd2024Clas
   monk: MONK_PROGRESSION,
   paladin: PALADIN_PROGRESSION,
   ranger: RANGER_PROGRESSION,
+  rogue: ROGUE_PROGRESSION,
+  sorcerer: SORCERER_PROGRESSION,
 
-  // 占位职业（待后续补全）
-  rogue: makePlaceholder('rogue', '游荡者', 'Rogue', 8),
-  sorcerer: makePlaceholder('sorcerer', '术士', 'Sorcerer', 6, [
-    SORCERER_INNATE_SORCERY,
-    SORCERER_SORCERY_POINTS,
-  ]),
+  // 所有 12 个标准职业均已有至少一份结构化成长表；仍可能存在较早批次的高等级占位条目。
 };
 
 // 便于外部按职业名检索
@@ -1406,6 +1490,8 @@ export {
   MONK_PROGRESSION,
   PALADIN_PROGRESSION,
   RANGER_PROGRESSION,
+  ROGUE_PROGRESSION,
+  SORCERER_PROGRESSION,
   FULL_CASTER_SLOT_TABLE,
   HALF_CASTER_SLOT_TABLE,
 };

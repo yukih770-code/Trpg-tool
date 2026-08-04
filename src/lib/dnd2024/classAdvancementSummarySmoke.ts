@@ -28,14 +28,15 @@ assert(sourceBacked.averageHitPointIncrease === 6, 'D10 should use average 6 HP'
 assert(sourceBacked.coverage === 'source-backed', 'Fighter should use the owner-source level table');
 assert(sourceBacked.features.some((feature) => feature.name === '测试特性'), 'Class features should appear at their unlock level');
 
-const rogue: ClassDef = {
+const barbarian: ClassDef = {
   ...fighter,
-  id: 'rogue',
-  name: '游荡者',
+  id: 'barbarian',
+  name: '野蛮人',
+  hitDice: 'D12',
 };
 const partial = getDndClassAdvancementSummary({
-  classDef: rogue,
-  currentLevel: 1,
+  classDef: barbarian,
+  currentLevel: 5,
   hasSelectedSubclass: false,
 });
 assert(partial.coverage === 'partial', 'Unverified placeholder classes should remain partial');
