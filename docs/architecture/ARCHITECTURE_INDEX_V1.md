@@ -953,3 +953,13 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   bypass Room host review.
 - See `docs/implementation/P6_DND_PERSONAL_CONTENT_STUDIO.md` before adding
   richer schemas, item projection, monster placement, or public sharing.
+
+## Personal Content Character Rule Projection (P6.13)
+
+- Character Builder may read declared personal class/subclass features,
+  resources, actions, choices, and triggers from its selected immutable version
+  at the current character level.
+- This is a defensive display projection, never a selection persistence layer,
+  formula evaluator, Room approval, or Runtime-action source.
+- See `docs/implementation/P6_PERSONAL_CONTENT_CHARACTER_RULE_PROJECTION.md`
+  before changing the projection or connecting it to any other surface.

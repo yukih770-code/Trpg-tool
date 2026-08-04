@@ -1,6 +1,7 @@
 import {
   personalBackgroundEntriesToBackgroundDefs,
   personalClassEntriesToClassDefs,
+  personalEntriesToCharacterRuleProjections,
   personalFeatEntriesToFeatDefs,
   personalSpeciesEntriesToRaceDefs,
   personalSpellEntriesToSpellInfo,
@@ -46,4 +47,55 @@ const spells = personalSpellEntriesToSpellInfo([
   { compendiumEntryId: 'spell_1', entryKind: 'spell', displayName: '海雾讯号', content: { name: '海雾讯号', level: 1, school: '惑控', castTime: '1 动作', range: '60 尺', duration: '1 分钟', components: 'V, S', summary: '在雾中传递一段短讯。' }, metadata: {}, schemaVersion: 1 },
 ]);
 assert(spells.length === 1 && spells[0]?.level === 1 && spells[0]?.component.v && spells[0]?.component.s, 'basic personal spell facts should map to the spellbook shape');
+
+const characterRules = personalEntriesToCharacterRuleProjections([
+  {
+    compendiumEntryId: 'class_rules_1',
+    entryKind: 'class',
+    displayName: '灵魂铸师',
+    content: {
+      name: '灵魂铸师',
+      summary: '以灵魂线编织造物。',
+      features: [
+        { name: '灵魂容器', desc: '召唤一个灵魂容器。', unlockLevel: 1 },
+        { name: '高阶编织', desc: '更高等级的特性。', unlockLevel: 5 },
+      ],
+      ruleComponents: {
+        resources: [{ name: '灵魂线', maximum: '熟练加值', recovery: '长休', desc: '编织灵魂造物的资源。' }],
+        actions: [{ name: '编织容器', activation: '1 动作', range: '30 尺', cost: '1 灵魂线', desc: '放置一个容器。' }],
+        choices: [{ name: '灵魂技艺', requirement: '1 级', selection: '选择一项', options: ['守护', '侦察'] }],
+        triggers: [{ name: '容器受击', desc: '可按描述触发反应。' }],
+      },
+    },
+    metadata: {},
+    schemaVersion: 1,
+  },
+  {
+    compendiumEntryId: 'subclass_rules_1',
+    entryKind: 'subclass',
+    displayName: '守护织匠',
+    content: {
+      name: '守护织匠',
+      className: '灵魂铸师',
+      summary: '以守护为先。',
+      features: [{ name: '守护编织', desc: '强化守护容器。', unlockLevel: 1 }],
+      ruleComponents: { resources: [], actions: [], choices: [], triggers: [] },
+    },
+    metadata: {},
+    schemaVersion: 1,
+  },
+  {
+    compendiumEntryId: 'other_class_rules',
+    entryKind: 'class',
+    displayName: '不应出现的职业',
+    content: { name: '不应出现的职业', ruleComponents: { resources: [{ name: '错误', maximum: '1', recovery: '长休' }] } },
+    metadata: {},
+    schemaVersion: 1,
+  },
+], { className: '灵魂铸师', subclassName: '守护织匠', characterLevel: 1 });
+assert(characterRules.length === 2, 'only the selected personal class and subclass should project');
+assert(characterRules[0]?.resources[0]?.name === '灵魂线', 'declared class resources should remain readable');
+assert(characterRules[0]?.actions[0]?.cost === '1 灵魂线', 'declared action facts should remain readable');
+assert(characterRules[0]?.features.length === 1, 'future-level features should stay hidden at the current character level');
+assert(characterRules[1]?.features[0]?.name === '守护编织', 'selected subclass features should remain readable');
 console.log('dnd-personal-content-adapter smoke: ok');

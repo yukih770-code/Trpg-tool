@@ -12,6 +12,7 @@ import { ApiClientError } from '../lib/api/apiTypes';
 import {
   personalBackgroundEntriesToBackgroundDefs,
   personalClassEntriesToClassDefs,
+  personalEntriesToCharacterRuleProjections,
   personalFeatEntriesToFeatDefs,
   personalSpeciesEntriesToRaceDefs,
   personalSpellEntriesToSpellInfo,
@@ -218,6 +219,14 @@ export function Creator({
 
   const selectedRace = RACE_DATA.find(r => r.name === character.race);
   const selectedClass = CLASS_DATA.find(c => c.name === character.jobClass);
+  const personalCharacterRuleProjections = personalEntriesToCharacterRuleProjections(
+    selectedPersonalPackContent?.entries ?? [],
+    {
+      className: character.jobClass,
+      subclassName: character.subclass,
+      characterLevel: character.level,
+    },
+  );
   const selectedStarterEquipmentPlan = selectedClass?.startingEquipment
     ? buildStarterEquipmentPlan(selectedClass.startingEquipment)
     : null;
@@ -575,7 +584,7 @@ export function Creator({
     <section className={panelClass}>
       {renderSectionHeader(t('dndBuilder.sections.class'), t('dndBuilder.descriptions.class'))}
       {selectedPersonalReference && <div className="mb-3 rounded-md border border-[#a35b11]/25 bg-[#fff1c7]/45 p-3 text-xs leading-relaxed text-[#58180d]/75">
-        {selectedPersonalPackContentLoading ? '正在载入个人职业与子职业选项…' : '个人资料版本中的职业会提供生命骰、豁免与熟练项；特性文字不会自动生成动作、法术或职业资源。'}
+        {selectedPersonalPackContentLoading ? '正在载入个人职业与子职业选项…' : '个人资料版本中的职业会提供生命骰、豁免与熟练项。已声明的资源、动作和选项会显示在下方的角色摘要中，但不会自动执行。'}
         {selectedPersonalPackContentError && <span className="mt-1 block text-[#a52a2a]">{selectedPersonalPackContentError}</span>}
       </div>}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(280px,0.95fr)]">
@@ -635,6 +644,89 @@ export function Creator({
                   ))}
                 </ul>
               </div>
+              {personalCharacterRuleProjections.length > 0 && (
+                <div className="rounded-md border border-[#a35b11]/30 bg-[#fff1c7]/45 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h4 className="text-xs font-bold uppercase text-[#7a4610]">自定义职业规则摘要</h4>
+                    <span className="rounded-full border border-[#a35b11]/25 bg-white/75 px-2 py-0.5 text-[10px] font-bold text-[#7a4610]">只读声明</span>
+                  </div>
+                  <p className="mt-1 text-[11px] leading-relaxed text-[#58180d]/70">
+                    仅展示当前角色已选职业与子职业中、在当前等级可见的声明内容。公式、效果和权限仍由房间审核与主持人裁定。
+                  </p>
+                  <div className="mt-3 space-y-3">
+                    {personalCharacterRuleProjections.map((projection) => (
+                      <div key={projection.entryId} className="rounded-md border border-[#58180d]/18 bg-white/60 p-3">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <div className="font-bold text-[#58180d]">{projection.name}</div>
+                          <span className="text-[10px] font-bold text-[#58180d]/60">{projection.source === 'class' ? '职业' : '子职业'}</span>
+                        </div>
+                        {projection.summary && <p className="mt-1 text-xs leading-relaxed text-[#2c1810]/75">{projection.summary}</p>}
+                        {projection.resources.length > 0 && (
+                          <div className="mt-3">
+                            <div className="text-[11px] font-bold text-[#7a4610]">资源</div>
+                            <div className="mt-1 grid gap-2 md:grid-cols-2">
+                              {projection.resources.map((resource) => (
+                                <div key={resource.name} className="rounded border border-[#a35b11]/20 bg-[#fff8e6]/65 p-2 text-xs">
+                                  <div className="font-bold text-[#58180d]">{resource.name}</div>
+                                  <div className="mt-0.5 text-[#58180d]/70">上限：{resource.maximum} · 恢复：{resource.recovery}</div>
+                                  {resource.desc && <p className="mt-1 text-[#2c1810]/72">{resource.desc}</p>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {projection.actions.length > 0 && (
+                          <div className="mt-3">
+                            <div className="text-[11px] font-bold text-[#7a4610]">动作声明</div>
+                            <ul className="mt-1 space-y-1.5">
+                              {projection.actions.map((action) => (
+                                <li key={action.name} className="rounded border border-[#58180d]/16 bg-white/60 p-2 text-xs">
+                                  <span className="font-bold text-[#58180d]">{action.name}</span>
+                                  <span className="text-[#58180d]/70"> · {action.activation} · {action.range} · 消耗：{action.cost}</span>
+                                  {action.desc && <p className="mt-1 text-[#2c1810]/72">{action.desc}</p>}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {projection.features.length > 0 && (
+                          <div className="mt-3">
+                            <div className="text-[11px] font-bold text-[#7a4610]">当前等级特性</div>
+                            <ul className="mt-1 space-y-1.5">
+                              {projection.features.map((feature) => (
+                                <li key={`${feature.unlockLevel}-${feature.name}`} className="text-xs text-[#2c1810]/78">
+                                  <span className="font-bold text-[#58180d]">{feature.name}</span> <span className="text-[#58180d]/60">({feature.unlockLevel} 级)</span>：{feature.desc}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {projection.choices.length > 0 && (
+                          <div className="mt-3">
+                            <div className="text-[11px] font-bold text-[#7a4610]">待选择项</div>
+                            <ul className="mt-1 space-y-1.5">
+                              {projection.choices.map((choice) => (
+                                <li key={choice.name} className="rounded border border-dashed border-[#58180d]/20 p-2 text-xs text-[#2c1810]/78">
+                                  <span className="font-bold text-[#58180d]">{choice.name}</span>：{choice.selection}；前置：{choice.requirement}<br />
+                                  <span className="text-[#58180d]/70">可选：{choice.options.join('、')}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {projection.triggers.length > 0 && (
+                          <div className="mt-3 text-xs">
+                            <div className="font-bold text-[#7a4610]">触发提示</div>
+                            <ul className="mt-1 space-y-1 text-[#2c1810]/78">
+                              {projection.triggers.map((trigger) => <li key={trigger.name}><span className="font-bold text-[#58180d]">{trigger.name}</span>：{trigger.desc}</li>)}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

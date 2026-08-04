@@ -389,3 +389,11 @@ immutable internal storage boundary. Shared resources, actions, choice groups,
 and triggers let every entity type describe complex rules. They remain
 declarative reference data only; no executable effects, inventory writes, Token
 creation, Runtime action generation, or Room-review bypass is allowed.
+
+## Personal Content Character Rule Projection (P6.13)
+
+Read `P6_PERSONAL_CONTENT_CHARACTER_RULE_PROJECTION.md` before extending the
+Character Builder summary for authored class data. It is a selected-class,
+current-level read projection only: resources, actions, choices, features, and
+triggers remain declarative. Do not persist selections, calculate effects, or
+turn this surface into a Runtime authority path.

@@ -1,5 +1,12 @@
 import type { PersonalCompendiumPackVersionContent } from '../api/personalCompendiumPackApiClient';
 import type { AttributeName, BackgroundDef, ClassDef, ClassFeature, FeatDef, HitDiceType, RaceDef, SkillName, SpellInfo, SubclassDef } from '../dnd-types';
+import type {
+  DndPersonalActionDraft,
+  DndPersonalChoiceDraft,
+  DndPersonalFeatureDraft,
+  DndPersonalNamedRuleDraft,
+  DndPersonalResourceDraft,
+} from '../dnd/dndPersonalContentDefinitions';
 
 type Entry = PersonalCompendiumPackVersionContent['entries'][number];
 type JsonRecord = Record<string, unknown>;
@@ -77,6 +84,104 @@ function featureList(value: unknown, fallbackName: string, fallbackDescription: 
     const parsedLevel = Number(feature.unlockLevel);
     return [{ name, desc, unlockLevel: Number.isInteger(parsedLevel) && parsedLevel >= 1 && parsedLevel <= 20 ? parsedLevel : unlockLevel }];
   }).slice(0, 12);
+}
+
+export type PersonalDndCharacterRuleProjection = {
+  source: 'class' | 'subclass';
+  entryId: string;
+  name: string;
+  summary: string;
+  features: DndPersonalFeatureDraft[];
+  resources: DndPersonalResourceDraft[];
+  actions: DndPersonalActionDraft[];
+  choices: DndPersonalChoiceDraft[];
+  triggers: DndPersonalNamedRuleDraft[];
+};
+
+function draftRecords(value: unknown, limit: number): JsonRecord[] {
+  return Array.isArray(value) ? value.map(record).slice(0, limit) : [];
+}
+
+function projectedFeatures(value: unknown, characterLevel: number): DndPersonalFeatureDraft[] {
+  return draftRecords(value, 40).flatMap((feature) => {
+    const name = text(feature.name);
+    const desc = text(feature.desc);
+    const unlockLevel = Math.max(1, Math.min(20, Number(feature.unlockLevel) || 1));
+    return name && desc && unlockLevel <= characterLevel ? [{ name, desc, unlockLevel }] : [];
+  });
+}
+
+function projectedResources(value: unknown): DndPersonalResourceDraft[] {
+  return draftRecords(value, 20).flatMap((resource) => {
+    const name = text(resource.name);
+    const maximum = text(resource.maximum);
+    const recovery = text(resource.recovery);
+    return name && maximum && recovery
+      ? [{ name, maximum, recovery, desc: text(resource.desc) }]
+      : [];
+  });
+}
+
+function projectedActions(value: unknown): DndPersonalActionDraft[] {
+  return draftRecords(value, 40).flatMap((action) => {
+    const name = text(action.name);
+    const activation = text(action.activation);
+    return name && activation
+      ? [{ name, activation, range: text(action.range, '未说明'), cost: text(action.cost, '无'), desc: text(action.desc) }]
+      : [];
+  });
+}
+
+function projectedChoices(value: unknown): DndPersonalChoiceDraft[] {
+  return draftRecords(value, 20).flatMap((choice) => {
+    const name = text(choice.name);
+    const options = textList(choice.options, 20);
+    return name && options.length > 0
+      ? [{ name, requirement: text(choice.requirement, '无'), selection: text(choice.selection, '选择一项'), options }]
+      : [];
+  });
+}
+
+function projectedNamedRules(value: unknown): DndPersonalNamedRuleDraft[] {
+  return draftRecords(value, 40).flatMap((rule) => {
+    const name = text(rule.name);
+    const desc = text(rule.desc);
+    return name && desc ? [{ name, desc }] : [];
+  });
+}
+
+/**
+ * Reads declared personal class facts for the class and subclass selected on
+ * the current character. This is intentionally a display projection: it does
+ * not persist selections, calculate formulas, or turn authored text into a
+ * Runtime action. Room review remains the authority for multiplayer use.
+ */
+export function personalEntriesToCharacterRuleProjections(
+  entries: Entry[],
+  selection: { className: string; subclassName: string; characterLevel: number },
+): PersonalDndCharacterRuleProjection[] {
+  const characterLevel = Math.max(1, Math.min(20, Math.floor(selection.characterLevel) || 1));
+  return entries.flatMap((entry) => {
+    const content = record(entry.content);
+    const name = text(content.name, text(entry.displayName));
+    const isClass = entry.entryKind === 'class' && name === selection.className;
+    const isSubclass = entry.entryKind === 'subclass' && name === selection.subclassName
+      && text(content.className) === selection.className;
+    if (!isClass && !isSubclass) return [];
+
+    const ruleComponents = record(content.ruleComponents);
+    return [{
+      source: isClass ? 'class' : 'subclass',
+      entryId: entry.compendiumEntryId,
+      name,
+      summary: text(content.summary),
+      features: projectedFeatures(content.features, characterLevel),
+      resources: projectedResources(ruleComponents.resources),
+      actions: projectedActions(ruleComponents.actions),
+      choices: projectedChoices(ruleComponents.choices),
+      triggers: projectedNamedRules(ruleComponents.triggers),
+    }];
+  });
 }
 
 /**
