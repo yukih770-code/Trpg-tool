@@ -92,6 +92,7 @@ export type PersonalDndCharacterRuleProjection = {
   name: string;
   summary: string;
   features: DndPersonalFeatureDraft[];
+  progression: DndPersonalFeatureDraft[];
   resources: DndPersonalResourceDraft[];
   actions: DndPersonalActionDraft[];
   choices: DndPersonalChoiceDraft[];
@@ -102,13 +103,13 @@ function draftRecords(value: unknown, limit: number): JsonRecord[] {
   return Array.isArray(value) ? value.map(record).slice(0, limit) : [];
 }
 
-function projectedFeatures(value: unknown, characterLevel: number): DndPersonalFeatureDraft[] {
+function projectedFeatureProgression(value: unknown): DndPersonalFeatureDraft[] {
   return draftRecords(value, 40).flatMap((feature) => {
     const name = text(feature.name);
     const desc = text(feature.desc);
     const unlockLevel = Math.max(1, Math.min(20, Number(feature.unlockLevel) || 1));
-    return name && desc && unlockLevel <= characterLevel ? [{ name, desc, unlockLevel }] : [];
-  });
+    return name && desc ? [{ name, desc, unlockLevel }] : [];
+  }).sort((left, right) => left.unlockLevel - right.unlockLevel || left.name.localeCompare(right.name));
 }
 
 function projectedResources(value: unknown): DndPersonalResourceDraft[] {
@@ -170,12 +171,14 @@ export function personalEntriesToCharacterRuleProjections(
     if (!isClass && !isSubclass) return [];
 
     const ruleComponents = record(content.ruleComponents);
+    const progression = projectedFeatureProgression(content.features);
     return [{
       source: isClass ? 'class' : 'subclass',
       entryId: entry.compendiumEntryId,
       name,
       summary: text(content.summary),
-      features: projectedFeatures(content.features, characterLevel),
+      features: progression.filter((feature) => feature.unlockLevel <= characterLevel),
+      progression,
       resources: projectedResources(ruleComponents.resources),
       actions: projectedActions(ruleComponents.actions),
       choices: projectedChoices(ruleComponents.choices),

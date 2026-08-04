@@ -701,6 +701,23 @@ export function Creator({
                             </ul>
                           </div>
                         )}
+                        {projection.progression.length > 0 && (
+                          <details className="mt-3 rounded border border-dashed border-[#58180d]/20 bg-white/45 p-2 text-xs">
+                            <summary className="cursor-pointer font-bold text-[#7a4610]">完整成长表（{projection.progression.length} 项）</summary>
+                            <ol className="mt-2 space-y-1.5">
+                              {projection.progression.map((feature) => {
+                                const active = feature.unlockLevel <= character.level;
+                                return (
+                                  <li key={`progression-${feature.unlockLevel}-${feature.name}`} className={active ? 'text-[#2c1810]/82' : 'text-[#58180d]/55'}>
+                                    <span className="font-bold">{feature.unlockLevel} 级 · {feature.name}</span>
+                                    {!active && <span className="ml-1 text-[10px]">后续</span>}
+                                    <span>：{feature.desc}</span>
+                                  </li>
+                                );
+                              })}
+                            </ol>
+                          </details>
+                        )}
                         {projection.choices.length > 0 && (
                           <div className="mt-3">
                             <div className="text-[11px] font-bold text-[#7a4610]">待选择项</div>

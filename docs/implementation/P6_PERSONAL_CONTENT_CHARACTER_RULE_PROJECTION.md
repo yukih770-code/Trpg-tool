@@ -9,7 +9,8 @@ building the character.
 
 ## Included Read Model
 
-- Current-level class and subclass features.
+- Current-level class and subclass features, plus a read-only complete
+  progression table for planning future levels.
 - Declared resources, including their author-written maximum and recovery text.
 - Declared actions, choice groups, and trigger reminders.
 - The selected personal content version already recorded on the character.

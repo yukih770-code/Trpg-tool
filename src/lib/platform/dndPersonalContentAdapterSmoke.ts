@@ -97,5 +97,6 @@ assert(characterRules.length === 2, 'only the selected personal class and subcla
 assert(characterRules[0]?.resources[0]?.name === '灵魂线', 'declared class resources should remain readable');
 assert(characterRules[0]?.actions[0]?.cost === '1 灵魂线', 'declared action facts should remain readable');
 assert(characterRules[0]?.features.length === 1, 'future-level features should stay hidden at the current character level');
+assert(characterRules[0]?.progression.length === 2 && characterRules[0]?.progression[1]?.unlockLevel === 5, 'the complete declared class progression should remain available for read-only planning');
 assert(characterRules[1]?.features[0]?.name === '守护编织', 'selected subclass features should remain readable');
 console.log('dnd-personal-content-adapter smoke: ok');
