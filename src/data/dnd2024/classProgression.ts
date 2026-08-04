@@ -94,7 +94,7 @@ const FULL_CASTER_SLOT_TABLE: (SpellSlotProgression | null)[] = [
   // Lv19
   { level1: 4, level2: 3, level3: 3, level4: 3, level5: 3, level6: 2, level7: 1, level8: 1, level9: 1 },
   // Lv20
-  { level1: 4, level2: 3, level3: 3, level4: 3, level5: 3, level6: 2, level7: 2, level8: 1, level9: 1 },
+  { level1: 4, level2: 3, level3: 3, level4: 3, level5: 3, level6: 2, level7: 2, level8: 1, level9: 2 },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -859,9 +859,9 @@ const DRUID_WILD_SHAPE: ClassResourceDefinition = {
   maxUses: 'table',
   maxUsesByLevel: [
     0, 2, 2, 2, 2, // 1-5
-    2, 2, 2, 2, 2, // 6-10
-    2, 2, 2, 2, 2, // 11-15
-    2, 2, 2, 2, 2, // 16-20
+    3, 3, 3, 3, 3, // 6-10
+    3, 3, 3, 3, 3, // 11-15
+    3, 3, 4, 4, 4, // 16-20
   ],
   recoveryType: 'special',
   notes:
@@ -1114,6 +1114,97 @@ const CLERIC_PROGRESSION: Dnd2024ClassProgression = {
   }),
 };
 
+const DRUID_SPELLCASTING: SpellcastingProgression = {
+  mode: 'fullListPrepared',
+  ability: 'wisdom',
+  casterType: 'full',
+  cantripsKnown: [2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+  preparedSpellCount: [4, 5, 6, 7, 9, 10, 11, 12, 14, 15, 16, 16, 17, 17, 18, 18, 19, 20, 21, 22],
+  spellSlotTable: FULL_CASTER_SLOT_TABLE,
+  pactMagic: null,
+  ritualCasting: 'ifPrepared',
+  notes: '戏法、准备法术和法术位数量来自本机 DND 2024 德鲁伊等级表；本数据不执行施法、准备或变形流程。',
+};
+
+const DRUID_FEATURES_BY_LEVEL: string[][] = [
+  ['德鲁伊语', '原初职能', '施法'],
+  ['荒野变形', '荒野伙伴'],
+  ['德鲁伊子职'],
+  ['属性值提升'],
+  ['荒野复苏'],
+  ['子职特性'],
+  ['元素之怒'],
+  ['属性值提升'],
+  [],
+  ['子职特性'],
+  [],
+  ['属性值提升'],
+  [],
+  ['子职特性'],
+  ['元素神威'],
+  ['属性值提升'],
+  [],
+  ['兽形施法'],
+  ['传奇恩惠'],
+  ['大德鲁伊'],
+];
+
+const DRUID_PROGRESSION: Dnd2024ClassProgression = {
+  classKey: 'druid',
+  classNameCn: '德鲁伊',
+  classNameEn: 'Druid',
+  hitDie: 8,
+  spellcasting: DRUID_SPELLCASTING,
+  levels: DRUID_FEATURES_BY_LEVEL.map((features, index) => {
+    const level = index + 1;
+    return buildSourceTableLevel(
+      level,
+      features,
+      level === DRUID_WILD_SHAPE.unlockLevel ? [DRUID_WILD_SHAPE] : [],
+      FULL_CASTER_SLOT_TABLE[index] ?? null,
+    );
+  }),
+};
+
+const MONK_FEATURES_BY_LEVEL: string[][] = [
+  ['武艺（1d6）', '无甲防御'],
+  ['武僧武功', '无甲移动（+10尺）', '运转周天'],
+  ['拨挡攻击', '武僧子职'],
+  ['属性值提升', '轻身坠'],
+  ['额外攻击', '震慑拳', '武艺骰提升（1d8）'],
+  ['真力注拳', '子职特性', '无甲移动（+15尺）'],
+  ['反射闪避'],
+  ['属性值提升'],
+  ['飞檐走壁'],
+  ['出神入化', '返本还元', '无甲移动（+20尺）'],
+  ['子职特性', '武艺骰提升（1d10）'],
+  ['属性值提升'],
+  ['拨挡能量'],
+  ['圆融自在', '无甲移动（+25尺）'],
+  ['明镜止水'],
+  ['属性值提升'],
+  ['子职特性', '武艺骰提升（1d12）'],
+  ['无懈可击', '无甲移动（+30尺）'],
+  ['传奇恩惠'],
+  ['天人合一'],
+];
+
+const MONK_PROGRESSION: Dnd2024ClassProgression = {
+  classKey: 'monk',
+  classNameCn: '武僧',
+  classNameEn: 'Monk',
+  hitDie: 8,
+  spellcasting: null,
+  levels: MONK_FEATURES_BY_LEVEL.map((features, index) => {
+    const level = index + 1;
+    return buildSourceTableLevel(
+      level,
+      features,
+      level === MONK_FOCUS_POINTS.unlockLevel ? [MONK_FOCUS_POINTS] : [],
+    );
+  }),
+};
+
 function makePlaceholder(
   classKey: DndClassKey,
   classNameCn: string,
@@ -1158,10 +1249,10 @@ export const DND2024_CLASS_PROGRESSIONS: Partial<Record<DndClassKey, Dnd2024Clas
   // 所有者资料源已核对的等级表
   cleric: CLERIC_PROGRESSION,
   fighter: FIGHTER_PROGRESSION,
+  druid: DRUID_PROGRESSION,
+  monk: MONK_PROGRESSION,
 
   // 占位职业（待后续补全）
-  druid: makePlaceholder('druid', '德鲁伊', 'Druid', 8, [DRUID_WILD_SHAPE]),
-  monk: makePlaceholder('monk', '武僧', 'Monk', 8, [MONK_FOCUS_POINTS]),
   paladin: makePlaceholder('paladin', '圣武士', 'Paladin', 10, [
     PALADIN_LAY_ON_HANDS,
     PALADIN_CHANNEL_DIVINITY,
@@ -1182,5 +1273,7 @@ export {
   WIZARD_PROGRESSION,
   CLERIC_PROGRESSION,
   FIGHTER_PROGRESSION,
+  DRUID_PROGRESSION,
+  MONK_PROGRESSION,
   FULL_CASTER_SLOT_TABLE,
 };

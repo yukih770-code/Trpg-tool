@@ -987,3 +987,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Do not convert feature names into automatic actions or effects without a
   dedicated rules-engine boundary.
 - See `docs/implementation/P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_1.md`.
+
+## DND Owner-Source Class Progression Batch 2 (P6.17)
+
+- Druid and Monk level-table facts are locally sourced reference data, with the
+  Druid Wild Shape usage table corrected to the same source.
+- Do not turn these names and numbers into automatic transformation, movement,
+  or combat effects without a dedicated rules-engine boundary.
+- See `docs/implementation/P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_2.md`.

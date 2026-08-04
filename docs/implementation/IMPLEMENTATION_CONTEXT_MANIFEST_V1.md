@@ -416,3 +416,10 @@ Read `P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_1.md` before adding class
 tables. Fighter and Cleric are owner-source matched, table-only reference data;
 the feature names, spell slots, and resource references do not execute rules or
 alter Room authority.
+
+## DND Owner-Source Class Progression Batch 2 (P6.17)
+
+Read `P6_DND_OWNER_SOURCE_CLASS_PROGRESSION_BATCH_2.md` before extending Druid
+or Monk. These are owner-source matched, table-only reference facts. They do
+not execute Wild Shape, Focus Point, movement, spell preparation, or Room
+authority behavior.

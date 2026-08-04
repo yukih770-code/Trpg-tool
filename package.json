@@ -103,6 +103,7 @@
     "frontend:verify:dnd-personal-content-definitions": "tsx src/lib/dnd/dndPersonalContentDefinitionsSmoke.ts",
     "frontend:verify:dnd-class-advancement": "tsx src/lib/dnd2024/classAdvancementSummarySmoke.ts",
     "frontend:verify:dnd-class-progression-batch-1": "tsx src/lib/dnd2024/classProgressionBatch1Smoke.ts",
+    "frontend:verify:dnd-class-progression-batch-2": "tsx src/lib/dnd2024/classProgressionBatch2Smoke.ts",
     "frontend:verify:dnd-multiclass-foundation": "tsx src/lib/dnd2024/multiclassSmoke.ts",
     "runtime:verify:room-personal-content-refs": "tsx server/services/resolveOwnedPersonalContentReferencesSmoke.ts",
     "dnd:monster-import:dry-run": "tsx server/tools/importPrivateDndMonsters.ts --dry-run",
