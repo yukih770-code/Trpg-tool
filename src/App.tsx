@@ -35,6 +35,7 @@ import type { WorldServerRecord } from './lib/api/worldServerApiClient';
 import { useWorldServers } from './lib/worldServer/useWorldServers';
 import { useWorldServerDetail } from './lib/worldServer/useWorldServerDetail';
 import { PlatformOperationsWorkspace } from './components/platform/PlatformOperationsWorkspace';
+import { ServerContextBar } from './components/platform/ServerContextBar';
 import { ServerProfileBoard } from './components/platform/ServerProfileBoard';
 import { ServerCampaignWorkspace } from './components/platform/ServerCampaignWorkspace';
 import { LocalDevIdentitySwitcher } from './components/platform/LocalDevIdentitySwitcher';
@@ -291,6 +292,19 @@ export default function App() {
       || selectedViewerMembership?.roleKey === 'admin'
     ),
   );
+  const selectedServerMemberCount = selectedWorldServer?.source === 'api'
+    ? worldServerDetail.members.length
+    : selectedWorldServer?.memberCount;
+  const selectedServerSystems = selectedWorldServer?.source === 'api'
+    ? worldServerDetail.gameSystems
+      .filter((binding) => binding.bindingStatus !== 'archived')
+      .map((binding) => binding.gameSystemId)
+    : selectedWorldServer?.enabledSystems ?? [];
+  const selectedServerRoleLabel = selectedWorldServer
+    ? locale === 'en'
+      ? ({ owner: 'Owner', admin: 'Admin', member: 'Member' } as const)[selectedWorldServer.role]
+      : roleLabel[selectedWorldServer.role]
+    : '';
 
   const { t } = createTranslator(locale);
 
@@ -1050,13 +1064,15 @@ export default function App() {
               >
                 {locale === 'en' ? 'Back to launcher' : '返回登录器'}
               </button>
-              <button
-                type="button"
-                onClick={logoutToLauncher}
-                className="w-fit rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-bold text-[#58180d] hover:bg-[#fff8e6]"
-              >
-                {locale === 'en' ? 'Log out' : '退出登录'}
-              </button>
+              {privateAlphaAuthEnabled && (
+                <button
+                  type="button"
+                  onClick={logoutToLauncher}
+                  className="w-fit rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-bold text-[#58180d] hover:bg-[#fff8e6]"
+                >
+                  {locale === 'en' ? 'Log out' : '退出登录'}
+                </button>
+              )}
             </div>
           </header>
 
@@ -1065,7 +1081,7 @@ export default function App() {
             failureKind={classifyApiServiceFailure(worldServersState.error)}
           />
 
-          {worldServersState.loading && (
+          {worldServersState.loading && !demoFallbackEnabled && (
             <section className="rounded-2xl border border-[#2f2a22]/12 bg-white p-6 text-sm text-[#51483d]">
               {t('worldServer.loading')}
             </section>
@@ -1315,15 +1331,34 @@ export default function App() {
         </button>
       </header>
 
+      {selectedWorldServer && (
+        <ServerContextBar
+          locale={locale}
+          serverName={selectedWorldServer.name}
+          roleLabel={selectedServerRoleLabel}
+          memberCount={selectedServerMemberCount}
+          enabledSystems={selectedServerSystems}
+          onOpenProfile={() => setEntryStage('serverHome')}
+          onOpenCampaigns={() => {
+            setActivePlaceholder('campaigns');
+            setAppView('placeholder');
+          }}
+          onExitServer={exitCurrentServer}
+        />
+      )}
+
       {/* ── Main content (full width; no left sidebar) ── */}
       <div className={`min-w-0 ${focusMode ? '' : 'pb-16 md:pb-0'}`}>
         {appView === 'home' && (
           <>
-            {selectedWorldServer?.source === 'api' && selectedApiServer && (
+            {selectedWorldServer && (
               <PlatformOperationsWorkspace
                 locale={locale}
-                serverName={selectedApiServer.displayName}
-                memberCount={worldServerDetail.members.length}
+                serverName={selectedWorldServer.name}
+                roleLabel={selectedServerRoleLabel}
+                memberCount={selectedServerMemberCount ?? 0}
+                activeCampaignCount={selectedWorldServer.activeCampaigns}
+                enabledSystems={selectedServerSystems}
                 onOpenProfile={() => setEntryStage('serverHome')}
                 onOpenCampaigns={() => {
                   setActivePlaceholder('campaigns');

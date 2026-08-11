@@ -1,5 +1,5 @@
 // AI-LANDMARK: PLATFORM_HOME_LAUNCHPAD_IA_CLEANUP_V2
-import { BookOpen, ChevronRight, Library, Megaphone, Palette, Play, Sparkles } from 'lucide-react';
+import { BookOpen, ChevronRight, Library, Palette, Play, Sparkles } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { createTranslator, type Locale } from '../i18n';
 import { useAppStore } from '../store/appStore';
@@ -108,30 +108,11 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
 
   return (
     <div className="min-h-screen bg-[#f7f3ea] text-[#17130f]">
-      <div className="border-b border-[#d8bf76]/45 bg-[#fff8e6] text-[#51483d]">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-4 py-3 text-sm md:flex-row md:items-center md:justify-between md:px-8">
-          <div className="flex items-start gap-2">
-            <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-[#a66b12]" />
-            <span className="leading-5">
-              {locale === 'en'
-                ? 'Platform notice: public entry does not mean public data. Characters, campaigns, and drafts stay private by default.'
-                : '平台公告：公共入口不等于公开数据。角色、战役和草稿默认保持私有。'}
-            </span>
-          </div>
-          <button
-            type="button"
-            className="w-fit rounded-md border border-[#2f2a22]/15 bg-white/70 px-3 py-1.5 text-xs font-bold text-[#51483d] transition hover:bg-white"
-          >
-            {locale === 'en' ? 'View details →' : '查看详情 →'}
-          </button>
-        </div>
-      </div>
-
-      <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 py-8 md:px-8">
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 md:px-8">
 
         {/* ── Section 1: 继续上次 ────────────────────────────────────── */}
         <section aria-label={t('home.resume.sectionTitle')}>
-          <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-[#51483d]">
             {t('home.resume.sectionTitle')}
           </h2>
           <div className={`rounded-xl border p-5 ${activeSystemCard.resumeAccent}`}>
@@ -164,10 +145,10 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
 
         {/* ── Section 2: 最近使用 ────────────────────────────────────── */}
         <section aria-label={t('home.recent.sectionTitle')}>
-          <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-[#51483d]">
             {t('home.recent.sectionTitle')}
           </h2>
-          <div className="flex flex-col gap-2">
+          <div className="grid gap-2 md:grid-cols-3">
             {systemCards.map((card) => (
               <button
                 key={card.system}
@@ -188,7 +169,7 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
         </section>
 
         <section aria-label={locale === 'en' ? 'Quick access' : '常用入口'}>
-          <h2 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-[#51483d]">
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-[#51483d]">
             {locale === 'en' ? 'Quick access' : '常用入口'}
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
