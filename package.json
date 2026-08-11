@@ -26,6 +26,7 @@
     "db:verify:visibility": "tsx server/db/verifyPostgresVisibilitySlice.ts",
     "db:verify:visibility:write": "tsx server/db/verifyPostgresVisibilityWriteSmoke.ts",
     "runtime:verify:persistence-bridge": "tsx server/runtime/verifyRuntimeEventPersistenceBridge.ts",
+    "runtime:verify:live-room-log-recovery": "tsx server/services/liveRoomRuntimeLogPersistenceSmoke.ts",
     "db:verify:platform": "tsx server/db/verifyPostgresPlatformFoundationSlice.ts",
     "db:verify:platform:write": "tsx server/db/verifyPostgresPlatformFoundationWriteSmoke.ts",
     "db:verify:scene-state": "tsx server/db/verifyPostgresSceneStateSlice.ts",

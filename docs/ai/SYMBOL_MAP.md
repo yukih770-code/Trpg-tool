@@ -25,6 +25,18 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Client smoke: `src/lib/platform/roomSocketClientSmoke.ts`
 - Server projection/catch-up smoke: `server/transport/roomSocketReconnectSmoke.ts`
 
+## Cloud Live Room RuntimeLog Recovery
+
+- `AI-LANDMARK: CLOUD_LIVE_ROOM_RUNTIME_LOG_RECOVERY_V1`: `server/services/liveRoomRuntimeLogPersistence.ts`
+- `prepareLiveRoomRuntimeSession`: creates or validates the dedicated campaign-linked live-room Runtime Session — `server/services/liveRoomRuntimeLogPersistence.ts`
+- `persistLiveRoomRuntimeLogEvent`: versioned Room RuntimeLog envelope, stable room/event idempotency, and Runtime Event bridge mapping — `server/services/liveRoomRuntimeLogPersistence.ts`
+- `createLiveRoomRuntimeLogPersistenceCoordinator`: per-room ordered append queue and request-path flush boundary — `server/services/liveRoomRuntimeLogPersistence.ts`
+- `restoreLiveRoomRuntimeLogs`: paginated startup rebuild after lobby recovery; unrelated/malformed records ignored — `server/services/liveRoomRuntimeLogPersistence.ts`
+- `RuntimeLogRegistry.restoreRoom`: validated restore that refuses to overwrite a non-empty live stream — `server/runtime-log-registry.ts`
+- Room creation, append observer, HTTP flushes, and startup ordering — `server/room-server.ts`
+- Focused fake-repository smoke: `server/services/liveRoomRuntimeLogPersistenceSmoke.ts`
+- Room Map remains a separate memory-only stream; durable outbox/retry and cross-process pub/sub are not implemented in this slice.
+
 ## Platform Home Launchpad + System Library IA
 
 - `Home` component: `src/pages/Home.tsx`

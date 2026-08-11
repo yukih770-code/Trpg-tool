@@ -14,6 +14,7 @@
  */
 
 import { existsSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { createServer, type IncomingMessage } from 'node:http';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -108,6 +109,7 @@ import { resolveOwnedRoomActorBinding } from './services/resolveOwnedRoomActorBi
 import { resolveOwnedPersonalContentReferences } from './services/resolveOwnedPersonalContentReferences.js';
 import { createPostgresPlatformFoundationRepository } from './adapters/postgresPlatformFoundationRepository.js';
 import { createPostgresWorldServerRepository } from './adapters/postgresWorldServerRepository.js';
+import { createPostgresRuntimeEventRepository } from './adapters/postgresRuntimeEventRepository.js';
 import { linkApprovedRoomBindingToCampaignActor } from './services/linkApprovedRoomBindingToCampaignActor.js';
 import { projectRoomRuntimeActorProjections } from './services/projectRoomRuntimeActorProjections.js';
 import { authorizeCloudRoomCreate } from './services/authorizeCloudRoomCreate.js';
@@ -115,6 +117,11 @@ import {
   createLiveRoomLifecyclePersistenceCoordinator,
   restoreLiveRoomLifecycles,
 } from './services/liveRoomLifecyclePersistence.js';
+import {
+  createLiveRoomRuntimeLogPersistenceCoordinator,
+  prepareLiveRoomRuntimeSession,
+  restoreLiveRoomRuntimeLogs,
+} from './services/liveRoomRuntimeLogPersistence.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -241,10 +248,6 @@ registerActorApiRoutes(app, createActorApiHandlers({
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));
 
-// Separate, memory-only RuntimeLog store — NOT part of RoomSnapshot (M21).
-const runtimeLogRegistry = createInMemoryRuntimeLogRegistry();
-// Separate, memory-only map event stream. Not RoomSnapshot and not RuntimeLog.
-const roomMapRegistry = createInMemoryRoomMapRegistry();
 // Memory-only ActorAdmission store for Character Clearance (M24.2b).
 const actorAdmissionRegistry = createInMemoryActorAdmissionRegistry();
 // The Vault repository remains independent from rooms. It is consulted only to
@@ -252,10 +255,25 @@ const actorAdmissionRegistry = createInMemoryActorAdmissionRegistry();
 const actorVaultRepository = createPostgresActorRepository();
 const platformFoundationRepository = createPostgresPlatformFoundationRepository();
 const worldServerRepository = createPostgresWorldServerRepository();
+const runtimeEventRepository = createPostgresRuntimeEventRepository();
 const liveRoomLifecyclePersistence = createLiveRoomLifecyclePersistenceCoordinator(platformFoundationRepository);
 const registry = createInMemoryRoomRegistry({
   onRoomUpdated: (snapshot) => liveRoomLifecyclePersistence.queue(snapshot),
 });
+const liveRoomRuntimeLogPersistence = createLiveRoomRuntimeLogPersistenceCoordinator(runtimeEventRepository);
+// RuntimeLog remains separate from RoomSnapshot and authoritative in memory for
+// live play. Campaign-linked cloud rooms additionally mirror appends to their
+// dedicated Runtime Session so the stream can be rebuilt after a restart.
+const runtimeLogRegistry = createInMemoryRuntimeLogRegistry({
+  onEventAppended: (event) => {
+    const room = registry.get(event.roomId);
+    if (room?.campaignRef?.worldServerId && room.campaignRef.campaignId && room.identity.sessionId) {
+      void liveRoomRuntimeLogPersistence.queue(room, event);
+    }
+  },
+});
+// Separate, memory-only map event stream. Not RoomSnapshot and not RuntimeLog.
+const roomMapRegistry = createInMemoryRoomMapRegistry();
 const PORT = serverRuntimeConfig.httpPort;
 
 // HTTP server + WebSocket transport scaffold (room snapshot broadcast only).
@@ -482,8 +500,19 @@ app.post('/rooms/create', async (req, res) => {
       return;
     }
   }
-  const result = createRoom({ ...body, hostUserId: viewer.viewerUserId });
+  const result = createRoom({
+    ...body,
+    hostUserId: viewer.viewerUserId,
+    // Cloud live rooms own a server-issued Runtime Session. Local/LAN rooms
+    // retain the portable caller-supplied session boundary and stay memory-only.
+    sessionId: worldServerId && campaignId ? `runtime_session_${randomUUID()}` : body.sessionId,
+  });
   if (worldServerId && campaignId) {
+    const runtimePrepared = await prepareLiveRoomRuntimeSession(runtimeEventRepository, result.room);
+    if (runtimePrepared.decision !== 'ready') {
+      res.status(503).json({ error: 'roomRuntimeUnavailable', message: 'The live room RuntimeLog could not be prepared for recovery.' });
+      return;
+    }
     const persisted = await liveRoomLifecyclePersistence.persist(result.room);
     if (persisted.decision !== 'persisted') {
       res.status(503).json({ error: 'roomLifecycleUnavailable', message: 'The live room could not be prepared for recovery.' });
@@ -824,7 +853,7 @@ app.get('/rooms/:roomId/runtime-log', (req, res) => {
   });
 });
 
-app.post('/rooms/:roomId/runtime-log/events', (req, res) => {
+app.post('/rooms/:roomId/runtime-log/events', async (req, res) => {
   const body = (req.body ?? {}) as AppendRoomRuntimeLogEventInput;
   if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.authorMemberId, 'runtime.event.append')) return;
   const result = appendRuntimeLogEvent(registry, runtimeLogRegistry, {
@@ -844,6 +873,7 @@ app.post('/rooms/:roomId/runtime-log/events', (req, res) => {
   // Socket delivery applies a per-member projection. Host-only events reach only
   // the host; public combat data is still redacted for non-host viewers.
   if (result.event) {
+    await liveRoomRuntimeLogPersistence.flush(result.event.roomId);
     roomSocketServer.broadcastRuntimeLogAppended(result.event.roomId, [result.event]);
   }
   const room = registry.get(req.params.roomId);
@@ -940,7 +970,7 @@ app.post('/rooms/:roomId/map-events', (req, res) => {
 
 // Host-managed collaboration grants for the Room Map. Memory-only v0: they
 // travel in RoomSnapshot for live UI updates but do not become RuntimeLog data.
-app.post('/rooms/:roomId/map-permissions/:memberId', (req, res) => {
+app.post('/rooms/:roomId/map-permissions/:memberId', async (req, res) => {
   const body = (req.body ?? {}) as { authorizedByMemberId?: unknown; canPinRanges?: unknown; canManageTokens?: unknown };
   if (
     typeof body.authorizedByMemberId !== 'string'
@@ -965,7 +995,7 @@ app.post('/rooms/:roomId/map-permissions/:memberId', (req, res) => {
   // Keep an append-only, host-only audit record while grants remain a
   // memory-only Room Server capability. It is intentionally not a public
   // RuntimeLog event and is not a durable authorization history yet.
-  appendRuntimeLogEvent(registry, runtimeLogRegistry, {
+  const auditLogResult = appendRuntimeLogEvent(registry, runtimeLogRegistry, {
     roomId: req.params.roomId,
     authorMemberId: body.authorizedByMemberId,
     kind: 'host.note',
@@ -981,6 +1011,7 @@ app.post('/rooms/:roomId/map-permissions/:memberId', (req, res) => {
       scope: 'roomSession',
     },
   });
+  if (auditLogResult.event) await liveRoomRuntimeLogPersistence.flush(auditLogResult.event.roomId);
   roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'mapPermissionChanged');
   res.json({ room: result.room });
 });
@@ -988,7 +1019,7 @@ app.post('/rooms/:roomId/map-permissions/:memberId', (req, res) => {
 // ── Shared Dice v0 (M25) ────────────────────────────────────────────────────
 // Server-authoritative manual dice: server parses + rolls, appends a public
 // dice.roll RuntimeLog event, and broadcasts it via the existing runtimeLogAppended.
-app.post('/rooms/:roomId/runtime/dice-roll', (req, res) => {
+app.post('/rooms/:roomId/runtime/dice-roll', async (req, res) => {
   const body = (req.body ?? {}) as { memberId?: unknown; expression?: unknown; label?: unknown };
   if (typeof body.memberId !== 'string' || body.memberId.trim() === '') {
     res.status(400).json({ ok: false, error: 'invalidRequest', message: 'memberId is required.' });
@@ -1010,6 +1041,7 @@ app.post('/rooms/:roomId/runtime/dice-roll', (req, res) => {
     res.status(status).json({ ok: false, error: result.decision, message: result.message });
     return;
   }
+  await liveRoomRuntimeLogPersistence.flush(result.event.roomId);
   // Only public events are broadcast (dice.roll is public in v0).
   if (result.event.visibility === 'public') {
     roomSocketServer.broadcastRuntimeLogAppended(result.event.roomId, [result.event]);
@@ -1063,10 +1095,22 @@ const onServerListening = () => {
   }
   // eslint-disable-next-line no-console
   console.log(`[room-server] database configured: ${databaseRuntimeConfig.configured}; dev auth enabled: ${serverRuntimeConfig.devUserApiEnabled === true}`);
-  void restoreLiveRoomLifecycles(platformFoundationRepository, registry).then((result) => {
+  void restoreLiveRoomLifecycles(platformFoundationRepository, registry).then(async (result) => {
     if (result.decision === 'restored' && result.restoredCount > 0) {
       // eslint-disable-next-line no-console
       console.log(`[room-server] restored ${result.restoredCount} live room lobby/lobbies.`);
+    }
+    const runtimeLogResult = await restoreLiveRoomRuntimeLogs(runtimeEventRepository, registry, runtimeLogRegistry);
+    if (runtimeLogResult.restoredEventCount > 0) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[room-server] restored ${runtimeLogResult.restoredEventCount} RuntimeLog event(s) `
+        + `across ${runtimeLogResult.restoredRoomCount} live room(s).`,
+      );
+    }
+    if (runtimeLogResult.unavailableRoomCount > 0) {
+      // eslint-disable-next-line no-console
+      console.warn(`[room-server] RuntimeLog recovery unavailable for ${runtimeLogResult.unavailableRoomCount} live room(s).`);
     }
   });
 };

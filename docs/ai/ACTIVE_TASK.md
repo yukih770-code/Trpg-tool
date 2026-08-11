@@ -6,22 +6,19 @@
 
 ## Task
 
-- ID: Room Socket Reconnect + Stream Catch-up v1
-- Name: ROOM_SOCKET_RECONNECT_STREAM_CATCHUP_V1
-- Goal: Recover a room WebSocket after a transient disconnect, restore desired
-  room subscriptions, and replay missed RuntimeLog / Room Map events from each
-  stream's last acknowledged sequence without weakening member projection.
-- Phase: P0 multiplayer reliability
+- ID: Cloud Live Room RuntimeLog Recovery v1
+- Name: CLOUD_LIVE_ROOM_RUNTIME_LOG_RECOVERY_V1
+- Goal: Give each campaign-linked cloud live room a dedicated durable Runtime
+  Session, mirror its append-only Room RuntimeLog into PostgreSQL with stable
+  idempotency, and rebuild the memory RuntimeLog after lobby recovery.
+- Phase: P0 multiplayer durability
 - Status: Done
 
 ## Allowed Files
 
-- `src/lib/platform/roomTransportTypes.ts`
-- `src/lib/platform/roomSocketClient.ts`
-- `src/lib/platform/roomSocketClientSmoke.ts`
-- `src/components/platform/RoomRuntimeEntryBridge.tsx`
-- `server/transport/roomSocketServer.ts`
-- `server/transport/roomSocketReconnectSmoke.ts`
+- `server/runtime-log-registry.ts`
+- `server/services/liveRoomRuntimeLogPersistence.ts`
+- `server/services/liveRoomRuntimeLogPersistenceSmoke.ts`
 - `server/room-server.ts`
 - `package.json`
 - `PROJECT_STATUS.md`
@@ -32,28 +29,35 @@
 
 ## Forbidden Changes
 
-- Room membership or Runtime permission semantics
-- RuntimeLog / Room Map event payloads or persistence adapters
-- Transient map-preview replay
-- HTTP APIs, stores, schemas, migrations, rule data, system workspaces
-- UI information architecture, router, dependencies
+- Room Map persistence or map visibility semantics
+- WebSocket protocol, reconnect cursors, Room membership, Runtime permissions
+- RuntimeLog event payload/visibility semantics visible to clients
+- PostgreSQL schema or migrations
+- Campaign API authorization, frontend stores/UI, rules data, system workspaces
+- Cross-process pub/sub or multi-instance authority
 
 ## Completion Criteria
 
-- Unexpected socket close schedules bounded exponential-backoff reconnect.
-- Explicit `close()` cancels reconnect and does not reopen the socket.
-- Desired room subscriptions survive reconnect automatically.
-- Reconnect subscription carries RuntimeLog and Room Map cursors.
-- Server replays only events after those cursors and applies existing per-member
-  projection before sending them.
-- First subscription establishes a baseline without replaying full history.
-- Client/server smoke checks, TypeScript checks, builds, and diff check pass.
+- Campaign-linked cloud live-room creation prepares a dedicated durable Runtime
+  Session before the lobby is accepted.
+- Every Room RuntimeLog append is mirrored in room order with a stable
+  idempotency key while the memory registry remains live authority.
+- Request paths that append a RuntimeLog event flush the queued durable write
+  before responding/broadcasting.
+- Startup restores valid persisted Room RuntimeLog envelopes only after the
+  corresponding live lobby is recovered.
+- Restore never overwrites a non-empty live memory stream.
+- Local/LAN rooms without durable campaign context remain safely memory-only.
+- Focused smoke, existing RuntimeLog/permission/visibility checks, TypeScript,
+  server/frontend builds, and diff check pass.
 
 ## Verification
 
 ```powershell
-npm run frontend:verify:room-socket-reconnect
-npm run runtime:verify:room-socket-reconnect
+npm run runtime:verify:live-room-log-recovery
+npm run runtime:verify:persistence-bridge
+npm run runtime:verify:room-permissions
+npm run frontend:verify:runtime-visibility-projection
 npx tsc --noEmit
 npm run server:build
 npm run build
@@ -62,16 +66,13 @@ git diff --check
 
 ## Result
 
-- The browser room client reconnects by bounded exponential backoff after an
-  unexpected close, restores desired subscriptions automatically, and cancels
-  all retry work after explicit `close()`.
-- RuntimeLog and Room Map cursors advance from both subscription baselines and
-  live deltas, then travel with the reconnect subscription.
-- The server validates cursors, reads only each missing suffix, applies the
-  existing per-member projection, and acknowledges each stream's true latest
-  sequence even when records are withheld by projection.
-- First subscription remains HTTP-history-owned; the Runtime desktop performs a
-  post-subscription safety refresh to close the initial history/baseline race.
-- Transient map previews remain live-only and are never replayed.
-- Both new socket smokes, room permission, visibility projection, map bridge,
-  frontend TypeScript, server build, production build, and diff check pass.
+- Campaign-linked cloud rooms receive a dedicated server-issued Runtime Session
+  before their recoverable lobby is accepted.
+- Room RuntimeLog appends remain authoritative in memory and are mirrored in
+  room order with stable room/event idempotency; HTTP append paths wait for the
+  queued mirror before responding or broadcasting.
+- Startup rebuilds only versioned, validated Room RuntimeLog envelopes after
+  lobby recovery, paginates long streams, preserves original room sequence, and
+  refuses to overwrite a non-empty live stream.
+- Local/LAN rooms remain memory-only. Room Map durability, durable retry/outbox,
+  cross-process pub/sub, and multi-instance room authority remain deferred.
