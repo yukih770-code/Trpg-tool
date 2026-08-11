@@ -11,9 +11,16 @@ type Props = {
   role: RuntimeShellMode;
   state: CombatRuntimeTableState;
   onLocateCombatant: (combatantId: string) => void;
+  isMyTurn?: boolean;
+  turnActionKind?: 'actions' | 'dice';
+  onOpenTurnAction?: () => void;
   onMoveTurn?: (direction: 'next' | 'previous') => Promise<void>;
   onEndCombat?: () => Promise<void>;
 };
+
+/** AI-LANDMARK: RUNTIME_PLAYER_TURN_CALLOUT_V1
+ * Compact presentation only: ownership comes from projected Token linkage and
+ * the CTA opens an existing role-safe dock panel without performing an action. */
 
 function hpLabel(combatant: Combatant, locale: 'zh' | 'en'): string | undefined {
   if (combatant.hpDisplay) return runtimeHpDisplayLabel(combatant.hpDisplay, locale);
@@ -26,7 +33,7 @@ function acLabel(combatant: Combatant, locale: 'zh' | 'en'): string | undefined 
   return combatant.armorClass === undefined ? undefined : `AC ${combatant.armorClass}`;
 }
 
-export function RuntimeMobileCombatHud({ locale, role, state, onLocateCombatant, onMoveTurn, onEndCombat }: Props) {
+export function RuntimeMobileCombatHud({ locale, role, state, onLocateCombatant, isMyTurn = false, turnActionKind = 'dice', onOpenTurnAction, onMoveTurn, onEndCombat }: Props) {
   const model = getCombatModeHudModel(state);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +63,7 @@ export function RuntimeMobileCombatHud({ locale, role, state, onLocateCombatant,
     <section aria-label={zh ? '当前战斗状态' : 'Current combat status'} className="pointer-events-auto overflow-hidden rounded-xl border border-amber-300/35 bg-[#17130f]/95 text-[#fff8e6] shadow-xl backdrop-blur-md">
       <div className="flex min-h-16 items-stretch">
         <div className="flex w-14 shrink-0 flex-col items-center justify-center bg-[#f5c518] px-1 text-[#17130f]">
-          <span className="text-[9px] font-black uppercase tracking-wide">{paused ? (zh ? '暂停' : 'Paused') : (zh ? '轮次' : 'Round')}</span>
+          <span className="text-[9px] font-black uppercase tracking-wide">{paused ? (zh ? '暂停' : 'Paused') : isMyTurn ? (zh ? '你的回合' : 'Your turn') : (zh ? '轮次' : 'Round')}</span>
           <span className="text-xl font-black leading-none">{model.roundNumber}</span>
         </div>
         <button type="button" onClick={() => onLocateCombatant(active.id)} className="min-w-0 flex-1 px-2.5 py-2 text-left active:bg-white/10">
@@ -81,6 +88,15 @@ export function RuntimeMobileCombatHud({ locale, role, state, onLocateCombatant,
           <button type="button" disabled={pending || paused} onClick={() => void run(() => onMoveTurn('previous'))} className="min-h-9 rounded-lg border border-white/15 px-2 text-[10px] font-bold disabled:opacity-40">← {zh ? '上一位' : 'Previous'}</button>
           <button type="button" disabled={pending || paused} onClick={() => void run(() => onMoveTurn('next'))} className="min-h-9 rounded-lg bg-[#f5c518] px-2 text-[10px] font-black text-[#17130f] disabled:opacity-40">{zh ? '下一位' : 'Next'} →</button>
           <button type="button" disabled={pending} onClick={() => void run(onEndCombat)} className="min-h-9 rounded-lg border border-red-300/35 px-2 text-[10px] font-bold text-red-100 disabled:opacity-40">{zh ? '结束' : 'End'}</button>
+        </div>
+      )}
+      {role === 'player' && isMyTurn && (
+        <div className="flex items-center justify-between gap-2 border-t border-amber-200/20 bg-[#f5c518]/10 px-2.5 py-2">
+          <div className="min-w-0">
+            <div className="text-[11px] font-black text-[#f5c518]">{zh ? '轮到你行动' : 'It is your turn'}</div>
+            <div className="truncate text-[9px] text-[#fff8e6]/60">{paused ? (zh ? '战斗已暂停' : 'Combat is paused') : turnActionKind === 'actions' ? (zh ? '选择目标并使用角色动作' : 'Choose a target and use an action') : (zh ? '打开投骰面板' : 'Open the dice panel')}</div>
+          </div>
+          {onOpenTurnAction && <button type="button" disabled={paused} onClick={onOpenTurnAction} className="min-h-9 shrink-0 rounded-lg bg-[#f5c518] px-3 text-[10px] font-black text-[#17130f] disabled:opacity-40">{turnActionKind === 'actions' ? (zh ? '打开动作' : 'Open actions') : (zh ? '打开投骰' : 'Open dice')}</button>}
         </div>
       )}
       {error && <div role="alert" className="border-t border-red-300/20 bg-red-950/60 px-2.5 py-1.5 text-[9px] text-red-100">{error}</div>}

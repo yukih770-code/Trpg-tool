@@ -1,6 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
 export const RUNTIME_AUXILIARY_PANEL_OPEN_EVENT = 'runtime:auxiliary-panel-open';
+export const RUNTIME_ACTION_DOCK_OPEN_EVENT = 'runtime:action-dock-open';
+
+export function requestRuntimeDockAction(actionId: string): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(RUNTIME_ACTION_DOCK_OPEN_EVENT, { detail: { actionId } }));
+}
 
 /**
  * RuntimeActionDock (M25.1a) — unified bottom Action Dock (pure UI).
@@ -57,6 +63,19 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
     window.addEventListener(RUNTIME_AUXILIARY_PANEL_OPEN_EVENT, closeForAuxiliaryPanel);
     return () => window.removeEventListener(RUNTIME_AUXILIARY_PANEL_OPEN_EVENT, closeForAuxiliaryPanel);
   }, []);
+
+  useEffect(() => {
+    const openRequestedAction = (event: Event) => {
+      const actionId = (event as CustomEvent<{ actionId?: unknown }>).detail?.actionId;
+      if (typeof actionId !== 'string') return;
+      const requested = actions.find((action) => action.id === actionId);
+      if (!requested || requested.disabled || requested.panel === undefined) return;
+      setMoreOpen(false);
+      setActiveId(requested.id);
+    };
+    window.addEventListener(RUNTIME_ACTION_DOCK_OPEN_EVENT, openRequestedAction);
+    return () => window.removeEventListener(RUNTIME_ACTION_DOCK_OPEN_EVENT, openRequestedAction);
+  }, [actions]);
 
   const toggle = (id: string) => {
     setMoreOpen(false);

@@ -22,7 +22,7 @@ import { isTokenLinkedToApprovedRoomMember } from '../../lib/platform/roomTokenO
 import { readStoredLocale } from '../../i18n';
 import { RuntimeFullscreenShell, type RuntimeShellMode } from './RuntimeFullscreenShell';
 import { SharedDiceDock } from './SharedDiceDock';
-import { RuntimeActionDock, buildRuntimeDockActions } from './RuntimeActionDock';
+import { RuntimeActionDock, buildRuntimeDockActions, requestRuntimeDockAction } from './RuntimeActionDock';
 import { RoomRuntimeLogPreviewPanel } from './RoomRuntimeLogPreviewPanel';
 import { RuntimePublicInfoPanel, type RuntimePublicInfoItem } from './RuntimePublicInfoPanel';
 import { RuntimeManualStateLogPanel, type RuntimeStateLogItem } from './RuntimeManualStateLogPanel';
@@ -45,6 +45,7 @@ import type { MapTokenPresenceCandidate } from '../../lib/map/actorPresence';
 import type { MapInteractionPreview, MapRuntimeEventDraft, MapToken } from '../../lib/map/mapRuntimeTypes';
 import { replayMapRuntimeEvents } from '../../lib/map/mapRuntimeReplay';
 import { advanceTurn, createCombatRuntimeTableState, endCombat, type CombatRuntimeEventDraft, type CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
+import { findCombatantForActorBinding } from '../../lib/combat/roomRuntimeCombatLink';
 
 /**
  * RoomRuntimeEntryBridge (v0 / UI1a) — multiplayer Runtime Alpha surface.
@@ -701,6 +702,10 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   // The combat table projects onto the append-only room map; it does not own a
   // second token store or rewrite map presence.
   const roomMapBoard = useMemo(() => replayMapRuntimeEvents(roomMapEvents, roomMapId), [roomMapEvents, roomMapId]);
+  const myRuntimeCombatant = useMemo(
+    () => findCombatantForActorBinding(roomMapBoard.tokens, roomCombatState.combatants, context.approvedActorBindingId),
+    [context.approvedActorBindingId, roomCombatState.combatants, roomMapBoard.tokens],
+  );
   const dndActionTargets = useMemo(
     () => roomCombatState.combatants.map((combatant) => ({ id: combatant.id, label: combatant.displayName })),
     [roomCombatState.combatants],
@@ -961,6 +966,9 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
           locale={readStoredLocale()}
           role={shellMode}
           state={roomCombatState}
+          isMyTurn={shellMode === 'player' && !!myRuntimeCombatant && roomCombatState.turn.activeCombatantId === myRuntimeCombatant.id}
+          turnActionKind={context.systemId === 'dnd5e-2024' ? 'actions' : 'dice'}
+          onOpenTurnAction={shellMode === 'player' ? () => requestRuntimeDockAction(context.systemId === 'dnd5e-2024' ? 'dndActions' : 'dice') : undefined}
           onLocateCombatant={(combatantId) => { setSelectedCombatantId(combatantId); setCombatantToLocate(combatantId); }}
           onMoveTurn={shellMode === 'host' ? moveCombatTurnFromHud : undefined}
           onEndCombat={shellMode === 'host' ? endCombatFromHud : undefined}

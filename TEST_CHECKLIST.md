@@ -1305,6 +1305,21 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8s. Runtime Player Turn Callout v1
+
+- [ ] Own combatant resolution requires the viewer's approved actor binding and its projected Token
+- [ ] Another or missing actor binding cannot produce an own-turn match
+- [ ] The server projection retains only the owner's opaque `actorBindingId`; other viewers do not receive it
+- [ ] Mobile HUD marks the admitted player's combatant when it is the active turn
+- [ ] DND own-turn CTA opens the existing action palette; other systems open the existing dice panel
+- [ ] The CTA itself performs no roll, damage, resource consumption, or RuntimeLog append
+- [ ] Paused combat disables the own-turn action CTA
+- [ ] Players receive no previous/next/end-combat control; host and spectator behavior is unchanged
+- [ ] `npm run frontend:verify:runtime-player-turn-callout` passes
+- [ ] Existing Runtime visibility, action-dock, combat HUD, TypeScript, and frontend build checks pass
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

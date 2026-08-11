@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { Locale } from '../../i18n';
+import { findCombatantLinkedToMapToken } from '../../lib/combat/roomRuntimeCombatLink';
 import { hasCombatRuntimeEvents, type CombatRuntimeReplayEvent } from '../../lib/combat/combatRuntimeReplay';
 import { sortCombatants, type CombatRuntimeEventDraft, type CombatRuntimeTableState, type Combatant, type CombatantKind } from '../../lib/combat/combatRuntimeTypes';
 import { useCombatRuntimeTable } from '../../lib/combat/useCombatRuntimeTable';
@@ -37,15 +38,6 @@ function tokenKind(token: MapToken): CombatantKind {
   if (token.kind === 'playerCharacter') return 'character';
   if (token.kind === 'npc' || token.kind === 'monster') return 'npc';
   return 'other';
-}
-
-function linkedCombatant(token: MapToken, combatants: readonly Combatant[]): Combatant | undefined {
-  return combatants.find((combatant) =>
-    combatant.mapTokenId === token.id
-    || (!!token.combatantId && combatant.id === token.combatantId)
-    || (!!token.sourceCombatantId && combatant.id === token.sourceCombatantId)
-    || (!!token.sourceActorInstanceId && combatant.sourceActorInstanceId === token.sourceActorInstanceId),
-  );
 }
 
 function statusLabel(status: CombatRuntimeTableState['turn']['status'], zh: boolean): string {
@@ -133,7 +125,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
   const active = table.state.turn.activeCombatantId ? table.state.combatants.find((combatant) => combatant.id === table.state.turn.activeCombatantId) : undefined;
   const selected = table.state.combatants.find((combatant) => combatant.id === selectedCombatantId) ?? active;
   const myToken = myActorBindingId ? placedTokens.find((token) => token.actorBindingId === myActorBindingId) : undefined;
-  const myCombatant = myToken ? linkedCombatant(myToken, table.state.combatants) : undefined;
+  const myCombatant = myToken ? findCombatantLinkedToMapToken(myToken, table.state.combatants) : undefined;
   const recentDiceRolls = useMemo(
     () => roomEvents
       .map((event) => ({ event, roll: diceRollFromEvent(event) }))
@@ -150,7 +142,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
   };
 
   const addToken = (token: MapToken) => {
-    if (!canManage || linkedCombatant(token, table.state.combatants)) return;
+    if (!canManage || findCombatantLinkedToMapToken(token, table.state.combatants)) return;
     const result = table.addCombatant({
       displayName: token.displayName ?? token.name,
       kind: tokenKind(token),
@@ -182,7 +174,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
         : table.temporaryHp(combatant.id, adjustment, false, { sourceName }));
     setHpAdjustment('');
   };
-  const linkedToken = active ? placedTokens.find((token) => linkedCombatant(token, table.state.combatants)?.id === active.id) : undefined;
+  const linkedToken = active ? placedTokens.find((token) => findCombatantLinkedToMapToken(token, table.state.combatants)?.id === active.id) : undefined;
 
   return (
     <section className="rounded border border-slate-400/30 bg-white/60 p-3">
@@ -233,7 +225,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
         <>
           <div className="mt-3 border-t border-slate-300/40 pt-3">
             <div className="flex items-center justify-between gap-2"><span className="text-[11px] font-bold text-slate-700">{zh ? '已放置单位' : 'Placed tokens'}</span><span className="text-[10px] text-slate-500">{zh ? '从地图加入战斗' : 'Add from map'}</span></div>
-            {placedTokens.length === 0 ? <p className="mt-1 text-[11px] text-slate-500">{zh ? '地图上还没有可加入的 Token。' : 'No placed tokens yet.'}</p> : <div className="mt-2 flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">{placedTokens.map((token) => { const joined = linkedCombatant(token, table.state.combatants); return <button key={token.id} type="button" disabled={!!joined} onClick={() => addToken(token)} className="rounded border border-slate-400/35 bg-white px-2 py-1 text-[10px] font-bold text-slate-700 disabled:opacity-45">{joined ? `${token.displayName ?? token.name} · ${zh ? '已加入' : 'Added'}` : `＋ ${token.displayName ?? token.name}`}</button>; })}</div>}
+            {placedTokens.length === 0 ? <p className="mt-1 text-[11px] text-slate-500">{zh ? '地图上还没有可加入的 Token。' : 'No placed tokens yet.'}</p> : <div className="mt-2 flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">{placedTokens.map((token) => { const joined = findCombatantLinkedToMapToken(token, table.state.combatants); return <button key={token.id} type="button" disabled={!!joined} onClick={() => addToken(token)} className="rounded border border-slate-400/35 bg-white px-2 py-1 text-[10px] font-bold text-slate-700 disabled:opacity-45">{joined ? `${token.displayName ?? token.name} · ${zh ? '已加入' : 'Added'}` : `＋ ${token.displayName ?? token.name}`}</button>; })}</div>}
           </div>
           <div className="mt-3 flex flex-wrap gap-1.5">
             <button type="button" onClick={() => persist(table.start())} disabled={ordered.length === 0 || table.state.turn.status === 'active'} className="rounded bg-slate-900 px-2.5 py-1.5 text-[10px] font-bold text-white disabled:opacity-40">{zh ? '开始战斗' : 'Start combat'}</button>

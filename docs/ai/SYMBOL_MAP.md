@@ -932,6 +932,14 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Mobile More owns only presentation state; all existing action panels stay mounted in `RuntimeActionDock`.
 - Focused smoke: `src/lib/platform/runtimeActionDockSmoke.ts`; command `npm run frontend:verify:runtime-action-dock`.
 
+## Runtime Player Turn Callout
+
+- `AI-LANDMARK: RUNTIME_PLAYER_TURN_CALLOUT_V1`: `src/components/platform/RuntimeMobileCombatHud.tsx`
+- `findCombatantLinkedToMapToken()` / `findCombatantForActorBinding()`: `src/lib/combat/roomRuntimeCombatLink.ts`; viewer-projected linkage only, no authority.
+- `requestRuntimeDockAction()`: `src/components/platform/RuntimeActionDock.tsx`; presentation event opens an existing enabled panel and performs no gameplay action.
+- Room wiring: `RoomRuntimeEntryBridge` compares the linked combatant with `activeCombatantId`; DND opens `dndActions`, other systems open `dice`.
+- Focused smoke: `src/lib/combat/runtimePlayerTurnCalloutSmoke.ts`; command `npm run frontend:verify:runtime-player-turn-callout`.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

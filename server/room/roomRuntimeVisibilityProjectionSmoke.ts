@@ -48,12 +48,13 @@ const playerMap = projectRoomMapEventsForViewer(room, joinedPlayer.memberId, map
 const allyMap = projectRoomMapEventsForViewer(room, joinedAlly.memberId, mapEvents);
 const spectatorMap = projectRoomMapEventsForViewer(room, joinedSpectator.memberId, mapEvents);
 const hostMap = projectRoomMapEventsForViewer(room, host.memberId, mapEvents);
-const playerHero = playerMap.find((event) => event.eventKind === 'map.token_added' && (event.payload.token as { id?: string } | undefined)?.id === 'hero')?.payload.token as { hpDisplay?: { kind?: string; current?: number }; acDisplay?: { kind?: string } } | undefined;
+const playerHero = playerMap.find((event) => event.eventKind === 'map.token_added' && (event.payload.token as { id?: string } | undefined)?.id === 'hero')?.payload.token as { hpDisplay?: { kind?: string; current?: number }; acDisplay?: { kind?: string }; actorBindingId?: string } | undefined;
 const playerGoblin = playerMap.find((event) => event.eventKind === 'map.token_added' && (event.payload.token as { id?: string } | undefined)?.id === 'goblin')?.payload.token as { hpSummary?: unknown; hpDisplay?: { kind?: string }; notes?: unknown; conditionSummary?: string[]; actorBindingId?: unknown } | undefined;
 const allyHero = allyMap.find((event) => event.eventKind === 'map.token_added' && (event.payload.token as { id?: string } | undefined)?.id === 'hero')?.payload.token as { hpDisplay?: { kind?: string; current?: number }; conditionSummary?: string[] } | undefined;
 const spectatorHero = spectatorMap.find((event) => event.eventKind === 'map.token_added' && (event.payload.token as { id?: string } | undefined)?.id === 'hero')?.payload.token as { hpDisplay?: { kind?: string; current?: number }; conditionSummary?: string[] } | undefined;
 const publicOgre = playerMap.find((event) => event.eventKind === 'map.token_added' && (event.payload.token as { id?: string } | undefined)?.id === 'public-ogre')?.payload.token as { hpDisplay?: { kind?: string; current?: number }; conditionSummary?: string[]; notes?: unknown } | undefined;
 expect(playerHero?.hpDisplay?.kind === 'exact' && playerHero.hpDisplay.current === 14, 'owner receives exact own HP');
+expect(playerHero?.actorBindingId === 'binding-hero', 'owner retains the opaque binding needed to recognize their own Token');
 expect(allyHero?.hpDisplay?.kind === 'exact' && allyHero.hpDisplay.current === 14 && allyHero.conditionSummary?.includes('Blessed'), 'other players receive default shared PC combat information');
 expect(spectatorHero?.hpDisplay?.kind === 'exact' && spectatorHero.hpDisplay.current === 14 && spectatorHero.conditionSummary?.includes('Blessed'), 'spectator receives basic information for a visible player Token');
 expect(playerGoblin?.hpDisplay?.kind === 'exact' && playerGoblin.hpSummary === undefined && playerGoblin.notes === undefined, 'visible enemy shares basic HP but not raw summary or notes');
