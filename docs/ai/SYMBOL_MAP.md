@@ -924,6 +924,14 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Private Import: moved from Hero → dev-zone card with `statusKey: 'toolEntry'`, `placeholderKey: 'privateImport'`
 - Verify clean: `rg -n "home\.resume\|home\.systems\|home\.devZone" src/pages/Home.tsx`
 
+## Mobile Runtime Action Dock Hierarchy
+
+- `AI-LANDMARK: MOBILE_RUNTIME_ACTION_DOCK_HIERARCHY_V1`: `src/components/platform/RuntimeActionDock.tsx`
+- `splitRuntimeDockActionsForMobile()` keeps at most three explicitly prioritized actions direct; unspecified caller-added utilities overflow safely.
+- `buildRuntimeDockActions()` assigns role/system-aware mobile placement without changing panel content or authority.
+- Mobile More owns only presentation state; all existing action panels stay mounted in `RuntimeActionDock`.
+- Focused smoke: `src/lib/platform/runtimeActionDockSmoke.ts`; command `npm run frontend:verify:runtime-action-dock`.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

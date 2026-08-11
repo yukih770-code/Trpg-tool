@@ -2,24 +2,30 @@
 
 > Ephemeral task scope card. Overwrite this file at the start of each task.
 > Do not store long prompts or audit reports here.
-> Use symbols, landmarks, and `rg -n`; do not write fixed line numbers.
+> Use symbols and landmarks; do not write fixed line numbers.
 
 ## Task
 
-- ID: Cloud Live Room RuntimeLog Recovery v1
-- Name: CLOUD_LIVE_ROOM_RUNTIME_LOG_RECOVERY_V1
-- Goal: Give each campaign-linked cloud live room a dedicated durable Runtime
-  Session, mirror its append-only Room RuntimeLog into PostgreSQL with stable
-  idempotency, and rebuild the memory RuntimeLog after lobby recovery.
-- Phase: P0 multiplayer durability
+- ID: Mobile Runtime Action Dock Hierarchy v1
+- Name: `MOBILE_RUNTIME_ACTION_DOCK_HIERARCHY_V1`
+- Goal: Keep immediate Runtime actions visible on compact screens while moving
+  low-frequency tools into an explicit More menu without losing any panel.
+- Phase: P0 Runtime mobile usability
 - Status: Done
+
+## UI Contract
+
+- Page responsibility: `runtime`
+- Primary action: the current role's immediate in-play action (DND action
+  palette when available, otherwise dice)
+- Secondary direct actions: role-relevant scene, actor, or public information
+- Hidden actions: state records, Keeper notes, settings, and caller-added
+  utilities remain available through mobile More; desktop keeps the full row
 
 ## Allowed Files
 
-- `server/runtime-log-registry.ts`
-- `server/services/liveRoomRuntimeLogPersistence.ts`
-- `server/services/liveRoomRuntimeLogPersistenceSmoke.ts`
-- `server/room-server.ts`
+- `src/components/platform/RuntimeActionDock.tsx`
+- `src/lib/platform/runtimeActionDockSmoke.ts`
 - `package.json`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
@@ -29,50 +35,33 @@
 
 ## Forbidden Changes
 
-- Room Map persistence or map visibility semantics
-- WebSocket protocol, reconnect cursors, Room membership, Runtime permissions
-- RuntimeLog event payload/visibility semantics visible to clients
-- PostgreSQL schema or migrations
-- Campaign API authorization, frontend stores/UI, rules data, system workspaces
-- Cross-process pub/sub or multi-instance authority
+- Runtime panel business logic, dice resolution, RuntimeLog payloads
+- Room permissions, role resolution, server APIs, stores, schemas, migrations
+- Map, combat, actor, campaign, workshop, or rule data behavior
+- Desktop removal of any existing Runtime action
 
 ## Completion Criteria
 
-- Campaign-linked cloud live-room creation prepares a dedicated durable Runtime
-  Session before the lobby is accepted.
-- Every Room RuntimeLog append is mirrored in room order with a stable
-  idempotency key while the memory registry remains live authority.
-- Request paths that append a RuntimeLog event flush the queued durable write
-  before responding/broadcasting.
-- Startup restores valid persisted Room RuntimeLog envelopes only after the
-  corresponding live lobby is recovered.
-- Restore never overwrites a non-empty live memory stream.
-- Local/LAN rooms without durable campaign context remain safely memory-only.
-- Focused smoke, existing RuntimeLog/permission/visibility checks, TypeScript,
-  server/frontend builds, and diff check pass.
+- Compact screens show at most three role-prioritized actions plus More.
+- Overflow actions remain discoverable and open their existing mounted panels.
+- Desktop continues to expose the complete action row.
+- Auxiliary Runtime panels close both the active dock panel and More menu.
+- Role-action split smoke, TypeScript, frontend build, and diff check pass.
 
 ## Verification
 
 ```powershell
-npm run runtime:verify:live-room-log-recovery
-npm run runtime:verify:persistence-bridge
-npm run runtime:verify:room-permissions
-npm run frontend:verify:runtime-visibility-projection
-npx tsc --noEmit
-npm run server:build
+npm run frontend:verify:runtime-action-dock
+npm run lint
 npm run build
 git diff --check
 ```
 
 ## Result
 
-- Campaign-linked cloud rooms receive a dedicated server-issued Runtime Session
-  before their recoverable lobby is accepted.
-- Room RuntimeLog appends remain authoritative in memory and are mirrored in
-  room order with stable room/event idempotency; HTTP append paths wait for the
-  queued mirror before responding or broadcasting.
-- Startup rebuilds only versioned, validated Room RuntimeLog envelopes after
-  lobby recovery, paginates long streams, preserves original room sequence, and
-  refuses to overwrite a non-empty live stream.
-- Local/LAN rooms remain memory-only. Room Map durability, durable retry/outbox,
-  cross-process pub/sub, and multi-instance room authority remain deferred.
+- Compact Runtime now exposes at most three role-prioritized direct actions and
+  one More entry; caller-added utilities default into More.
+- DND action palettes lead for players when present, while hosts and spectators
+  retain role-appropriate direct actions.
+- Every original panel remains mounted and desktop retains the complete row.
+- Focused smoke, TypeScript, frontend build, and diff check pass.

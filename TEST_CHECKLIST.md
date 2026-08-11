@@ -1290,6 +1290,21 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8r. Mobile Runtime Action Dock Hierarchy v1
+
+- [ ] Compact Runtime shows no more than three direct role-prioritized actions plus More
+- [ ] DND players with an action palette see Action, Dice, and Actor directly; Public Info remains in More
+- [ ] Hosts see Dice, Scene/Location, and Public Info directly; records and private notes remain in More
+- [ ] Spectators keep Public Info as their sole direct action
+- [ ] Local Runtime caller-added Actor and Settings tools remain accessible through More
+- [ ] Opening a More item opens its existing mounted panel and preserves panel state across collapse
+- [ ] Opening a Runtime auxiliary panel closes both the active dock panel and More menu
+- [ ] Desktop keeps the complete action row with no action removed
+- [ ] `npm run frontend:verify:runtime-action-dock` passes
+- [ ] No dice, RuntimeLog, permission, store, schema, map, combat, or rule behavior changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

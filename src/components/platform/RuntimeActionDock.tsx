@@ -6,10 +6,12 @@ export const RUNTIME_AUXILIARY_PANEL_OPEN_EVENT = 'runtime:auxiliary-panel-open'
  * RuntimeActionDock (M25.1a) — unified bottom Action Dock (pure UI).
  *
  * AI-LANDMARK: RUNTIME_ACTION_DOCK_V0
+ * AI-LANDMARK: MOBILE_RUNTIME_ACTION_DOCK_HIERARCHY_V1
  *
- * A single row of SAME-WEIGHT tool buttons (投骰 / 场景 / 公开信息 / 状态记录).
- * Clicking a tool expands ONE floating panel above the row; clicking the
- * active tool again collapses it. Only one panel is open at a time. Panels float
+ * Desktop presents the complete tool row. Compact screens keep up to three
+ * role-prioritized actions visible and place lower-frequency tools in More.
+ * Clicking a tool expands ONE floating panel above the row; clicking the active
+ * tool again collapses it. Only one panel/menu is open at a time. Panels float
  * (absolute) and never sit in document flow / compress the Main Stage.
  *
  * All panels are kept MOUNTED (hidden when inactive) so a panel's internal state
@@ -21,6 +23,8 @@ export interface RuntimeDockAction {
   id: string;
   label: string;
   shortLabel?: string;
+  /** Compact Runtime placement. Unspecified caller-added utilities safely overflow. */
+  mobilePlacement?: 'primary' | 'direct' | 'overflow';
   disabled?: boolean;
   disabledReason?: string;
   panel?: ReactNode;
@@ -43,14 +47,21 @@ export function RuntimeActionPlaceholder({ body }: { body: string }) {
 
 export function RuntimeActionDock({ actions, defaultActiveActionId = null, className }: RuntimeActionDockProps) {
   const [activeId, setActiveId] = useState<string | null>(defaultActiveActionId);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   useEffect(() => {
-    const closeForAuxiliaryPanel = () => setActiveId(null);
+    const closeForAuxiliaryPanel = () => {
+      setActiveId(null);
+      setMoreOpen(false);
+    };
     window.addEventListener(RUNTIME_AUXILIARY_PANEL_OPEN_EVENT, closeForAuxiliaryPanel);
     return () => window.removeEventListener(RUNTIME_AUXILIARY_PANEL_OPEN_EVENT, closeForAuxiliaryPanel);
   }, []);
 
-  const toggle = (id: string) => setActiveId((cur) => (cur === id ? null : id));
+  const toggle = (id: string) => {
+    setMoreOpen(false);
+    setActiveId((cur) => (cur === id ? null : id));
+  };
 
   const baseBtn = 'min-h-10 shrink-0 whitespace-nowrap rounded-lg border px-2.5 py-1 text-[11px] font-bold transition md:min-h-0 md:rounded md:px-2';
   const idle = 'border-slate-400/50 bg-white/70 text-slate-700 hover:bg-white';
@@ -58,6 +69,8 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
   const comingSoon = 'border-slate-300/50 bg-white/40 text-slate-400 hover:bg-white/60';
 
   const panelActions = actions.filter((a) => a.panel !== undefined || a.disabledReason);
+  const { direct: mobileDirectActions, overflow: mobileOverflowActions } = splitRuntimeDockActionsForMobile(actions);
+  const activeOverflowAction = mobileOverflowActions.find((action) => action.id === activeId);
 
   return (
     <div className={`relative w-full rounded-xl border border-slate-300/70 bg-white/90 p-1 shadow-lg backdrop-blur-sm md:w-auto md:border-0 md:bg-transparent md:p-0 md:shadow-none ${className ?? ''}`}>
@@ -81,14 +94,74 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
             {a.panel}
           </div>
         ))}
+        {moreOpen && mobileOverflowActions.length > 0 && (
+          <div className="w-[calc(100vw_-_1rem)] max-w-[420px] rounded-xl border border-slate-300/70 bg-white/95 p-3 shadow-lg backdrop-blur-sm md:hidden">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-slate-700">更多工具</span>
+              <button type="button" onClick={() => setMoreOpen(false)} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px] font-bold text-slate-500">关闭</button>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {mobileOverflowActions.map((action) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  disabled={action.disabled}
+                  title={action.disabledReason}
+                  onClick={() => {
+                    if (action.disabled) return;
+                    setMoreOpen(false);
+                    setActiveId(action.id);
+                  }}
+                  className="min-h-11 rounded-lg border border-slate-300/70 bg-white px-2.5 py-2 text-left text-[11px] font-bold text-slate-700 disabled:bg-slate-100 disabled:text-slate-400"
+                >
+                  <span className="block">{action.label}</span>
+                  {action.disabledReason && <span className="mt-0.5 block text-[9px] font-normal text-slate-400">{action.disabledReason}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Same-weight tool button row. */}
-      <div className="flex flex-nowrap items-center gap-1 overflow-x-auto md:flex-wrap md:justify-center">
+      {/* Compact screens keep immediate actions visible and move utilities into
+          an explicit More menu. Desktop retains the complete action row. */}
+      <div className="flex items-center gap-1 md:hidden">
+        {mobileDirectActions.map((action) => (
+          <button
+            key={action.id}
+            type="button"
+            disabled={action.disabled}
+            onClick={() => {
+              if (!action.disabled) toggle(action.id);
+            }}
+            aria-pressed={activeId === action.id}
+            title={action.disabledReason ?? (action.disabled ? '即将推出' : undefined)}
+            className={`${baseBtn} min-w-0 flex-1 ${activeId === action.id ? activeCls : action.disabled ? comingSoon : action.mobilePlacement === 'primary' ? 'border-slate-800 bg-slate-800 text-white' : idle}`}
+          >
+            {action.shortLabel ?? action.label}
+          </button>
+        ))}
+        {mobileOverflowActions.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveId(null);
+              setMoreOpen((current) => !current);
+            }}
+            aria-expanded={moreOpen}
+            className={`${baseBtn} min-w-[4.25rem] ${moreOpen || activeOverflowAction ? activeCls : idle}`}
+          >
+            {activeOverflowAction?.shortLabel ?? '更多'}
+          </button>
+        )}
+      </div>
+
+      <div className="hidden flex-wrap items-center justify-center gap-1 md:flex">
         {actions.map((a) => (
           <button
             key={a.id}
             type="button"
+            disabled={a.disabled}
             onClick={() => {
               if (!a.disabled) toggle(a.id);
             }}
@@ -105,6 +178,13 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
 }
 
 export type RuntimeActionMode = 'host' | 'player' | 'spectator';
+
+export function splitRuntimeDockActionsForMobile(actions: readonly RuntimeDockAction[]): { direct: RuntimeDockAction[]; overflow: RuntimeDockAction[] } {
+  const prioritized = actions.filter((action) => action.mobilePlacement === 'primary');
+  const direct = [...prioritized, ...actions.filter((action) => action.mobilePlacement === 'direct')].slice(0, 3);
+  const directIds = new Set(direct.map((action) => action.id));
+  return { direct, overflow: actions.filter((action) => !directIds.has(action.id)) };
+}
 
 /** Optional real panels injected by the caller (M29). When provided they replace
  * the corresponding placeholder; when omitted the dock falls back to a
@@ -147,20 +227,22 @@ export function buildRuntimeDockActions(
     id: 'publicInfo',
     label: publicInfoLabel,
     shortLabel: isCoc ? '线索' : '信息',
+    mobilePlacement: mode === 'player' && isDnd && !!extras?.dndActionPanel ? 'overflow' : 'direct',
     panel: extras?.publicInfoPanel ?? PUBLIC_INFO_FALLBACK,
   };
 
   if (mode === 'spectator') {
-    return [publicInfo];
+    return [{ ...publicInfo, mobilePlacement: 'primary' }];
   }
   if (mode === 'player') {
     return [
-      ...(isDnd && extras?.dndActionPanel ? [{ id: 'dndActions', label: '动作', shortLabel: '动作', panel: extras.dndActionPanel }] : []),
-      { id: 'dice', label: '投骰', panel: dicePanel },
+      ...(isDnd && extras?.dndActionPanel ? [{ id: 'dndActions', label: '动作', shortLabel: '动作', mobilePlacement: 'primary' as const, panel: extras.dndActionPanel }] : []),
+      { id: 'dice', label: '投骰', mobilePlacement: isDnd && extras?.dndActionPanel ? 'direct' : 'primary', panel: dicePanel },
       {
         id: 'actor',
         label: isCoc ? '我的调查员' : '我的角色',
         shortLabel: '角色',
+        mobilePlacement: 'direct',
         panel: extras?.actorPanel ?? (
           <RuntimeActionPlaceholder body="我的角色：查看并管理你的角色卡与角色状态。" />
         ),
@@ -170,11 +252,12 @@ export function buildRuntimeDockActions(
   }
   // host
   return [
-    { id: 'dice', label: '投骰', panel: dicePanel },
+    { id: 'dice', label: '投骰', mobilePlacement: 'primary', panel: dicePanel },
     {
       id: 'scene',
       label: isCoc ? '当前地点' : '当前场景',
       shortLabel: isCoc ? '地点' : '场景',
+      mobilePlacement: 'direct',
       panel: extras?.scenePanel ?? (
         <RuntimeActionPlaceholder body="当前场景：设置本场的地点、氛围与参考图，同步给所有人。" />
       ),
@@ -184,6 +267,7 @@ export function buildRuntimeDockActions(
       id: 'stateLog',
       label: isCoc ? '公开记录' : '状态记录',
       shortLabel: '记录',
+      mobilePlacement: 'overflow',
       panel: extras?.stateLogPanel ?? (
         <RuntimeActionPlaceholder body="状态记录：随手记下伤害、线索与重要变化，全桌可见。" />
       ),
@@ -192,6 +276,7 @@ export function buildRuntimeDockActions(
       id: 'keeperNotes',
       label: 'Keeper 笔记',
       shortLabel: '笔记',
+      mobilePlacement: 'overflow' as const,
       panel: extras.privateNotesPanel,
     }] : []),
   ];
