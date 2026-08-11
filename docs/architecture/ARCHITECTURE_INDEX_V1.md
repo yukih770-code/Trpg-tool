@@ -1049,3 +1049,10 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   feature-name tables for character selection and advancement preview.
 - Compatibility names are retained where older saved characters depend on them.
 - See `docs/implementation/P6_DND_OWNER_SOURCE_SUBCLASS_BATCH_3.md`.
+
+## DND Owner-Source Subclass Batch 4 (P6.25)
+
+- Rogue and Sorcerer now expose locally sourced 2024 subclass unlock and
+  feature-name tables for character selection and advancement preview.
+- Compatibility names are retained where older saved characters depend on them.
+- See `docs/implementation/P6_DND_OWNER_SOURCE_SUBCLASS_BATCH_4.md`.

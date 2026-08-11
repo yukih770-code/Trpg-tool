@@ -471,3 +471,10 @@ Read `P6_DND_OWNER_SOURCE_SUBCLASS_BATCH_3.md` before changing Paladin or
 Ranger subclass entries. Their local-source names and levels are display data
 only; do not automate Oaths, companions, combat, spells, or Room Runtime
 behavior from this module.
+
+## DND Owner-Source Subclass Batch 4 (P6.25)
+
+Read `P6_DND_OWNER_SOURCE_SUBCLASS_BATCH_4.md` before changing Rogue or
+Sorcerer subclass entries. Their local-source names and levels are display data
+only; do not automate spellcasting, Psionic Energy Dice, Sorcery Points, Wild
+Magic, conditions, summons, combat, or Room Runtime behavior from this module.

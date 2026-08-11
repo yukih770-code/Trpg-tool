@@ -122,9 +122,10 @@ const SUBCLASS_METADATA_BY_CLASS: Record<string, Record<string, RuleDataMetadata
     灵能武士: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '灵能武士'),
   },
   游荡者: {
-    盗贼: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2'),
-    刺客: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
-    奥法诡术师: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+    盗贼: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '盗贼'),
+    刺客: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '刺客'),
+    奥法诡术师: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '诡术师；保留现有名称以兼容既有角色。'),
+    魂刃: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '魂刃'),
   },
   圣武士: {
     奉献之誓: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '奉献之誓'),
@@ -158,8 +159,10 @@ const SUBCLASS_METADATA_BY_CLASS: Record<string, Record<string, RuleDataMetadata
     孢子结社: subclassSourceMeta('dnd5echm-tcoe', 'TCoE'),
   },
   术士: {
-    龙族血脉: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 / SRD5.2', '龙族术法；existing app name 龙族血脉 needs naming confirmation.'),
-    狂野魔法: conflictMeta('Existing subclass retained, but current manifest/source mapping and values require human verification before treating as owner-source data.'),
+    龙族血脉: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '龙族术法；保留现有名称以兼容既有角色。'),
+    狂野魔法: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '狂野术法；保留现有名称以兼容既有角色。'),
+    畸变术法: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '畸变术法'),
+    时械术法: subclassSourceMeta('dnd5echm-srd52-primary', 'DND 2024 local owner source', '时械术法'),
     风暴术士: subclassSourceMeta('dnd5echm-xgte', 'XGtE', '风暴术法；existing app name 风暴术士 needs naming confirmation.'),
   },
 };
@@ -364,9 +367,34 @@ export const CLASS_DATA: ClassDef[] = applyDndClassSubclassMetadata([
       { name: "灵巧动作", desc: "使用附赠动作进行隐蔽、冲刺和撤离", unlockLevel: 2 }
     ],
     subclasses: [
-      { name: "盗贼", desc: "灵巧爬高下低的潜伏者。", unlockLevel: 3, features: [{ name: "快手", desc: "你可以用附赠动作利用物件，例如喝药和布置陷阱。", unlockLevel: 3 }] },
-      { name: "刺客", desc: "冷血制导杀手。", unlockLevel: 3, features: [{ name: "刺杀术", desc: "你对于还没开始回合或者受惊吓的敌人具有决定性的重击优势。", unlockLevel: 3 }] },
-      { name: "奥法诡术师", desc: "具备幻术魔力的阴影潜伏流氓。", unlockLevel: 3, features: [{ name: "高阶法师之手", desc: "在原本的偷摸技巧里添加隐形的法师之手法术配合实施偷窃与开锁。", unlockLevel: 3 }] }
+      { name: "盗贼", desc: "追秘猎宝、灵活探索并善用魔法物品的经典冒险家。", unlockLevel: 3, features: [
+        { name: "快手", desc: "可以附赠动作使用巧手、盗贼工具或物件。", unlockLevel: 3 },
+        { name: "梁上君子", desc: "获得攀爬与敏捷跳跃方面的强化。", unlockLevel: 3 },
+        { name: "极效潜行", desc: "获得可维持隐形状态的诡诈打击选项。", unlockLevel: 9 },
+        { name: "使用魔法装置", desc: "强化同调、充能与法术卷轴的使用。", unlockLevel: 13 },
+        { name: "窃盗本能", desc: "每次战斗第一轮可以行动两个回合。", unlockLevel: 17 },
+      ] },
+      { name: "刺客", desc: "利用潜行、毒药与伪装践行死亡技艺的游荡者。", unlockLevel: 3, features: [
+        { name: "暗杀", desc: "强化先攻与战斗首轮的突袭能力。", unlockLevel: 3 },
+        { name: "刺客工具", desc: "获得易容工具与毒药工具熟练。", unlockLevel: 3 },
+        { name: "专业渗透", desc: "获得模仿与机动瞄准方面的渗透技巧。", unlockLevel: 9 },
+        { name: "淬毒武器", desc: "强化诡诈打击中的淬毒选项。", unlockLevel: 13 },
+        { name: "致命袭杀", desc: "强化战斗首轮命中并偷袭目标时的伤害。", unlockLevel: 17 },
+      ] },
+      { name: "奥法诡术师", desc: "利用奥术魔法强化潜行与游荡技巧。", unlockLevel: 3, features: [
+        { name: "施法", desc: "获得以智力施展法师法术的声明式施法资料。", unlockLevel: 3 },
+        { name: "法师之手诈术", desc: "强化法师之手的施展与操控方式。", unlockLevel: 3 },
+        { name: "诡术伏击", desc: "从隐形状态施法时妨碍目标的豁免。", unlockLevel: 9 },
+        { name: "万能诡术", desc: "以法师之手配合诡诈打击影响另一目标。", unlockLevel: 13 },
+        { name: "法术窃贼", desc: "可暂时夺取影响你的法术知识。", unlockLevel: 17 },
+      ] },
+      { name: "魂刃", desc: "唤醒灵能力量、以念为刃克敌的游荡者。", unlockLevel: 3, features: [
+        { name: "灵能力量", desc: "获得驱动子职异能的灵能骰。", unlockLevel: 3 },
+        { name: "念刃", desc: "塑造可用于近战或远程攻击的灵能刀刃。", unlockLevel: 3 },
+        { name: "灵魂之刃", desc: "以念刃进行寻的斩击与心灵传送。", unlockLevel: 9 },
+        { name: "灵能面纱", desc: "以灵能遮蔽自身并获得隐形状态。", unlockLevel: 13 },
+        { name: "撕裂心智", desc: "以念刃偷袭撕裂目标心智。", unlockLevel: 17 },
+      ] }
     ]
   },
   {
@@ -581,8 +609,35 @@ export const CLASS_DATA: ClassDef[] = applyDndClassSubclassMetadata([
       { name: "魔法泉涌与超魔", desc: "自身转换魔力源强行重改施法的目标与法位极速瞬发.", unlockLevel: 2 }
     ],
     subclasses: [
-      { name: "龙族血脉", desc: "龙神之血提供高厚的身版及高等防御抵抗。", unlockLevel: 1, features: [{ name: "龙族亲和", desc: "高抗高甲加上极对应属性元素的加重打击增伤。", unlockLevel: 1 }] },
-      { name: "狂野魔法", desc: "波动不可控施法时会附带极端突发狂野大爆现特效者。", unlockLevel: 1, features: [{ name: "狂野扭转控制", desc: "每次都有高超突发或者有利重转的奇迹可能。", unlockLevel: 1 }] },
+      { name: "龙族血脉", desc: "承受巨龙赠礼、吐纳龙族魔法的术士。", unlockLevel: 3, features: [
+        { name: "龙族体魄", desc: "获得生命值与无甲防御方面的龙族强化。", unlockLevel: 3 },
+        { name: "龙族法术", desc: "随术士等级始终准备相应的龙族法术。", unlockLevel: 3 },
+        { name: "元素亲和", desc: "选择一种龙族伤害类型并获得相应强化。", unlockLevel: 6 },
+        { name: "龙翼", desc: "展开龙翼并获得飞行速度。", unlockLevel: 14 },
+        { name: "龙族伙伴", desc: "强化龙类召唤术的施展方式。", unlockLevel: 18 },
+      ] },
+      { name: "狂野魔法", desc: "释放在体内翻涌的混沌魔力。", unlockLevel: 3, features: [
+        { name: "狂野魔法浪涌", desc: "施展术士法术后可能触发随机魔法效应。", unlockLevel: 3 },
+        { name: "混乱之潮", desc: "驾驭机运使一次D20检定获得优势。", unlockLevel: 3 },
+        { name: "扭曲幸运", desc: "以术法点影响可见生物的D20检定。", unlockLevel: 6 },
+        { name: "受控混沌", desc: "触发狂野魔法浪涌时可在两次结果中选择。", unlockLevel: 14 },
+        { name: "驯服浪涌", desc: "施法后可选择大部分狂野魔法浪涌效果。", unlockLevel: 18 },
+      ] },
+      { name: "畸变术法", desc: "操弄异界影响赋予的非自然灵能力量。", unlockLevel: 3, features: [
+        { name: "灵能法术", desc: "随术士等级始终准备相应的灵能法术。", unlockLevel: 3 },
+        { name: "传心谈话", desc: "与附近可见生物建立心灵感应链接。", unlockLevel: 3 },
+        { name: "灵能术法", desc: "可以术法点施展灵能法术并忽略部分成分。", unlockLevel: 6 },
+        { name: "心灵防御", desc: "获得心灵伤害与部分状态防护。", unlockLevel: 6 },
+        { name: "血肉启示", desc: "消耗术法点显现可选择的畸变形态。", unlockLevel: 14 },
+        { name: "扭曲内爆", desc: "传送并扭曲原位置附近的空间。", unlockLevel: 18 },
+      ] },
+      { name: "时械术法", desc: "引导寰宇秩序与机械境力量的术士。", unlockLevel: 3, features: [
+        { name: "时械法术", desc: "随术士等级始终准备相应的时械法术。", unlockLevel: 3 },
+        { name: "归复平衡", desc: "以反应消除一次检定的优势或劣势。", unlockLevel: 3 },
+        { name: "律令之壁", desc: "消耗术法点为生物建立减伤屏障。", unlockLevel: 6 },
+        { name: "序列意识", desc: "短暂同步机械境的秩序计算。", unlockLevel: 14 },
+        { name: "时械矩阵", desc: "召唤秩序精魂产生治愈、修复与破法效果。", unlockLevel: 18 },
+      ] },
       { name: "风暴术士", desc: "于天顶惊雷狂风降下落雷神灵。", unlockLevel: 1, features: [{ name: "气旋神速", desc: "释放神力引发风暴时无伤瞬速后退脱出控制领域。", unlockLevel: 1 }] }
     ]
   }
