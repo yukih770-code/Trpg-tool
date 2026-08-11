@@ -37,6 +37,7 @@ import { createTranslator, readStoredLocale } from '../../i18n';
 // P5.3: productized campaign ownership copy (never raw ownerId in normal UI).
 import { getCampaignOwnershipLabel } from '../../lib/platform/campaignOwnership';
 import type { RoomLaunchSource } from '../../lib/platform/hostedRoomLaunch';
+import { Download, Plus, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { ContextBar } from './ContextBar';
 // M26: Room Server reachability chip shown next to the host launch CTA.
@@ -144,7 +145,7 @@ export function CampaignLibraryShell({
   contextBarClassName,
 }: CampaignLibraryShellProps) {
   const { t } = createTranslator(readStoredLocale());
-  const [libraryMode, setLibraryMode] = useState<CampaignLibraryMode>(initialMode ?? 'home');
+  const [libraryMode, setLibraryMode] = useState<CampaignLibraryMode>(initialMode ?? 'existing');
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [selectedEntryRole, setSelectedEntryRole] = useState<CampaignEntryRole>('playerCharacter');
   const [campaignSearchQuery, setCampaignSearchQuery] = useState('');
@@ -217,24 +218,11 @@ export function CampaignLibraryShell({
     { key: 'campaignLibrary.create.importCampaign', enabled: false },
   ];
   const stats = [
-    // M23.1: host-only workbench — the "joined / 我参与的" stat is removed (joining
-    // lives under 加入战役).
     ['campaignLibrary.stats.total', String(campaigns.length)],
     ['campaignLibrary.stats.active', String(activeCampaigns.filter((campaign) => campaign.status === 'active').length)],
-    ['campaignLibrary.stats.hosted', String(campaigns.length)],
     ['campaignLibrary.stats.needsAttention', String(draftCampaigns.length)],
     ['campaignLibrary.stats.recentPlayed', campaigns[0] ? formatCampaignDate(campaigns[0].updatedAt) : '-'],
   ];
-  const hostPrepItems = [
-    'campaignLibrary.detail.hostPrep.importActors',
-    'campaignLibrary.detail.hostPrep.addMap',
-    'campaignLibrary.detail.hostPrep.addHandout',
-    'campaignLibrary.detail.hostPrep.enablePackage',
-    'campaignLibrary.detail.hostPrep.managePlayers',
-    'campaignLibrary.detail.hostPrep.diceLogSettings',
-    'campaignLibrary.detail.hostPrep.campaignSettings',
-  ];
-
   useEffect(() => {
     if (campaignSelectForActorContext) {
       setCampaignLifecycleFilter('active');
@@ -343,10 +331,10 @@ export function CampaignLibraryShell({
       return () => onBackOverrideChange(null);
     }
 
-    if (libraryMode === 'existing' || libraryMode === 'add') {
+    if (libraryMode === 'add') {
       onBackOverrideChange({
-        label: '返回主持战役',
-        onBack: () => setLibraryMode('home'),
+        label: '返回战役列表',
+        onBack: () => setLibraryMode('existing'),
       });
       return () => onBackOverrideChange(null);
     }
@@ -584,7 +572,7 @@ export function CampaignLibraryShell({
             {showAddFlow ? t('campaignLibrary.create.title') : '主持战役'}
           </h2>
           <p className={`mt-2 max-w-3xl text-sm leading-relaxed ${theme.muted}`}>
-            {showAddFlow ? t('campaignLibrary.create.subtitle') : '创建、管理、准备并开启你主持的战役。新建 / 导入战役在此进行；加入他人的战役请使用「加入战役」。'}
+            {showAddFlow ? t('campaignLibrary.create.subtitle') : '查看你主持的战役，继续准备跑团、创建房间或进入 Runtime。加入他人的战役请使用「加入战役」。'}
           </p>
         </div>
         <span className={`border px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${theme.badge}`}>
@@ -649,19 +637,54 @@ export function CampaignLibraryShell({
       {mode === 'library' && libraryMode === 'existing' && (
         <div className="mt-5 flex flex-col gap-4">
           {contextBar}
-          <div>
-            <p className={`text-xs ${theme.muted}`}>
-              {t('campaignLibrary.eyebrow')}
-              <span className="mx-1.5 opacity-40">/</span>
-              {t('campaignLibrary.existing.title')}
-            </p>
-            <h3 className={`mt-1 text-xl font-bold ${theme.accent}`}>
-              {t('campaignLibrary.existing.title')}
-            </h3>
-            <p className={`mt-0.5 text-xs ${theme.muted}`}>
-              {t('campaignLibrary.existing.subtitle')}
-            </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className={`text-2xl font-bold ${theme.accent}`}>
+                {t('campaignLibrary.existing.title')}
+              </h3>
+              <p className={`mt-1 text-sm ${theme.muted}`}>
+                {t('campaignLibrary.existing.subtitle')}
+              </p>
+            </div>
+            {!campaignSelectForActorContext && (
+              <div className="flex flex-wrap gap-2">
+                <label className={`inline-flex cursor-pointer items-center gap-2 border px-3 py-2 text-xs font-bold transition hover:bg-white/70 ${theme.badge}`}>
+                  <Upload className="h-4 w-4" />
+                  <span>{t('campaignLibrary.importPreview.action')}</span>
+                  <input
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={handlePreviewCampaignSnapshotImport}
+                    className="sr-only"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={onAddCampaign ?? (() => setLibraryMode('add'))}
+                  className={`inline-flex items-center gap-2 border px-3 py-2 text-xs font-bold ${theme.primary}`}
+                >
+                  <Plus className="h-4 w-4" />
+                  {t('campaignLibrary.actions.add')}
+                </button>
+              </div>
+            )}
           </div>
+
+          {!campaignSelectForActorContext && (
+            <div className={`grid grid-cols-2 overflow-hidden rounded-lg border ${theme.card} sm:grid-cols-4`}>
+              {stats.map(([labelKey, value], index) => (
+                <div
+                  key={labelKey}
+                  className={`px-4 py-3 ${index % 2 === 1 ? 'border-l' : ''} ${index >= 2 ? 'border-t' : ''} ${index > 0 ? 'sm:border-l sm:border-t-0' : ''}`}
+                >
+                  <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
+                    {t(labelKey)}
+                  </div>
+                  <div className="mt-1 truncate text-lg font-bold">{value}</div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className={`rounded-lg border p-4 ${theme.card}`}>
             <div className="flex flex-wrap gap-3">
@@ -670,11 +693,19 @@ export function CampaignLibraryShell({
                 value={campaignSearchQuery}
                 onChange={(event) => setCampaignSearchQuery(event.target.value)}
                 placeholder={t('campaignLibrary.existing.searchPlaceholder')}
-                className="min-w-0 flex-1 border bg-transparent px-3 py-1.5 text-sm"
+                className="w-full border bg-transparent px-3 py-1.5 text-sm sm:min-w-0 sm:flex-1"
               />
-              <select disabled className="border bg-transparent px-3 py-1.5 text-xs opacity-60">
-                <option>{t('campaignLibrary.existing.sortRecent')}</option>
-              </select>
+              {!campaignSelectForActorContext && (
+                <button
+                  type="button"
+                  onClick={handleExportCampaignSnapshot}
+                  title={t('campaignLibrary.export.note')}
+                  className={`inline-flex items-center gap-2 border px-3 py-1.5 text-xs font-bold transition hover:bg-white/70 ${theme.badge}`}
+                >
+                  <Download className="h-4 w-4" />
+                  {t('campaignLibrary.export.action')}
+                </button>
+              )}
             </div>
             <div className="mt-3 flex flex-wrap gap-1.5">
               {[
@@ -698,10 +729,29 @@ export function CampaignLibraryShell({
                 </button>
               ))}
             </div>
-            <p className={`mt-3 text-xs leading-relaxed ${theme.muted}`}>
-              {t('campaignLibrary.existing.lifecycleNote')}
-            </p>
+            {effectiveLifecycleFilter !== 'active' && (
+              <p className={`mt-3 text-xs leading-relaxed ${theme.muted}`}>
+                {t('campaignLibrary.existing.lifecycleNote')}
+              </p>
+            )}
           </div>
+
+          {!campaignSelectForActorContext && (campaignImportPreview || campaignImportPreviewError || campaignImportPreviewFileName) && (
+            <CampaignImportPreviewPanel
+              fileName={campaignImportPreviewFileName}
+              preview={campaignImportPreview}
+              safeAppendPlan={campaignSafeAppendPlan}
+              copyAsNewPlan={campaignCopyAsNewPlan}
+              safeAppendResult={campaignSafeAppendResult}
+              copyAsNewResult={campaignCopyAsNewResult}
+              isImporting={isImportingCampaigns}
+              error={campaignImportPreviewError}
+              theme={theme}
+              t={t}
+              onSafeAppend={handleSafeAppendCampaignImport}
+              onCopyAsNew={handleCopyCampaignConflictsAsNew}
+            />
+          )}
 
           {visibleCampaigns.length === 0 ? (
             <EmptyCampaignState
@@ -759,54 +809,6 @@ export function CampaignLibraryShell({
             ))
           )}
 
-          {!campaignSelectForActorContext && (
-            <div className={`rounded-lg border px-3 py-2 text-xs ${theme.badge}`}>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`font-bold ${theme.accent}`}>{t('campaignLibrary.export.title')}</span>
-                <span className={`min-w-40 flex-1 leading-relaxed ${theme.muted}`}>
-                  {t('campaignLibrary.export.note')}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleExportCampaignSnapshot}
-                  className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${theme.secondary}`}
-                >
-                  {t('campaignLibrary.export.action')}
-                </button>
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-2 border-t pt-2">
-                <span className={`font-bold ${theme.accent}`}>{t('campaignLibrary.importPreview.title')}</span>
-                <span className={`min-w-40 flex-1 leading-relaxed ${theme.muted}`}>
-                  {t('campaignLibrary.importPreview.note')}
-                </span>
-                <label className={`inline-flex cursor-pointer border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${theme.secondary}`}>
-                  <span>{t('campaignLibrary.importPreview.action')}</span>
-                  <input
-                    type="file"
-                    accept="application/json,.json"
-                    onChange={handlePreviewCampaignSnapshotImport}
-                    className="sr-only"
-                  />
-                </label>
-              </div>
-              {(campaignImportPreview || campaignImportPreviewError || campaignImportPreviewFileName) && (
-                <CampaignImportPreviewPanel
-                  fileName={campaignImportPreviewFileName}
-                  preview={campaignImportPreview}
-                  safeAppendPlan={campaignSafeAppendPlan}
-                  copyAsNewPlan={campaignCopyAsNewPlan}
-                  safeAppendResult={campaignSafeAppendResult}
-                  copyAsNewResult={campaignCopyAsNewResult}
-                  isImporting={isImportingCampaigns}
-                  error={campaignImportPreviewError}
-                  theme={theme}
-                  t={t}
-                  onSafeAppend={handleSafeAppendCampaignImport}
-                  onCopyAsNew={handleCopyCampaignConflictsAsNew}
-                />
-              )}
-            </div>
-          )}
         </div>
       )}
 
@@ -827,7 +829,6 @@ export function CampaignLibraryShell({
             enterCampaignRuntimeAsHost={enterCampaignRuntimeAsHost}
             canEnterPlayerRuntime={canEnterPlayerRuntime}
             canEnterHostRuntime={canEnterHostRuntime}
-            hostPrepItems={hostPrepItems}
             onHostLaunchRoom={selectedCampaign && onHostLaunchRoom ? () => onHostLaunchRoom(selectedCampaign, 'campaignDetail') : undefined}
           />
         ) : (
@@ -843,11 +844,6 @@ export function CampaignLibraryShell({
         )
       )}
 
-      {mode === 'library' && (
-        <p className={`mt-5 border-t pt-4 text-xs leading-relaxed ${theme.muted}`}>
-          {t('campaignLibrary.shortConcept')}
-        </p>
-      )}
     </section>
   );
 }
@@ -1423,7 +1419,6 @@ function CampaignDetail({
   enterCampaignRuntimeAsHost,
   canEnterPlayerRuntime,
   canEnterHostRuntime,
-  hostPrepItems,
   onHostLaunchRoom,
 }: {
   campaign: LocalCampaign;
@@ -1440,7 +1435,6 @@ function CampaignDetail({
   enterCampaignRuntimeAsHost: () => void;
   canEnterPlayerRuntime: boolean;
   canEnterHostRuntime: boolean;
-  hostPrepItems: string[];
   onHostLaunchRoom?: () => void;
 }) {
   // M23.1: this is the HOST workbench detail. The player-prep path now lives under
@@ -1495,7 +1489,7 @@ function CampaignDetail({
                 : '已选择一个角色上下文'}
             </div>
             <p className="mt-1 opacity-80">
-              该角色仅保存在本地战役入口草稿中，尚未提交到联机大厅。当前主持战役详情仅保留主持人工作台；玩家入场请走“加入战役”。
+              已为本次入场预选该角色。创建联机房间后，角色仍需提交并由主持人确认；玩家请从“加入战役”进入。
             </p>
             {hasStaleDraftActor && (
               <p className={`mt-2 ${theme.muted}`}>
@@ -1507,9 +1501,9 @@ function CampaignDetail({
       </div>
 
       <div className={`rounded-lg border p-5 ${theme.card}`}>
-        <h4 className={`text-lg font-bold ${theme.accent}`}>运行方式</h4>
+        <h4 className={`text-lg font-bold ${theme.accent}`}>开始跑团</h4>
         <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
-          同一个 Runtime 可以以本地同步模式继续主持，也可以创建联机房间大厅，让玩家加入、绑定角色、准备并进入联机跑团桌面。
+          直接进入跑团桌面，或创建联机房间邀请玩家加入。
         </p>
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
           {SHOW_PLAYER_PREP && (
@@ -1586,13 +1580,13 @@ function CampaignDetail({
 
           <div className={`rounded-lg border p-4 ${theme.card}`}>
             <div className={`text-[10px] font-bold uppercase tracking-wider ${theme.muted}`}>
-              当前 Runtime
+              直接主持
             </div>
             <h5 className={`mt-1 text-base font-bold ${theme.accent}`}>
               继续主持
             </h5>
             <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
-              进入当前战役 Runtime。当前未开启多人同步；主持人也可从战役列表卡片快速进入。
+              立即进入跑团桌面。需要邀请玩家时，可以稍后再创建联机房间。
             </p>
             <div className="mt-4">
               <button
@@ -1616,7 +1610,7 @@ function CampaignDetail({
               创建房间大厅
             </h5>
             <p className={`mt-2 text-xs leading-relaxed ${theme.muted}`}>
-              创建 Room Lobby，让玩家加入、绑定角色、ready 并由主持人审批。准备完成后再进入联机跑团桌面。
+              创建房间并邀请玩家加入、选择角色和完成准备。主持人确认后即可开始跑团。
             </p>
             {/* M26: host-side Room Server reachability (join side lives in JoinCampaignPanel). */}
             {onHostLaunchRoom && <RoomServerStatusBanner className="mt-3" />}
@@ -1649,21 +1643,6 @@ function CampaignDetail({
           <div className="mt-4">
             <CharacterClearanceSummary variant="compact" local />
           </div>
-          <details className="mt-4 rounded-lg border border-slate-300/40 p-3">
-            <summary className={`cursor-pointer text-xs font-bold ${theme.accent}`}>准备资源</summary>
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {hostPrepItems.map((key) => (
-              <button
-                key={key}
-                type="button"
-                disabled
-                className={`cursor-default border px-3 py-2 text-left text-xs font-bold opacity-65 ${theme.secondary}`}
-              >
-                {t(key)}
-              </button>
-            ))}
-            </div>
-          </details>
         </div>
       </div>
       <span className="sr-only">{systemId}</span>

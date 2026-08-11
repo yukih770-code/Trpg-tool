@@ -75,32 +75,32 @@ export function RoomServerStatusBanner({ baseUrl, className }: RoomServerStatusB
   const locationLabel = isLocal ? '本机' : '云端';
   const headline =
     state === 'online'
-      ? `已连接${locationLabel}房间服务`
+      ? `${locationLabel}联机房间可用`
       : state === 'offline'
-        ? '房间服务未连接'
-        : '正在检测房间服务…';
+        ? '暂时无法创建联机房间'
+        : '正在准备联机房间…';
 
   return (
     <div className={`rounded border px-2.5 py-1.5 text-[11px] ${tone} ${className ?? ''}`}>
       <div className="flex flex-wrap items-center gap-2">
         <span className={`inline-block h-2 w-2 rounded-full ${dot}`} aria-hidden />
         <span className="font-bold">{headline}</span>
-        <span className="font-mono text-[10px] opacity-70">{effectiveBaseUrl}</span>
         <button
           type="button"
           onClick={() => void probe()}
           disabled={state === 'checking'}
           className="ml-auto rounded border border-slate-400/50 bg-white/50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide disabled:opacity-40"
         >
-          重新检测
+          重试
         </button>
       </div>
       {state === 'offline' && (
         <div className="mt-1 text-[10px] leading-relaxed opacity-90">
-          房间服务未连接。如果你在本地开发，请运行 <span className="font-mono">npm run server:dev</span>。
-          如果你在 Netlify 线上使用，请确认 <span className="font-mono">VITE_ROOM_SERVER_HTTP_URL</span> /{' '}
-          <span className="font-mono">VITE_ROOM_SERVER_WS_URL</span> 指向已部署的云端 Room Server。
-          {detail ? <span className="ml-1 opacity-70">（{detail}）</span> : null}
+          请稍后重试，或检查当前服务器的联机服务设置。
+          <details className="mt-1 opacity-75">
+            <summary className="cursor-pointer font-bold">技术详情</summary>
+            <div className="mt-1 break-all font-mono">{effectiveBaseUrl}{detail ? ` · ${detail}` : ''}</div>
+          </details>
         </div>
       )}
     </div>
