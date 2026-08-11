@@ -17,6 +17,7 @@
  * Future: CocWorkspaceShell, CpWorkspaceShell via system-specific adapters.
  */
 
+import { Download, Plus, Upload } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type {
   ActorVaultPurpose,
@@ -106,7 +107,9 @@ export function ActorVaultLibraryShell({
   contextBarClassName,
   homeCards,
 }: ActorVaultLibraryShellProps) {
-  const [mode, setMode] = useState<LibraryMode>('home');
+  const [mode, setMode] = useState<LibraryMode>(
+    purpose.kind === 'addForCampaign' ? 'home' : 'existing',
+  );
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterValue>('all');
   const [lifecycleFilter, setLifecycleFilter] = useState<LifecycleFilterValue>('active');
@@ -130,7 +133,7 @@ export function ActorVaultLibraryShell({
   const isManagePurpose = purpose.kind === 'manage';
 
   useEffect(() => {
-    setMode('home');
+    setMode(purpose.kind === 'addForCampaign' ? 'home' : 'existing');
     setLifecycleFilter('active');
     setExpandedMoreActorKey(null);
   }, [
@@ -373,7 +376,7 @@ export function ActorVaultLibraryShell({
           </div>
           <button
             type="button"
-            onClick={() => setMode('home')}
+            onClick={() => setMode('existing')}
             className={`border px-3 py-1.5 text-xs font-bold ${t.borderLight} ${t.text} ${t.bgHover} ${t.hoverBorder}`}
           >
             {strings.backToLibrary}
@@ -437,62 +440,61 @@ export function ActorVaultLibraryShell({
       {contextBar}
 
       {/* ── Page header (no back button — top nav handles history/up/breadcrumb) ── */}
-      <div>
-        {/* Breadcrumb trail: vault level / current subpage — informational only */}
-        <p className={`text-xs ${t.textMuted} opacity-65`}>
-          {strings.vaultBreadcrumbLabel}
-          <span className="mx-1.5 opacity-40">/</span>
-          {strings.libraryTitle}
-        </p>
-        <h2 className={`mt-1 text-xl font-bold ${t.text}`}>{strings.libraryTitle}</h2>
-        <p className={`mt-0.5 text-xs ${t.textMuted} opacity-60`}>{strings.existingActorsSubtitle}</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          {strings.vaultBreadcrumbLabel !== strings.libraryTitle && (
+            <p className={`text-xs ${t.textMuted} opacity-65`}>
+              {strings.vaultBreadcrumbLabel}
+              <span className="mx-1.5 opacity-40">/</span>
+              {strings.libraryTitle}
+            </p>
+          )}
+          <h2 className={`text-2xl font-bold ${t.text}`}>{strings.libraryTitle}</h2>
+          <p className={`mt-1 text-sm ${t.textMuted} opacity-70`}>{strings.existingActorsSubtitle}</p>
+        </div>
+        {isManagePurpose && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => importFileInputRef.current?.click()}
+              className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${t.borderLight} ${t.text} ${t.bgHover} ${t.hoverBorder}`}
+            >
+              <Upload className="h-4 w-4" />
+              {strings.importPreview}
+            </button>
+            <button
+              type="button"
+              onClick={onRequestAdd}
+              className={`flex items-center gap-2 border px-3 py-2 text-xs font-bold ${t.border} ${t.bgAccent} ${t.textInvert}`}
+            >
+              <Plus className="h-4 w-4" />
+              {strings.addActor}
+            </button>
+          </div>
+        )}
       </div>
+
+      {isManagePurpose && (
+        <div className={`grid grid-cols-2 overflow-hidden border ${t.borderLight} ${t.bgCard} sm:grid-cols-4`}>
+          {[
+            [strings.totalCount, lifecycleCounts.active],
+            [strings.completeCount, activeCompleteCount],
+            [strings.incompleteCount, activeIncompleteCount],
+            [strings.recentUpdate, stats.recentUpdatedLabel ?? '—'],
+          ].map(([label, value], index) => (
+            <div
+              key={String(label)}
+              className={`px-4 py-3 ${index % 2 === 1 ? `border-l ${t.borderLight}` : ''} ${index >= 2 ? `border-t ${t.borderLight}` : ''} ${index > 0 ? `sm:border-l sm:border-t-0 ${t.borderLight}` : ''}`}
+            >
+              <div className={`text-[10px] font-bold uppercase tracking-wider ${t.textMuted}`}>{label}</div>
+              <div className={`mt-1 truncate text-lg font-bold ${t.textBody}`}>{value}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Search / Sort / Filter bar ── */}
       <div className={panelClassName}>
-        {isManagePurpose && (
-          <div className={`mb-3 border-b pb-3 text-xs ${t.borderLight} ${t.textMuted}`}>
-            <div className="grid gap-3 sm:grid-cols-4">
-              <div>
-                <div className="font-bold uppercase tracking-wider">{strings.lifecycleManagementSummary}</div>
-                <div className={`mt-1 ${t.textBody}`}>{strings.lifecycleFilteredCount}: {filtered.length}</div>
-              </div>
-              <div>
-                <div className="font-bold uppercase tracking-wider">{strings.lifecycleActive}</div>
-                <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{lifecycleCounts.active}</div>
-              </div>
-              <div>
-                <div className="font-bold uppercase tracking-wider">{strings.lifecycleArchived}</div>
-                <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{lifecycleCounts.archived}</div>
-              </div>
-              <div>
-                <div className="font-bold uppercase tracking-wider">{strings.lifecycleTrashed}</div>
-                <div className={`mt-1 text-lg font-bold ${t.textBody}`}>{lifecycleCounts.trashed}</div>
-              </div>
-            </div>
-            {lifecycleFilter === 'trashed' && (
-              <p className={`mt-3 text-[11px] leading-relaxed ${t.textMuted}`}>
-                {strings.trashHoldingAreaNote}
-              </p>
-            )}
-            <div className={`mt-3 border-t pt-3 ${t.borderLight}`}>
-              <div className="font-bold uppercase tracking-wider">{strings.dataActions}</div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => downloadActorVaultExportSnapshot()}
-                  className={`border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider opacity-80 ${t.borderLight} ${t.text} ${t.bgHover} ${t.hoverBorder}`}
-                >
-                  {strings.exportSnapshot}
-                </button>
-              </div>
-              <p className={`mt-2 text-[11px] leading-relaxed ${t.textMuted}`}>
-                {strings.exportSnapshotNote}
-              </p>
-            </div>
-          </div>
-        )}
-
         <div className="flex flex-wrap gap-3">
           {/* Search */}
           <input
@@ -500,7 +502,7 @@ export function ActorVaultLibraryShell({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={strings.searchPlaceholder}
-            className={`min-w-0 flex-1 border px-3 py-1.5 text-sm placeholder:opacity-40 focus:outline-none ${t.borderLight} ${t.bgInput} ${t.textBody} ${t.focusBorder} placeholder:${t.text}`}
+            className={`w-full border px-3 py-1.5 text-sm placeholder:opacity-40 focus:outline-none sm:min-w-0 sm:flex-1 ${t.borderLight} ${t.bgInput} ${t.textBody} ${t.focusBorder} placeholder:${t.text}`}
           />
           {/* Sort */}
           {sortOptions.length > 1 && (
@@ -513,6 +515,17 @@ export function ActorVaultLibraryShell({
                 <option key={o.key} value={o.key}>{o.label}</option>
               ))}
             </select>
+          )}
+          {isManagePurpose && (
+            <button
+              type="button"
+              onClick={() => downloadActorVaultExportSnapshot()}
+              title={strings.exportSnapshotNote}
+              className={`flex items-center gap-2 border px-3 py-1.5 text-xs font-bold ${t.borderLight} ${t.text} ${t.bgHover} ${t.hoverBorder}`}
+            >
+              <Download className="h-4 w-4" />
+              {strings.exportSnapshot}
+            </button>
           )}
         </div>
 
@@ -564,12 +577,27 @@ export function ActorVaultLibraryShell({
             </button>
           ))}
         </div>
+        {isManagePurpose && lifecycleFilter === 'trashed' && (
+          <p className={`mt-3 text-[11px] leading-relaxed ${t.textMuted}`}>
+            {strings.trashHoldingAreaNote}
+          </p>
+        )}
       </div>
 
       {/* ── Actor card list ── */}
       {sorted.length === 0 ? (
         <div className={`${panelClassName} py-8 text-center`}>
           <p className={`text-sm ${t.text} opacity-60`}>{strings.noResults}</p>
+          {isManagePurpose && lifecycleFilter === 'active' && !search.trim() && (
+            <button
+              type="button"
+              onClick={onRequestAdd}
+              className={`mt-4 inline-flex items-center gap-2 border px-4 py-2 text-xs font-bold ${t.border} ${t.bgAccent} ${t.textInvert}`}
+            >
+              <Plus className="h-4 w-4" />
+              {strings.addActor}
+            </button>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -605,6 +633,20 @@ export function ActorVaultLibraryShell({
             </div>
           ))}
         </div>
+      )}
+
+      {isManagePurpose && homeCards}
+      {isManagePurpose && (
+        <input
+          ref={importFileInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={(event) => {
+            void handleImportPreviewFile(event.currentTarget.files?.[0]);
+            event.currentTarget.value = '';
+          }}
+        />
       )}
 
     </div>
