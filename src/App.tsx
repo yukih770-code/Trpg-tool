@@ -9,7 +9,7 @@ import { ensureCampaignOwnershipBackfill } from './lib/platform/campaignOwnershi
 import { getCurrentLocalProfileUserId } from './lib/platform/localViewerIdentity';
 // P5.10I: one current-viewer account projection drives all account surfaces.
 import { getCurrentViewerAccount } from './lib/platform/currentViewerAccount';
-import { ArrowLeft, HomeIcon, Library, MoreHorizontal, Palette, Settings, Sparkles, Store, X } from 'lucide-react';
+import { ArrowLeft, HomeIcon, Library, MoreHorizontal, Palette, Settings, Sparkles, Store, Swords, X } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Toaster } from '../components/ui/sonner';
@@ -101,6 +101,7 @@ function areNavigationStatesEqual(left: NavigationState, right: NavigationState)
 // Platform nav switches top-level modules only; system + page navigation stay
 // inside their own surfaces.
 type PlatformNavKey = 'home' | 'systemLibrary' | 'personalHub' | 'workshop' | 'fanPlaza';
+type MobileNavKey = 'home' | 'campaigns' | 'systemLibrary' | 'personalHub';
 
 // `labelKey` resolves via i18n; `label` is a literal fallback when no key exists
 // (e.g. personalHub has no shell.nav key yet — i18n locale files are out of scope).
@@ -610,6 +611,21 @@ export default function App() {
     setAppView('placeholder');
   };
 
+  const openCampaignHub = () => {
+    if (selectedApiServer) {
+      openPlaceholder('campaigns');
+      return;
+    }
+    pushNavigation();
+    setPlayWorkspaceNavigation({
+      ...defaultPlayWorkspaceNavigationState,
+      dndWorkspaceView: system === 'D&D' ? 'campaigns' : 'dashboard',
+      systemWorkspaceView: system === 'D&D' ? 'dashboard' : 'campaigns',
+    });
+    setPlayStage('workspace');
+    setAppView('play');
+  };
+
   const openPersonalContentWorkshop = () => {
     setWorkshopReturnToCreator(true);
     setAppView('workshop');
@@ -645,6 +661,34 @@ export default function App() {
       setActiveSettingsCat(null); // open to the category list (mobile), not a stale second-level
     }
     openPlaceholder(key);
+  };
+
+  const mobilePrimaryNav: { key: MobileNavKey; label: string; icon: typeof HomeIcon }[] = [
+    { key: 'home', label: t('shell.nav.home'), icon: HomeIcon },
+    { key: 'campaigns', label: locale === 'en' ? 'Campaigns' : '战役', icon: Swords },
+    { key: 'systemLibrary', label: locale === 'en' ? 'Systems' : '系统', icon: Library },
+    { key: 'personalHub', label: locale === 'en' ? 'Library' : '资料', icon: Sparkles },
+  ];
+
+  const isMobileNavActive = (key: MobileNavKey): boolean => {
+    if (key === 'campaigns') {
+      return (appView === 'placeholder' && activePlaceholder === 'campaigns')
+        || (appView === 'play' && (
+          system === 'D&D'
+            ? playWorkspaceNavigation.dndWorkspaceView === 'campaigns'
+            : playWorkspaceNavigation.systemWorkspaceView === 'campaigns'
+        ));
+    }
+    return appView === key;
+  };
+
+  const handleMobileNavClick = (key: MobileNavKey) => {
+    if (key === 'campaigns') {
+      setMoreOpen(false);
+      openCampaignHub();
+      return;
+    }
+    handleNavClick(key);
   };
 
   const placeholderBaseKey = `shell.placeholders.${activePlaceholder}`;
@@ -1340,8 +1384,7 @@ export default function App() {
           enabledSystems={selectedServerSystems}
           onOpenProfile={() => setEntryStage('serverHome')}
           onOpenCampaigns={() => {
-            setActivePlaceholder('campaigns');
-            setAppView('placeholder');
+            openCampaignHub();
           }}
           onExitServer={exitCurrentServer}
         />
@@ -1361,8 +1404,7 @@ export default function App() {
                 enabledSystems={selectedServerSystems}
                 onOpenProfile={() => setEntryStage('serverHome')}
                 onOpenCampaigns={() => {
-                  setActivePlaceholder('campaigns');
-                  setAppView('placeholder');
+                  openCampaignHub();
                 }}
               />
             )}
@@ -1553,21 +1595,21 @@ export default function App() {
           className="fixed inset-x-0 bottom-0 z-30 flex border-t border-white/10 bg-[#17130f] text-[#f7f3ea] md:hidden"
           aria-label={t('shell.navigationLabel')}
         >
-          {PRIMARY_NAV.map((item) => {
+          {mobilePrimaryNav.map((item) => {
             const Icon = item.icon;
-            const active = isNavActive(item.key);
+            const active = isMobileNavActive(item.key);
             return (
               <button
                 key={item.key}
                 type="button"
-                onClick={() => handleNavClick(item.key)}
+                onClick={() => handleMobileNavClick(item.key)}
                 aria-current={active ? 'page' : undefined}
                 className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-semibold transition ${
                   active ? 'text-[#f5c518]' : 'text-white/70 hover:text-white'
                 }`}
               >
                 <Icon className="h-5 w-5" />
-                <span className="truncate">{navLabel(item)}</span>
+                <span className="truncate">{item.label}</span>
               </button>
             );
           })}
@@ -1649,6 +1691,26 @@ export default function App() {
               >
                 <Sparkles className="h-4 w-4 shrink-0" />
                 {locale === 'en' ? 'My Library' : '我的资料库'}
+              </button>
+
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => handleNavClick('workshop')}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-[#17130f] hover:bg-[#2f2a22]/8 md:hidden"
+              >
+                <Store className="h-4 w-4 shrink-0" />
+                {t('shell.nav.workshop')}
+              </button>
+
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => handleNavClick('fanPlaza')}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-semibold text-[#17130f] hover:bg-[#2f2a22]/8 md:hidden"
+              >
+                <Palette className="h-4 w-4 shrink-0" />
+                {t('shell.nav.fanPlaza')}
               </button>
 
               {/* 数据与备份 → settings */}
