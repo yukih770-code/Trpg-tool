@@ -1,7 +1,9 @@
 # One-command Local Development
 
 This Windows-friendly runner is for local testing only. It does not deploy the
-application, alter `.env`, apply migrations, or expose configuration values.
+application, alter `.env`, or expose configuration values. When `.env` uses the
+project `localhost:55432` database, it starts the bundled Docker PostgreSQL
+service and applies pending local migrations before opening the app.
 
 ## Start
 
@@ -13,9 +15,26 @@ npm run dev:local
 ```
 
 The command loads `.env` into the backend terminal process, builds and starts the
-backend on `http://localhost:8787`, waits for `/health`, starts Vite on
+project PostgreSQL container when configured, applies pending migrations, starts
+the backend on `http://localhost:8787`, waits for HTTP and World Server database
+health, starts Vite on
 `http://localhost:3000`, and opens the browser. Backend and frontend stay in
 separate PowerShell windows so their logs remain visible.
+
+## Cloud-like Local Sign-in
+
+Normal `dev:local` uses a development identity and intentionally skips the login
+screen. To verify the same Private Alpha login gate used by the cloud deployment,
+set local-only `PRIVATE_ALPHA_INVITE_CODE` and `PRIVATE_ALPHA_SESSION_SECRET`
+values in `.env`, then run:
+
+```powershell
+npm run dev:local:auth
+```
+
+The login form asks for a display name and the configured access code. These
+local values must never be reused as cloud secrets. Diagnose this mode with
+`npm run dev:local:auth:doctor`.
 
 ## Diagnose
 
@@ -55,7 +74,9 @@ and tells you which process is blocking startup.
 
 ## Required Local Configuration
 
-The runner checks for a backend database connection, the frontend API URL, the
-local development viewer identity, and the dev-auth flag. The server runtime mode
-may be omitted because it defaults to local development. It never prints values.
-Use `.env.example` as the authoritative local shape.
+The runner checks for a loopback backend database connection and the frontend API
+URL. Development-identity mode additionally requires the local viewer identity;
+Private Alpha mode requires local access-code and session-secret values. The
+server runtime mode may be omitted because it defaults to local development. It
+never prints configuration values. Use `.env.example` as the authoritative local
+shape.

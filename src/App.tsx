@@ -1120,10 +1120,12 @@ export default function App() {
             </div>
           </header>
 
-          <LocalDevIdentitySwitcher
-            locale={locale}
-            failureKind={classifyApiServiceFailure(worldServersState.error)}
-          />
+          {!privateAlphaAuthEnabled && (
+            <LocalDevIdentitySwitcher
+              locale={locale}
+              failureKind={classifyApiServiceFailure(worldServersState.error)}
+            />
+          )}
 
           {worldServersState.loading && !demoFallbackEnabled && (
             <section className="rounded-2xl border border-[#2f2a22]/12 bg-white p-6 text-sm text-[#51483d]">

@@ -2,12 +2,14 @@
 param(
   [ValidateSet('Start', 'Doctor', 'Stop', 'Backend', 'Frontend')]
   [string]$Mode = 'Start',
-  [switch]$Lan
+  [switch]$Lan,
+  [switch]$PrivateAlpha
 )
 
 $ErrorActionPreference = 'Stop'
 $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $EnvFile = Join-Path $ProjectRoot '.env'
+$PostgresComposeFile = Join-Path $ProjectRoot 'docker-compose.postgres.yml'
 
 function Write-LocalStatus([string]$Message) {
   Write-Host "[dev:local] $Message"
@@ -29,22 +31,116 @@ function Import-ProjectEnv {
   }
 }
 
+function Configure-LocalAuthMode {
+  if ($PrivateAlpha) {
+    $requiredSecrets = @('PRIVATE_ALPHA_INVITE_CODE', 'PRIVATE_ALPHA_SESSION_SECRET')
+    $missingSecrets = @($requiredSecrets | Where-Object { -not [Environment]::GetEnvironmentVariable($_, 'Process') })
+    if ($missingSecrets.Count -gt 0) {
+      throw "Private Alpha local mode requires: $($missingSecrets -join ', '). Add local-only values to .env."
+    }
+    [Environment]::SetEnvironmentVariable('PRIVATE_ALPHA_AUTH_ENABLED', 'true', 'Process')
+    [Environment]::SetEnvironmentVariable('VITE_PRIVATE_ALPHA_AUTH_ENABLED', 'true', 'Process')
+    [Environment]::SetEnvironmentVariable('VITE_LOCAL_DEV_AUTH_ENABLED', 'false', 'Process')
+    [Environment]::SetEnvironmentVariable('POSTGRES_USER_DEV_API_ENABLED', 'false', 'Process')
+    Write-LocalStatus 'Authentication mode: Private Alpha sign-in (cloud-like local verification).'
+    return
+  }
+
+  [Environment]::SetEnvironmentVariable('PRIVATE_ALPHA_AUTH_ENABLED', 'false', 'Process')
+  [Environment]::SetEnvironmentVariable('VITE_PRIVATE_ALPHA_AUTH_ENABLED', 'false', 'Process')
+  [Environment]::SetEnvironmentVariable('VITE_LOCAL_DEV_AUTH_ENABLED', 'true', 'Process')
+  [Environment]::SetEnvironmentVariable('POSTGRES_USER_DEV_API_ENABLED', 'true', 'Process')
+  Write-LocalStatus 'Authentication mode: local development identity.'
+}
+
 function Assert-RequiredLocalEnv {
-  $required = @(
-    'DATABASE_URL',
-    'VITE_API_BASE_URL',
-    'VITE_DEV_VIEWER_USER_ID',
-    'POSTGRES_USER_DEV_API_ENABLED'
-  )
+  $required = @('DATABASE_URL', 'VITE_API_BASE_URL')
+  if (-not $PrivateAlpha) {
+    $required += @('VITE_DEV_VIEWER_USER_ID', 'POSTGRES_USER_DEV_API_ENABLED')
+  }
   $missing = @($required | Where-Object { -not [Environment]::GetEnvironmentVariable($_, 'Process') })
   if ($missing.Count -gt 0) {
     throw "Missing required local environment variables: $($missing -join ', ')."
   }
-  if ([Environment]::GetEnvironmentVariable('POSTGRES_USER_DEV_API_ENABLED', 'Process') -ne 'true') {
+  if (-not $PrivateAlpha -and [Environment]::GetEnvironmentVariable('POSTGRES_USER_DEV_API_ENABLED', 'Process') -ne 'true') {
     throw 'POSTGRES_USER_DEV_API_ENABLED must be true for the local development runner.'
   }
   if ([Environment]::GetEnvironmentVariable('VITE_API_BASE_URL', 'Process').TrimEnd('/') -ne 'http://localhost:8787') {
     throw 'VITE_API_BASE_URL must point to the local backend for dev:local.'
+  }
+
+  try {
+    $databaseUri = [Uri][Environment]::GetEnvironmentVariable('DATABASE_URL', 'Process')
+  } catch {
+    throw 'DATABASE_URL is not a valid PostgreSQL connection URL.'
+  }
+  if ($databaseUri.Host -notin @('localhost', '127.0.0.1', '::1')) {
+    throw 'dev:local only applies migrations to a loopback PostgreSQL target. Use a localhost DATABASE_URL.'
+  }
+}
+
+function Ensure-ProjectDockerDatabase {
+  $databaseUri = [Uri][Environment]::GetEnvironmentVariable('DATABASE_URL', 'Process')
+  $databaseName = $databaseUri.AbsolutePath.Trim('/')
+  $usesProjectContainer = $databaseUri.Port -eq 55432 -and $databaseName -eq 'trpg_platform_dev'
+  if (-not $usesProjectContainer) { return }
+
+  if (-not (Test-Path -LiteralPath $PostgresComposeFile)) {
+    throw 'The project PostgreSQL compose file is missing.'
+  }
+  if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+    throw 'Docker is required for the configured localhost:55432 database, but the docker command is unavailable.'
+  }
+
+  & docker info --format '{{.ServerVersion}}' 2>$null | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    $dockerDesktop = 'C:\Program Files\Docker\Docker\Docker Desktop.exe'
+    if (-not (Test-Path -LiteralPath $dockerDesktop)) {
+      throw 'Docker Desktop is not running. Start it, then run npm run dev:local again.'
+    }
+    Write-LocalStatus 'Starting Docker Desktop for the project PostgreSQL container.'
+    Start-Process -FilePath $dockerDesktop -WindowStyle Hidden | Out-Null
+    $dockerReady = $false
+    for ($attempt = 1; $attempt -le 30; $attempt++) {
+      Start-Sleep -Seconds 2
+      & docker info --format '{{.ServerVersion}}' 2>$null | Out-Null
+      if ($LASTEXITCODE -eq 0) {
+        $dockerReady = $true
+        break
+      }
+    }
+    if (-not $dockerReady) {
+      throw 'Docker Desktop did not become ready within 60 seconds.'
+    }
+  }
+
+  Write-LocalStatus 'Ensuring the project PostgreSQL container is running.'
+  & docker compose -f $PostgresComposeFile up -d
+  if ($LASTEXITCODE -ne 0) { throw 'Unable to start the project PostgreSQL container.' }
+
+  for ($attempt = 1; $attempt -le 30; $attempt++) {
+    $health = & docker inspect --format '{{.State.Health.Status}}' trpg-platform-postgres-dev 2>$null
+    if ($health -eq 'healthy') {
+      Write-LocalStatus 'Project PostgreSQL container is healthy.'
+      return
+    }
+    Start-Sleep -Seconds 1
+  }
+  throw 'Project PostgreSQL container did not become healthy within 30 seconds.'
+}
+
+function Ensure-LocalDatabaseReady {
+  Ensure-ProjectDockerDatabase
+  Push-Location $ProjectRoot
+  try {
+    Write-LocalStatus 'Applying pending local database migrations.'
+    & npm run db:migrations:apply -- --apply
+    if ($LASTEXITCODE -ne 0) { throw 'Local database migrations failed.' }
+    Write-LocalStatus 'Verifying all local PostgreSQL schemas.'
+    & npm run db:verify:e2e -- --strict
+    if ($LASTEXITCODE -ne 0) { throw 'Local PostgreSQL readiness verification failed.' }
+  } finally {
+    Pop-Location
   }
 }
 
@@ -115,7 +211,8 @@ function Start-LocalWindow([ValidateSet('Backend', 'Frontend')][string]$ChildMod
   $scriptPath = $PSCommandPath.Replace("'", "''")
   $rootPath = $ProjectRoot.Replace("'", "''")
   $lanArgument = if ($Lan) { ' -Lan' } else { '' }
-  $command = "& { Set-Location -LiteralPath '$rootPath'; & '$scriptPath' -Mode $ChildMode$lanArgument }"
+  $privateAlphaArgument = if ($PrivateAlpha) { ' -PrivateAlpha' } else { '' }
+  $command = "& { Set-Location -LiteralPath '$rootPath'; & '$scriptPath' -Mode $ChildMode$lanArgument$privateAlphaArgument }"
   Start-Process -FilePath 'powershell.exe' -ArgumentList @(
     '-NoExit', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', $command
   ) | Out-Null
@@ -125,19 +222,21 @@ function Wait-ForBackendHealth {
   for ($attempt = 1; $attempt -le 30; $attempt++) {
     try {
       $response = Invoke-WebRequest -Uri 'http://localhost:8787/health' -UseBasicParsing -TimeoutSec 2
-      if ($response.StatusCode -eq 200) {
-        Write-LocalStatus 'Backend health check passed.'
+      $payload = $response.Content | ConvertFrom-Json
+      $databaseReady = $payload.database.status -eq 'ok' -and $payload.database.worldServerSchema.status -eq 'ready'
+      if ($response.StatusCode -eq 200 -and $databaseReady) {
+        Write-LocalStatus 'Backend and World Server database health checks passed.'
         return
       }
-    } catch {
-      Start-Sleep -Seconds 1
-    }
+    } catch {}
+    Start-Sleep -Seconds 1
   }
-  throw 'Backend did not become healthy on http://localhost:8787/health. Check the backend terminal window.'
+  throw 'Backend HTTP started, but the World Server database did not become ready. Run npm run dev:local:doctor.'
 }
 
 function Invoke-Doctor {
   Import-ProjectEnv
+  Configure-LocalAuthMode
   Enable-LanAlphaForProcess
   $node = Get-Command node -ErrorAction SilentlyContinue
   $npm = Get-Command npm -ErrorAction SilentlyContinue
@@ -145,7 +244,12 @@ function Invoke-Doctor {
   Write-LocalStatus "npm available: $([bool]$npm)"
   Write-LocalStatus ".env available: $([bool](Test-Path -LiteralPath $EnvFile))"
 
-  $required = @('DATABASE_URL', 'VITE_API_BASE_URL', 'VITE_DEV_VIEWER_USER_ID', 'POSTGRES_USER_DEV_API_ENABLED')
+  $required = @('DATABASE_URL', 'VITE_API_BASE_URL')
+  if ($PrivateAlpha) {
+    $required += @('PRIVATE_ALPHA_INVITE_CODE', 'PRIVATE_ALPHA_SESSION_SECRET')
+  } else {
+    $required += @('VITE_DEV_VIEWER_USER_ID', 'POSTGRES_USER_DEV_API_ENABLED')
+  }
   foreach ($name in $required) {
     Write-LocalStatus "$name configured: $([bool][Environment]::GetEnvironmentVariable($name, 'Process'))"
   }
@@ -195,6 +299,7 @@ function Invoke-Doctor {
 
 function Invoke-Backend {
   Import-ProjectEnv
+  Configure-LocalAuthMode
   Enable-LanAlphaForProcess
   Assert-RequiredLocalEnv
   Set-Location -LiteralPath $ProjectRoot
@@ -206,6 +311,7 @@ function Invoke-Backend {
 
 function Invoke-Frontend {
   Import-ProjectEnv
+  Configure-LocalAuthMode
   Enable-LanAlphaForProcess
   Assert-RequiredLocalEnv
   Set-Location -LiteralPath $ProjectRoot
@@ -224,8 +330,10 @@ switch ($Mode) {
   'Frontend' { Invoke-Frontend; break }
   'Start' {
     Import-ProjectEnv
+    Configure-LocalAuthMode
     Enable-LanAlphaForProcess
     Assert-RequiredLocalEnv
+    Ensure-LocalDatabaseReady
     Stop-SafeLocalService 8787 'backend'
     Stop-SafeLocalService 3000 'frontend'
     Assert-PortAvailable 8787
