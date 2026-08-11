@@ -6,6 +6,8 @@ export type CombatModeHudModel = {
   mode: CombatModeHudState;
   roundNumber: number;
   activeCombatant?: Combatant;
+  previousCombatant?: Combatant;
+  nextCombatant?: Combatant;
   combatants: Array<Combatant & { isCurrent: boolean }>;
 };
 
@@ -26,6 +28,14 @@ export function getCombatModeHudModel(state: CombatRuntimeTableState): CombatMod
     ...combatant,
     isCurrent: combatant.id === activeCombatant?.id,
   }));
+  const eligible = combatants.filter((combatant) => combatant.status === 'active' && !combatant.isDefeated);
+  const activeIndex = activeCombatant ? eligible.findIndex((combatant) => combatant.id === activeCombatant.id) : -1;
+  const previousCombatant = activeIndex >= 0 && eligible.length > 1
+    ? eligible[(activeIndex - 1 + eligible.length) % eligible.length]
+    : undefined;
+  const nextCombatant = activeIndex >= 0 && eligible.length > 1
+    ? eligible[(activeIndex + 1) % eligible.length]
+    : undefined;
 
-  return { mode, roundNumber: state.turn.roundNumber, activeCombatant, combatants };
+  return { mode, roundNumber: state.turn.roundNumber, activeCombatant, previousCombatant, nextCombatant, combatants };
 }

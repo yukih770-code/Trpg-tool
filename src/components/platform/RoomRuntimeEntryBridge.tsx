@@ -38,12 +38,13 @@ import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSce
 import { RuntimeMapStage } from './RuntimeMapStage';
 import { BasicMapBoard } from './BasicMapBoard';
 import { RoomRuntimeCombatPanel } from './RoomRuntimeCombatPanel';
+import { RuntimeMobileCombatHud } from './RuntimeMobileCombatHud';
 import { RuntimeTokenInspectPanel } from './RuntimeTokenInspectPanel';
 import { entryCharacterFromRoomBinding, entryCharacterToPresenceCandidate } from '../../lib/platform/entryCharacterRef';
 import type { MapTokenPresenceCandidate } from '../../lib/map/actorPresence';
 import type { MapInteractionPreview, MapRuntimeEventDraft, MapToken } from '../../lib/map/mapRuntimeTypes';
 import { replayMapRuntimeEvents } from '../../lib/map/mapRuntimeReplay';
-import { createCombatRuntimeTableState, type CombatRuntimeEventDraft, type CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
+import { advanceTurn, createCombatRuntimeTableState, endCombat, type CombatRuntimeEventDraft, type CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
 
 /**
  * RoomRuntimeEntryBridge (v0 / UI1a) — multiplayer Runtime Alpha surface.
@@ -404,6 +405,19 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     });
     setLogLiveEvents((previous) => [...previous, stored]);
     setRecentEvents((previous) => previous.some((candidate) => candidate.eventId === stored.eventId) ? previous : [...previous, stored].sort((left, right) => left.seq - right.seq));
+  };
+
+  const moveCombatTurnFromHud = async (direction: 'next' | 'previous') => {
+    const transition = advanceTurn(roomCombatState, direction);
+    if (!transition.event) return;
+    await appendCombatEvent(transition.event);
+    setRoomCombatState(transition.state);
+  };
+
+  const endCombatFromHud = async () => {
+    const transition = endCombat(roomCombatState);
+    await appendCombatEvent(transition.event);
+    setRoomCombatState(transition.state);
   };
 
   const shareRoomMapPreview = useCallback((preview?: MapInteractionPreview) => {
@@ -942,6 +956,16 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       mainStage={mainStage}
       actorRail={actorRail}
       inspector={inspector}
+      mobileStatus={
+        <RuntimeMobileCombatHud
+          locale={readStoredLocale()}
+          role={shellMode}
+          state={roomCombatState}
+          onLocateCombatant={(combatantId) => { setSelectedCombatantId(combatantId); setCombatantToLocate(combatantId); }}
+          onMoveTurn={shellMode === 'host' ? moveCombatTurnFromHud : undefined}
+          onEndCombat={shellMode === 'host' ? endCombatFromHud : undefined}
+        />
+      }
       overlay={inspectedToken && <RuntimeTokenInspectPanel
         token={inspectedToken}
         combatant={roomCombatState.combatants.find((combatant) => combatant.mapTokenId === inspectedToken.id || combatant.id === inspectedToken.combatantId || combatant.id === inspectedToken.sourceCombatantId)}

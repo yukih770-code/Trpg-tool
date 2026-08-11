@@ -38,6 +38,8 @@ export interface RuntimeFullscreenShellProps {
   inspector?: ReactNode;
   /** Small, temporary runtime interaction surface such as Token inspection. */
   overlay?: ReactNode;
+  /** Compact, always-visible mobile status such as the active combat turn. */
+  mobileStatus?: ReactNode;
   actionDock?: ReactNode;
   logDrawer?: ReactNode;
 }
@@ -89,6 +91,7 @@ export function RuntimeFullscreenShell({
   actorRail,
   inspector,
   overlay,
+  mobileStatus,
   actionDock,
   logDrawer,
 }: RuntimeFullscreenShellProps) {
@@ -290,6 +293,12 @@ export function RuntimeFullscreenShell({
             </button>
           )}
         </div>
+
+        {mobileStatus && (
+          <div className="pointer-events-none absolute inset-x-2 top-[3.75rem] z-20 md:hidden">
+            {mobileStatus}
+          </div>
+        )}
 
         {/* Bottom Action Dock — floating, centered, safe-area padded, above log.
             A provided actionDock brings its own container (e.g. RuntimeActionDock,

@@ -17,9 +17,11 @@ const startedModel = getCombatModeHudModel(started.state);
 check('start assigns initiative only to missing entries', started.state.combatants.find((combatant) => combatant.id === 'manual')?.initiative === 18 && started.state.combatants.find((combatant) => combatant.id === 'missing')?.initiative === 15);
 check('started event persists order inputs for replay', Array.isArray(started.event?.payload.combatants) && Array.isArray(started.event?.payload.initiativeRolls));
 check('hud marks exactly one current combatant', startedModel.mode === 'in_combat' && startedModel.combatants.filter((combatant) => combatant.isCurrent).length === 1 && startedModel.activeCombatant?.id === 'manual');
+check('hud exposes adjacent active turns for compact navigation', startedModel.previousCombatant?.id === 'missing' && startedModel.nextCombatant?.id === 'missing');
 
 const next = advanceTurn(started.state);
 check('hud follows the advanced current combatant', getCombatModeHudModel(next.state).activeCombatant?.id === 'missing');
+check('hud adjacency follows the advanced current combatant', getCombatModeHudModel(next.state).nextCombatant?.id === 'manual');
 const paused = pauseCombat(next.state);
 check('paused mode remains distinct', getCombatModeHudModel(paused.state).mode === 'paused');
 const resumed = resumeCombat(paused.state);
