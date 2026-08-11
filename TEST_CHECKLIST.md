@@ -1320,6 +1320,21 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8t. Mobile Combat HUD Collapse v1
+
+- [ ] Compact HUD shows round, current combatant, initiative, and next combatant in one short row
+- [ ] Expand/collapse control has `aria-expanded` and an explicit accessible label
+- [ ] Expanded HUD restores visible HP/AC/conditions and existing host/player controls
+- [ ] Host starts expanded; waiting player and spectator start compact
+- [ ] A newly active own turn expands the player's HUD automatically
+- [ ] Late-arriving projected ownership can still expand the current own turn
+- [ ] Manual own-turn collapse survives ordinary rerenders
+- [ ] A player returns to compact when the active turn moves to another combatant
+- [ ] `npm run frontend:verify:mobile-combat-hud-presentation` passes
+- [ ] No combat authority, RuntimeLog, dice, permissions, map, server, store, schema, rules, Campaign Runtime, or desktop layout changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

@@ -940,6 +940,14 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Room wiring: `RoomRuntimeEntryBridge` compares the linked combatant with `activeCombatantId`; DND opens `dndActions`, other systems open `dice`.
 - Focused smoke: `src/lib/combat/runtimePlayerTurnCalloutSmoke.ts`; command `npm run frontend:verify:runtime-player-turn-callout`.
 
+## Mobile Combat HUD Collapse
+
+- `AI-LANDMARK: MOBILE_COMBAT_HUD_COLLAPSE_V1`: `src/components/platform/RuntimeMobileCombatHud.tsx`
+- `initialMobileCombatHudExpanded()` / `resolveMobileCombatHudExpanded()`: `src/lib/combat/mobileCombatHudPresentation.ts`.
+- Compact HUD retains round/current/initiative/next; expanded-only surfaces own-turn CTA and host controls.
+- Turn context uses `startedAt + activeCombatantId`; late `isMyTurn` recognition also expands once without overriding later manual collapse.
+- Focused smoke: `src/lib/combat/mobileCombatHudPresentationSmoke.ts`; command `npm run frontend:verify:mobile-combat-hud-presentation`.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

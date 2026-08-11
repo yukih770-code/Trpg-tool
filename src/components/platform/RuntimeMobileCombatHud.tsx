@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { Locale } from '../../i18n';
 import { getCombatModeHudModel } from '../../lib/combat/combatModeHud';
+import { initialMobileCombatHudExpanded, resolveMobileCombatHudExpanded } from '../../lib/combat/mobileCombatHudPresentation';
 import type { Combatant, CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
 import { runtimeAcDisplayLabel, runtimeHpDisplayLabel } from '../../lib/platform/roomRuntimeVisibility';
 import type { RuntimeShellMode } from './RuntimeFullscreenShell';
@@ -19,6 +20,7 @@ type Props = {
 };
 
 /** AI-LANDMARK: RUNTIME_PLAYER_TURN_CALLOUT_V1
+ * AI-LANDMARK: MOBILE_COMBAT_HUD_COLLAPSE_V1
  * Compact presentation only: ownership comes from projected Token linkage and
  * the CTA opens an existing role-safe dock panel without performing an action. */
 
@@ -35,12 +37,24 @@ function acLabel(combatant: Combatant, locale: 'zh' | 'en'): string | undefined 
 
 export function RuntimeMobileCombatHud({ locale, role, state, onLocateCombatant, isMyTurn = false, turnActionKind = 'dice', onOpenTurnAction, onMoveTurn, onEndCombat }: Props) {
   const model = getCombatModeHudModel(state);
+  const active = model.activeCombatant;
+  const turnContextKey = `${state.turn.startedAt ?? 'not-started'}:${active?.id ?? 'none'}`;
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(() => initialMobileCombatHudExpanded(role, isMyTurn));
+  const previousTurnContextRef = useRef(turnContextKey);
+  const previousIsMyTurnRef = useRef(isMyTurn);
   const zh = locale !== 'en';
-  const active = model.activeCombatant;
   const paused = model.mode === 'paused';
   const canManage = role === 'host' && !!onMoveTurn && !!onEndCombat;
+
+  useEffect(() => {
+    const turnChanged = previousTurnContextRef.current !== turnContextKey;
+    const ownTurnBecameKnown = !previousIsMyTurnRef.current && isMyTurn;
+    setExpanded((current) => resolveMobileCombatHudExpanded({ current, role, isMyTurn, turnChanged, ownTurnBecameKnown }));
+    previousTurnContextRef.current = turnContextKey;
+    previousIsMyTurnRef.current = isMyTurn;
+  }, [isMyTurn, role, turnContextKey]);
 
   if ((model.mode !== 'in_combat' && model.mode !== 'paused') || !active) return null;
 
@@ -61,36 +75,36 @@ export function RuntimeMobileCombatHud({ locale, role, state, onLocateCombatant,
 
   return (
     <section aria-label={zh ? '当前战斗状态' : 'Current combat status'} className="pointer-events-auto overflow-hidden rounded-xl border border-amber-300/35 bg-[#17130f]/95 text-[#fff8e6] shadow-xl backdrop-blur-md">
-      <div className="flex min-h-16 items-stretch">
-        <div className="flex w-14 shrink-0 flex-col items-center justify-center bg-[#f5c518] px-1 text-[#17130f]">
+      <div className={`flex items-stretch ${expanded ? 'min-h-16' : 'min-h-11'}`}>
+        <div className={`flex shrink-0 flex-col items-center justify-center bg-[#f5c518] px-1 text-[#17130f] ${expanded ? 'w-14' : 'w-12'}`}>
           <span className="text-[9px] font-black uppercase tracking-wide">{paused ? (zh ? '暂停' : 'Paused') : isMyTurn ? (zh ? '你的回合' : 'Your turn') : (zh ? '轮次' : 'Round')}</span>
           <span className="text-xl font-black leading-none">{model.roundNumber}</span>
         </div>
-        <button type="button" onClick={() => onLocateCombatant(active.id)} className="min-w-0 flex-1 px-2.5 py-2 text-left active:bg-white/10">
+        <button type="button" onClick={() => onLocateCombatant(active.id)} className={`min-w-0 flex-1 px-2.5 text-left active:bg-white/10 ${expanded ? 'py-2' : 'py-1.5'}`}>
           <div className="flex items-center gap-1.5">
             <span className="truncate text-sm font-black">{active.displayName}</span>
             <span className="shrink-0 rounded bg-white/10 px-1 py-0.5 text-[9px] font-black text-[#f5c518]">{zh ? '先攻' : 'Init'} {active.initiative ?? '—'}</span>
           </div>
-          <div className="mt-1 flex min-w-0 items-center gap-1 text-[9px] text-[#fff8e6]/75">
+          {expanded && <div className="mt-1 flex min-w-0 items-center gap-1 text-[9px] text-[#fff8e6]/75">
             {visibleStats.map((stat) => <span key={stat} className="shrink-0">{stat}</span>)}
             {conditions.map((condition) => <span key={condition} className="truncate rounded bg-white/10 px-1">{condition}</span>)}
             {visibleStats.length === 0 && conditions.length === 0 && <span>{zh ? '点击定位 Token' : 'Tap to locate token'}</span>}
-          </div>
+          </div>}
         </button>
-        <div className="flex w-20 shrink-0 flex-col justify-center border-l border-white/10 px-2">
-          <span className="text-[9px] font-bold text-[#fff8e6]/50">{zh ? '下一位' : 'Next'}</span>
+        <button type="button" aria-expanded={expanded} aria-label={expanded ? (zh ? '收起战斗状态' : 'Collapse combat status') : (zh ? '展开战斗状态' : 'Expand combat status')} onClick={() => setExpanded((current) => !current)} className="flex w-20 shrink-0 flex-col justify-center border-l border-white/10 px-2 text-left active:bg-white/10">
+          <span className="flex items-center justify-between text-[9px] font-bold text-[#fff8e6]/50"><span>{zh ? '下一位' : 'Next'}</span><span aria-hidden>{expanded ? '⌃' : '⌄'}</span></span>
           <span className="truncate text-[10px] font-bold">{model.nextCombatant?.displayName ?? '—'}</span>
-        </div>
+        </button>
       </div>
 
-      {canManage && (
+      {expanded && canManage && (
         <div className="grid grid-cols-[1fr_1fr_auto] gap-1 border-t border-white/10 bg-black/20 p-1.5">
           <button type="button" disabled={pending || paused} onClick={() => void run(() => onMoveTurn('previous'))} className="min-h-9 rounded-lg border border-white/15 px-2 text-[10px] font-bold disabled:opacity-40">← {zh ? '上一位' : 'Previous'}</button>
           <button type="button" disabled={pending || paused} onClick={() => void run(() => onMoveTurn('next'))} className="min-h-9 rounded-lg bg-[#f5c518] px-2 text-[10px] font-black text-[#17130f] disabled:opacity-40">{zh ? '下一位' : 'Next'} →</button>
           <button type="button" disabled={pending} onClick={() => void run(onEndCombat)} className="min-h-9 rounded-lg border border-red-300/35 px-2 text-[10px] font-bold text-red-100 disabled:opacity-40">{zh ? '结束' : 'End'}</button>
         </div>
       )}
-      {role === 'player' && isMyTurn && (
+      {expanded && role === 'player' && isMyTurn && (
         <div className="flex items-center justify-between gap-2 border-t border-amber-200/20 bg-[#f5c518]/10 px-2.5 py-2">
           <div className="min-w-0">
             <div className="text-[11px] font-black text-[#f5c518]">{zh ? '轮到你行动' : 'It is your turn'}</div>

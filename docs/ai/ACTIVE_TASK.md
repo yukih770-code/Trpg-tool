@@ -6,31 +6,26 @@
 
 ## Task
 
-- ID: Runtime Player Turn Callout v1
-- Name: `RUNTIME_PLAYER_TURN_CALLOUT_V1`
-- Goal: Let an admitted player recognize their own active combat turn and open
-  the existing role-safe action/dice panel directly from the mobile combat HUD.
+- ID: Mobile Combat HUD Collapse v1
+- Name: `MOBILE_COMBAT_HUD_COLLAPSE_V1`
+- Goal: Preserve map space by giving the mobile combat HUD explicit compact and
+  expanded modes while keeping essential turn identity visible.
 - Phase: P0 Runtime mobile usability
 - Status: Done
 
 ## UI Contract
 
 - Page responsibility: `runtime`
-- Primary action: when the active combatant is the player's linked character,
-  open the existing DND action palette or generic dice panel
-- Hidden actions: no player turn advance/end controls and no automatic roll
-- Host and spectator behavior remains unchanged
+- Compact responsibility: round, current combatant, initiative, next combatant
+- Expanded responsibility: visible HP/AC/conditions plus role-safe controls
+- Player own turn automatically expands on turn change; manual collapse remains
+  respected until the active turn changes again
 
 ## Allowed Files
 
 - `src/components/platform/RuntimeMobileCombatHud.tsx`
-- `src/components/platform/RuntimeActionDock.tsx`
-- `src/components/platform/RoomRuntimeEntryBridge.tsx`
-- `src/components/platform/RoomRuntimeCombatPanel.tsx`
-- `src/lib/combat/roomRuntimeCombatLink.ts`
-- `src/lib/combat/runtimePlayerTurnCalloutSmoke.ts`
-- `server/room/roomRuntimeVisibilityProjectionSmoke.ts`
-- `server/room/roomRuntimeVisibilityProjectionSmoke.ts`
+- `src/lib/combat/mobileCombatHudPresentation.ts`
+- `src/lib/combat/mobileCombatHudPresentationSmoke.ts`
 - `package.json`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
@@ -40,26 +35,25 @@
 
 ## Forbidden Changes
 
-- Combat turn authority, RuntimeLog events, dice resolution, hit/damage logic
-- Room role/permission resolution, API, server, store, schema, migration
-- Map token ownership or visibility projection rules
-- Campaign Runtime and desktop Runtime layout
+- Combat state, turn authority, RuntimeLog, dice, damage, action-panel behavior
+- Room roles/permissions, visibility projection, map controls, server/API
+- Store, schema, migration, rule data, Campaign Runtime, desktop layout
 
 ## Completion Criteria
 
-- Shared helper resolves the player's combatant only through projected Token
-  linkage and approved actor binding.
-- Mobile HUD clearly marks the player's own active turn.
-- Turn CTA opens an existing action/dice panel; it performs no gameplay action.
-- Host controls and spectator read-only behavior remain unchanged.
-- Focused smoke, existing action-dock/combat HUD smoke, TypeScript, build, and
-  diff check pass.
+- Compact HUD remains useful at one short row and has an accessible expand CTA.
+- Expanded HUD preserves current stats and all existing host/player controls.
+- Host starts expanded; non-current players and spectators start compact.
+- A player's newly active turn expands automatically; manual collapse is not
+  immediately overridden by ordinary rerenders.
+- Focused presentation smoke, existing HUD/turn/action smoke, TypeScript,
+  frontend build, and diff check pass.
 
 ## Verification
 
 ```powershell
+npm run frontend:verify:mobile-combat-hud-presentation
 npm run frontend:verify:runtime-player-turn-callout
-npm run frontend:verify:runtime-action-dock
 npm run frontend:verify:combat-mode-hud
 npm run lint
 npm run build
@@ -68,11 +62,11 @@ git diff --check
 
 ## Result
 
-- Viewer-projected approved binding → Token → combatant linkage now has one
-  shared read-only resolver used by both the combat panel and Runtime bridge.
-- Mobile players receive a clear own-turn callout; its CTA opens the existing
-  DND action palette or dice panel and performs no gameplay operation.
-- The server visibility smoke confirms only the owner retains the opaque Token
-  binding needed for recognition.
-- Focused smoke, existing action/combat/visibility checks, TypeScript, frontend
-  and server builds, and diff check pass.
+- Compact mode reduces the mobile HUD to one short row while retaining round,
+  current combatant, initiative, and next combatant.
+- Expanded mode preserves existing visible stats and role-safe controls.
+- Host/waiting-player/spectator defaults and own-turn transitions follow the
+  tested presentation resolver; manual collapse is not overwritten by ordinary
+  rerenders.
+- Focused presentation, own-turn, combat HUD, action dock, TypeScript, frontend
+  build, and diff checks pass.
