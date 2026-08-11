@@ -1231,6 +1231,19 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8o. Platform Local-Direct Launcher Clarity v1 Check
+
+- [ ] With private-alpha auth disabled, the launcher does not mention login or registration
+- [ ] The single primary CTA reads 「进入服务器工作台」 / “Open server workspace”
+- [ ] The primary CTA opens the existing server selection flow
+- [ ] The supporting card explains server → campaign/room → Runtime in three steps
+- [ ] With private-alpha auth enabled, the existing `PrivateAlphaLoginPanel` remains the authentication gate
+- [ ] At a real 390px CSS viewport, the header, title, CTA, and flow card are fully visible
+- [ ] At 390px, `document.documentElement.scrollWidth === window.innerWidth`
+- [ ] No auth protocol, API, Runtime, Room, store, schema, migration, routing, or dependency changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

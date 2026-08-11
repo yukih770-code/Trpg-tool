@@ -6,40 +6,53 @@
 
 ## Task
 
-- ID: Workshop + Fan Plaza Dedicated Detail Pages v1
-- Name: WORKSHOP_FAN_PLAZA_DEDICATED_DETAIL_PAGES_V1
-- Goal: Split browse vs. full detail. Browse pages keep a lightweight quick preview; full detail now opens a dedicated detail view (page-internal state, no real router) that replaces the browse surface and offers a back button. Frontend views + static mock read + i18n + docs only.
-- Phase: P1 platform UX / IA
-- Status: Done (pending local tsc/build verification — sandbox unavailable)
+- ID: Platform Local-Direct Launcher Clarity v1
+- Name: PLATFORM_LOCAL_DIRECT_LAUNCHER_CLARITY_V1
+- Goal: Make the auth-disabled launcher describe its real local/server-selection
+  flow, keep private-alpha authentication on its existing separate gate, and
+  remove narrow-screen headline overflow.
+- Phase: P0 product truth / entry UX
+- Status: Done
 
-## Result Summary
+## Allowed Files
 
-- Workshop: `WorkshopShell.tsx` adds `detailId` + `openDetail()`; when set, returns `WorkshopItemDetail` (new component) instead of the browse/subscriptions surface. Browse card main area is a `<button>` → `openDetail`; a separate "快速预览" button toggles the now-LIGHTWEIGHT quick preview (small cover + title + author + 1-line summary + system/category/version/dependency/impact + 进入详情 + subscribe reserved). Card footer also has 进入详情.
-- `WorkshopItemDetail.tsx` (new): back bar → workshop, hero cover + gallery, long description, version/dependency/impact/landing info card, includes, related fan works + related actors/campaigns/logs, share code/public path (synthesized WS-…/ /share/workshop/…), reserved load-order/changelog/comments/author-works/related-recommend.
-- Fan Plaza: `FanPlazaShell.tsx` adds `detailWorkId` + `previewWorkId` + `openDetail()`; when detail set, returns `FanWorkDetail` (now a dedicated page with `onBack`) instead of browse. `FanWorkCard.tsx` main area `<button>` → `onOpenDetail`; separate 快速预览 → `onQuickPreview`; lightweight preview panel rendered inline in the shell.
-- `FanWorkDetail.tsx`: converted from inline panel to dedicated page (`<main>` + back-to-plaza bar top & bottom, `onBack` replaces `onClose`); keeps hero cover, body, media placeholders, related objects, related Workshop content, share/permission, engagement; adds a Comments section + related-recommend reserved.
-- i18n (`zh-CN.ts` + `en.ts`): `workshop.card.enterDetail`; new `workshop.detail.*` (back/backToWorkshop/pageTitle/gallery/longDescription/versionInfo/dependencies/impactScope/landing/includes/loadOrderReserved/changelogReserved/comments/commentsReserved/authorWorksReserved/relatedRecommendReserved); `fanPlaza.card.enterDetail`/`quickPreview`; `fanPlaza.detail.backToPlaza`/`pageTitle`/`commentsSection`/`relatedRecommendReserved`.
-- NO real React Router / URL / browser History; no real upload/download/subscribe/like/favorite/comment/backend; no store/schema/save/rule-data/Builder/dice/runtime/Actor Vault adapters change.
+- `src/App.tsx`
+- `PROJECT_STATUS.md`
+- `TEST_CHECKLIST.md`
+- `docs/ai/ACTIVE_TASK.md`
+- `docs/ai/TASK_ARCHIVE.md`
 
-## Forbidden Changes (respected)
+## Forbidden Changes
 
-- store / schema / migration / save format / rule data / Builder logic / creation steps / spell/class/species/equipment data / dice / runtime
-- Actor Vault adapters / DND·COC·CP RED internal logic / Campaign·Module·Session real functionality / real URL routing / browser History API
-- real upload / download / subscription / like / favorite / comment / permission system
+- Authentication protocol, cookies, API handlers, server selection behavior
+- Runtime, Room, map, WebSocket, store, schema, migrations, rule data
+- DND / COC / CP RED workspace internals
+- Router, URL, browser History, dependencies
+
+## Completion Criteria
+
+- Auth-disabled launcher does not claim that login or registration is involved.
+- One primary action enters the existing server workspace.
+- Supporting content explains the server-first product flow without developer
+  scaffold language.
+- The launcher has no horizontal overflow at a 390px viewport.
+- Type check and production build pass.
 
 ## Verification
 
 ```powershell
-cd D:\Download\dnd
-git status --short
 npx tsc --noEmit
 npm run build
+git diff --check
 ```
 
-Sandbox unavailable this round — run locally to confirm green.
+## Result
 
-## Locate
-
-```powershell
-rg -n "WORKSHOP_FAN_PLAZA_DEDICATED_DETAIL_PAGES_V1|WorkshopItemDetail|openDetail|detailWorkId" src
-```
+- Replaced contradictory login/registration copy in the auth-disabled launcher
+  with the real local/LAN server-workspace flow.
+- Reduced the entry surface to one primary action and a three-step product guide.
+- Preserved the existing private-alpha authentication gate and server selection
+  behavior.
+- Verified the rendered page at a true 390px CSS viewport:
+  `innerWidth=390`, `documentElement.scrollWidth=390`, `body.scrollWidth=390`.
+- `npx tsc --noEmit`, `npm run build`, and `git diff --check` pass.

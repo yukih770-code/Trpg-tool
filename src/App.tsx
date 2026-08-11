@@ -955,7 +955,7 @@ export default function App() {
   if (entryStage === 'launcher') {
     return (
       <div className="min-h-screen bg-[#17130f] text-[#f7f3ea]">
-        <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 md:px-8">
+        <div className="mx-auto flex min-h-screen w-full max-w-6xl min-w-0 flex-col overflow-x-hidden px-4 py-6 md:px-8">
           <header className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm font-bold">
               <Sparkles className="h-4 w-4 text-[#f5c518]" />
@@ -970,45 +970,52 @@ export default function App() {
             </button>
           </header>
 
-          <main className="grid flex-1 items-center gap-8 py-12 lg:grid-cols-[minmax(0,1fr)_24rem]">
-            <section>
+          <main className="grid min-w-0 flex-1 items-center gap-8 py-10 sm:py-12 lg:grid-cols-[minmax(0,1fr)_24rem]">
+            <section className="min-w-0">
               <div className="mb-4 inline-flex rounded-full border border-[#f5c518]/25 bg-[#f5c518]/10 px-3 py-1 text-xs font-bold text-[#f5c518]">
-                {locale === 'en' ? 'TRPG Platform' : 'TRPG 平台'}
+                {locale === 'en' ? 'Local & LAN play' : '本地与局域网'}
               </div>
-              <h1 className="max-w-3xl text-4xl font-black tracking-tight md:text-6xl">
-                {locale === 'en' ? 'Log in, choose a server, then enter the platform.' : '先登录，选择服务器，再进入平台。'}
+              <h1 className="max-w-full break-words text-3xl font-black leading-[1.1] tracking-tight sm:max-w-3xl sm:text-5xl md:text-6xl [overflow-wrap:anywhere]">
+                {locale === 'en' ? (
+                  'Choose a server. Start your next session.'
+                ) : (
+                  <>选择服务器，<span className="block sm:inline">开始你的下一场跑团。</span></>
+                )}
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-white/68">
                 {locale === 'en'
-                  ? 'Choose a server to enter your table space.'
-                  : '选择服务器，进入你的跑团空间。'}
+                  ? 'Continue an existing campaign or create a new table space.'
+                  : '继续已有战役，或创建一个新的跑团空间。'}
               </p>
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-8">
                 <Button
                   type="button"
                   onClick={() => setEntryStage('serverSelect')}
                   className="rounded-md bg-[#f5c518] text-[#17130f] hover:bg-[#f5c518]/90"
                 >
-                  {locale === 'en' ? 'Log in and continue' : '登录并继续'}
+                  {locale === 'en' ? 'Open server workspace' : '进入服务器工作台'}
                 </Button>
-                <button
-                  type="button"
-                  disabled
-                  className="rounded-md border border-white/15 px-4 py-2 text-sm font-bold text-white/45"
-                >
-                  {locale === 'en' ? 'Register unavailable' : '注册暂未开放'}
-                </button>
               </div>
             </section>
 
-            <aside className="rounded-2xl border border-white/10 bg-white/[0.06] p-5 shadow-2xl">
+            <aside className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.06] p-5 shadow-2xl">
               <div className="text-xs font-bold uppercase tracking-widest text-white/50">
-                {locale === 'en' ? 'Account' : '账号'}
+                {locale === 'en' ? 'From server to table' : '从服务器到跑团桌面'}
               </div>
-              <div className="mt-4 space-y-3 text-sm leading-6 text-white/70">
-                <p>{locale === 'en' ? 'Account system is not open yet.' : '账号系统暂未开放。'}</p>
-                <p>{locale === 'en' ? 'Continue to choose a server.' : '可先进入服务器选择。'}</p>
-              </div>
+              <ol className="mt-4 grid gap-3 text-sm text-white/75">
+                {[
+                  locale === 'en' ? 'Choose or create a server' : '选择或创建服务器',
+                  locale === 'en' ? 'Open a campaign and room' : '打开战役与房间',
+                  locale === 'en' ? 'Bring your character into Runtime' : '带上角色进入跑团桌面',
+                ].map((label, index) => (
+                  <li key={label} className="flex min-w-0 items-center gap-3 rounded-xl border border-white/8 bg-black/10 px-3 py-2.5">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f5c518]/12 text-[10px] font-black text-[#f5c518]">
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0 break-words font-semibold">{label}</span>
+                  </li>
+                ))}
+              </ol>
             </aside>
           </main>
         </div>
