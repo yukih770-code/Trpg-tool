@@ -1244,6 +1244,25 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8p. Room Socket Reconnect + Stream Catch-up v1 Check
+
+- [ ] Unexpected WebSocket close schedules a bounded exponential-backoff reconnect
+- [ ] Explicit `close()` cancels pending reconnect and does not open another socket
+- [ ] Desired room subscription and verified member id are restored after reconnect
+- [ ] First subscription omits stream cursors and receives current RuntimeLog / Room Map baselines
+- [ ] Runtime desktop refreshes HTTP history after subscription acknowledgement to close the first-load race
+- [ ] Reconnect subscription carries independent `afterRuntimeLogSeq` and `afterMapEventSeq` cursors
+- [ ] Server replays only records whose sequence is greater than the supplied cursor
+- [ ] Existing per-member RuntimeLog and Room Map projection runs before replay delivery
+- [ ] A projected-away event still advances the acknowledged true stream baseline
+- [ ] Negative, fractional, or unsafe sequence cursors are rejected as `invalidMessage`
+- [ ] Transient ruler/area map previews are not stored or replayed
+- [ ] Existing room membership, Runtime permission, event payload, HTTP API, and persistence contracts are unchanged
+- [ ] `npm run frontend:verify:room-socket-reconnect` passes
+- [ ] `npm run runtime:verify:room-socket-reconnect` passes
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

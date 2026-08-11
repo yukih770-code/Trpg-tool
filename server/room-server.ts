@@ -266,6 +266,14 @@ const roomSocketServer = createRoomSocketServer({
   path: '/ws',
   resolveViewer: resolveRoomSocketViewer,
   projectRoomSnapshot: projectRoomSnapshotForViewer,
+  readRuntimeLogEvents: (roomId, afterSeq) => runtimeLogRegistry.list(roomId, {
+    // With no cursor, return only the latest baseline; initial history remains
+    // owned by the existing HTTP list endpoint.
+    afterSeq: afterSeq ?? Number.MAX_SAFE_INTEGER,
+  }),
+  readMapEvents: (roomId, afterSeq) => roomMapRegistry.list(roomId, {
+    afterSeq: afterSeq ?? Number.MAX_SAFE_INTEGER,
+  }),
   projectRuntimeLogEvents: (roomId, memberId, events) => {
     const room = registry.get(roomId);
     if (!room) return [];

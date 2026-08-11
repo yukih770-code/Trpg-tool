@@ -2,6 +2,7 @@
  * Room WebSocket transport server scaffold (v0).
  *
  * AI-LANDMARK: ROOM_SOCKET_SERVER_V0
+ * AI-LANDMARK: ROOM_SOCKET_RECONNECT_STREAM_CATCHUP_V1
  *
  * Server-only `ws` scaffold attached to the HTTP server at `/ws`. Clients
  * connect, subscribe to a roomId (via message, not URL), and receive room
@@ -27,8 +28,13 @@ import type {
   RoomSocketRoomSnapshotReason,
   RoomSocketServerMessage,
 } from '../../src/lib/platform/roomTransportTypes.js';
-import type { RoomRuntimeLogEvent } from '../protocol/room-protocol.js';
-import type { RoomMapEvent, RoomMapLivePreview } from '../protocol/room-protocol.js';
+import type {
+  RoomMapEvent,
+  RoomMapEventListResult,
+  RoomMapLivePreview,
+  RoomRuntimeLogEvent,
+  RoomRuntimeLogListResult,
+} from '../protocol/room-protocol.js';
 import type { CurrentViewerContext } from '../auth/currentViewerContext.js';
 import { resolveRoomParticipant, resolveRoomRuntimePermission } from '../room/roomRuntimePermissionGuard.js';
 
@@ -40,6 +46,10 @@ export interface CreateRoomSocketServerOptions {
   projectRoomSnapshot?: (room: RoomSnapshot, memberId: string) => RoomSnapshot;
   projectRuntimeLogEvents?: (roomId: string, memberId: string, events: RoomRuntimeLogEvent[]) => RoomRuntimeLogEvent[];
   projectMapEvents?: (roomId: string, memberId: string, events: RoomMapEvent[]) => RoomMapEvent[];
+  /** Reads a stream baseline or missing suffix for reconnect catch-up. */
+  readRuntimeLogEvents?: (roomId: string, afterSeq?: number) => RoomRuntimeLogListResult;
+  /** Reads a stream baseline or missing suffix for reconnect catch-up. */
+  readMapEvents?: (roomId: string, afterSeq?: number) => RoomMapEventListResult;
   /** Resolves a browser session (or explicitly gated local-dev identity) per socket. */
   resolveViewer?: (request: IncomingMessage) => Promise<CurrentViewerContext>;
 }
@@ -129,11 +139,22 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
     return { x: point.x, y: point.y };
   };
 
+  const optionalSequenceCursor = (value: unknown): number | undefined | null => {
+    if (value === undefined) return undefined;
+    return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+  };
+
   const handleMessage = (ws: WebSocket, raw: Record<string, unknown>, viewer: CurrentViewerContext): void => {
     switch (raw.type) {
       case 'subscribeRoom': {
         if (typeof raw.roomId !== 'string' || typeof raw.memberId !== 'string') {
           send(ws, { ...envelope(), type: 'error', code: 'invalidMessage', message: 'subscribeRoom requires a roomId and memberId.' });
+          return;
+        }
+        const afterRuntimeLogSeq = optionalSequenceCursor(raw.afterRuntimeLogSeq);
+        const afterMapEventSeq = optionalSequenceCursor(raw.afterMapEventSeq);
+        if (afterRuntimeLogSeq === null || afterMapEventSeq === null) {
+          send(ws, { ...envelope(), type: 'error', code: 'invalidMessage', roomId: raw.roomId, message: 'Reconnect cursors must be non-negative safe integers.' });
           return;
         }
         const room = options.registry.get(raw.roomId);
@@ -162,7 +183,33 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
         set.add(ws);
         socketRooms.get(ws)?.add(raw.roomId);
         socketMembers.get(ws)?.set(raw.roomId, raw.memberId);
-        send(ws, { ...envelope(), type: 'subscribedRoom', roomId: raw.roomId });
+        // First subscription establishes a stream baseline without replaying
+        // full history (the HTTP readers own initial history). A reconnect sends
+        // its last observed cursor, so only the missing suffix is projected and
+        // replayed. Transient map previews are deliberately never replayed.
+        const runtimeCatchUp = options.readRuntimeLogEvents?.(raw.roomId, afterRuntimeLogSeq);
+        if (afterRuntimeLogSeq !== undefined && runtimeCatchUp && runtimeCatchUp.events.length > 0) {
+          const projected = options.projectRuntimeLogEvents?.(raw.roomId, raw.memberId, runtimeCatchUp.events) ?? runtimeCatchUp.events;
+          if (projected.length > 0) {
+            serverSeq += 1;
+            send(ws, { ...envelope(), type: 'runtimeLogAppended', roomId: raw.roomId, serverSeq, events: projected });
+          }
+        }
+        const mapCatchUp = options.readMapEvents?.(raw.roomId, afterMapEventSeq);
+        if (afterMapEventSeq !== undefined && mapCatchUp && mapCatchUp.events.length > 0) {
+          const projected = options.projectMapEvents?.(raw.roomId, raw.memberId, mapCatchUp.events) ?? mapCatchUp.events;
+          if (projected.length > 0) {
+            serverSeq += 1;
+            send(ws, { ...envelope(), type: 'mapEventAppended', roomId: raw.roomId, serverSeq, events: projected });
+          }
+        }
+        send(ws, {
+          ...envelope(),
+          type: 'subscribedRoom',
+          roomId: raw.roomId,
+          ...(runtimeCatchUp ? { runtimeLogLatestSeq: runtimeCatchUp.latestSeq } : {}),
+          ...(mapCatchUp ? { mapEventLatestSeq: mapCatchUp.latestSeq } : {}),
+        });
         serverSeq += 1;
         send(ws, { ...envelope(), type: 'roomSnapshot', roomId: raw.roomId, serverSeq, reason: 'initialSubscribe', payload: { room: options.projectRoomSnapshot?.(room, raw.memberId) ?? room } });
         return;

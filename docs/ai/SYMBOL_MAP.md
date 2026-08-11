@@ -13,6 +13,18 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Do not create a separate `CODE_LANDMARKS.md`; generate landmark listings with `rg -n "AI-LANDMARK"` when needed.
 - Task history belongs in `docs/ai/TASK_ARCHIVE.md`.
 
+## Room Socket Reconnect + Stream Catch-up
+
+- `AI-LANDMARK: ROOM_SOCKET_RECONNECT_STREAM_CATCHUP_V1`: `src/lib/platform/roomSocketClient.ts`, `server/transport/roomSocketServer.ts`
+- `createRoomSocketClient`: desired subscriptions, bounded exponential reconnect, and per-room RuntimeLog / Room Map cursors — `src/lib/platform/roomSocketClient.ts`
+- `RoomSocketSubscribeMessage.afterRuntimeLogSeq` / `afterMapEventSeq`: reconnect cursor contract — `src/lib/platform/roomTransportTypes.ts`
+- `RoomSocketSubscribedMessage.runtimeLogLatestSeq` / `mapEventLatestSeq`: first-subscribe baseline and post-catch-up acknowledgement — `src/lib/platform/roomTransportTypes.ts`
+- `CreateRoomSocketServerOptions.readRuntimeLogEvents` / `readMapEvents`: missing-suffix readers — `server/transport/roomSocketServer.ts`
+- Runtime stream readers wired to the memory registries without changing HTTP or persistence semantics — `server/room-server.ts`
+- `RoomRuntimeEntryBridge` subscription acknowledgement refresh closes the initial HTTP-history / WS-baseline race — `src/components/platform/RoomRuntimeEntryBridge.tsx`
+- Client smoke: `src/lib/platform/roomSocketClientSmoke.ts`
+- Server projection/catch-up smoke: `server/transport/roomSocketReconnectSmoke.ts`
+
 ## Platform Home Launchpad + System Library IA
 
 - `Home` component: `src/pages/Home.tsx`

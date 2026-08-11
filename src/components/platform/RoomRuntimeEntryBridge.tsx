@@ -263,6 +263,16 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         setConnState(state);
         if (state === 'open') client.subscribeRoom(context.roomId, context.currentMemberId);
       },
+      onSubscribedRoom: (message) => {
+        if (message.roomId !== context.roomId) return;
+        // Close the first-load race between the HTTP history readers and the WS
+        // baseline. The socket is subscribed before this acknowledgement, so
+        // events after the baseline still arrive live; existing event-id merge
+        // boundaries absorb any overlap with this safety refresh.
+        loadNotes();
+        loadRoomMapEvents();
+        setLastSyncAt(new Date().toISOString());
+      },
       onRoomSnapshot: (message) => {
         if (message.roomId !== context.roomId) return;
         setLiveRoom(message.payload.room);
@@ -320,7 +330,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     };
     // mergeNoteEvent/isNoteKind only use stable setters — safe to omit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [context.currentMemberId, context.serverBaseUrl, context.roomId, mergeRoomMapEvents, roomMapId]);
+  }, [context.currentMemberId, context.serverBaseUrl, context.roomId, loadNotes, loadRoomMapEvents, mergeRoomMapEvents, roomMapId]);
 
   // A dropped client cannot always send a final clear. Expire stale transient
   // previews instead of letting a ruler or spell area look permanent.

@@ -6,53 +6,72 @@
 
 ## Task
 
-- ID: Platform Local-Direct Launcher Clarity v1
-- Name: PLATFORM_LOCAL_DIRECT_LAUNCHER_CLARITY_V1
-- Goal: Make the auth-disabled launcher describe its real local/server-selection
-  flow, keep private-alpha authentication on its existing separate gate, and
-  remove narrow-screen headline overflow.
-- Phase: P0 product truth / entry UX
+- ID: Room Socket Reconnect + Stream Catch-up v1
+- Name: ROOM_SOCKET_RECONNECT_STREAM_CATCHUP_V1
+- Goal: Recover a room WebSocket after a transient disconnect, restore desired
+  room subscriptions, and replay missed RuntimeLog / Room Map events from each
+  stream's last acknowledged sequence without weakening member projection.
+- Phase: P0 multiplayer reliability
 - Status: Done
 
 ## Allowed Files
 
-- `src/App.tsx`
+- `src/lib/platform/roomTransportTypes.ts`
+- `src/lib/platform/roomSocketClient.ts`
+- `src/lib/platform/roomSocketClientSmoke.ts`
+- `src/components/platform/RoomRuntimeEntryBridge.tsx`
+- `server/transport/roomSocketServer.ts`
+- `server/transport/roomSocketReconnectSmoke.ts`
+- `server/room-server.ts`
+- `package.json`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
 - `docs/ai/ACTIVE_TASK.md`
 - `docs/ai/TASK_ARCHIVE.md`
+- `docs/ai/SYMBOL_MAP.md`
 
 ## Forbidden Changes
 
-- Authentication protocol, cookies, API handlers, server selection behavior
-- Runtime, Room, map, WebSocket, store, schema, migrations, rule data
-- DND / COC / CP RED workspace internals
-- Router, URL, browser History, dependencies
+- Room membership or Runtime permission semantics
+- RuntimeLog / Room Map event payloads or persistence adapters
+- Transient map-preview replay
+- HTTP APIs, stores, schemas, migrations, rule data, system workspaces
+- UI information architecture, router, dependencies
 
 ## Completion Criteria
 
-- Auth-disabled launcher does not claim that login or registration is involved.
-- One primary action enters the existing server workspace.
-- Supporting content explains the server-first product flow without developer
-  scaffold language.
-- The launcher has no horizontal overflow at a 390px viewport.
-- Type check and production build pass.
+- Unexpected socket close schedules bounded exponential-backoff reconnect.
+- Explicit `close()` cancels reconnect and does not reopen the socket.
+- Desired room subscriptions survive reconnect automatically.
+- Reconnect subscription carries RuntimeLog and Room Map cursors.
+- Server replays only events after those cursors and applies existing per-member
+  projection before sending them.
+- First subscription establishes a baseline without replaying full history.
+- Client/server smoke checks, TypeScript checks, builds, and diff check pass.
 
 ## Verification
 
 ```powershell
+npm run frontend:verify:room-socket-reconnect
+npm run runtime:verify:room-socket-reconnect
 npx tsc --noEmit
+npm run server:build
 npm run build
 git diff --check
 ```
 
 ## Result
 
-- Replaced contradictory login/registration copy in the auth-disabled launcher
-  with the real local/LAN server-workspace flow.
-- Reduced the entry surface to one primary action and a three-step product guide.
-- Preserved the existing private-alpha authentication gate and server selection
-  behavior.
-- Verified the rendered page at a true 390px CSS viewport:
-  `innerWidth=390`, `documentElement.scrollWidth=390`, `body.scrollWidth=390`.
-- `npx tsc --noEmit`, `npm run build`, and `git diff --check` pass.
+- The browser room client reconnects by bounded exponential backoff after an
+  unexpected close, restores desired subscriptions automatically, and cancels
+  all retry work after explicit `close()`.
+- RuntimeLog and Room Map cursors advance from both subscription baselines and
+  live deltas, then travel with the reconnect subscription.
+- The server validates cursors, reads only each missing suffix, applies the
+  existing per-member projection, and acknowledges each stream's true latest
+  sequence even when records are withheld by projection.
+- First subscription remains HTTP-history-owned; the Runtime desktop performs a
+  post-subscription safety refresh to close the initial history/baseline race.
+- Transient map previews remain live-only and are never replayed.
+- Both new socket smokes, room permission, visibility projection, map bridge,
+  frontend TypeScript, server build, production build, and diff check pass.

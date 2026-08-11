@@ -31,6 +31,10 @@ export interface RoomSocketSubscribeMessage extends RoomSocketEnvelopeBase {
   roomId: string;
   /** Claimed room member id; server binds it to the authenticated socket viewer. */
   memberId?: string;
+  /** Last fully observed RuntimeLog sequence; omitted on the first subscription. */
+  afterRuntimeLogSeq?: number;
+  /** Last fully observed Room Map sequence; omitted on the first subscription. */
+  afterMapEventSeq?: number;
 }
 
 export interface RoomSocketUnsubscribeMessage extends RoomSocketEnvelopeBase {
@@ -67,6 +71,10 @@ export interface RoomSocketConnectedMessage extends RoomSocketEnvelopeBase {
 export interface RoomSocketSubscribedMessage extends RoomSocketEnvelopeBase {
   type: 'subscribedRoom';
   roomId: string;
+  /** Server baseline after any requested catch-up has been sent. */
+  runtimeLogLatestSeq?: number;
+  /** Server baseline after any requested catch-up has been sent. */
+  mapEventLatestSeq?: number;
 }
 
 export interface RoomSocketUnsubscribedMessage extends RoomSocketEnvelopeBase {
