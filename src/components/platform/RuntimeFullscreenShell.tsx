@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { RUNTIME_AUXILIARY_PANEL_OPEN_EVENT } from './RuntimeActionDock';
 
 /**
  * RuntimeFullscreenShell (UI1b) — Owlbear-style STAGE-FIRST fullscreen layout.
@@ -68,6 +69,10 @@ const CONN_DOT: Record<'ok' | 'warn' | 'idle' | 'local', string> = {
   local: 'bg-sky-500',
 };
 
+function isCompactRuntimeViewport(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
+}
+
 export function RuntimeFullscreenShell({
   title,
   systemId,
@@ -88,10 +93,55 @@ export function RuntimeFullscreenShell({
   logDrawer,
 }: RuntimeFullscreenShellProps) {
   // Overlay open/collapsed state — keeps the Main Stage maximal by default.
-  // Inspector defaults open for host (more tools), collapsed for player/spectator.
+  // Desktop hosts start with the overview open. Mobile always starts map-first:
+  // supporting information is available through the compact panel switcher.
   const [railOpen, setRailOpen] = useState(false);
-  const [inspectorOpen, setInspectorOpen] = useState(() => mode === 'host');
+  const [inspectorOpen, setInspectorOpen] = useState(
+    () => mode === 'host' && !isCompactRuntimeViewport(),
+  );
   const [logOpen, setLogOpen] = useState(false);
+
+  const closeAuxiliaryPanels = () => {
+    setRailOpen(false);
+    setInspectorOpen(false);
+    setLogOpen(false);
+  };
+
+  const toggleRail = () => {
+    const next = !railOpen;
+    if (next && isCompactRuntimeViewport()) {
+      window.dispatchEvent(new Event(RUNTIME_AUXILIARY_PANEL_OPEN_EVENT));
+    }
+    setRailOpen(next);
+    if (next && isCompactRuntimeViewport()) {
+      setInspectorOpen(false);
+      setLogOpen(false);
+    }
+  };
+
+  const toggleInspector = () => {
+    const next = !inspectorOpen;
+    if (next && isCompactRuntimeViewport()) {
+      window.dispatchEvent(new Event(RUNTIME_AUXILIARY_PANEL_OPEN_EVENT));
+    }
+    setInspectorOpen(next);
+    if (next && isCompactRuntimeViewport()) {
+      setRailOpen(false);
+      setLogOpen(false);
+    }
+  };
+
+  const toggleLog = () => {
+    const next = !logOpen;
+    if (next && isCompactRuntimeViewport()) {
+      window.dispatchEvent(new Event(RUNTIME_AUXILIARY_PANEL_OPEN_EVENT));
+    }
+    setLogOpen(next);
+    if (next && isCompactRuntimeViewport()) {
+      setRailOpen(false);
+      setInspectorOpen(false);
+    }
+  };
 
   // Lock body scroll while the fullscreen Runtime is mounted (no outer page
   // scrollbar). Restored on unmount.
@@ -103,6 +153,14 @@ export function RuntimeFullscreenShell({
     };
   }, []);
 
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeAuxiliaryPanels();
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, []);
+
   const chip = 'rounded-full border border-slate-400/40 px-2 py-0.5 text-[10px] font-bold text-slate-600';
   const btn = 'rounded border border-slate-500/40 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide disabled:opacity-40';
   const panel = 'rounded-lg border border-slate-300/70 bg-white/80 shadow-lg backdrop-blur-sm';
@@ -112,25 +170,39 @@ export function RuntimeFullscreenShell({
   return (
     <div className="fixed inset-0 z-40 flex flex-col overflow-hidden overscroll-none bg-slate-100 text-[12px] text-slate-700">
       {/* Compact Runtime Header (~44px) */}
-      <header className="flex h-11 shrink-0 items-center gap-2 border-b border-slate-300 bg-white/85 px-3">
-        <div className={`min-w-0 truncate text-sm font-black ${TONE_ACCENT[tone]}`}>
+      <header className="flex h-12 shrink-0 items-center gap-1.5 border-b border-slate-300 bg-white/90 px-2 sm:h-11 sm:gap-2 sm:px-3">
+        <div className={`min-w-0 flex-1 truncate text-sm font-black sm:flex-none ${TONE_ACCENT[tone]}`}>
           {title}
-          {roomCode ? <span className="ml-1.5 font-bold text-slate-400">#{roomCode}</span> : null}
+          {roomCode ? <span className="ml-1.5 hidden font-bold text-slate-400 sm:inline">#{roomCode}</span> : null}
         </div>
-        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${MODE_TONE[mode]}`}>
+        <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-bold sm:px-2 ${MODE_TONE[mode]}`}>
           {MODE_LABEL[mode]}
         </span>
         {systemId && <span className={`${chip} hidden sm:inline`}>{systemId}</span>}
         {sceneLabel && <span className={`${chip} hidden md:inline`}>场景：{sceneLabel}</span>}
         {connectionLabel && (
-          <span className={`${chip} hidden items-center gap-1.5 sm:inline-flex`}>
-            <span className={`inline-block h-1.5 w-1.5 rounded-full ${CONN_DOT[connectionTone]}`} aria-hidden />
-            {connectionLabel}
-          </span>
+          <>
+            <span
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-slate-300/70 sm:hidden"
+              title={connectionLabel}
+              aria-label={connectionLabel}
+            >
+              <span className={`inline-block h-2 w-2 rounded-full ${CONN_DOT[connectionTone]}`} aria-hidden />
+            </span>
+            <span className={`${chip} hidden items-center gap-1.5 sm:inline-flex`}>
+              <span className={`inline-block h-1.5 w-1.5 rounded-full ${CONN_DOT[connectionTone]}`} aria-hidden />
+              {connectionLabel}
+            </span>
+          </>
         )}
         <div className="ml-auto flex items-center gap-1.5">
-          <button type="button" className={btn} disabled onClick={onSettings} title="设置（即将推出）">设置</button>
-          {onExit && <button type="button" className={btn} onClick={onExit}>{exitLabel ?? '离开'}</button>}
+          {onSettings && <button type="button" className={btn} onClick={onSettings}>设置</button>}
+          {onExit && (
+            <button type="button" className={`${btn} shrink-0 py-1`} onClick={onExit} title={exitLabel ?? '离开'}>
+              <span className="sm:hidden">返回</span>
+              <span className="hidden sm:inline">{exitLabel ?? '离开'}</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -139,7 +211,7 @@ export function RuntimeFullscreenShell({
         {/* Main Stage (base layer, full bleed). The inner wrapper is h-full so a
             caller's mainStage can fill the whole tabletop instead of sizing to
             its own content (UI1b.1). */}
-        <div className="absolute inset-0 p-3">
+        <div className="absolute inset-0 p-0 sm:p-2 lg:p-3">
           <div className="h-full w-full">
             {mainStage ?? (
               <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-400/50 bg-white/30 p-8 text-center">
@@ -157,18 +229,18 @@ export function RuntimeFullscreenShell({
         {/* Left Actor Rail — narrow strip, expands as overlay (does NOT compress stage) */}
         {actorRail !== undefined && (
           railOpen ? (
-            <aside className={`absolute left-2 top-2 bottom-2 z-10 flex w-56 flex-col overflow-hidden ${panel}`}>
+            <aside className={`absolute inset-x-2 bottom-16 z-30 flex max-h-[70vh] w-auto flex-col overflow-hidden md:inset-y-2 md:left-2 md:right-auto md:max-h-none md:w-56 ${panel}`}>
               <div className="flex items-center justify-between border-b border-slate-300/60 px-2 py-1">
                 <span className={railLabel + ' mb-0'}>角色 / 成员</span>
-                <button type="button" className={iconBtn} onClick={() => setRailOpen(false)} title="收起">◀</button>
+                <button type="button" className={iconBtn} onClick={() => setRailOpen(false)} title="收起">关闭</button>
               </div>
               <div className="overflow-y-auto p-2">{actorRail}</div>
             </aside>
           ) : (
             <button
               type="button"
-              onClick={() => setRailOpen(true)}
-              className={`absolute left-2 top-2 z-10 w-12 ${panel} flex flex-col items-center gap-0.5 py-1.5 text-[10px] font-bold text-slate-600`}
+              onClick={toggleRail}
+              className={`absolute left-2 top-2 z-10 hidden w-12 md:flex ${panel} flex-col items-center gap-0.5 py-1.5 text-[10px] font-bold text-slate-600`}
               title="展开角色 / 成员"
             >
               <span aria-hidden className="text-sm leading-none">☰</span>
@@ -179,12 +251,12 @@ export function RuntimeFullscreenShell({
 
         {/* Right Inspector — floating overlay, collapsible (does NOT compress stage) */}
         {inspectorOpen ? (
-          <aside className={`absolute right-2 top-2 bottom-2 z-10 flex w-[min(340px,80vw)] flex-col overflow-hidden ${panel}`}>
+          <aside className={`absolute inset-x-2 bottom-16 z-30 flex max-h-[70vh] w-auto flex-col overflow-hidden md:inset-y-2 md:left-auto md:right-2 md:max-h-none md:w-[min(340px,80vw)] ${panel}`}>
             <div className="flex items-center justify-between border-b border-slate-300/60 px-2 py-1">
               <span className={railLabel + ' mb-0'}>
                 {mode === 'host' ? '主持人检视器' : mode === 'player' ? '我的信息' : '旁观'}
               </span>
-              <button type="button" className={iconBtn} onClick={() => setInspectorOpen(false)} title="收起">▶</button>
+              <button type="button" className={iconBtn} onClick={() => setInspectorOpen(false)} title="收起">关闭</button>
             </div>
             <div className="overflow-y-auto p-3">
               {inspector ?? <div className="text-[11px] italic text-slate-500">检视器内容后续接入。</div>}
@@ -193,23 +265,46 @@ export function RuntimeFullscreenShell({
         ) : (
           <button
             type="button"
-            onClick={() => setInspectorOpen(true)}
-            className={`absolute right-2 top-2 z-10 ${panel} px-2 py-1 text-[10px] font-bold text-slate-600`}
+            onClick={toggleInspector}
+            className={`absolute right-2 top-2 z-10 hidden md:block ${panel} px-2 py-1 text-[10px] font-bold text-slate-600`}
             title="展开检视器"
           >
             ◀ 检视器
           </button>
         )}
 
+        {/* Mobile supporting panels share one compact switcher. Only one may cover
+            the map at a time; the tabletop remains the default surface. */}
+        <div className="absolute left-1/2 top-2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-slate-300/70 bg-white/90 p-1 shadow-lg backdrop-blur-sm md:hidden">
+          {actorRail !== undefined && (
+            <button type="button" onClick={toggleRail} aria-pressed={railOpen} className={`min-h-9 rounded-lg px-2.5 text-[11px] font-bold ${railOpen ? 'bg-slate-800 text-white' : 'text-slate-700'}`}>
+              成员
+            </button>
+          )}
+          <button type="button" onClick={toggleInspector} aria-pressed={inspectorOpen} className={`min-h-9 rounded-lg px-2.5 text-[11px] font-bold ${inspectorOpen ? 'bg-slate-800 text-white' : 'text-slate-700'}`}>
+            {mode === 'host' ? '概览' : '我的信息'}
+          </button>
+          {logDrawer && (
+            <button type="button" onClick={toggleLog} aria-pressed={logOpen} className={`min-h-9 rounded-lg px-2.5 text-[11px] font-bold ${logOpen ? 'bg-slate-800 text-white' : 'text-slate-700'}`}>
+              日志
+            </button>
+          )}
+        </div>
+
         {/* Bottom Action Dock — floating, centered, safe-area padded, above log.
             A provided actionDock brings its own container (e.g. RuntimeActionDock,
             which floats its own expanding panel); only the default fallback uses a pill. */}
         {actionDock ? (
-          <div className="absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-20 flex max-w-[96vw] -translate-x-1/2 justify-center">
+          <div
+            className="absolute inset-x-2 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-20 flex justify-center md:inset-x-auto md:bottom-[max(0.75rem,env(safe-area-inset-bottom))] md:left-1/2 md:max-w-[96vw] md:-translate-x-1/2"
+            onClickCapture={() => {
+              if (isCompactRuntimeViewport()) closeAuxiliaryPanels();
+            }}
+          >
             {actionDock}
           </div>
         ) : (
-          <div className={`absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-1/2 z-20 -translate-x-1/2 ${panel} rounded-full px-3 py-1.5`}>
+          <div className={`absolute inset-x-2 bottom-[max(0.5rem,env(safe-area-inset-bottom))] z-20 md:inset-x-auto md:left-1/2 md:-translate-x-1/2 ${panel} rounded-xl px-3 py-1.5 md:rounded-full`}>
             <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
               <span className="font-bold uppercase tracking-wide text-slate-500">行动区</span>
               <button type="button" className={btn} disabled>投骰</button>
@@ -222,16 +317,16 @@ export function RuntimeFullscreenShell({
 
         {/* Log Drawer — bottom-left, collapsed by default, clears the rail; safe-area padded */}
         {logDrawer && (
-          <div className={`absolute bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-16 z-10 w-[min(420px,42vw)] overflow-hidden ${panel}`}>
+          <div className={`absolute inset-x-2 bottom-16 z-30 max-h-[70vh] overflow-hidden md:inset-x-auto md:bottom-[max(0.75rem,env(safe-area-inset-bottom))] md:left-16 md:z-10 md:w-[min(420px,42vw)] ${logOpen ? '' : 'hidden md:block'} ${panel}`}>
             <button
               type="button"
-              onClick={() => setLogOpen((v) => !v)}
+              onClick={toggleLog}
               className="flex w-full items-center justify-between px-2 py-1 text-[11px] font-bold text-slate-600"
             >
               <span>日志</span>
               <span className="text-[10px] text-slate-400">{logOpen ? '收起 ▼' : '展开 ▶'}</span>
             </button>
-            {logOpen && <div className="max-h-[35vh] overflow-y-auto border-t border-slate-300/60 px-2 pb-2">{logDrawer}</div>}
+            {logOpen && <div className="max-h-[62vh] overflow-y-auto border-t border-slate-300/60 px-2 pb-2 md:max-h-[35vh]">{logDrawer}</div>}
           </div>
         )}
 

@@ -1,4 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+
+export const RUNTIME_AUXILIARY_PANEL_OPEN_EVENT = 'runtime:auxiliary-panel-open';
 
 /**
  * RuntimeActionDock (M25.1a) — unified bottom Action Dock (pure UI).
@@ -42,9 +44,15 @@ export function RuntimeActionPlaceholder({ body }: { body: string }) {
 export function RuntimeActionDock({ actions, defaultActiveActionId = null, className }: RuntimeActionDockProps) {
   const [activeId, setActiveId] = useState<string | null>(defaultActiveActionId);
 
+  useEffect(() => {
+    const closeForAuxiliaryPanel = () => setActiveId(null);
+    window.addEventListener(RUNTIME_AUXILIARY_PANEL_OPEN_EVENT, closeForAuxiliaryPanel);
+    return () => window.removeEventListener(RUNTIME_AUXILIARY_PANEL_OPEN_EVENT, closeForAuxiliaryPanel);
+  }, []);
+
   const toggle = (id: string) => setActiveId((cur) => (cur === id ? null : id));
 
-  const baseBtn = 'rounded border px-2 py-1 text-[11px] font-bold transition';
+  const baseBtn = 'min-h-10 shrink-0 whitespace-nowrap rounded-lg border px-2.5 py-1 text-[11px] font-bold transition md:min-h-0 md:rounded md:px-2';
   const idle = 'border-slate-400/50 bg-white/70 text-slate-700 hover:bg-white';
   const activeCls = 'border-emerald-500/60 bg-emerald-500/15 text-emerald-800';
   const comingSoon = 'border-slate-300/50 bg-white/40 text-slate-400 hover:bg-white/60';
@@ -52,13 +60,13 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
   const panelActions = actions.filter((a) => a.panel !== undefined || a.disabledReason);
 
   return (
-    <div className={`relative ${className ?? ''}`}>
+    <div className={`relative w-full rounded-xl border border-slate-300/70 bg-white/90 p-1 shadow-lg backdrop-blur-sm md:w-auto md:border-0 md:bg-transparent md:p-0 md:shadow-none ${className ?? ''}`}>
       {/* Floating panel(s) above the row — all mounted, only the active one shown. */}
       <div className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2">
         {panelActions.map((a) => (
           <div
             key={a.id}
-            className={`${a.id === activeId ? '' : 'hidden'} w-[min(560px,92vw)] max-h-[60vh] overflow-y-auto rounded-lg border border-slate-300/70 bg-white/90 p-3 shadow-lg backdrop-blur-sm`}
+            className={`${a.id === activeId ? '' : 'hidden'} w-[calc(100vw_-_1rem)] max-w-[560px] max-h-[65vh] overflow-y-auto rounded-xl border border-slate-300/70 bg-white/95 p-3 shadow-lg backdrop-blur-sm md:w-[min(560px,92vw)] md:max-h-[60vh]`}
           >
             <div className="mb-1.5 flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-700">{a.label}</span>
@@ -76,7 +84,7 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
       </div>
 
       {/* Same-weight tool button row. */}
-      <div className="flex flex-wrap items-center justify-center gap-1">
+      <div className="flex flex-nowrap items-center gap-1 overflow-x-auto md:flex-wrap md:justify-center">
         {actions.map((a) => (
           <button
             key={a.id}
