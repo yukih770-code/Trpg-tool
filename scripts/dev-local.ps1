@@ -3,7 +3,8 @@ param(
   [ValidateSet('Start', 'Doctor', 'Stop', 'Backend', 'Frontend')]
   [string]$Mode = 'Start',
   [switch]$Lan,
-  [switch]$PrivateAlpha
+  [switch]$PrivateAlpha,
+  [switch]$LibraryOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,6 +14,15 @@ $PostgresComposeFile = Join-Path $ProjectRoot 'docker-compose.postgres.yml'
 
 function Write-LocalStatus([string]$Message) {
   Write-Host "[dev:local] $Message"
+}
+
+function Get-ExpectedLocalAuthMode {
+  if ($PrivateAlpha) { return 'privateAlpha' }
+  return 'localDev'
+}
+
+function Test-ReportedLocalAuthMode($Payload, [string]$ExpectedAuthMode) {
+  return $null -ne $Payload -and [string]$Payload.authMode -eq $ExpectedAuthMode
 }
 
 function Import-ProjectEnv {
@@ -219,19 +229,36 @@ function Start-LocalWindow([ValidateSet('Backend', 'Frontend')][string]$ChildMod
 }
 
 function Wait-ForBackendHealth {
+  $expectedAuthMode = Get-ExpectedLocalAuthMode
   for ($attempt = 1; $attempt -le 30; $attempt++) {
     try {
       $response = Invoke-WebRequest -Uri 'http://localhost:8787/health' -UseBasicParsing -TimeoutSec 2
       $payload = $response.Content | ConvertFrom-Json
       $databaseReady = $payload.database.status -eq 'ok' -and $payload.database.worldServerSchema.status -eq 'ready'
-      if ($response.StatusCode -eq 200 -and $databaseReady) {
-        Write-LocalStatus 'Backend and World Server database health checks passed.'
+      $authModeReady = Test-ReportedLocalAuthMode $payload $expectedAuthMode
+      if ($response.StatusCode -eq 200 -and $databaseReady -and $authModeReady) {
+        Write-LocalStatus "Backend, authentication mode ($expectedAuthMode), and World Server database health checks passed."
         return
       }
     } catch {}
     Start-Sleep -Seconds 1
   }
-  throw 'Backend HTTP started, but the World Server database did not become ready. Run npm run dev:local:doctor.'
+  throw "Backend HTTP started, but its authentication mode or World Server database did not match this run. Expected auth mode: $expectedAuthMode. Run npm run dev:local:doctor."
+}
+
+function Wait-ForFrontendHealth {
+  $expectedAuthMode = Get-ExpectedLocalAuthMode
+  for ($attempt = 1; $attempt -le 30; $attempt++) {
+    try {
+      $payload = Invoke-RestMethod -Uri 'http://localhost:3000/__trpg_dev_runtime' -TimeoutSec 2
+      if (Test-ReportedLocalAuthMode $payload $expectedAuthMode) {
+        Write-LocalStatus "Frontend authentication mode ($expectedAuthMode) matches this run."
+        return
+      }
+    } catch {}
+    Start-Sleep -Seconds 1
+  }
+  throw "Frontend started, but its compiled authentication mode did not match this run. Expected auth mode: $expectedAuthMode. Run npm run dev:local:doctor."
 }
 
 function Invoke-Doctor {
@@ -255,22 +282,44 @@ function Invoke-Doctor {
   }
   Write-LocalStatus "Local runtime mode uses defaults: $(-not [Environment]::GetEnvironmentVariable('SERVER_DEPLOYMENT_ENVIRONMENT', 'Process') -and -not [Environment]::GetEnvironmentVariable('SERVER_RUNTIME_MODE', 'Process'))."
 
+  $expectedAuthMode = Get-ExpectedLocalAuthMode
+  $issues = [System.Collections.Generic.List[string]]::new()
+  $listeningPorts = [System.Collections.Generic.List[int]]::new()
+
   foreach ($port in @(8787, 3000)) {
     $portProcess = Get-LocalPortProcess $port
     if ($portProcess) {
       $safeKind = if ($port -eq 8787) { 'backend' } else { 'frontend' }
       $managed = Test-SafeLocalService $portProcess $safeKind
       Write-LocalStatus "Port $port is listening (process $($portProcess.Id): $($portProcess.Name); managed signature: $managed)."
+      $listeningPorts.Add($port)
     } else {
       Write-LocalStatus "Port $port is available."
     }
   }
 
   try {
-    $health = Invoke-WebRequest -Uri 'http://localhost:8787/health' -UseBasicParsing -TimeoutSec 2
-    Write-LocalStatus "Backend health: $($health.StatusCode)"
+    $health = Invoke-RestMethod -Uri 'http://localhost:8787/health' -TimeoutSec 2
+    $reportedBackendAuthMode = if ($health.authMode) { [string]$health.authMode } else { 'missing' }
+    Write-LocalStatus "Backend health: 200; reported auth mode: $reportedBackendAuthMode."
+    if (-not (Test-ReportedLocalAuthMode $health $expectedAuthMode)) {
+      $issues.Add("Backend authentication mode does not match this command. Expected $expectedAuthMode; restart with the matching dev:local command.")
+    }
   } catch {
     Write-LocalStatus 'Backend health: unavailable.'
+    if ($listeningPorts.Contains(8787)) { $issues.Add('Port 8787 is occupied, but the project backend health endpoint is unavailable.') }
+  }
+
+  try {
+    $frontend = Invoke-RestMethod -Uri 'http://localhost:3000/__trpg_dev_runtime' -TimeoutSec 2
+    $reportedFrontendAuthMode = if ($frontend.authMode) { [string]$frontend.authMode } else { 'missing' }
+    Write-LocalStatus "Frontend diagnostics: reported auth mode: $reportedFrontendAuthMode."
+    if (-not (Test-ReportedLocalAuthMode $frontend $expectedAuthMode)) {
+      $issues.Add("Frontend authentication mode does not match this command. Expected $expectedAuthMode; restart with the matching dev:local command.")
+    }
+  } catch {
+    Write-LocalStatus 'Frontend diagnostics: unavailable.'
+    if ($listeningPorts.Contains(3000)) { $issues.Add('Port 3000 is occupied, but the project frontend diagnostics endpoint is unavailable. The Vite process may be stale.') }
   }
 
   if ([Environment]::GetEnvironmentVariable('DATABASE_URL', 'Process')) {
@@ -294,6 +343,20 @@ function Invoke-Doctor {
       Pop-Location
     }
     Write-LocalStatus 'LAN reminder: allow Node through Windows Firewall on private networks. VPN adapters can change the chosen private IPv4 address.'
+  }
+
+  if ($listeningPorts.Count -eq 1) {
+    $issues.Add('Only one local application service is running; frontend and backend must use the same launch mode.')
+  }
+  if ($issues.Count -gt 0) {
+    Write-Warning "Local runtime diagnostics found $($issues.Count) issue(s):"
+    foreach ($issue in $issues) { Write-Warning "- $issue" }
+    throw 'Local runtime is reachable but does not match the requested launch contract.'
+  }
+  if ($listeningPorts.Count -eq 2) {
+    Write-LocalStatus "Runtime contract: ready ($expectedAuthMode)."
+  } else {
+    Write-LocalStatus "Runtime contract: no running app processes to verify; configuration checks passed for $expectedAuthMode."
   }
 }
 
@@ -319,6 +382,8 @@ function Invoke-Frontend {
   exit $LASTEXITCODE
 }
 
+if ($LibraryOnly) { return }
+
 switch ($Mode) {
   'Doctor' { Invoke-Doctor; break }
   'Stop' {
@@ -343,7 +408,7 @@ switch ($Mode) {
     Wait-ForBackendHealth
     Write-LocalStatus 'Starting frontend in a separate PowerShell window.'
     Start-LocalWindow 'Frontend'
-    Start-Sleep -Seconds 2
+    Wait-ForFrontendHealth
     Start-Process 'http://localhost:3000'
     Write-LocalStatus 'Local development is ready at http://localhost:3000.'
     break

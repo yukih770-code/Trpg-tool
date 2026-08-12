@@ -1431,6 +1431,21 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8aa. Local Runtime Auth Contract Doctor v1
+
+- [ ] `dev:local:doctor` expects `localDev` from both running services
+- [ ] `dev:local:auth:doctor` expects `privateAlpha` from both running services
+- [ ] Backend `/health` reports its actual authentication mode without secrets
+- [ ] Vite `/__trpg_dev_runtime` reports only service and compiled auth mode
+- [ ] Legacy/missing diagnostics, mixed modes, and one-service-only states fail Doctor
+- [ ] No-running-service state still permits configuration/database diagnosis
+- [ ] Start waits for matching backend and frontend reports before opening the browser
+- [ ] `npm run dev:local:verify:doctor-contract` passes
+- [ ] TypeScript, server build, frontend build, and diff checks pass
+- [ ] No auth protocol, cookie, invite/session secret, schema, migration, Runtime, rule, or deployment behavior changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

@@ -141,6 +141,7 @@
     "dev:local": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Mode Start",
     "dev:local:auth": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Mode Start -PrivateAlpha",
     "dev:local:doctor": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Mode Doctor",
+    "dev:local:verify:doctor-contract": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local-doctor-contract-smoke.ps1",
     "dev:local:auth:doctor": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Mode Doctor -PrivateAlpha",
     "dev:local:stop": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Mode Stop",
     "dev:lan": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/dev-local.ps1 -Mode Start -Lan",

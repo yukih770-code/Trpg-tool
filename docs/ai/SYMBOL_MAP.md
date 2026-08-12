@@ -1004,6 +1004,14 @@ This file helps AI quickly locate important types, helper functions, store actio
 - The labeled map tool rail uses a compact-only higher layer so another map utility can replace the open panel directly; Select/Move/Measure close the compact sheet and return to the canvas while desktop retains its original interaction model.
 - Focused smoke: `src/lib/map/runtimeMapPanelCoordinationSmoke.ts`; command `npm run frontend:verify:runtime-map-panel-coordination`.
 
+## Local Runtime Auth Contract Doctor
+
+- `AI-LANDMARK: LOCAL_RUNTIME_AUTH_CONTRACT_DOCTOR_V1`: `scripts/dev-local.ps1`, `vite.config.ts`, `server/room-server.ts`.
+- `Get-ExpectedLocalAuthMode()` / `Test-ReportedLocalAuthMode()`: expected-versus-reported local authentication contract.
+- Backend `/health` reports `authMode`; Vite development only reports the compiled frontend mode at `/__trpg_dev_runtime` without secrets or identity.
+- `Invoke-Doctor()` rejects missing/mismatched service reports and half-started pairs; `Wait-ForBackendHealth()` / `Wait-ForFrontendHealth()` gate browser opening during Start.
+- Focused smoke: `scripts/dev-local-doctor-contract-smoke.ps1`; command `npm run dev:local:verify:doctor-contract`.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

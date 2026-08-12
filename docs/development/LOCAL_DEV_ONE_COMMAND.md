@@ -43,9 +43,26 @@ npm run dev:local:doctor
 ```
 
 Doctor reports the presence of required local settings without showing their
-values, checks ports `8787` and `3000`, checks backend health when it is already
-running, and runs the read-only PostgreSQL readiness check when a database
-connection is configured.
+values, checks ports `8787` and `3000`, and runs the read-only PostgreSQL
+readiness check when a database connection is configured. When the app is
+already running, it also verifies the authentication mode actually reported by
+both services:
+
+- the backend `/health` response must report `localDev` or `privateAlpha` as
+  requested by the Doctor command;
+- the Vite-only `/__trpg_dev_runtime` diagnostic must report the same compiled
+  frontend mode;
+- a stale/legacy listener, a half-started frontend/backend pair, or a mismatch
+  between `dev:local:doctor` and `dev:local:auth:doctor` makes Doctor fail even
+  when the backend still returns HTTP 200.
+
+The frontend diagnostic exists only in the Vite development server and reports
+no access code, session secret, database URL, or user identity. A production
+build does not expose it.
+
+If Doctor reports a mismatch, close the stale local terminals (or use
+`npm run dev:local:stop` when their process signatures are recognized), then
+start one consistent mode with `npm run dev:local` or `npm run dev:local:auth`.
 
 ## LAN Alpha
 

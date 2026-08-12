@@ -412,6 +412,11 @@ app.get('/health', async (_req, res) => {
     storage: MEMORY_STORAGE_CAPABILITY.adapterKind,
     environment: serverRuntimeConfig.environment,
     runtimeMode: serverRuntimeConfig.runtimeMode,
+    authMode: serverRuntimeConfig.privateAlphaAuthEnabled
+      ? 'privateAlpha'
+      : serverRuntimeConfig.devUserApiEnabled
+        ? 'localDev'
+        : 'unauthenticated',
     devUserApiEnabled: serverRuntimeConfig.devUserApiEnabled === true,
     publicHttpUrl: serverRuntimeConfig.publicHttpUrl ?? null,
     publicWsUrl: serverRuntimeConfig.publicWsUrl ?? null,
