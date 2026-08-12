@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { WebSocket } from 'ws';
 
 type JsonRecord = Record<string, unknown>;
 type StepStatus = 'passed' | 'failed' | 'skipped';
@@ -27,6 +28,7 @@ let campaignRoot: string | undefined;
 let liveRoomId: string | undefined;
 let hostMemberId: string | undefined;
 let authenticatedHost: SessionClient | undefined;
+const openSocketProbes: RoomSocketProbe[] = [];
 
 function isRecord(value: unknown): value is JsonRecord {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -68,6 +70,102 @@ function failLatest(reason: string): void {
 function addAssertion(name: string, passed: boolean, reason: string): boolean {
   steps.push({ name, status: passed ? 'passed' : 'failed', reason: passed ? undefined : reason });
   return passed;
+}
+
+function socketUrl(): string {
+  return `${baseUrl.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:')}/ws`;
+}
+
+class RoomSocketProbe {
+  private readonly messages: JsonRecord[] = [];
+  private readonly waiters = new Set<{
+    predicate: (message: JsonRecord) => boolean;
+    resolve: (message: JsonRecord) => void;
+    reject: (error: Error) => void;
+    timeout: ReturnType<typeof setTimeout>;
+  }>();
+
+  private constructor(
+    private readonly label: 'host' | 'player',
+    private readonly socket: WebSocket,
+  ) {
+    socket.on('message', (data) => {
+      let message: unknown;
+      try {
+        message = JSON.parse(String(data));
+      } catch {
+        return;
+      }
+      if (!isRecord(message)) return;
+      this.messages.push(message);
+      for (const waiter of [...this.waiters]) {
+        if (!waiter.predicate(message)) continue;
+        clearTimeout(waiter.timeout);
+        this.waiters.delete(waiter);
+        waiter.resolve(message);
+      }
+    });
+  }
+
+  static async open(label: 'host' | 'player', cookie: string): Promise<RoomSocketProbe> {
+    const socket = new WebSocket(socketUrl(), { headers: { Cookie: cookie } });
+    socket.on('error', () => undefined);
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error(`${label}_socket_open_timeout`)), 5_000);
+      socket.once('open', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      socket.once('error', () => {
+        clearTimeout(timeout);
+        reject(new Error(`${label}_socket_open_failed`));
+      });
+    });
+    const probe = new RoomSocketProbe(label, socket);
+    openSocketProbes.push(probe);
+    return probe;
+  }
+
+  subscribe(roomId: string, memberId: string): void {
+    this.socket.send(JSON.stringify({
+      protocolVersion: 'room-ws-v0',
+      messageId: `alpha-smoke-${randomUUID()}`,
+      sentAt: new Date().toISOString(),
+      type: 'subscribeRoom',
+      roomId,
+      memberId,
+    }));
+  }
+
+  async waitFor(name: string, predicate: (message: JsonRecord) => boolean): Promise<JsonRecord> {
+    const existing = this.messages.find(predicate);
+    if (existing) return existing;
+    return new Promise<JsonRecord>((resolve, reject) => {
+      const waiter = {
+        predicate,
+        resolve,
+        reject,
+        timeout: setTimeout(() => {
+          this.waiters.delete(waiter);
+          reject(new Error(`${this.label}_${name}_timeout`));
+        }, 5_000),
+      };
+      this.waiters.add(waiter);
+    });
+  }
+
+  close(): void {
+    for (const waiter of this.waiters) {
+      clearTimeout(waiter.timeout);
+      waiter.reject(new Error(`${this.label}_socket_closed`));
+    }
+    this.waiters.clear();
+    try {
+      this.socket.close();
+    } catch {
+      // Best-effort test transport cleanup.
+    }
+  }
 }
 
 class SessionClient {
@@ -138,6 +236,11 @@ class SessionClient {
     }
     return userId;
   }
+
+  async openRoomSocket(label: 'host' | 'player'): Promise<RoomSocketProbe> {
+    if (!this.cookie) throw new Error(`${label}_session_cookie_missing`);
+    return RoomSocketProbe.open(label, this.cookie);
+  }
 }
 
 function report(status: string): void {
@@ -155,12 +258,13 @@ function report(status: string): void {
       personalInviteRedeemed: steps.some((step) => step.name === 'player_world_membership_visible' && step.status === 'passed'),
       roomAdmissionCompleted: steps.some((step) => step.name === 'player_ready_state_visible' && step.status === 'passed'),
       hostAuthorityEnforced: steps.some((step) => step.name === 'host_authority_boundary_confirmed' && step.status === 'passed'),
+      webSocketConverged: steps.some((step) => step.name === 'two_account_websocket_ready_converged' && step.status === 'passed'),
     },
     notes: [
       'Host and Player use separate in-memory cookie jars and distinct verified user ids.',
       'The smoke prints no response body, cookie, invite code, session token, database URL, or stack trace.',
       'Temporary campaign and World Server fixtures are archived; the live room is closed non-destructively.',
-      'Browser rendering, WebSocket convergence, map interaction, and reconnect remain manual acceptance boundaries.',
+      'Browser rendering, map interaction, browser reconnect, and process restart remain manual acceptance boundaries.',
     ],
   }, null, 2));
 }
@@ -291,6 +395,19 @@ async function main(): Promise<void> {
     throw new Error('pending_status_failed');
   }
 
+  const pendingSocket = await player.openRoomSocket('player');
+  pendingSocket.subscribe(liveRoomId, playerMemberId);
+  const pendingSocketError = await pendingSocket.waitFor(
+    'pending_subscription_rejection',
+    (message) => message.type === 'error' && message.code === 'notAuthorized' && message.roomId === liveRoomId,
+  );
+  if (!addAssertion(
+    'pending_player_websocket_rejected',
+    pendingSocketError.code === 'notAuthorized',
+    'pending_player_received_room_socket_subscription',
+  )) throw new Error('pending_socket_authority_failed');
+  pendingSocket.close();
+
   const forbiddenHostAction = await player.request('host_action_rejected', pathFor('rooms', liveRoomId, 'disband'), {
     method: 'POST',
     body: JSON.stringify({ decidedByMemberId: hostMemberId }),
@@ -309,6 +426,16 @@ async function main(): Promise<void> {
     failLatest('active_join_status_expected');
     throw new Error('member_approval_failed');
   }
+
+  const hostSocket = await host.openRoomSocket('host');
+  const playerSocket = await player.openRoomSocket('player');
+  hostSocket.subscribe(liveRoomId, hostMemberId);
+  playerSocket.subscribe(liveRoomId, playerMemberId);
+  await Promise.all([
+    hostSocket.waitFor('initial_subscription', (message) => message.type === 'roomSnapshot' && message.roomId === liveRoomId && message.reason === 'initialSubscribe'),
+    playerSocket.waitFor('initial_subscription', (message) => message.type === 'roomSnapshot' && message.roomId === liveRoomId && message.reason === 'initialSubscribe'),
+  ]);
+  addAssertion('two_account_websocket_subscribed', true, 'two_account_websocket_subscription_failed');
 
   const playerEntry = await player.request('room_entry_by_verified_identity', pathFor('rooms', liveRoomId, 'entry'));
   if (!playerEntry.ok || !isRecord(playerEntry.body) || playerEntry.body.memberId !== playerMemberId || playerEntry.body.role !== 'player') {
@@ -332,6 +459,10 @@ async function main(): Promise<void> {
   const submitResult = isRecord(submitted.body) ? submitted.body : undefined;
   const bindingId = typeof submitResult?.bindingId === 'string' ? submitResult.bindingId : undefined;
   if (!submitted.ok || submitResult?.decision !== 'submitted' || !bindingId) throw new Error('actor_submit_failed');
+  await Promise.all([
+    hostSocket.waitFor('actor_submission_broadcast', (message) => message.type === 'roomSnapshot' && message.reason === 'actorBindingSubmitted'),
+    playerSocket.waitFor('actor_submission_broadcast', (message) => message.type === 'roomSnapshot' && message.reason === 'actorBindingSubmitted'),
+  ]);
 
   await player.request('ready_before_actor_approval_rejected', pathFor('rooms', liveRoomId, 'members', playerMemberId, 'ready'), {
     method: 'POST',
@@ -342,10 +473,34 @@ async function main(): Promise<void> {
     method: 'POST',
     body: JSON.stringify({ reviewerMemberId: hostMemberId }),
   });
+  await Promise.all([
+    hostSocket.waitFor('actor_approval_broadcast', (message) => message.type === 'roomSnapshot' && message.reason === 'actorBindingApproved'),
+    playerSocket.waitFor('actor_approval_broadcast', (message) => message.type === 'roomSnapshot' && message.reason === 'actorBindingApproved'),
+  ]);
   await player.request('set_player_ready', pathFor('rooms', liveRoomId, 'members', playerMemberId, 'ready'), {
     method: 'POST',
     body: JSON.stringify({ ready: true }),
   });
+  const [hostReadyMessage, playerReadyMessage] = await Promise.all([
+    hostSocket.waitFor('ready_broadcast', (message) => message.type === 'roomSnapshot' && message.reason === 'memberReadyChanged'),
+    playerSocket.waitFor('ready_broadcast', (message) => message.type === 'roomSnapshot' && message.reason === 'memberReadyChanged'),
+  ]);
+  const hostReadyPayload = isRecord(hostReadyMessage.payload) && isRecord(hostReadyMessage.payload.room)
+    ? hostReadyMessage.payload.room
+    : undefined;
+  const playerReadyPayload = isRecord(playerReadyMessage.payload) && isRecord(playerReadyMessage.payload.room)
+    ? playerReadyMessage.payload.room
+    : undefined;
+  const socketHasReady = (roomSnapshot: JsonRecord | undefined): boolean => {
+    const socketLobby = isRecord(roomSnapshot?.lobby) ? roomSnapshot.lobby : undefined;
+    return Array.isArray(socketLobby?.readyStates)
+      && socketLobby.readyStates.some((item) => isRecord(item) && item.memberId === playerMemberId && item.status === 'ready');
+  };
+  if (!addAssertion(
+    'two_account_websocket_ready_converged',
+    socketHasReady(hostReadyPayload) && socketHasReady(playerReadyPayload),
+    'host_and_player_socket_state_did_not_converge',
+  )) throw new Error('websocket_convergence_failed');
 
   const finalRoom = await player.request('read_final_room_state', `${pathFor('rooms', liveRoomId)}?memberId=${encodeURIComponent(playerMemberId)}`);
   const finalRoomBody = isRecord(finalRoom.body) ? finalRoom.body : undefined;
@@ -382,6 +537,7 @@ try {
       steps.push({ name: 'fixture_cleanup', status: 'failed', reason: 'cleanup_request_failed' });
     }
   }
+  for (const probe of openSocketProbes) probe.close();
 }
 
 const failed = steps.some((step) => step.status === 'failed');

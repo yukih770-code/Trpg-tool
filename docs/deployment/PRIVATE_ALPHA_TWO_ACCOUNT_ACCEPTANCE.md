@@ -62,6 +62,9 @@ proved all of the following in one run:
 - Player could not claim Host's member ID or perform a host-only room action.
 - Player submitted a quick-draft character, could not Ready before approval,
   then successfully reached approved + Ready after Host review.
+- A pending Player WebSocket subscription was rejected; after approval, Host
+  and Player connected with their own session cookies and both received the
+  same actor submission, approval, and Ready room updates.
 - The live room was closed and database fixtures were archived by the Host
   session after the run.
 
@@ -70,9 +73,10 @@ applicants could read a full Room snapshot. The fixed contract now returns 403;
 pending applicants use `/rooms/:roomId/join-status` only.
 
 Still unproved by Gate A2: rendered UI behavior, existing Actor Vault selection,
-WebSocket convergence, Token/map interaction, combat, refresh/reconnect, and
-process-restart recovery. Those remain Gates B–E below and keep `NOT RUN` until
-observed against the deployed revision in two browsers.
+Token/map interaction, combat, browser refresh/reconnect, and process-restart
+recovery. The authenticated WebSocket protocol is now proved locally, but the
+corresponding Gates B–E rows keep `NOT RUN` until observed against the deployed
+revision in two browsers.
 
 ## Gate B — two independent identities
 
