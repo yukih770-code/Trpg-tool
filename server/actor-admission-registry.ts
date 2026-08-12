@@ -3,10 +3,11 @@
  *
  * AI-LANDMARK: ROOM_SERVER_ACTOR_ADMISSION_REGISTRY_V0
  *
- * Memory-only store of ActorAdmissionRecords (mirrors room-registry style). No
- * persistence, no storage adapter, no dependency. ActorAdmissionRecord (M24.1)
- * has no `bindingId` field, so a binding→admission index is kept INTERNALLY here
- * (the contract is not changed); roomId comes from the record itself.
+ * Memory-only live store of ActorAdmissionRecords (mirrors room-registry style).
+ * It owns no persistence adapter; campaign-linked room startup may rebuild its
+ * validated index from durable Room clearance summaries. ActorAdmissionRecord
+ * (M24.1) has no `bindingId` field, so a binding→admission index is kept
+ * INTERNALLY here (the contract is not changed); roomId comes from the record.
  */
 
 import type { ActorAdmissionRecord } from './protocol/room-protocol.js';

@@ -4,15 +4,19 @@ import { readFile, writeFile } from 'node:fs/promises';
 type JsonRecord = Record<string, unknown>;
 type Step = { name: string; status: 'passed' | 'failed'; httpStatus?: number; reason?: string };
 type RecoveryState = {
-  cookie: string;
+  hostCookie: string;
+  playerCookie: string;
   worldId: string;
   campaignId: string;
   roomId: string;
   hostMemberId: string;
+  playerMemberId: string;
+  bindingId: string;
   combatStartedId: string;
   combatTurnId: string;
   mapEventId: string;
   mapId: string;
+  characterTokenId: string;
 };
 
 const phase = process.argv.includes('--prepare') ? 'prepare' : process.argv.includes('--verify') ? 'verify' : undefined;
@@ -107,11 +111,13 @@ function report(status: 'prepared' | 'passed' | 'failed'): void {
     evidence: {
       sessionRecovered: steps.some((step) => step.name === 'verify_existing_session' && step.status === 'passed'),
       roomRecovered: steps.some((step) => step.name === 'verify_live_room_recovered' && step.status === 'passed'),
+      playerAdmissionRecovered: steps.some((step) => step.name === 'verify_player_admission_recovered' && step.status === 'passed'),
+      playerTokenAuthorityRecovered: steps.some((step) => step.name === 'verify_player_token_authority_recovered' && step.status === 'passed'),
       combatRecovered: steps.some((step) => step.name === 'verify_combat_runtime_log_recovered' && step.status === 'passed'),
       mapRecovered: steps.some((step) => step.name === 'verify_map_restart_recovered' && step.status === 'passed'),
     },
     notes: [
-      'The phase state file is operator-local and contains the session cookie; this report never prints it or any identifier.',
+      'The phase state file is operator-local and contains both session cookies; this report never prints them or any identifier.',
       'Server, campaign, and room fixtures are archived/closed during verify cleanup.',
       'Room Map recovery is verified by the original event identifier and grid payload after a real process restart.',
     ],
@@ -122,7 +128,7 @@ async function prepare(): Promise<void> {
   if (!bootstrapCode || !statePath) throw new Error('missing_prepare_configuration');
   const suffix = `${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
   const client = new Client();
-  const cookie = await client.login(`Restart Host ${suffix}`, bootstrapCode);
+  const hostCookie = await client.login(`Restart Host ${suffix}`, bootstrapCode);
 
   const worldResponse = await client.request('prepare_world_server', '/api/world-servers', {
     method: 'POST',
@@ -138,6 +144,16 @@ async function prepare(): Promise<void> {
   const worldId = typeof world?.worldServerId === 'string' ? world.worldServerId : undefined;
   if (!worldResponse.ok || !worldId) throw new Error('world_create_failed');
   const worldRoot = pathFor('api', 'world-servers', worldId);
+
+  const inviteResponse = await client.request('prepare_player_invite', `${worldRoot}/invites`, {
+    method: 'POST',
+    body: JSON.stringify({ maxUses: 1, defaultRoleKey: 'member' }),
+  });
+  const invite = objectValue(inviteResponse.body);
+  const inviteCode = typeof invite?.inviteCode === 'string' ? invite.inviteCode : undefined;
+  if (!inviteResponse.ok || !inviteCode) throw new Error('player_invite_failed');
+  const player = new Client();
+  const playerCookie = await player.login(`Restart Player ${suffix}`, inviteCode);
 
   const campaignResponse = await client.request('prepare_campaign', `${worldRoot}/campaigns`, {
     method: 'POST',
@@ -161,8 +177,42 @@ async function prepare(): Promise<void> {
   const identity = isRecord(room?.identity) ? room.identity : undefined;
   const hostMember = recordArray(room?.members).find((member) => member.role === 'host');
   const roomId = typeof identity?.roomId === 'string' ? identity.roomId : undefined;
+  const roomCode = typeof identity?.roomCode === 'string' ? identity.roomCode : undefined;
   const hostMemberId = typeof hostMember?.memberId === 'string' ? hostMember.memberId : undefined;
-  if (!roomResponse.ok || !roomId || !hostMemberId) throw new Error('live_room_create_failed');
+  if (!roomResponse.ok || !roomId || !roomCode || !hostMemberId) throw new Error('live_room_create_failed');
+
+  const joinResponse = await player.request('prepare_player_join', '/rooms/join', {
+    method: 'POST',
+    body: JSON.stringify({ inviteCodeOrRoomCode: roomCode, requestedDisplayName: `Restart Player ${suffix}`, requestedRole: 'player' }),
+  });
+  const join = isRecord(joinResponse.body) ? joinResponse.body : undefined;
+  const playerMemberId = typeof join?.memberId === 'string' ? join.memberId : undefined;
+  if (!joinResponse.ok || !playerMemberId) throw new Error('player_join_failed');
+  const approveMemberResponse = await client.request('prepare_player_member_approval', pathFor('rooms', roomId, 'members', playerMemberId, 'approve'), {
+    method: 'POST',
+    body: JSON.stringify({ decidedByMemberId: hostMemberId }),
+  });
+  if (!approveMemberResponse.ok) throw new Error('player_member_approval_failed');
+  const bindingResponse = await player.request('prepare_player_actor_binding', pathFor('rooms', roomId, 'actor-bindings', 'submit'), {
+    method: 'POST',
+    body: JSON.stringify({
+      memberId: playerMemberId,
+      actorRef: { systemId: 'dnd5e-2024', displayName: `Restart Hero ${suffix}`, source: 'quickDraft', summary: 'Restart admission proof.' },
+    }),
+  });
+  const bindingBody = isRecord(bindingResponse.body) ? bindingResponse.body : undefined;
+  const bindingId = typeof bindingBody?.bindingId === 'string' ? bindingBody.bindingId : undefined;
+  if (!bindingResponse.ok || !bindingId) throw new Error('player_binding_failed');
+  const approveBindingResponse = await client.request('prepare_player_actor_approval', pathFor('rooms', roomId, 'actor-bindings', bindingId, 'approve'), {
+    method: 'POST',
+    body: JSON.stringify({ reviewerMemberId: hostMemberId }),
+  });
+  if (!approveBindingResponse.ok) throw new Error('player_actor_approval_failed');
+  const readyResponse = await player.request('prepare_player_ready', pathFor('rooms', roomId, 'members', playerMemberId, 'ready'), {
+    method: 'POST',
+    body: JSON.stringify({ ready: true }),
+  });
+  if (!readyResponse.ok) throw new Error('player_ready_failed');
 
   const combatStarted = await client.request('prepare_combat_started', pathFor('rooms', roomId, 'runtime-log', 'events'), {
     method: 'POST',
@@ -200,15 +250,33 @@ async function prepare(): Promise<void> {
   const mapEventId = typeof mapEvent?.mapEventId === 'string' ? mapEvent.mapEventId : undefined;
   if (!mapResponse.ok || !mapEventId) throw new Error('map_event_failed');
 
+  const characterTokenId = `restart-character-${suffix}`;
+  const tokenResponse = await client.request('prepare_player_character_token', pathFor('rooms', roomId, 'map-events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: hostMemberId,
+      mapId,
+      eventKind: 'map.token_added',
+      payload: { token: { id: characterTokenId, name: `Restart Hero ${suffix}`, x: 35, y: 40, size: 'medium', sourceType: 'quickDraft', sourceId: bindingId, actorBindingId: bindingId, roomMemberId: playerMemberId, kind: 'playerCharacter' } },
+    }),
+  });
+  if (!tokenResponse.ok) throw new Error('player_character_token_failed');
+  const permissionResponse = await client.request('prepare_player_token_permission', pathFor('rooms', roomId, 'map-permissions', playerMemberId), {
+    method: 'POST',
+    body: JSON.stringify({ authorizedByMemberId: hostMemberId, canManageTokens: true }),
+  });
+  if (!permissionResponse.ok) throw new Error('player_token_permission_failed');
+
   await new Promise((resolve) => setTimeout(resolve, 300));
-  await writeFile(statePath, JSON.stringify({ cookie, worldId, campaignId, roomId, hostMemberId, combatStartedId, combatTurnId, mapEventId, mapId } satisfies RecoveryState), { encoding: 'utf8', flag: 'wx' });
+  await writeFile(statePath, JSON.stringify({ hostCookie, playerCookie, worldId, campaignId, roomId, hostMemberId, playerMemberId, bindingId, combatStartedId, combatTurnId, mapEventId, mapId, characterTokenId } satisfies RecoveryState), { encoding: 'utf8', flag: 'wx' });
   assertion('prepare_restart_fixture', true, 'restart_fixture_not_prepared');
 }
 
 async function verify(): Promise<void> {
   if (!statePath) throw new Error('missing_state_file');
   const state = JSON.parse(await readFile(statePath, 'utf8')) as RecoveryState;
-  const client = new Client(state.cookie);
+  const client = new Client(state.hostCookie);
+  const player = new Client(state.playerCookie);
   const worldRoot = pathFor('api', 'world-servers', state.worldId);
   const campaignRoot = `${worldRoot}/campaigns/${encodeURIComponent(state.campaignId)}`;
 
@@ -226,6 +294,29 @@ async function verify(): Promise<void> {
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
     assertion('verify_live_room_recovered', entry?.status === 200 && isRecord(entry.body) && entry.body.memberId === state.hostMemberId, 'live_room_not_recovered');
+
+    const playerMe = await player.request('verify_player_existing_session', '/api/auth/me');
+    assertion('verify_player_session_identity', playerMe.ok && objectValue(playerMe.body)?.authenticated === true && objectValue(playerMe.body)?.authMode === 'privateAlpha', 'player_session_not_recovered');
+    const playerEntry = await player.request('verify_player_room_entry', pathFor('rooms', state.roomId, 'entry'));
+    const playerRoom = isRecord(playerEntry.body) && isRecord(playerEntry.body.room) ? playerEntry.body.room : undefined;
+    const playerLobby = isRecord(playerRoom?.lobby) ? playerRoom.lobby : undefined;
+    const recoveredBinding = recordArray(playerLobby?.actorBindings).find((binding) => binding.bindingId === state.bindingId);
+    const recoveredReady = recordArray(playerLobby?.readyStates).find((ready) => ready.memberId === state.playerMemberId);
+    assertion(
+      'verify_player_lobby_recovered',
+      playerEntry.ok && isRecord(playerEntry.body) && playerEntry.body.memberId === state.playerMemberId && recoveredBinding?.status === 'approved' && recoveredReady?.status === 'ready',
+      'player_lobby_not_recovered',
+    );
+
+    const unready = await player.request('verify_player_unready_after_restart', pathFor('rooms', state.roomId, 'members', state.playerMemberId, 'ready'), {
+      method: 'POST',
+      body: JSON.stringify({ ready: false }),
+    });
+    const reready = await player.request('verify_player_reready_after_restart', pathFor('rooms', state.roomId, 'members', state.playerMemberId, 'ready'), {
+      method: 'POST',
+      body: JSON.stringify({ ready: true }),
+    });
+    assertion('verify_player_admission_recovered', unready.ok && reready.ok, 'player_admission_not_recovered');
 
     const log = await client.request('verify_runtime_log_after_restart', `${pathFor('rooms', state.roomId, 'runtime-log')}?memberId=${encodeURIComponent(state.hostMemberId)}`);
     const logEvents = isRecord(log.body) ? recordArray(log.body.events) : [];
@@ -252,6 +343,17 @@ async function verify(): Promise<void> {
       'verify_map_restart_recovered',
       map?.ok === true && recoveredMapEvent?.eventKind === 'map.grid_updated' && recoveredGrid?.sizePx === 72,
       'room_map_not_recovered',
+    );
+
+    const movedToken = await player.request('verify_player_token_move_after_restart', pathFor('rooms', state.roomId, 'map-events'), {
+      method: 'POST',
+      body: JSON.stringify({ authorMemberId: state.playerMemberId, mapId: state.mapId, eventKind: 'map.token_moved', payload: { tokenId: state.characterTokenId, x: 61, y: 63 } }),
+    });
+    const movedEvent = isRecord(movedToken.body) && isRecord(movedToken.body.event) ? movedToken.body.event : undefined;
+    assertion(
+      'verify_player_token_authority_recovered',
+      movedToken.ok && movedEvent?.eventKind === 'map.token_moved' && isRecord(movedEvent.payload) && movedEvent.payload.tokenId === state.characterTokenId && movedEvent.payload.x === 61 && movedEvent.payload.y === 63,
+      'player_token_authority_not_recovered',
     );
   } finally {
     await client.request('cleanup_disband_room', pathFor('rooms', state.roomId, 'disband'), { method: 'POST', body: JSON.stringify({ decidedByMemberId: state.hostMemberId }) });

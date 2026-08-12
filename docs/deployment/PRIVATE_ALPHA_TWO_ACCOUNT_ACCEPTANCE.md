@@ -144,13 +144,16 @@ npm run alpha:verify:restart-recovery:local
 ```
 
 Current local protocol result (2026-08-13): `PASS`. The
-runner created an authenticated campaign-linked live room, combat RuntimeLog,
-and map event; stopped the exact Node process it launched; started a fresh Node
-process on the same port; then reused the original session Cookie. It observed:
+runner created two authenticated identities, a campaign-linked live room,
+approved Player actor, Ready state, combat RuntimeLog, map, and linked character
+Token; stopped the exact Node process it launched; started a fresh Node process
+on the same port; then reused both original session Cookies. It observed:
 
-- the Private Alpha session, World Server, campaign, live room, RuntimeLog, and
-  combat round all recovered;
+- both Private Alpha sessions, World Server, campaign, Host/Player membership,
+  approved actor admission, Ready state, RuntimeLog, and combat round recovered;
 - the Room Map event recovered with its original event ID and grid payload;
+- the Player could unready, ready again through the restored admission authority,
+  and move the restored linked character Token;
 - test fixtures were closed/archived after verification, while the operator-
   local state file and server logs were deleted without printing secrets.
 
@@ -160,11 +163,11 @@ the final column and must not be promoted to remote PASS by inference.
 
 | ID | Surface | Expected current contract | Status | Evidence |
 | --- | --- | --- | --- | --- |
-| E1 | Login session | Browser session remains valid if database/session secret are unchanged | NOT RUN | Local process restart: session Cookie remained valid |
+| E1 | Login session | Browser session remains valid if database/session secret are unchanged | NOT RUN | Local process restart: both Host and Player session Cookies remained valid |
 | E2 | Server and campaign records | Persist | NOT RUN | Local process restart: both records remained readable |
-| E3 | Recoverable room lobby | Recover according to live-room lifecycle persistence | NOT RUN | Local process restart: original Host member re-entered the restored room |
+| E3 | Recoverable room lobby | Recover according to live-room lifecycle persistence | NOT RUN | Local process restart: original Host and Player memberships, approved binding, Ready state, and admission authority recovered; Player could unready and ready again |
 | E4 | RuntimeLog | Recover for campaign-linked cloud room | NOT RUN | Local process restart: both combat events restored by original event ID |
-| E5 | Room map state | Recover for campaign-linked cloud room | NOT RUN | Local process restart: original map event ID and `sizePx: 72` grid payload restored |
+| E5 | Room map state | Recover for campaign-linked cloud room | NOT RUN | Local process restart: original map event ID, `sizePx: 72` grid payload, linked character Token, and Player own-Token movement authority restored |
 | E6 | Combat state | Record actual behavior; do not infer from RuntimeLog persistence alone | NOT RUN | Local process restart: restored combat history replayed through round 2; deployed UI still required |
 
 ## Exit criteria

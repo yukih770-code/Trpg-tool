@@ -125,6 +125,7 @@ import {
   restoreLiveRoomMaps,
 } from './services/liveRoomMapPersistence.js';
 import { createLiveRoomDurableEventPersistenceCoordinator } from './services/liveRoomDurableEventPersistence.js';
+import { restoreRoomActorAdmissions } from './services/restoreRoomActorAdmissions.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -251,7 +252,8 @@ registerActorApiRoutes(app, createActorApiHandlers({
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));
 
-// Memory-only ActorAdmission store for Character Clearance (M24.2b).
+// Memory-live ActorAdmission authority. Campaign-linked room startup rebuilds
+// validated records from the durable Room clearance summaries below.
 const actorAdmissionRegistry = createInMemoryActorAdmissionRegistry();
 // The Vault repository remains independent from rooms. It is consulted only to
 // canonicalize an explicit persisted actorId during lobby binding submission.
@@ -1116,6 +1118,14 @@ const onServerListening = () => {
     if (result.decision === 'restored' && result.restoredCount > 0) {
       // eslint-disable-next-line no-console
       console.log(`[room-server] restored ${result.restoredCount} live room lobby/lobbies.`);
+    }
+    let restoredAdmissionCount = 0;
+    for (const room of registry.list()) {
+      restoredAdmissionCount += restoreRoomActorAdmissions(room, actorAdmissionRegistry).restoredCount;
+    }
+    if (restoredAdmissionCount > 0) {
+      // eslint-disable-next-line no-console
+      console.log(`[room-server] restored ${restoredAdmissionCount} room actor admission(s).`);
     }
     const runtimeLogResult = await restoreLiveRoomRuntimeLogs(runtimeEventRepository, registry, runtimeLogRegistry);
     if (runtimeLogResult.restoredEventCount > 0) {

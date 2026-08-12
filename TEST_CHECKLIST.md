@@ -1263,7 +1263,7 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
-## 8q. Cloud Live Room RuntimeLog Recovery v1 Check
+## 8q. Cloud Live Room Recovery v1 Check
 
 - [ ] Campaign-linked cloud room creation assigns a server-issued Runtime Session id
 - [ ] Cloud room creation prepares a matching active Runtime Session before accepting the lobby
@@ -1278,12 +1278,16 @@ After modifying one system, verify the other two are unaffected:
 - [ ] Recovery never overwrites a non-empty in-memory live stream
 - [ ] The first post-recovery append continues from the restored latest sequence
 - [ ] Existing member permissions and per-viewer RuntimeLog projection remain unchanged
-- [ ] Room Map events remain memory-only; no map visibility or replay contract changed
+- [ ] Campaign-linked Room Map events recover from their host-only durable envelopes without changing viewer visibility projection
+- [ ] Actor admission authority rebuilds from complete server-generated clearance summaries; malformed hashes never restore approval
+- [ ] A recovered Player can unready, ready again, and move their restored linked character Token
 - [ ] Database write failure does not replace in-memory live authority; durable outbox/retry remains deferred
 - [ ] Cross-process pub/sub and multi-instance room authority remain deferred
 - [ ] `npm run runtime:verify:live-room-log-recovery` passes
 - [ ] `npm run runtime:verify:persistence-bridge` passes
 - [ ] `npm run runtime:verify:live-room-lifecycle` passes
+- [ ] `npm run runtime:verify:live-room-map-recovery` passes
+- [ ] `npm run runtime:verify:room-admission-recovery` passes
 - [ ] `npm run runtime:verify:room-permissions` passes
 - [ ] `npm run runtime:verify:runtime-visibility-projection` passes
 - [ ] `npm run runtime:verify:room-socket-reconnect` passes

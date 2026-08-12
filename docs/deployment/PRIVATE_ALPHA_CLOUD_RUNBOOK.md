@@ -158,9 +158,10 @@ session-secret leak; all existing browser sessions will need to sign in again.
 ## Known limits for friends
 
 - This is a private alpha, not a public registration or account-recovery system.
-- Room Server lobby/map state remains memory-resident. A process restart loses
-  that live state; database-backed records and append-only persisted events are
-  separate from the in-memory room authority.
+- Campaign-linked cloud room lobbies, validated actor admission summaries,
+  RuntimeLog events, and Room Map events recover from PostgreSQL after a process
+  restart. The in-memory registries remain live authority after recovery;
+  ad-hoc local/LAN rooms without durable campaign context remain memory-only.
 - Multi-instance room authority, reconnect guarantees, rate limiting, object
   storage, and public-content moderation are not promised in this deployment.
 - Do not treat host-only information as shareable: visibility projection and
