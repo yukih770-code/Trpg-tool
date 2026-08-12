@@ -1417,6 +1417,20 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8z. Mobile Runtime Map Tool Sheet v1
+
+- [ ] Opening Background, Grid, Area, or Token on compact Runtime dims the tabletop behind the panel
+- [ ] Tapping the map backdrop closes the active map panel and returns interaction to the map
+- [ ] The backdrop blocks map pan, Token movement, measurement/range drawing, zoom, and compact HUD controls
+- [ ] The labeled map tool rail stays above the backdrop and directly replaces the active map panel
+- [ ] Selecting Select, Move, or Measure from the compact rail closes the sheet and returns to the canvas tool
+- [ ] Desktop does not render an interactive backdrop and preserves existing map behavior
+- [ ] `npm run frontend:verify:runtime-map-panel-coordination` passes with open/closed backdrop-state coverage
+- [ ] Existing map tools, overlay coordination, action dock, map replay, Token ownership, TypeScript, and build checks pass
+- [ ] No map callback, event, authority, permissions, server, store/schema, rule, combat, or Campaign Runtime behavior changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

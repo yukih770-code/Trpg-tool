@@ -10,7 +10,7 @@ import { campaignActorPresenceCandidate, combatantPresenceCandidate, linkedToken
 import { resolveTokenVisualIdentity } from '../../lib/map/tokenVisualIdentity';
 import { MAP_BACKGROUND_PRESETS, createMapAreaTemplate, measureMapDistance, snapMapPosition, type MapAreaTemplate, type MapAreaTemplateInput, type MapBackgroundPreset, type MapBoardState, type MapInteractionPreview, type MapRuntimeEventDraft, type MapTemplateShape, type MapToken, type MapTokenSize } from '../../lib/map/mapRuntimeTypes';
 import { getRuntimeMapToolPresentation, type RuntimeMapToolId } from '../../lib/map/runtimeMapToolPresentation';
-import { isOpeningRuntimeMapPanel, resolveRuntimeMapPanelToggle, shouldCloseRuntimeMapPanelForCompetingSurface, type RuntimeMapUtilityPanel } from '../../lib/map/runtimeMapPanelCoordination';
+import { hasOpenRuntimeMapPanel, isOpeningRuntimeMapPanel, resolveRuntimeMapPanelToggle, shouldCloseRuntimeMapPanelForCompetingSurface, type RuntimeMapUtilityPanel } from '../../lib/map/runtimeMapPanelCoordination';
 import { RUNTIME_ACTION_DOCK_DID_OPEN_EVENT, RUNTIME_AUXILIARY_PANEL_OPEN_EVENT, RUNTIME_MAP_PANEL_DID_OPEN_EVENT } from './RuntimeActionDock';
 
 type Props = {
@@ -671,16 +671,18 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     const runtimeToolTitle = (id: RuntimeMapToolId): string => id === 'select' ? t('mapRuntime.toolSelect') : id === 'move' ? t('mapRuntime.toolMove') : id === 'measure' ? t('mapRuntime.toolMeasure') : id === 'background' ? t('mapRuntime.toolBackground') : id === 'grid' ? t('mapRuntime.toolGrid') : id === 'template' ? t('mapRuntime.toolTemplate') : locale === 'en' ? 'Place Token' : '放置 Token';
     const runtimeToolActive = (id: RuntimeMapToolId): boolean => id === 'select' || id === 'move' || id === 'measure' ? toolMode === id : id === 'template' ? toolMode === 'template' : activePanel === id;
     const activateRuntimeTool = (id: RuntimeMapToolId) => {
+      const compactViewport = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
       if (id === 'select' || id === 'move' || id === 'measure') {
         setToolMode(id);
         setMeasurement(undefined);
+        if (compactViewport) setActivePanel(undefined);
         return;
       }
       const panel = id as RuntimeMapUtilityPanel;
       const opening = isOpeningRuntimeMapPanel(activePanel, panel);
       if (id === 'template') setToolMode('template');
       setActivePanel(resolveRuntimeMapPanelToggle(activePanel, panel));
-      if (opening && typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+      if (opening && compactViewport) {
         window.dispatchEvent(new Event(RUNTIME_MAP_PANEL_DID_OPEN_EVENT));
       }
     };
@@ -709,7 +711,14 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
         {tokenMenuLayer}
       </div>
 
-      <div aria-label={locale === 'en' ? 'Map tools' : '地图工具'} role="toolbar" className="absolute left-2 top-1/2 z-20 flex max-h-[calc(100%_-_8rem)] -translate-y-1/2 flex-col gap-1 overflow-y-auto rounded-xl border border-slate-300/70 bg-slate-50/85 p-1 shadow-lg backdrop-blur-sm sm:left-3 sm:gap-1.5 sm:p-1.5">
+      {hasOpenRuntimeMapPanel(activePanel) && <button
+        type="button"
+        aria-label={locale === 'en' ? 'Close map tools and return to map' : '关闭地图工具并返回地图'}
+        onClick={() => setActivePanel(undefined)}
+        className="absolute inset-0 z-[25] block cursor-default bg-slate-950/20 backdrop-blur-[1px] md:hidden"
+      />}
+
+      <div aria-label={locale === 'en' ? 'Map tools' : '地图工具'} role="toolbar" className="absolute left-2 top-1/2 z-40 flex max-h-[calc(100%_-_8rem)] -translate-y-1/2 flex-col gap-1 overflow-y-auto rounded-xl border border-slate-300/70 bg-slate-50/85 p-1 shadow-lg backdrop-blur-sm md:z-20 sm:left-3 sm:gap-1.5 sm:p-1.5">
         {runtimeTools.map((tool) => {
           const Icon = tool.id === 'select' ? MousePointer2 : tool.id === 'move' ? Hand : tool.id === 'measure' ? Ruler : tool.id === 'background' ? Image : tool.id === 'grid' ? Grid3X3 : tool.id === 'template' ? Shapes : UsersRound;
           const title = runtimeToolTitle(tool.id);

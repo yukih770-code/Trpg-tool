@@ -6,30 +6,26 @@
 
 ## Task
 
-- ID: Mobile Runtime Map Panel Coordination v1
-- Name: `MOBILE_RUNTIME_MAP_PANEL_COORDINATION_V1`
-- Goal: Include compact map utility panels in the existing one-surface-at-a-time
-  Runtime overlay contract.
+- ID: Mobile Runtime Map Tool Sheet v1
+- Name: `MOBILE_RUNTIME_MAP_TOOL_SHEET_V1`
+- Goal: Make compact map utilities true supporting sheets that prevent accidental
+  tabletop interaction and provide tap-to-map dismissal.
 - Phase: P0 Runtime mobile usability
 - Status: Done
 
 ## UI Contract
 
-- Opening a compact map utility panel closes supporting sheets and the action dock.
-- Opening a supporting sheet or any valid action-dock surface closes map utilities.
-- Direct dock actions, More, More items, and programmatic opens share the contract.
-- Escape closes compact map utility panels.
-- Desktop keeps independent panels and existing map tool behavior.
+- An open compact map utility places an interaction backdrop above the tabletop.
+- Tapping the backdrop closes the panel and returns interaction to the map.
+- The labeled tool rail remains available for direct map-panel replacement.
+- Selecting a direct canvas tool closes the compact sheet and returns to the map.
+- Desktop keeps its existing independent panel and map interaction behavior.
 
 ## Allowed Files
 
 - `src/components/platform/BasicMapBoard.tsx`
-- `src/components/platform/RuntimeActionDock.tsx`
-- `src/components/platform/RuntimeFullscreenShell.tsx`
 - `src/lib/map/runtimeMapPanelCoordination.ts`
 - `src/lib/map/runtimeMapPanelCoordinationSmoke.ts`
-- `src/lib/platform/runtimeActionDockSmoke.ts`
-- `package.json`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
 - `docs/ai/ACTIVE_TASK.md`
@@ -39,16 +35,15 @@
 ## Forbidden Changes
 
 - Map tool callbacks, map events/authority, Token permissions
-- Action panel content/behavior, Room roles/permissions, server/API
+- Runtime overlay/action content, Room roles/permissions, server/API
 - Store, schema, migration, rule data, combat behavior, Campaign Runtime
 
 ## Completion Criteria
 
-- Pure map-panel toggle policy covers open, replace, and close transitions.
-- Accepted dock-open paths consistently notify competing compact surfaces.
-- Map panel listens for auxiliary/dock opens and Escape; desktop is guarded.
-- Focused smoke, overlay/action/map/permission regressions, lint, build, and diff
-  check pass.
+- Open map-panel state mounts a compact-only tap-to-map interaction backdrop.
+- Backdrop blocks map/HUD gestures while the labeled tool rail stays switchable.
+- Desktop interaction is unaffected by the compact-only presentation layer.
+- Focused smoke, map/overlay/action/permission regressions, lint, build, and diff pass.
 
 ## Verification
 
@@ -64,11 +59,7 @@ git diff --check
 
 ## Result
 
-- Compact Background, Grid, Area, and Token panels now close and are closed by
-  the existing supporting-sheet and action-dock surface protocol.
-- Direct valid actions, More, valid More items, programmatic opens, auxiliary
-  sheets, map-panel replacements, and Escape follow explicit transition rules.
-- Invalid action requests announce nothing, and compact guards preserve desktop
-  panel independence and every existing map/action callback.
-- Focused coordination, tool presentation, action-dock, overlay, map replay,
-  Token ownership, TypeScript, frontend build, and diff checks pass.
+- Compact Background, Grid, Area, and Token panels now block accidental tabletop
+  gestures and support tapping the dimmed map to close.
+- The labeled tool rail remains usable above the backdrop for direct replacement.
+- Compact-only layering preserves desktop behavior and all map callbacks/authority.

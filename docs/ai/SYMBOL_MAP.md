@@ -996,6 +996,14 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Compact guards preserve desktop panel independence; Escape shares the same map-panel close policy.
 - Focused smoke: `src/lib/map/runtimeMapPanelCoordinationSmoke.ts`; command `npm run frontend:verify:runtime-map-panel-coordination`.
 
+## Mobile Runtime Map Tool Sheet
+
+- `AI-LANDMARK: MOBILE_RUNTIME_MAP_TOOL_SHEET_V1`: compact Runtime branch in `src/components/platform/BasicMapBoard.tsx`.
+- `hasOpenRuntimeMapPanel()`: pure open-state projection used to mount the compact interaction backdrop — `src/lib/map/runtimeMapPanelCoordination.ts`.
+- The `max-md` tap-to-map backdrop sits above the map canvas/HUD and below map panels; it closes the active panel and prevents accidental pan, Token movement, or range gestures.
+- The labeled map tool rail uses a compact-only higher layer so another map utility can replace the open panel directly; Select/Move/Measure close the compact sheet and return to the canvas while desktop retains its original interaction model.
+- Focused smoke: `src/lib/map/runtimeMapPanelCoordinationSmoke.ts`; command `npm run frontend:verify:runtime-map-panel-coordination`.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

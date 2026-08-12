@@ -14,6 +14,12 @@ export function isOpeningRuntimeMapPanel(
   return current !== requested;
 }
 
+export function hasOpenRuntimeMapPanel(
+  current: RuntimeMapUtilityPanel | undefined,
+): current is RuntimeMapUtilityPanel {
+  return current !== undefined;
+}
+
 export function shouldCloseRuntimeMapPanelForCompetingSurface(
   compact: boolean,
   current: RuntimeMapUtilityPanel | undefined,

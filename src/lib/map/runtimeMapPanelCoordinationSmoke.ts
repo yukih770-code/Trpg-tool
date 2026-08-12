@@ -1,4 +1,5 @@
 import {
+  hasOpenRuntimeMapPanel,
   isOpeningRuntimeMapPanel,
   resolveRuntimeMapPanelToggle,
   shouldCloseRuntimeMapPanelForCompetingSurface,
@@ -16,6 +17,8 @@ check('active map panel toggles closed', resolveRuntimeMapPanelToggle('units', '
 check('closed to requested transition announces opening', isOpeningRuntimeMapPanel(undefined, 'background'));
 check('replacement transition announces opening', isOpeningRuntimeMapPanel('grid', 'template'));
 check('closing active panel does not announce opening', !isOpeningRuntimeMapPanel('template', 'template'));
+check('open map panel requests a compact interaction backdrop', hasOpenRuntimeMapPanel('background'));
+check('closed map panel does not request a compact interaction backdrop', !hasOpenRuntimeMapPanel(undefined));
 check('compact competing surface closes an open map panel', shouldCloseRuntimeMapPanelForCompetingSurface(true, 'units'));
 check('compact competing surface ignores an already closed panel', !shouldCloseRuntimeMapPanelForCompetingSurface(true, undefined));
 check('desktop competing surface preserves map panel independence', !shouldCloseRuntimeMapPanelForCompetingSurface(false, 'units'));
