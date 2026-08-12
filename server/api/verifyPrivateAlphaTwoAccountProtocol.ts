@@ -136,7 +136,7 @@ class RoomSocketProbe {
     return probe;
   }
 
-  subscribe(roomId: string, memberId: string): void {
+  subscribe(roomId: string, memberId: string, cursors?: { runtimeLog?: number; mapEvent?: number }): void {
     this.socket.send(JSON.stringify({
       protocolVersion: 'room-ws-v0',
       messageId: `alpha-smoke-${randomUUID()}`,
@@ -144,6 +144,8 @@ class RoomSocketProbe {
       type: 'subscribeRoom',
       roomId,
       memberId,
+      ...(cursors?.runtimeLog !== undefined ? { afterRuntimeLogSeq: cursors.runtimeLog } : {}),
+      ...(cursors?.mapEvent !== undefined ? { afterMapEventSeq: cursors.mapEvent } : {}),
     }));
   }
 
@@ -168,6 +170,23 @@ class RoomSocketProbe {
     if (this.messages.some(predicate)) throw new Error(`${this.label}_${name}_unexpected_message`);
     await new Promise<void>((resolve) => setTimeout(resolve, durationMs));
     if (this.messages.some(predicate)) throw new Error(`${this.label}_${name}_unexpected_message`);
+  }
+
+  async disconnect(): Promise<void> {
+    if (this.socket.readyState === WebSocket.CLOSED) return;
+    await new Promise<void>((resolve) => {
+      const timeout = setTimeout(resolve, 2_000);
+      this.socket.once('close', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      try {
+        this.socket.close();
+      } catch {
+        clearTimeout(timeout);
+        resolve();
+      }
+    });
   }
 
   close(): void {
@@ -277,12 +296,14 @@ function report(status: string): void {
       webSocketConverged: steps.some((step) => step.name === 'two_account_websocket_ready_converged' && step.status === 'passed'),
       runtimeLogProjected: steps.some((step) => step.name === 'two_account_runtime_log_projection_confirmed' && step.status === 'passed'),
       mapAuthorityProjected: steps.some((step) => step.name === 'two_account_map_authority_projection_confirmed' && step.status === 'passed'),
+      combatTurnConverged: steps.some((step) => step.name === 'two_account_combat_turn_converged' && step.status === 'passed'),
+      reconnectCatchUpVerified: steps.some((step) => step.name === 'player_socket_missing_suffix_recovered' && step.status === 'passed'),
     },
     notes: [
       'Host and Player use separate in-memory cookie jars and distinct verified user ids.',
       'The smoke prints no response body, cookie, invite code, session token, database URL, or stack trace.',
       'Temporary campaign and World Server fixtures are archived; the live room is closed non-destructively.',
-      'Browser rendering, pointer interaction, browser reconnect, combat UX, and process restart remain manual acceptance boundaries.',
+      'Browser rendering, pointer interaction, browser refresh, combat UX, and process restart remain manual acceptance boundaries.',
     ],
   }, null, 2));
 }
@@ -736,6 +757,191 @@ async function main(): Promise<void> {
       && hostMapEvents.some((event) => event.mapEventId === hiddenTokenEventId),
     'map_authority_or_visibility_projection_failed',
   )) throw new Error('map_projection_failed');
+
+  const heroCombatantId = `combat-hero-${suffix}`;
+  const npcCombatantId = `combat-npc-${suffix}`;
+  await player.request('combat_start_rejected', pathFor('rooms', liveRoomId, 'runtime-log', 'events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: playerMemberId,
+      kind: 'combat.started',
+      visibility: 'public',
+      text: 'Player must not start combat.',
+      payload: { combatants: [], roundNumber: 1, turnIndex: 0 },
+    }),
+  }, [400]);
+
+  const combatStarted = await host.request('start_combat', pathFor('rooms', liveRoomId, 'runtime-log', 'events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: hostMemberId,
+      kind: 'combat.started',
+      visibility: 'public',
+      text: 'Combat started.',
+      payload: {
+        roundNumber: 1,
+        turnIndex: 0,
+        activeCombatantId: npcCombatantId,
+        combatants: [
+          {
+            id: npcCombatantId,
+            displayName: `Standalone NPC ${suffix}`,
+            name: `Standalone NPC ${suffix}`,
+            kind: 'npc',
+            sourceType: 'manual_npc',
+            mapTokenId: manualTokenId,
+            initiative: 18,
+            initiativeModifier: 2,
+            hpCurrent: 18,
+            hpMax: 18,
+            armorClass: 13,
+            conditions: [],
+            isDefeated: false,
+            status: 'active',
+          },
+          {
+            id: heroCombatantId,
+            displayName: `Alpha Hero ${suffix}`,
+            name: `Alpha Hero ${suffix}`,
+            kind: 'character',
+            sourceType: 'manual_pc',
+            mapTokenId: characterTokenId,
+            initiative: 14,
+            initiativeModifier: 3,
+            hpCurrent: 20,
+            hpMax: 20,
+            armorClass: 16,
+            conditions: [],
+            isDefeated: false,
+            status: 'active',
+          },
+        ],
+      },
+    }),
+  });
+  const combatStartedEvent = isRecord(combatStarted.body) && isRecord(combatStarted.body.event) ? combatStarted.body.event : undefined;
+  const combatStartedId = typeof combatStartedEvent?.eventId === 'string' ? combatStartedEvent.eventId : undefined;
+  if (!combatStarted.ok || !combatStartedId) throw new Error('combat_start_failed');
+  await Promise.all([
+    hostSocket.waitFor('combat_started_broadcast', (message) => socketStreamContains(message, 'runtimeLogAppended', combatStartedId)),
+    playerSocket.waitFor('combat_started_broadcast', (message) => socketStreamContains(message, 'runtimeLogAppended', combatStartedId)),
+  ]);
+
+  const turnAdvanced = await host.request('advance_combat_to_player', pathFor('rooms', liveRoomId, 'runtime-log', 'events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: hostMemberId,
+      kind: 'combat.turn_advanced',
+      visibility: 'public',
+      text: 'Player turn.',
+      payload: { direction: 'next', roundNumber: 1, turnIndex: 1, activeCombatantId: heroCombatantId },
+    }),
+  });
+  const turnAdvancedEvent = isRecord(turnAdvanced.body) && isRecord(turnAdvanced.body.event) ? turnAdvanced.body.event : undefined;
+  const turnAdvancedId = typeof turnAdvancedEvent?.eventId === 'string' ? turnAdvancedEvent.eventId : undefined;
+  if (!turnAdvanced.ok || !turnAdvancedId) throw new Error('combat_turn_advance_failed');
+  const [hostTurnMessage, playerTurnMessage] = await Promise.all([
+    hostSocket.waitFor('combat_turn_broadcast', (message) => socketStreamContains(message, 'runtimeLogAppended', turnAdvancedId)),
+    playerSocket.waitFor('combat_turn_broadcast', (message) => socketStreamContains(message, 'runtimeLogAppended', turnAdvancedId)),
+  ]);
+  const runtimeEventFromMessage = (message: JsonRecord, eventId: string): JsonRecord | undefined =>
+    recordArray(message.events).find((event) => event.eventId === eventId);
+  const hostTurnEvent = runtimeEventFromMessage(hostTurnMessage, turnAdvancedId);
+  const playerTurnEvent = runtimeEventFromMessage(playerTurnMessage, turnAdvancedId);
+  if (!addAssertion(
+    'two_account_combat_turn_converged',
+    isRecord(hostTurnEvent?.payload)
+      && isRecord(playerTurnEvent?.payload)
+      && hostTurnEvent.payload.activeCombatantId === heroCombatantId
+      && playerTurnEvent.payload.activeCombatantId === heroCombatantId
+      && playerTurnEvent.payload.roundNumber === 1
+      && playerTurnEvent.payload.turnIndex === 1,
+    'combat_turn_projection_did_not_converge',
+  )) throw new Error('combat_turn_projection_failed');
+
+  const playerDice = await player.request('roll_on_player_turn', pathFor('rooms', liveRoomId, 'runtime', 'dice-roll'), {
+    method: 'POST',
+    body: JSON.stringify({ memberId: playerMemberId, expression: '1d20+5', label: 'Alpha turn check' }),
+  });
+  const playerDiceEvent = isRecord(playerDice.body) && isRecord(playerDice.body.event) ? playerDice.body.event : undefined;
+  const playerDiceId = typeof playerDiceEvent?.eventId === 'string' ? playerDiceEvent.eventId : undefined;
+  if (!playerDice.ok || !playerDiceId || playerDiceEvent?.kind !== 'dice.roll') throw new Error('player_turn_dice_failed');
+  await Promise.all([
+    hostSocket.waitFor('player_dice_broadcast', (message) => socketStreamContains(message, 'runtimeLogAppended', playerDiceId)),
+    playerSocket.waitFor('player_dice_broadcast', (message) => socketStreamContains(message, 'runtimeLogAppended', playerDiceId)),
+  ]);
+
+  const beforeDisconnectLog = await player.request('read_reconnect_runtime_cursor', `${pathFor('rooms', liveRoomId, 'runtime-log')}?memberId=${encodeURIComponent(playerMemberId)}`);
+  const beforeDisconnectMap = await player.request('read_reconnect_map_cursor', `${pathFor('rooms', liveRoomId, 'map-events')}?memberId=${encodeURIComponent(playerMemberId)}&mapId=${encodeURIComponent(mapId)}`);
+  const runtimeCursor = isRecord(beforeDisconnectLog.body) && typeof beforeDisconnectLog.body.latestSeq === 'number' ? beforeDisconnectLog.body.latestSeq : undefined;
+  const mapCursor = isRecord(beforeDisconnectMap.body) && typeof beforeDisconnectMap.body.latestSeq === 'number' ? beforeDisconnectMap.body.latestSeq : undefined;
+  if (!beforeDisconnectLog.ok || !beforeDisconnectMap.ok || runtimeCursor === undefined || mapCursor === undefined) {
+    throw new Error('reconnect_cursor_read_failed');
+  }
+  await playerSocket.disconnect();
+
+  const offlinePrivate = await host.request('append_offline_host_only_event', pathFor('rooms', liveRoomId, 'runtime-log', 'events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: hostMemberId,
+      kind: 'host.note',
+      visibility: 'hostOnly',
+      text: `Offline private note ${suffix}`,
+    }),
+  });
+  const offlinePrivateEvent = isRecord(offlinePrivate.body) && isRecord(offlinePrivate.body.event) ? offlinePrivate.body.event : undefined;
+  const offlinePrivateId = typeof offlinePrivateEvent?.eventId === 'string' ? offlinePrivateEvent.eventId : undefined;
+  if (!offlinePrivate.ok || !offlinePrivateId) throw new Error('offline_private_event_failed');
+
+  const offlineTurn = await host.request('append_offline_combat_turn', pathFor('rooms', liveRoomId, 'runtime-log', 'events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: hostMemberId,
+      kind: 'combat.round_advanced',
+      visibility: 'public',
+      text: 'Next round while Player reconnects.',
+      payload: { direction: 'next', roundNumber: 2, turnIndex: 0, activeCombatantId: npcCombatantId },
+    }),
+  });
+  const offlineTurnEvent = isRecord(offlineTurn.body) && isRecord(offlineTurn.body.event) ? offlineTurn.body.event : undefined;
+  const offlineTurnId = typeof offlineTurnEvent?.eventId === 'string' ? offlineTurnEvent.eventId : undefined;
+  if (!offlineTurn.ok || !offlineTurnId) throw new Error('offline_combat_event_failed');
+
+  const offlineMap = await host.request('append_offline_map_event', pathFor('rooms', liveRoomId, 'map-events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: hostMemberId,
+      mapId,
+      eventKind: 'map.grid_updated',
+      payload: { grid: { enabled: true, sizePx: 64, feetPerSquare: 5, originX: 0, originY: 0, snap: true, showCoordinates: true } },
+    }),
+  });
+  const offlineMapEvent = isRecord(offlineMap.body) && isRecord(offlineMap.body.event) ? offlineMap.body.event : undefined;
+  const offlineMapId = typeof offlineMapEvent?.mapEventId === 'string' ? offlineMapEvent.mapEventId : undefined;
+  if (!offlineMap.ok || !offlineMapId) throw new Error('offline_map_event_failed');
+
+  const afterDisconnectLog = await player.request('read_post_disconnect_runtime_cursor', `${pathFor('rooms', liveRoomId, 'runtime-log')}?memberId=${encodeURIComponent(playerMemberId)}`);
+  const afterDisconnectMap = await player.request('read_post_disconnect_map_cursor', `${pathFor('rooms', liveRoomId, 'map-events')}?memberId=${encodeURIComponent(playerMemberId)}&mapId=${encodeURIComponent(mapId)}`);
+  const expectedRuntimeLatest = isRecord(afterDisconnectLog.body) && typeof afterDisconnectLog.body.latestSeq === 'number' ? afterDisconnectLog.body.latestSeq : undefined;
+  const expectedMapLatest = isRecord(afterDisconnectMap.body) && typeof afterDisconnectMap.body.latestSeq === 'number' ? afterDisconnectMap.body.latestSeq : undefined;
+  if (expectedRuntimeLatest === undefined || expectedMapLatest === undefined) throw new Error('post_disconnect_cursor_read_failed');
+
+  const reconnectedPlayerSocket = await player.openRoomSocket('player');
+  reconnectedPlayerSocket.subscribe(liveRoomId, playerMemberId, { runtimeLog: runtimeCursor, mapEvent: mapCursor });
+  const [runtimeCatchUp, mapCatchUp, reconnectAck] = await Promise.all([
+    reconnectedPlayerSocket.waitFor('runtime_missing_suffix', (message) => socketStreamContains(message, 'runtimeLogAppended', offlineTurnId)),
+    reconnectedPlayerSocket.waitFor('map_missing_suffix', (message) => socketStreamContains(message, 'mapEventAppended', offlineMapId)),
+    reconnectedPlayerSocket.waitFor('reconnect_ack', (message) => message.type === 'subscribedRoom' && message.roomId === liveRoomId),
+  ]);
+  await reconnectedPlayerSocket.expectAbsent('offline_host_only_event', (message) => socketStreamContains(message, 'runtimeLogAppended', offlinePrivateId));
+  if (!addAssertion(
+    'player_socket_missing_suffix_recovered',
+    socketStreamContains(runtimeCatchUp, 'runtimeLogAppended', offlineTurnId)
+      && socketStreamContains(mapCatchUp, 'mapEventAppended', offlineMapId)
+      && reconnectAck.runtimeLogLatestSeq === expectedRuntimeLatest
+      && reconnectAck.mapEventLatestSeq === expectedMapLatest,
+    'reconnect_missing_suffix_or_cursor_failed',
+  )) throw new Error('reconnect_catch_up_failed');
 
   const finalRoom = await player.request('read_final_room_state', `${pathFor('rooms', liveRoomId)}?memberId=${encodeURIComponent(playerMemberId)}`);
   const finalRoomBody = isRecord(finalRoom.body) ? finalRoom.body : undefined;

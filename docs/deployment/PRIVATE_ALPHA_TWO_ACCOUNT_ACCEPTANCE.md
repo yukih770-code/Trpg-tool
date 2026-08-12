@@ -74,6 +74,14 @@ proved all of the following in one run:
 - Player could not edit the host map or move any Token before a grant; after the
   narrow own-Token grant, only the approved character Token could be moved and
   both sessions received the movement event.
+- Player could not write combat authority events. Host started combat and
+  advanced to the approved Player character; both sessions converged on the
+  same active combatant and Player's server-authoritative dice event reached
+  both sessions.
+- Player Socket was deliberately disconnected. A host-only log, public combat
+  turn, and map-grid event were created while offline. Reconnection supplied
+  the last observed log/map cursors, recovered only the visible missing suffix,
+  withheld the private Host event, and advanced both stream baselines.
 - The live room was closed and database fixtures were archived by the Host
   session after the run.
 
@@ -82,10 +90,11 @@ applicants could read a full Room snapshot. The fixed contract now returns 403;
 pending applicants use `/rooms/:roomId/join-status` only.
 
 Still unproved by Gate A2: rendered UI behavior, existing Actor Vault selection,
-pointer-driven map interaction, combat UX, browser refresh/reconnect, and
-process-restart recovery. The authenticated RuntimeLog and map/Token protocols
-are now proved locally, but the corresponding Gates B–E rows keep `NOT RUN`
-until observed against the deployed revision in two browsers.
+pointer-driven map interaction, combat UX, full browser refresh restoration,
+and process-restart recovery. The authenticated RuntimeLog, combat, map/Token,
+and Socket catch-up protocols are now proved locally, but the corresponding
+Gates B–E rows keep `NOT RUN` until observed against the deployed revision in
+two browsers.
 
 ## Gate B — two independent identities
 
