@@ -139,6 +139,8 @@
     "alpha:verify:acceptance-preflight-contract": "tsx server/config/privateAlphaAcceptancePreflightSmoke.ts",
     "alpha:verify:two-account-protocol": "tsx server/api/verifyPrivateAlphaTwoAccountProtocol.ts",
     "alpha:verify:two-account-protocol:local": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/private-alpha-two-account-local-smoke.ps1",
+    "alpha:verify:restart-recovery": "tsx server/api/verifyPrivateAlphaRestartRecovery.ts",
+    "alpha:verify:restart-recovery:local": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/private-alpha-restart-recovery-local-smoke.ps1",
     "auth:verify:private-alpha": "tsx server/auth/privateAlphaAuthSmoke.ts",
     "frontend:verify:e2e-api": "tsx src/lib/api/frontendApiE2ESmoke.ts",
     "frontend:verify:auth-flow": "tsx src/lib/api/authApiClientSmoke.ts",

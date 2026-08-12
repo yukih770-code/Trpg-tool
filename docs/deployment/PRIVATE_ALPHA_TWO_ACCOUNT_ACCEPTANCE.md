@@ -137,14 +137,36 @@ two browsers.
 This is a deliberate durability audit, not an assumed pass. Record each surface
 separately after restarting the deployed Node service:
 
+The local PostgreSQL-backed process-restart proof is repeatable with:
+
+```powershell
+npm run alpha:verify:restart-recovery:local
+```
+
+Current local protocol result (2026-08-13): `PASS WITH KNOWN LIMITATION`. The
+runner created an authenticated campaign-linked live room, combat RuntimeLog,
+and map event; stopped the exact Node process it launched; started a fresh Node
+process on the same port; then reused the original session Cookie. It observed:
+
+- the Private Alpha session, World Server, campaign, live room, RuntimeLog, and
+  combat round all recovered;
+- the Room Map stream returned empty, confirming the current memory-only map
+  contract rather than a durable recovery promise;
+- test fixtures were closed/archived after verification, while the operator-
+  local state file and server logs were deleted without printing secrets.
+
+The table remains `NOT RUN` because its release criterion is the deployed Node
+service observed through real browsers. Local protocol evidence is recorded in
+the final column and must not be promoted to remote PASS by inference.
+
 | ID | Surface | Expected current contract | Status | Evidence |
 | --- | --- | --- | --- | --- |
-| E1 | Login session | Browser session remains valid if database/session secret are unchanged | NOT RUN | — |
-| E2 | Server and campaign records | Persist | NOT RUN | — |
-| E3 | Recoverable room lobby | Recover according to live-room lifecycle persistence | NOT RUN | — |
-| E4 | RuntimeLog | Recover for campaign-linked cloud room | NOT RUN | — |
-| E5 | Room map state | Known limitation: do not mark PASS unless observed; full durable recovery is not yet promised | NOT RUN | — |
-| E6 | Combat state | Record actual behavior; do not infer from RuntimeLog persistence alone | NOT RUN | — |
+| E1 | Login session | Browser session remains valid if database/session secret are unchanged | NOT RUN | Local process restart: session Cookie remained valid |
+| E2 | Server and campaign records | Persist | NOT RUN | Local process restart: both records remained readable |
+| E3 | Recoverable room lobby | Recover according to live-room lifecycle persistence | NOT RUN | Local process restart: original Host member re-entered the restored room |
+| E4 | RuntimeLog | Recover for campaign-linked cloud room | NOT RUN | Local process restart: both combat events restored by original event ID |
+| E5 | Room map state | Known limitation: do not mark PASS unless observed; full durable recovery is not yet promised | NOT RUN | Local process restart: event was lost; memory-only limitation confirmed |
+| E6 | Combat state | Record actual behavior; do not infer from RuntimeLog persistence alone | NOT RUN | Local process restart: restored combat history replayed through round 2; deployed UI still required |
 
 ## Exit criteria
 
