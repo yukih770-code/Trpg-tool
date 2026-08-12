@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 export const RUNTIME_AUXILIARY_PANEL_OPEN_EVENT = 'runtime:auxiliary-panel-open';
 export const RUNTIME_ACTION_DOCK_OPEN_EVENT = 'runtime:action-dock-open';
 export const RUNTIME_ACTION_DOCK_DID_OPEN_EVENT = 'runtime:action-dock-did-open';
+export const RUNTIME_MAP_PANEL_DID_OPEN_EVENT = 'runtime:map-panel-did-open';
 
 export function requestRuntimeDockAction(actionId: string): void {
   if (typeof window === 'undefined') return;
@@ -15,6 +16,7 @@ export function requestRuntimeDockAction(actionId: string): void {
  * AI-LANDMARK: RUNTIME_ACTION_DOCK_V0
  * AI-LANDMARK: MOBILE_RUNTIME_ACTION_DOCK_HIERARCHY_V1
  * AI-LANDMARK: MOBILE_RUNTIME_OVERLAY_EXCLUSIVITY_V1
+ * AI-LANDMARK: MOBILE_RUNTIME_MAP_PANEL_COORDINATION_V1
  *
  * Desktop presents the complete tool row. Compact screens keep up to three
  * role-prioritized actions visible and place lower-frequency tools in More.
@@ -63,7 +65,11 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
       setMoreOpen(false);
     };
     window.addEventListener(RUNTIME_AUXILIARY_PANEL_OPEN_EVENT, closeForAuxiliaryPanel);
-    return () => window.removeEventListener(RUNTIME_AUXILIARY_PANEL_OPEN_EVENT, closeForAuxiliaryPanel);
+    window.addEventListener(RUNTIME_MAP_PANEL_DID_OPEN_EVENT, closeForAuxiliaryPanel);
+    return () => {
+      window.removeEventListener(RUNTIME_AUXILIARY_PANEL_OPEN_EVENT, closeForAuxiliaryPanel);
+      window.removeEventListener(RUNTIME_MAP_PANEL_DID_OPEN_EVENT, closeForAuxiliaryPanel);
+    };
   }, []);
 
   useEffect(() => {
@@ -90,8 +96,19 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
   }, []);
 
   const toggle = (id: string) => {
+    const opening = activeId !== id;
     setMoreOpen(false);
     setActiveId((cur) => (cur === id ? null : id));
+    if (opening && findOpenableRuntimeDockAction(actions, id)) {
+      window.dispatchEvent(new Event(RUNTIME_ACTION_DOCK_DID_OPEN_EVENT));
+    }
+  };
+
+  const toggleMore = () => {
+    const opening = !moreOpen;
+    setActiveId(null);
+    setMoreOpen(opening);
+    if (opening) window.dispatchEvent(new Event(RUNTIME_ACTION_DOCK_DID_OPEN_EVENT));
   };
 
   const baseBtn = 'min-h-10 shrink-0 whitespace-nowrap rounded-lg border px-2.5 py-1 text-[11px] font-bold transition md:min-h-0 md:rounded md:px-2';
@@ -142,6 +159,9 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
                     if (action.disabled) return;
                     setMoreOpen(false);
                     setActiveId(action.id);
+                    if (action.panel !== undefined) {
+                      window.dispatchEvent(new Event(RUNTIME_ACTION_DOCK_DID_OPEN_EVENT));
+                    }
                   }}
                   className="min-h-11 rounded-lg border border-slate-300/70 bg-white px-2.5 py-2 text-left text-[11px] font-bold text-slate-700 disabled:bg-slate-100 disabled:text-slate-400"
                 >
@@ -176,8 +196,7 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
           <button
             type="button"
             onClick={() => {
-              setActiveId(null);
-              setMoreOpen((current) => !current);
+              toggleMore();
             }}
             aria-expanded={moreOpen}
             className={`${baseBtn} min-w-[4.25rem] ${moreOpen || activeOverflowAction ? activeCls : idle}`}

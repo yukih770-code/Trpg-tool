@@ -1399,6 +1399,24 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8y. Mobile Runtime Map Panel Coordination v1
+
+- [ ] Opening Background, Grid, Area, or Token on compact Runtime closes members/inspector/log sheets
+- [ ] Opening a compact map panel closes the active action panel and More menu
+- [ ] Opening members, inspector, or log closes an active compact map panel
+- [ ] Opening a valid direct dock action closes an active compact map panel
+- [ ] Opening More and selecting a valid More item both close an active compact map panel
+- [ ] Programmatic own-turn action/dice opening closes an active compact map panel
+- [ ] Invalid, disabled, or panel-less action requests do not announce a competing surface
+- [ ] Escape closes the active compact map panel
+- [ ] Replacing one map panel with another keeps exactly one map panel open
+- [ ] Desktop map, inspector, and dock panels retain independent behavior
+- [ ] `npm run frontend:verify:runtime-map-panel-coordination` passes
+- [ ] Existing map tools, action dock, overlay state, map replay, Token ownership, TypeScript, and build checks pass
+- [ ] No map/action callback, authority, permissions, roles, server, store/schema, rules, combat, or Campaign Runtime changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

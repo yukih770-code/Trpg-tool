@@ -10,6 +10,8 @@ import { campaignActorPresenceCandidate, combatantPresenceCandidate, linkedToken
 import { resolveTokenVisualIdentity } from '../../lib/map/tokenVisualIdentity';
 import { MAP_BACKGROUND_PRESETS, createMapAreaTemplate, measureMapDistance, snapMapPosition, type MapAreaTemplate, type MapAreaTemplateInput, type MapBackgroundPreset, type MapBoardState, type MapInteractionPreview, type MapRuntimeEventDraft, type MapTemplateShape, type MapToken, type MapTokenSize } from '../../lib/map/mapRuntimeTypes';
 import { getRuntimeMapToolPresentation, type RuntimeMapToolId } from '../../lib/map/runtimeMapToolPresentation';
+import { isOpeningRuntimeMapPanel, resolveRuntimeMapPanelToggle, shouldCloseRuntimeMapPanelForCompetingSurface, type RuntimeMapUtilityPanel } from '../../lib/map/runtimeMapPanelCoordination';
+import { RUNTIME_ACTION_DOCK_DID_OPEN_EVENT, RUNTIME_AUXILIARY_PANEL_OPEN_EVENT, RUNTIME_MAP_PANEL_DID_OPEN_EVENT } from './RuntimeActionDock';
 
 type Props = {
   locale: Locale;
@@ -58,7 +60,7 @@ type Props = {
 };
 
 type ToolMode = 'select' | 'move' | 'measure' | 'template';
-type UtilityPanel = 'grid' | 'background' | 'template' | 'units' | undefined;
+type UtilityPanel = RuntimeMapUtilityPanel | undefined;
 type TemplateCommitMode = 'preview' | 'pinned';
 type Point = { x: number; y: number };
 type DragState =
@@ -171,6 +173,7 @@ function templateDragHint(shape: MapTemplateShape, locale: Locale): string {
 
 export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], activeCombatantId, locateCombatantId, onSelectCombatant, onInspectToken, actorPresenceCandidates = [], canManage, canMoveToken, tokenMoveDeniedMessage, controlledTokenBindingId, canPinRanges = false, canShareTemporaryRanges = false, sharedPreviews = [], onSharePreview, mapCollaborators = [], onSetCanPinRanges, onSetCanMoveOwnToken, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace' }: Props) {
   // AI-LANDMARK: HOST_FREE_TOKEN_PERSISTENT_ACTOR_VAULT_ENTRY_V1
+  // AI-LANDMARK: MOBILE_RUNTIME_MAP_PANEL_COORDINATION_V1
   const { t } = createTranslator(locale);
   const board = useMapRuntimeBoard(mapId);
   const boardRef = useRef<HTMLDivElement>(null);
@@ -279,6 +282,27 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
       window.removeEventListener('keydown', onKeyDown);
     };
   }, [tokenMenu]);
+
+  useEffect(() => {
+    const closeForCompetingRuntimeSurface = () => {
+      if (presentation !== 'runtime') return;
+      setActivePanel((current) => shouldCloseRuntimeMapPanelForCompetingSurface(
+        typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+        current,
+      ) ? undefined : current);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeForCompetingRuntimeSurface();
+    };
+    window.addEventListener(RUNTIME_AUXILIARY_PANEL_OPEN_EVENT, closeForCompetingRuntimeSurface);
+    window.addEventListener(RUNTIME_ACTION_DOCK_DID_OPEN_EVENT, closeForCompetingRuntimeSurface);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener(RUNTIME_AUXILIARY_PANEL_OPEN_EVENT, closeForCompetingRuntimeSurface);
+      window.removeEventListener(RUNTIME_ACTION_DOCK_DID_OPEN_EVENT, closeForCompetingRuntimeSurface);
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [presentation]);
 
   const emit = (event: MapRuntimeEventDraft | null) => {
     if (!event || !onAppendEvent) return;
@@ -652,12 +676,13 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
         setMeasurement(undefined);
         return;
       }
-      if (id === 'template') {
-        setToolMode('template');
-        setActivePanel(activePanel === 'template' ? undefined : 'template');
-        return;
+      const panel = id as RuntimeMapUtilityPanel;
+      const opening = isOpeningRuntimeMapPanel(activePanel, panel);
+      if (id === 'template') setToolMode('template');
+      setActivePanel(resolveRuntimeMapPanelToggle(activePanel, panel));
+      if (opening && typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+        window.dispatchEvent(new Event(RUNTIME_MAP_PANEL_DID_OPEN_EVENT));
       }
-      setActivePanel(activePanel === id ? undefined : id);
     };
 
     return <section className="relative h-full min-h-0 w-full overflow-hidden bg-[#e5ebf3]">

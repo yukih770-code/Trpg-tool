@@ -986,6 +986,16 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Tool rail uses bounded vertical scrolling; compact panels shift right to clear the wider labeled rail.
 - Focused smoke: `src/lib/map/runtimeMapToolPresentationSmoke.ts`; command `npm run frontend:verify:runtime-map-tool-presentation`.
 
+## Mobile Runtime Map Panel Coordination
+
+- `AI-LANDMARK: MOBILE_RUNTIME_MAP_PANEL_COORDINATION_V1`: `src/components/platform/BasicMapBoard.tsx`, `src/components/platform/RuntimeActionDock.tsx`, `src/components/platform/RuntimeFullscreenShell.tsx`
+- `resolveRuntimeMapPanelToggle()` / `isOpeningRuntimeMapPanel()` / `shouldCloseRuntimeMapPanelForCompetingSurface()`: pure compact map panel policy — `src/lib/map/runtimeMapPanelCoordination.ts`.
+- `RUNTIME_MAP_PANEL_DID_OPEN_EVENT`: compact Background/Grid/Area/Token opens close the action dock and supporting sheets.
+- `RUNTIME_ACTION_DOCK_DID_OPEN_EVENT`: accepted programmatic opens, valid direct actions, More, and valid More-item selection close compact map panels.
+- `RUNTIME_AUXILIARY_PANEL_OPEN_EVENT`: members/inspector/log opening closes compact map panels and existing dock surfaces.
+- Compact guards preserve desktop panel independence; Escape shares the same map-panel close policy.
+- Focused smoke: `src/lib/map/runtimeMapPanelCoordinationSmoke.ts`; command `npm run frontend:verify:runtime-map-panel-coordination`.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

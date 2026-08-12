@@ -5,7 +5,7 @@ import {
   reduceRuntimeAuxiliaryPanels,
   type RuntimeAuxiliaryPanel,
 } from '../../lib/platform/runtimeOverlayCoordination';
-import { RUNTIME_ACTION_DOCK_DID_OPEN_EVENT, RUNTIME_AUXILIARY_PANEL_OPEN_EVENT } from './RuntimeActionDock';
+import { RUNTIME_ACTION_DOCK_DID_OPEN_EVENT, RUNTIME_AUXILIARY_PANEL_OPEN_EVENT, RUNTIME_MAP_PANEL_DID_OPEN_EVENT } from './RuntimeActionDock';
 
 /**
  * RuntimeFullscreenShell (UI1b) — Owlbear-style STAGE-FIRST fullscreen layout.
@@ -13,6 +13,7 @@ import { RUNTIME_ACTION_DOCK_DID_OPEN_EVENT, RUNTIME_AUXILIARY_PANEL_OPEN_EVENT 
  * AI-LANDMARK: RUNTIME_FULLSCREEN_SHELL_V0
  * AI-LANDMARK: MOBILE_RUNTIME_OVERLAY_EXCLUSIVITY_V1
  * AI-LANDMARK: MOBILE_RUNTIME_SUPPORTING_SHEET_V1
+ * AI-LANDMARK: MOBILE_RUNTIME_MAP_PANEL_COORDINATION_V1
  *
  * Stage-first: a compact (~44px) Header sits on top, and the Main Stage fills the
  * entire area below it as "the tabletop". The Actor Rail, Inspector, Action Dock
@@ -140,6 +141,14 @@ export function RuntimeFullscreenShell({
     return () => {
       document.body.style.overflow = prev;
     };
+  }, []);
+
+  useEffect(() => {
+    const closeMobileAuxiliaryPanelsForMap = () => {
+      if (isCompactRuntimeViewport()) closeAuxiliaryPanels();
+    };
+    window.addEventListener(RUNTIME_MAP_PANEL_DID_OPEN_EVENT, closeMobileAuxiliaryPanelsForMap);
+    return () => window.removeEventListener(RUNTIME_MAP_PANEL_DID_OPEN_EVENT, closeMobileAuxiliaryPanelsForMap);
   }, []);
 
   useEffect(() => {
