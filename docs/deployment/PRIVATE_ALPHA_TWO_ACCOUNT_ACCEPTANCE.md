@@ -51,7 +51,7 @@ independent cookie jars, and never prints credentials or response bodies:
 npm run alpha:verify:two-account-protocol:local
 ```
 
-Current result (2026-08-12): `PASS` — the real local PostgreSQL-backed flow
+Current result (2026-08-13): `PASS` — the real local PostgreSQL-backed flow
 proved all of the following in one run:
 
 - Host and Player received distinct verified user IDs and isolated sessions.
@@ -65,6 +65,15 @@ proved all of the following in one run:
 - A pending Player WebSocket subscription was rejected; after approval, Host
   and Player connected with their own session cookies and both received the
   same actor submission, approval, and Ready room updates.
+- Public RuntimeLog entries reached both sessions while host-only entries were
+  withheld from Player over WebSocket and HTTP; Player could not create a
+  host-only note.
+- Host placed standalone and approved-character Tokens without requiring a
+  separate character participant for the standalone NPC. Hidden Token data and
+  host notes were withheld from Player.
+- Player could not edit the host map or move any Token before a grant; after the
+  narrow own-Token grant, only the approved character Token could be moved and
+  both sessions received the movement event.
 - The live room was closed and database fixtures were archived by the Host
   session after the run.
 
@@ -73,10 +82,10 @@ applicants could read a full Room snapshot. The fixed contract now returns 403;
 pending applicants use `/rooms/:roomId/join-status` only.
 
 Still unproved by Gate A2: rendered UI behavior, existing Actor Vault selection,
-Token/map interaction, combat, browser refresh/reconnect, and process-restart
-recovery. The authenticated WebSocket protocol is now proved locally, but the
-corresponding Gates B–E rows keep `NOT RUN` until observed against the deployed
-revision in two browsers.
+pointer-driven map interaction, combat UX, browser refresh/reconnect, and
+process-restart recovery. The authenticated RuntimeLog and map/Token protocols
+are now proved locally, but the corresponding Gates B–E rows keep `NOT RUN`
+until observed against the deployed revision in two browsers.
 
 ## Gate B — two independent identities
 

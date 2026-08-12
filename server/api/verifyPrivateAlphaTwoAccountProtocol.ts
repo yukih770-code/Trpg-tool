@@ -72,6 +72,16 @@ function addAssertion(name: string, passed: boolean, reason: string): boolean {
   return passed;
 }
 
+function recordArray(value: unknown): JsonRecord[] {
+  return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+function socketStreamContains(message: JsonRecord, type: 'runtimeLogAppended' | 'mapEventAppended', id: string): boolean {
+  if (message.type !== type) return false;
+  const idKey = type === 'runtimeLogAppended' ? 'eventId' : 'mapEventId';
+  return recordArray(message.events).some((event) => event[idKey] === id);
+}
+
 function socketUrl(): string {
   return `${baseUrl.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:')}/ws`;
 }
@@ -152,6 +162,12 @@ class RoomSocketProbe {
       };
       this.waiters.add(waiter);
     });
+  }
+
+  async expectAbsent(name: string, predicate: (message: JsonRecord) => boolean, durationMs = 500): Promise<void> {
+    if (this.messages.some(predicate)) throw new Error(`${this.label}_${name}_unexpected_message`);
+    await new Promise<void>((resolve) => setTimeout(resolve, durationMs));
+    if (this.messages.some(predicate)) throw new Error(`${this.label}_${name}_unexpected_message`);
   }
 
   close(): void {
@@ -259,12 +275,14 @@ function report(status: string): void {
       roomAdmissionCompleted: steps.some((step) => step.name === 'player_ready_state_visible' && step.status === 'passed'),
       hostAuthorityEnforced: steps.some((step) => step.name === 'host_authority_boundary_confirmed' && step.status === 'passed'),
       webSocketConverged: steps.some((step) => step.name === 'two_account_websocket_ready_converged' && step.status === 'passed'),
+      runtimeLogProjected: steps.some((step) => step.name === 'two_account_runtime_log_projection_confirmed' && step.status === 'passed'),
+      mapAuthorityProjected: steps.some((step) => step.name === 'two_account_map_authority_projection_confirmed' && step.status === 'passed'),
     },
     notes: [
       'Host and Player use separate in-memory cookie jars and distinct verified user ids.',
       'The smoke prints no response body, cookie, invite code, session token, database URL, or stack trace.',
       'Temporary campaign and World Server fixtures are archived; the live room is closed non-destructively.',
-      'Browser rendering, map interaction, browser reconnect, and process restart remain manual acceptance boundaries.',
+      'Browser rendering, pointer interaction, browser reconnect, combat UX, and process restart remain manual acceptance boundaries.',
     ],
   }, null, 2));
 }
@@ -501,6 +519,223 @@ async function main(): Promise<void> {
     socketHasReady(hostReadyPayload) && socketHasReady(playerReadyPayload),
     'host_and_player_socket_state_did_not_converge',
   )) throw new Error('websocket_convergence_failed');
+
+  await player.request('host_only_runtime_log_rejected', pathFor('rooms', liveRoomId, 'runtime-log', 'events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: playerMemberId,
+      kind: 'host.note',
+      visibility: 'hostOnly',
+      text: 'Player must not create this private note.',
+    }),
+  }, [400]);
+
+  const publicChat = await player.request('append_public_runtime_log', pathFor('rooms', liveRoomId, 'runtime-log', 'events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: playerMemberId,
+      actorBindingId: bindingId,
+      kind: 'chat.message',
+      visibility: 'public',
+      text: `Alpha public message ${suffix}`,
+    }),
+  });
+  const publicChatBody = isRecord(publicChat.body) && isRecord(publicChat.body.event) ? publicChat.body.event : undefined;
+  const publicChatId = typeof publicChatBody?.eventId === 'string' ? publicChatBody.eventId : undefined;
+  if (!publicChat.ok || !publicChatId) throw new Error('public_runtime_log_append_failed');
+  await Promise.all([
+    hostSocket.waitFor('public_runtime_log_broadcast', (message) => socketStreamContains(message, 'runtimeLogAppended', publicChatId)),
+    playerSocket.waitFor('public_runtime_log_broadcast', (message) => socketStreamContains(message, 'runtimeLogAppended', publicChatId)),
+  ]);
+
+  const hostPrivateNote = await host.request('append_host_only_runtime_log', pathFor('rooms', liveRoomId, 'runtime-log', 'events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: hostMemberId,
+      kind: 'host.note',
+      visibility: 'hostOnly',
+      text: `Alpha private host note ${suffix}`,
+      payload: { noteKind: 'alphaProtocolPrivate' },
+    }),
+  });
+  const hostPrivateBody = isRecord(hostPrivateNote.body) && isRecord(hostPrivateNote.body.event) ? hostPrivateNote.body.event : undefined;
+  const hostPrivateId = typeof hostPrivateBody?.eventId === 'string' ? hostPrivateBody.eventId : undefined;
+  if (!hostPrivateNote.ok || !hostPrivateId) throw new Error('host_private_runtime_log_append_failed');
+  await hostSocket.waitFor('host_private_runtime_log_broadcast', (message) => socketStreamContains(message, 'runtimeLogAppended', hostPrivateId));
+  await playerSocket.expectAbsent('host_private_runtime_log', (message) => socketStreamContains(message, 'runtimeLogAppended', hostPrivateId));
+
+  const playerLogList = await player.request('list_projected_runtime_log', `${pathFor('rooms', liveRoomId, 'runtime-log')}?memberId=${encodeURIComponent(playerMemberId)}`);
+  const hostLogList = await host.request('list_host_runtime_log', `${pathFor('rooms', liveRoomId, 'runtime-log')}?memberId=${encodeURIComponent(hostMemberId)}`);
+  const playerLogEvents = isRecord(playerLogList.body) ? recordArray(playerLogList.body.events) : [];
+  const hostLogEvents = isRecord(hostLogList.body) ? recordArray(hostLogList.body.events) : [];
+  if (!addAssertion(
+    'two_account_runtime_log_projection_confirmed',
+    playerLogList.ok
+      && hostLogList.ok
+      && playerLogEvents.some((event) => event.eventId === publicChatId)
+      && !playerLogEvents.some((event) => event.eventId === hostPrivateId)
+      && hostLogEvents.some((event) => event.eventId === publicChatId)
+      && hostLogEvents.some((event) => event.eventId === hostPrivateId),
+    'runtime_log_visibility_projection_failed',
+  )) throw new Error('runtime_log_projection_failed');
+
+  const mapId = `alpha-map-${suffix}`;
+  const manualTokenId = `alpha-npc-${suffix}`;
+  const hiddenTokenId = `alpha-hidden-${suffix}`;
+  const characterTokenId = `alpha-character-${suffix}`;
+  await player.request('host_map_write_rejected', pathFor('rooms', liveRoomId, 'map-events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: playerMemberId,
+      mapId,
+      eventKind: 'map.background_set',
+      payload: { backgroundPreset: 'stone_floor', clearCustomBackground: true },
+    }),
+  }, [403]);
+
+  const manualToken = await host.request('place_standalone_npc_token', pathFor('rooms', liveRoomId, 'map-events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: hostMemberId,
+      mapId,
+      eventKind: 'map.token_added',
+      payload: {
+        token: {
+          id: manualTokenId,
+          name: `Standalone NPC ${suffix}`,
+          x: 24,
+          y: 36,
+          size: 'medium',
+          sourceType: 'manual',
+          kind: 'npc',
+          notes: 'Host-only NPC tactics.',
+          hpSummary: { current: 18, max: 18 },
+        },
+      },
+    }),
+  });
+  const manualTokenEvent = isRecord(manualToken.body) && isRecord(manualToken.body.event) ? manualToken.body.event : undefined;
+  const manualTokenEventId = typeof manualTokenEvent?.mapEventId === 'string' ? manualTokenEvent.mapEventId : undefined;
+  if (!manualToken.ok || !manualTokenEventId) throw new Error('standalone_npc_token_failed');
+  const [hostManualMessage, playerManualMessage] = await Promise.all([
+    hostSocket.waitFor('standalone_npc_broadcast', (message) => socketStreamContains(message, 'mapEventAppended', manualTokenEventId)),
+    playerSocket.waitFor('standalone_npc_broadcast', (message) => socketStreamContains(message, 'mapEventAppended', manualTokenEventId)),
+  ]);
+  const tokenFromMapMessage = (message: JsonRecord, eventId: string): JsonRecord | undefined => {
+    const event = recordArray(message.events).find((candidate) => candidate.mapEventId === eventId);
+    return isRecord(event?.payload) && isRecord(event.payload.token) ? event.payload.token : undefined;
+  };
+  const hostManualProjection = tokenFromMapMessage(hostManualMessage, manualTokenEventId);
+  const playerManualProjection = tokenFromMapMessage(playerManualMessage, manualTokenEventId);
+  if (!addAssertion(
+    'standalone_npc_token_projected',
+    hostManualProjection?.notes === 'Host-only NPC tactics.'
+      && playerManualProjection?.id === manualTokenId
+      && playerManualProjection.notes === undefined
+      && playerManualProjection.hpSummary === undefined,
+    'standalone_npc_projection_failed',
+  )) throw new Error('standalone_npc_projection_failed');
+
+  const hiddenToken = await host.request('place_hidden_host_token', pathFor('rooms', liveRoomId, 'map-events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: hostMemberId,
+      mapId,
+      eventKind: 'map.token_added',
+      payload: {
+        token: {
+          id: hiddenTokenId,
+          name: `Hidden Threat ${suffix}`,
+          x: 70,
+          y: 70,
+          size: 'medium',
+          sourceType: 'manual',
+          kind: 'monster',
+          isHidden: true,
+          notes: 'Never disclose.',
+        },
+      },
+    }),
+  });
+  const hiddenTokenEvent = isRecord(hiddenToken.body) && isRecord(hiddenToken.body.event) ? hiddenToken.body.event : undefined;
+  const hiddenTokenEventId = typeof hiddenTokenEvent?.mapEventId === 'string' ? hiddenTokenEvent.mapEventId : undefined;
+  if (!hiddenToken.ok || !hiddenTokenEventId) throw new Error('hidden_token_append_failed');
+  await hostSocket.waitFor('hidden_token_host_broadcast', (message) => socketStreamContains(message, 'mapEventAppended', hiddenTokenEventId));
+  await playerSocket.expectAbsent('hidden_token_map_event', (message) => socketStreamContains(message, 'mapEventAppended', hiddenTokenEventId));
+
+  const characterToken = await host.request('place_approved_character_token', pathFor('rooms', liveRoomId, 'map-events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: hostMemberId,
+      mapId,
+      eventKind: 'map.token_added',
+      payload: {
+        token: {
+          id: characterTokenId,
+          name: `Alpha Hero ${suffix}`,
+          x: 40,
+          y: 45,
+          size: 'medium',
+          sourceType: 'quickDraft',
+          sourceId: bindingId,
+          actorBindingId: bindingId,
+          roomMemberId: playerMemberId,
+          kind: 'playerCharacter',
+        },
+      },
+    }),
+  });
+  const characterTokenEvent = isRecord(characterToken.body) && isRecord(characterToken.body.event) ? characterToken.body.event : undefined;
+  const characterTokenEventId = typeof characterTokenEvent?.mapEventId === 'string' ? characterTokenEvent.mapEventId : undefined;
+  if (!characterToken.ok || !characterTokenEventId) throw new Error('character_token_append_failed');
+  await Promise.all([
+    hostSocket.waitFor('character_token_broadcast', (message) => socketStreamContains(message, 'mapEventAppended', characterTokenEventId)),
+    playerSocket.waitFor('character_token_broadcast', (message) => socketStreamContains(message, 'mapEventAppended', characterTokenEventId)),
+  ]);
+
+  const movePath = pathFor('rooms', liveRoomId, 'map-events');
+  await player.request('own_token_move_before_grant_rejected', movePath, {
+    method: 'POST',
+    body: JSON.stringify({ authorMemberId: playerMemberId, mapId, eventKind: 'map.token_moved', payload: { tokenId: characterTokenId, x: 52, y: 54 } }),
+  }, [403]);
+  await host.request('grant_own_token_movement', pathFor('rooms', liveRoomId, 'map-permissions', playerMemberId), {
+    method: 'POST',
+    body: JSON.stringify({ authorizedByMemberId: hostMemberId, canManageTokens: true }),
+  });
+  const movedToken = await player.request('move_own_approved_token', movePath, {
+    method: 'POST',
+    body: JSON.stringify({ authorMemberId: playerMemberId, mapId, eventKind: 'map.token_moved', payload: { tokenId: characterTokenId, x: 52, y: 54 } }),
+  });
+  const movedTokenEvent = isRecord(movedToken.body) && isRecord(movedToken.body.event) ? movedToken.body.event : undefined;
+  const movedTokenEventId = typeof movedTokenEvent?.mapEventId === 'string' ? movedTokenEvent.mapEventId : undefined;
+  if (!movedToken.ok || !movedTokenEventId) throw new Error('own_token_move_failed');
+  await Promise.all([
+    hostSocket.waitFor('own_token_move_broadcast', (message) => socketStreamContains(message, 'mapEventAppended', movedTokenEventId)),
+    playerSocket.waitFor('own_token_move_broadcast', (message) => socketStreamContains(message, 'mapEventAppended', movedTokenEventId)),
+  ]);
+  await player.request('manual_token_move_rejected', movePath, {
+    method: 'POST',
+    body: JSON.stringify({ authorMemberId: playerMemberId, mapId, eventKind: 'map.token_moved', payload: { tokenId: manualTokenId, x: 60, y: 60 } }),
+  }, [403]);
+
+  const playerMapList = await player.request('list_projected_map_events', `${pathFor('rooms', liveRoomId, 'map-events')}?memberId=${encodeURIComponent(playerMemberId)}&mapId=${encodeURIComponent(mapId)}`);
+  const hostMapList = await host.request('list_host_map_events', `${pathFor('rooms', liveRoomId, 'map-events')}?memberId=${encodeURIComponent(hostMemberId)}&mapId=${encodeURIComponent(mapId)}`);
+  const playerMapEvents = isRecord(playerMapList.body) ? recordArray(playerMapList.body.events) : [];
+  const hostMapEvents = isRecord(hostMapList.body) ? recordArray(hostMapList.body.events) : [];
+  const movedProjection = playerMapEvents.find((event) => event.mapEventId === movedTokenEventId);
+  if (!addAssertion(
+    'two_account_map_authority_projection_confirmed',
+    playerMapList.ok
+      && hostMapList.ok
+      && playerMapEvents.some((event) => event.mapEventId === manualTokenEventId)
+      && !playerMapEvents.some((event) => event.mapEventId === hiddenTokenEventId)
+      && playerMapEvents.some((event) => event.mapEventId === characterTokenEventId)
+      && isRecord(movedProjection?.payload)
+      && movedProjection.payload.x === 52
+      && movedProjection.payload.y === 54
+      && hostMapEvents.some((event) => event.mapEventId === hiddenTokenEventId),
+    'map_authority_or_visibility_projection_failed',
+  )) throw new Error('map_projection_failed');
 
   const finalRoom = await player.request('read_final_room_state', `${pathFor('rooms', liveRoomId)}?memberId=${encodeURIComponent(playerMemberId)}`);
   const finalRoomBody = isRecord(finalRoom.body) ? finalRoom.body : undefined;
