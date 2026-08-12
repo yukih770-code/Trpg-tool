@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 export const RUNTIME_AUXILIARY_PANEL_OPEN_EVENT = 'runtime:auxiliary-panel-open';
 export const RUNTIME_ACTION_DOCK_OPEN_EVENT = 'runtime:action-dock-open';
+export const RUNTIME_ACTION_DOCK_DID_OPEN_EVENT = 'runtime:action-dock-did-open';
 
 export function requestRuntimeDockAction(actionId: string): void {
   if (typeof window === 'undefined') return;
@@ -13,6 +14,7 @@ export function requestRuntimeDockAction(actionId: string): void {
  *
  * AI-LANDMARK: RUNTIME_ACTION_DOCK_V0
  * AI-LANDMARK: MOBILE_RUNTIME_ACTION_DOCK_HIERARCHY_V1
+ * AI-LANDMARK: MOBILE_RUNTIME_OVERLAY_EXCLUSIVITY_V1
  *
  * Desktop presents the complete tool row. Compact screens keep up to three
  * role-prioritized actions visible and place lower-frequency tools in More.
@@ -67,15 +69,25 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
   useEffect(() => {
     const openRequestedAction = (event: Event) => {
       const actionId = (event as CustomEvent<{ actionId?: unknown }>).detail?.actionId;
-      if (typeof actionId !== 'string') return;
-      const requested = actions.find((action) => action.id === actionId);
-      if (!requested || requested.disabled || requested.panel === undefined) return;
+      const requested = findOpenableRuntimeDockAction(actions, actionId);
+      if (!requested) return;
       setMoreOpen(false);
       setActiveId(requested.id);
+      window.dispatchEvent(new Event(RUNTIME_ACTION_DOCK_DID_OPEN_EVENT));
     };
     window.addEventListener(RUNTIME_ACTION_DOCK_OPEN_EVENT, openRequestedAction);
     return () => window.removeEventListener(RUNTIME_ACTION_DOCK_OPEN_EVENT, openRequestedAction);
   }, [actions]);
+
+  useEffect(() => {
+    const dismissOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setActiveId(null);
+      setMoreOpen(false);
+    };
+    window.addEventListener('keydown', dismissOnEscape);
+    return () => window.removeEventListener('keydown', dismissOnEscape);
+  }, []);
 
   const toggle = (id: string) => {
     setMoreOpen(false);
@@ -197,6 +209,14 @@ export function RuntimeActionDock({ actions, defaultActiveActionId = null, class
 }
 
 export type RuntimeActionMode = 'host' | 'player' | 'spectator';
+
+export function findOpenableRuntimeDockAction(
+  actions: readonly RuntimeDockAction[],
+  actionId: unknown,
+): RuntimeDockAction | undefined {
+  if (typeof actionId !== 'string') return undefined;
+  return actions.find((action) => action.id === actionId && !action.disabled && action.panel !== undefined);
+}
 
 export function splitRuntimeDockActionsForMobile(actions: readonly RuntimeDockAction[]): { direct: RuntimeDockAction[]; overflow: RuntimeDockAction[] } {
   const prioritized = actions.filter((action) => action.mobilePlacement === 'primary');

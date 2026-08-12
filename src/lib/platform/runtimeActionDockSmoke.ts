@@ -1,4 +1,4 @@
-import { buildRuntimeDockActions, splitRuntimeDockActionsForMobile } from '../../components/platform/RuntimeActionDock';
+import { buildRuntimeDockActions, findOpenableRuntimeDockAction, splitRuntimeDockActionsForMobile } from '../../components/platform/RuntimeActionDock';
 
 const checks: string[] = [];
 function check(name: string, condition: boolean): void {
@@ -33,5 +33,9 @@ const localHostMobile = splitRuntimeDockActionsForMobile(localHostWithUtilities)
 check('caller-added utilities default safely into More', localHostMobile.overflow.slice(-2).map((action) => action.id).join(',') === 'actor,settings');
 check('mobile split preserves every action exactly once', new Set([...localHostMobile.direct, ...localHostMobile.overflow].map((action) => action.id)).size === localHostWithUtilities.length);
 check('compact direct row never exceeds three actions', localHostMobile.direct.length <= 3);
+
+check('enabled requested panel is accepted', findOpenableRuntimeDockAction(dndPlayer, 'dndActions')?.id === 'dndActions');
+check('disabled requested panel is rejected', findOpenableRuntimeDockAction([{ id: 'blocked', label: 'Blocked', disabled: true, panel: 'panel' }], 'blocked') === undefined);
+check('request without a panel is rejected', findOpenableRuntimeDockAction([{ id: 'empty', label: 'Empty' }], 'empty') === undefined);
 
 console.log(JSON.stringify({ total: checks.length, passed: checks.length, failed: 0, checks }, null, 2));

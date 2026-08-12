@@ -61,6 +61,7 @@
     "frontend:verify:combat-mode-hud": "tsx src/lib/combat/combatModeHudSmoke.ts",
     "frontend:verify:runtime-combat-controls": "tsx src/lib/combat/roomRuntimeCombatControlsSmoke.ts",
     "frontend:verify:runtime-action-dock": "tsx src/lib/platform/runtimeActionDockSmoke.ts",
+    "frontend:verify:runtime-overlay-coordination": "tsx src/lib/platform/runtimeOverlayCoordinationSmoke.ts",
     "frontend:verify:runtime-player-turn-callout": "tsx src/lib/combat/runtimePlayerTurnCalloutSmoke.ts",
     "frontend:verify:mobile-combat-hud-presentation": "tsx src/lib/combat/mobileCombatHudPresentationSmoke.ts",
     "runtime:verify:room-combat-controls": "tsx server/room/roomRuntimeCombatControlsSmoke.ts",

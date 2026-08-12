@@ -948,6 +948,16 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Turn context uses `startedAt + activeCombatantId`; late `isMyTurn` recognition also expands once without overriding later manual collapse.
 - Focused smoke: `src/lib/combat/mobileCombatHudPresentationSmoke.ts`; command `npm run frontend:verify:mobile-combat-hud-presentation`.
 
+## Mobile Runtime Overlay Exclusivity
+
+- `AI-LANDMARK: MOBILE_RUNTIME_OVERLAY_EXCLUSIVITY_V1`: `src/components/platform/RuntimeFullscreenShell.tsx`, `src/components/platform/RuntimeActionDock.tsx`
+- `initialRuntimeAuxiliaryPanels()` / `reduceRuntimeAuxiliaryPanels()`: `src/lib/platform/runtimeOverlayCoordination.ts`; pure members/inspector/log presentation state.
+- `RUNTIME_ACTION_DOCK_DID_OPEN_EVENT`: emitted only after an enabled requested action panel is accepted; compact `RuntimeFullscreenShell` closes supporting panels in response.
+- `findOpenableRuntimeDockAction()`: shared pure acceptance boundary for requested dock actions; rejects unknown, disabled, and panel-less entries.
+- `RUNTIME_AUXILIARY_PANEL_OPEN_EVENT`: opening a compact supporting panel continues to close the action dock and More menu.
+- Both shell and dock listen for Escape; desktop auxiliary toggles remain independent because compact exclusivity is decided by the state transition input.
+- Focused smoke: `src/lib/platform/runtimeOverlayCoordinationSmoke.ts`; command `npm run frontend:verify:runtime-overlay-coordination`.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

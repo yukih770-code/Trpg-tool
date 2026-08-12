@@ -6,26 +6,27 @@
 
 ## Task
 
-- ID: Mobile Combat HUD Collapse v1
-- Name: `MOBILE_COMBAT_HUD_COLLAPSE_V1`
-- Goal: Preserve map space by giving the mobile combat HUD explicit compact and
-  expanded modes while keeping essential turn identity visible.
+- ID: Mobile Runtime Overlay Exclusivity v1
+- Name: `MOBILE_RUNTIME_OVERLAY_EXCLUSIVITY_V1`
+- Goal: Keep the mobile tabletop usable by ensuring supporting panels and the
+  action dock never remain open as competing layers.
 - Phase: P0 Runtime mobile usability
 - Status: Done
 
 ## UI Contract
 
-- Page responsibility: `runtime`
-- Compact responsibility: round, current combatant, initiative, next combatant
-- Expanded responsibility: visible HP/AC/conditions plus role-safe controls
-- Player own turn automatically expands on turn change; manual collapse remains
-  respected until the active turn changes again
+- Mobile allows at most one supporting panel: members, inspector, or log.
+- Opening a valid action-dock panel programmatically closes supporting panels.
+- Opening a supporting panel closes the action dock.
+- Escape dismisses both supporting panels and any open action-dock surface.
+- Desktop keeps its existing ability to show independent supporting panels.
 
 ## Allowed Files
 
-- `src/components/platform/RuntimeMobileCombatHud.tsx`
-- `src/lib/combat/mobileCombatHudPresentation.ts`
-- `src/lib/combat/mobileCombatHudPresentationSmoke.ts`
+- `src/components/platform/RuntimeFullscreenShell.tsx`
+- `src/components/platform/RuntimeActionDock.tsx`
+- `src/lib/platform/runtimeOverlayCoordination.ts`
+- `src/lib/platform/runtimeOverlayCoordinationSmoke.ts`
 - `package.json`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
@@ -35,26 +36,24 @@
 
 ## Forbidden Changes
 
-- Combat state, turn authority, RuntimeLog, dice, damage, action-panel behavior
+- Combat state, turn authority, RuntimeLog content, dice/action behavior
 - Room roles/permissions, visibility projection, map controls, server/API
 - Store, schema, migration, rule data, Campaign Runtime, desktop layout
 
 ## Completion Criteria
 
-- Compact HUD remains useful at one short row and has an accessible expand CTA.
-- Expanded HUD preserves current stats and all existing host/player controls.
-- Host starts expanded; non-current players and spectators start compact.
-- A player's newly active turn expands automatically; manual collapse is not
-  immediately overridden by ordinary rerenders.
-- Focused presentation smoke, existing HUD/turn/action smoke, TypeScript,
-  frontend build, and diff check pass.
+- Auxiliary panel state has focused, pure transition coverage.
+- Valid programmatic action-panel opening closes mobile supporting panels.
+- Escape closes both classes of Runtime overlay.
+- Existing action-dock hierarchy and player-turn behavior stay unchanged.
+- Lint, frontend build, focused smoke, regressions, and diff check pass.
 
 ## Verification
 
 ```powershell
-npm run frontend:verify:mobile-combat-hud-presentation
+npm run frontend:verify:runtime-overlay-coordination
+npm run frontend:verify:runtime-action-dock
 npm run frontend:verify:runtime-player-turn-callout
-npm run frontend:verify:combat-mode-hud
 npm run lint
 npm run build
 git diff --check
@@ -62,11 +61,10 @@ git diff --check
 
 ## Result
 
-- Compact mode reduces the mobile HUD to one short row while retaining round,
-  current combatant, initiative, and next combatant.
-- Expanded mode preserves existing visible stats and role-safe controls.
-- Host/waiting-player/spectator defaults and own-turn transitions follow the
-  tested presentation resolver; manual collapse is not overwritten by ordinary
-  rerenders.
-- Focused presentation, own-turn, combat HUD, action dock, TypeScript, frontend
-  build, and diff checks pass.
+- Mobile members, inspector, and log now use one pure, tested state transition
+  model and continue to replace one another without changing desktop behavior.
+- An accepted programmatic action-panel request emits a dedicated notification;
+  compact Runtime closes supporting panels only after that acceptance.
+- Escape dismisses both supporting panels and action-dock surfaces.
+- Focused overlay, action-dock, own-turn, combat HUD, TypeScript, frontend build,
+  and diff checks pass.

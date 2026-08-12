@@ -1335,6 +1335,22 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8u. Mobile Runtime Overlay Exclusivity v1
+
+- [ ] Mobile starts map-first with members, inspector, and log closed
+- [ ] Opening members, inspector, or log replaces the previously open supporting panel
+- [ ] Toggling the active supporting panel returns to the unobstructed map
+- [ ] A valid programmatic action/dice request closes open mobile supporting panels
+- [ ] Invalid or disabled action requests do not emit the accepted-open notification
+- [ ] Opening a mobile supporting panel closes the active dock panel and More menu
+- [ ] Escape closes supporting panels, the active dock panel, and More menu
+- [ ] Desktop supporting panels retain their independent open behavior
+- [ ] `npm run frontend:verify:runtime-overlay-coordination` passes
+- [ ] Existing action-dock, own-turn, combat HUD, TypeScript, and frontend build checks pass
+- [ ] No Runtime content, authority, map, server, store, schema, rules, Campaign Runtime, or desktop layout changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |
