@@ -267,7 +267,6 @@ async function prepare(): Promise<void> {
   });
   if (!permissionResponse.ok) throw new Error('player_token_permission_failed');
 
-  await new Promise((resolve) => setTimeout(resolve, 300));
   await writeFile(statePath, JSON.stringify({ hostCookie, playerCookie, worldId, campaignId, roomId, hostMemberId, playerMemberId, bindingId, combatStartedId, combatTurnId, mapEventId, mapId, characterTokenId } satisfies RecoveryState), { encoding: 'utf8', flag: 'wx' });
   assertion('prepare_restart_fixture', true, 'restart_fixture_not_prepared');
 }
@@ -359,10 +358,6 @@ async function verify(): Promise<void> {
     await client.request('cleanup_disband_room', pathFor('rooms', state.roomId, 'disband'), { method: 'POST', body: JSON.stringify({ decidedByMemberId: state.hostMemberId }) });
     await client.request('cleanup_archive_campaign', `${campaignRoot}/archive`, { method: 'POST' });
     await client.request('cleanup_archive_world_server', `${worldRoot}/archive`, { method: 'POST' });
-    // Room lifecycle persistence is intentionally queued behind live updates.
-    // Give the non-destructive close snapshot a bounded flush window before the
-    // runner stops this test-owned backend process.
-    await new Promise((resolve) => setTimeout(resolve, 300));
   }
 }
 

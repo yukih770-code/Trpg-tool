@@ -154,6 +154,8 @@ on the same port; then reused both original session Cookies. It observed:
 - the Room Map event recovered with its original event ID and grid payload;
 - the Player could unready, ready again through the restored admission authority,
   and move the restored linked character Token;
+- the runner used no post-mutation sleep before either process stop, proving the
+  acknowledged lobby and close snapshots had completed their durable write;
 - test fixtures were closed/archived after verification, while the operator-
   local state file and server logs were deleted without printing secrets.
 

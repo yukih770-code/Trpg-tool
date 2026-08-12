@@ -542,7 +542,7 @@ app.post('/rooms/create', async (req, res) => {
   res.json(result);
 });
 
-app.post('/rooms/join', (req, res) => {
+app.post('/rooms/join', async (req, res) => {
   const body = req.body as RoomJoinRequest | undefined;
   const viewer = resolveRoomRequestViewer(req);
   if (!viewer.isAuthenticated || !viewer.viewerUserId) {
@@ -560,7 +560,10 @@ app.post('/rooms/join', (req, res) => {
   const result = joinRoom(registry, { ...body, userId: viewer.viewerUserId });
   if (result.roomId) {
     const room = registry.get(result.roomId);
-    if (room) roomSocketServer.broadcastRoomSnapshot(room.identity.roomId, room, 'memberJoined');
+    if (room) {
+      await liveRoomLifecyclePersistence.flush(room.identity.roomId);
+      roomSocketServer.broadcastRoomSnapshot(room.identity.roomId, room, 'memberJoined');
+    }
   }
   res.json(result);
 });
@@ -646,7 +649,7 @@ app.get('/rooms/:roomId/join-status', (req, res) => {
 
 // Non-destructive room lifecycle action. Existing snapshots, RuntimeLog events,
 // map events, and scene saves remain available to their respective history APIs.
-app.post('/rooms/:roomId/disband', (req, res) => {
+app.post('/rooms/:roomId/disband', async (req, res) => {
   const body = (req.body ?? {}) as { decidedByMemberId?: unknown };
   if (typeof body.decidedByMemberId !== 'string' || body.decidedByMemberId.trim() === '') {
     res.status(400).json({ error: 'decidedByMemberId is required.' });
@@ -654,12 +657,15 @@ app.post('/rooms/:roomId/disband', (req, res) => {
   }
   if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.decidedByMemberId, 'room.host.manage')) return;
   const result = disbandRoom(registry, { roomId: req.params.roomId, decidedByMemberId: body.decidedByMemberId });
-  if (result.room) roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'roomDisbanded');
+  if (result.room) {
+    await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
+    roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'roomDisbanded');
+  }
   const status = result.decision === 'roomNotFound' ? 404 : result.decision === 'disbanded' ? 200 : 409;
   res.status(status).json(result);
 });
 
-app.post('/rooms/:roomId/members/:memberId/approve', (req, res) => {
+app.post('/rooms/:roomId/members/:memberId/approve', async (req, res) => {
   const body = (req.body ?? {}) as { decidedByMemberId?: string };
   if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.decidedByMemberId, 'room.host.manage')) return;
   const result = approveMember(registry, {
@@ -668,12 +674,13 @@ app.post('/rooms/:roomId/members/:memberId/approve', (req, res) => {
     decidedByMemberId: body.decidedByMemberId,
   });
   if (result.room) {
+    await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'memberApproved');
   }
   res.status(result.decision === 'roomNotFound' ? 404 : 200).json(result);
 });
 
-app.post('/rooms/:roomId/members/:memberId/reject', (req, res) => {
+app.post('/rooms/:roomId/members/:memberId/reject', async (req, res) => {
   const body = (req.body ?? {}) as { decidedByMemberId?: string; reason?: string };
   if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.decidedByMemberId, 'room.host.manage')) return;
   const result = rejectMember(registry, {
@@ -683,6 +690,7 @@ app.post('/rooms/:roomId/members/:memberId/reject', (req, res) => {
     reason: body.reason,
   });
   if (result.room) {
+    await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'memberRejected');
   }
   res.status(result.decision === 'roomNotFound' ? 404 : 200).json(result);
@@ -755,6 +763,7 @@ app.post('/rooms/:roomId/actor-bindings/submit', async (req, res) => {
     },
   });
   if (result.room) {
+    await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'actorBindingSubmitted');
   }
   res.status(result.decision === 'roomNotFound' ? 404 : result.decision === 'submitted' ? 200 : 400).json(result);
@@ -781,6 +790,7 @@ app.post('/rooms/:roomId/actor-bindings/:bindingId/approve', async (req, res) =>
   }
   if (campaignActorLink && result.room) result.room = registry.get(req.params.roomId) ?? result.room;
   if (result.room) {
+    await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'actorBindingApproved');
   }
   const status =
@@ -794,7 +804,7 @@ app.post('/rooms/:roomId/actor-bindings/:bindingId/approve', async (req, res) =>
   res.status(status).json({ ...result, campaignActorLink });
 });
 
-app.post('/rooms/:roomId/actor-bindings/:bindingId/reject', (req, res) => {
+app.post('/rooms/:roomId/actor-bindings/:bindingId/reject', async (req, res) => {
   const body = (req.body ?? {}) as { reviewerMemberId?: string; rejectionReason?: string };
   if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.reviewerMemberId, 'room.host.manage')) return;
   const result = rejectActorBinding(registry, actorAdmissionRegistry, {
@@ -804,12 +814,13 @@ app.post('/rooms/:roomId/actor-bindings/:bindingId/reject', (req, res) => {
     rejectionReason: body.rejectionReason,
   });
   if (result.room) {
+    await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'actorBindingRejected');
   }
   res.status(result.decision === 'roomNotFound' || result.decision === 'bindingNotFound' ? 404 : 200).json(result);
 });
 
-app.post('/rooms/:roomId/members/:memberId/ready', (req, res) => {
+app.post('/rooms/:roomId/members/:memberId/ready', async (req, res) => {
   const body = (req.body ?? {}) as { ready?: unknown };
   if (typeof body.ready !== 'boolean') {
     res.status(400).json({ error: 'ready (boolean) is required.' });
@@ -822,6 +833,7 @@ app.post('/rooms/:roomId/members/:memberId/ready', (req, res) => {
     ready: body.ready,
   });
   if (result.room) {
+    await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'memberReadyChanged');
   }
   res.status(result.decision === 'roomNotFound' || result.decision === 'memberNotFound' ? 404 : result.decision === 'updated' ? 200 : 400).json(result);
@@ -1031,6 +1043,7 @@ app.post('/rooms/:roomId/map-permissions/:memberId', async (req, res) => {
     },
   });
   if (auditLogResult.event) await liveRoomDurableEventPersistence.flush(auditLogResult.event.roomId);
+  await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
   roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'mapPermissionChanged');
   res.json({ room: result.room });
 });

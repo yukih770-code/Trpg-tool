@@ -1267,6 +1267,10 @@ After modifying one system, verify the other two are unaffected:
 
 - [ ] Campaign-linked cloud room creation assigns a server-issued Runtime Session id
 - [ ] Cloud room creation prepares a matching active Runtime Session before accepting the lobby
+- [ ] Join, member review, actor binding review, Ready, map permission, and disband responses await the latest same-room lifecycle snapshot write
+- [ ] Lifecycle writes for one room remain serialized; queued snapshots are copied and the newest acknowledged mutation wins
+- [ ] Join, member review, actor binding review, Ready, map permission, and disband responses await the latest same-room lifecycle snapshot write
+- [ ] Lifecycle writes for one room remain serialized; queued snapshots are copied and the newest acknowledged mutation wins
 - [ ] A conflicting existing Runtime Session is rejected instead of being rebound to another room
 - [ ] Local/LAN rooms without durable campaign context remain memory-only and do not require PostgreSQL
 - [ ] Every cloud Room RuntimeLog append uses `live-room-runtime-log-v1:{roomId}:{eventId}` idempotency
@@ -1282,6 +1286,8 @@ After modifying one system, verify the other two are unaffected:
 - [ ] Actor admission authority rebuilds from complete server-generated clearance summaries; malformed hashes never restore approval
 - [ ] A recovered Player can unready, ready again, and move their restored linked character Token
 - [ ] Database write failure does not replace in-memory live authority; durable outbox/retry remains deferred
+- [ ] The real restart runner removes artificial post-write sleeps and still recovers the last acknowledged lobby mutation
+- [ ] The real restart runner removes artificial post-write sleeps and still recovers the last acknowledged lobby mutation
 - [ ] Cross-process pub/sub and multi-instance room authority remain deferred
 - [ ] `npm run runtime:verify:live-room-log-recovery` passes
 - [ ] `npm run runtime:verify:persistence-bridge` passes

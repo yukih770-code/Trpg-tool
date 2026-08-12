@@ -156,19 +156,24 @@ export async function restoreLiveRoomLifecycles(
 
 /** Serializes background writes per room so older snapshots cannot win a race. */
 export function createLiveRoomLifecyclePersistenceCoordinator(repository: LiveRoomLifecycleRepository) {
-  const queued = new Map<string, Promise<void>>();
+  const queued = new Map<string, Promise<{ decision: LiveRoomLifecycleDecision }>>();
 
   const queue = (snapshot: RoomSnapshot) => {
     const roomId = snapshot.identity.roomId;
-    const previous = queued.get(roomId) ?? Promise.resolve();
+    const snapshotCopy = copySnapshot(snapshot);
+    const previous = queued.get(roomId);
     const next = previous
-      .catch(() => undefined)
-      .then(async () => { await persistLiveRoomLifecycle(repository, snapshot); });
+      ? previous
+        .catch(() => ({ decision: 'unavailable' as const }))
+        .then(() => persistLiveRoomLifecycle(repository, snapshotCopy))
+      : persistLiveRoomLifecycle(repository, snapshotCopy);
     queued.set(roomId, next);
     void next.finally(() => {
       if (queued.get(roomId) === next) queued.delete(roomId);
     });
+    return next;
   };
 
-  return { queue, persist: (snapshot: RoomSnapshot) => persistLiveRoomLifecycle(repository, snapshot) };
+  const flush = async (roomId: string): Promise<{ decision: LiveRoomLifecycleDecision } | undefined> => queued.get(roomId);
+  return { queue, flush, persist: (snapshot: RoomSnapshot) => persistLiveRoomLifecycle(repository, snapshot) };
 }

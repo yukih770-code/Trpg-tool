@@ -3,6 +3,7 @@ import { createInMemoryRoomRegistry } from '../room-registry.js';
 import { createRoom } from './createRoom.js';
 import {
   LIVE_ROOM_SNAPSHOT_METADATA_KEY,
+  createLiveRoomLifecyclePersistenceCoordinator,
   persistLiveRoomLifecycle,
   restoreLiveRoomLifecycles,
   type LiveRoomLifecycleRepository,
@@ -10,10 +11,18 @@ import {
 
 type Result<T> = { ok: true; value: T } | { ok: false; error: unknown };
 
-function createRepository(): LiveRoomLifecycleRepository & { records: Map<string, RoomRecord> } {
+function createRepository(): LiveRoomLifecycleRepository & {
+  records: Map<string, RoomRecord>;
+  updateDelayMs: number;
+  activeUpdates: number;
+  maxActiveUpdates: number;
+} {
   const records = new Map<string, RoomRecord>();
-  return {
+  const repository = {
     records,
+    updateDelayMs: 0,
+    activeUpdates: 0,
+    maxActiveUpdates: 0,
     getRoomRecordByRoomId: async (roomId): Promise<Result<RoomRecord | null>> => ({ ok: true, value: records.get(roomId) ?? null }),
     createRoomRecord: async (input): Promise<Result<RoomRecord | null>> => {
       const record: RoomRecord = {
@@ -32,8 +41,14 @@ function createRepository(): LiveRoomLifecycleRepository & { records: Map<string
       return { ok: true, value: record };
     },
     updateRoomRecord: async (input): Promise<Result<RoomRecord | null>> => {
+      repository.activeUpdates += 1;
+      repository.maxActiveUpdates = Math.max(repository.maxActiveUpdates, repository.activeUpdates);
+      if (repository.updateDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, repository.updateDelayMs));
       const record = [...records.values()].find((candidate) => candidate.roomRecordId === input.roomRecordId) ?? null;
-      if (!record) return { ok: true, value: null };
+      if (!record) {
+        repository.activeUpdates -= 1;
+        return { ok: true, value: null };
+      }
       const next = {
         ...record,
         roomCode: input.roomCode ?? record.roomCode,
@@ -43,13 +58,20 @@ function createRepository(): LiveRoomLifecycleRepository & { records: Map<string
         closedAt: input.closedAt ?? record.closedAt,
       };
       records.set(next.roomId, next);
+      repository.activeUpdates -= 1;
       return { ok: true, value: next };
     },
     listRecoverableRoomRecords: async (): Promise<Result<RoomRecord[]>> => ({
       ok: true,
       value: [...records.values()].filter((record) => record.roomStatus !== 'closed' && !record.closedAt && !record.archivedAt),
     }),
+  } satisfies LiveRoomLifecycleRepository & {
+    records: Map<string, RoomRecord>;
+    updateDelayMs: number;
+    activeUpdates: number;
+    maxActiveUpdates: number;
   };
+  return repository;
 }
 
 async function main(): Promise<void> {
@@ -71,6 +93,23 @@ async function main(): Promise<void> {
   const member = { ...room.members[0], memberId: 'member-player', userId: 'player-user', displayName: 'Player', role: 'player' as const, status: 'active' as const };
   const changed = { ...room, members: [...room.members, member] };
   const second = await persistLiveRoomLifecycle(repository, changed);
+  repository.updateDelayMs = 10;
+  const coordinator = createLiveRoomLifecyclePersistenceCoordinator(repository);
+  const older = { ...changed, notes: ['older queued snapshot'] };
+  const latest = { ...changed, notes: ['latest acknowledged snapshot'] };
+  coordinator.queue(older);
+  coordinator.queue(latest);
+  latest.notes.push('mutated after queue');
+  let flushCompleted = false;
+  const flush = coordinator.flush(room.identity.roomId).then((result) => {
+    flushCompleted = true;
+    return result;
+  });
+  await new Promise((resolve) => setTimeout(resolve, 1));
+  const flushWaited = !flushCompleted;
+  const flushResult = await flush;
+  const acknowledgedSnapshot = repository.records.get(room.identity.roomId)?.metadata[LIVE_ROOM_SNAPSHOT_METADATA_KEY] as { notes?: string[] } | undefined;
+  repository.updateDelayMs = 0;
   const restoredRegistry = createInMemoryRoomRegistry();
   const restored = await restoreLiveRoomLifecycles(repository, restoredRegistry);
   const restoredRoom = restoredRegistry.get(room.identity.roomId);
@@ -87,6 +126,9 @@ async function main(): Promise<void> {
   const checks = [
     first.decision === 'persisted',
     second.decision === 'persisted',
+    flushWaited && flushResult?.decision === 'persisted',
+    repository.maxActiveUpdates === 1,
+    acknowledgedSnapshot?.notes?.length === 1 && acknowledgedSnapshot.notes[0] === 'latest acknowledged snapshot',
     restored.decision === 'restored' && restored.restoredCount === 1,
     restoredRoom?.members.length === 2,
     typeof snapshotStored === 'object' && snapshotStored !== null,
