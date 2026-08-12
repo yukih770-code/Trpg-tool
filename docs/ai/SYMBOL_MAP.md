@@ -1012,6 +1012,14 @@ This file helps AI quickly locate important types, helper functions, store actio
 - `Invoke-Doctor()` rejects missing/mismatched service reports and half-started pairs; `Wait-ForBackendHealth()` / `Wait-ForFrontendHealth()` gate browser opening during Start.
 - Focused smoke: `scripts/dev-local-doctor-contract-smoke.ps1`; command `npm run dev:local:verify:doctor-contract`.
 
+## Private Alpha Two-Account Acceptance Gate
+
+- `AI-LANDMARK: PRIVATE_ALPHA_TWO_ACCOUNT_ACCEPTANCE_GATE_V1`: `docs/deployment/PRIVATE_ALPHA_TWO_ACCOUNT_ACCEPTANCE.md`.
+- `evaluatePrivateAlphaAcceptancePreflight()`: pure remote frontend/health/auth/database/WSS gate — `server/config/privateAlphaAcceptancePreflight.ts`.
+- `resolvePrivateAlphaAcceptanceOrigin()`: accepts only non-local HTTPS origins and strips paths before any network access.
+- `verifyPrivateAlphaAcceptancePreflight.ts`: read-only operator command; reads frontend, `/health`, and `/api/auth/me`, performs no sign-in or write.
+- Focused smoke: `server/config/privateAlphaAcceptancePreflightSmoke.ts`; commands `npm run alpha:verify:acceptance-preflight-contract` and `npm run alpha:verify:acceptance-preflight`.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

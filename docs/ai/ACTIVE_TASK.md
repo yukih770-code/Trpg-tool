@@ -6,30 +6,30 @@
 
 ## Task
 
-- ID: Local Runtime Auth Contract Doctor v1
-- Name: `LOCAL_RUNTIME_AUTH_CONTRACT_DOCTOR_V1`
-- Goal: Prevent local Doctor from reporting a healthy app when the running
-  frontend/backend use stale or mismatched authentication modes.
+- ID: Private Alpha Two-Account Acceptance Gate v1
+- Name: `PRIVATE_ALPHA_TWO_ACCOUNT_ACCEPTANCE_GATE_V1`
+- Goal: Turn the strategic “real multiplayer Alpha smoke” item into an explicit,
+  evidence-based release gate with a safe automated deployment preflight.
 - Phase: P0 Alpha closure
-- Status: Done
+- Status: Prepared; remote execution blocked by missing deployed HTTPS URL
 
-## Runtime Contract
+## Acceptance Contract
 
-- Local Doctor expects `localDev`; auth Doctor expects `privateAlpha`.
-- Backend `/health` reports its real authentication mode.
-- Vite development reports its compiled frontend mode without secrets.
-- Running frontend and backend must both match the requested mode.
-- Start waits for both reports before opening the browser.
-- Production builds do not expose the Vite-only diagnostic endpoint.
+- Automated preflight is read-only and never signs in or performs writes.
+- Only a remote HTTPS single-origin target is accepted.
+- Health must report cloud Private Alpha, database readiness, private auth, no dev
+  auth, and secure WebSocket configuration.
+- Two isolated browser identities must execute every P0 host/player row.
+- UI hiding alone is not permission evidence; shared state must remain unchanged.
+- Process-restart durability is recorded per surface, never inferred.
 
 ## Allowed Files
 
-- `scripts/dev-local.ps1`
-- `scripts/dev-local-doctor-contract-smoke.ps1`
-- `vite.config.ts`
-- `server/room-server.ts`
+- `server/config/privateAlphaAcceptancePreflight.ts`
+- `server/config/privateAlphaAcceptancePreflightSmoke.ts`
+- `server/config/verifyPrivateAlphaAcceptancePreflight.ts`
+- `docs/deployment/PRIVATE_ALPHA_TWO_ACCOUNT_ACCEPTANCE.md`
 - `package.json`
-- `docs/development/LOCAL_DEV_ONE_COMMAND.md`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
 - `docs/ai/ACTIVE_TASK.md`
@@ -38,24 +38,26 @@
 
 ## Forbidden Changes
 
-- Authentication protocol, cookies, invite/session secret handling
-- World Server, Campaign, Room, Runtime, map, combat, rule data
-- Store, schema, migration, deployment environment values
-- Starting/stopping unknown running processes during verification
+- Remote writes, login attempts, invite redemption, deployment changes
+- Reading/logging access codes, session secrets, cookies, database URLs
+- Auth protocol, API behavior, Room/Runtime authority, schema/migrations
+- Marking manual acceptance rows passed without real evidence
 
 ## Completion Criteria
 
-- Expected/reported auth-mode comparison has focused smoke coverage.
-- Doctor rejects legacy, mixed-mode, and half-started running instances.
-- Start gates browser opening on matching backend and frontend modes.
-- Documentation explains diagnosis and recovery without exposing secrets.
-- TypeScript, server/frontend builds, smoke, Doctor conflict proof, and diff pass.
+- Pure preflight covers ready remote, rejected local, and missing configuration.
+- Operator command checks frontend, health, login gate, database, auth, and WSS.
+- Manual gate covers identities, admission, Runtime, permissions, combat, refresh,
+  reconnect, and process-restart boundaries.
+- Current external blocker is recorded without pretending remote execution passed.
+- TypeScript, server/frontend build, smoke, diff, and documentation checks pass.
 
 ## Verification
 
 ```powershell
-npm run dev:local:verify:doctor-contract
-npm run dev:local:doctor
+npm run alpha:verify:acceptance-preflight-contract
+npm run alpha:verify:acceptance-preflight
+npm run cloud:verify:private-alpha
 npm run lint
 npm run server:build
 npm run build
@@ -64,7 +66,8 @@ git diff --check
 
 ## Result
 
-- Doctor no longer treats HTTP 200 and PostgreSQL readiness as sufficient proof
-  that the currently running app matches the requested authentication mode.
-- Backend and Vite development expose minimal non-secret mode diagnostics.
-- Start verifies both services before it opens the browser.
+- Acceptance gate and safe remote preflight are implemented.
+- Contract smoke passes; current environment is correctly blocked before network
+  access because no deployed HTTPS target is configured.
+- All two-account rows remain NOT RUN until an operator supplies the non-secret
+  deployment origin and performs the isolated-browser run.

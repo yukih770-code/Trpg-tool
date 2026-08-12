@@ -1446,6 +1446,23 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8ab. Private Alpha Two-Account Acceptance Gate v1
+
+- [ ] `PRIVATE_ALPHA_SMOKE_URL` is a deployed non-local HTTPS single origin
+- [ ] Read-only preflight reports cloudPrivateAlpha/cloud, privateAlpha auth, disabled dev auth, ready database/World schema, unauthenticated login gate, and secure WSS
+- [ ] Host and Player use isolated browser profiles and different authenticated user IDs
+- [ ] Host creates Server/Campaign/Room; Player joins and submits an existing character
+- [ ] Host approves; Player readies; both enter the same Runtime/WebSocket stream
+- [ ] Host places linked and standalone Tokens; Player moves only the granted own Token
+- [ ] Combat turn callout/action or dice/log flow works across both clients
+- [ ] Player refresh and socket reconnect recover session, room, log/map suffix, and turn
+- [ ] Process restart results are recorded separately for session, records, room, RuntimeLog, map, and combat
+- [ ] No manual row is marked PASS without timestamp/revision/evidence
+- [ ] `npm run alpha:verify:acceptance-preflight-contract` passes
+- [ ] Current no-URL environment fails preflight before any remote request
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |
