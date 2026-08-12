@@ -33,11 +33,11 @@ const room: RoomSnapshot = {
 const checks = [
   ['pending stays outside the lobby actions', 'pending', 'player_waiting_room_approval', false, false, false],
   ['needs character has actions', 'needs-character', 'player_needs_character', true, false, false],
-  ['review has a single wait state', 'review', 'player_waiting_character_review', false, false, false],
-  ['approved prompts ready', 'approved', 'player_approved_needs_ready', false, true, false],
-  ['ready can enter', 'ready', 'player_ready_can_enter', false, true, true],
+  ['review keeps character replacement available', 'review', 'player_waiting_character_review', true, false, false],
+  ['approved keeps character replacement available', 'approved', 'player_approved_needs_ready', true, true, false],
+  ['ready keeps character replacement available', 'ready', 'player_ready_can_enter', true, true, true],
   ['spectator has no character pressure', 'spectator', 'spectator_can_enter', false, false, true],
-  ['host sees review queue', 'host', 'host_ready_to_manage', false, false, true],
+  ['host sees review queue and optional character entry', 'host', 'host_ready_to_manage', true, false, true],
 ].map(([name, memberId, kind, character, ready, runtime]) => {
   try {
     const result = getRoomLobbyPresentationState({ room, memberId: String(memberId), canEnterRuntime: true });

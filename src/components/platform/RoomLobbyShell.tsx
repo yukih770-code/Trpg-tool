@@ -772,19 +772,23 @@ export function RoomLobbyShell({
         </div>
       </section>
 
-      {/* Character entry is shown only for people who can act on it now. */}
+      {/* AI-LANDMARK: HOST_FREE_TOKEN_PERSISTENT_ACTOR_VAULT_ENTRY_V1
+          Active hosts/players keep this available so a submitted, approved, or
+          Ready character can still be replaced through the same review path. */}
       {presentation.canShowCharacterEntry && (
       <section className={`${card} border-amber-400/45 bg-amber-50/35`}>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <div className={`mb-1.5 ${label}`}>入场角色</div>
-            <div className="text-sm font-black text-slate-900">选择角色并提交审核</div>
+            <div className="text-sm font-black text-slate-900">{myBinding ? '当前角色与更换角色' : '选择角色并提交审核'}</div>
           </div>
-          <span className="rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-bold text-amber-800">提交后等待主持人确认</span>
+          <span className="rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-bold text-amber-800">{myBinding ? `当前：${myBinding.actorRef.displayName}` : '提交后等待主持人确认'}</span>
         </div>
         <p className="mb-2 text-[10px] text-slate-500">
           {iAmActive
-            ? '请选择已有角色、创建快速角色，或以旁观者加入。提交后等待主持人审核。'
+            ? myBinding
+              ? '你可以继续使用当前角色，也可以从角色库选择其他角色重新提交。重新提交后需要主持人再次审核，并会取消旧 Ready。'
+              : '请选择已有角色、创建快速角色，或以旁观者加入。提交后等待主持人审核。'
             : '主持人批准加入后即可选择并提交角色。'}
         </p>
 

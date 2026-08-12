@@ -958,6 +958,16 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Both shell and dock listen for Escape; desktop auxiliary toggles remain independent because compact exclusivity is decided by the state transition input.
 - Focused smoke: `src/lib/platform/runtimeOverlayCoordinationSmoke.ts`; command `npm run frontend:verify:runtime-overlay-coordination`.
 
+## Host Free Token + Persistent Actor Vault Entry
+
+- `AI-LANDMARK: HOST_FREE_TOKEN_PERSISTENT_ACTOR_VAULT_ENTRY_V1`: `src/components/platform/BasicMapBoard.tsx`, `src/components/platform/RoomLobbyShell.tsx`
+- Compact Runtime `activePanel === 'units'`: standalone manual Token creator first; linked `presenceCandidates` placement second — `src/components/platform/BasicMapBoard.tsx`.
+- `handleAddManualToken()` / `addToken()`: existing host-only `sourceType: 'manual'` path and existing map append callback; no actor binding required.
+- `RoomLobbyPresentationState.canShowCharacterEntry`: true for active host and all active player character-flow states, false for spectator/pending/closed/runtime-unavailable states — `src/lib/platform/roomLobbyPresentationState.ts`.
+- `submitActorBinding`: existing server re-submission resets binding to `pendingHostApproval`, clears clearance, and sets member Ready to `notReady` — `server/services/submitActorBinding.ts`.
+- Focused presentation smoke: `src/lib/platform/roomLobbyPresentationStateSmoke.ts`; command `npm run frontend:verify:room-lobby-ia`.
+- Permission regressions: `src/lib/platform/roomTokenOwnershipSmoke.ts`, `server/room/roomTokenControlSmoke.ts`.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

@@ -1351,6 +1351,22 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8v. Host Free Token + Persistent Actor Vault Entry v1
+
+- [ ] Host Runtime Unit tool opens a clearly labeled standalone Token creator before linked units
+- [ ] Host can create a Token with only a name when the room has no admitted character
+- [ ] Manual Token supports size and optional host note and appends through the existing map event path
+- [ ] Manual host Token remains host-controlled and cannot become a player-owned Token
+- [ ] Existing admitted-character and combatant placement remains available below the manual creator
+- [ ] Active host can enter Runtime without selecting a character and may optionally select one later
+- [ ] Active players retain Actor Vault, quick-character, and full-sheet entry after submit, approval, and Ready
+- [ ] Replacing a character uses existing re-submission behavior: returns to host review and clears old Ready
+- [ ] Spectators, pending members, and closed rooms do not see character submission actions
+- [ ] Lobby IA, character CTA, map replay, actor presence, client/server Token authority, TypeScript, and build checks pass
+- [ ] No server API, permissions, entry guard, schema, rules, combat, or Campaign Runtime changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |
