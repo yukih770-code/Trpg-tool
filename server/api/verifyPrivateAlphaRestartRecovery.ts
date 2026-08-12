@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 
 type JsonRecord = Record<string, unknown>;
-type Step = { name: string; status: 'passed' | 'failed' | 'known_limitation'; httpStatus?: number; reason?: string };
+type Step = { name: string; status: 'passed' | 'failed'; httpStatus?: number; reason?: string };
 type RecoveryState = {
   cookie: string;
   worldId: string;
@@ -108,12 +108,12 @@ function report(status: 'prepared' | 'passed' | 'failed'): void {
       sessionRecovered: steps.some((step) => step.name === 'verify_existing_session' && step.status === 'passed'),
       roomRecovered: steps.some((step) => step.name === 'verify_live_room_recovered' && step.status === 'passed'),
       combatRecovered: steps.some((step) => step.name === 'verify_combat_runtime_log_recovered' && step.status === 'passed'),
-      mapPersistence: steps.some((step) => step.name === 'verify_map_restart_boundary' && step.status === 'known_limitation') ? 'memory_only_confirmed' : 'not_observed',
+      mapRecovered: steps.some((step) => step.name === 'verify_map_restart_recovered' && step.status === 'passed'),
     },
     notes: [
       'The phase state file is operator-local and contains the session cookie; this report never prints it or any identifier.',
       'Server, campaign, and room fixtures are archived/closed during verify cleanup.',
-      'Room Map remains memory-only and is recorded as an observed Alpha limitation, not inferred recovery.',
+      'Room Map recovery is verified by the original event identifier and grid payload after a real process restart.',
     ],
   }, null, 2));
 }
@@ -237,15 +237,22 @@ async function verify(): Promise<void> {
       'combat_runtime_log_not_recovered',
     );
 
-    const map = await client.request('verify_map_after_restart', `${pathFor('rooms', state.roomId, 'map-events')}?memberId=${encodeURIComponent(state.hostMemberId)}&mapId=${encodeURIComponent(state.mapId)}`);
-    const mapEvents = isRecord(map.body) ? recordArray(map.body.events) : [];
-    const mapRecovered = mapEvents.some((event) => event.mapEventId === state.mapEventId);
-    steps.push({
-      name: 'verify_map_restart_boundary',
-      status: map.ok && !mapRecovered ? 'known_limitation' : mapRecovered ? 'failed' : 'failed',
-      reason: map.ok && !mapRecovered ? 'room_map_stream_is_memory_only' : mapRecovered ? 'unexpected_contract_change_update_acceptance' : 'map_read_failed',
-    });
-    if (!map.ok || mapRecovered) throw new Error('map_restart_boundary_mismatch');
+    let map: Awaited<ReturnType<Client['request']>> | undefined;
+    let recoveredMapEvent: JsonRecord | undefined;
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      map = await client.request(`verify_map_after_restart_attempt_${attempt + 1}`, `${pathFor('rooms', state.roomId, 'map-events')}?memberId=${encodeURIComponent(state.hostMemberId)}&mapId=${encodeURIComponent(state.mapId)}`);
+      const mapEvents = isRecord(map.body) ? recordArray(map.body.events) : [];
+      recoveredMapEvent = mapEvents.find((event) => event.mapEventId === state.mapEventId);
+      if (recoveredMapEvent) break;
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    const mapPayload = isRecord(recoveredMapEvent?.payload) ? recoveredMapEvent.payload : undefined;
+    const recoveredGrid = isRecord(mapPayload?.grid) ? mapPayload.grid : undefined;
+    assertion(
+      'verify_map_restart_recovered',
+      map?.ok === true && recoveredMapEvent?.eventKind === 'map.grid_updated' && recoveredGrid?.sizePx === 72,
+      'room_map_not_recovered',
+    );
   } finally {
     await client.request('cleanup_disband_room', pathFor('rooms', state.roomId, 'disband'), { method: 'POST', body: JSON.stringify({ decidedByMemberId: state.hostMemberId }) });
     await client.request('cleanup_archive_campaign', `${campaignRoot}/archive`, { method: 'POST' });

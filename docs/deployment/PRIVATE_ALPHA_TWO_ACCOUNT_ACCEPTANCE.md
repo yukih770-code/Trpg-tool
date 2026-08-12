@@ -143,15 +143,14 @@ The local PostgreSQL-backed process-restart proof is repeatable with:
 npm run alpha:verify:restart-recovery:local
 ```
 
-Current local protocol result (2026-08-13): `PASS WITH KNOWN LIMITATION`. The
+Current local protocol result (2026-08-13): `PASS`. The
 runner created an authenticated campaign-linked live room, combat RuntimeLog,
 and map event; stopped the exact Node process it launched; started a fresh Node
 process on the same port; then reused the original session Cookie. It observed:
 
 - the Private Alpha session, World Server, campaign, live room, RuntimeLog, and
   combat round all recovered;
-- the Room Map stream returned empty, confirming the current memory-only map
-  contract rather than a durable recovery promise;
+- the Room Map event recovered with its original event ID and grid payload;
 - test fixtures were closed/archived after verification, while the operator-
   local state file and server logs were deleted without printing secrets.
 
@@ -165,7 +164,7 @@ the final column and must not be promoted to remote PASS by inference.
 | E2 | Server and campaign records | Persist | NOT RUN | Local process restart: both records remained readable |
 | E3 | Recoverable room lobby | Recover according to live-room lifecycle persistence | NOT RUN | Local process restart: original Host member re-entered the restored room |
 | E4 | RuntimeLog | Recover for campaign-linked cloud room | NOT RUN | Local process restart: both combat events restored by original event ID |
-| E5 | Room map state | Known limitation: do not mark PASS unless observed; full durable recovery is not yet promised | NOT RUN | Local process restart: event was lost; memory-only limitation confirmed |
+| E5 | Room map state | Recover for campaign-linked cloud room | NOT RUN | Local process restart: original map event ID and `sizePx: 72` grid payload restored |
 | E6 | Combat state | Record actual behavior; do not infer from RuntimeLog persistence alone | NOT RUN | Local process restart: restored combat history replayed through round 2; deployed UI still required |
 
 ## Exit criteria

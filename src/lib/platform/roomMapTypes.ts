@@ -3,8 +3,8 @@
  *
  * Map changes are a distinct append-only room stream. They are deliberately not
  * RuntimeLog notes and do not belong in RoomSnapshot, which keeps lobby state
- * small. The current server registry is memory-only; persistence is a later
- * boundary.
+ * small. Campaign-linked cloud rooms mirror this stream into their durable
+ * Runtime Session while the in-memory registry remains live authority.
  */
 
 import {

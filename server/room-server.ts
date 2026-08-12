@@ -118,10 +118,13 @@ import {
   restoreLiveRoomLifecycles,
 } from './services/liveRoomLifecyclePersistence.js';
 import {
-  createLiveRoomRuntimeLogPersistenceCoordinator,
   prepareLiveRoomRuntimeSession,
   restoreLiveRoomRuntimeLogs,
 } from './services/liveRoomRuntimeLogPersistence.js';
+import {
+  restoreLiveRoomMaps,
+} from './services/liveRoomMapPersistence.js';
+import { createLiveRoomDurableEventPersistenceCoordinator } from './services/liveRoomDurableEventPersistence.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -260,7 +263,7 @@ const liveRoomLifecyclePersistence = createLiveRoomLifecyclePersistenceCoordinat
 const registry = createInMemoryRoomRegistry({
   onRoomUpdated: (snapshot) => liveRoomLifecyclePersistence.queue(snapshot),
 });
-const liveRoomRuntimeLogPersistence = createLiveRoomRuntimeLogPersistenceCoordinator(runtimeEventRepository);
+const liveRoomDurableEventPersistence = createLiveRoomDurableEventPersistenceCoordinator(runtimeEventRepository);
 // RuntimeLog remains separate from RoomSnapshot and authoritative in memory for
 // live play. Campaign-linked cloud rooms additionally mirror appends to their
 // dedicated Runtime Session so the stream can be rebuilt after a restart.
@@ -268,12 +271,20 @@ const runtimeLogRegistry = createInMemoryRuntimeLogRegistry({
   onEventAppended: (event) => {
     const room = registry.get(event.roomId);
     if (room?.campaignRef?.worldServerId && room.campaignRef.campaignId && room.identity.sessionId) {
-      void liveRoomRuntimeLogPersistence.queue(room, event);
+      void liveRoomDurableEventPersistence.queueRuntimeLog(room, event);
     }
   },
 });
-// Separate, memory-only map event stream. Not RoomSnapshot and not RuntimeLog.
-const roomMapRegistry = createInMemoryRoomMapRegistry();
+// The Room Map remains a separate live stream, but campaign-linked cloud rooms
+// mirror it into the same durable Runtime Session used by their RuntimeLog.
+const roomMapRegistry = createInMemoryRoomMapRegistry({
+  onEventAppended: (event) => {
+    const room = registry.get(event.roomId);
+    if (room?.campaignRef?.worldServerId && room.campaignRef.campaignId && room.identity.sessionId) {
+      void liveRoomDurableEventPersistence.queueMap(room, event);
+    }
+  },
+});
 const PORT = serverRuntimeConfig.httpPort;
 
 // HTTP server + WebSocket transport scaffold (room snapshot broadcast only).
@@ -878,7 +889,7 @@ app.post('/rooms/:roomId/runtime-log/events', async (req, res) => {
   // Socket delivery applies a per-member projection. Host-only events reach only
   // the host; public combat data is still redacted for non-host viewers.
   if (result.event) {
-    await liveRoomRuntimeLogPersistence.flush(result.event.roomId);
+    await liveRoomDurableEventPersistence.flush(result.event.roomId);
     roomSocketServer.broadcastRuntimeLogAppended(result.event.roomId, [result.event]);
   }
   const room = registry.get(req.params.roomId);
@@ -933,7 +944,7 @@ app.get('/rooms/:roomId/map-events', (req, res) => {
   });
 });
 
-app.post('/rooms/:roomId/map-events', (req, res) => {
+app.post('/rooms/:roomId/map-events', async (req, res) => {
   const body = (req.body ?? {}) as AppendRoomMapEventInput;
   if (body.eventKind === 'map.token_moved') {
     const room = registry.get(req.params.roomId);
@@ -967,6 +978,7 @@ app.post('/rooms/:roomId/map-events', (req, res) => {
     res.status(status).json({ error: result.decision, message: result.message });
     return;
   }
+  await liveRoomDurableEventPersistence.flush(result.event.roomId);
   roomSocketServer.broadcastMapEventAppended(result.event.roomId, [result.event]);
   const room = registry.get(req.params.roomId);
   const projected = room ? projectRoomMapEventsForViewer(room, body.authorMemberId, roomMapRegistry.list(room.identity.roomId).events).find((event) => event.mapEventId === result.event?.mapEventId) : undefined;
@@ -1016,7 +1028,7 @@ app.post('/rooms/:roomId/map-permissions/:memberId', async (req, res) => {
       scope: 'roomSession',
     },
   });
-  if (auditLogResult.event) await liveRoomRuntimeLogPersistence.flush(auditLogResult.event.roomId);
+  if (auditLogResult.event) await liveRoomDurableEventPersistence.flush(auditLogResult.event.roomId);
   roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'mapPermissionChanged');
   res.json({ room: result.room });
 });
@@ -1046,7 +1058,7 @@ app.post('/rooms/:roomId/runtime/dice-roll', async (req, res) => {
     res.status(status).json({ ok: false, error: result.decision, message: result.message });
     return;
   }
-  await liveRoomRuntimeLogPersistence.flush(result.event.roomId);
+  await liveRoomDurableEventPersistence.flush(result.event.roomId);
   // Only public events are broadcast (dice.roll is public in v0).
   if (result.event.visibility === 'public') {
     roomSocketServer.broadcastRuntimeLogAppended(result.event.roomId, [result.event]);
@@ -1116,6 +1128,18 @@ const onServerListening = () => {
     if (runtimeLogResult.unavailableRoomCount > 0) {
       // eslint-disable-next-line no-console
       console.warn(`[room-server] RuntimeLog recovery unavailable for ${runtimeLogResult.unavailableRoomCount} live room(s).`);
+    }
+    const roomMapResult = await restoreLiveRoomMaps(runtimeEventRepository, registry, roomMapRegistry);
+    if (roomMapResult.restoredEventCount > 0) {
+      // eslint-disable-next-line no-console
+      console.log(
+        `[room-server] restored ${roomMapResult.restoredEventCount} Room Map event(s) `
+        + `across ${roomMapResult.restoredRoomCount} live room(s).`,
+      );
+    }
+    if (roomMapResult.unavailableRoomCount > 0) {
+      // eslint-disable-next-line no-console
+      console.warn(`[room-server] Room Map recovery unavailable for ${roomMapResult.unavailableRoomCount} live room(s).`);
     }
   });
 };
