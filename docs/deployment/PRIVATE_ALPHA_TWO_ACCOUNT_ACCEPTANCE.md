@@ -41,6 +41,39 @@ The command never logs the URL or secrets. It only reads the frontend,
 Current result (2026-08-12): `BLOCKED` — current `.env` contains localhost only;
 `PRIVATE_ALPHA_SMOKE_URL` is not configured. No remote request was made.
 
+## Gate A2 — local two-account protocol proof
+
+This is automated backend evidence, not a replacement for the remote browser
+run. It starts a Private Alpha backend on an isolated local port, uses two
+independent cookie jars, and never prints credentials or response bodies:
+
+```powershell
+npm run alpha:verify:two-account-protocol:local
+```
+
+Current result (2026-08-12): `PASS` — the real local PostgreSQL-backed flow
+proved all of the following in one run:
+
+- Host and Player received distinct verified user IDs and isolated sessions.
+- Host created a World Server and one-use personal invite; Player redeemed it
+  and the resulting server membership was visible to the Player session.
+- Host created a campaign-linked live room; Player joined as pending and could
+  read only the narrow join-status endpoint until Host approval.
+- Player could not claim Host's member ID or perform a host-only room action.
+- Player submitted a quick-draft character, could not Ready before approval,
+  then successfully reached approved + Ready after Host review.
+- The live room was closed and database fixtures were archived by the Host
+  session after the run.
+
+The first run exposed and then regression-covered a P0 privacy defect: pending
+applicants could read a full Room snapshot. The fixed contract now returns 403;
+pending applicants use `/rooms/:roomId/join-status` only.
+
+Still unproved by Gate A2: rendered UI behavior, existing Actor Vault selection,
+WebSocket convergence, Token/map interaction, combat, refresh/reconnect, and
+process-restart recovery. Those remain Gates B–E below and keep `NOT RUN` until
+observed against the deployed revision in two browsers.
+
 ## Gate B — two independent identities
 
 | ID | Priority | Host / Player action | Expected result | Status | Evidence |

@@ -16,9 +16,9 @@ export type RoomRuntimePermissionDecision = {
 
 /**
  * Verifies that a claimed room member belongs to the authenticated viewer.
- * Pending members may use this narrow result to receive lobby snapshots, but
- * Runtime actions still flow through resolveRoomRuntimePermission below and
- * require an active member.
+ * Only active members may receive room or WebSocket snapshots. Pending
+ * applicants use the dedicated join-status endpoint, which reveals only their
+ * own membership outcome.
  */
 export function resolveRoomParticipant(input: {
   room: RoomSnapshot;
@@ -34,7 +34,7 @@ export function resolveRoomParticipant(input: {
   if (!member.userId || member.userId !== viewerUserId) {
     return { allowed: false, code: 'member_user_mismatch', memberId: member.memberId, userId: viewerUserId };
   }
-  if (member.status === 'kicked' || member.status === 'left' || member.status === 'disconnected') {
+  if (member.status !== 'active') {
     return { allowed: false, code: 'member_inactive', memberId: member.memberId, userId: viewerUserId };
   }
   return { allowed: true, code: 'allowed', memberId: member.memberId, userId: viewerUserId };

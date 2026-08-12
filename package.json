@@ -137,6 +137,8 @@
     "cloud:verify:deployed-e2e": "tsx server/api/verifyHttpE2EFlow.ts --strict",
     "alpha:verify:acceptance-preflight": "tsx server/config/verifyPrivateAlphaAcceptancePreflight.ts",
     "alpha:verify:acceptance-preflight-contract": "tsx server/config/privateAlphaAcceptancePreflightSmoke.ts",
+    "alpha:verify:two-account-protocol": "tsx server/api/verifyPrivateAlphaTwoAccountProtocol.ts",
+    "alpha:verify:two-account-protocol:local": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/private-alpha-two-account-local-smoke.ps1",
     "auth:verify:private-alpha": "tsx server/auth/privateAlphaAuthSmoke.ts",
     "frontend:verify:e2e-api": "tsx src/lib/api/frontendApiE2ESmoke.ts",
     "frontend:verify:auth-flow": "tsx src/lib/api/authApiClientSmoke.ts",

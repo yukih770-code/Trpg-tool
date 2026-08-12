@@ -43,6 +43,12 @@ const joined = joinRoom(registry, {
 });
 expect(joined.memberId && joined.roomId, 'player join should create a pending participant');
 const playerMemberId = joined.memberId;
+const pendingRoom = registry.get(roomId);
+expect(pendingRoom, 'room should remain available while player approval is pending');
+expect(
+  !resolveRoomParticipant({ room: pendingRoom, viewer: viewer('user_player'), memberId: playerMemberId }).allowed,
+  'pending applicant must use the narrow join-status endpoint instead of receiving a room snapshot',
+);
 approveMember(registry, { roomId, memberId: playerMemberId, decidedByMemberId: hostMemberId });
 const room = registry.get(roomId);
 expect(room, 'room should remain available after approval');
