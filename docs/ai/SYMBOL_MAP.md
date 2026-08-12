@@ -968,6 +968,15 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Focused presentation smoke: `src/lib/platform/roomLobbyPresentationStateSmoke.ts`; command `npm run frontend:verify:room-lobby-ia`.
 - Permission regressions: `src/lib/platform/roomTokenOwnershipSmoke.ts`, `server/room/roomTokenControlSmoke.ts`.
 
+## Mobile Runtime Supporting Sheet
+
+- `AI-LANDMARK: MOBILE_RUNTIME_SUPPORTING_SHEET_V1`: `src/components/platform/RuntimeFullscreenShell.tsx`
+- `hasOpenRuntimeAuxiliaryPanel()`: pure backdrop visibility projection — `src/lib/platform/runtimeOverlayCoordination.ts`.
+- Compact-only backdrop sits above the tabletop and below auxiliary sheets/switcher; its close action reuses `closeAuxiliaryPanels()`.
+- `useId()` supplies stable members/inspector/log region ids for `aria-controls`; desktop collapsed triggers also expose `aria-expanded`.
+- `inspectorLabel` / `mobileInspectorLabel`: host/player/spectator-specific presentation labels; no role or permission change.
+- Focused smoke: `src/lib/platform/runtimeOverlayCoordinationSmoke.ts`; command `npm run frontend:verify:runtime-overlay-coordination`.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

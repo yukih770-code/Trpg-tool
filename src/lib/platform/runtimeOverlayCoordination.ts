@@ -20,6 +20,10 @@ export function initialRuntimeAuxiliaryPanels(hostDesktopOverview: boolean): Run
   return { ...CLOSED_RUNTIME_AUXILIARY_PANELS, inspectorOpen: hostDesktopOverview };
 }
 
+export function hasOpenRuntimeAuxiliaryPanel(state: RuntimeAuxiliaryPanelsState): boolean {
+  return state.railOpen || state.inspectorOpen || state.logOpen;
+}
+
 export function reduceRuntimeAuxiliaryPanels(
   current: RuntimeAuxiliaryPanelsState,
   action: RuntimeAuxiliaryPanelsAction,

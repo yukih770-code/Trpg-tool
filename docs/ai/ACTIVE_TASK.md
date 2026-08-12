@@ -6,30 +6,26 @@
 
 ## Task
 
-- ID: Host Free Token + Persistent Actor Vault Entry v1
-- Name: `HOST_FREE_TOKEN_PERSISTENT_ACTOR_VAULT_ENTRY_V1`
-- Goal: Restore two core tabletop paths: hosts may create standalone Tokens
-  without an admitted character, and active participants may always choose or
-  replace their room character from the Actor Vault.
-- Phase: P0 Runtime / lobby regression fix
+- ID: Mobile Runtime Supporting Sheet v1
+- Name: `MOBILE_RUNTIME_SUPPORTING_SHEET_V1`
+- Goal: Make mobile members, inspector, and log panels read and behave like
+  lightweight tabletop sheets without trapping users away from the map.
+- Phase: P0 Runtime mobile usability
 - Status: Done
 
-## Product Contract
+## UI Contract
 
-- Host Runtime Unit panel presents standalone Token creation before linked units.
-- A standalone Token requires only a name; size and optional private note remain.
-- Standalone Tokens use the existing `manual` source and map event authority.
-- Active host/player members retain character entry after submit/approve/Ready.
-- Spectators and unapproved members do not gain character submission access.
-- Re-submission continues through the existing server path, which returns the
-  binding to review and clears stale Ready state.
+- An open mobile supporting panel dims the map but keeps the panel switcher usable.
+- Tapping the dimmed map returns to the tabletop without changing Runtime data.
+- Panel triggers expose their controlled region and pressed state.
+- Spectators see a spectator label rather than the player-only "My Info" label.
+- Desktop layout and overlay behavior remain unchanged.
 
 ## Allowed Files
 
-- `src/components/platform/BasicMapBoard.tsx`
-- `src/components/platform/RoomLobbyShell.tsx`
-- `src/lib/platform/roomLobbyPresentationState.ts`
-- `src/lib/platform/roomLobbyPresentationStateSmoke.ts`
+- `src/components/platform/RuntimeFullscreenShell.tsx`
+- `src/lib/platform/runtimeOverlayCoordination.ts`
+- `src/lib/platform/runtimeOverlayCoordinationSmoke.ts`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
 - `docs/ai/ACTIVE_TASK.md`
@@ -38,26 +34,24 @@
 
 ## Forbidden Changes
 
-- Map event payload/authority, Token movement permissions, server APIs
-- Actor binding submission/approval/Ready services and room entry guard
-- Store, schema, migration, rule data, combat behavior, Campaign Runtime
+- Runtime panel content, combat state, turn authority, RuntimeLog, dice/actions
+- Room roles/permissions, visibility projection, map controls, server/API
+- Store, schema, migration, rule data, Campaign Runtime, desktop layout
 
 ## Completion Criteria
 
-- Host can create a manual Token directly from compact Runtime with no actor list.
-- Linked character/combatant placement remains available and visually separate.
-- Active host and player presentation states keep character entry available.
-- Spectator, pending member, and closed room states keep it unavailable.
-- Lobby presentation smoke, map/room authority regressions, lint, build, and diff
-  check pass.
+- Compact Runtime derives whether a supporting sheet is open from tested state.
+- A lightweight backdrop returns directly to the map.
+- Switcher remains above the backdrop and can replace the active panel.
+- Mobile trigger labels and aria relationships match their actual panel.
+- Focused overlay smoke, existing regressions, lint, build, and diff check pass.
 
 ## Verification
 
 ```powershell
-npm run frontend:verify:room-lobby-presentation
-npm run frontend:verify:character-entry-cta
-npm run frontend:verify:map-runtime
-npm run frontend:verify:actor-presence
+npm run frontend:verify:runtime-overlay-coordination
+npm run frontend:verify:runtime-action-dock
+npm run frontend:verify:runtime-player-turn-callout
 npm run lint
 npm run build
 git diff --check
@@ -65,11 +59,11 @@ git diff --check
 
 ## Result
 
-- Host compact Runtime Unit panel now presents a standalone manual Token creator
-  first and linked actor/combatant placement as a separate second section.
-- Active hosts and every active player character-flow state retain the existing
-  Actor Vault, quick-character, and full-sheet entry actions.
-- Spectator, pending-member, closed-room, permissions, entry guard, and server
-  submission authority remain unchanged.
-- Lobby IA, character CTA, map replay, actor presence, client/server Token
-  authority, TypeScript, frontend build, and diff checks pass.
+- Mobile supporting panels now dim the tabletop and close through a dedicated
+  accessible Return to Map backdrop.
+- The switcher stays above that backdrop, so members, inspector, and log can
+  still replace one another directly.
+- Panel triggers and regions are linked through stable ids; spectator wording is
+  distinct from player-only My Info wording.
+- Focused overlay, action-dock, own-turn, combat HUD, TypeScript, frontend build,
+  and diff checks pass.

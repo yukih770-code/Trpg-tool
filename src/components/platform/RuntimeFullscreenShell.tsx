@@ -1,5 +1,6 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import {
+  hasOpenRuntimeAuxiliaryPanel,
   initialRuntimeAuxiliaryPanels,
   reduceRuntimeAuxiliaryPanels,
   type RuntimeAuxiliaryPanel,
@@ -11,6 +12,7 @@ import { RUNTIME_ACTION_DOCK_DID_OPEN_EVENT, RUNTIME_AUXILIARY_PANEL_OPEN_EVENT 
  *
  * AI-LANDMARK: RUNTIME_FULLSCREEN_SHELL_V0
  * AI-LANDMARK: MOBILE_RUNTIME_OVERLAY_EXCLUSIVITY_V1
+ * AI-LANDMARK: MOBILE_RUNTIME_SUPPORTING_SHEET_V1
  *
  * Stage-first: a compact (~44px) Header sits on top, and the Main Stage fills the
  * entire area below it as "the tabletop". The Actor Rail, Inspector, Action Dock
@@ -108,6 +110,13 @@ export function RuntimeFullscreenShell({
     () => initialRuntimeAuxiliaryPanels(mode === 'host' && !isCompactRuntimeViewport()),
   );
   const { railOpen, inspectorOpen, logOpen } = auxiliaryPanels;
+  const supportingSheetOpen = hasOpenRuntimeAuxiliaryPanel(auxiliaryPanels);
+  const runtimeShellId = useId();
+  const railPanelId = `${runtimeShellId}-members`;
+  const inspectorPanelId = `${runtimeShellId}-inspector`;
+  const logPanelId = `${runtimeShellId}-log`;
+  const inspectorLabel = mode === 'host' ? '主持人检视器' : mode === 'player' ? '我的信息' : '旁观';
+  const mobileInspectorLabel = mode === 'host' ? '概览' : mode === 'player' ? '我的信息' : '旁观';
 
   const closeAuxiliaryPanels = () => {
     setAuxiliaryPanels((current) => reduceRuntimeAuxiliaryPanels(current, { type: 'close-all' }));
@@ -214,10 +223,20 @@ export function RuntimeFullscreenShell({
           </div>
         </div>
 
+        {supportingSheetOpen && (
+          <button
+            type="button"
+            aria-label="返回地图"
+            title="返回地图"
+            onClick={closeAuxiliaryPanels}
+            className="absolute inset-0 z-[25] bg-slate-950/25 backdrop-blur-[1px] md:hidden"
+          />
+        )}
+
         {/* Left Actor Rail — narrow strip, expands as overlay (does NOT compress stage) */}
         {actorRail !== undefined && (
           railOpen ? (
-            <aside className={`absolute inset-x-2 bottom-16 z-30 flex max-h-[70vh] w-auto flex-col overflow-hidden md:inset-y-2 md:left-2 md:right-auto md:max-h-none md:w-56 ${panel}`}>
+            <aside id={railPanelId} aria-label="角色 / 成员" className={`absolute inset-x-2 bottom-16 z-30 flex max-h-[70vh] w-auto flex-col overflow-hidden md:inset-y-2 md:left-2 md:right-auto md:max-h-none md:w-56 ${panel}`}>
               <div className="flex items-center justify-between border-b border-slate-300/60 px-2 py-1">
                 <span className={railLabel + ' mb-0'}>角色 / 成员</span>
                 <button type="button" className={iconBtn} onClick={() => toggleAuxiliaryPanel('rail')} title="收起">关闭</button>
@@ -228,6 +247,8 @@ export function RuntimeFullscreenShell({
             <button
               type="button"
               onClick={() => toggleAuxiliaryPanel('rail')}
+              aria-controls={railPanelId}
+              aria-expanded={railOpen}
               className={`absolute left-2 top-2 z-10 hidden w-12 md:flex ${panel} flex-col items-center gap-0.5 py-1.5 text-[10px] font-bold text-slate-600`}
               title="展开角色 / 成员"
             >
@@ -239,10 +260,10 @@ export function RuntimeFullscreenShell({
 
         {/* Right Inspector — floating overlay, collapsible (does NOT compress stage) */}
         {inspectorOpen ? (
-          <aside className={`absolute inset-x-2 bottom-16 z-30 flex max-h-[70vh] w-auto flex-col overflow-hidden md:inset-y-2 md:left-auto md:right-2 md:max-h-none md:w-[min(340px,80vw)] ${panel}`}>
+          <aside id={inspectorPanelId} aria-label={inspectorLabel} className={`absolute inset-x-2 bottom-16 z-30 flex max-h-[70vh] w-auto flex-col overflow-hidden md:inset-y-2 md:left-auto md:right-2 md:max-h-none md:w-[min(340px,80vw)] ${panel}`}>
             <div className="flex items-center justify-between border-b border-slate-300/60 px-2 py-1">
               <span className={railLabel + ' mb-0'}>
-                {mode === 'host' ? '主持人检视器' : mode === 'player' ? '我的信息' : '旁观'}
+                {inspectorLabel}
               </span>
               <button type="button" className={iconBtn} onClick={() => toggleAuxiliaryPanel('inspector')} title="收起">关闭</button>
             </div>
@@ -254,6 +275,8 @@ export function RuntimeFullscreenShell({
           <button
             type="button"
             onClick={() => toggleAuxiliaryPanel('inspector')}
+            aria-controls={inspectorPanelId}
+            aria-expanded={inspectorOpen}
             className={`absolute right-2 top-2 z-10 hidden md:block ${panel} px-2 py-1 text-[10px] font-bold text-slate-600`}
             title="展开检视器"
           >
@@ -263,17 +286,17 @@ export function RuntimeFullscreenShell({
 
         {/* Mobile supporting panels share one compact switcher. Only one may cover
             the map at a time; the tabletop remains the default surface. */}
-        <div className="absolute left-1/2 top-2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-slate-300/70 bg-white/90 p-1 shadow-lg backdrop-blur-sm md:hidden">
+        <div role="toolbar" aria-label="运行时信息面板" className="absolute left-1/2 top-2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-slate-300/70 bg-white/90 p-1 shadow-lg backdrop-blur-sm md:hidden">
           {actorRail !== undefined && (
-            <button type="button" onClick={() => toggleAuxiliaryPanel('rail')} aria-pressed={railOpen} className={`min-h-9 rounded-lg px-2.5 text-[11px] font-bold ${railOpen ? 'bg-slate-800 text-white' : 'text-slate-700'}`}>
+            <button type="button" onClick={() => toggleAuxiliaryPanel('rail')} aria-controls={railPanelId} aria-pressed={railOpen} className={`min-h-9 rounded-lg px-2.5 text-[11px] font-bold ${railOpen ? 'bg-slate-800 text-white' : 'text-slate-700'}`}>
               成员
             </button>
           )}
-          <button type="button" onClick={() => toggleAuxiliaryPanel('inspector')} aria-pressed={inspectorOpen} className={`min-h-9 rounded-lg px-2.5 text-[11px] font-bold ${inspectorOpen ? 'bg-slate-800 text-white' : 'text-slate-700'}`}>
-            {mode === 'host' ? '概览' : '我的信息'}
+          <button type="button" onClick={() => toggleAuxiliaryPanel('inspector')} aria-controls={inspectorPanelId} aria-pressed={inspectorOpen} className={`min-h-9 rounded-lg px-2.5 text-[11px] font-bold ${inspectorOpen ? 'bg-slate-800 text-white' : 'text-slate-700'}`}>
+            {mobileInspectorLabel}
           </button>
           {logDrawer && (
-            <button type="button" onClick={() => toggleAuxiliaryPanel('log')} aria-pressed={logOpen} className={`min-h-9 rounded-lg px-2.5 text-[11px] font-bold ${logOpen ? 'bg-slate-800 text-white' : 'text-slate-700'}`}>
+            <button type="button" onClick={() => toggleAuxiliaryPanel('log')} aria-controls={logPanelId} aria-pressed={logOpen} className={`min-h-9 rounded-lg px-2.5 text-[11px] font-bold ${logOpen ? 'bg-slate-800 text-white' : 'text-slate-700'}`}>
               日志
             </button>
           )}
@@ -311,7 +334,7 @@ export function RuntimeFullscreenShell({
 
         {/* Log Drawer — bottom-left, collapsed by default, clears the rail; safe-area padded */}
         {logDrawer && (
-          <div className={`absolute inset-x-2 bottom-16 z-30 max-h-[70vh] overflow-hidden md:inset-x-auto md:bottom-[max(0.75rem,env(safe-area-inset-bottom))] md:left-16 md:z-10 md:w-[min(420px,42vw)] ${logOpen ? '' : 'hidden md:block'} ${panel}`}>
+          <div id={logPanelId} role="region" aria-label="日志" className={`absolute inset-x-2 bottom-16 z-30 max-h-[70vh] overflow-hidden md:inset-x-auto md:bottom-[max(0.75rem,env(safe-area-inset-bottom))] md:left-16 md:z-10 md:w-[min(420px,42vw)] ${logOpen ? '' : 'hidden md:block'} ${panel}`}>
             <button
               type="button"
               onClick={() => toggleAuxiliaryPanel('log')}

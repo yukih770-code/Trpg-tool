@@ -1367,6 +1367,22 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8w. Mobile Runtime Supporting Sheet v1
+
+- [ ] Opening members, inspector, or log dims the mobile tabletop behind the panel
+- [ ] Tapping the dimmed tabletop closes the active supporting panel and returns to the map
+- [ ] Top panel switcher remains above the backdrop and can directly replace the active panel
+- [ ] Backdrop is absent when all supporting panels are closed
+- [ ] Members, inspector, and log triggers expose their controlled region and pressed/expanded state
+- [ ] Host label reads Overview, player reads My Info, and spectator reads Spectator
+- [ ] Token inspect overlay remains above supporting sheets
+- [ ] Desktop supporting panels and layout remain unchanged
+- [ ] `npm run frontend:verify:runtime-overlay-coordination` passes
+- [ ] Existing action-dock, own-turn, combat HUD, TypeScript, and frontend build checks pass
+- [ ] No Runtime content, authority, permissions, map controls, server, store, schema, rules, or Campaign Runtime changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |
