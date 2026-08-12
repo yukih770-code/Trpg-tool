@@ -9,6 +9,7 @@ import { useMapRuntimeBoard } from '../../lib/map/useMapRuntimeBoard';
 import { campaignActorPresenceCandidate, combatantPresenceCandidate, linkedTokenForCandidate, toMapTokenPrototype, tokenInitials, tokenWithCombatProjection, type MapTokenPresenceCandidate } from '../../lib/map/actorPresence';
 import { resolveTokenVisualIdentity } from '../../lib/map/tokenVisualIdentity';
 import { MAP_BACKGROUND_PRESETS, createMapAreaTemplate, measureMapDistance, snapMapPosition, type MapAreaTemplate, type MapAreaTemplateInput, type MapBackgroundPreset, type MapBoardState, type MapInteractionPreview, type MapRuntimeEventDraft, type MapTemplateShape, type MapToken, type MapTokenSize } from '../../lib/map/mapRuntimeTypes';
+import { getRuntimeMapToolPresentation, type RuntimeMapToolId } from '../../lib/map/runtimeMapToolPresentation';
 
 type Props = {
   locale: Locale;
@@ -640,8 +641,24 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   </div>;
 
   if (presentation === 'runtime') {
-    const toolButtonClass = (active: boolean) => `grid h-9 w-9 place-items-center rounded-lg border text-[#2f2a22] shadow-sm transition ${active ? 'border-[#58180d]/60 bg-[#fff0d6] text-[#58180d]' : 'border-white/70 bg-white/90 hover:bg-white'}`;
-    const compactPanelClass = 'absolute left-14 right-2 top-2 z-30 max-h-[75vh] overflow-y-auto rounded-xl border border-slate-300/80 bg-white/95 p-3 shadow-xl backdrop-blur-sm sm:left-16 sm:right-auto sm:top-3 sm:w-80';
+    const toolButtonClass = (active: boolean) => `flex min-h-11 w-12 flex-col items-center justify-center gap-0.5 rounded-lg border px-1 text-[#2f2a22] shadow-sm transition sm:w-14 ${active ? 'border-[#58180d]/60 bg-[#fff0d6] text-[#58180d]' : 'border-white/70 bg-white/90 hover:bg-white'}`;
+    const compactPanelClass = 'absolute left-16 right-2 top-2 z-30 max-h-[75vh] overflow-y-auto rounded-xl border border-slate-300/80 bg-white/95 p-3 shadow-xl backdrop-blur-sm sm:left-20 sm:right-auto sm:top-3 sm:w-80';
+    const runtimeTools = getRuntimeMapToolPresentation(canManage, locale === 'en' ? 'en' : 'zh');
+    const runtimeToolTitle = (id: RuntimeMapToolId): string => id === 'select' ? t('mapRuntime.toolSelect') : id === 'move' ? t('mapRuntime.toolMove') : id === 'measure' ? t('mapRuntime.toolMeasure') : id === 'background' ? t('mapRuntime.toolBackground') : id === 'grid' ? t('mapRuntime.toolGrid') : id === 'template' ? t('mapRuntime.toolTemplate') : locale === 'en' ? 'Place Token' : '放置 Token';
+    const runtimeToolActive = (id: RuntimeMapToolId): boolean => id === 'select' || id === 'move' || id === 'measure' ? toolMode === id : id === 'template' ? toolMode === 'template' : activePanel === id;
+    const activateRuntimeTool = (id: RuntimeMapToolId) => {
+      if (id === 'select' || id === 'move' || id === 'measure') {
+        setToolMode(id);
+        setMeasurement(undefined);
+        return;
+      }
+      if (id === 'template') {
+        setToolMode('template');
+        setActivePanel(activePanel === 'template' ? undefined : 'template');
+        return;
+      }
+      setActivePanel(activePanel === id ? undefined : id);
+    };
 
     return <section className="relative h-full min-h-0 w-full overflow-hidden bg-[#e5ebf3]">
       <div
@@ -667,17 +684,12 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
         {tokenMenuLayer}
       </div>
 
-      <div className="absolute left-2 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-1 rounded-xl border border-slate-300/70 bg-slate-50/85 p-1 shadow-lg backdrop-blur-sm sm:left-3 sm:gap-1.5 sm:p-1.5">
-        <button type="button" title={t('mapRuntime.toolSelect')} aria-label={t('mapRuntime.toolSelect')} onClick={() => { setToolMode('select'); setMeasurement(undefined); }} className={toolButtonClass(toolMode === 'select')}><MousePointer2 size={17} /></button>
-        <button type="button" title={t('mapRuntime.toolMove')} aria-label={t('mapRuntime.toolMove')} onClick={() => { setToolMode('move'); setMeasurement(undefined); }} className={toolButtonClass(toolMode === 'move')}><Hand size={17} /></button>
-        <button type="button" title={t('mapRuntime.toolMeasure')} aria-label={t('mapRuntime.toolMeasure')} onClick={() => { setToolMode('measure'); setMeasurement(undefined); }} className={toolButtonClass(toolMode === 'measure')}><Ruler size={17} /></button>
-        {canManage && <>
-          <span className="mx-1 h-px bg-slate-300/80" />
-          <button type="button" title={t('mapRuntime.toolBackground')} aria-label={t('mapRuntime.toolBackground')} onClick={() => setActivePanel(activePanel === 'background' ? undefined : 'background')} className={toolButtonClass(activePanel === 'background')}><Image size={17} /></button>
-          <button type="button" title={t('mapRuntime.toolGrid')} aria-label={t('mapRuntime.toolGrid')} onClick={() => setActivePanel(activePanel === 'grid' ? undefined : 'grid')} className={toolButtonClass(activePanel === 'grid')}><Grid3X3 size={17} /></button>
-        </>}
-        <button type="button" title={t('mapRuntime.toolTemplate')} aria-label={t('mapRuntime.toolTemplate')} onClick={() => { setToolMode('template'); setActivePanel(activePanel === 'template' ? undefined : 'template'); }} className={toolButtonClass(toolMode === 'template')}><Shapes size={17} /></button>
-        {canManage && <button type="button" title="放置单位" aria-label="放置单位" onClick={() => setActivePanel(activePanel === 'units' ? undefined : 'units')} className={toolButtonClass(activePanel === 'units')}><UsersRound size={17} /></button>}
+      <div aria-label={locale === 'en' ? 'Map tools' : '地图工具'} role="toolbar" className="absolute left-2 top-1/2 z-20 flex max-h-[calc(100%_-_8rem)] -translate-y-1/2 flex-col gap-1 overflow-y-auto rounded-xl border border-slate-300/70 bg-slate-50/85 p-1 shadow-lg backdrop-blur-sm sm:left-3 sm:gap-1.5 sm:p-1.5">
+        {runtimeTools.map((tool) => {
+          const Icon = tool.id === 'select' ? MousePointer2 : tool.id === 'move' ? Hand : tool.id === 'measure' ? Ruler : tool.id === 'background' ? Image : tool.id === 'grid' ? Grid3X3 : tool.id === 'template' ? Shapes : UsersRound;
+          const title = runtimeToolTitle(tool.id);
+          return <button key={tool.id} type="button" title={title} aria-label={title} aria-pressed={runtimeToolActive(tool.id)} onClick={() => activateRuntimeTool(tool.id)} className={toolButtonClass(runtimeToolActive(tool.id))}><Icon size={16} aria-hidden /><span className="text-[9px] font-black leading-none">{tool.shortLabel}</span></button>;
+        })}
       </div>
 
       {canManage && activePanel === 'background' && <div className={compactPanelClass}><div className="flex items-center justify-between gap-3"><div><div className="text-sm font-black text-slate-800">基础地形</div><p className="mt-0.5 text-[11px] text-slate-500">选择一张底图；网格会叠加在上方。</p></div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div><div className="mt-3 grid grid-cols-2 gap-2">{MAP_BACKGROUND_PRESETS.map((preset) => <button key={preset} type="button" onClick={() => emit(board.setBackgroundPreset(preset))} className={`h-16 rounded-lg border p-2 text-left text-[11px] font-bold shadow-sm ${board.state.backgroundPreset === preset ? 'border-[#58180d] ring-2 ring-[#f5c518]/60' : 'border-slate-300/80'}`} style={backgroundPresetStyle(preset)}><span className="rounded bg-white/80 px-1.5 py-0.5 text-[#17130f]">{presetLabel(preset, locale)}</span></button>)}</div><form onSubmit={(event) => { event.preventDefault(); emit(board.setBackground(backgroundUrl, backgroundName)); }} className="mt-3 grid gap-2"><input value={backgroundUrl} onChange={(event) => setBackgroundUrl(event.target.value)} placeholder={t('mapRuntime.backgroundUrl')} className="rounded-md border border-slate-300 bg-white px-2.5 py-2 text-xs" /><div className="flex gap-2"><input value={backgroundName} onChange={(event) => setBackgroundName(event.target.value)} placeholder={t('mapRuntime.backgroundName')} className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2.5 py-2 text-xs" /><button type="submit" disabled={!backgroundUrl.trim()} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">使用图片</button></div></form>{board.state.backgroundUrl && <button type="button" onClick={() => emit(board.clearBackground())} className="mt-2 text-xs font-bold text-[#8b3a2f]">{t('mapRuntime.resetToPreset')}</button>}</div>}

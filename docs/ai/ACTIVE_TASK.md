@@ -6,26 +6,27 @@
 
 ## Task
 
-- ID: Mobile Runtime Supporting Sheet v1
-- Name: `MOBILE_RUNTIME_SUPPORTING_SHEET_V1`
-- Goal: Make mobile members, inspector, and log panels read and behave like
-  lightweight tabletop sheets without trapping users away from the map.
+- ID: Mobile Runtime Map Tool Labels v1
+- Name: `MOBILE_RUNTIME_MAP_TOOL_LABELS_V1`
+- Goal: Make compact Runtime map tools discoverable on touch screens without
+  relying on hover titles, especially the host standalone Token entry.
 - Phase: P0 Runtime mobile usability
 - Status: Done
 
 ## UI Contract
 
-- An open mobile supporting panel dims the map but keeps the panel switcher usable.
-- Tapping the dimmed map returns to the tabletop without changing Runtime data.
-- Panel triggers expose their controlled region and pressed state.
-- Spectators see a spectator label rather than the player-only "My Info" label.
-- Desktop layout and overlay behavior remain unchanged.
+- Compact tool rail keeps icon and adds a short visible label.
+- Host order is Select, Move, Measure, Background, Grid, Area, Token.
+- Non-host viewers never receive host-only Background, Grid, or Token tools.
+- Existing tool modes, callbacks, panels, permissions, and desktop workspace stay.
+- Tool labels may be Chinese or English according to the active locale.
 
 ## Allowed Files
 
-- `src/components/platform/RuntimeFullscreenShell.tsx`
-- `src/lib/platform/runtimeOverlayCoordination.ts`
-- `src/lib/platform/runtimeOverlayCoordinationSmoke.ts`
+- `src/components/platform/BasicMapBoard.tsx`
+- `src/lib/map/runtimeMapToolPresentation.ts`
+- `src/lib/map/runtimeMapToolPresentationSmoke.ts`
+- `package.json`
 - `PROJECT_STATUS.md`
 - `TEST_CHECKLIST.md`
 - `docs/ai/ACTIVE_TASK.md`
@@ -34,24 +35,24 @@
 
 ## Forbidden Changes
 
-- Runtime panel content, combat state, turn authority, RuntimeLog, dice/actions
-- Room roles/permissions, visibility projection, map controls, server/API
-- Store, schema, migration, rule data, Campaign Runtime, desktop layout
+- Map tool callbacks, map event payload/authority, Token permissions
+- Actor binding/Room roles, Runtime panel content, server/API
+- Store, schema, migration, rule data, combat behavior, Campaign Runtime
 
 ## Completion Criteria
 
-- Compact Runtime derives whether a supporting sheet is open from tested state.
-- A lightweight backdrop returns directly to the map.
-- Switcher remains above the backdrop and can replace the active panel.
-- Mobile trigger labels and aria relationships match their actual panel.
-- Focused overlay smoke, existing regressions, lint, build, and diff check pass.
+- Pure presentation model covers host/non-host order and localized short labels.
+- Compact buttons render visible labels with their existing icons and aria labels.
+- Host Token button clearly opens the existing standalone/linked Unit panel.
+- Focused smoke, map/permission regressions, lint, build, and diff check pass.
 
 ## Verification
 
 ```powershell
-npm run frontend:verify:runtime-overlay-coordination
-npm run frontend:verify:runtime-action-dock
-npm run frontend:verify:runtime-player-turn-callout
+npm run frontend:verify:runtime-map-tool-presentation
+npm run frontend:verify:map-runtime
+npm run frontend:verify:actor-presence
+npm run frontend:verify:player-token-control
 npm run lint
 npm run build
 git diff --check
@@ -59,11 +60,11 @@ git diff --check
 
 ## Result
 
-- Mobile supporting panels now dim the tabletop and close through a dedicated
-  accessible Return to Map backdrop.
-- The switcher stays above that backdrop, so members, inspector, and log can
-  still replace one another directly.
-- Panel triggers and regions are linked through stable ids; spectator wording is
-  distinct from player-only My Info wording.
-- Focused overlay, action-dock, own-turn, combat HUD, TypeScript, frontend build,
-  and diff checks pass.
+- Compact Runtime map tools now combine existing icons with localized short
+  labels, so touch users no longer depend on hover titles.
+- Host order explicitly ends with Token; participant presentation omits host-only
+  Background, Grid, and Token tools through a focused pure model.
+- The rail scrolls within a bounded mobile height and compact panels clear its
+  wider labeled footprint.
+- Focused presentation, map replay, actor presence, Token ownership, TypeScript,
+  frontend build, and diff checks pass.

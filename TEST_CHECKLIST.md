@@ -1383,6 +1383,22 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8x. Mobile Runtime Map Tool Labels v1
+
+- [ ] Compact Runtime map tools show an icon and visible short label without requiring hover
+- [ ] Host order is Select, Move, Measure, Background, Grid, Area, Token
+- [ ] Token is a clearly labeled entry into the existing standalone/linked placement panel
+- [ ] Player and spectator tool presentation excludes Background, Grid, and Token
+- [ ] Chinese labels are 选择/移动/测距/底图/网格/范围/Token
+- [ ] English labels remain compact: Select/Move/Measure/Map/Grid/Area/Token
+- [ ] Active tools retain pressed styling and explicit `aria-pressed`
+- [ ] Tool rail scrolls inside a bounded tabletop height on short mobile screens
+- [ ] `npm run frontend:verify:runtime-map-tool-presentation` passes
+- [ ] Existing map replay, actor presence, Token ownership, TypeScript, and frontend build checks pass
+- [ ] No tool callback, map authority, permissions, roles, server, store/schema, rules, combat, Campaign Runtime, or workspace layout changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

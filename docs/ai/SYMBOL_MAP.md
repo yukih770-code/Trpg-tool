@@ -977,6 +977,15 @@ This file helps AI quickly locate important types, helper functions, store actio
 - `inspectorLabel` / `mobileInspectorLabel`: host/player/spectator-specific presentation labels; no role or permission change.
 - Focused smoke: `src/lib/platform/runtimeOverlayCoordinationSmoke.ts`; command `npm run frontend:verify:runtime-overlay-coordination`.
 
+## Mobile Runtime Map Tool Labels
+
+- `AI-LANDMARK: MOBILE_RUNTIME_MAP_TOOL_LABELS_V1`: compact Runtime branch in `src/components/platform/BasicMapBoard.tsx`
+- `getRuntimeMapToolPresentation()`: pure host/non-host ordered tool ids and localized short labels — `src/lib/map/runtimeMapToolPresentation.ts`.
+- `runtimeTools` renders existing Lucide icons plus visible short labels; callbacks remain routed by `activateRuntimeTool()` to existing state setters.
+- Host tools: select/move/measure/background/grid/template/units; participant tools: select/move/measure/template.
+- Tool rail uses bounded vertical scrolling; compact panels shift right to clear the wider labeled rail.
+- Focused smoke: `src/lib/map/runtimeMapToolPresentationSmoke.ts`; command `npm run frontend:verify:runtime-map-tool-presentation`.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.
