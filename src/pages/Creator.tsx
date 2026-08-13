@@ -21,6 +21,11 @@ import { createTranslator, readStoredLocale } from '../i18n';
 import { buildStarterEquipmentPlan } from '../lib/dnd2024/dndStarterEquipmentPlan';
 import { getDndCharacterSpellIndex } from '../lib/dnd2024/dndSpellAvailability';
 import { getDndSpellPreparationModel } from '../lib/dnd2024/spell-preparation-model';
+import {
+  evaluateDndLevelOneReadiness,
+  finalizeDndLevelOneCharacter,
+  type DndLevelOneReadinessCode,
+} from '../lib/dnd2024/dndLevelOneCharacter';
 import { toast } from 'sonner';
 
 type BuilderSection =
@@ -79,7 +84,7 @@ export function Creator({
   onComplete,
   onOpenPersonalContentWorkshop,
 }: {
-  onComplete: () => void;
+  onComplete: (actorId: string) => void;
   onOpenPersonalContentWorkshop?: () => void;
 }) {
   const { t } = createTranslator(readStoredLocale());
@@ -90,7 +95,7 @@ export function Creator({
   const [selectedPersonalPackContent, setSelectedPersonalPackContent] = useState<PersonalCompendiumPackVersionContent | null>(null);
   const [selectedPersonalPackContentLoading, setSelectedPersonalPackContentLoading] = useState(false);
   const [selectedPersonalPackContentError, setSelectedPersonalPackContentError] = useState('');
-  const { character, updateField, updateAttrPointBuy, resetCreator } = useCharacterStore();
+  const { character, updateField, updateAttrPointBuy, resetCreator, commitCompletedCharacter } = useCharacterStore();
 
   const selectedPersonalReference = character.personalContentReferences[0];
   const baseRaceData = getAvailableRaces(character);
@@ -156,67 +161,6 @@ export function Creator({
 
   const goToValidationSection = (target: BuilderSection) => setSection(target);
 
-  const handleComplete = () => {
-    if (!character.name) {
-      goToValidationSection('identity'); return toast('请填写角色名字');
-    }
-    if (!character.race) {
-      goToValidationSection('species'); return toast('请选择种族');
-    }
-    const race = RACE_DATA.find(r => r.name === character.race);
-    if (race?.subraces.length && !character.subrace) {
-      goToValidationSection('species'); return toast('请选择子种族');
-    }
-    if (!character.jobClass) {
-      goToValidationSection('class'); return toast('请选择职业');
-    }
-    const cls = CLASS_DATA.find(c => c.name === character.jobClass);
-    if (cls?.subclasses.some(s => s.unlockLevel === 1) && !character.subclass) {
-      goToValidationSection('class'); return toast('请选择子职业');
-    }
-    if (!character.background) {
-      goToValidationSection('background'); return toast('请选择背景');
-    }
-    if (!character.feats || character.feats.length === 0) {
-      goToValidationSection('feats'); return toast('请选择一个玩家/出身专长');
-    }
-    if (character.remainingPoints > 0) {
-      goToValidationSection('abilities'); return toast('属性未分配完毕', { description: '请分配剩余的属性点。' });
-    }
-
-    const conVal = character.attrs.Con.base + character.attrs.Con.pointbuy + character.attrs.Con.racebonus;
-    const conMod = Math.floor((conVal - 10) / 2);
-    const hitDiceSizes: Record<string, number> = { '野蛮人': 12, '战士': 10, '圣武士': 10, '游侠': 10, '法师': 6, '术士': 6, '护法': 10, '武僧': 8, '吟游诗人': 8, '牧师': 8, '德鲁伊': 8, '邪术师': 8, '游荡者': 8 };
-    const classHitDie = cls ? Number(cls.hitDice.slice(1)) : 0;
-    const hd = classHitDie || hitDiceSizes[character.jobClass] || 8;
-    const initialHp = hd + conMod;
-    const spellbook = { ...character.spellbook };
-    spellbook.slots = makeSpellSlotState(getDndSpellPreparationModel(character).spellSlots);
-
-    if (cls) {
-      updateField('weaponProficiencies', cls.weaponProficiencies);
-      updateField('armorTraining', cls.armorProficiencies);
-      updateField('savingThrowProficiencies', cls.savingThrows as AttributeName[]);
-      // Do NOT write the class starting-equipment summary into character.inventory:
-      // that summary is a selection PLAN (e.g. "细剑 或 长剑 …，皮甲，匕首"), not an
-      // item. The Equipment page derives a StarterEquipmentPlan from the class
-      // definition's startingEquipment and materializes real items on Generate.
-      // (Legacy characters that already stored the summary are quarantined by the
-      // isLegacyStarterSummary detectors in the inventory view-model.)
-    }
-
-    const bg = AVAILABLE_BACKGROUND_DATA.find(b => b.name === character.background);
-    if (bg) {
-      updateField('skillProficiencies', bg.skillProficiencies);
-    }
-
-    updateField('hpMax', Math.max(1, initialHp));
-    updateField('hpCurrent', Math.max(1, initialHp));
-    updateField('spellbook', spellbook);
-    updateField('isCompleted', true);
-    onComplete();
-  };
-
   const selectedRace = RACE_DATA.find(r => r.name === character.race);
   const selectedClass = CLASS_DATA.find(c => c.name === character.jobClass);
   const personalCharacterRuleProjections = personalEntriesToCharacterRuleProjections(
@@ -254,6 +198,36 @@ export function Creator({
     ...baseSpellData.filter((spell) => availableBaseSpellNames.has(spell.name_en)),
     ...personalSpellData,
   ];
+  const readinessContext = {
+    requiresSubspecies: Boolean(selectedRace?.subraces.length),
+    requiresSubclass: Boolean(selectedClass?.subclasses.some((subclass) => subclass.unlockLevel === 1)),
+    isCaster: spellPreparationModel.isCaster,
+    spellDataIncomplete: spellPreparationModel.isCaster,
+    starterEquipmentNeedsMaterialization: Boolean(selectedStarterEquipmentPlan),
+  };
+  const levelOneReadiness = evaluateDndLevelOneReadiness(character, readinessContext);
+  const readinessIssueLabel = (code: DndLevelOneReadinessCode) => t(`dndBuilder.readiness.${code}`);
+
+  const handleComplete = () => {
+    const result = finalizeDndLevelOneCharacter(character, {
+      ...readinessContext,
+      classDefinition: selectedClass,
+      backgroundDefinition: selectedBackground,
+      spellSlots: makeSpellSlotState(spellPreparationModel.spellSlots),
+    });
+    if (!result.ok) {
+      const first = result.readiness.blockers[0];
+      if (first) {
+        goToValidationSection(first.section);
+        toast(readinessIssueLabel(first.code));
+      }
+      return;
+    }
+
+    commitCompletedCharacter(result.character);
+    toast(t('dndBuilder.readiness.saved'));
+    onComplete(result.character.id);
+  };
 
   const toggleKnownSpell = (spell: SpellInfo) => {
     const isKnown = character.spellbook.known.some((known) => known.name_cn === spell.name_cn);
@@ -301,9 +275,9 @@ export function Creator({
     { id: 'class', label: t('dndBuilder.sections.class'), hint: t('dndBuilder.sectionHints.class'), done: !!character.jobClass },
     { id: 'abilities', label: t('dndBuilder.sections.abilities'), hint: t('dndBuilder.sectionHints.abilities'), done: character.remainingPoints === 0 },
     { id: 'feats', label: t('dndBuilder.sections.feats'), hint: t('dndBuilder.sectionHints.feats'), done: selectedFeatNames.length > 0 },
-    { id: 'spells', label: t('dndBuilder.sections.spells'), hint: t('dndBuilder.sectionHints.spells') },
-    { id: 'equipment', label: t('dndBuilder.sections.equipment'), hint: t('dndBuilder.sectionHints.equipment') },
-    { id: 'review', label: t('dndBuilder.sections.review'), hint: t('dndBuilder.sectionHints.review') },
+    { id: 'spells', label: t('dndBuilder.sections.spells'), hint: t('dndBuilder.sectionHints.spells'), done: !levelOneReadiness.warnings.some((issue) => issue.section === 'spells') },
+    { id: 'equipment', label: t('dndBuilder.sections.equipment'), hint: t('dndBuilder.sectionHints.equipment'), done: !levelOneReadiness.warnings.some((issue) => issue.section === 'equipment') },
+    { id: 'review', label: t('dndBuilder.sections.review'), hint: t('dndBuilder.sectionHints.review'), done: levelOneReadiness.ready },
   ];
 
   const panelClass = 'rounded-lg border border-[#58180d]/25 bg-[#fff8e6]/82 p-4 md:p-5 shadow-sm';
@@ -940,7 +914,27 @@ export function Creator({
         <div className={subPanelClass}>
           <h3 className="mb-3 text-sm font-bold text-[#58180d]">{t('dndBuilder.todos.title')}</h3>
           <TodoList items={todoItems} />
-          <Button className="mt-4 w-full rounded-md bg-[#58180d] py-5 font-bold text-[#fdf6e3] hover:bg-[#2c1810]" onClick={handleComplete}>
+          {levelOneReadiness.blockers.length > 0 && (
+            <div className="mt-4 rounded-md border border-red-800/25 bg-red-50/70 p-3">
+              <p className="text-xs font-bold text-red-900">{t('dndBuilder.readiness.blockersTitle')}</p>
+              <div className="mt-2 space-y-1">
+                {levelOneReadiness.blockers.map((issue) => (
+                  <button key={issue.code} type="button" onClick={() => setSection(issue.section)} className="block w-full text-left text-xs text-red-800 underline-offset-2 hover:underline">
+                    · {readinessIssueLabel(issue.code)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {levelOneReadiness.warnings.length > 0 && (
+            <div className="mt-3 rounded-md border border-[#a35b11]/25 bg-[#fff1c7]/45 p-3">
+              <p className="text-xs font-bold text-[#7c4a13]">{t('dndBuilder.readiness.warningsTitle')}</p>
+              <div className="mt-2 space-y-1 text-xs text-[#7c4a13]">
+                {levelOneReadiness.warnings.map((issue) => <p key={issue.code}>· {readinessIssueLabel(issue.code)}</p>)}
+              </div>
+            </div>
+          )}
+          <Button disabled={!levelOneReadiness.ready} className="mt-4 w-full rounded-md bg-[#58180d] py-5 font-bold text-[#fdf6e3] hover:bg-[#2c1810] disabled:cursor-not-allowed disabled:opacity-40" onClick={handleComplete}>
             {t('dndBuilder.actions.complete')}
           </Button>
         </div>
@@ -1047,7 +1041,7 @@ export function Creator({
               ]}
               todoItems={todoItems}
             />
-            <Button className="mt-4 w-full rounded-md bg-[#58180d] py-5 font-bold text-[#fdf6e3] hover:bg-[#2c1810]" onClick={handleComplete}>
+            <Button disabled={!levelOneReadiness.ready} className="mt-4 w-full rounded-md bg-[#58180d] py-5 font-bold text-[#fdf6e3] hover:bg-[#2c1810] disabled:cursor-not-allowed disabled:opacity-40" onClick={handleComplete}>
               {t('dndBuilder.actions.complete')}
             </Button>
             <Button variant="ghost" onClick={() => { resetCreator(); setSection('identity'); }} className="mt-2 w-full justify-center rounded-md text-xs font-bold text-[#58180d] hover:bg-[#58180d]/10">

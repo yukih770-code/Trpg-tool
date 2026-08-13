@@ -250,6 +250,15 @@ DND Character Options Source Completion v1 status:
 - DND Builder Workbench Phase 1 modernizes the Creator presentation inside the preserved play view: identity / sources / species / background / class / abilities / feats / spells / equipment / review sections can be switched non-linearly, with responsive mobile-safe layout and a live summary panel. Existing creation logic remains unchanged.
 - Platform Character Entry Pattern Alignment v1 keeps DND as the reference pattern: Character Vault / creation method selection / Sheet context action / Gameplay entry remain preserved without DND rule data, schema, store, Sheet, or Gameplay runtime changes.
 
+## 6.5 Level-One Character Commit Chain v1
+
+- `dndLevelOneCharacter.ts` is the deterministic Builder/Audit contract for fields represented by the current schema: identity, species and required branch, background, class and level-one subclass when applicable, origin feat, valid 27-point buy, and level-one structure.
+- Builder review shows blockers that link back to the responsible section. Incomplete local spell coverage, empty caster spell selection, and unmaterialized starter equipment are explicit warnings rather than invented completion rules.
+- Completing a character now derives HP, class/background proficiencies, spell slots, class-level allocation, and class resources, then atomically updates the active compatibility character and its Actor Vault record with `isCompleted: true`.
+- Actor Vault completion reads the explicit committed lifecycle state. Pristine auto-created drafts do not appear as Owned Actors; partially edited drafts remain visible as incomplete and may still be selected for a campaign because room/host approval remains the admission authority.
+- Creating a character from campaign entry now opens the formal Builder and restores the existing campaign return context only after the committed actor exists. Planned quick/import/workshop methods no longer fabricate completion.
+- This does not add the missing official spell catalog, spell-choice count enforcement, starter-equipment item generation, equip state, weight, automated effects, or room authority changes.
+
 ## 7. Current Priority Gap List
 
 ### P0: Blocks Existing Functionality

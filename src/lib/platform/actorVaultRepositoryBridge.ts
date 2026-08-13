@@ -19,6 +19,7 @@ import { useCharacterStore } from '../../store/characterStore';
 import { useCocStore } from '../../store/cocStore';
 import { useCpStore } from '../../store/cpStore';
 import type { CharacterData } from '../dnd-types';
+import { isPristineDndCharacterDraft } from '../dnd2024/dndLevelOneCharacter';
 import type { CocCharacter } from '../coc-types';
 import type { CpCharacter } from '../cp-types';
 import {
@@ -255,7 +256,7 @@ function listDndActorVaultRecords(): ActorVaultRecord[] {
   );
 
   return characters
-    .filter((character) => Boolean(character.id))
+    .filter((character) => Boolean(character.id) && !isPristineDndCharacterDraft(character))
     .map((character) => makeDndActorVaultRecord(character));
 }
 

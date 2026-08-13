@@ -29,6 +29,7 @@ Stack: React + TypeScript + Vite + Zustand (persist) + Tailwind + shadcn/ui.
 | AI Task Lifecycle v1 (`docs/ai/ACTIVE_TASK.md`, `docs/ai/TASK_ARCHIVE.md`) | ✅ Added |
 | Documentation Governance v1 (`AI_WORKFLOW.md`, `docs/ai/*`, `docs/archive/README.md`) | ✅ Added |
 | Product Truth + Ecosystem / Internal AI Roadmap v1 | ✅ Done (`CURRENT_PLATFORM_STAGE.md` establishes single-node private Alpha truth; `ECOSYSTEM_AND_AI_ROADMAP.md` defines internal intelligence layer, local/cloud provider boundary, and complete-chain milestones; README corrected; Workshop/Fan Plaza public seeds removed and real empty states added; package contracts aligned; no model gateway, publish, subscription, install, billing, schema, or backend behavior claimed) |
+| DND Level-One Character Commit Chain v1 | ✅ Done (one readiness/audit contract now drives Builder blockers, explicit spell/equipment warnings, atomic compat + Actor Vault persistence, finalized Vault status, formal campaign return context, character sheet handoff, and room-selectable Owned Actor snapshots; pristine auto-drafts stay out of the Vault; full spell coverage and real starter-item materialization remain deferred) |
 | Documentation Consolidation v1 | ✅ Done |
 | Hardcore Platform Reorientation v1 | ✅ Done |
 | Open-Source Community Ecosystem Goal | ✅ Planned |

@@ -136,6 +136,21 @@ export function DndWorkspaceShell({
   const [hostLaunchState, setHostLaunchState] = useState<RoomLaunchActionState>('idle');
   const [actorCreationCompletionContext, setActorCreationCompletionContext] =
     useState<ActorCreationCompletionContext | null>(null);
+  const [creatingActorId, setCreatingActorId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!creatingActorId || dndChar.id !== creatingActorId || !dndChar.isCompleted) return;
+    const actor: CampaignSuggestedActor = {
+      actorId: dndChar.id,
+      actorName: dndChar.name.trim(),
+    };
+    setActorCreationCompletionContext(campaignActorAddContext
+      ? { kind: 'forCampaign', actor, campaign: campaignActorAddContext }
+      : { kind: 'standalone', actor });
+    setCreatingActorId(null);
+    setPlannedSlotLabelKey(null);
+    onViewChange('create');
+  }, [campaignActorAddContext, creatingActorId, dndChar.id, dndChar.isCompleted, dndChar.name, onViewChange]);
 
   const openCampaignDetail = (campaignId: string) => {
     setFocusedCampaignId(campaignId);
@@ -199,24 +214,6 @@ export function DndWorkspaceShell({
     setCampaignEntryTab('mine');
     onViewChange('campaigns');
   };
-
-  function buildActorCreationCompletionContext(): ActorCreationCompletionContext {
-    const actor: CampaignSuggestedActor = {
-      actorId: dndActiveCharacterId ?? 'ui-preview-dnd-actor',
-      actorName: characterName || t('multiWorkspace.actorCreationCompletion.placeholderActorName'),
-    };
-
-    if (campaignActorAddContext) {
-      return { kind: 'forCampaign', actor, campaign: campaignActorAddContext };
-    }
-
-    return { kind: 'standalone', actor };
-  }
-
-  function showActorCreationCompletion() {
-    setActorCreationCompletionContext(buildActorCreationCompletionContext());
-    setPlannedSlotLabelKey(null);
-  }
 
   function handleOpenCompletedActorSheet() {
     setActorCreationCompletionContext(null);
@@ -377,17 +374,14 @@ export function DndWorkspaceShell({
       labelKey: 'dndWorkspace.creation.standard',
       noteKey: 'dndWorkspace.creation.standardNote',
       onClick: () => {
-        if (campaignActorAddContext) {
-          showActorCreationCompletion();
-          return;
-        }
         resetDndCreator();
+        setCreatingActorId(useCharacterStore.getState().character.id);
         onOpenPlayTab('creator');
       },
     },
-    { labelKey: 'dndWorkspace.creation.quick', noteKey: 'dndWorkspace.creation.quickNote', planned: true, onClick: showActorCreationCompletion },
-    { labelKey: 'dndWorkspace.creation.localImport', noteKey: 'dndWorkspace.creation.localImportNote', planned: true, onClick: showActorCreationCompletion },
-    { labelKey: 'dndWorkspace.creation.workshop', noteKey: 'dndWorkspace.creation.workshopNote', planned: true, onClick: showActorCreationCompletion },
+    { labelKey: 'dndWorkspace.creation.quick', noteKey: 'dndWorkspace.creation.quickNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.quick') },
+    { labelKey: 'dndWorkspace.creation.localImport', noteKey: 'dndWorkspace.creation.localImportNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.localImport') },
+    { labelKey: 'dndWorkspace.creation.workshop', noteKey: 'dndWorkspace.creation.workshopNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.workshop') },
   ];
 
   const handleRequestAddActorForCampaign = (context: CampaignActorAddReturnContext) => {

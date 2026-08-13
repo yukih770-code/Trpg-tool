@@ -18,6 +18,22 @@ npm run build
 
 Both must pass before committing.
 
+### DND Level-One Character Commit Chain
+
+```bash
+npm run frontend:verify:dnd-level-one-character
+npm run frontend:verify:character-entry
+npm run frontend:verify:character-entry-cta
+npm run frontend:verify:room-player-flow
+```
+
+- [ ] 空白自动草稿不出现在角色库；开始填写后作为“不完整”草稿可见。
+- [ ] 检查页的阻断项可返回对应栏目，未清除时不能完成。
+- [ ] 法术资料不完整与起始装备未生成显示为诚实警告，不伪造规则完成度。
+- [ ] 完成后角色库记录与当前角色同步，刷新后仍为“已完成”。
+- [ ] 从战役创建角色会打开正式 Builder；完成后恢复战役 return context。
+- [ ] 已完成及不完整 Owned Actor 均可进入房间选择，最终准入仍由房间/主持人审批。
+
 ---
 
 ## Architecture Contract Checks

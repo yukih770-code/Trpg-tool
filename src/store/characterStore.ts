@@ -9,6 +9,7 @@ import {
   normalizeDndClassLevels,
   type DndClassLevelTarget,
 } from '../lib/dnd2024/multiclass';
+import { isPristineDndCharacterDraft } from '../lib/dnd2024/dndLevelOneCharacter';
 
 export type DndSpellcastingResourceConsumption = {
   ok: boolean;
@@ -157,6 +158,7 @@ interface CharacterState {
   activeCharacterId: string | null;
   setActiveCharacterId: (id: string) => void;
   addCharacter: (data: CharacterData) => void;
+  commitCompletedCharacter: (data: CharacterData) => void;
   // ── End multi-actor fields ──
   updateField: <K extends keyof CharacterData>(key: K, value: CharacterData[K]) => void;
   toggleMod: (modName: string) => void;
@@ -657,9 +659,31 @@ export const useCharacterStore = create<CharacterState>()(
         return { character: migrated, characters: [...updatedList, migrated], activeCharacterId: migrated.id };
       }),
 
+      // Builder commit boundary: the completed compat character and its Owned
+      // Actor vault record are written atomically, so refresh/selection/runtime
+      // readers cannot observe two different versions.
+      commitCompletedCharacter: (data) => set((state) => {
+        const migrated = migrateCharacter({ ...data, isCompleted: true });
+        const updatedList = state.characters.some((character) => character.id === migrated.id)
+          ? state.characters.map((character) => character.id === migrated.id ? migrated : character)
+          : [...state.characters, migrated];
+        return {
+          character: migrated,
+          characters: updatedList,
+          activeCharacterId: migrated.id,
+        };
+      }),
+
       resetCreator: () => set((state) => {
-        const updatedList = syncActiveCharacter(state.character, state.characters, state.activeCharacterId);
-        const newChar: CharacterData = { ...defaultChar, id: crypto.randomUUID?.() || Date.now().toString() };
+        const updatedList = syncActiveCharacter(state.character, state.characters, state.activeCharacterId)
+          .filter((character) => !isPristineDndCharacterDraft(character));
+        // Resetting an in-flight draft keeps its id so the surrounding formal
+        // creation return context remains attached. Starting from a finalized
+        // actor creates a new Owned Actor candidate with a new id.
+        const draftId = !state.character.isCompleted && state.character.id
+          ? state.character.id
+          : crypto.randomUUID?.() || Date.now().toString();
+        const newChar: CharacterData = { ...defaultChar, id: draftId };
         return { character: newChar, characters: [...updatedList, newChar], activeCharacterId: newChar.id };
       }),
 

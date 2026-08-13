@@ -18,20 +18,16 @@ import type {
   ActorVaultColorTheme,
   ActorVaultShellStrings,
 } from '../../lib/platform/actorVault';
+import { isDndCharacterFinalized } from '../../lib/dnd2024/dndLevelOneCharacter';
 
 // ─── Completion check ─────────────────────────────────────────────────────────
 
 /**
- * A DND character is considered "complete" when the four core identity fields
- * are filled in. This is the same check previously inlined in DndWorkspaceShell.
+ * Completion is the explicit Builder commit state plus the core identity guard.
+ * Draft field guesses must not masquerade as a finalized Owned Actor.
  */
 export function isDndCharComplete(char: CharacterData): boolean {
-  return Boolean(
-    (char as { name?: string }).name?.trim() &&
-    char.jobClass &&
-    char.race &&
-    char.background,
-  );
+  return isDndCharacterFinalized(char);
 }
 
 // ─── Summary mapper ───────────────────────────────────────────────────────────
