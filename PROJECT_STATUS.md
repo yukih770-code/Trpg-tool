@@ -620,6 +620,18 @@ Landmark: `SERIALIZED_ROOM_SNAPSHOT_CONFIRMATION_V1`.
 
 ---
 
+## Active Room Request Lease v1
+
+- The `/rooms/*` FIFO integration now distinguishes a client that disconnects while queued from one whose async handler has already been admitted.
+- A queued disconnect is skipped and releases its eventual lease, so abandoned requests cannot deadlock later room traffic.
+- An admitted disconnect no longer releases the lease by itself. The handler keeps exclusive room traffic access until it reaches `res.end`/response completion, so an in-flight database write cannot overlap the next request merely because its client went away.
+- The gate integration is isolated in a reusable middleware with a deterministic smoke covering active disconnect, queued disconnect, FIFO continuation, response completion, and final idle state.
+- `runtime:verify:room-traffic-middleware`, TypeScript, and server build pass without changing room protocol, persistence schema, permission policy, or frontend behavior.
+
+Landmark: `ACTIVE_ROOM_REQUEST_LEASE_V1`.
+
+---
+
 ## Build Status
 
 | Check | Status |

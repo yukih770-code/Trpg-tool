@@ -1562,6 +1562,21 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8ah. Active Room Request Lease v1
+
+- [x] The room traffic gate is integrated through one independently testable middleware
+- [x] A client disconnecting while queued never enters its route handler
+- [x] A queued disconnect releases its eventual FIFO lease and cannot deadlock later requests
+- [x] A client disconnecting after admission does not release a still-running async handler
+- [x] The next request enters only after the admitted handler reaches response end/completion
+- [x] Response finish and explicit end remain idempotent release boundaries
+- [x] The gate returns to idle after active, queued, and abandoned requests complete
+- [x] `npm run runtime:verify:room-traffic-middleware` passes
+- [x] TypeScript and server build pass
+- [x] No schema, migration, auth protocol, room permission, WebSocket envelope, frontend state, rule data, dice algorithm, or gameplay calculation changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

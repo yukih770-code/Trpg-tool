@@ -146,6 +146,7 @@ import {
   createLiveRoomDurabilityCircuit,
 } from './services/liveRoomDurabilityCircuit.js';
 import { createLiveRoomTrafficGate } from './services/liveRoomTrafficGate.js';
+import { createLiveRoomTrafficMiddleware } from './services/liveRoomTrafficMiddleware.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -232,23 +233,7 @@ const attachPrivateAlphaViewer = async (req: Request, _res: express.Response, ne
 };
 app.use('/api', attachPrivateAlphaViewer);
 app.use('/rooms', attachPrivateAlphaViewer);
-app.use('/rooms', (req, res, next) => {
-  let closed = false;
-  let releaseGate: (() => void) | undefined;
-  res.once('close', () => {
-    closed = true;
-    releaseGate?.();
-  });
-  void liveRoomTrafficGate.enter().then((release) => {
-    releaseGate = release;
-    if (closed) {
-      release();
-      return;
-    }
-    res.once('finish', release);
-    next();
-  }).catch(next);
-});
+app.use('/rooms', createLiveRoomTrafficMiddleware(liveRoomTrafficGate));
 app.use('/rooms', (_req, res, next) => {
   const startupRecovery = startupRecoveryReadiness.snapshot();
   if (startupRecovery.status === 'ready') {
