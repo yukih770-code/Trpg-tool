@@ -87,10 +87,10 @@ export function evaluatePrivateAlphaAcceptancePreflight(
     },
     {
       id: 'database_ready',
-      passed: database.status === 'ok' && worldServerSchema.status === 'ready',
-      detail: database.status === 'ok' && worldServerSchema.status === 'ready'
-        ? 'Database and World Server schema are ready.'
-        : 'Database or World Server schema is not ready.',
+      passed: database.status === 'ok' && worldServerSchema.status === 'ready' && database.allSchemasReady === true,
+      detail: database.status === 'ok' && worldServerSchema.status === 'ready' && database.allSchemasReady === true
+        ? 'Database and all required schemas are ready.'
+        : 'Database or one or more required schemas are not ready.',
     },
     {
       id: 'login_gate_reachable',

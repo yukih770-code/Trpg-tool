@@ -1491,6 +1491,24 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8ad. Complete Room Server Health Readiness v1
+
+- [x] `/health` returns 200 only when the configured database is reachable, all required schemas are ready, and startup recovery is ready
+- [x] One missing schema family makes health return 503/`ok: false`
+- [x] Database unavailability and startup recovery failure remain distinct safe readiness blockers
+- [x] Health reports aggregate ready/required schema counts without credentials or entity identifiers
+- [x] User, Campaign, Actor, Asset, Runtime, Generated, World, Visibility, Platform Foundation, Scene State, and DND Private Monster schemas are covered
+- [x] Schema readiness checks execute concurrently after the database connectivity check
+- [x] Memory-only local mode remains ready with zero required database schemas
+- [x] Cloud Private Alpha preflight rejects a partial schema deployment even when World Server schema is ready
+- [x] `npm run runtime:verify:server-health-readiness` passes
+- [x] `npm run alpha:verify:acceptance-preflight-contract` passes with partial-schema rejection coverage
+- [x] `npm run alpha:verify:restart-recovery:local` passes against PostgreSQL across a real process restart
+- [x] TypeScript and server build pass
+- [x] No schema, migration, auth protocol, permission, room protocol, frontend state, rule data, or gameplay calculation changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

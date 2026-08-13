@@ -562,6 +562,21 @@ Landmark: `LIVE_ROOM_STARTUP_RECOVERY_READINESS_GATE_V1`.
 
 ---
 
+## Complete Room Server Health Readiness v1
+
+- Room Server `/health` now represents traffic readiness rather than process liveness alone.
+- When PostgreSQL is configured, health requires database connectivity, all 11 mounted schema families, and completed live-room startup recovery before returning HTTP 200 / `ok: true`.
+- The schema checks cover User, Campaign, Actor, Asset, Runtime Event, Generated Artifact, World Server, Visibility, Platform Foundation, Scene State, and DND Private Monster storage.
+- Schema readiness checks run concurrently after one database health check to avoid serial probe latency.
+- Health exposes safe aggregate readiness blockers/counts plus existing per-schema diagnostics; it exposes no connection string, SQL, credential, room ID, or user data.
+- Private Alpha acceptance preflight now rejects a deployment when World Server schema is ready but any other required mounted schema remains missing.
+- Memory-only local mode remains healthy without PostgreSQL because it has no configured durable database contract.
+- `runtime:verify:server-health-readiness`, acceptance preflight contract, TypeScript, server build, and the real PostgreSQL restart-recovery smoke pass.
+
+Landmark: `COMPLETE_ROOM_SERVER_HEALTH_READINESS_V1`.
+
+---
+
 ## Build Status
 
 | Check | Status |

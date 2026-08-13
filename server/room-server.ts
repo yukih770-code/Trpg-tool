@@ -78,6 +78,18 @@ import {
   checkPostgresVisibilitySchemaReadiness,
   type PostgresVisibilitySchemaReadinessResult,
 } from './db/postgresVisibilitySchemaReadiness.js';
+import {
+  checkPostgresPlatformFoundationSchemaReadiness,
+  type PostgresPlatformFoundationSchemaReadinessResult,
+} from './db/postgresPlatformFoundationSchemaReadiness.js';
+import {
+  checkPostgresSceneStateSchemaReadiness,
+  type PostgresSceneStateSchemaReadinessResult,
+} from './db/postgresSceneStateSchemaReadiness.js';
+import {
+  checkPostgresDndPrivateMonsterSchemaReadiness,
+  type PostgresDndPrivateMonsterSchemaReadinessResult,
+} from './db/postgresDndPrivateMonsterSchemaReadiness.js';
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
 import { createRoomSocketServer } from './transport/roomSocketServer.js';
 import type { AppendRoomMapEventInput, AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol/room-protocol.js';
@@ -127,6 +139,7 @@ import {
 import { createLiveRoomDurableEventPersistenceCoordinator } from './services/liveRoomDurableEventPersistence.js';
 import { restoreRoomActorAdmissions } from './services/restoreRoomActorAdmissions.js';
 import { createStartupRecoveryReadiness } from './services/startupRecoveryReadiness.js';
+import { evaluateRoomServerHealthReadiness } from './services/roomServerHealthReadiness.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -387,57 +400,109 @@ function requireRoomParticipant(
 
 app.get('/health', async (_req, res) => {
   const database = await checkPostgresHealth();
+  const databaseErrorKind = database.status === 'error' ? database.errorKind : undefined;
+  const schemaReadiness = database.status === 'ok'
+    ? await Promise.all([
+        checkPostgresUserSchemaReadiness(),
+        checkPostgresCampaignSchemaReadiness(),
+        checkPostgresActorSchemaReadiness(),
+        checkPostgresAssetSchemaReadiness(),
+        checkPostgresRuntimeEventSchemaReadiness(),
+        checkPostgresGeneratedArtifactSchemaReadiness(),
+        checkPostgresWorldServerSchemaReadiness(),
+        checkPostgresVisibilitySchemaReadiness(),
+        checkPostgresPlatformFoundationSchemaReadiness(),
+        checkPostgresSceneStateSchemaReadiness(),
+        checkPostgresDndPrivateMonsterSchemaReadiness(),
+      ] as const)
+    : undefined;
   const schema: PostgresSchemaReadinessResult =
-    database.status === 'ok'
-      ? await checkPostgresUserSchemaReadiness()
+    schemaReadiness
+      ? schemaReadiness[0]
       : database.configured === false
         ? { status: 'not_configured' }
-        : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
+        : { status: 'unreachable', errorKind: databaseErrorKind, latencyMs: database.latencyMs };
   const campaignSchema: PostgresCampaignSchemaReadinessResult =
-    database.status === 'ok'
-      ? await checkPostgresCampaignSchemaReadiness()
+    schemaReadiness
+      ? schemaReadiness[1]
       : database.configured === false
         ? { status: 'not_configured' }
-        : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
+        : { status: 'unreachable', errorKind: databaseErrorKind, latencyMs: database.latencyMs };
   const actorSchema: PostgresActorSchemaReadinessResult =
-    database.status === 'ok'
-      ? await checkPostgresActorSchemaReadiness()
+    schemaReadiness
+      ? schemaReadiness[2]
       : database.configured === false
         ? { status: 'not_configured' }
-        : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
+        : { status: 'unreachable', errorKind: databaseErrorKind, latencyMs: database.latencyMs };
   const assetSchema: PostgresAssetSchemaReadinessResult =
-    database.status === 'ok'
-      ? await checkPostgresAssetSchemaReadiness()
+    schemaReadiness
+      ? schemaReadiness[3]
       : database.configured === false
         ? { status: 'not_configured' }
-        : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
+        : { status: 'unreachable', errorKind: databaseErrorKind, latencyMs: database.latencyMs };
   const runtimeEventSchema: PostgresRuntimeEventSchemaReadinessResult =
-    database.status === 'ok'
-      ? await checkPostgresRuntimeEventSchemaReadiness()
+    schemaReadiness
+      ? schemaReadiness[4]
       : database.configured === false
         ? { status: 'not_configured' }
-        : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
+        : { status: 'unreachable', errorKind: databaseErrorKind, latencyMs: database.latencyMs };
   const generatedArtifactSchema: PostgresGeneratedArtifactSchemaReadinessResult =
-    database.status === 'ok'
-      ? await checkPostgresGeneratedArtifactSchemaReadiness()
+    schemaReadiness
+      ? schemaReadiness[5]
       : database.configured === false
         ? { status: 'not_configured' }
-        : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
+        : { status: 'unreachable', errorKind: databaseErrorKind, latencyMs: database.latencyMs };
   const worldServerSchema: PostgresWorldServerSchemaReadinessResult =
-    database.status === 'ok'
-      ? await checkPostgresWorldServerSchemaReadiness()
+    schemaReadiness
+      ? schemaReadiness[6]
       : database.configured === false
         ? { status: 'not_configured' }
-        : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
+        : { status: 'unreachable', errorKind: databaseErrorKind, latencyMs: database.latencyMs };
   const visibilitySchema: PostgresVisibilitySchemaReadinessResult =
-    database.status === 'ok'
-      ? await checkPostgresVisibilitySchemaReadiness()
+    schemaReadiness
+      ? schemaReadiness[7]
       : database.configured === false
         ? { status: 'not_configured' }
-        : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
+        : { status: 'unreachable', errorKind: databaseErrorKind, latencyMs: database.latencyMs };
+  const platformFoundationSchema: PostgresPlatformFoundationSchemaReadinessResult =
+    schemaReadiness
+      ? schemaReadiness[8]
+      : database.configured === false
+        ? { status: 'not_configured' }
+        : { status: 'unreachable', errorKind: databaseErrorKind, latencyMs: database.latencyMs };
+  const sceneStateSchema: PostgresSceneStateSchemaReadinessResult =
+    schemaReadiness
+      ? schemaReadiness[9]
+      : database.configured === false
+        ? { status: 'not_configured' }
+        : { status: 'unreachable', errorKind: databaseErrorKind };
+  const dndPrivateMonsterSchema: PostgresDndPrivateMonsterSchemaReadinessResult =
+    schemaReadiness
+      ? schemaReadiness[10]
+      : database.configured === false
+        ? { status: 'not_configured' }
+        : { status: 'unreachable', errorKind: databaseErrorKind };
   const startupRecovery = startupRecoveryReadiness.snapshot();
-  res.status(startupRecovery.status === 'ready' ? 200 : 503).json({
-    ok: startupRecovery.status === 'ready',
+  const readiness = evaluateRoomServerHealthReadiness({
+    databaseConfigured: databaseRuntimeConfig.configured,
+    databaseStatus: database.status,
+    requiredSchemaStatuses: [
+      schema.status,
+      campaignSchema.status,
+      actorSchema.status,
+      assetSchema.status,
+      runtimeEventSchema.status,
+      generatedArtifactSchema.status,
+      worldServerSchema.status,
+      visibilitySchema.status,
+      platformFoundationSchema.status,
+      sceneStateSchema.status,
+      dndPrivateMonsterSchema.status,
+    ],
+    startupRecoveryStatus: startupRecovery.status,
+  });
+  res.status(readiness.status === 'ready' ? 200 : 503).json({
+    ok: readiness.status === 'ready',
     service: 'room-server',
     version: 'm26',
     storage: MEMORY_STORAGE_CAPABILITY.adapterKind,
@@ -451,6 +516,7 @@ app.get('/health', async (_req, res) => {
     devUserApiEnabled: serverRuntimeConfig.devUserApiEnabled === true,
     publicHttpUrl: serverRuntimeConfig.publicHttpUrl ?? null,
     publicWsUrl: serverRuntimeConfig.publicWsUrl ?? null,
+    readiness,
     startupRecovery,
     lanAlpha: {
       enabled: serverRuntimeConfig.lanAlpha?.enabled === true,
@@ -467,6 +533,10 @@ app.get('/health', async (_req, res) => {
       generatedArtifactSchema,
       worldServerSchema,
       visibilitySchema,
+      platformFoundationSchema,
+      sceneStateSchema,
+      dndPrivateMonsterSchema,
+      allSchemasReady: readiness.databaseSchemasReady,
     },
   });
 });

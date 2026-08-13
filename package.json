@@ -88,6 +88,7 @@
     "runtime:verify:room-lifecycle": "tsx server/room/roomLifecycleSmoke.ts",
     "runtime:verify:room-socket-reconnect": "tsx server/transport/roomSocketReconnectSmoke.ts",
     "runtime:verify:startup-recovery-readiness": "tsx server/services/startupRecoveryReadinessSmoke.ts",
+    "runtime:verify:server-health-readiness": "tsx server/services/roomServerHealthReadinessSmoke.ts",
     "room:verify:map-bridge": "tsx server/roomMapBridgeSmoke.ts",
     "runtime:verify:room-permissions": "tsx server/room/roomRuntimePermissionSmoke.ts",
     "runtime:verify:actor-binding-vault": "tsx server/services/resolveOwnedRoomActorBindingSmoke.ts",
