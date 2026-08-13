@@ -140,6 +140,7 @@ import { createLiveRoomDurableEventPersistenceCoordinator } from './services/liv
 import { restoreRoomActorAdmissions } from './services/restoreRoomActorAdmissions.js';
 import { createStartupRecoveryReadiness } from './services/startupRecoveryReadiness.js';
 import { evaluateRoomServerHealthReadiness } from './services/roomServerHealthReadiness.js';
+import { confirmLiveRoomDurableAppend } from './services/liveRoomDurableAppendConfirmation.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -396,6 +397,49 @@ function requireRoomParticipant(
     return undefined;
   }
   return room;
+}
+
+const runtimeLogConfirmations = new Map<string, Promise<boolean>>();
+const roomMapConfirmations = new Map<string, Promise<boolean>>();
+
+function serializeLiveAppendConfirmation(
+  queued: Map<string, Promise<boolean>>,
+  roomId: string,
+  confirm: () => Promise<boolean>,
+): Promise<boolean> {
+  const previous = queued.get(roomId);
+  const next = (previous ?? Promise.resolve(true)).catch(() => false).then(confirm);
+  queued.set(roomId, next);
+  void next.finally(() => {
+    if (queued.get(roomId) === next) queued.delete(roomId);
+  });
+  return next;
+}
+
+function confirmRuntimeLogAppend(event: NonNullable<ReturnType<typeof appendRuntimeLogEvent>['event']>): Promise<boolean> {
+  return serializeLiveAppendConfirmation(runtimeLogConfirmations, event.roomId, async () => {
+    const persistence = await liveRoomDurableEventPersistence.flush(event.roomId);
+    const confirmation = confirmLiveRoomDurableAppend(registry.get(event.roomId), persistence);
+    if (confirmation.decision === 'unavailable') {
+      runtimeLogRegistry.discardPending(event.roomId, event.eventId);
+      return false;
+    }
+    if (confirmation.decision === 'confirmed') runtimeLogRegistry.confirmPending(event.roomId, event.eventId);
+    return true;
+  });
+}
+
+function confirmRoomMapAppend(event: NonNullable<ReturnType<typeof appendRoomMapEvent>['event']>): Promise<boolean> {
+  return serializeLiveAppendConfirmation(roomMapConfirmations, event.roomId, async () => {
+    const persistence = await liveRoomDurableEventPersistence.flush(event.roomId);
+    const confirmation = confirmLiveRoomDurableAppend(registry.get(event.roomId), persistence);
+    if (confirmation.decision === 'unavailable') {
+      roomMapRegistry.discardPending(event.roomId, event.mapEventId);
+      return false;
+    }
+    if (confirmation.decision === 'confirmed') roomMapRegistry.confirmPending(event.roomId, event.mapEventId);
+    return true;
+  });
 }
 
 app.get('/health', async (_req, res) => {
@@ -992,7 +1036,10 @@ app.post('/rooms/:roomId/runtime-log/events', async (req, res) => {
   // Socket delivery applies a per-member projection. Host-only events reach only
   // the host; public combat data is still redacted for non-host viewers.
   if (result.event) {
-    await liveRoomDurableEventPersistence.flush(result.event.roomId);
+    if (!await confirmRuntimeLogAppend(result.event)) {
+      res.status(503).json({ error: 'durableAppendUnavailable', message: 'The live event was not saved. Retry when storage is available.', retryable: true });
+      return;
+    }
     roomSocketServer.broadcastRuntimeLogAppended(result.event.roomId, [result.event]);
   }
   const room = registry.get(req.params.roomId);
@@ -1009,7 +1056,8 @@ app.post('/rooms/:roomId/runtime-log/events', async (req, res) => {
 
 // ── Room Map stream v0 ─────────────────────────────────────────────────────
 // Host-managed append-only map events. Map data stays out of RuntimeLog and
-// RoomSnapshot. Memory-only until a future persistence boundary is introduced.
+// RoomSnapshot. Campaign-linked rooms require durable confirmation before an
+// append becomes visible; portable rooms remain memory-only.
 app.get('/rooms/:roomId/map-events', (req, res) => {
   const afterSeqRaw = req.query.afterSeq;
   const mapIdRaw = req.query.mapId;
@@ -1081,15 +1129,18 @@ app.post('/rooms/:roomId/map-events', async (req, res) => {
     res.status(status).json({ error: result.decision, message: result.message });
     return;
   }
-  await liveRoomDurableEventPersistence.flush(result.event.roomId);
+  if (!await confirmRoomMapAppend(result.event)) {
+    res.status(503).json({ error: 'durableAppendUnavailable', message: 'The map change was not saved. Retry when storage is available.', retryable: true });
+    return;
+  }
   roomSocketServer.broadcastMapEventAppended(result.event.roomId, [result.event]);
   const room = registry.get(req.params.roomId);
   const projected = room ? projectRoomMapEventsForViewer(room, body.authorMemberId, roomMapRegistry.list(room.identity.roomId).events).find((event) => event.mapEventId === result.event?.mapEventId) : undefined;
   res.json({ event: projected ?? result.event });
 });
 
-// Host-managed collaboration grants for the Room Map. Memory-only v0: they
-// travel in RoomSnapshot for live UI updates but do not become RuntimeLog data.
+// Host-managed collaboration grants travel in the durably mirrored RoomSnapshot
+// for campaign-linked rooms and do not become public RuntimeLog data.
 app.post('/rooms/:roomId/map-permissions/:memberId', async (req, res) => {
   const body = (req.body ?? {}) as { authorizedByMemberId?: unknown; canPinRanges?: unknown; canManageTokens?: unknown };
   if (
@@ -1112,9 +1163,8 @@ app.post('/rooms/:roomId/map-permissions/:memberId', async (req, res) => {
     res.status(status).json({ error: result.decision, message: result.message });
     return;
   }
-  // Keep an append-only, host-only audit record while grants remain a
-  // memory-only Room Server capability. It is intentionally not a public
-  // RuntimeLog event and is not a durable authorization history yet.
+  // Keep an append-only, host-only audit record. It is intentionally not a
+  // public RuntimeLog event; RoomSnapshot remains the authorization authority.
   const auditLogResult = appendRuntimeLogEvent(registry, runtimeLogRegistry, {
     roomId: req.params.roomId,
     authorMemberId: body.authorizedByMemberId,
@@ -1131,7 +1181,7 @@ app.post('/rooms/:roomId/map-permissions/:memberId', async (req, res) => {
       scope: 'roomSession',
     },
   });
-  if (auditLogResult.event) await liveRoomDurableEventPersistence.flush(auditLogResult.event.roomId);
+  if (auditLogResult.event) await confirmRuntimeLogAppend(auditLogResult.event);
   await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
   roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'mapPermissionChanged');
   res.json({ room: result.room });
@@ -1162,7 +1212,10 @@ app.post('/rooms/:roomId/runtime/dice-roll', async (req, res) => {
     res.status(status).json({ ok: false, error: result.decision, message: result.message });
     return;
   }
-  await liveRoomDurableEventPersistence.flush(result.event.roomId);
+  if (!await confirmRuntimeLogAppend(result.event)) {
+    res.status(503).json({ ok: false, error: 'durableAppendUnavailable', message: 'The dice result was not saved. Retry when storage is available.', retryable: true });
+    return;
+  }
   // Only public events are broadcast (dice.roll is public in v0).
   if (result.event.visibility === 'public') {
     roomSocketServer.broadcastRuntimeLogAppended(result.event.roomId, [result.event]);

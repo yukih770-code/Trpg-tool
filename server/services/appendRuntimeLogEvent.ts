@@ -27,6 +27,7 @@ import type {
   RoomRuntimeLogVisibility,
 } from '../protocol/room-protocol.js';
 import { COMBAT_RUNTIME_EVENT_KINDS } from '../../src/lib/combat/combatRuntimeTypes.js';
+import { requiresLiveRoomDurableAppend } from './liveRoomDurableAppendConfirmation.js';
 
 const VALID_KINDS: readonly RoomRuntimeLogEventKind[] = [
   'system.note',
@@ -141,7 +142,7 @@ export function appendRuntimeLogEvent(
     visibility,
     text: input.text,
     payload: input.payload,
-  });
+  }, { pending: requiresLiveRoomDurableAppend(room) });
 
   return { decision: 'appended', event };
 }

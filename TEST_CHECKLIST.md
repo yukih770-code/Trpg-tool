@@ -1509,6 +1509,24 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8ae. Durable Live Event Acknowledgement v1
+
+- [x] Campaign-linked RuntimeLog events remain invisible while durable append confirmation is pending
+- [x] Campaign-linked Room Map events remain invisible while durable append confirmation is pending
+- [x] Successful PostgreSQL append confirms the event before HTTP success and WebSocket broadcast
+- [x] Failed or missing durable append result returns HTTP 503 with a retryable safe error
+- [x] Failed pending events are removed from memory and cannot appear in later reads or broadcasts
+- [x] Compensation removes only the failed event ID and preserves concurrent confirmed events
+- [x] Confirmation is serialized per room/stream so reconnect cursors cannot overtake an earlier pending event
+- [x] Sequence numbers are not reused after compensation
+- [x] Combat RuntimeLog and shared-dice routes use the same durable confirmation boundary
+- [x] Portable memory-only rooms preserve immediate append behavior
+- [x] `npm run runtime:verify:durable-append-confirmation` passes
+- [x] RuntimeLog recovery, Room Map recovery, Socket reconnect, TypeScript, server build, frontend build, and real PostgreSQL restart recovery pass
+- [x] No schema, migration, room protocol, WebSocket envelope, permission model, frontend state, rule data, dice algorithm, or combat calculation changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

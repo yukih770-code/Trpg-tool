@@ -8,6 +8,7 @@ import type { RoomMapRegistry } from '../room-map-registry.js';
 import { resolveRoomMemberTokenMove } from '../room/roomTokenControlGuard.js';
 import { ROOM_MAP_EVENT_KINDS } from '../../src/lib/platform/roomMapTypes.js';
 import type { RoomMapEvent, RoomMapEventKind } from '../protocol/room-protocol.js';
+import { requiresLiveRoomDurableAppend } from './liveRoomDurableAppendConfirmation.js';
 
 export interface AppendRoomMapEventInput {
   roomId: string;
@@ -67,6 +68,6 @@ export function appendRoomMapEvent(
     authorMemberId: input.authorMemberId,
     eventKind: input.eventKind,
     payload: input.payload,
-  });
+  }, { pending: requiresLiveRoomDurableAppend(room) });
   return { decision: 'appended', event };
 }

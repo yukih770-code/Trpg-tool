@@ -577,6 +577,20 @@ Landmark: `COMPLETE_ROOM_SERVER_HEALTH_READINESS_V1`.
 
 ---
 
+## Durable Live Event Acknowledgement v1
+
+- Campaign-linked RuntimeLog, combat, shared-dice, and Room Map writes are now acknowledged only after PostgreSQL reports `persisted`.
+- A durable-room event remains internal and invisible to HTTP list reads and WebSocket subscribers while its database append is pending.
+- When persistence succeeds, the pending event is confirmed before response/broadcast. When persistence fails or yields no confirmation, only that pending event is discarded and the route returns HTTP 503 with `durableAppendUnavailable` and `retryable: true`.
+- Concurrent pending events are tracked by event ID, and confirmation is serialized per room/stream, so compensating one failed append does not remove or publish a later append out of order. Runtime sequence numbers are never reused after compensation.
+- Portable memory-only rooms retain immediate in-memory append behavior and require no PostgreSQL confirmation.
+- Map-permission audit notes use the same confirmation path; the durable RoomSnapshot remains permission authority.
+- `runtime:verify:durable-append-confirmation`, RuntimeLog/Room Map recovery, Socket reconnect, TypeScript, server build, frontend build, and the real PostgreSQL restart-recovery smoke pass.
+
+Landmark: `DURABLE_LIVE_EVENT_ACKNOWLEDGEMENT_V1`.
+
+---
+
 ## Build Status
 
 | Check | Status |
