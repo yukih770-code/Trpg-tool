@@ -1543,6 +1543,25 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8ag. Serialized Room Snapshot Confirmation v1
+
+- [x] `/rooms/*` requests enter in FIFO order and release the gate idempotently on response finish/close
+- [x] A client that disconnects while queued releases immediately when admitted and cannot deadlock the gate
+- [x] Reads cannot observe an aggregate RoomSnapshot whose durable write is still pending
+- [x] Every snapshot mutation awaits the exact immutable snapshot promise it enqueued
+- [x] A later queued success cannot replace the failed result returned to an earlier caller
+- [x] The implicit registry observer is no longer used as the route durability acknowledgement boundary
+- [x] A failed required write trips the circuit before the next HTTP room request can mutate the registry
+- [x] WebSocket upgrade and message handling are unavailable while the snapshot gate is active
+- [x] WebSocket readiness is checked again after asynchronous viewer resolution
+- [x] Portable memory-only rooms preserve their no-database-required behavior
+- [x] `npm run runtime:verify:room-traffic-gate` passes
+- [x] Lifecycle persistence smoke covers exact failed/successful queue results and final durable state
+- [x] TypeScript, server/frontend builds, durable append/circuit smokes, socket reconnect, and real PostgreSQL restart recovery pass
+- [x] No schema, migration, auth protocol, room permission, WebSocket envelope, frontend state, rule data, dice algorithm, or gameplay calculation changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

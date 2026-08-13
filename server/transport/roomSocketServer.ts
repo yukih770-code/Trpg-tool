@@ -306,6 +306,10 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
     send(ws, { ...envelope(), type: 'connected', connectionId: randomUUID() });
 
     ws.on('message', (data: unknown) => {
+      if (options.isReady?.() === false) {
+        send(ws, { ...envelope(), type: 'error', code: 'internalError', message: 'Live room traffic is temporarily unavailable.' });
+        return;
+      }
       let parsed: Record<string, unknown>;
       try {
         const candidate = JSON.parse(String(data));
@@ -315,7 +319,13 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
         send(ws, { ...envelope(), type: 'error', code: 'invalidMessage', message: 'Invalid JSON.' });
         return;
       }
-      Promise.resolve(options.resolveViewer?.(request) ?? anonymousViewer).then((viewer) => handleMessage(ws, parsed, viewer)).catch(() => {
+      Promise.resolve(options.resolveViewer?.(request) ?? anonymousViewer).then((viewer) => {
+        if (options.isReady?.() === false) {
+          send(ws, { ...envelope(), type: 'error', code: 'internalError', message: 'Live room traffic is temporarily unavailable.' });
+          return;
+        }
+        handleMessage(ws, parsed, viewer);
+      }).catch(() => {
         send(ws, { ...envelope(), type: 'error', code: 'notAuthorized', message: 'Unable to verify this room connection.' });
       });
     });

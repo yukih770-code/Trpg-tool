@@ -145,6 +145,7 @@ import {
   confirmLiveRoomLifecyclePersistence,
   createLiveRoomDurabilityCircuit,
 } from './services/liveRoomDurabilityCircuit.js';
+import { createLiveRoomTrafficGate } from './services/liveRoomTrafficGate.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -159,6 +160,7 @@ if (startupValidation.errors.length > 0) {
 }
 const startupRecoveryReadiness = createStartupRecoveryReadiness(databaseRuntimeConfig.configured);
 const liveRoomDurabilityCircuit = createLiveRoomDurabilityCircuit();
+const liveRoomTrafficGate = createLiveRoomTrafficGate();
 
 // ── CORS allowlist (M26, config boundary M104-M107) ─────────────────────────
 // Origins come from the shared server runtime config. Local dev defaults remain
@@ -230,6 +232,23 @@ const attachPrivateAlphaViewer = async (req: Request, _res: express.Response, ne
 };
 app.use('/api', attachPrivateAlphaViewer);
 app.use('/rooms', attachPrivateAlphaViewer);
+app.use('/rooms', (req, res, next) => {
+  let closed = false;
+  let releaseGate: (() => void) | undefined;
+  res.once('close', () => {
+    closed = true;
+    releaseGate?.();
+  });
+  void liveRoomTrafficGate.enter().then((release) => {
+    releaseGate = release;
+    if (closed) {
+      release();
+      return;
+    }
+    res.once('finish', release);
+    next();
+  }).catch(next);
+});
 app.use('/rooms', (_req, res, next) => {
   const startupRecovery = startupRecoveryReadiness.snapshot();
   if (startupRecovery.status === 'ready') {
@@ -305,9 +324,7 @@ const platformFoundationRepository = createPostgresPlatformFoundationRepository(
 const worldServerRepository = createPostgresWorldServerRepository();
 const runtimeEventRepository = createPostgresRuntimeEventRepository();
 const liveRoomLifecyclePersistence = createLiveRoomLifecyclePersistenceCoordinator(platformFoundationRepository);
-const registry = createInMemoryRoomRegistry({
-  onRoomUpdated: (snapshot) => liveRoomLifecyclePersistence.queue(snapshot),
-});
+const registry = createInMemoryRoomRegistry();
 const liveRoomDurableEventPersistence = createLiveRoomDurableEventPersistenceCoordinator(runtimeEventRepository);
 // RuntimeLog remains separate from RoomSnapshot and authoritative in memory for
 // live play. Campaign-linked cloud rooms additionally mirror appends to their
@@ -338,7 +355,7 @@ const roomSocketServer = createRoomSocketServer({
   server: httpServer,
   registry,
   path: '/ws',
-  isReady: () => startupRecoveryReadiness.isReady() && liveRoomDurabilityCircuit.isReady(),
+  isReady: () => startupRecoveryReadiness.isReady() && liveRoomDurabilityCircuit.isReady() && liveRoomTrafficGate.isIdle(),
   resolveViewer: resolveRoomSocketViewer,
   projectRoomSnapshot: projectRoomSnapshotForViewer,
   readRuntimeLogEvents: (roomId, afterSeq) => runtimeLogRegistry.list(roomId, {
@@ -459,8 +476,8 @@ function confirmRoomMapAppend(event: NonNullable<ReturnType<typeof appendRoomMap
 
 async function confirmRoomSnapshotPersistence(room: NonNullable<ReturnType<typeof registry.get>>): Promise<boolean> {
   if (!liveRoomDurabilityCircuit.isReady()) return false;
-  const persistence = await liveRoomLifecyclePersistence.flush(room.identity.roomId);
-  const confirmation = confirmLiveRoomLifecyclePersistence(room, persistence?.decision);
+  const persistence = await liveRoomLifecyclePersistence.queue(room);
+  const confirmation = confirmLiveRoomLifecyclePersistence(room, persistence.decision);
   if (confirmation === 'unavailable') {
     liveRoomDurabilityCircuit.trip('room_lifecycle');
     return false;

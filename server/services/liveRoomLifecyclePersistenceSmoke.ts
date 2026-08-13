@@ -14,6 +14,7 @@ type Result<T> = { ok: true; value: T } | { ok: false; error: unknown };
 function createRepository(): LiveRoomLifecycleRepository & {
   records: Map<string, RoomRecord>;
   updateDelayMs: number;
+  failSnapshotNote: string | null;
   activeUpdates: number;
   maxActiveUpdates: number;
 } {
@@ -21,6 +22,7 @@ function createRepository(): LiveRoomLifecycleRepository & {
   const repository = {
     records,
     updateDelayMs: 0,
+    failSnapshotNote: null,
     activeUpdates: 0,
     maxActiveUpdates: 0,
     getRoomRecordByRoomId: async (roomId): Promise<Result<RoomRecord | null>> => ({ ok: true, value: records.get(roomId) ?? null }),
@@ -44,6 +46,11 @@ function createRepository(): LiveRoomLifecycleRepository & {
       repository.activeUpdates += 1;
       repository.maxActiveUpdates = Math.max(repository.maxActiveUpdates, repository.activeUpdates);
       if (repository.updateDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, repository.updateDelayMs));
+      const snapshot = input.metadata?.[LIVE_ROOM_SNAPSHOT_METADATA_KEY] as { notes?: unknown } | undefined;
+      if (repository.failSnapshotNote && Array.isArray(snapshot?.notes) && snapshot.notes.includes(repository.failSnapshotNote)) {
+        repository.activeUpdates -= 1;
+        return { ok: false, error: new Error('forced snapshot failure') };
+      }
       const record = [...records.values()].find((candidate) => candidate.roomRecordId === input.roomRecordId) ?? null;
       if (!record) {
         repository.activeUpdates -= 1;
@@ -68,6 +75,7 @@ function createRepository(): LiveRoomLifecycleRepository & {
   } satisfies LiveRoomLifecycleRepository & {
     records: Map<string, RoomRecord>;
     updateDelayMs: number;
+    failSnapshotNote: string | null;
     activeUpdates: number;
     maxActiveUpdates: number;
   };
@@ -109,6 +117,12 @@ async function main(): Promise<void> {
   const flushWaited = !flushCompleted;
   const flushResult = await flush;
   const acknowledgedSnapshot = repository.records.get(room.identity.roomId)?.metadata[LIVE_ROOM_SNAPSHOT_METADATA_KEY] as { notes?: string[] } | undefined;
+  repository.failSnapshotNote = 'forced snapshot failure';
+  const failedWrite = coordinator.queue({ ...changed, notes: ['forced snapshot failure'] });
+  const followingWrite = coordinator.queue({ ...changed, notes: ['snapshot after failure'] });
+  const [failedResult, followingResult] = await Promise.all([failedWrite, followingWrite]);
+  repository.failSnapshotNote = null;
+  const snapshotAfterFailure = repository.records.get(room.identity.roomId)?.metadata[LIVE_ROOM_SNAPSHOT_METADATA_KEY] as { notes?: string[] } | undefined;
   repository.updateDelayMs = 0;
   const restoredRegistry = createInMemoryRoomRegistry();
   const restored = await restoreLiveRoomLifecycles(repository, restoredRegistry);
@@ -129,6 +143,8 @@ async function main(): Promise<void> {
     flushWaited && flushResult?.decision === 'persisted',
     repository.maxActiveUpdates === 1,
     acknowledgedSnapshot?.notes?.length === 1 && acknowledgedSnapshot.notes[0] === 'latest acknowledged snapshot',
+    failedResult.decision === 'unavailable' && followingResult.decision === 'persisted',
+    snapshotAfterFailure?.notes?.length === 1 && snapshotAfterFailure.notes[0] === 'snapshot after failure',
     restored.decision === 'restored' && restored.restoredCount === 1,
     restoredRoom?.members.length === 2,
     typeof snapshotStored === 'object' && snapshotStored !== null,

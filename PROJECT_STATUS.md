@@ -606,6 +606,20 @@ Landmark: `LIVE_ROOM_DURABILITY_CIRCUIT_V1`.
 
 ---
 
+## Serialized Room Snapshot Confirmation v1
+
+- All `/rooms/*` HTTP traffic now crosses one FIFO gate, so a second request cannot read or mutate an aggregate RoomSnapshot while the first request's required database write is still unconfirmed. Requests release on response completion or connection close, and clients that disconnect while queued release immediately once admitted.
+- Snapshot mutations enqueue an immutable copy explicitly and await that exact write result; they no longer infer success from whichever write happens to be latest in a shared queue.
+- The registry's former best-effort update observer is no longer the durability boundary. Route success, response, and broadcast are tied to the explicit confirmation promise.
+- A failed snapshot write trips the existing durability circuit before any later HTTP room mutation can begin, preventing a later successful aggregate snapshot from accidentally carrying the failed state into PostgreSQL.
+- WebSocket upgrades and messages are temporarily rejected while the HTTP gate is active, including a second readiness check after asynchronous viewer resolution.
+- Portable memory-only rooms retain the same behavior; their explicit confirmation resolves as not required.
+- `runtime:verify:room-traffic-gate` and lifecycle persistence smoke cover FIFO admission, idempotent release, immutable queued copies, per-request results, and failed-write separation.
+
+Landmark: `SERIALIZED_ROOM_SNAPSHOT_CONFIRMATION_V1`.
+
+---
+
 ## Build Status
 
 | Check | Status |
