@@ -1527,6 +1527,22 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8af. Live Room Durability Circuit v1
+
+- [x] Campaign-linked join, disband, member approval/rejection, actor binding changes, Ready, and map permission changes inspect lifecycle persistence results
+- [x] Campaign room creation trips the circuit when Runtime Session or initial lifecycle persistence fails
+- [x] A failed required snapshot write returns HTTP 503 and is not broadcast
+- [x] After the first durability failure, `/rooms/*`, `/ws`, and `/health` remain fail-closed until restart
+- [x] Already in-flight snapshot requests cannot publish after another request trips the circuit
+- [x] Health diagnostics expose only the circuit status, timestamp, and safe failure kind
+- [x] Portable memory-only rooms do not require lifecycle persistence confirmation
+- [x] Map permission snapshot is confirmed before its host-only audit event is created
+- [x] `npm run runtime:verify:durability-circuit` passes
+- [x] Lifecycle persistence, durable event confirmation, room lifecycle/permission, actor admission/campaign link, TypeScript, server/frontend builds, and real PostgreSQL restart recovery pass
+- [x] No schema, migration, auth protocol, permission policy, WebSocket envelope, frontend state, rule data, dice algorithm, or combat calculation changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

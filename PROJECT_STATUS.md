@@ -591,6 +591,21 @@ Landmark: `DURABLE_LIVE_EVENT_ACKNOWLEDGEMENT_V1`.
 
 ---
 
+## Live Room Durability Circuit v1
+
+- Every campaign-linked RoomSnapshot mutation now inspects its lifecycle persistence result before returning success or broadcasting: join, disband, member approve/reject, actor binding submit/approve/reject, Ready, and map permission changes.
+- Room creation also trips the same circuit when its Runtime Session or initial lifecycle snapshot cannot be prepared.
+- A required lifecycle/runtime persistence failure trips a process-local fail-closed circuit. The triggering request returns HTTP 503 without broadcast; all subsequent `/rooms/*` traffic and `/ws` upgrades are rejected, and `/health` remains 503 until a clean restart recovers the last confirmed PostgreSQL state.
+- The circuit preserves the first safe failure kind (`room_lifecycle`, `runtime_event`, or `runtime_session`) without exposing room, user, database, or credential values.
+- Already in-flight room snapshot requests check the circuit again after persistence and cannot broadcast success after another request has tripped it.
+- Portable memory-only rooms do not require lifecycle confirmation and preserve existing behavior.
+- Map permission authority is persisted before its host-only audit event, so restart cannot recover an audit claim without the permission snapshot it describes.
+- `runtime:verify:durability-circuit`, lifecycle persistence, durable event confirmation, room lifecycle/permission, actor admission/campaign link, TypeScript, server/frontend builds, and real PostgreSQL restart recovery pass.
+
+Landmark: `LIVE_ROOM_DURABILITY_CIRCUIT_V1`.
+
+---
+
 ## Build Status
 
 | Check | Status |

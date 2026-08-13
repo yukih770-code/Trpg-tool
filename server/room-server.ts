@@ -141,6 +141,10 @@ import { restoreRoomActorAdmissions } from './services/restoreRoomActorAdmission
 import { createStartupRecoveryReadiness } from './services/startupRecoveryReadiness.js';
 import { evaluateRoomServerHealthReadiness } from './services/roomServerHealthReadiness.js';
 import { confirmLiveRoomDurableAppend } from './services/liveRoomDurableAppendConfirmation.js';
+import {
+  confirmLiveRoomLifecyclePersistence,
+  createLiveRoomDurabilityCircuit,
+} from './services/liveRoomDurabilityCircuit.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -154,6 +158,7 @@ if (startupValidation.errors.length > 0) {
   throw new Error('Cloud deployment startup configuration is invalid.');
 }
 const startupRecoveryReadiness = createStartupRecoveryReadiness(databaseRuntimeConfig.configured);
+const liveRoomDurabilityCircuit = createLiveRoomDurabilityCircuit();
 
 // ── CORS allowlist (M26, config boundary M104-M107) ─────────────────────────
 // Origins come from the shared server runtime config. Local dev defaults remain
@@ -228,7 +233,15 @@ app.use('/rooms', attachPrivateAlphaViewer);
 app.use('/rooms', (_req, res, next) => {
   const startupRecovery = startupRecoveryReadiness.snapshot();
   if (startupRecovery.status === 'ready') {
-    next();
+    if (liveRoomDurabilityCircuit.isReady()) {
+      next();
+      return;
+    }
+    res.status(503).json({
+      error: 'roomDurabilityUnavailable',
+      message: 'Live room writes are closed after a durable storage failure. Restart after storage recovers.',
+      retryable: false,
+    });
     return;
   }
   res.status(503).json({
@@ -325,7 +338,7 @@ const roomSocketServer = createRoomSocketServer({
   server: httpServer,
   registry,
   path: '/ws',
-  isReady: () => startupRecoveryReadiness.isReady(),
+  isReady: () => startupRecoveryReadiness.isReady() && liveRoomDurabilityCircuit.isReady(),
   resolveViewer: resolveRoomSocketViewer,
   projectRoomSnapshot: projectRoomSnapshotForViewer,
   readRuntimeLogEvents: (roomId, afterSeq) => runtimeLogRegistry.list(roomId, {
@@ -422,6 +435,7 @@ function confirmRuntimeLogAppend(event: NonNullable<ReturnType<typeof appendRunt
     const confirmation = confirmLiveRoomDurableAppend(registry.get(event.roomId), persistence);
     if (confirmation.decision === 'unavailable') {
       runtimeLogRegistry.discardPending(event.roomId, event.eventId);
+      liveRoomDurabilityCircuit.trip('runtime_event');
       return false;
     }
     if (confirmation.decision === 'confirmed') runtimeLogRegistry.confirmPending(event.roomId, event.eventId);
@@ -435,11 +449,23 @@ function confirmRoomMapAppend(event: NonNullable<ReturnType<typeof appendRoomMap
     const confirmation = confirmLiveRoomDurableAppend(registry.get(event.roomId), persistence);
     if (confirmation.decision === 'unavailable') {
       roomMapRegistry.discardPending(event.roomId, event.mapEventId);
+      liveRoomDurabilityCircuit.trip('runtime_event');
       return false;
     }
     if (confirmation.decision === 'confirmed') roomMapRegistry.confirmPending(event.roomId, event.mapEventId);
     return true;
   });
+}
+
+async function confirmRoomSnapshotPersistence(room: NonNullable<ReturnType<typeof registry.get>>): Promise<boolean> {
+  if (!liveRoomDurabilityCircuit.isReady()) return false;
+  const persistence = await liveRoomLifecyclePersistence.flush(room.identity.roomId);
+  const confirmation = confirmLiveRoomLifecyclePersistence(room, persistence?.decision);
+  if (confirmation === 'unavailable') {
+    liveRoomDurabilityCircuit.trip('room_lifecycle');
+    return false;
+  }
+  return liveRoomDurabilityCircuit.isReady();
 }
 
 app.get('/health', async (_req, res) => {
@@ -527,6 +553,7 @@ app.get('/health', async (_req, res) => {
         ? { status: 'not_configured' }
         : { status: 'unreachable', errorKind: databaseErrorKind };
   const startupRecovery = startupRecoveryReadiness.snapshot();
+  const liveRoomDurability = liveRoomDurabilityCircuit.snapshot();
   const readiness = evaluateRoomServerHealthReadiness({
     databaseConfigured: databaseRuntimeConfig.configured,
     databaseStatus: database.status,
@@ -545,8 +572,9 @@ app.get('/health', async (_req, res) => {
     ],
     startupRecoveryStatus: startupRecovery.status,
   });
-  res.status(readiness.status === 'ready' ? 200 : 503).json({
-    ok: readiness.status === 'ready',
+  const serviceReady = readiness.status === 'ready' && liveRoomDurability.status === 'ready';
+  res.status(serviceReady ? 200 : 503).json({
+    ok: serviceReady,
     service: 'room-server',
     version: 'm26',
     storage: MEMORY_STORAGE_CAPABILITY.adapterKind,
@@ -562,6 +590,7 @@ app.get('/health', async (_req, res) => {
     publicWsUrl: serverRuntimeConfig.publicWsUrl ?? null,
     readiness,
     startupRecovery,
+    liveRoomDurability,
     lanAlpha: {
       enabled: serverRuntimeConfig.lanAlpha?.enabled === true,
       candidateCount: serverRuntimeConfig.lanAlpha?.candidates.length ?? 0,
@@ -661,11 +690,13 @@ app.post('/rooms/create', async (req, res) => {
   if (worldServerId && campaignId) {
     const runtimePrepared = await prepareLiveRoomRuntimeSession(runtimeEventRepository, result.room);
     if (runtimePrepared.decision !== 'ready') {
+      liveRoomDurabilityCircuit.trip('runtime_session');
       res.status(503).json({ error: 'roomRuntimeUnavailable', message: 'The live room RuntimeLog could not be prepared for recovery.' });
       return;
     }
     const persisted = await liveRoomLifecyclePersistence.persist(result.room);
     if (persisted.decision !== 'persisted') {
+      liveRoomDurabilityCircuit.trip('room_lifecycle');
       res.status(503).json({ error: 'roomLifecycleUnavailable', message: 'The live room could not be prepared for recovery.' });
       return;
     }
@@ -694,7 +725,10 @@ app.post('/rooms/join', async (req, res) => {
   if (result.roomId) {
     const room = registry.get(result.roomId);
     if (room) {
-      await liveRoomLifecyclePersistence.flush(room.identity.roomId);
+      if (!await confirmRoomSnapshotPersistence(room)) {
+        res.status(503).json({ error: 'roomLifecycleUnavailable', message: 'The room join was not durably confirmed. Restart after storage recovers.', retryable: false });
+        return;
+      }
       roomSocketServer.broadcastRoomSnapshot(room.identity.roomId, room, 'memberJoined');
     }
   }
@@ -791,7 +825,10 @@ app.post('/rooms/:roomId/disband', async (req, res) => {
   if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.decidedByMemberId, 'room.host.manage')) return;
   const result = disbandRoom(registry, { roomId: req.params.roomId, decidedByMemberId: body.decidedByMemberId });
   if (result.room) {
-    await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
+    if (!await confirmRoomSnapshotPersistence(result.room)) {
+      res.status(503).json({ error: 'roomLifecycleUnavailable', message: 'The room closure was not durably confirmed. Restart after storage recovers.', retryable: false });
+      return;
+    }
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'roomDisbanded');
   }
   const status = result.decision === 'roomNotFound' ? 404 : result.decision === 'disbanded' ? 200 : 409;
@@ -807,7 +844,10 @@ app.post('/rooms/:roomId/members/:memberId/approve', async (req, res) => {
     decidedByMemberId: body.decidedByMemberId,
   });
   if (result.room) {
-    await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
+    if (!await confirmRoomSnapshotPersistence(result.room)) {
+      res.status(503).json({ error: 'roomLifecycleUnavailable', message: 'The member approval was not durably confirmed. Restart after storage recovers.', retryable: false });
+      return;
+    }
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'memberApproved');
   }
   res.status(result.decision === 'roomNotFound' ? 404 : 200).json(result);
@@ -823,7 +863,10 @@ app.post('/rooms/:roomId/members/:memberId/reject', async (req, res) => {
     reason: body.reason,
   });
   if (result.room) {
-    await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
+    if (!await confirmRoomSnapshotPersistence(result.room)) {
+      res.status(503).json({ error: 'roomLifecycleUnavailable', message: 'The member rejection was not durably confirmed. Restart after storage recovers.', retryable: false });
+      return;
+    }
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'memberRejected');
   }
   res.status(result.decision === 'roomNotFound' ? 404 : 200).json(result);
@@ -896,7 +939,10 @@ app.post('/rooms/:roomId/actor-bindings/submit', async (req, res) => {
     },
   });
   if (result.room) {
-    await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
+    if (!await confirmRoomSnapshotPersistence(result.room)) {
+      res.status(503).json({ error: 'roomLifecycleUnavailable', message: 'The character submission was not durably confirmed. Restart after storage recovers.', retryable: false });
+      return;
+    }
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'actorBindingSubmitted');
   }
   res.status(result.decision === 'roomNotFound' ? 404 : result.decision === 'submitted' ? 200 : 400).json(result);
@@ -923,7 +969,10 @@ app.post('/rooms/:roomId/actor-bindings/:bindingId/approve', async (req, res) =>
   }
   if (campaignActorLink && result.room) result.room = registry.get(req.params.roomId) ?? result.room;
   if (result.room) {
-    await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
+    if (!await confirmRoomSnapshotPersistence(result.room)) {
+      res.status(503).json({ error: 'roomLifecycleUnavailable', message: 'The character approval was not durably confirmed. Restart after storage recovers.', retryable: false });
+      return;
+    }
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'actorBindingApproved');
   }
   const status =
@@ -947,7 +996,10 @@ app.post('/rooms/:roomId/actor-bindings/:bindingId/reject', async (req, res) => 
     rejectionReason: body.rejectionReason,
   });
   if (result.room) {
-    await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
+    if (!await confirmRoomSnapshotPersistence(result.room)) {
+      res.status(503).json({ error: 'roomLifecycleUnavailable', message: 'The character rejection was not durably confirmed. Restart after storage recovers.', retryable: false });
+      return;
+    }
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'actorBindingRejected');
   }
   res.status(result.decision === 'roomNotFound' || result.decision === 'bindingNotFound' ? 404 : 200).json(result);
@@ -966,7 +1018,10 @@ app.post('/rooms/:roomId/members/:memberId/ready', async (req, res) => {
     ready: body.ready,
   });
   if (result.room) {
-    await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
+    if (!await confirmRoomSnapshotPersistence(result.room)) {
+      res.status(503).json({ error: 'roomLifecycleUnavailable', message: 'The ready state was not durably confirmed. Restart after storage recovers.', retryable: false });
+      return;
+    }
     roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'memberReadyChanged');
   }
   res.status(result.decision === 'roomNotFound' || result.decision === 'memberNotFound' ? 404 : result.decision === 'updated' ? 200 : 400).json(result);
@@ -1163,8 +1218,12 @@ app.post('/rooms/:roomId/map-permissions/:memberId', async (req, res) => {
     res.status(status).json({ error: result.decision, message: result.message });
     return;
   }
-  // Keep an append-only, host-only audit record. It is intentionally not a
-  // public RuntimeLog event; RoomSnapshot remains the authorization authority.
+  if (!await confirmRoomSnapshotPersistence(result.room)) {
+    res.status(503).json({ error: 'roomLifecycleUnavailable', message: 'The map permission was not durably confirmed. Restart after storage recovers.', retryable: false });
+    return;
+  }
+  // Create the append-only host audit only after the permission snapshot is
+  // durable, so restart can never recover an audit claim without its authority.
   const auditLogResult = appendRuntimeLogEvent(registry, runtimeLogRegistry, {
     roomId: req.params.roomId,
     authorMemberId: body.authorizedByMemberId,
@@ -1181,8 +1240,10 @@ app.post('/rooms/:roomId/map-permissions/:memberId', async (req, res) => {
       scope: 'roomSession',
     },
   });
-  if (auditLogResult.event) await confirmRuntimeLogAppend(auditLogResult.event);
-  await liveRoomLifecyclePersistence.flush(result.room.identity.roomId);
+  if (auditLogResult.event && !await confirmRuntimeLogAppend(auditLogResult.event)) {
+    res.status(503).json({ error: 'durableAppendUnavailable', message: 'The permission audit event was not durably confirmed. Restart after storage recovers.', retryable: false });
+    return;
+  }
   roomSocketServer.broadcastRoomSnapshot(result.room.identity.roomId, result.room, 'mapPermissionChanged');
   res.json({ room: result.room });
 });
