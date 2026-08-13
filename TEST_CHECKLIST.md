@@ -1473,6 +1473,24 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8ac. Live Room Startup Recovery Readiness Gate v1
+
+- [x] Database-backed startup begins with `startupRecovery.status = pending` and does not report healthy
+- [x] `/health` returns 503/`ok: false` until lifecycle, admission, RuntimeLog, and Room Map recovery all succeed
+- [x] `/rooms/*` returns a retryable 503 while recovery is pending
+- [x] `/rooms/*` remains fail-closed when any recovery stage fails
+- [x] `/ws` upgrade returns HTTP 503 before recovery is ready
+- [x] Memory-only local mode is immediately ready
+- [x] Terminal ready/failed decisions cannot be overwritten by late callbacks
+- [x] Health diagnostics expose safe aggregate evidence only
+- [x] `npm run runtime:verify:startup-recovery-readiness` passes
+- [x] `npm run runtime:verify:room-socket-reconnect` passes with pre-ready upgrade rejection coverage
+- [x] `npm run alpha:verify:restart-recovery:local` passes across a real backend process restart and PostgreSQL
+- [x] TypeScript and server build pass
+- [x] No schema, migration, room protocol, permission, rule data, frontend store, or gameplay calculation changed
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

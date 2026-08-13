@@ -40,6 +40,26 @@ async function exchange(url: string, message: RoomSocketClientMessage): Promise<
   return received;
 }
 
+async function expectUpgradeRejected(url: string): Promise<void> {
+  const socket = new WebSocket(url);
+  const response = await new Promise<number>((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Timed out waiting for startup recovery gate.')), 2_000);
+    socket.once('unexpected-response', (_request, upgradeResponse) => {
+      clearTimeout(timeout);
+      resolve(upgradeResponse.statusCode ?? 0);
+    });
+    socket.once('open', () => {
+      clearTimeout(timeout);
+      reject(new Error('WebSocket upgrade opened before startup recovery became ready.'));
+    });
+    socket.once('error', () => {
+      // `unexpected-response` owns the status assertion for this rejection.
+    });
+  });
+  assert(response === 503, `Startup recovery WebSocket gate must return 503, received ${response}.`);
+  socket.terminate();
+}
+
 async function main(): Promise<void> {
   const registry = createInMemoryRoomRegistry();
   const created = createRoom({ hostDisplayName: 'Reconnect Host', hostUserId: 'user-host' });
@@ -54,11 +74,13 @@ async function main(): Promise<void> {
   const mapEvents: RoomMapEvent[] = [
     { mapEventId: 'map-2', roomId, mapId: `room:${roomId}`, seq: 2, createdAt: now, authorMemberId: memberId, eventKind: 'map.token_moved', payload: { tokenId: 'token-1' } },
   ];
+  let startupReady = false;
 
   const server = createServer();
   createRoomSocketServer({
     server,
     registry,
+    isReady: () => startupReady,
     resolveViewer: async () => ({
       viewerUserId: 'user-host',
       isAuthenticated: true,
@@ -84,6 +106,9 @@ async function main(): Promise<void> {
   await once(server, 'listening');
   const { port } = server.address() as AddressInfo;
   const url = `ws://127.0.0.1:${port}/ws`;
+
+  await expectUpgradeRejected(url);
+  startupReady = true;
 
   const replay = await exchange(url, {
     ...messageBase('reconnect-subscribe'),
@@ -122,7 +147,7 @@ async function main(): Promise<void> {
   }
 
   await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
-  console.log('roomSocketReconnectSmoke: projected catch-up, baseline, and cursor validation passed');
+  console.log('roomSocketReconnectSmoke: startup gate, projected catch-up, baseline, and cursor validation passed');
 }
 
 await main();

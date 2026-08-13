@@ -52,6 +52,8 @@ export interface CreateRoomSocketServerOptions {
   readMapEvents?: (roomId: string, afterSeq?: number) => RoomMapEventListResult;
   /** Resolves a browser session (or explicitly gated local-dev identity) per socket. */
   resolveViewer?: (request: IncomingMessage) => Promise<CurrentViewerContext>;
+  /** Rejects the upgrade while durable live-room startup recovery is incomplete. */
+  isReady?: () => boolean;
 }
 
 export interface RoomSocketServerHandle {
@@ -66,7 +68,17 @@ function envelope(): RoomSocketEnvelopeBase {
 
 export function createRoomSocketServer(options: CreateRoomSocketServerOptions): RoomSocketServerHandle {
   const path = options.path ?? '/ws';
-  const wss = new WebSocketServer({ server: options.server, path });
+  const wss = new WebSocketServer({
+    server: options.server,
+    path,
+    verifyClient: (_info, done) => {
+      if (options.isReady?.() === false) {
+        done(false, 503, 'Startup recovery is not ready.');
+        return;
+      }
+      done(true);
+    },
+  });
 
   // roomId -> subscribed sockets
   const subscriptions = new Map<string, Set<WebSocket>>();

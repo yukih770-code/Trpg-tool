@@ -548,6 +548,20 @@ System Actor Session Workspace IA Correction Follow-up v1 scope:
 
 ---
 
+## Live Room Startup Recovery Readiness Gate v1
+
+- Database-backed Room Server startup is now fail-closed until durable live-room lifecycle, actor admission, RuntimeLog, and Room Map recovery all finish successfully.
+- `/health` returns HTTP 503 with `ok: false` and a safe `startupRecovery` state while recovery is pending or failed; it returns 200 only after recovery is ready.
+- All `/rooms/*` HTTP traffic returns a retryable 503 while recovery is pending, and stays closed after a recovery failure instead of reading or mutating an empty/partial in-memory registry.
+- `/ws` WebSocket upgrades are rejected with HTTP 503 until the same recovery gate is ready, so reconnecting clients cannot observe false `roomNotFound` results during startup.
+- Memory-only local mode remains immediately ready because it has no configured durable room state to restore.
+- Recovery health evidence exposes only safe aggregate counts and failure kinds; it never exposes room IDs, users, cookies, invite codes, database values, or secrets.
+- `runtime:verify:startup-recovery-readiness`, `runtime:verify:room-socket-reconnect`, TypeScript, server build, and the real PostgreSQL process-restart smoke pass.
+
+Landmark: `LIVE_ROOM_STARTUP_RECOVERY_READINESS_GATE_V1`.
+
+---
+
 ## Build Status
 
 | Check | Status |

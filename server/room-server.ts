@@ -126,6 +126,7 @@ import {
 } from './services/liveRoomMapPersistence.js';
 import { createLiveRoomDurableEventPersistenceCoordinator } from './services/liveRoomDurableEventPersistence.js';
 import { restoreRoomActorAdmissions } from './services/restoreRoomActorAdmissions.js';
+import { createStartupRecoveryReadiness } from './services/startupRecoveryReadiness.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -138,6 +139,7 @@ if (startupValidation.errors.length > 0) {
   console.error(`[room-server] startup configuration rejected: ${startupValidation.errors.join(' ')}`);
   throw new Error('Cloud deployment startup configuration is invalid.');
 }
+const startupRecoveryReadiness = createStartupRecoveryReadiness(databaseRuntimeConfig.configured);
 
 // ── CORS allowlist (M26, config boundary M104-M107) ─────────────────────────
 // Origins come from the shared server runtime config. Local dev defaults remain
@@ -209,6 +211,20 @@ const attachPrivateAlphaViewer = async (req: Request, _res: express.Response, ne
 };
 app.use('/api', attachPrivateAlphaViewer);
 app.use('/rooms', attachPrivateAlphaViewer);
+app.use('/rooms', (_req, res, next) => {
+  const startupRecovery = startupRecoveryReadiness.snapshot();
+  if (startupRecovery.status === 'ready') {
+    next();
+    return;
+  }
+  res.status(503).json({
+    error: startupRecovery.status === 'failed' ? 'startupRecoveryFailed' : 'startupRecoveryPending',
+    message: startupRecovery.status === 'failed'
+      ? 'Live room recovery failed; room traffic remains closed.'
+      : 'Live room recovery is still in progress.',
+    retryable: startupRecovery.status === 'pending',
+  });
+});
 
 registerPrivateAlphaAuthApiRoutes(app, createPrivateAlphaAuthApiHandlers({
   service: privateAlphaAuthService,
@@ -295,6 +311,7 @@ const roomSocketServer = createRoomSocketServer({
   server: httpServer,
   registry,
   path: '/ws',
+  isReady: () => startupRecoveryReadiness.isReady(),
   resolveViewer: resolveRoomSocketViewer,
   projectRoomSnapshot: projectRoomSnapshotForViewer,
   readRuntimeLogEvents: (roomId, afterSeq) => runtimeLogRegistry.list(roomId, {
@@ -418,8 +435,9 @@ app.get('/health', async (_req, res) => {
       : database.configured === false
         ? { status: 'not_configured' }
         : { status: 'unreachable', errorKind: database.errorKind, latencyMs: database.latencyMs };
-  res.json({
-    ok: true,
+  const startupRecovery = startupRecoveryReadiness.snapshot();
+  res.status(startupRecovery.status === 'ready' ? 200 : 503).json({
+    ok: startupRecovery.status === 'ready',
     service: 'room-server',
     version: 'm26',
     storage: MEMORY_STORAGE_CAPABILITY.adapterKind,
@@ -433,6 +451,7 @@ app.get('/health', async (_req, res) => {
     devUserApiEnabled: serverRuntimeConfig.devUserApiEnabled === true,
     publicHttpUrl: serverRuntimeConfig.publicHttpUrl ?? null,
     publicWsUrl: serverRuntimeConfig.publicWsUrl ?? null,
+    startupRecovery,
     lanAlpha: {
       enabled: serverRuntimeConfig.lanAlpha?.enabled === true,
       candidateCount: serverRuntimeConfig.lanAlpha?.candidates.length ?? 0,
@@ -1127,44 +1146,73 @@ const onServerListening = () => {
   }
   // eslint-disable-next-line no-console
   console.log(`[room-server] database configured: ${databaseRuntimeConfig.configured}; dev auth enabled: ${serverRuntimeConfig.devUserApiEnabled === true}`);
-  void restoreLiveRoomLifecycles(platformFoundationRepository, registry).then(async (result) => {
-    if (result.decision === 'restored' && result.restoredCount > 0) {
+  if (!databaseRuntimeConfig.configured) {
+    // Memory-only local mode has no durable room state to restore.
+    return;
+  }
+  void (async () => {
+    try {
+      const result = await restoreLiveRoomLifecycles(platformFoundationRepository, registry);
+      if (result.decision === 'unavailable') {
+        startupRecoveryReadiness.markFailed('lifecycle_unavailable');
+        // eslint-disable-next-line no-console
+        console.error('[room-server] startup recovery failed: live room lifecycle storage unavailable.');
+        return;
+      }
+      if (result.restoredCount > 0) {
       // eslint-disable-next-line no-console
-      console.log(`[room-server] restored ${result.restoredCount} live room lobby/lobbies.`);
-    }
-    let restoredAdmissionCount = 0;
-    for (const room of registry.list()) {
-      restoredAdmissionCount += restoreRoomActorAdmissions(room, actorAdmissionRegistry).restoredCount;
-    }
-    if (restoredAdmissionCount > 0) {
+        console.log(`[room-server] restored ${result.restoredCount} live room lobby/lobbies.`);
+      }
+      let restoredAdmissionCount = 0;
+      for (const room of registry.list()) {
+        restoredAdmissionCount += restoreRoomActorAdmissions(room, actorAdmissionRegistry).restoredCount;
+      }
+      if (restoredAdmissionCount > 0) {
+        // eslint-disable-next-line no-console
+        console.log(`[room-server] restored ${restoredAdmissionCount} room actor admission(s).`);
+      }
+      const runtimeLogResult = await restoreLiveRoomRuntimeLogs(runtimeEventRepository, registry, runtimeLogRegistry);
+      if (runtimeLogResult.restoredEventCount > 0) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[room-server] restored ${runtimeLogResult.restoredEventCount} RuntimeLog event(s) `
+          + `across ${runtimeLogResult.restoredRoomCount} live room(s).`,
+        );
+      }
+      if (runtimeLogResult.unavailableRoomCount > 0) {
+        startupRecoveryReadiness.markFailed('runtime_log_unavailable');
+        // eslint-disable-next-line no-console
+        console.error(`[room-server] startup recovery failed: RuntimeLog unavailable for ${runtimeLogResult.unavailableRoomCount} live room(s).`);
+        return;
+      }
+      const roomMapResult = await restoreLiveRoomMaps(runtimeEventRepository, registry, roomMapRegistry);
+      if (roomMapResult.restoredEventCount > 0) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[room-server] restored ${roomMapResult.restoredEventCount} Room Map event(s) `
+          + `across ${roomMapResult.restoredRoomCount} live room(s).`,
+        );
+      }
+      if (roomMapResult.unavailableRoomCount > 0) {
+        startupRecoveryReadiness.markFailed('room_map_unavailable');
+        // eslint-disable-next-line no-console
+        console.error(`[room-server] startup recovery failed: Room Map unavailable for ${roomMapResult.unavailableRoomCount} live room(s).`);
+        return;
+      }
+      startupRecoveryReadiness.markReady({
+        restoredRoomCount: result.restoredCount,
+        restoredAdmissionCount,
+        restoredRuntimeLogEventCount: runtimeLogResult.restoredEventCount,
+        restoredRoomMapEventCount: roomMapResult.restoredEventCount,
+      });
       // eslint-disable-next-line no-console
-      console.log(`[room-server] restored ${restoredAdmissionCount} room actor admission(s).`);
-    }
-    const runtimeLogResult = await restoreLiveRoomRuntimeLogs(runtimeEventRepository, registry, runtimeLogRegistry);
-    if (runtimeLogResult.restoredEventCount > 0) {
+      console.log('[room-server] startup recovery ready; room HTTP and WebSocket traffic opened.');
+    } catch {
+      startupRecoveryReadiness.markFailed('unexpected_failure');
       // eslint-disable-next-line no-console
-      console.log(
-        `[room-server] restored ${runtimeLogResult.restoredEventCount} RuntimeLog event(s) `
-        + `across ${runtimeLogResult.restoredRoomCount} live room(s).`,
-      );
+      console.error('[room-server] startup recovery failed unexpectedly; room traffic remains closed.');
     }
-    if (runtimeLogResult.unavailableRoomCount > 0) {
-      // eslint-disable-next-line no-console
-      console.warn(`[room-server] RuntimeLog recovery unavailable for ${runtimeLogResult.unavailableRoomCount} live room(s).`);
-    }
-    const roomMapResult = await restoreLiveRoomMaps(runtimeEventRepository, registry, roomMapRegistry);
-    if (roomMapResult.restoredEventCount > 0) {
-      // eslint-disable-next-line no-console
-      console.log(
-        `[room-server] restored ${roomMapResult.restoredEventCount} Room Map event(s) `
-        + `across ${roomMapResult.restoredRoomCount} live room(s).`,
-      );
-    }
-    if (roomMapResult.unavailableRoomCount > 0) {
-      // eslint-disable-next-line no-console
-      console.warn(`[room-server] Room Map recovery unavailable for ${roomMapResult.unavailableRoomCount} live room(s).`);
-    }
-  });
+  })();
 };
 
 if (serverRuntimeConfig.lanAlpha?.enabled && serverRuntimeConfig.lanAlpha.bindHost !== '0.0.0.0') {
