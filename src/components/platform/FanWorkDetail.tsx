@@ -41,13 +41,15 @@ export function FanWorkDetail({ work, t, locale, onBack }: FanWorkDetailProps) {
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 py-8 md:px-8">
-      {/* Back to Fan Plaza */}
+      {/* Icon-only return owned by this full-page detail surface. */}
       <button
         type="button"
         onClick={onBack}
-        className="mb-4 inline-flex items-center gap-1 rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
+        aria-label={t('fanPlaza.detail.backToPlaza')}
+        title={t('fanPlaza.detail.backToPlaza')}
+        className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#2f2a22]/20 bg-white text-lg font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
       >
-        ← {t('fanPlaza.detail.backToPlaza')}
+        ←
       </button>
 
       <div className="rounded-lg border border-[#2f2a22]/20 bg-[#faf8f2] p-4">

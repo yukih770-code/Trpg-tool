@@ -2,7 +2,7 @@
 
 <!-- AI-LANDMARK: PACKAGE_LIBRARY_CONTRACT_V1 -->
 
-Last updated: 2026-06-19
+Last updated: 2026-08-14
 
 Task: `A10.8 Package Library / Joined Package Management Contract v1`
 
@@ -13,6 +13,11 @@ package library. It is contract/types/helper only.
 No real subscription, unsubscribe, update, delete, network check, dependency
 resolution, Workshop Builder, backend, Campaign UI, multiplayer room, rule
 engine, store migration, monorepo, Docker, or PostgreSQL work is introduced.
+
+Current implementation note: the Workshop joined-content surface reads the
+repository and shows a truthful empty state. No `PackageLibraryEntry` write or
+lifecycle action is implemented, and no sample subscription is presented as a
+user-owned entry.
 
 Canonical type/helper file:
 

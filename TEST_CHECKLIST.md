@@ -1577,6 +1577,26 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8ai. Product Truth + Ecosystem / Internal AI Roadmap v1
+
+- [x] README identifies the current product as a deployable single-node private Alpha multiplayer platform
+- [x] `CURRENT_PLATFORM_STAGE.md` separates implemented, partial, contract-only, and unimplemented capabilities
+- [x] `ECOSYSTEM_AND_AI_ROADMAP.md` defines AI as an internal intelligence layer, not a user-facing local-model service
+- [x] Local model and paid cloud API are provider routes behind one future model gateway
+- [x] AI suggestions remain behind deterministic validation, permission, confirmation, repository writes, and audit
+- [x] Workshop browse and joined-content surfaces render truthful empty states when repositories return no real records
+- [x] Workshop and Fan Plaza legacy public seeds contain no fictional works/packages
+- [x] Workshop manifest and joined-package contracts describe the current empty-repository boundary
+- [x] Empty-state creation CTA opens the existing private content workbench
+- [x] Workshop nav space keeps global navigation; builder context uses one icon-only return affordance
+- [x] Public publish, review, subscription, install, update, billing, model inference, schema, and backend behavior were not introduced or claimed
+- [x] `npm run frontend:verify:workshop-truthful-empty-state` passes
+- [x] `npx tsc --noEmit` passes
+- [x] `npm run build` passes
+- [x] `git diff --check` passes
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

@@ -84,13 +84,15 @@ export function WorkshopItemDetail({ item, t, locale, onBack }: WorkshopItemDeta
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-6 md:px-8">
-      {/* Back */}
+      {/* Icon-only return owned by this full-page detail surface. */}
       <button
         type="button"
         onClick={onBack}
-        className="mb-4 inline-flex items-center gap-1 rounded-md border border-[#2f2a22]/20 bg-white px-3 py-1.5 text-sm font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
+        aria-label={t('workshop.detail.back')}
+        title={t('workshop.detail.back')}
+        className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-md border border-[#2f2a22]/20 bg-white text-lg font-bold text-[#17130f] transition hover:bg-[#2f2a22]/8"
       >
-        ← {t('workshop.detail.back')}
+        ←
       </button>
 
       {/* Hero */}

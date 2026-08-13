@@ -116,6 +116,7 @@
     "frontend:verify:personal-compendium": "tsx src/lib/api/personalCompendiumPackApiClientSmoke.ts",
     "frontend:verify:personal-compendium-import": "tsx src/lib/platform/personalCompendiumImportSmoke.ts",
     "frontend:verify:personal-content-adapter": "tsx src/lib/platform/dndPersonalContentAdapterSmoke.ts",
+    "frontend:verify:workshop-truthful-empty-state": "tsx src/lib/platform/workshopTruthfulEmptyStateSmoke.ts",
     "frontend:verify:personal-character-rules": "tsx src/lib/platform/dndPersonalContentAdapterSmoke.ts",
     "frontend:verify:dnd-personal-content-definitions": "tsx src/lib/dnd/dndPersonalContentDefinitionsSmoke.ts",
     "frontend:verify:dnd-class-advancement": "tsx src/lib/dnd2024/classAdvancementSummarySmoke.ts",

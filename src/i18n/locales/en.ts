@@ -500,8 +500,21 @@ export const en = {
   },
   workshop: {
     title: 'Workshop',
-    subtitle: 'Discover characters, maps, rule content, adventure modules, and media assets.',
-    tabs: { browse: 'Browse', subscriptions: 'My Subscriptions' },
+    subtitle: 'Discover published content and manage material you actually own or joined. An empty catalog stays truthful.',
+    tabs: { browse: 'Browse', subscriptions: 'Joined', myContent: 'My creations' },
+    empty: {
+      catalogTitle: 'Published content is being prepared',
+      catalogNote: 'There are no real public works to show yet. You can create and organize private material first; items appear here only after publishing and review are implemented.',
+      libraryTitle: 'No joined content yet',
+      libraryNote: 'Only content you actually joined appears here. Subscription, install, and update flows are not available, so sample data is never substituted.',
+      openMyContent: 'Manage my content',
+    },
+    myContent: {
+      title: 'My personal content',
+      note: 'Create, import, and manage private DND material. Character Builder references an explicit version; Rooms still review it independently.',
+      builderContext: 'Managing private content for character creation',
+      returnToBuilder: 'Return to character builder',
+    },
     search: { placeholder: 'Search by name, system, type, tags, author…' },
     filter: {
       all: 'All',

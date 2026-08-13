@@ -500,8 +500,21 @@ export const zhCN = {
   },
   workshop: {
     title: '创意工坊',
-    subtitle: '发现并订阅角色、地图、规则内容、冒险模组和媒体素材。当前为平台框架预览，暂不执行真实订阅或导入。',
-    tabs: { browse: '浏览', subscriptions: '我的订阅' },
+    subtitle: '发现公开内容，并管理你真正拥有或加入的资料。当前没有公开作品时，页面会保持真实空白。',
+    tabs: { browse: '浏览', subscriptions: '已加入', myContent: '我的创作' },
+    empty: {
+      catalogTitle: '公开内容正在准备中',
+      catalogNote: '目前没有可展示的真实公开作品。你可以先创建和整理私人资料；公开发布与审核流程完成后，作品才会出现在这里。',
+      libraryTitle: '还没有加入内容',
+      libraryNote: '这里仅显示真实加入的内容。订阅、安装和更新链路尚未开放，不会用示例数据代替。',
+      openMyContent: '管理我的内容',
+    },
+    myContent: {
+      title: '我的个人资料',
+      note: '创建、导入并管理私人 DND 资料。车卡只引用明确版本；进入房间仍由主持人独立审核。',
+      builderContext: '正在为角色创建管理私人资料',
+      returnToBuilder: '返回车卡',
+    },
     search: { placeholder: '搜索名称、系统、类型、标签、作者……' },
     filter: {
       all: '全部',

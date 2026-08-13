@@ -2,11 +2,11 @@
 
 <!-- AI-LANDMARK: WORKSHOP_PACKAGE_MANIFEST_V1 -->
 
-Last updated: 2026-06-17
+Last updated: 2026-08-14
 Task: `A4 Workshop Package Manifest v1`
 Builds on: A1 (EntityGraph), A2 (persistence decision), A3 (BlockDocument)
 
-Types + pure helpers + mock seed only. No real clone/export/import/subscribe/
+Types + pure helpers + intentionally empty public seed only. No real clone/export/import/subscribe/
 publish, no UI, no backend, no upload. The three rule engines are untouched.
 
 ## Purpose
@@ -112,7 +112,9 @@ getPackagesByEntity(id)    getPackagesByDocument(id)
 getPackageManifest(id)     validateManifest(manifest)
 ```
 
-Mock implementation reads `WORKSHOP_PACKAGE_SEED`. No Local/Api repository yet.
+The mock implementation deliberately returns an empty public catalog and empty
+joined-content list. `WORKSHOP_PACKAGE_SEED` is also empty so protocol examples
+cannot appear as real community works. No Local/Api Workshop repository exists.
 
 ## Loading layers (§12)
 
@@ -123,16 +125,18 @@ Mock implementation reads `WORKSHOP_PACKAGE_SEED`. No Local/Api repository yet.
 - **Payload**: full entities/documents/media — loaded only on real clone / export
   / enable (future).
 
-## Relation to current Workshop mock / UI (§11 — future migration, not done now)
+## Relation to current Workshop UI (§11)
 
 ```
-WORKSHOP_BROWSE_SAMPLES        →  future: derived from WorkshopPackageSummary
+Repository public records      →  future: derived from WorkshopPackageSummary
+Empty repository              →  truthful browse / joined-content empty states
 Workshop item detail page      →  future: WorkshopPackageDetail
                                   + EntityGraph relations + BlockDocument entryPoints
 ```
 
-`WorkshopShell` / `FanWorkDetail` still use the legacy `list()` / `getById()`
-this round — intentionally unchanged.
+`WorkshopShell` still reads only through the repository boundary. Public
+publish/review, join, install, update, and removal are not implemented; the UI
+does not substitute fictional records when those services are absent.
 
 ## Hard rules (restated)
 
