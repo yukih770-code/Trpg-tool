@@ -12,6 +12,7 @@ import type {
   RoomRuntimeLogVisibility,
 } from '../../lib/platform/roomRuntimeLogTypes';
 import type { SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
+import { RoomSessionAssistantDialog } from './RoomSessionAssistantDialog';
 
 /**
  * RoomRuntimeLogPreviewPanel (v0).
@@ -39,6 +40,8 @@ export interface RoomRuntimeLogPreviewPanelProps {
   onConsumedLiveEvents?: () => void;
   /** Start collapsed so the lobby's first screen stays light (default true). */
   defaultCollapsed?: boolean;
+  /** Active Runtime host-only contextual tool. Server authority is still re-checked. */
+  enableHostSessionAssistant?: boolean;
 }
 
 const KIND_LABEL: Record<RoomRuntimeLogEventKind, string> = {
@@ -285,6 +288,7 @@ export function RoomRuntimeLogPreviewPanel({
   liveEvents,
   onConsumedLiveEvents,
   defaultCollapsed,
+  enableHostSessionAssistant,
 }: RoomRuntimeLogPreviewPanelProps) {
   const config = useMemo<RoomServerHttpClientConfig>(() => ({ baseUrl }), [baseUrl]);
   const [events, setEvents] = useState<RoomRuntimeLogEvent[]>([]);
@@ -407,13 +411,25 @@ export function RoomRuntimeLogPreviewPanel({
         </button>
         {!collapsed && (
           <div className="flex items-center gap-1.5">
+            {enableHostSessionAssistant && currentMemberId && (
+              <RoomSessionAssistantDialog
+                roomId={roomId}
+                baseUrl={baseUrl}
+                memberId={currentMemberId}
+                onConfirmed={(event) => {
+                  setEvents((previous) => mergeEvents(previous, [event]));
+                  latestSeqRef.current = Math.max(latestSeqRef.current, event.seq);
+                  setLatestSeqDisplay(latestSeqRef.current);
+                }}
+              />
+            )}
             <button
               type="button"
               className={btn}
               onClick={() => { setShowRecap((v) => !v); setRecapCopied('idle'); }}
               aria-pressed={showRecap}
             >
-              {showRecap ? '返回日志' : '本场回顾'}
+              {showRecap ? '日志列表' : '本场回顾'}
             </button>
             <button type="button" className={btn} disabled={loading} onClick={refresh}>
               {loading ? '刷新中…' : '刷新日志'}
@@ -425,7 +441,7 @@ export function RoomRuntimeLogPreviewPanel({
       {collapsed ? null : (
         <>
       <p className="mb-2 mt-1.5 text-[10px] text-slate-500">
-        这是 server-side RuntimeLog 的只读预览（v0 仅显示公开事件），不是正式 Runtime / 战斗 / 地图 / 日志写入桌面。
+        这是当前成员的 server-side RuntimeLog 投影：主持人可见公开与 hostOnly 事件，其他成员只接收允许的投影。
       </p>
 
       {listError && <div className="mb-2 rounded border border-red-400/40 bg-red-500/10 px-2 py-1 text-[10px] text-red-700">日志加载失败：{listError}</div>}

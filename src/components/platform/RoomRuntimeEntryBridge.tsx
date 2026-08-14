@@ -1078,6 +1078,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
           canAppend={!!context.currentMemberId}
           liveEvents={logLiveEvents}
           onConsumedLiveEvents={() => setLogLiveEvents([])}
+          enableHostSessionAssistant={shellMode === 'host'}
           defaultCollapsed={false}
         />
       }

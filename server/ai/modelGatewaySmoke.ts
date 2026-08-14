@@ -10,6 +10,17 @@ const validSuggestion = {
   patch: { name: '测试角色' },
   warnings: [],
 };
+const validSessionSuggestion = {
+  version: 1,
+  task: 'recap',
+  title: '本次回顾',
+  summary: '摘要',
+  highlights: ['亮点'],
+  risks: ['风险'],
+  suggestedNextSteps: ['下一步'],
+  hostDraft: '主持人草稿',
+  publicDraft: '公开草稿',
+};
 const request = { system: 'system', prompt: 'prompt', schema: { type: 'object' } };
 
 assert.equal(readLocalModelGatewayConfig({}).configured, false);
@@ -26,6 +37,8 @@ const provider: StructuredModelProvider = {
 const gateway = createModelGateway({ provider, timeoutMs: 1_000 });
 assert.deepEqual((await gateway.status()).reason, undefined);
 assert.equal((await gateway.generateDndCharacterSuggestion(request)).suggestion.patch.name, '测试角色');
+const sessionGateway = createModelGateway({ provider: { ...provider, generate: async () => validSessionSuggestion }, timeoutMs: 1_000 });
+assert.equal((await sessionGateway.generateRoomSessionSuggestion(request)).suggestion.publicDraft, '公开草稿');
 
 const invalidGateway = createModelGateway({ provider: { ...provider, generate: async () => ({ invalid: true }) }, timeoutMs: 1_000 });
 await assert.rejects(() => invalidGateway.generateDndCharacterSuggestion(request), (error) => error instanceof ModelGatewayError && error.kind === 'invalid_output');
@@ -34,6 +47,11 @@ const oversizedGateway = createModelGateway({
   timeoutMs: 1_000,
 });
 await assert.rejects(() => oversizedGateway.generateDndCharacterSuggestion(request), (error) => error instanceof ModelGatewayError && error.kind === 'invalid_output');
+const invalidSessionGateway = createModelGateway({
+  provider: { ...provider, generate: async () => ({ ...validSessionSuggestion, suggestedNextSteps: Array(7).fill('过多步骤') }) },
+  timeoutMs: 1_000,
+});
+await assert.rejects(() => invalidSessionGateway.generateRoomSessionSuggestion(request), (error) => error instanceof ModelGatewayError && error.kind === 'invalid_output');
 
 const timeoutGateway = createModelGateway({
   provider: {
@@ -55,6 +73,10 @@ const cancelGateway = createModelGateway({
 const cancelled = cancelGateway.generateDndCharacterSuggestion(request, cancelController.signal);
 cancelController.abort();
 await assert.rejects(() => cancelled, (error) => error instanceof ModelGatewayError && error.kind === 'cancelled');
+const sessionCancelController = new AbortController();
+const cancelledSession = cancelGateway.generateRoomSessionSuggestion(request, sessionCancelController.signal);
+sessionCancelController.abort();
+await assert.rejects(() => cancelledSession, (error) => error instanceof ModelGatewayError && error.kind === 'cancelled');
 
 let ollamaBody: Record<string, unknown> | undefined;
 const ollama = createLocalOllamaProvider({

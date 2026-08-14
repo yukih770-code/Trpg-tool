@@ -4,39 +4,39 @@
 
 ## Task
 
-- ID: Local AI Kernel + DND Character Assistant v1
-- Name: `LOCAL_AI_KERNEL_DND_CHARACTER_ASSISTANT_V1`
-- Goal: Add a real provider-neutral model gateway with one configured local-model provider, then close the DND Builder suggestion → deterministic validation → explicit confirmation → atomic Owned Actor write → audit chain.
+- ID: Room Session AI Assistant v1
+- Name: `ROOM_SESSION_AI_ASSISTANT_V1`
+- Goal: Close an active-host Room Runtime loop from server-projected RuntimeLog context → structured local-model draft → deterministic preview → explicit host visibility choice → stale-guarded append-only RuntimeLog confirmation → durable acknowledgement and audit metadata.
 - Phase: Core game experience / internal AI foundation
 - Status: Complete
 
-## Result
-
-- Backend Model Gateway and real Ollama protocol integration are callable when a deployer configures an installed model; unconfigured/unreachable/model-missing states remain truthful.
-- The existing DND Builder now closes suggestion → runtime parsing → deterministic validation → preview → explicit confirm → atomic Owned Actor update → bounded local audit → safe undo.
-- Campaign, Room, Runtime, visibility projection, cloud provider, billing, rule data, schema, and migration remain unchanged.
-- All focused smokes, DND creation/advancement regressions, AI scope/retrieval policies, TypeScript, server build, frontend build, and diff checks pass. Live-model acceptance remains deployment-dependent because this repository does not bundle a model.
-
 ## Layer Declaration
 
-- IA: Character Builder plus Backend / Repository boundary.
-- Object: Owned Actor and owner-private AI suggestion/audit only.
-- State: UI State, Flow State, Persistent Domain State, Server State.
-- Excluded: Catalog ownership, CampaignObject, RuntimeObject, LogEvent, collaborative state, public/player projections.
+- IA: Runtime / Gameplay contextual tool plus Backend / Repository boundary.
+- Object: Campaign identity metadata (read only), Runtime room/session context (read only), projected LogEvent context, one newly appended LogEvent on confirm, Projection.
+- State: UI State, Flow State, Server State, Persistent Domain State for confirmed RuntimeLog only.
+- Excluded: CatalogObject, OwnedObject writes, CampaignMembership, CampaignActorInstance, RuntimeActor mutation, collaborative state, rule adjudication, cloud provider, billing.
+
+## UI Declaration
+
+- Page responsibility: the active Room Runtime log surface shows the current viewer's server-projected event history and contextual host tools.
+- Not responsible for: campaign creation, actor creation, rules compendium, character-sheet edits, membership assignment, map mutation, combat adjudication, or public AI chat.
+- New action tier: `Session AI 助手` is a secondary Runtime-context action available only in an active host session; generate/discard/confirm remain inside its modal.
+- Primary action inside the modal: confirm one reviewed draft into RuntimeLog. Public visibility requires an explicit host choice and warning.
+- Navigation: modal owns `×`; no page-level Back/Home entry is added.
 
 ## Allowed Files
 
-- `server/ai/*`
-- `server/api/aiCharacterAssistant*`
-- `server/api/index.ts`
+- `server/ai/modelGateway.ts`
+- `server/ai/modelGatewaySmoke.ts`
+- `server/ai/roomSessionAssistant*`
+- `server/api/roomSessionAssistant*`
 - `server/room-server.ts`
-- `src/lib/ai/*`
-- `src/lib/api/aiModelGatewayApiClient*`
-- `src/components/dnd/DndCharacterAssistantDialog.tsx`
-- `src/pages/Creator.tsx`
-- `src/store/characterStore.ts`
-- `server/config/modelGatewayConfig*`
-- `.env.example`
+- `src/lib/ai/sessionAssistantTypes.ts`
+- `src/lib/platform/roomSessionAssistantHttpClient*`
+- `src/components/platform/RoomSessionAssistantDialog.tsx`
+- `src/components/platform/RoomRuntimeLogPreviewPanel.tsx`
+- `src/components/platform/RoomRuntimeEntryBridge.tsx`
 - `package.json`
 - `CURRENT_PLATFORM_STAGE.md`
 - `ECOSYSTEM_AND_AI_ROADMAP.md`
@@ -49,29 +49,31 @@
 
 ## Forbidden Changes
 
-- Campaign, Room, Runtime, multiplayer authority, visibility projection, billing
-- DND rule data, spell/equipment automation, character schema or migration
-- AI direct writes, hidden auto-apply, prompt-as-permission, fabricated model success
-- User-controlled provider URLs, provider secrets in frontend state, cloud provider integration
+- Actor, Campaign, Room, Runtime, map, combat, permission, or membership schemas/migrations
+- Historical RuntimeLog mutation/deletion, actor state writes, rules decisions, hidden auto-apply
+- Client-supplied RuntimeLog context, frontend-only role authority, player/spectator AI entry
+- Catalog/compendium retrieval claims, cloud provider, billing, public AI service
 - `output/`, `tools/`, `work/`
 
 ## Completion Criteria
 
-- Gateway exposes authenticated status and suggestion APIs with safe configuration, timeout/cancellation, normalized errors, and no provider URL leakage.
-- Local provider performs a real structured-output request when configured and reports unavailable/not-configured truthfully otherwise.
-- DND Builder packages only owner actor context and bounded catalog option names.
-- Model output passes runtime shape checks and deterministic DND plan validation.
-- User sees loading, unavailable, error, preview, warning, cancel, and confirm states.
-- Confirm atomically updates the active Owned Actor plus its vault row and appends a bounded persistent audit record; stale suggestions cannot overwrite later edits.
-- Automated gateway, handler, client, plan/commit, timeout/error, and stale-suggestion smokes pass.
-- Current-stage/status/checklist/docs are synchronized and the logical batch is independently committed.
+- Only the authenticated active host can generate or confirm a Room Session AI draft.
+- Context is assembled server-side from the same per-viewer RuntimeLog projection used by room reads, with bounded event/body/payload size and provenance cursor/fingerprint.
+- Preparation, in-session guidance, and recap task modes use one structured contract and truthful scope limits.
+- Suggestions are transient, owner/member/room bound, TTL/cap bounded, single-confirm, and stale when the RuntimeLog advances.
+- UI covers model status, loading, unavailable, error, cancel, preview, private/public visibility warning, discard, confirm, stale, and success states.
+- Confirmation appends a new `host.note`; it never rewrites prior events. Required cloud durability is acknowledged before success and the existing socket projection broadcasts the confirmed event.
+- Focused permission/projection/context/registry/gateway/API/client/UI-state smokes pass, plus existing RuntimeLog, AI policy, TypeScript, server/frontend builds, and diff checks.
 
 ## Verification
 
 ```powershell
 npm run ai:verify:model-gateway
-npm run api:verify:dnd-character-assistant
-npm run frontend:verify:dnd-character-assistant
+npm run ai:verify:room-session-assistant
+npm run api:verify:room-session-assistant
+npm run frontend:verify:room-session-assistant
+npm run policy:verify:ai-scope
+npm run policy:verify:ai-retrieval
 npx tsc --noEmit
 npm run server:build
 npm run build

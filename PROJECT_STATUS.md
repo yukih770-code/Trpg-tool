@@ -663,6 +663,22 @@ Landmark: `LOCAL_AI_KERNEL_DND_CHARACTER_ASSISTANT_V1`.
 
 ---
 
+## Room Session AI Assistant v1
+
+- Active Runtime hosts now have one contextual `Session AI 助手` entry on the RuntimeLog surface; the lobby, players, and spectators receive no entry, while every API request independently rechecks authenticated active-host membership.
+- Preparation, in-session guidance, and recap share one runtime-parsed structured contract through the existing local Model Gateway. Model status, unavailable/model-missing, loading, cancellation, invalid output, preview, discard, visibility choice, confirmation, stale, expiry, and success states are represented truthfully.
+- Context is built only on the server from the existing per-viewer RuntimeLog projection. It is bounded to recent events/bytes/text, strips opaque member/binding/room identifiers from the model prompt, minimizes payload fields, and records a cursor plus fingerprint for provenance.
+- Suggestions remain transient process memory, bound to room/member/account with TTL, capacity, and one-shot consumption. They are neither Runtime authority nor GeneratedArtifact persistence.
+- Confirmation rechecks ownership and requires the RuntimeLog cursor to match. It appends one new `host.note` through the existing server service and durability acknowledgement; it never mutates historical events or Actor/Campaign/combat/permission state.
+- Public confirmation is explicit and writes only the spoiler-conscious public draft plus redacted audit metadata. Host-only title, summary, risks, next steps, and context fingerprint are not leaked into the public event payload.
+- Existing WebSocket projection distributes the confirmed event after durable success. No client-supplied log context, rules adjudication, compendium retrieval, cloud provider, billing, schema, or migration was added.
+- Model inference uses the authenticated `/api/ai/rooms/*` boundary instead of the exclusive `/rooms/*` snapshot-confirmation lease, so a long local inference does not freeze active room HTTP/WebSocket traffic. The handler independently fails closed while Runtime recovery or the durability circuit is unavailable.
+- Focused gateway, context/registry, API authority/stale/expiry/one-shot/public-redaction, and HTTP client smokes pass. A live inference acceptance still requires a separately installed/configured model.
+
+Landmark: `ROOM_SESSION_AI_ASSISTANT_V1`.
+
+---
+
 ## Build Status
 
 | Check | Status |

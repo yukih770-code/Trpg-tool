@@ -1652,6 +1652,27 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8al. Room Session AI Assistant v1
+
+- [x] Only an authenticated active host can query status, generate, or confirm; player, spectator, pending, mismatched-account, and unauthenticated access is server-rejected
+- [x] The active Runtime log surface owns the host-only entry; the lobby and non-host shells do not present it
+- [x] Context is assembled server-side from the existing viewer projection and never accepts client-supplied RuntimeLog bodies
+- [x] Context is bounded and excludes opaque room/member/actor-binding identifiers and non-whitelisted payload fields from the model prompt
+- [x] Preparation, in-session guidance, and recap share one runtime-parsed schema; invalid or task-mismatched output is rejected
+- [x] Suggestions are transient, capacity/TTL bounded, room/member/account bound, and consumable only once
+- [x] RuntimeLog advancement after generation causes confirmation to fail stale without writing
+- [x] Explicit confirmation is the only write boundary and appends one `host.note` through the existing durability path without changing historical events
+- [x] Host-only and public drafts are previewed separately; public audit payload excludes host title, summary, risks, next steps, and context fingerprint
+- [x] WebSocket broadcast occurs only after durable acknowledgement; failed required persistence uses the existing pending-event compensation path
+- [x] Long model inference does not occupy the exclusive `/rooms/*` snapshot lease; `/api/ai/rooms/*` independently checks startup recovery and durability-circuit readiness
+- [x] UI covers status, unavailable/model missing, loading, cancel, error, preview, visibility warning, discard, confirm, stale/expiry message, and success
+- [x] No Actor, Campaign, membership, permission, map, combat, rule data, schema, migration, cloud provider, billing, or GeneratedArtifact write changed
+- [x] `npm run ai:verify:room-session-assistant`, `npm run api:verify:room-session-assistant`, and `npm run frontend:verify:room-session-assistant` pass
+- [x] Existing Model Gateway, AI scope/retrieval, Runtime visibility/durability, TypeScript, server/frontend build, and diff checks pass
+- [ ] Live Ollama Session inference acceptance passes after a deployer installs and configures a local model
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

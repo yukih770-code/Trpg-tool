@@ -13,6 +13,7 @@ const gateway: ModelGateway = {
     suggestionId: 'suggestion-1', provider: 'ollama', route: 'local', model: 'local-model', createdAt: 1,
     suggestion: { version: 1, summary: '测试', rationale: [], patch: { name: '阿尔法' }, warnings: [] },
   }),
+  generateRoomSessionSuggestion: async () => { throw new Error('not used'); },
 };
 const handlers = createAiCharacterAssistantApiHandlers({ gateway });
 const status = await handlers.status({ viewer });

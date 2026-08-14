@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { AiModelGatewayStatus, DndCharacterAssistantGatewayResult } from '../../src/lib/ai/dndCharacterAssistantTypes.js';
 import { parseDndCharacterAssistantSuggestion } from '../../src/lib/ai/dndCharacterAssistantTypes.js';
+import type { RoomSessionAssistantSuggestionResult } from '../../src/lib/ai/sessionAssistantTypes.js';
+import { parseRoomSessionAssistantSuggestion } from '../../src/lib/ai/sessionAssistantTypes.js';
 
 export type StructuredModelRequest = {
   system: string;
@@ -27,6 +29,7 @@ export class ModelGatewayError extends Error {
 export interface ModelGateway {
   status(signal?: AbortSignal): Promise<AiModelGatewayStatus>;
   generateDndCharacterSuggestion(input: StructuredModelRequest, signal?: AbortSignal): Promise<DndCharacterAssistantGatewayResult>;
+  generateRoomSessionSuggestion(input: StructuredModelRequest, signal?: AbortSignal): Promise<Omit<RoomSessionAssistantSuggestionResult, 'expiresAt' | 'contextThroughSeq'>>;
 }
 
 function timedSignal(timeoutMs: number, external?: AbortSignal): { signal: AbortSignal; cleanup(): void; timedOut(): boolean } {
@@ -77,6 +80,32 @@ export function createModelGateway(input: { provider?: StructuredModelProvider; 
         if (!suggestion) throw new ModelGatewayError('invalid_output', 'Model output did not match the character-assistant schema.', true);
         return {
           suggestionId: `ai_suggestion_${randomUUID()}`,
+          provider: provider.id,
+          route: 'local',
+          model: provider.model,
+          createdAt: Date.now(),
+          suggestion,
+        };
+      } catch (error) {
+        if (error instanceof ModelGatewayError) throw error;
+        if (scope.timedOut()) throw new ModelGatewayError('timeout', 'Local model request timed out.', true);
+        if (external?.aborted) throw new ModelGatewayError('cancelled', 'Local model request was cancelled.', false);
+        throw new ModelGatewayError('provider_error', 'Local model provider request failed.', true);
+      } finally {
+        scope.cleanup();
+      }
+    },
+
+    async generateRoomSessionSuggestion(request, external) {
+      if (!provider) throw new ModelGatewayError('not_configured', 'Local model provider is not configured.', false);
+      const scope = timedSignal(input.timeoutMs, external);
+      try {
+        const value = await provider.generate(request, scope.signal);
+        const suggestion = parseRoomSessionAssistantSuggestion(value);
+        if (!suggestion) throw new ModelGatewayError('invalid_output', 'Model output did not match the room-session schema.', true);
+        return {
+          suggestionId: `ai_session_${randomUUID()}`,
+          task: suggestion.task,
           provider: provider.id,
           route: 'local',
           model: provider.model,

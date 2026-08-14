@@ -1033,6 +1033,18 @@ This file helps AI quickly locate important types, helper functions, store actio
 - `DndCharacterAssistantDialog`: contextual Builder entry and loading/unavailable/error/cancel/preview/confirm/audit UI — `src/components/dnd/DndCharacterAssistantDialog.tsx`.
 - Focused smokes: `npm run ai:verify:model-gateway`, `npm run api:verify:dnd-character-assistant`, `npm run frontend:verify:dnd-character-assistant`.
 
+## Room Session AI Assistant
+
+- `AI-LANDMARK: ROOM_SESSION_AI_ASSISTANT_V1`: active-host RuntimeLog projection → structured local draft → visibility preview → stale-guarded append-only confirmation.
+- `buildRoomSessionAssistantContext()`: host-only server context projection, payload minimization, bounds, and provenance fingerprint — `server/ai/roomSessionAssistantContext.ts`.
+- `createRoomSessionAssistantSuggestionRegistry()`: transient room/member/account binding, TTL/cap, and one-shot consumption — `server/ai/roomSessionAssistantRegistry.ts`.
+- `createRoomSessionAssistantApiHandlers()` / `registerRoomSessionAssistantApiRoutes()`: authenticated host status/generate/confirm boundary and durable RuntimeLog append — `server/api/roomSessionAssistantHandlers.ts`, `server/api/roomSessionAssistantRoutes.ts`.
+- `parseRoomSessionAssistantSuggestion()` / `ROOM_SESSION_ASSISTANT_OUTPUT_SCHEMA`: shared runtime contract — `src/lib/ai/sessionAssistantTypes.ts`.
+- `createRoomSessionAssistantHttpClient()`: Runtime server client for status, generation, and confirmation — `src/lib/platform/roomSessionAssistantHttpClient.ts`.
+- `RoomSessionAssistantDialog`: host contextual modal with status, cancellation, preview, visibility warning, stale error, and confirm states — `src/components/platform/RoomSessionAssistantDialog.tsx`.
+- Entry wiring: `RoomRuntimeLogPreviewPanel` enabled only by host `RoomRuntimeEntryBridge`; lobby calls do not opt in.
+- Focused smokes: `npm run ai:verify:room-session-assistant`, `npm run api:verify:room-session-assistant`, `npm run frontend:verify:room-session-assistant`.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

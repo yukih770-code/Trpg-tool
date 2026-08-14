@@ -110,6 +110,10 @@ import { registerActorApiRoutes } from './api/actorApiRoutes.js';
 import { createActorApiHandlers } from './api/actorApiHandlers.js';
 import { registerAiCharacterAssistantApiRoutes } from './api/aiCharacterAssistantRoutes.js';
 import { createAiCharacterAssistantApiHandlers } from './api/aiCharacterAssistantHandlers.js';
+import { createConfiguredModelGateway } from './ai/modelGatewayComposition.js';
+import { createRoomSessionAssistantSuggestionRegistry } from './ai/roomSessionAssistantRegistry.js';
+import { registerRoomSessionAssistantApiRoutes } from './api/roomSessionAssistantRoutes.js';
+import { createRoomSessionAssistantApiHandlers } from './api/roomSessionAssistantHandlers.js';
 import { createPrivateAlphaAuthService, readPrivateAlphaAuthConfigFromEnv } from './auth/privateAlphaAuth.js';
 import { getVerifiedViewer, setPrivateAlphaViewer } from './auth/requestViewer.js';
 import { createCurrentViewerContextFromAuthSession, type CurrentViewerContext } from './auth/currentViewerContext.js';
@@ -300,7 +304,9 @@ registerActorApiRoutes(app, createActorApiHandlers({
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));
+const modelGateway = createConfiguredModelGateway(process.env);
 registerAiCharacterAssistantApiRoutes(app, createAiCharacterAssistantApiHandlers({
+  gateway: modelGateway,
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));
@@ -450,6 +456,18 @@ function confirmRuntimeLogAppend(event: NonNullable<ReturnType<typeof appendRunt
     return true;
   });
 }
+
+const roomSessionAssistantSuggestionRegistry = createRoomSessionAssistantSuggestionRegistry();
+registerRoomSessionAssistantApiRoutes(app, createRoomSessionAssistantApiHandlers({
+  roomRegistry: registry,
+  runtimeLogRegistry,
+  roomMapRegistry,
+  gateway: modelGateway,
+  suggestionRegistry: roomSessionAssistantSuggestionRegistry,
+  isRoomRuntimeReady: () => startupRecoveryReadiness.snapshot().status === 'ready' && liveRoomDurabilityCircuit.isReady(),
+  confirmRuntimeLogAppend,
+  broadcastRuntimeLogAppended: (roomId, events) => roomSocketServer.broadcastRuntimeLogAppended(roomId, events),
+}), resolveRoomRequestViewer);
 
 function confirmRoomMapAppend(event: NonNullable<ReturnType<typeof appendRoomMapEvent>['event']>): Promise<boolean> {
   return serializeLiveAppendConfirmation(roomMapConfirmations, event.roomId, async () => {
