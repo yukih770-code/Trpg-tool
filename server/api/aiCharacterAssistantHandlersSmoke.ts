@@ -10,6 +10,7 @@ const viewer: CurrentViewerContext = {
 let statusModeSeen = '';
 let generationModelSeen = '';
 const gateway: ModelGateway = {
+  generateCampaignArtifactSuggestion: async () => { throw new Error('not used'); },
   catalog: async () => ({
     local: { configured: true, reachable: true, defaultModel: 'local-model' },
     cloud: { configured: false, reason: 'not-implemented' },

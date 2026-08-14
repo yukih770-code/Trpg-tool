@@ -1056,6 +1056,18 @@ This file helps AI quickly locate important types, helper functions, store actio
 - `resolveAiSettingsAvailability()`: pure loading/error/not-configured/unreachable/empty/ready presentation state — `src/lib/ai/aiSettingsPresentation.ts`.
 - Focused smokes: `npm run ai:verify:model-routing`, `npm run frontend:verify:ai-routing-settings`, plus both existing AI API/client suites.
 
+## Campaign AI Artifact Chain
+
+- `AI-LANDMARK: CAMPAIGN_AI_ARTIFACT_CHAIN_V1`: explicit campaign source selection → projected cited draft → stale-guarded confirmation → owner-private GeneratedArtifact.
+- `buildCampaignArtifactContext()` / `campaignArtifactSourceFingerprint()`: bounded source-family projection through retrieval preflight and post-fetch context guard — `server/ai/campaignArtifactContext.ts`.
+- `createCampaignArtifactSuggestionRegistry()`: viewer/world/campaign-bound transient drafts with TTL, cap, and one-shot consumption — `server/ai/campaignArtifactSuggestionRegistry.ts`.
+- `parseCampaignArtifactSuggestion()` / `validateCampaignArtifactCitations()` / `CAMPAIGN_ARTIFACT_OUTPUT_SCHEMA`: shared structured-output and citation contract — `src/lib/ai/campaignArtifactAssistantTypes.ts`.
+- `createCampaignArtifactAssistantApiHandlers()` / `registerCampaignArtifactAssistantApiRoutes()`: authenticated edit-authority status/list/generate/confirm/archive/restore API — `server/api/campaignArtifactAssistantHandlers.ts`, `server/api/campaignArtifactAssistantRoutes.ts`.
+- `createPostgresGeneratedArtifactPersistence()`: one transaction for GeneratedArtifact plus append-only `ai_context_sources` — `server/services/generatedArtifactPersistence.ts`.
+- `CampaignAiArtifactPanel`: contextual non-chat campaign-detail UI for source selection, cited preview, confirmation, private history, archive, and restore — `src/components/platform/CampaignAiArtifactPanel.tsx`.
+- `createCampaignArtifactAssistantApiClient()`: device-routing-aware frontend API adapter — `src/lib/api/campaignArtifactAssistantApiClient.ts`.
+- Focused smokes: `npm run api:verify:campaign-artifact-assistant`, `npm run frontend:verify:campaign-artifact-assistant`, `npm run db:verify:campaign-artifact-atomic`.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

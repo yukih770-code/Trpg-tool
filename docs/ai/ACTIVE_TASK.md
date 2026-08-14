@@ -4,83 +4,71 @@
 
 ## Task
 
-- ID: AI Settings + Model Routing v1
-- Name: `AI_SETTINGS_MODEL_ROUTING_V1`
-- Goal: Close a platform preference loop from authenticated safe model catalog → device-local route/model choice → server-authoritative resolution → existing character/session AI tasks, without changing their permissions or confirmation rules.
-- Phase: Internal AI foundation / platform settings
+- ID: Campaign AI Artifact Chain v1
+- Name: `CAMPAIGN_AI_ARTIFACT_CHAIN_V1`
+- Goal: Close an explicit host/admin flow from campaign-scoped source selection → permission-projected AI draft with citations → human confirmation → durable, recoverable GeneratedArtifact plus append-only provenance.
+- Phase: Internal AI foundation / campaign preparation
 - Status: Complete
 
 ## Layer Declaration
 
-- IA: Platform Shell / Settings plus Backend AI Gateway.
-- Object: safe Projection of installed local model identifiers and capabilities only.
-- State: UI State, replaceable device-local preference state, Server State.
-- Excluded: CatalogObject, OwnedObject, Campaign, Runtime, RuntimeLog, Collaborative State, account-domain persistence, model installation, cloud billing.
+- IA: Campaign detail / host preparation tools plus backend AI Gateway.
+- Object: read-only CampaignObject summaries and viewer-owned GeneratedArtifact; Projection is used only for safe model context and response DTOs.
+- State: UI State, Flow State, transient Server State, Persistent Domain State.
+- Excluded: CatalogObject mutation, CampaignMembership, RuntimeActor, RuntimeObject, RuntimeLog, Collaborative State, rules adjudication, maps, full character sheets, cloud billing.
 
-## UI Declaration
+## UI And Action Declaration
 
-- Page responsibility: `AI 与自动化` manages the current device's AI route preference and shows server-projected local model availability.
-- Not responsible for: chat, prompt editing, model downloads, API-key entry, billing, permissions, content access, business suggestions, or actor/campaign/runtime writes.
-- Actions: choose Off / Auto / Local; choose one installed local model when Local is active; refresh model availability as a secondary action.
-- Cloud route: shown only as a truthful disabled future capability until a real provider, billing, privacy, and failure contract exists.
-- Navigation: reuse the existing Settings category rail and existing page exit; add no new permanent navigation entry or duplicate Back/Home control.
+- Page responsibility: campaign detail may expose one contextual, secondary `AI 备团与回顾` tool for users who already have server-authoritative campaign edit permission.
+- Not responsible for: chat, a global AI center, role/member management, runtime control, campaign creation, rules lookup, or background automation.
+- Primary action: the campaign detail's existing entry/runtime path remains primary; AI is secondary. Inside the AI flow, `生成草稿` previews only and `确认保存` is the sole persistent action.
+- Exit/navigation: inline contextual panel only; no new Back/Home/ContextBar/global navigation control.
+- Lifecycle: saved artifacts can be archived and restored; no hard delete.
 
-## Routing And Authority
+## Authority, Visibility And Retrieval
 
-- Browser preference is untrusted input and is parsed with bounded values.
-- Server validates the requested route/model against its live, optionally allowlisted Ollama inventory.
-- `auto` deterministically prefers an installed Qwen 3.6 model, then configured default, then another allowed installed model.
-- `off` stops generation; `cloud` is unavailable until implemented; `local` never accepts an unknown/uninstalled model.
-- Model choice cannot grant new content access, change viewer role, bypass task-specific confirmation, or mutate domain state.
-- Server responses never expose provider base URLs, credentials, prompts, or hidden inventory fields.
+- Browser `canManageServer` is presentation only. Every status/list/generate/confirm/archive/restore request re-authorizes the authenticated viewer and campaign scope on the server.
+- The user explicitly selects bounded source families for each generation request. Consent is request-local and does not alter the Campaign record's stored `aiScope`.
+- Only campaign title/description/system/status, actor display-name/status summaries, room status/name summaries, and the current viewer's prior active artifacts are eligible.
+- Campaign payloads, actor snapshots/overrides, room codes/access policy/metadata, RuntimeLog, maps, rules books, participant-private data, and other users' artifacts are excluded.
+- Retrieval must pass source preflight and the post-fetch AI Context Scope Guard. Denied bodies never enter prompts or responses.
+- v1 artifacts are fixed to `user_private` and filtered by owner on every read/mutation.
+
+## Persistence And Confirmation
+
+- A generated suggestion is transient, viewer/world/campaign-bound, expiring, and one-shot.
+- Every cited source ID must exist in the server-produced source manifest.
+- Confirmation re-fetches the selected source projection and rejects stale fingerprints.
+- Artifact plus `ai_context_sources` provenance must be written atomically.
+- Model metadata records route/provider/model/time but never credentials, base URLs, system prompts, or denied content.
 
 ## Allowed Files
 
-- `server/ai/modelGateway*`
-- `server/ai/localOllamaProvider.ts`
-- `server/config/modelGatewayConfig*`
-- `server/api/aiCharacterAssistant*`
-- `server/api/roomSessionAssistant*`
-- `src/lib/ai/modelRouting*`
-- `src/lib/ai/dndCharacterAssistantTypes.ts`
-- `src/lib/api/aiModelGatewayApiClient*`
-- `src/lib/platform/roomSessionAssistantHttpClient*`
-- `src/components/platform/AiSettingsPanel.tsx`
-- existing character/session assistant dialog status copy
-- `src/App.tsx`
-- `.env.example`
-- `package.json`
-- platform status, roadmap, README, test checklist, AI archive/symbol map documentation
+- `src/lib/ai/campaignArtifactAssistantTypes.ts`
+- `src/lib/api/campaignArtifactAssistantApiClient.ts`
+- `src/components/platform/CampaignAiArtifactPanel.tsx`
+- `src/components/platform/ServerCampaignWorkspace.tsx`
+- `server/ai/campaignArtifact*`
+- `server/ai/modelGateway.ts`
+- `server/api/campaignArtifactAssistant*`
+- `server/services/generatedArtifactPersistence.ts`
+- `server/room-server.ts`
+- focused smoke/tests, package scripts, project/test/status/architecture AI docs
 
 ## Forbidden Changes
 
-- Actor, Campaign, Room, Runtime, RuntimeLog, permission, membership, or account schemas/migrations
-- Model installation/deletion, arbitrary provider URLs from clients, API-key storage, cloud usage/billing claims
-- Hidden auto-apply, background domain writes, permission expansion, prompt/content exposure in settings
+- Schema/migration changes
+- Campaign, membership, actor, room, runtime, RuntimeLog, permissions, or account writes
+- Campaign-shared/public artifacts, background generation, hidden auto-apply, direct model database access
+- Full sheets, payload snapshots, room codes, access policies, metadata, maps, logs, rules books
 - `output/`, `tools/`, `work/`
 
 ## Completion Criteria
 
-- Authenticated settings can load a safe local model catalog and truthfully distinguish disabled, unreachable, empty, and ready states.
-- Off / Auto / Local preferences persist on the current device; cloud remains visibly unavailable.
-- Server resolves every generation request authoritatively and rejects disabled, unavailable, uninstalled, or disallowed selections.
-- Existing DND character and Room Session assistants read the preference on each request and preserve all current task authorization, projection, preview, and confirmation behavior.
-- Focused config/router/API/client/presentation smokes pass, plus AI policies, TypeScript, server/frontend builds, and diff checks.
-
-## Verification
-
-```powershell
-npm run ai:verify:model-gateway
-npm run ai:verify:model-routing
-npm run api:verify:dnd-character-assistant
-npm run api:verify:room-session-assistant
-npm run frontend:verify:ai-routing-settings
-npm run frontend:verify:dnd-character-assistant
-npm run frontend:verify:room-session-assistant
-npm run policy:verify:ai-scope
-npm run policy:verify:ai-retrieval
-npx tsc --noEmit
-npm run server:build
-npm run build
-git diff --check
-```
+- Unauthorized users cannot learn whether the scoped campaign AI resource exists; authorized host/admin paths work against real repositories.
+- Selected sources pass preflight + post-fetch guard and appear as bounded citations in the preview.
+- Model output is schema-validated and citation-validated; stale/expired/cross-context suggestions fail closed.
+- Explicit confirmation atomically persists one owner-private GeneratedArtifact and append-only source records.
+- Owner-scoped history supports list/archive/restore without hard deletion.
+- Campaign detail UI is contextual, non-chat, secondary, transparent about privacy/model/source/confirmation, and handles loading/empty/error/stale/unavailable states.
+- Focused smokes, AI policy tests, TypeScript, server/frontend builds, diff checks, and clean commit pass.

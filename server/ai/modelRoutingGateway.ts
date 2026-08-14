@@ -177,5 +177,9 @@ export function createRoutedLocalModelGateway(input: {
       const model = await resolve(preference, external);
       return executor(model).generateRoomSessionSuggestion(request, external, { mode: 'local', localModel: model });
     },
+    async generateCampaignArtifactSuggestion(request: StructuredModelRequest, external, preference) {
+      const model = await resolve(preference, external);
+      return executor(model).generateCampaignArtifactSuggestion(request, external, { mode: 'local', localModel: model });
+    },
   };
 }

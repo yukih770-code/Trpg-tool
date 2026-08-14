@@ -1691,6 +1691,25 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8an. Campaign AI Artifact Chain v1
+
+- [x] Every endpoint re-authorizes authenticated campaign `edit` authority and hides scoped resource existence on denial
+- [x] Generation requires an explicit non-empty source-family selection; consent is request-local and does not rewrite Campaign `aiScope`
+- [x] Eligible projections contain only bounded campaign/actor/active-room summaries and the viewer's prior active artifacts
+- [x] Full actor snapshots/overrides, room code/access policy/metadata, RuntimeLog, maps, rules, participants, and other owners' artifacts are excluded
+- [x] Retrieval preflight and post-fetch scope guard both run; denied/truncated sources fail the whole request and denied bodies stay redacted
+- [x] Structured output parser and citation whitelist reject invented/missing source IDs
+- [x] Suggestions are TTL-bound, viewer/world/campaign-bound, one-shot, and stale-checked against a re-fetched source fingerprint
+- [x] Confirmation atomically writes one owner-private GeneratedArtifact and append-only provenance sources; rollback is verified on source-write failure
+- [x] Artifact list/archive/restore are owner- and campaign-scoped; v1 has no hard delete or shared/public visibility
+- [x] Campaign detail keeps its existing primary path; AI is a secondary inline tool with no new navigation/back/exit control
+- [x] UI covers unavailable, loading, validation/error, preview/citations, discard, confirm, stale/expiry, empty history, archive, and restore
+- [x] `npm run api:verify:campaign-artifact-assistant`, `npm run frontend:verify:campaign-artifact-assistant`, and `npm run db:verify:campaign-artifact-atomic` pass
+- [x] AI scope/retrieval policies, TypeScript, server/frontend builds, and diff checks pass
+- [ ] Campaign-shared/public artifacts, background recommendations, cloud usage ledger/budget/billing, embeddings/vector retrieval, and full AuditLog are implemented (future tasks)
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

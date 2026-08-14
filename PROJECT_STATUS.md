@@ -692,6 +692,19 @@ Landmark: `AI_SETTINGS_MODEL_ROUTING_V1`.
 
 ---
 
+## Campaign AI Artifact Chain v1
+
+- 战役详情为服务器拥有者/管理员增加了一个次级、可折叠的 `AI 备团与回顾` 工具；它不是聊天框，也没有新增全局 AI 导航入口。
+- 每次生成都要求用户显式选择来源族。服务端只投影战役标题/简介/系统/状态、角色名称/类型/状态、活动房间状态，以及当前用户此前保存的成果摘要；角色快照、房间口令/权限/metadata、RuntimeLog、地图、规则资料和其他用户成果不会进入模型。
+- 来源读取执行 retrieval preflight + post-fetch AI Context Scope Guard；任何被拒绝或截断的来源都会使本次生成失败。模型输出同时接受结构 schema 与 sourceId 引用白名单校验。
+- 草稿是有 TTL、按用户/服务器/战役绑定的一次性 Server State。确认前重新投影来源并比对指纹，过期、跨上下文、重复确认或来源变化都 fail closed。
+- 确认后通过单个 PostgreSQL 事务原子写入一个 `user_private` GeneratedArtifact 与全部 append-only `ai_context_sources`。v1 不支持战役共享/公开，历史只按当前 owner 读取，并支持可恢复的归档/恢复而不提供硬删除。
+- 本链路复用可切换的 Model Gateway，因此 Off/Auto/Local 与已安装模型校验同样生效；不新增云端供应商、计费或后台自动写入。
+
+Landmark: `CAMPAIGN_AI_ARTIFACT_CHAIN_V1`.
+
+---
+
 ## Build Status
 
 | Check | Status |

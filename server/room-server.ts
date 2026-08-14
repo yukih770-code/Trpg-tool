@@ -114,6 +114,8 @@ import { createConfiguredModelGateway } from './ai/modelGatewayComposition.js';
 import { createRoomSessionAssistantSuggestionRegistry } from './ai/roomSessionAssistantRegistry.js';
 import { registerRoomSessionAssistantApiRoutes } from './api/roomSessionAssistantRoutes.js';
 import { createRoomSessionAssistantApiHandlers } from './api/roomSessionAssistantHandlers.js';
+import { registerCampaignArtifactAssistantApiRoutes } from './api/campaignArtifactAssistantRoutes.js';
+import { createCampaignArtifactAssistantApiHandlers } from './api/campaignArtifactAssistantHandlers.js';
 import { createPrivateAlphaAuthService, readPrivateAlphaAuthConfigFromEnv } from './auth/privateAlphaAuth.js';
 import { getVerifiedViewer, setPrivateAlphaViewer } from './auth/requestViewer.js';
 import { createCurrentViewerContextFromAuthSession, type CurrentViewerContext } from './auth/currentViewerContext.js';
@@ -310,6 +312,7 @@ registerAiCharacterAssistantApiRoutes(app, createAiCharacterAssistantApiHandlers
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));
+registerCampaignArtifactAssistantApiRoutes(app, createCampaignArtifactAssistantApiHandlers({ gateway: modelGateway }));
 
 // Memory-live ActorAdmission authority. Campaign-linked room startup rebuilds
 // validated records from the durable Room clearance summaries below.

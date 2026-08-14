@@ -4,6 +4,8 @@ import { parseDndCharacterAssistantSuggestion } from '../../src/lib/ai/dndCharac
 import type { AiModelCatalog, AiRoutingPreference } from '../../src/lib/ai/modelRoutingTypes.js';
 import type { RoomSessionAssistantSuggestionResult } from '../../src/lib/ai/sessionAssistantTypes.js';
 import { parseRoomSessionAssistantSuggestion } from '../../src/lib/ai/sessionAssistantTypes.js';
+import type { CampaignArtifactSuggestionResult } from '../../src/lib/ai/campaignArtifactAssistantTypes.js';
+import { parseCampaignArtifactSuggestion } from '../../src/lib/ai/campaignArtifactAssistantTypes.js';
 
 export type StructuredModelRequest = {
   system: string;
@@ -32,6 +34,7 @@ export interface ModelGateway {
   status(signal?: AbortSignal, preference?: AiRoutingPreference): Promise<AiModelGatewayStatus>;
   generateDndCharacterSuggestion(input: StructuredModelRequest, signal?: AbortSignal, preference?: AiRoutingPreference): Promise<DndCharacterAssistantGatewayResult>;
   generateRoomSessionSuggestion(input: StructuredModelRequest, signal?: AbortSignal, preference?: AiRoutingPreference): Promise<Omit<RoomSessionAssistantSuggestionResult, 'expiresAt' | 'contextThroughSeq'>>;
+  generateCampaignArtifactSuggestion(input: StructuredModelRequest, signal?: AbortSignal, preference?: AiRoutingPreference): Promise<Omit<CampaignArtifactSuggestionResult, 'expiresAt' | 'sources'>>;
 }
 
 function timedSignal(timeoutMs: number, external?: AbortSignal): { signal: AbortSignal; cleanup(): void; timedOut(): boolean } {
@@ -137,6 +140,34 @@ export function createModelGateway(input: { provider?: StructuredModelProvider; 
         if (!suggestion) throw new ModelGatewayError('invalid_output', 'Model output did not match the room-session schema.', true);
         return {
           suggestionId: `ai_session_${randomUUID()}`,
+          task: suggestion.task,
+          provider: provider.id,
+          route: 'local',
+          model: provider.model,
+          createdAt: Date.now(),
+          suggestion,
+        };
+      } catch (error) {
+        if (error instanceof ModelGatewayError) throw error;
+        if (scope.timedOut()) throw new ModelGatewayError('timeout', 'Local model request timed out.', true);
+        if (external?.aborted) throw new ModelGatewayError('cancelled', 'Local model request was cancelled.', false);
+        throw new ModelGatewayError('provider_error', 'Local model provider request failed.', true);
+      } finally {
+        scope.cleanup();
+      }
+    },
+
+    async generateCampaignArtifactSuggestion(request, external, preference = { mode: 'auto' }) {
+      if (preference.mode === 'off') throw new ModelGatewayError('not_configured', 'AI is disabled on this device.', false);
+      if (preference.mode === 'cloud') throw new ModelGatewayError('route_unavailable', 'Cloud AI is not available.', false);
+      if (!provider) throw new ModelGatewayError('not_configured', 'Local model provider is not configured.', false);
+      const scope = timedSignal(input.timeoutMs, external);
+      try {
+        const value = await provider.generate(request, scope.signal);
+        const suggestion = parseCampaignArtifactSuggestion(value);
+        if (!suggestion) throw new ModelGatewayError('invalid_output', 'Model output did not match the campaign-artifact schema.', true);
+        return {
+          suggestionId: `ai_campaign_${randomUUID()}`,
           task: suggestion.task,
           provider: provider.id,
           route: 'local',

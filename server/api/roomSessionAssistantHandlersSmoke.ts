@@ -56,6 +56,7 @@ const generatedTask = (request: StructuredModelRequest): RoomSessionAssistantTas
     : request.prompt.includes('任务：in_session') ? 'in_session'
       : 'recap';
 const gateway: ModelGateway = {
+  generateCampaignArtifactSuggestion: async () => { throw new Error('not used'); },
   catalog: async () => ({
     local: { configured: true, reachable: true, defaultModel: 'local-model' },
     cloud: { configured: false, reason: 'not-implemented' },

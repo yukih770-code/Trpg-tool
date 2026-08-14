@@ -21,6 +21,7 @@ import { SavedSceneLibraryPanel } from './SavedSceneLibraryPanel';
 import { SceneRuntimeSnapshotPanel } from './SceneRuntimeSnapshotPanel';
 import { LanRuntimeHostPanel } from './LanRuntimeHostPanel';
 import { HostedRoomLaunchPanel } from './HostedRoomLaunchPanel';
+import { CampaignAiArtifactPanel } from './CampaignAiArtifactPanel';
 import type { CombatRuntimeEventDraft, CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
 import type { CombatDamagePreset } from '../../lib/combat/combatComfort';
 import type { MapBoardState, MapRuntimeEventDraft } from '../../lib/map/mapRuntimeTypes';
@@ -561,6 +562,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                 <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.actorCount')}</strong><div className="mt-1 text-[#51483d]">{campaignDetail.actors.length}</div></div>
                 <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.roomCount')}</strong><div className="mt-1 text-[#51483d]">{activeRooms.length}</div></div>
               </div>
+              <CampaignAiArtifactPanel locale={locale} worldServerId={worldServerId} campaignId={campaignDetail.detail.campaign.campaignId} canManage={canManageServer} />
               <div className="mt-4 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
