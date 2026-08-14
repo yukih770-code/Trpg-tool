@@ -1,8 +1,8 @@
 export type CampaignArtifactGenerationTask = 'preparation_brief' | 'campaign_recap' | 'worldbuilding_outline' | 'adventure_seed';
 export type SessionArtifactTask = 'session_character_biography' | 'session_quest_log';
 export type CampaignArtifactTask = CampaignArtifactGenerationTask | SessionArtifactTask;
-export type CampaignArtifactSourceFamily = 'campaign_summary' | 'actor_summaries' | 'room_summaries' | 'prior_artifacts' | 'adopted_memories';
-export type CampaignArtifactSourceKind = 'campaign_summary' | 'campaign_actor_summary' | 'campaign_room_summary' | 'prior_artifact' | 'adopted_memory' | 'runtime_session_projection';
+export type CampaignArtifactSourceFamily = 'campaign_summary' | 'actor_summaries' | 'room_summaries' | 'prior_artifacts' | 'adopted_memories' | 'adopted_session_references';
+export type CampaignArtifactSourceKind = 'campaign_summary' | 'campaign_actor_summary' | 'campaign_room_summary' | 'prior_artifact' | 'adopted_memory' | 'adopted_session_reference' | 'runtime_session_projection';
 
 export type CampaignArtifactSource = {
   sourceId: string;
@@ -51,6 +51,7 @@ export type SavedCampaignArtifact = {
   archivedAt?: string;
   adoption?: {
     memoryEntryId: string;
+    kind: 'campaign_direction' | 'session_reference';
     status: 'active' | 'archived';
     adoptedAt?: string;
     updatedAt?: string;
@@ -111,8 +112,12 @@ export function isCreativeCampaignArtifactTask(task: CampaignArtifactTask): bool
   return task === 'worldbuilding_outline' || task === 'adventure_seed';
 }
 
+export function isSessionCampaignArtifactTask(task: CampaignArtifactTask): task is SessionArtifactTask {
+  return task === 'session_character_biography' || task === 'session_quest_log';
+}
+
 export function isCampaignArtifactSourceFamily(value: unknown): value is CampaignArtifactSourceFamily {
-  return value === 'campaign_summary' || value === 'actor_summaries' || value === 'room_summaries' || value === 'prior_artifacts' || value === 'adopted_memories';
+  return value === 'campaign_summary' || value === 'actor_summaries' || value === 'room_summaries' || value === 'prior_artifacts' || value === 'adopted_memories' || value === 'adopted_session_references';
 }
 
 export function parseCampaignArtifactSuggestion(value: unknown): CampaignArtifactSuggestion | null {

@@ -1774,6 +1774,25 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8as. Session AI Curated Reference Adoption v1
+
+- [x] Only active owner-private `session_character_biography` and `session_quest_log` outcomes can be adopted as Session references
+- [x] Every list/adopt/withdraw/generate request re-authorizes campaign `edit` access and owner/campaign scope
+- [x] First adoption atomically creates one `session_outcome_reference` AI Memory plus one append-only GeneratedArtifact provenance source
+- [x] Session reference memory is `user_private`, campaign-scoped, and carries its RuntimeSession reference when the source artifact has one
+- [x] Duplicate adoption is idempotent; withdrawal archives; re-adoption restores the same memory without creating a duplicate
+- [x] Active Session reference blocks source-artifact archive until withdrawal; no hard delete exists
+- [x] Creative campaign directions and Session references use separate memory kinds and separate source families
+- [x] `adopted_session_references` is visible but off by default and enters a model request only after explicit request-local selection
+- [x] Withdrawn, archived, unselected, cross-owner/campaign, unauthorized, or unrelated-memory records do not enter Session-reference context
+- [x] Retrieval preflight and post-fetch scope enforcement remain mandatory; cited Session references survive confirmed artifact persistence
+- [x] Memory content preserves uncertainties and model/UI copy states that the reference is not sheet data, quest state, public information, Handout, Runtime state, or campaign fact
+- [x] Navigation/action audit found no new Back/Home/exit control, modal backdrop, dialog role, page, or global AI entry
+- [x] Model gateway/routing, AI scope/retrieval, Campaign/Session assistant regressions, atomic persistence, TypeScript, server/frontend builds, and diff checks pass
+- [ ] Live local-model inference and real PostgreSQL multi-user acceptance remain deployment checks
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

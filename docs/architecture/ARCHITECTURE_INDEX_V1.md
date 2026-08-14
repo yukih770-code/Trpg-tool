@@ -1073,3 +1073,12 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Session outcomes remain narrative drafts: no Actor, sheet, quest, Campaign payload, RuntimeLog, public/shared, Workshop, ProposedCommand, or AI Memory write is implied.
 - `runtime_session_projection` provenance stores only bounded metadata; raw RuntimeLog bodies are not copied. Saved session outcomes are excluded from `prior_artifacts` retrieval until a future explicit adoption contract exists.
 - Landmark: `SESSION_AI_CAMPAIGN_ARTIFACT_PERSISTENCE_V1`.
+
+## Session AI Curated Reference Adoption v1
+
+- Files: `server/api/campaignArtifactAssistantHandlers.ts`, `server/ai/campaignArtifactContext.ts`, `src/lib/ai/campaignArtifactAssistantTypes.ts`, and `src/components/platform/CampaignAiArtifactPanel.tsx`.
+- A reviewed Session biography/quest-log artifact may be explicitly adopted as one owner-private, campaign-scoped `session_outcome_reference` AI Memory plus append-only GeneratedArtifact provenance.
+- Session references and creative directions are separate memory kinds and source families. `adopted_session_references` is request-local and off by default; adoption alone never makes a Session outcome enter later generation.
+- Retrieval must re-authorize campaign edit access, enforce owner/campaign/lifecycle scope, pass preflight and post-fetch guards, preserve uncertainties, and label the source as a fallible narrative reference rather than campaign fact.
+- Adoption is idempotent and recoverable through archive/restore of the same memory. No Actor, sheet, quest, Campaign payload, RuntimeLog, BlockDocument/Handout, public/shared, Workshop, or schema/migration write is implied.
+- Landmark: `SESSION_AI_CURATED_REFERENCE_ADOPTION_V1`.

@@ -3,11 +3,11 @@ import type { Locale } from '../../i18n';
 import { ApiClientError } from '../../lib/api/apiTypes';
 import { campaignArtifactAssistantApiClient } from '../../lib/api/campaignArtifactAssistantApiClient';
 import type { AiModelGatewayStatus } from '../../lib/ai/dndCharacterAssistantTypes';
-import { isCreativeCampaignArtifactTask, type CampaignArtifactGenerationTask, type CampaignArtifactSourceFamily, type CampaignArtifactSuggestionResult, type SavedCampaignArtifact } from '../../lib/ai/campaignArtifactAssistantTypes';
+import { isCreativeCampaignArtifactTask, isSessionCampaignArtifactTask, type CampaignArtifactGenerationTask, type CampaignArtifactSourceFamily, type CampaignArtifactSuggestionResult, type SavedCampaignArtifact } from '../../lib/ai/campaignArtifactAssistantTypes';
 
 type Props = { locale: Locale; worldServerId: string; campaignId: string; canManage: boolean };
 
-const SOURCE_FAMILIES: CampaignArtifactSourceFamily[] = ['campaign_summary', 'actor_summaries', 'room_summaries', 'adopted_memories', 'prior_artifacts'];
+const SOURCE_FAMILIES: CampaignArtifactSourceFamily[] = ['campaign_summary', 'actor_summaries', 'room_summaries', 'adopted_memories', 'adopted_session_references', 'prior_artifacts'];
 
 function copy(locale: Locale) {
   const zh = locale.startsWith('zh');
@@ -16,24 +16,45 @@ function copy(locale: Locale) {
     private: '成果仅你可见', model: '本地模型', unavailable: '当前 AI 路由不可用，请前往设置检查本地模型。',
     preparation_brief: '备团简报', campaign_recap: '战役回顾', worldbuilding_outline: '世界观提案', adventure_seed: '冒险 / 地下城种子', session_character_biography: '人物传记草稿', session_quest_log: '任务日志草稿', focus: '关注点（可选）', focusPlaceholder: '例如：下次开场、尚未收束的线索、需要准备的 NPC…',
     creativeWarning: '这是原创创意提案，不是战役既定事实、官方模组或现有工坊作品。保存也不会自动写入战役；采用内容仍由你决定。', proposal: '创意提案', sessionWarning: '这是从一次 RuntimeLog 主持人投影整理并保存的私有草稿，不是角色卡、任务状态或战役既定事实。', sessionOutcome: '会后整理成果',
-    campaign_summary: '战役标题与简介', actor_summaries: '角色名称与状态', room_summaries: '房间状态摘要', adopted_memories: '主持人已采用的 AI 战役方向', prior_artifacts: '我此前保存的 AI 成果',
+    campaign_summary: '战役标题与简介', actor_summaries: '角色名称与状态', room_summaries: '房间状态摘要', adopted_memories: '主持人已采用的 AI 战役方向', adopted_session_references: '本次主动使用：已采用的会后参考', prior_artifacts: '我此前保存的 AI 成果',
     generate: '生成带来源草稿', generating: '正在整理…', confirm: '确认并保存', confirming: '正在保存…', discard: '放弃此草稿', sources: '本次来源', uncertainties: '不确定项', next: '建议下一步',
     history: '已保存成果', empty: '还没有保存的成果。', archived: '已归档', archive: '归档', restore: '恢复', refresh: '刷新', showArchived: '显示已归档',
     adopt: '采用为 AI 战役记忆', withdrawAdoption: '撤回采用', readopt: '重新采用', adopted: '已采用为 AI 记忆', adoptionWithdrawn: '已撤回采用', withdrawBeforeArchive: '先撤回采用才能归档',
     adoptionNote: '采用后，它会成为后续私有战役 AI 默认可选的主持人确认方向；不会向玩家公开，也不会写入战役、Handout 或 Runtime。',
+    adoptSessionReference: '采用为后续 AI 参考', readoptSessionReference: '重新采用为 AI 参考', adoptedSessionReference: '已采用为会后参考', sessionAdoptionNote: '采用只建立仅本人可见、可撤回的会后参考；它默认不会进入生成。只有你本次主动勾选“已采用的会后参考”时 AI 才会读取，并且它仍不是角色卡、任务状态或战役事实。',
     stale: '来源可能已变化，请重新生成后再保存。', retry: '请求失败，请稍后重试。', expires: '草稿有时效；保存前会再次核对来源。',
   } : {
     title: 'AI prep & recap', note: 'Create a cited draft from the campaign summaries you select. AI never reads full sheets, room codes, maps, or runtime logs and never changes the campaign automatically.',
     private: 'Artifacts are visible only to you', model: 'Local model', unavailable: 'The selected AI route is unavailable. Check your local model in Settings.',
     preparation_brief: 'Prep brief', campaign_recap: 'Campaign recap', worldbuilding_outline: 'Worldbuilding proposal', adventure_seed: 'Adventure / dungeon seed', session_character_biography: 'Character biography draft', session_quest_log: 'Quest log draft', focus: 'Focus (optional)', focusPlaceholder: 'Opening beat, unresolved threads, NPCs to prepare…',
     creativeWarning: 'This is an original creative proposal, not established campaign fact, an official adventure, or an existing Workshop item. Saving it does not apply it to the campaign.', proposal: 'Creative proposal', sessionWarning: 'This is a private draft saved from one host-projected RuntimeLog context, not a character-sheet write, quest state, or established campaign fact.', sessionOutcome: 'Post-session outcome',
-    campaign_summary: 'Campaign title and description', actor_summaries: 'Actor names and statuses', room_summaries: 'Room status summaries', adopted_memories: 'Host-adopted AI campaign directions', prior_artifacts: 'My previously saved AI artifacts',
+    campaign_summary: 'Campaign title and description', actor_summaries: 'Actor names and statuses', room_summaries: 'Room status summaries', adopted_memories: 'Host-adopted AI campaign directions', adopted_session_references: 'Use this time: adopted session references', prior_artifacts: 'My previously saved AI artifacts',
     generate: 'Generate cited draft', generating: 'Preparing…', confirm: 'Confirm and save', confirming: 'Saving…', discard: 'Discard draft', sources: 'Sources', uncertainties: 'Uncertainties', next: 'Suggested next steps',
     history: 'Saved artifacts', empty: 'No saved artifacts yet.', archived: 'Archived', archive: 'Archive', restore: 'Restore', refresh: 'Refresh', showArchived: 'Show archived',
     adopt: 'Adopt as AI campaign memory', withdrawAdoption: 'Withdraw adoption', readopt: 'Adopt again', adopted: 'Adopted as AI memory', adoptionWithdrawn: 'Adoption withdrawn', withdrawBeforeArchive: 'Withdraw adoption before archiving',
     adoptionNote: 'Adoption makes this a default selectable host-approved direction for later private campaign AI. It does not publish or write to the campaign, Handout, or Runtime.',
+    adoptSessionReference: 'Adopt for later AI reference', readoptSessionReference: 'Adopt again for AI reference', adoptedSessionReference: 'Adopted session reference', sessionAdoptionNote: 'Adoption creates a private, reversible session reference and does not enable it by default. AI reads it only when you select “adopted session references” for this request; it remains neither sheet data, quest state, nor campaign fact.',
     stale: 'Sources may have changed. Generate a fresh draft before saving.', retry: 'Request failed. Try again.', expires: 'Drafts expire; sources are checked again before saving.',
   };
+}
+
+function isAdoptableArtifact(artifact: SavedCampaignArtifact): boolean {
+  return isCreativeCampaignArtifactTask(artifact.task) || isSessionCampaignArtifactTask(artifact.task);
+}
+
+function adoptionNote(artifact: SavedCampaignArtifact, labels: ReturnType<typeof copy>): string {
+  return isSessionCampaignArtifactTask(artifact.task) ? labels.sessionAdoptionNote : labels.adoptionNote;
+}
+
+function adoptionActionLabel(artifact: SavedCampaignArtifact, labels: ReturnType<typeof copy>): string {
+  if (artifact.adoption?.status === 'active') return labels.withdrawAdoption;
+  if (isSessionCampaignArtifactTask(artifact.task)) return artifact.adoption?.status === 'archived' ? labels.readoptSessionReference : labels.adoptSessionReference;
+  return artifact.adoption?.status === 'archived' ? labels.readopt : labels.adopt;
+}
+
+function adoptionStatusLabel(artifact: SavedCampaignArtifact, labels: ReturnType<typeof copy>): string {
+  if (artifact.adoption?.status === 'archived') return labels.adoptionWithdrawn;
+  return artifact.adoption?.kind === 'session_reference' ? labels.adoptedSessionReference : labels.adopted;
 }
 
 function errorText(error: unknown, labels: ReturnType<typeof copy>): string {
@@ -134,7 +155,16 @@ export function CampaignAiArtifactPanel({ locale, worldServerId, campaignId, can
         </div>}
         {preview && <div className="mt-4 rounded-xl border border-[#8a7049]/30 bg-[#faf7f0] p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wide text-[#7d6c55]">{labels[preview.task]}</p><h4 className="mt-1 text-lg font-bold">{preview.title}</h4></div><span className="text-xs text-[#6c604f]">{draft.model}</span></div><ArtifactBody artifact={preview} labels={labels} /><p className="mt-3 text-xs text-[#6c604f]">{labels.expires}</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={busy !== null} onClick={() => void confirm()} className="rounded-lg bg-[#2b241d] px-4 py-2 text-sm font-bold text-white disabled:opacity-40">{busy === 'confirm' ? labels.confirming : labels.confirm}</button><button type="button" disabled={busy !== null} onClick={() => setDraft(null)} className="rounded-lg border border-[#2f2a22]/15 bg-white px-4 py-2 text-sm font-bold">{labels.discard}</button></div></div>}
       </>}
-      <div className="mt-5 border-t border-[#2f2a22]/10 pt-4"><div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{labels.history}</h4><label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} />{labels.showArchived}</label></div>{artifacts.length === 0 ? <p className="mt-2 text-sm text-[#6c604f]">{labels.empty}</p> : <div className="mt-2 space-y-2">{artifacts.map((artifact) => <details key={artifact.artifactId} className="rounded-xl bg-white/65 p-3"><summary className="cursor-pointer list-none"><div className="flex items-start justify-between gap-3"><div><h5 className="font-bold">{artifact.title}</h5><p className="mt-1 text-xs text-[#6c604f]">{labels[artifact.task]}{artifact.adoption?.status === 'active' ? ` · ${labels.adopted}` : artifact.adoption?.status === 'archived' ? ` · ${labels.adoptionWithdrawn}` : ''}{artifact.archivedAt ? ` · ${labels.archived}` : ''}{artifact.model ? ` · ${artifact.model}` : ''}</p></div><div className="flex flex-wrap justify-end gap-3">{isCreativeCampaignArtifactTask(artifact.task) && !artifact.archivedAt && <button type="button" disabled={busy !== null} onClick={(event) => { event.preventDefault(); void mutateAdoption(artifact); }} title={labels.adoptionNote} className="text-xs font-bold underline disabled:opacity-40">{artifact.adoption?.status === 'active' ? labels.withdrawAdoption : artifact.adoption?.status === 'archived' ? labels.readopt : labels.adopt}</button>}{artifact.adoption?.status === 'active' && !artifact.archivedAt ? <span title={labels.withdrawBeforeArchive} className="text-xs text-[#8a7049]">{labels.withdrawBeforeArchive}</span> : <button type="button" disabled={busy !== null} onClick={(event) => { event.preventDefault(); void mutate(artifact); }} className="text-xs font-bold underline disabled:opacity-40">{artifact.archivedAt ? labels.restore : labels.archive}</button>}</div></div></summary>{artifact.adoption?.status === 'active' && <p className="mt-3 rounded-lg bg-[#4e6f52]/10 px-3 py-2 text-xs leading-5 text-[#3e6243]">{labels.adoptionNote}</p>}<ArtifactBody artifact={artifact} labels={labels} /></details>)}</div>}</div>
+      <div className="mt-5 border-t border-[#2f2a22]/10 pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{labels.history}</h4><label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} />{labels.showArchived}</label></div>
+        {artifacts.length === 0 ? <p className="mt-2 text-sm text-[#6c604f]">{labels.empty}</p> : <div className="mt-2 space-y-2">{artifacts.map((artifact) => (
+          <details key={artifact.artifactId} className="rounded-xl bg-white/65 p-3">
+            <summary className="cursor-pointer list-none"><div className="flex items-start justify-between gap-3"><div><h5 className="font-bold">{artifact.title}</h5><p className="mt-1 text-xs text-[#6c604f]">{labels[artifact.task]}{artifact.adoption ? ` · ${adoptionStatusLabel(artifact, labels)}` : ''}{artifact.archivedAt ? ` · ${labels.archived}` : ''}{artifact.model ? ` · ${artifact.model}` : ''}</p></div><div className="flex flex-wrap justify-end gap-3">{isAdoptableArtifact(artifact) && !artifact.archivedAt && <button type="button" disabled={busy !== null} onClick={(event) => { event.preventDefault(); void mutateAdoption(artifact); }} title={adoptionNote(artifact, labels)} className="text-xs font-bold underline disabled:opacity-40">{adoptionActionLabel(artifact, labels)}</button>}{artifact.adoption?.status === 'active' && !artifact.archivedAt ? <span title={labels.withdrawBeforeArchive} className="text-xs text-[#8a7049]">{labels.withdrawBeforeArchive}</span> : <button type="button" disabled={busy !== null} onClick={(event) => { event.preventDefault(); void mutate(artifact); }} className="text-xs font-bold underline disabled:opacity-40">{artifact.archivedAt ? labels.restore : labels.archive}</button>}</div></div></summary>
+            {artifact.adoption?.status === 'active' && <p className="mt-3 rounded-lg bg-[#4e6f52]/10 px-3 py-2 text-xs leading-5 text-[#3e6243]">{adoptionNote(artifact, labels)}</p>}
+            <ArtifactBody artifact={artifact} labels={labels} />
+          </details>
+        ))}</div>}
+      </div>
     </div>
   </details>;
 }

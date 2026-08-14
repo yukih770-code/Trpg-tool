@@ -763,6 +763,18 @@ Landmark: `SESSION_AI_CAMPAIGN_ARTIFACT_PERSISTENCE_V1`.
 
 ---
 
+## Session AI Curated Reference Adoption v1
+
+- 已保存的人物传记/任务日志成果现在可以由战役管理者显式 `采用为后续 AI 参考`。首次采用在一个 PostgreSQL 事务中创建 `session_outcome_reference` 私有 AI Memory 和一条指向源 GeneratedArtifact 的 append-only 来源；不新增 schema/migration。
+- 会后参考与创意方向保持两个独立记忆类型和检索来源族。创意方向继续默认选中；`已采用的会后参考` 默认关闭，只有主持人在本次生成请求中主动勾选才会进入模型上下文。
+- 服务端每次重新验证 campaign `edit` 权限、owner/campaign 范围、成果类型与生命周期。人物传记/任务日志以外的事实成果不能采用；active 记忆会阻止源成果归档，必须先撤回。
+- 采用是幂等且可恢复的：撤回只归档 AI Memory，重新采用恢复同一记录。Session reference 保留 RuntimeSession 引用（存在时）、源成果和不确定项，但不修改 RuntimeLog、角色卡、任务状态、Campaign、Handout 或公开/共享状态。
+- 检索仍经过 preflight 和 post-fetch scope guard；上下文与模型提示明确把会后内容标为可能含叙事推断的连续性参考，不允许把它升级成角色数据、任务状态或战役既定事实。
+
+Landmark: `SESSION_AI_CURATED_REFERENCE_ADOPTION_V1`.
+
+---
+
 ## Known Intentional Non-Replacements
 
 - `computeEmpFromHumanity` in `cpStore.ts` — delta-based (adjusts EMP only at ten-boundary crossings). Semantically different from `getCpRuntimeEmp` (absolute `floor(humanity/10)`). Left as-is by design.

@@ -45,7 +45,7 @@ const handlers = createCampaignArtifactAssistantApiHandlers({
     archiveGeneratedArtifact: async (id) => { const item = artifacts.find((candidate) => candidate.artifactId === id); if (item) item.archivedAt = '2026-08-14T01:00:00.000Z'; return { ok: true, value: item ?? null }; },
     restoreGeneratedArtifact: async (id) => { const item = artifacts.find((candidate) => candidate.artifactId === id); if (item) delete item.archivedAt; return { ok: true, value: item ?? null }; },
     getAiMemoryEntryById: async (id) => ({ ok: true, value: memories.find((item) => item.memoryEntryId === id) ?? null }),
-    listAiMemoryEntriesByOwner: async (ownerId, options) => ({ ok: true, value: memories.filter((item) => item.ownerId === ownerId && (options?.includeArchived || !item.archivedAt)) }),
+    listAiMemoryEntriesByOwner: async (ownerId, options) => ({ ok: true, value: memories.filter((item) => item.ownerId === ownerId && (!options?.memoryKind || item.memoryKind === options.memoryKind) && (options?.includeArchived || !item.archivedAt)) }),
     archiveAiMemoryEntry: async (id) => { const item = memories.find((candidate) => candidate.memoryEntryId === id); if (item) { item.archivedAt = '2026-08-14T03:00:00.000Z'; item.updatedAt = item.archivedAt; } return { ok: true, value: item ?? null }; },
     restoreAiMemoryEntry: async (id) => { const item = memories.find((candidate) => candidate.memoryEntryId === id); if (item) { delete item.archivedAt; item.updatedAt = '2026-08-14T04:00:00.000Z'; } return { ok: true, value: item ?? null }; },
   },
@@ -58,7 +58,7 @@ const handlers = createCampaignArtifactAssistantApiHandlers({
     },
     createMemoryWithSources: async ({ memory, sources }) => {
       assert.equal(sources.length, 1, 'memory adoption must persist one provenance source');
-      const record: AiMemoryEntryRecord = { memoryEntryId: memory.memoryEntryId, ownerId: memory.ownerId, campaignId: memory.campaignId, sourceArtifactId: memory.sourceArtifactId, memoryKind: memory.memoryKind, memoryScope: memory.memoryScope ?? 'campaign', title: memory.title, contentText: memory.contentText, visibilityScope: memory.visibilityScope ?? 'user_private', payload: memory.payload ?? {}, sourcePayload: memory.sourcePayload ?? {}, confidence: memory.confidence, schemaVersion: memory.schemaVersion ?? 1, createdAt: '2026-08-14T00:10:00.000Z', updatedAt: '2026-08-14T00:10:00.000Z' };
+      const record: AiMemoryEntryRecord = { memoryEntryId: memory.memoryEntryId, ownerId: memory.ownerId, campaignId: memory.campaignId, runtimeSessionId: memory.runtimeSessionId, sourceArtifactId: memory.sourceArtifactId, memoryKind: memory.memoryKind, memoryScope: memory.memoryScope ?? 'campaign', title: memory.title, contentText: memory.contentText, visibilityScope: memory.visibilityScope ?? 'user_private', payload: memory.payload ?? {}, sourcePayload: memory.sourcePayload ?? {}, confidence: memory.confidence, schemaVersion: memory.schemaVersion ?? 1, createdAt: '2026-08-14T00:10:00.000Z', updatedAt: '2026-08-14T00:10:00.000Z' };
       memories.push(record);
       return { ok: true, memory: record, sources: sources.map((source) => ({ contextSourceId: source.contextSourceId, ownerId: source.ownerId, campaignId: source.campaignId, memoryEntryId: source.memoryEntryId, sourceKind: source.sourceKind, sourceRefId: source.sourceRefId, sourcePayload: source.sourcePayload ?? {}, schemaVersion: 1 })) };
     },
@@ -165,7 +165,7 @@ assert.ok(memoryGroundedArtifact);
 const memoryGroundedProjection = await handlers.list({ viewer, params, query: {} });
 const projectedMemoryGroundedArtifact = (memoryGroundedProjection as unknown as { value: Array<{ artifactId: string; sources: Array<{ sourceKind: string }> }> }).value.find((item) => item.artifactId === memoryGroundedArtifact.artifactId);
 assert.equal(projectedMemoryGroundedArtifact?.sources[0]?.sourceKind, 'adopted_memory', 'adopted-memory citations must survive durable projection');
-assert.equal((await handlers.generate({ viewer, params, body: { task: 'campaign_recap', sourceFamilies: ['campaign_summary', 'actor_summaries', 'room_summaries', 'prior_artifacts', 'adopted_memories'] } })).statusCode, 200, 'all five bounded source families must remain selectable together');
+assert.equal((await handlers.generate({ viewer, params, body: { task: 'campaign_recap', sourceFamilies: ['campaign_summary', 'actor_summaries', 'room_summaries', 'prior_artifacts', 'adopted_memories', 'adopted_session_references'] } })).statusCode, 200, 'all six bounded source families must remain selectable together');
 
 const withdrawn = await handlers.withdrawAdoption({ viewer, params: { ...params, artifactId: worldbuildingArtifact.artifactId } });
 assert.equal(withdrawn.statusCode, 200);
@@ -179,6 +179,51 @@ assert.equal(memories.length, 1);
 assert.equal(memories[0].archivedAt, undefined);
 assert.equal((await handlers.withdrawAdoption({ viewer, params: { ...params, artifactId: worldbuildingArtifact.artifactId } })).statusCode, 200);
 assert.equal((await handlers.generate({ viewer, params, body: { task: 'campaign_recap', sourceFamilies: ['adopted_memories'] } })).statusCode, 400, 'withdrawn memories must not enter later AI context');
+
+const adoptedSession = await handlers.adopt({ viewer, params: { ...params, artifactId: sessionArtifact.artifactId } });
+assert.equal(adoptedSession.statusCode, 201);
+assert.equal(memories.length, 2);
+const sessionMemory = memories.find((memory) => memory.memoryKind === 'session_outcome_reference');
+assert.ok(sessionMemory);
+assert.equal(sessionMemory.visibilityScope, 'user_private');
+assert.equal(sessionMemory.memoryScope, 'campaign');
+assert.equal(sessionMemory.runtimeSessionId, 'runtime-session-1');
+assert.equal(sessionMemory.sourceArtifactId, sessionArtifact.artifactId);
+assert.equal(sessionMemory.payload.adoptionKind, 'reviewed_session_reference');
+assert.match(sessionMemory.contentText, /不是角色卡、任务状态、公开信息或战役既定事实/);
+assert.match(sessionMemory.contentText, /动机待主持人确认/);
+assert.equal((adoptedSession as unknown as { value: { adoption: { kind: string; status: string } } }).value.adoption.kind, 'session_reference');
+assert.equal((await handlers.adopt({ viewer, params: { ...params, artifactId: sessionArtifact.artifactId } })).statusCode, 200, 'duplicate Session-reference adoption must be idempotent');
+assert.equal(memories.length, 2);
+assert.equal((await handlers.archive({ viewer, params: { ...params, artifactId: sessionArtifact.artifactId } })).statusCode, 409, 'an active Session reference must protect its source artifact');
+
+nextTask = 'campaign_recap';
+citationSourceId = 'campaign:campaign-1';
+assert.equal((await handlers.generate({ viewer, params, body: { task: 'campaign_recap', sourceFamilies: ['campaign_summary'] } })).statusCode, 200);
+assert(!lastCampaignPrompt.includes(sessionArtifact.title), 'an adopted Session reference must remain absent unless its dedicated family is selected');
+citationSourceId = `ai_memory:${sessionMemory.memoryEntryId}`;
+const sessionGroundedDraft = await handlers.generate({ viewer, params, body: { task: 'campaign_recap', sourceFamilies: ['adopted_session_references'] } });
+assert.equal(sessionGroundedDraft.statusCode, 200);
+const sessionGroundedSource = (sessionGroundedDraft as unknown as { value: { sources: Array<{ sourceKind: string; excerpt: string }> } }).value.sources[0];
+assert.equal(sessionGroundedSource?.sourceKind, 'adopted_session_reference');
+assert.match(sessionGroundedSource?.excerpt ?? '', /不是角色卡、任务状态、公开信息或战役既定事实/);
+const sessionGroundedSuggestionId = (sessionGroundedDraft as unknown as { value: { suggestionId: string } }).value.suggestionId;
+assert.equal((await handlers.confirm({ viewer, params: { ...params, suggestionId: sessionGroundedSuggestionId } })).statusCode, 200);
+const sessionGroundedArtifact = artifacts.at(-1);
+assert.ok(sessionGroundedArtifact);
+const sessionGroundedProjection = await handlers.list({ viewer, params, query: {} });
+const projectedSessionGroundedArtifact = (sessionGroundedProjection as unknown as { value: Array<{ artifactId: string; sources: Array<{ sourceKind: string }> }> }).value.find((item) => item.artifactId === sessionGroundedArtifact.artifactId);
+assert.equal(projectedSessionGroundedArtifact?.sources[0]?.sourceKind, 'adopted_session_reference', 'Session-reference citations must survive durable projection');
+
+assert.equal((await handlers.withdrawAdoption({ viewer, params: { ...params, artifactId: sessionArtifact.artifactId } })).statusCode, 200);
+assert.ok(sessionMemory.archivedAt);
+assert.equal((await handlers.generate({ viewer, params, body: { task: 'campaign_recap', sourceFamilies: ['adopted_session_references'] } })).statusCode, 400, 'withdrawn Session references must not enter later AI context');
+assert.equal((await handlers.archive({ viewer, params: { ...params, artifactId: sessionArtifact.artifactId } })).statusCode, 200);
+assert.equal((await handlers.restore({ viewer, params: { ...params, artifactId: sessionArtifact.artifactId } })).statusCode, 200);
+assert.equal((await handlers.adopt({ viewer, params: { ...params, artifactId: sessionArtifact.artifactId } })).statusCode, 200, 're-adoption must restore the existing Session reference');
+assert.equal(memories.length, 2);
+assert.equal(sessionMemory.archivedAt, undefined);
+assert.equal((await handlers.withdrawAdoption({ viewer, params: { ...params, artifactId: sessionArtifact.artifactId } })).statusCode, 200);
 
 citationSourceId = 'campaign:campaign-1';
 
@@ -199,4 +244,4 @@ const outsider = { ...viewer, viewerUserId: 'user-2' };
 assert.notEqual((await handlers.status({ viewer: outsider, params })).statusCode, 200);
 assert.equal((await handlers.adopt({ viewer: outsider, params: { ...params, artifactId: worldbuildingArtifact.artifactId } })).statusCode, 404);
 
-console.log('campaign artifact assistant handler smoke passed');
+console.log('Campaign artifact assistant smoke passed: cited generation, private persistence, creative/session memory adoption, request-local retrieval, withdrawal, and authority boundaries.');

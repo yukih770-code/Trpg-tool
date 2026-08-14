@@ -19,6 +19,7 @@ import {
   isCampaignArtifactSourceFamily,
   isCampaignArtifactGenerationTask,
   isCreativeCampaignArtifactTask,
+  isSessionCampaignArtifactTask,
   parseCampaignArtifactSuggestion,
   validateCampaignArtifactCitations,
   type CampaignArtifactSourceFamily,
@@ -89,12 +90,24 @@ function roleKind(roleKey: string): 'owner' | 'admin' | 'moderator' | 'member' |
 function repositoryFailure(requestId?: string): ApiResult {
   return errorResponse(503, { kind: 'unavailable', message: 'Campaign AI storage is unavailable.', retryable: true }, { requestId });
 }
-const ADOPTION_MEMORY_KIND = 'campaign_creative_adoption';
+const CREATIVE_ADOPTION_MEMORY_KIND = 'campaign_creative_adoption';
+const SESSION_REFERENCE_MEMORY_KIND = 'session_outcome_reference';
+type AdoptionSpec = {
+  memoryKind: typeof CREATIVE_ADOPTION_MEMORY_KIND | typeof SESSION_REFERENCE_MEMORY_KIND;
+  adoptionKind: 'host_approved_direction' | 'reviewed_session_reference';
+  projectionKind: 'campaign_direction' | 'session_reference';
+};
 function adoptionMemoryId(artifactId: string): string { return `ai_memory_${artifactId}`; }
-function isAdoptionMemory(memory: AiMemoryEntryRecord, access: Access, artifactId?: string): boolean {
+function adoptionSpec(task: SavedCampaignArtifact['task']): AdoptionSpec | null {
+  if (isCreativeCampaignArtifactTask(task)) return { memoryKind: CREATIVE_ADOPTION_MEMORY_KIND, adoptionKind: 'host_approved_direction', projectionKind: 'campaign_direction' };
+  if (isSessionCampaignArtifactTask(task)) return { memoryKind: SESSION_REFERENCE_MEMORY_KIND, adoptionKind: 'reviewed_session_reference', projectionKind: 'session_reference' };
+  return null;
+}
+function isAdoptionMemory(memory: AiMemoryEntryRecord, access: Access, artifactId?: string, expectedKind?: AdoptionSpec['memoryKind']): boolean {
   return memory.ownerId === access.viewerUserId
     && memory.campaignId === access.campaign.campaignId
-    && memory.memoryKind === ADOPTION_MEMORY_KIND
+    && (memory.memoryKind === CREATIVE_ADOPTION_MEMORY_KIND || memory.memoryKind === SESSION_REFERENCE_MEMORY_KIND)
+    && (!expectedKind || memory.memoryKind === expectedKind)
     && memory.memoryScope === 'campaign'
     && memory.visibilityScope === 'user_private'
     && (!artifactId || memory.sourceArtifactId === artifactId);
@@ -121,7 +134,7 @@ function projectedSource(value: unknown): SavedCampaignArtifact['sources'][numbe
   const sourceRefId = string(source?.sourceRefId);
   const title = string(source?.title, 300);
   const excerpt = string(source?.excerpt, 4_000);
-  const kinds = new Set(['campaign_summary', 'campaign_actor_summary', 'campaign_room_summary', 'prior_artifact', 'adopted_memory', 'runtime_session_projection']);
+  const kinds = new Set(['campaign_summary', 'campaign_actor_summary', 'campaign_room_summary', 'prior_artifact', 'adopted_memory', 'adopted_session_reference', 'runtime_session_projection']);
   if (!sourceId || typeof sourceKind !== 'string' || !kinds.has(sourceKind) || !sourceRefId || !title || !excerpt) return null;
   return { sourceId, sourceKind: sourceKind as SavedCampaignArtifact['sources'][number]['sourceKind'], sourceRefId, title, excerpt, ...(typeof source.updatedAt === 'string' ? { updatedAt: source.updatedAt } : {}) };
 }
@@ -131,6 +144,8 @@ function projectArtifact(record: GeneratedArtifactRecord, adoption?: AiMemoryEnt
   const sources = Array.isArray(record.sourcePayload.sources) ? record.sourcePayload.sources : [];
   if (!suggestion) return null;
   const safeSources = sources.map(projectedSource).filter((source): source is SavedCampaignArtifact['sources'][number] => source !== null);
+  const spec = adoptionSpec(suggestion.task);
+  const matchingAdoption = adoption && spec && adoption.memoryKind === spec.memoryKind ? adoption : undefined;
   return {
     artifactId: record.artifactId,
     task: suggestion.task,
@@ -143,13 +158,15 @@ function projectArtifact(record: GeneratedArtifactRecord, adoption?: AiMemoryEnt
     ...(record.createdAt ? { createdAt: record.createdAt } : {}),
     ...(record.updatedAt ? { updatedAt: record.updatedAt } : {}),
     ...(record.archivedAt ? { archivedAt: record.archivedAt } : {}),
-    ...(adoption ? { adoption: { memoryEntryId: adoption.memoryEntryId, status: adoption.archivedAt ? 'archived' as const : 'active' as const, ...(adoption.createdAt ? { adoptedAt: adoption.createdAt } : {}), ...(adoption.updatedAt ? { updatedAt: adoption.updatedAt } : {}) } } : {}),
+    ...(matchingAdoption && spec ? { adoption: { memoryEntryId: matchingAdoption.memoryEntryId, kind: spec.projectionKind, status: matchingAdoption.archivedAt ? 'archived' as const : 'active' as const, ...(matchingAdoption.createdAt ? { adoptedAt: matchingAdoption.createdAt } : {}), ...(matchingAdoption.updatedAt ? { updatedAt: matchingAdoption.updatedAt } : {}) } } : {}),
   };
 }
 
 function memoryContent(record: SavedCampaignArtifact): string {
   const sections = record.suggestion.sections.map((section) => `## ${section.heading}\n${section.body}`).join('\n\n');
-  return [`# ${record.title}`, record.suggestion.summary, sections].filter(Boolean).join('\n\n').slice(0, 20_000);
+  const uncertainties = record.suggestion.uncertainties.length > 0 ? `## 必须保留的不确定项\n${record.suggestion.uncertainties.map((item) => `- ${item}`).join('\n')}` : '';
+  const boundary = isSessionCampaignArtifactTask(record.task) ? '会后叙事参考：不是角色卡、任务状态、公开信息或战役既定事实。' : '';
+  return [`# ${record.title}`, boundary, record.suggestion.summary, sections, uncertainties].filter(Boolean).join('\n\n').slice(0, 20_000);
 }
 
 const TASK_GUIDANCE = {
@@ -170,6 +187,7 @@ function modelPrompt(task: keyof typeof TASK_GUIDANCE, focus: string | undefined
         ? '这是创意提案任务。允许创造新内容，但必须明确使用“提案/可以/可选”等措辞；来源引用只表示灵感与约束，不证明新提案已经是战役事实。'
         : '这是事实整理任务。证据不足的内容放入 uncertainties，不得补造既定事实。',
       '来源中标记为“主持人已采用的 AI 战役方向”的内容可作为主持人确认过的后续设计约束，但它仍不代表已向玩家公开、已发布 Handout 或已写入 Runtime。',
+      '来源中标记为“主持人显式采用的会后叙事参考”的内容只用于连续性提示；它不是角色卡、任务状态、公开信息或战役既定事实。必须保留来源中的不确定项，不得把叙事推断升级为事实。',
       '不要声称已经保存、发布、修改战役、创建地下城、加入工坊作品或通知玩家。',
       '输出严格匹配 JSON schema，使用简洁中文。',
       TASK_GUIDANCE[task],
@@ -233,15 +251,19 @@ export function createCampaignArtifactAssistantApiHandlers(options: CreateCampai
   }
 
   async function ownedMemories(access: Access, includeArchived: boolean): Promise<AiMemoryEntryRecord[] | ApiResult> {
-    const result = await artifactRepository.listAiMemoryEntriesByOwner(access.viewerUserId, { memoryKind: ADOPTION_MEMORY_KIND, includeArchived, limit: 100 });
-    return result.ok ? result.value.filter((item) => isAdoptionMemory(item, access)) : repositoryFailure();
+    const [creative, session] = await Promise.all([
+      artifactRepository.listAiMemoryEntriesByOwner(access.viewerUserId, { memoryKind: CREATIVE_ADOPTION_MEMORY_KIND, includeArchived, limit: 100 }),
+      artifactRepository.listAiMemoryEntriesByOwner(access.viewerUserId, { memoryKind: SESSION_REFERENCE_MEMORY_KIND, includeArchived, limit: 100 }),
+    ]);
+    if (!creative.ok || !session.ok) return repositoryFailure();
+    return [...creative.value, ...session.value].filter((item) => isAdoptionMemory(item, access));
   }
 
-  async function findAdoptionMemory(access: Access, artifactId: string): Promise<AiMemoryEntryRecord | null | ApiResult> {
+  async function findAdoptionMemory(access: Access, artifactId: string, expectedKind?: AdoptionSpec['memoryKind']): Promise<AiMemoryEntryRecord | null | ApiResult> {
     const result = await artifactRepository.getAiMemoryEntryById(adoptionMemoryId(artifactId));
     if (!result.ok) return repositoryFailure();
     if (!result.value) return null;
-    return isAdoptionMemory(result.value, access, artifactId) ? result.value : errorResponse(404, { kind: 'not_found', message: 'Campaign AI adoption not found.' });
+    return isAdoptionMemory(result.value, access, artifactId, expectedKind) ? result.value : errorResponse(404, { kind: 'not_found', message: 'Campaign AI adoption not found.' });
   }
 
   async function context(access: Access, families: CampaignArtifactSourceFamily[]): Promise<ReturnType<typeof buildCampaignArtifactContext> | ApiResult> {
@@ -252,7 +274,18 @@ export function createCampaignArtifactAssistantApiHandlers(options: CreateCampai
       ownedMemories(access, false),
     ]);
     if (!actors.ok || !rooms.ok || 'statusCode' in artifacts || 'statusCode' in memories) return repositoryFailure();
-    return buildCampaignArtifactContext({ viewerUserId: access.viewerUserId, server: access.server, membership: access.membership, campaign: access.campaign, actors: actors.value, rooms: rooms.value, priorArtifacts: artifacts.filter(isCampaignGeneratedArtifact), adoptedMemories: memories, sourceFamilies: families });
+    return buildCampaignArtifactContext({
+      viewerUserId: access.viewerUserId,
+      server: access.server,
+      membership: access.membership,
+      campaign: access.campaign,
+      actors: actors.value,
+      rooms: rooms.value,
+      priorArtifacts: artifacts.filter(isCampaignGeneratedArtifact),
+      adoptedMemories: memories.filter((memory) => memory.memoryKind === CREATIVE_ADOPTION_MEMORY_KIND),
+      adoptedSessionReferences: memories.filter((memory) => memory.memoryKind === SESSION_REFERENCE_MEMORY_KIND),
+      sourceFamilies: families,
+    });
   }
 
   async function mutateArtifact(input: CampaignArtifactAssistantApiRequest, restore: boolean): Promise<ApiResult> {
@@ -263,8 +296,10 @@ export function createCampaignArtifactAssistantApiHandlers(options: CreateCampai
     const existing = await artifactRepository.getGeneratedArtifactById(artifactId);
     if (!existing.ok) return repositoryFailure(input.requestId);
     if (!existing.value || existing.value.ownerId !== access.viewerUserId || existing.value.campaignId !== access.campaign.campaignId || !isCampaignAiArtifact(existing.value)) return errorResponse(404, { kind: 'not_found', message: 'Campaign AI artifact not found.' }, { requestId: input.requestId });
+    const projectedExisting = projectArtifact(existing.value);
+    const spec = projectedExisting ? adoptionSpec(projectedExisting.task) : null;
     if (!restore) {
-      const adoption = await findAdoptionMemory(access, artifactId);
+      const adoption = await findAdoptionMemory(access, artifactId, spec?.memoryKind);
       if (adoption && !('statusCode' in adoption) && !adoption.archivedAt) return errorResponse(409, { kind: 'conflict', message: 'Withdraw this artifact from AI campaign memory before archiving it.' }, { requestId: input.requestId });
       if (adoption && 'statusCode' in adoption) return adoption;
     }
@@ -296,7 +331,7 @@ export function createCampaignArtifactAssistantApiHandlers(options: CreateCampai
       const task = body?.task;
       const focus = body?.focus === undefined ? undefined : string(body.focus, 1_200);
       const rawFamilies = body?.sourceFamilies;
-      if (!isCampaignArtifactGenerationTask(task) || !Array.isArray(rawFamilies) || rawFamilies.length < 1 || rawFamilies.length > 5 || !rawFamilies.every(isCampaignArtifactSourceFamily) || (body?.focus !== undefined && focus === undefined)) return errorResponse(400, { kind: 'validation', message: 'Invalid Campaign AI request.' }, { requestId: input.requestId });
+      if (!isCampaignArtifactGenerationTask(task) || !Array.isArray(rawFamilies) || rawFamilies.length < 1 || rawFamilies.length > 6 || !rawFamilies.every(isCampaignArtifactSourceFamily) || (body?.focus !== undefined && focus === undefined)) return errorResponse(400, { kind: 'validation', message: 'Invalid Campaign AI request.' }, { requestId: input.requestId });
       const families = [...new Set(rawFamilies)] as CampaignArtifactSourceFamily[];
       const projected = await context(access, families);
       if ('statusCode' in projected) return projected;
@@ -340,8 +375,9 @@ export function createCampaignArtifactAssistantApiHandlers(options: CreateCampai
       if (!existing.ok) return repositoryFailure(input.requestId);
       const artifact = existing.value;
       const projected = artifact ? projectArtifact(artifact) : null;
-      if (!artifact || artifact.ownerId !== access.viewerUserId || artifact.campaignId !== access.campaign.campaignId || artifact.archivedAt || !projected || !isCreativeCampaignArtifactTask(projected.task)) return errorResponse(404, { kind: 'not_found', message: 'Adoptable Campaign AI artifact not found.' }, { requestId: input.requestId });
-      const found = await findAdoptionMemory(access, artifactId);
+      const spec = projected ? adoptionSpec(projected.task) : null;
+      if (!artifact || artifact.ownerId !== access.viewerUserId || artifact.campaignId !== access.campaign.campaignId || artifact.archivedAt || !projected || !spec) return errorResponse(404, { kind: 'not_found', message: 'Adoptable Campaign AI artifact not found.' }, { requestId: input.requestId });
+      const found = await findAdoptionMemory(access, artifactId, spec.memoryKind);
       if (found && isApiResult(found)) return found;
       if (found) {
         const existingMemory = found as AiMemoryEntryRecord;
@@ -353,12 +389,12 @@ export function createCampaignArtifactAssistantApiHandlers(options: CreateCampai
       const memoryEntryId = adoptionMemoryId(artifactId);
       const adoptedAt = new Date(now()).toISOString();
       const created = await persistence.createMemoryWithSources({
-        memory: { memoryEntryId, ownerId: access.viewerUserId, campaignId: access.campaign.campaignId, sourceArtifactId: artifactId, memoryKind: ADOPTION_MEMORY_KIND, memoryScope: 'campaign', title: projected.title, contentText: memoryContent(projected), visibilityScope: 'user_private', payload: { version: 1, task: projected.task, adoptionKind: 'host_approved_direction' }, sourcePayload: { sourceArtifactId: artifactId, artifactKind: artifact.artifactKind, adoptedAt }, schemaVersion: 1 },
+        memory: { memoryEntryId, ownerId: access.viewerUserId, campaignId: access.campaign.campaignId, ...(isSessionCampaignArtifactTask(projected.task) && artifact.runtimeSessionId ? { runtimeSessionId: artifact.runtimeSessionId } : {}), sourceArtifactId: artifactId, memoryKind: spec.memoryKind, memoryScope: 'campaign', title: projected.title, contentText: memoryContent(projected), visibilityScope: 'user_private', payload: { version: 1, task: projected.task, adoptionKind: spec.adoptionKind }, sourcePayload: { sourceArtifactId: artifactId, artifactKind: artifact.artifactKind, ...(artifact.runtimeSessionId ? { runtimeSessionId: artifact.runtimeSessionId } : {}), adoptedAt }, schemaVersion: 1 },
         sources: [{ contextSourceId: `ai_context_source_${memoryEntryId}`, ownerId: access.viewerUserId, campaignId: access.campaign.campaignId, memoryEntryId, sourceKind: 'generated_artifact', sourceRefId: artifactId, sourcePayload: { artifactKind: artifact.artifactKind, title: artifact.title, task: projected.task }, schemaVersion: 1 }],
       });
       if ('kind' in created) {
         if (created.kind === 'conflict') {
-          const raced = await findAdoptionMemory(access, artifactId);
+          const raced = await findAdoptionMemory(access, artifactId, spec.memoryKind);
           if (raced && !isApiResult(raced)) {
             const result = projectArtifact(artifact, raced);
             if (result) return okResponse(result, { requestId: input.requestId });
@@ -377,8 +413,10 @@ export function createCampaignArtifactAssistantApiHandlers(options: CreateCampai
       const existing = await artifactRepository.getGeneratedArtifactById(artifactId);
       if (!existing.ok) return repositoryFailure(input.requestId);
       const artifact = existing.value;
-      if (!artifact || artifact.ownerId !== access.viewerUserId || artifact.campaignId !== access.campaign.campaignId || !isCampaignAiArtifact(artifact)) return errorResponse(404, { kind: 'not_found', message: 'Campaign AI artifact not found.' }, { requestId: input.requestId });
-      const found = await findAdoptionMemory(access, artifactId);
+      const projected = artifact ? projectArtifact(artifact) : null;
+      const spec = projected ? adoptionSpec(projected.task) : null;
+      if (!artifact || artifact.ownerId !== access.viewerUserId || artifact.campaignId !== access.campaign.campaignId || !isCampaignAiArtifact(artifact) || !spec) return errorResponse(404, { kind: 'not_found', message: 'Campaign AI artifact not found.' }, { requestId: input.requestId });
+      const found = await findAdoptionMemory(access, artifactId, spec.memoryKind);
       if (!found || isApiResult(found)) return found && isApiResult(found) ? found : errorResponse(404, { kind: 'not_found', message: 'Campaign AI adoption not found.' }, { requestId: input.requestId });
       const archived = found.archivedAt ? { ok: true as const, value: found } : await artifactRepository.archiveAiMemoryEntry(found.memoryEntryId);
       if (!archived.ok) return repositoryFailure(input.requestId);

@@ -62,6 +62,7 @@ export function buildCampaignArtifactContext(input: {
   rooms: RoomRecord[];
   priorArtifacts: GeneratedArtifactRecord[];
   adoptedMemories: AiMemoryEntryRecord[];
+  adoptedSessionReferences: AiMemoryEntryRecord[];
   sourceFamilies: CampaignArtifactSourceFamily[];
 }): CampaignArtifactContextResult {
   const selected = new Set(input.sourceFamilies);
@@ -71,7 +72,7 @@ export function buildCampaignArtifactContext(input: {
   const requestedKinds = new Set<string>();
   if (selected.has('campaign_summary') || selected.has('actor_summaries') || selected.has('room_summaries')) requestedKinds.add('campaign');
   if (selected.has('prior_artifacts')) requestedKinds.add('generated_artifact');
-  if (selected.has('adopted_memories')) requestedKinds.add('ai_memory');
+  if (selected.has('adopted_memories') || selected.has('adopted_session_references')) requestedKinds.add('ai_memory');
   const preflight = buildAiContextRetrievalPreflight({ actor, requestScope, sources: [...requestedKinds].map((sourceKind) => ({ sourceKind, requestedBodyAccess: true, requestedLimit: 50 })) });
   if (preflight.deniedCount > 0) return { decision: 'denied', reason: 'One or more selected source families failed AI retrieval preflight.' };
 
@@ -110,6 +111,13 @@ export function buildCampaignArtifactContext(input: {
     ownerUserId: memory.ownerId, worldServerId: input.server.worldServerId, campaignId: input.campaign.campaignId,
     visibilityScope: 'user_private', aiScope: 'private_only', lifecycleStatus: memory.archivedAt ? 'archived' : 'active', reviewStatus: 'adopted',
     metadata: { sourceKind: 'adopted_memory', sourceRefId: memory.memoryEntryId, updatedAt: memory.updatedAt },
+  })));
+  if (selected.has('adopted_session_references')) input.adoptedSessionReferences.slice(0, 10).forEach((memory) => candidates.push(normalizeAiContextCandidateMetadata({
+    sourceKind: 'ai_memory', contextItemId: `ai_memory:${memory.memoryEntryId}`, contentKind: 'ai_memory', contentId: memory.memoryEntryId,
+    title: memory.title ?? '已采用的会后参考', body: `主持人显式采用的会后叙事参考（仅供本次私有 AI 协助；不是角色卡、任务状态、公开信息或战役既定事实，必须保留其中的不确定项）：\n${memory.contentText.slice(0, 6_000)}`,
+    ownerUserId: memory.ownerId, worldServerId: input.server.worldServerId, campaignId: input.campaign.campaignId,
+    visibilityScope: 'user_private', aiScope: 'private_only', lifecycleStatus: memory.archivedAt ? 'archived' : 'active', reviewStatus: 'adopted',
+    metadata: { sourceKind: 'adopted_session_reference', sourceRefId: memory.memoryEntryId, updatedAt: memory.updatedAt },
   })));
 
   const pack = buildAiContextPack({ actor, requestScope, worldServer: worldContext(input.server, input.membership), candidates, maxItems: 50 });
