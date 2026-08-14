@@ -1710,6 +1710,20 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8ao. Campaign AI Creative Seeds v1
+
+- [x] `worldbuilding_outline` and `adventure_seed` pass the shared structured-output task parser and source-ID citation whitelist
+- [x] Both creative tasks complete generate → explicit confirm → owner-private GeneratedArtifact persistence with stable artifact kinds
+- [x] Creative prompts distinguish invented proposals from source-backed campaign facts and forbid claims of publishing, applying, creating a dungeon, or joining Workshop content
+- [x] Task selection and both draft/history presentations visibly label creative output as an optional proposal
+- [x] Saving does not mutate Campaign, Runtime, membership, catalog/Workshop, or collaborative state and does not create a ProposedCommand
+- [x] Existing preparation/recap generation, stale confirmation rejection, invalid citation rejection, archive/restore, and owner authority regression continue to pass
+- [x] `npm run api:verify:campaign-artifact-assistant`, `npm run frontend:verify:campaign-artifact-assistant`, and `npm run db:verify:campaign-artifact-atomic` pass
+- [x] AI scope/retrieval policies, TypeScript, server/frontend builds, and diff checks pass
+- [ ] Human adoption into structured campaign/world objects, eligible Workshop recommendation, Runtime handoff, and shared/public artifacts are implemented (future tasks)
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

@@ -4,71 +4,51 @@
 
 ## Task
 
-- ID: Campaign AI Artifact Chain v1
-- Name: `CAMPAIGN_AI_ARTIFACT_CHAIN_V1`
-- Goal: Close an explicit host/admin flow from campaign-scoped source selection → permission-projected AI draft with citations → human confirmation → durable, recoverable GeneratedArtifact plus append-only provenance.
-- Phase: Internal AI foundation / campaign preparation
+- ID: Campaign AI Creative Seeds v1
+- Name: `CAMPAIGN_AI_CREATIVE_SEEDS_V1`
+- Goal: Extend the cited Campaign AI artifact flow with worldbuilding and adventure/dungeon creative proposals that remain visibly distinct from established campaign facts.
+- Phase: Internal AI foundation / campaign creation assistance
 - Status: Complete
 
 ## Layer Declaration
 
-- IA: Campaign detail / host preparation tools plus backend AI Gateway.
-- Object: read-only CampaignObject summaries and viewer-owned GeneratedArtifact; Projection is used only for safe model context and response DTOs.
+- IA: Campaign detail contextual host tool.
+- Object: read-only CampaignObject summaries and viewer-owned GeneratedArtifact.
 - State: UI State, Flow State, transient Server State, Persistent Domain State.
-- Excluded: CatalogObject mutation, CampaignMembership, RuntimeActor, RuntimeObject, RuntimeLog, Collaborative State, rules adjudication, maps, full character sheets, cloud billing.
+- Excluded: CatalogObject mutation, CampaignMembership, RuntimeObject, RuntimeLog, Collaborative State, maps, rules adjudication, Workshop recommendation, cloud billing.
 
 ## UI And Action Declaration
 
-- Page responsibility: campaign detail may expose one contextual, secondary `AI 备团与回顾` tool for users who already have server-authoritative campaign edit permission.
-- Not responsible for: chat, a global AI center, role/member management, runtime control, campaign creation, rules lookup, or background automation.
-- Primary action: the campaign detail's existing entry/runtime path remains primary; AI is secondary. Inside the AI flow, `生成草稿` previews only and `确认保存` is the sole persistent action.
-- Exit/navigation: inline contextual panel only; no new Back/Home/ContextBar/global navigation control.
-- Lifecycle: saved artifacts can be archived and restored; no hard delete.
+- Extend the existing secondary `AI 备团与回顾` panel; add no page, nav item, chat box, Back/Home/exit control, or parallel AI entry.
+- Add `世界观提案` and `冒险 / 地下城种子` beside existing preparation/recap task choices.
+- Creative outputs must be labeled as proposals, not current campaign facts, official adventures, available Workshop items, or actions already applied.
+- `生成带来源草稿` remains preview-only; `确认并保存` remains the sole persistent action.
 
-## Authority, Visibility And Retrieval
+## Safety And Persistence
 
-- Browser `canManageServer` is presentation only. Every status/list/generate/confirm/archive/restore request re-authorizes the authenticated viewer and campaign scope on the server.
-- The user explicitly selects bounded source families for each generation request. Consent is request-local and does not alter the Campaign record's stored `aiScope`.
-- Only campaign title/description/system/status, actor display-name/status summaries, room status/name summaries, and the current viewer's prior active artifacts are eligible.
-- Campaign payloads, actor snapshots/overrides, room codes/access policy/metadata, RuntimeLog, maps, rules books, participant-private data, and other users' artifacts are excluded.
-- Retrieval must pass source preflight and the post-fetch AI Context Scope Guard. Denied bodies never enter prompts or responses.
-- v1 artifacts are fixed to `user_private` and filtered by owner on every read/mutation.
-
-## Persistence And Confirmation
-
-- A generated suggestion is transient, viewer/world/campaign-bound, expiring, and one-shot.
-- Every cited source ID must exist in the server-produced source manifest.
-- Confirmation re-fetches the selected source projection and rejects stale fingerprints.
-- Artifact plus `ai_context_sources` provenance must be written atomically.
-- Model metadata records route/provider/model/time but never credentials, base URLs, system prompts, or denied content.
+- Reuse the existing authenticated edit-authority, explicit source selection, retrieval preflight, post-fetch scope guard, citation whitelist, TTL/context binding, stale fingerprint, atomic persistence, owner-private projection, archive, and restore boundaries.
+- Creative tasks may invent proposals, but must not invent citations or claim proposals came from sources. Citations indicate constraints/inspiration only.
+- No schema or migration change; existing saved v1 preparation/recap artifacts remain readable.
 
 ## Allowed Files
 
 - `src/lib/ai/campaignArtifactAssistantTypes.ts`
-- `src/lib/api/campaignArtifactAssistantApiClient.ts`
+- `server/api/campaignArtifactAssistantHandlers.ts`
+- `server/api/campaignArtifactAssistantHandlersSmoke.ts`
 - `src/components/platform/CampaignAiArtifactPanel.tsx`
-- `src/components/platform/ServerCampaignWorkspace.tsx`
-- `server/ai/campaignArtifact*`
-- `server/ai/modelGateway.ts`
-- `server/api/campaignArtifactAssistant*`
-- `server/services/generatedArtifactPersistence.ts`
-- `server/room-server.ts`
-- focused smoke/tests, package scripts, project/test/status/architecture AI docs
+- focused campaign artifact smokes
+- `PROJECT_STATUS.md`, `TEST_CHECKLIST.md`, `docs/ai/*`
 
 ## Forbidden Changes
 
-- Schema/migration changes
-- Campaign, membership, actor, room, runtime, RuntimeLog, permissions, or account writes
-- Campaign-shared/public artifacts, background generation, hidden auto-apply, direct model database access
-- Full sheets, payload snapshots, room codes, access policies, metadata, maps, logs, rules books
+- Membership, Actor, Room, Runtime, RuntimeLog, permission, account, schema, or migration writes
+- AI state auto-apply, ProposedCommand, autonomous Host actions, public/shared artifacts
+- Workshop/dungeon catalog claims or recommendation ranking without real eligible objects
 - `output/`, `tools/`, `work/`
 
 ## Completion Criteria
 
-- Unauthorized users cannot learn whether the scoped campaign AI resource exists; authorized host/admin paths work against real repositories.
-- Selected sources pass preflight + post-fetch guard and appear as bounded citations in the preview.
-- Model output is schema-validated and citation-validated; stale/expired/cross-context suggestions fail closed.
-- Explicit confirmation atomically persists one owner-private GeneratedArtifact and append-only source records.
-- Owner-scoped history supports list/archive/restore without hard deletion.
-- Campaign detail UI is contextual, non-chat, secondary, transparent about privacy/model/source/confirmation, and handles loading/empty/error/stale/unavailable states.
-- Focused smokes, AI policy tests, TypeScript, server/frontend builds, diff checks, and clean commit pass.
+- Both creative tasks pass shared parsing, task matching, citation validation, stale confirmation, and owner-private persistence.
+- UI visibly distinguishes factual tasks from creative proposals and warns that proposals are not campaign facts until humans adopt them separately.
+- Existing preparation/recap artifacts and all existing AI routes continue to pass.
+- TypeScript, server/frontend builds, diff checks, documentation, and one isolated commit pass.

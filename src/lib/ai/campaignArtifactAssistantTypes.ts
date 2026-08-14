@@ -1,4 +1,4 @@
-export type CampaignArtifactTask = 'preparation_brief' | 'campaign_recap';
+export type CampaignArtifactTask = 'preparation_brief' | 'campaign_recap' | 'worldbuilding_outline' | 'adventure_seed';
 export type CampaignArtifactSourceFamily = 'campaign_summary' | 'actor_summaries' | 'room_summaries' | 'prior_artifacts';
 export type CampaignArtifactSourceKind = 'campaign_summary' | 'campaign_actor_summary' | 'campaign_room_summary' | 'prior_artifact';
 
@@ -55,7 +55,7 @@ export const CAMPAIGN_ARTIFACT_OUTPUT_SCHEMA = {
   required: ['version', 'task', 'title', 'summary', 'sections', 'uncertainties', 'suggestedNextSteps'],
   properties: {
     version: { const: 1 },
-    task: { enum: ['preparation_brief', 'campaign_recap'] },
+    task: { enum: ['preparation_brief', 'campaign_recap', 'worldbuilding_outline', 'adventure_seed'] },
     title: { type: 'string', minLength: 1, maxLength: 160 },
     summary: { type: 'string', minLength: 1, maxLength: 1200 },
     sections: {
@@ -92,7 +92,11 @@ function textList(value: unknown, maxItems: number, maxLength: number, allowEmpt
 }
 
 export function isCampaignArtifactTask(value: unknown): value is CampaignArtifactTask {
-  return value === 'preparation_brief' || value === 'campaign_recap';
+  return value === 'preparation_brief' || value === 'campaign_recap' || value === 'worldbuilding_outline' || value === 'adventure_seed';
+}
+
+export function isCreativeCampaignArtifactTask(task: CampaignArtifactTask): boolean {
+  return task === 'worldbuilding_outline' || task === 'adventure_seed';
 }
 
 export function isCampaignArtifactSourceFamily(value: unknown): value is CampaignArtifactSourceFamily {

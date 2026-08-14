@@ -705,6 +705,17 @@ Landmark: `CAMPAIGN_AI_ARTIFACT_CHAIN_V1`.
 
 ---
 
+## Campaign AI Creative Seeds v1
+
+- 既有战役 AI 面板新增 `世界观提案` 与 `冒险 / 地下城种子`，复用相同的显式来源选择、引用白名单、过期/上下文/来源指纹校验、人工确认与私有成果库，不新增聊天框或全局入口。
+- 创意任务允许模型提出地域、势力、冲突、场景、目标、阻碍与转折，但系统提示和界面同时把新增内容标为“待主持人采用的提案”；来源只表示灵感与约束，不证明提案已经是战役事实。
+- 草稿与保存后的历史成果都会提示：它不是官方模组、既有工坊作品或已经写入战役/Runtime 的内容。保存只产生当前 owner 可见的 GeneratedArtifact，不触发 ProposedCommand、发布、推荐排序或自动应用。
+- `campaign_ai_worldbuilding_outline` 与 `campaign_ai_adventure_seed` 已进入既有成果投影、归档和恢复链；旧的备团简报/战役回顾保持兼容，无 schema 或 migration 变化。
+
+Landmark: `CAMPAIGN_AI_CREATIVE_SEEDS_V1`.
+
+---
+
 ## Build Status
 
 | Check | Status |

@@ -1068,6 +1068,14 @@ This file helps AI quickly locate important types, helper functions, store actio
 - `createCampaignArtifactAssistantApiClient()`: device-routing-aware frontend API adapter — `src/lib/api/campaignArtifactAssistantApiClient.ts`.
 - Focused smokes: `npm run api:verify:campaign-artifact-assistant`, `npm run frontend:verify:campaign-artifact-assistant`, `npm run db:verify:campaign-artifact-atomic`.
 
+## Campaign AI Creative Seeds
+
+- `AI-LANDMARK: CAMPAIGN_AI_CREATIVE_SEEDS_V1`: cited worldbuilding/adventure proposals that remain owner-private and explicitly separate from established campaign facts.
+- `CampaignArtifactTask` / `isCreativeCampaignArtifactTask()`: shared task vocabulary and presentation discriminator for `worldbuilding_outline` and `adventure_seed` — `src/lib/ai/campaignArtifactAssistantTypes.ts`.
+- `TASK_GUIDANCE` / `modelPrompt()`: task-specific creative boundaries; citations constrain/inspire proposals but do not establish them as facts — `server/api/campaignArtifactAssistantHandlers.ts`.
+- `CampaignAiArtifactPanel`: task selection plus pre-generation, preview, and history proposal disclosure; no chat, navigation, auto-apply, Workshop claim, or Runtime action — `src/components/platform/CampaignAiArtifactPanel.tsx`.
+- Focused end-to-end regression: `npm run api:verify:campaign-artifact-assistant` verifies both creative task kinds through explicit confirmation and private persistence.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

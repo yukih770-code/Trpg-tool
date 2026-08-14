@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import type { ModelGateway } from '../ai/modelGateway.js';
 import { createCampaignArtifactAssistantApiHandlers } from './campaignArtifactAssistantHandlers.js';
 import type { GeneratedArtifactRecord } from '../adapters/postgresGeneratedArtifactRepository.js';
+import type { CampaignArtifactTask } from '../../src/lib/ai/campaignArtifactAssistantTypes.js';
 
 const campaign = { campaignId: 'campaign-1', ownerId: 'user-1', title: '灰雾古堡', description: '调查失踪的商队。', systemId: 'dnd2024', status: 'active' as const, lifecycleStatus: 'active' as const, payload: {}, schemaVersion: 1, updatedAt: '2026-08-14T00:00:00.000Z' };
 const server = { worldServerId: 'server-1', ownerId: 'user-1', serverHandle: 'grey-mist', displayName: '灰雾服务器', serverVisibility: 'private', joinPolicy: 'invite_only', lifecycleStatus: 'active', publicProfilePayload: {}, serverSettingsPayload: {}, softUpdatePolicyPayload: {}, schemaVersion: 1 };
 let invalidCitation = false;
+let nextTask: CampaignArtifactTask = 'preparation_brief';
 const gateway: ModelGateway = {
   catalog: async () => ({ local: { configured: true, reachable: true, defaultModel: 'qwen3.6:8b' }, cloud: { configured: false, reason: 'not-implemented' }, models: [], refreshedAt: Date.now() }),
   status: async () => ({ configured: true, reachable: true, provider: 'ollama', route: 'local', model: 'qwen3.6:8b', capabilities: ['structured-output'] }),
@@ -13,8 +15,8 @@ const gateway: ModelGateway = {
   generateRoomSessionSuggestion: async () => { throw new Error('not used'); },
   generateCampaignArtifactSuggestion: async (_request, _signal, preference) => ({
     suggestionId: `suggestion-${Date.now()}`,
-    task: 'preparation_brief', provider: 'ollama', route: 'local', model: preference?.mode === 'local' ? preference.localModel ?? 'qwen3.6:8b' : 'qwen3.6:8b', createdAt: Date.now(),
-    suggestion: { version: 1, task: 'preparation_brief', title: '下次备团简报', summary: '围绕商队失踪展开。', sections: [{ heading: '开场', body: '从灰雾中的求救信号开始。', sourceIds: [invalidCitation ? 'invented-source' : 'campaign:campaign-1'] }], uncertainties: ['失踪原因尚未提供。'], suggestedNextSteps: ['准备两名可替换 NPC。'] },
+    task: nextTask, provider: 'ollama', route: 'local', model: preference?.mode === 'local' ? preference.localModel ?? 'qwen3.6:8b' : 'qwen3.6:8b', createdAt: Date.now(),
+    suggestion: { version: 1, task: nextTask, title: nextTask === 'worldbuilding_outline' ? '世界观提案' : nextTask === 'adventure_seed' ? '冒险种子提案' : '下次备团简报', summary: '围绕商队失踪展开。', sections: [{ heading: '开场', body: '从灰雾中的求救信号开始。', sourceIds: [invalidCitation ? 'invented-source' : 'campaign:campaign-1'] }], uncertainties: ['失踪原因尚未提供。'], suggestedNextSteps: ['准备两名可替换 NPC。'] },
   }),
 };
 
@@ -66,6 +68,32 @@ assert.ok(artifacts[0].archivedAt);
 assert.equal((await handlers.restore({ viewer, params: { ...params, artifactId } })).statusCode, 200);
 assert.equal(artifacts[0].archivedAt, undefined);
 
+for (const creativeTask of ['worldbuilding_outline', 'adventure_seed'] as const) {
+  nextTask = creativeTask;
+  const creativeDraft = await handlers.generate({ viewer, params, body: { task: creativeTask, sourceFamilies: ['campaign_summary'] } });
+  assert.equal(creativeDraft.statusCode, 200);
+  const creativeSuggestionId = (creativeDraft as unknown as { value: { suggestionId: string } }).value.suggestionId;
+  const creativeConfirm = await handlers.confirm({ viewer, params: { ...params, suggestionId: creativeSuggestionId } });
+  assert.equal(creativeConfirm.statusCode, 200);
+  const creativeArtifact = artifacts.at(-1);
+  assert.ok(creativeArtifact);
+  assert.equal(creativeArtifact.artifactKind, `campaign_ai_${creativeTask}`);
+  assert.equal(creativeArtifact.visibilityScope, 'user_private');
+}
+assert.equal(artifacts.length, 3);
+const creativeList = await handlers.list({ viewer, params, query: {} });
+assert.equal(creativeList.statusCode, 200);
+assert.deepEqual(
+  (creativeList as unknown as { value: Array<{ task: CampaignArtifactTask }> }).value.map((item) => item.task),
+  ['preparation_brief', 'worldbuilding_outline', 'adventure_seed'],
+  'saved creative artifacts must pass the shared parser and remain readable',
+);
+
+nextTask = 'adventure_seed';
+const taskMismatch = await handlers.generate({ viewer, params, body: { task: 'worldbuilding_outline', sourceFamilies: ['campaign_summary'] } });
+assert.equal(taskMismatch.statusCode, 503, 'a model response for a different creative task must fail closed');
+
+nextTask = 'preparation_brief';
 const staleDraft = await handlers.generate({ viewer, params, body: { task: 'preparation_brief', sourceFamilies: ['campaign_summary'] } });
 campaign.updatedAt = '2026-08-14T02:00:00.000Z';
 assert.equal((await handlers.confirm({ viewer, params: { ...params, suggestionId: (staleDraft as unknown as { value: { suggestionId: string } }).value.suggestionId } })).statusCode, 409);

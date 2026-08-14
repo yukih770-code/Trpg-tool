@@ -3,7 +3,7 @@ import type { Locale } from '../../i18n';
 import { ApiClientError } from '../../lib/api/apiTypes';
 import { campaignArtifactAssistantApiClient } from '../../lib/api/campaignArtifactAssistantApiClient';
 import type { AiModelGatewayStatus } from '../../lib/ai/dndCharacterAssistantTypes';
-import type { CampaignArtifactSourceFamily, CampaignArtifactSuggestionResult, CampaignArtifactTask, SavedCampaignArtifact } from '../../lib/ai/campaignArtifactAssistantTypes';
+import { isCreativeCampaignArtifactTask, type CampaignArtifactSourceFamily, type CampaignArtifactSuggestionResult, type CampaignArtifactTask, type SavedCampaignArtifact } from '../../lib/ai/campaignArtifactAssistantTypes';
 
 type Props = { locale: Locale; worldServerId: string; campaignId: string; canManage: boolean };
 
@@ -14,7 +14,8 @@ function copy(locale: Locale) {
   return zh ? {
     title: 'AI 备团与回顾', note: '按你本次选择的战役摘要生成带来源草稿。AI 不会读取角色卡全文、房间口令、地图或跑团日志，也不会自动修改战役。',
     private: '成果仅你可见', model: '本地模型', unavailable: '当前 AI 路由不可用，请前往设置检查本地模型。',
-    preparation_brief: '备团简报', campaign_recap: '战役回顾', focus: '关注点（可选）', focusPlaceholder: '例如：下次开场、尚未收束的线索、需要准备的 NPC…',
+    preparation_brief: '备团简报', campaign_recap: '战役回顾', worldbuilding_outline: '世界观提案', adventure_seed: '冒险 / 地下城种子', focus: '关注点（可选）', focusPlaceholder: '例如：下次开场、尚未收束的线索、需要准备的 NPC…',
+    creativeWarning: '这是原创创意提案，不是战役既定事实、官方模组或现有工坊作品。保存也不会自动写入战役；采用内容仍由你决定。', proposal: '创意提案',
     campaign_summary: '战役标题与简介', actor_summaries: '角色名称与状态', room_summaries: '房间状态摘要', prior_artifacts: '我此前保存的 AI 成果',
     generate: '生成带来源草稿', generating: '正在整理…', confirm: '确认并保存', confirming: '正在保存…', discard: '放弃此草稿', sources: '本次来源', uncertainties: '不确定项', next: '建议下一步',
     history: '已保存成果', empty: '还没有保存的成果。', archived: '已归档', archive: '归档', restore: '恢复', refresh: '刷新', showArchived: '显示已归档',
@@ -22,7 +23,8 @@ function copy(locale: Locale) {
   } : {
     title: 'AI prep & recap', note: 'Create a cited draft from the campaign summaries you select. AI never reads full sheets, room codes, maps, or runtime logs and never changes the campaign automatically.',
     private: 'Artifacts are visible only to you', model: 'Local model', unavailable: 'The selected AI route is unavailable. Check your local model in Settings.',
-    preparation_brief: 'Prep brief', campaign_recap: 'Campaign recap', focus: 'Focus (optional)', focusPlaceholder: 'Opening beat, unresolved threads, NPCs to prepare…',
+    preparation_brief: 'Prep brief', campaign_recap: 'Campaign recap', worldbuilding_outline: 'Worldbuilding proposal', adventure_seed: 'Adventure / dungeon seed', focus: 'Focus (optional)', focusPlaceholder: 'Opening beat, unresolved threads, NPCs to prepare…',
+    creativeWarning: 'This is an original creative proposal, not established campaign fact, an official adventure, or an existing Workshop item. Saving it does not apply it to the campaign.', proposal: 'Creative proposal',
     campaign_summary: 'Campaign title and description', actor_summaries: 'Actor names and statuses', room_summaries: 'Room status summaries', prior_artifacts: 'My previously saved AI artifacts',
     generate: 'Generate cited draft', generating: 'Preparing…', confirm: 'Confirm and save', confirming: 'Saving…', discard: 'Discard draft', sources: 'Sources', uncertainties: 'Uncertainties', next: 'Suggested next steps',
     history: 'Saved artifacts', empty: 'No saved artifacts yet.', archived: 'Archived', archive: 'Archive', restore: 'Restore', refresh: 'Refresh', showArchived: 'Show archived',
@@ -38,6 +40,7 @@ function errorText(error: unknown, labels: ReturnType<typeof copy>): string {
 function ArtifactBody({ artifact, labels }: { artifact: SavedCampaignArtifact; labels: ReturnType<typeof copy> }) {
   const byId = useMemo(() => new Map(artifact.sources.map((source) => [source.sourceId, source])), [artifact.sources]);
   return <div className="mt-3 space-y-3 text-sm">
+    {isCreativeCampaignArtifactTask(artifact.task) && <p className="rounded-lg bg-[#8a7049]/12 px-3 py-2 text-xs font-bold text-[#6f5635]">{labels.proposal} · {labels.creativeWarning}</p>}
     <p className="leading-6 text-[#51483d]">{artifact.suggestion.summary}</p>
     {artifact.suggestion.sections.map((section, index) => <section key={`${section.heading}-${index}`} className="rounded-lg bg-white/65 p-3">
       <h5 className="font-bold text-[#211c17]">{section.heading}</h5><p className="mt-1 whitespace-pre-wrap leading-6 text-[#40382f]">{section.body}</p>
@@ -108,7 +111,8 @@ export function CampaignAiArtifactPanel({ locale, worldServerId, campaignId, can
       {busy === 'load' ? <p className="text-sm text-[#51483d]">…</p> : !available ? <div className="rounded-xl bg-white/65 p-3 text-sm text-[#6c3c32]"><p>{labels.unavailable}</p><button type="button" onClick={() => void load()} className="mt-2 text-xs font-bold underline">{labels.refresh}</button></div> : <>
         <div className="flex flex-wrap items-center gap-2 text-xs"><span className="font-bold">{labels.model}</span><span className="rounded-full bg-white/75 px-2 py-1">{status?.model}</span></div>
         {!draft && <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,.8fr)]">
-          <div><div className="flex gap-2">{(['preparation_brief', 'campaign_recap'] as CampaignArtifactTask[]).map((value) => <button key={value} type="button" onClick={() => setTask(value)} className={`rounded-lg px-3 py-2 text-xs font-bold ${task === value ? 'bg-[#2b241d] text-white' : 'bg-white/75 text-[#40382f]'}`}>{labels[value]}</button>)}</div>
+          <div><div className="flex flex-wrap gap-2">{(['preparation_brief', 'campaign_recap', 'worldbuilding_outline', 'adventure_seed'] as CampaignArtifactTask[]).map((value) => <button key={value} type="button" onClick={() => setTask(value)} className={`rounded-lg px-3 py-2 text-xs font-bold ${task === value ? 'bg-[#2b241d] text-white' : 'bg-white/75 text-[#40382f]'}`}>{labels[value]}</button>)}</div>
+          {isCreativeCampaignArtifactTask(task) && <p className="mt-3 rounded-lg bg-[#8a7049]/12 px-3 py-2 text-xs leading-5 text-[#6f5635]">{labels.creativeWarning}</p>}
           <label className="mt-3 block text-xs font-bold">{labels.focus}<textarea value={focus} maxLength={1200} onChange={(event) => setFocus(event.target.value)} placeholder={labels.focusPlaceholder} className="mt-1 min-h-20 w-full resize-y rounded-lg border border-[#2f2a22]/15 bg-white/80 px-3 py-2 text-sm font-normal" /></label></div>
           <fieldset><legend className="text-xs font-bold">{labels.sources}</legend><div className="mt-2 space-y-2">{SOURCE_FAMILIES.map((family) => <label key={family} className="flex items-start gap-2 text-sm"><input type="checkbox" checked={families.includes(family)} onChange={(event) => setFamilies((current) => event.target.checked ? [...current, family] : current.filter((item) => item !== family))} className="mt-1" /><span>{labels[family]}</span></label>)}</div></fieldset>
           <div className="lg:col-span-2"><button type="button" disabled={busy !== null || families.length === 0} onClick={() => void generate()} className="rounded-lg bg-[#2b241d] px-4 py-2 text-sm font-bold text-white disabled:opacity-40">{busy === 'generate' ? labels.generating : labels.generate}</button></div>
