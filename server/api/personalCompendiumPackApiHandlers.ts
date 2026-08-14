@@ -24,6 +24,7 @@ export type PersonalCompendiumPackApiRequest = {
 
 export type PersonalCompendiumPackApiHandlers = {
   listPacks(input: PersonalCompendiumPackApiRequest): Promise<ApiResult>;
+  listPackVersions(packId: string, input: PersonalCompendiumPackApiRequest): Promise<ApiResult>;
   getPackVersion(packId: string, packVersionId: string, input: PersonalCompendiumPackApiRequest): Promise<ApiResult>;
   publishPack(input: PersonalCompendiumPackApiRequest): Promise<ApiResult>;
   publishVersion(packId: string, input: PersonalCompendiumPackApiRequest): Promise<ApiResult>;
@@ -119,6 +120,26 @@ export function createPersonalCompendiumPackApiHandlers(
         return errorResponse(503, { kind: 'unavailable', message: 'Personal content pack service is unavailable.' }, { requestId: input.requestId });
       }
       return okResponse(summaries, { requestId: input.requestId });
+    },
+    async listPackVersions(packId, input) {
+      const viewer = authenticatedViewer(input, options);
+      if (isResponse(viewer)) return viewer;
+      if (!text(packId, 160)) return errorResponse(400, { kind: 'validation', message: 'packId is required.' }, { requestId: input.requestId });
+      const packs = await compendium.listUserPrivateCompendiumPacksByOwner(viewer.viewerUserId!, 100);
+      if (packs.ok === false) return repositoryFailure(packs.error, input.requestId);
+      if (!packs.value.some((candidate) => candidate.packId === packId)) {
+        return errorResponse(404, { kind: 'not_found', message: 'Personal content pack was not found.' }, { requestId: input.requestId });
+      }
+      const versions = await compendium.listCompendiumPackVersions(packId, 100);
+      if (versions.ok === false) return repositoryFailure(versions.error, input.requestId);
+      return okResponse(versions.value.map((version) => ({
+        packVersionId: version.packVersionId,
+        packId: version.packId,
+        versionLabel: version.versionLabel,
+        schemaVersion: version.schemaVersion,
+        ...(version.createdAt ? { createdAt: version.createdAt } : {}),
+        ...(version.publishedAt ? { publishedAt: version.publishedAt } : {}),
+      })), { requestId: input.requestId });
     },
     async getPackVersion(packId, packVersionId, input) {
       const viewer = authenticatedViewer(input, options);

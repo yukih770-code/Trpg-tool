@@ -17,6 +17,11 @@ version that may already be referenced by a Room actor binding.
 
 ## Current UX
 
-Open **我的自定义资料**, click an existing pack, update the compact authoring
-form, choose a version label such as `1.1.0`, and save. The current v0 editor
-authors a compact species entry; richer multi-entry editing/import is deferred.
+Open **我的自定义资料** and inspect an existing pack. The owner can switch
+between all returned immutable versions, export the selected version, or copy
+that exact version into the existing unsaved new-version draft. Copying proposes
+a non-conflicting label and performs no write. The owner may then edit the
+multi-entry draft and explicitly publish one new immutable version.
+
+This is historical draft restore, not in-place rollback. Existing versions and
+Room references are never rewritten.

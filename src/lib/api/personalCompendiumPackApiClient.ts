@@ -48,8 +48,18 @@ export type PersonalCompendiumPackVersionContent = {
   }>;
 };
 
+export type PersonalCompendiumPackVersionSummary = {
+  packVersionId: string;
+  packId: string;
+  versionLabel: string;
+  schemaVersion: number;
+  createdAt?: string;
+  publishedAt?: string;
+};
+
 export type PersonalCompendiumPackApiClient = {
   list(): Promise<PersonalCompendiumPack[]>;
+  listVersions(packId: string): Promise<PersonalCompendiumPackVersionSummary[]>;
   getVersion(packId: string, packVersionId: string): Promise<PersonalCompendiumPackVersionContent>;
   publish(input: PublishPersonalCompendiumPackInput): Promise<PublishedPersonalCompendiumPack>;
   publishVersion(packId: string, input: Omit<PublishPersonalCompendiumPackInput, 'displayName'>): Promise<PublishedPersonalCompendiumPack>;
@@ -61,6 +71,7 @@ export function createPersonalCompendiumPackApiClient(options: ApiClientOptions 
   const request = createApiClient(options).request;
   return {
     list: () => request(ROOT),
+    listVersions: (packId) => request(`${ROOT}/${encodeURIComponent(packId)}/versions`),
     getVersion: (packId, packVersionId) => request(`${ROOT}/${encodeURIComponent(packId)}/versions/${encodeURIComponent(packVersionId)}`),
     publish: (input) => request(ROOT, { method: 'POST', body: JSON.stringify(input) }),
     publishVersion: (packId, input) => request(`${ROOT}/${encodeURIComponent(packId)}/versions`, { method: 'POST', body: JSON.stringify(input) }),

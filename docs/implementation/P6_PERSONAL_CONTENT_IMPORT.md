@@ -13,6 +13,23 @@ Personal content authors can import a bounded JSON pack from **我的自定义�
 
 ## Accepted shape
 
+The current exporter emits the versioned shape below. Persistence identities are
+intentionally omitted, so import always receives fresh server-assigned IDs.
+
+```json
+{
+  "format": "trpg-personal-compendium-pack",
+  "formatVersion": 1,
+  "exportedAt": "2026-08-15T00:00:00.000Z",
+  "displayName": "我的资料包",
+  "versionLabel": "1.0.0",
+  "metadata": { "gameSystemId": "dnd5e-2024" },
+  "entries": []
+}
+```
+
+The original compact shape remains accepted for backward compatibility:
+
 ```json
 {
   "displayName": "我的资料包",
@@ -33,4 +50,4 @@ There must be 1-50 entries. Supported kinds are the existing private compendium 
 
 ## Deferred
 
-There is no bulk export, pack diff, collaborative editing, server-shared publication, rule execution, or automatic Room approval in this slice.
+There is no whole-library bulk backup, pack diff, collaborative editing, server-shared publication, Workshop installation, rule execution, or automatic Room approval in this slice.

@@ -1828,6 +1828,25 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8av. DND Personal Content Portability & Historical Draft Restore v1
+
+- [x] Owner-only version-history API resolves private-pack ownership before listing at most 100 immutable version summaries
+- [x] Version history excludes manifest, source, rights, owner, Server, Room, and entry payloads
+- [x] Another authenticated user receives not-found and cannot discover a private pack's version history
+- [x] Workbench can select and inspect every returned immutable version without adding a page, parallel entry, or second primary card action
+- [x] Explicit export creates `trpg-personal-compendium-pack` format v1 with bounded human-readable JSON and sanitized filename
+- [x] Export strips pack/version/entry persistence IDs and all account, Server, and Room identity fields
+- [x] New export envelope round-trips through import preview; legacy plain personal-pack JSON remains compatible
+- [x] Unsupported format versions, oversize transfer text, invalid entry kinds, invalid metadata/content, and invalid counts are rejected before writes
+- [x] A selected historical version copies only into unsaved Flow State with a conflict-free suggested label
+- [x] Copying performs no persistence; the existing explicit `发布新版本` action remains the only append commit and old Room references remain unchanged
+- [x] Overlay close uses `×`; workbench exit uses one icon-only `←` with assistive labels; no visible Back/Home/up/current-location text was added
+- [x] Personal compendium API/client/import, definitions, adapter, Room-reference, and AI-drafting regressions pass
+- [x] `npx tsc --noEmit`, `npm run server:build`, `npm run build`, static boundary audit, and `git diff --check` pass
+- [ ] Authenticated browser download and re-import click path has been manually accepted with a real saved multi-version pack
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

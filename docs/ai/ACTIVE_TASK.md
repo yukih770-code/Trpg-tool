@@ -4,52 +4,51 @@
 
 ## Task
 
-- ID: DND Personal Content AI Drafting v1
-- Name: `DND_PERSONAL_CONTENT_AI_DRAFTING_V1`
-- Goal: Embed schema-bounded AI drafting into the existing private DND content workbench so an authenticated author can generate, deterministically validate, preview, and explicitly apply an original-content draft to the unsaved form before using the existing immutable-version save and Room-review chain.
-- Phase: Internal AI foundation / structured private creation
+- ID: DND Personal Content Portability & Historical Draft Restore v1
+- Name: `DND_PERSONAL_CONTENT_PORTABILITY_RESTORE_V1`
+- Goal: Let an authenticated owner inspect all immutable versions of a private DND compendium pack, export one selected version as a bounded versioned JSON transfer envelope, and copy any selected historical version into the existing unsaved new-version draft flow without overwriting history.
+- Phase: Private ecosystem / portable authored content
 - Status: Complete
 
 ## Layer Declaration
 
-- IA: Existing Workshop private `我的创作` Create/Add Flow and the existing authenticated Model Gateway backend boundary; no new page, modal, global AI entry, public Workshop listing, or Room control.
-- Object: Suggested owner-private DND CatalogObject draft only. Existing saved personal pack/version records remain the persistence container and are not mutated by AI generation or form application.
-- State: UI State for expansion/status/input/preview; Flow State for model suggestion and unsaved form fields; transient Server State for one request. Existing Persistent Domain State writes remain solely behind the workbench's current explicit immutable-version publish APIs.
-- Excluded: WorkshopPackage installation/publication, PackageLibraryEntry, official compendium data, Actor, Campaign, Room, Runtime, rules execution, schema/migration, collaborative editing, cloud billing.
+- IA: Existing Workshop private `我的创作` workbench only; no new page, modal, global navigation entry, public Workshop detail, or package-library surface.
+- Object: Owner-private personal compendium pack/version and its CatalogObject entry projections. This is not a WorkshopPackageManifest, PackageLibraryEntry, CampaignObject, or RuntimeObject.
+- State: UI State for selected/expanded version and transfer notices; Flow State for the copied unsaved entries; authenticated Server State for owner-scoped version summaries/details; existing Persistent Domain State only when the owner separately invokes the current immutable-version publish API.
+- Import/export: Dedicated `trpg-personal-compendium-pack` transfer envelope v1. Legacy accepted personal-pack JSON remains import-compatible. Persistence, owner, Server, Room, version, and entry IDs are omitted; import always creates fresh server-assigned identities.
+- Excluded: public publication, package installation/subscription/update/rollback, dependencies, Room admission, official compendium data, rule execution, schema/migration, media binaries, cloud storage, collaborative editing.
 
 ## Page Responsibility And Action Hierarchy
 
-- The private content workbench remains responsible for authoring, collecting, previewing, and explicitly saving private DND rule entries.
-- It remains not responsible for public discovery/publication, package installation, Room admission, character ownership, Runtime execution, or official rule reproduction.
-- Primary CTA remains the existing save-as-immutable-version action after entries enter pending content.
-- `智能起草` is a collapsed secondary creation-flow surface. Generate/cancel, preview, discard, and apply-to-form stay inside it.
-- Applying an AI plan changes only the current unsaved form. `加入待保存内容` and final save remain separate explicit human actions.
-- Hidden actions: automatic add/save/publish, official-content copying, executable effects, Room approval, server adoption, background generation, public sharing, and direct database writes.
+- The private content workbench remains responsible for authoring, previewing, version history, portable owner backup, import preview, and explicit immutable-version save.
+- It remains not responsible for public discovery/publication, Package Library lifecycle, campaign entry, Room approval, Runtime execution, or official-source redistribution.
+- Pack-card primary action remains `查看内容`; its existing current-version draft action remains secondary.
+- Inside the inspected object detail, selecting a historical version, exporting it, and copying it to a new-version draft are secondary object-management actions.
+- The existing `发布新版本` action remains the only persistence commit after a historical version is copied into Flow State.
+- Hidden actions: overwrite version, preserve source IDs on import, automatic download on inspection, automatic save, public share, install/enable/rollback package, Room activation, and destructive history mutation.
 
 ## Allowed Files
 
-- `src/lib/ai/dndPersonalContentAssistantTypes.ts`
-- `src/lib/ai/dndPersonalContentAssistant.ts`
-- focused frontend smoke
-- `server/ai/modelGateway.ts`, `server/ai/modelRoutingGateway.ts`
-- focused API handlers/routes/smoke and server registration/index
-- `src/lib/api/aiModelGatewayApiClient.ts` and focused smoke
-- `src/components/platform/DndPersonalContentAssistantPanel.tsx`
+- `src/lib/platform/personalCompendiumImport.ts` and focused smoke
+- `src/lib/api/personalCompendiumPackApiClient.ts` and focused smoke
+- `server/api/personalCompendiumPackApiHandlers.ts`, routes, and focused smoke/verification
 - `src/components/platform/DndPersonalSpeciesPackPanel.tsx`
 - `package.json`
-- `PROJECT_STATUS.md`, `TEST_CHECKLIST.md`, `docs/ai/*`, architecture index
+- `PROJECT_STATUS.md`, `TEST_CHECKLIST.md`, `ECOSYSTEM_AND_AI_ROADMAP.md`
+- `docs/ai/ACTIVE_TASK.md`, `docs/architecture/ARCHITECTURE_INDEX_V1.md`, relevant implementation docs
 
 ## Forbidden Changes
 
-- Personal pack repository/API persistence semantics, DB schema/migrations, save format, official/local rule data, character store, Campaign, Room, Runtime, permissions, public Workshop, package install, media, cloud provider/billing
-- Any modal/chat/global AI surface or automatic/background persistent write
+- PostgreSQL schema/migrations, repository storage semantics, official/local rule data, character store, Campaign, Room, Runtime, permissions, Workshop public catalog, PackageLibraryEntry, WorkshopPackageManifest, media, AI/model behavior
+- Any overwrite/delete of an immutable version or automatic persistence from inspection/export/draft restore
 - `output/`, `tools/`, `work/`
 
 ## Completion Criteria
 
-- All current DND personal editor kinds use one shared bounded field vocabulary and per-kind allowlist.
-- Authenticated route runtime-validates intent, locale, entry kind, bounded current form values, model output, and model routing without exposing provider configuration.
-- Deterministic client plan rejects kind mismatch, duplicates, unsupported fields, invalid enums/numbers/line formats, silent truncation, missing required identity, and no-op output.
-- Inline UI covers route status, editable intent, loading, cancellation, unavailable/error/retry, structured preview, warnings/issues, discard, explicit apply, and stale-form protection.
-- Apply changes only unsaved fields. Existing add-to-pending, immutable save/version, ownership, private visibility, and Room review paths remain unchanged.
-- Focused handler/client/plan smokes, existing personal-content/version/import regressions, model routing/policy checks, navigation/modal audit, TypeScript, server/frontend builds, diff check, docs, cleanup, and one isolated commit pass.
+- Owner-only API lists bounded immutable version summaries only after pack ownership is resolved.
+- Client exposes typed version history and continues to read one selected version through the owner-only endpoint.
+- Export helper creates a bounded, human-readable, versioned personal-pack envelope with no owner/user/Room/server IDs and round-trips through import preview.
+- Import accepts the new envelope and the existing legacy shape, rejects unsupported format versions, invalid entry kinds/payloads, and oversize transfer text before any write.
+- Workbench can select and inspect every version, download only after an explicit action, and copy the selected version into the existing unsaved new-version draft.
+- Copying a historical version performs no write and clearly states that publishing creates a new immutable version; old Room references remain unchanged.
+- Focused API/client/transfer smokes, existing personal-content/import/Room-reference regressions, navigation/action audit, TypeScript, server/frontend builds, diff check, docs, cleanup, and one isolated commit pass.

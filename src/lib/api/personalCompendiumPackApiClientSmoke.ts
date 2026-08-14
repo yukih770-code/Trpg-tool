@@ -23,6 +23,11 @@ async function run(): Promise<Case[]> {
     await client.getVersion('pack personal', 'version/one');
     assert(calls.at(-1)?.url.endsWith('/api/me/private-compendium-packs/pack%20personal/versions/version%2Fone'), 'version read route changed');
   });
+  await check('owner_version_history_targets_private_pack_versions_route', async () => {
+    await client.listVersions('pack personal');
+    assert(calls.at(-1)?.url.endsWith('/api/me/private-compendium-packs/pack%20personal/versions'), 'version history route changed');
+    assert(!calls.at(-1)?.init?.method, 'version history must use GET');
+  });
   await check('publish_posts_no_server_scope', async () => {
     const input = { displayName: 'My Species', entries: [{ entryKind: 'species' as const, displayName: 'Harbor Folk', content: { speed: 30 } }] };
     await client.publish(input);

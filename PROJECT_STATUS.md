@@ -799,6 +799,18 @@ Landmark: `DND_PERSONAL_CONTENT_AI_DRAFTING_V1`.
 
 ---
 
+## DND Personal Content Portability & Historical Draft Restore v1
+
+- 已认证作者现在可以在“我的创作”中读取自己私人资料包的完整不可变版本历史，并切换查看任一版本；服务端先解析 owner scope，只返回版本 ID、标签、schema 版本和时间等精简投影。
+- 任一所选版本可显式导出为 `trpg-personal-compendium-pack` v1 JSON。导出包含资料包名称、版本标签、元数据和声明式条目，但去除账号、Server、Room、pack version 与 entry 等持久化 ID。
+- 新信封与既有简洁 JSON 均经过同一导入预览；不支持的格式版本、非法条目类型、超限内容与超大文本会在任何写入前被拒绝。导出 → 导入专项 smoke 已完成回环验证。
+- 任一历史版本可复制到现有未保存的新版本草稿，并生成不冲突的建议版本标签。复制本身不写数据库；只有作者之后明确 `发布新版本` 才会追加不可变版本，旧车卡与 Room 引用保持原版本。
+- 本链是私人 Compendium 可携带备份，不是 WorkshopPackage、PackageLibraryEntry、公开发布、安装、订阅或包回滚。卡片仍只有一个查看主动作；导出和基于版本创建草稿保持次级对象动作。
+
+Landmark: `DND_PERSONAL_CONTENT_PORTABILITY_RESTORE_V1`.
+
+---
+
 ## Known Intentional Non-Replacements
 
 - `computeEmpFromHumanity` in `cpStore.ts` — delta-based (adjusts EMP only at ten-boundary crossings). Semantically different from `getCpRuntimeEmp` (absolute `floor(humanity/10)`). Left as-is by design.

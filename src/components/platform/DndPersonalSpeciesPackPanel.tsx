@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 
 import type { Locale } from '../../i18n';
 import { ApiClientError } from '../../lib/api/apiTypes';
@@ -7,10 +7,13 @@ import {
   type PersonalCompendiumPack,
   type PersonalCompendiumEntryInput,
   type PersonalCompendiumPackVersionContent,
+  type PersonalCompendiumPackVersionSummary,
   type PublishPersonalCompendiumPackInput,
 } from '../../lib/api/personalCompendiumPackApiClient';
 import {
+  createPersonalCompendiumExport,
   parsePersonalCompendiumImport,
+  suggestNextPersonalCompendiumVersionLabel,
   type PersonalCompendiumImportDraft,
 } from '../../lib/platform/personalCompendiumImport';
 import {
@@ -222,6 +225,7 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
   const [notice, setNotice] = useState('');
   const [versioningPackId, setVersioningPackId] = useState<string | null>(null);
   const [inspectedPackId, setInspectedPackId] = useState<string | null>(null);
+  const [inspectedVersions, setInspectedVersions] = useState<PersonalCompendiumPackVersionSummary[]>([]);
   const [inspectedVersion, setInspectedVersion] = useState<PersonalCompendiumPackVersionContent | null>(null);
   const [inspectLoading, setInspectLoading] = useState(false);
   const [inspectError, setInspectError] = useState('');
@@ -229,6 +233,7 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
   const [importDraft, setImportDraft] = useState<PersonalCompendiumImportDraft | null>(null);
   const [importError, setImportError] = useState('');
   const [draftEntries, setDraftEntries] = useState<PersonalCompendiumEntryInput[]>([]);
+  const inspectSequence = useRef(0);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -273,24 +278,92 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
   const inspectPack = async (pack: PersonalCompendiumPack) => {
     if (!pack.latestVersion || busy) return;
     if (inspectedPackId === pack.packId) {
+      inspectSequence.current += 1;
       setInspectedPackId(null);
+      setInspectedVersions([]);
       setInspectedVersion(null);
       setInspectError('');
       return;
     }
     setInspectedPackId(pack.packId);
+    setInspectedVersions([]);
     setInspectedVersion(null);
     setInspectError('');
     setInspectLoading(true);
+    const sequence = ++inspectSequence.current;
     try {
-      setInspectedVersion(await personalCompendiumPackApiClient.getVersion(pack.packId, pack.latestVersion.packVersionId));
+      const versions = await personalCompendiumPackApiClient.listVersions(pack.packId);
+      const selectedVersionId = versions.some((version) => version.packVersionId === pack.latestVersion?.packVersionId)
+        ? pack.latestVersion.packVersionId
+        : versions[0]?.packVersionId;
+      if (!selectedVersionId) throw new Error('No readable version');
+      const version = await personalCompendiumPackApiClient.getVersion(pack.packId, selectedVersionId);
+      if (inspectSequence.current !== sequence) return;
+      setInspectedVersions(versions);
+      setInspectedVersion(version);
     } catch (reason) {
+      if (inspectSequence.current !== sequence) return;
       setInspectError(reason instanceof ApiClientError && reason.statusCode === 401
         ? copy(locale, '需要先登录，才能查看个人资料版本。', 'Sign in to view this personal content version.')
         : copy(locale, '该资料版本暂时无法读取。', 'This content version is unavailable right now.'));
     } finally {
-      setInspectLoading(false);
+      if (inspectSequence.current === sequence) setInspectLoading(false);
     }
+  };
+
+  const selectInspectedVersion = async (packVersionId: string) => {
+    if (!inspectedPackId || inspectLoading || busy) return;
+    setInspectLoading(true);
+    setInspectError('');
+    const sequence = ++inspectSequence.current;
+    try {
+      const version = await personalCompendiumPackApiClient.getVersion(inspectedPackId, packVersionId);
+      if (inspectSequence.current === sequence) setInspectedVersion(version);
+    } catch (reason) {
+      if (inspectSequence.current !== sequence) return;
+      setInspectError(reason instanceof ApiClientError && reason.statusCode === 401
+        ? copy(locale, '需要先登录，才能查看个人资料版本。', 'Sign in to view this personal content version.')
+        : copy(locale, '该资料版本暂时无法读取。', 'This content version is unavailable right now.'));
+    } finally {
+      if (inspectSequence.current === sequence) setInspectLoading(false);
+    }
+  };
+
+  const copyVersionToDraft = (source: PersonalCompendiumPackVersionContent, versions: PersonalCompendiumPackVersionSummary[]) => {
+    setVersioningPackId(source.pack.packId);
+    setDraftEntries(source.entries.map((entry) => ({
+      entryKind: entry.entryKind as PersonalCompendiumEntryInput['entryKind'],
+      displayName: entry.displayName,
+      content: entry.content,
+      metadata: entry.metadata,
+    })));
+    const nextLabel = suggestNextPersonalCompendiumVersionLabel(source.version.versionLabel, versions.map((version) => version.versionLabel));
+    setFields((previous) => ({ ...previous, packName: source.pack.displayName, versionLabel: nextLabel }));
+    setImportDraft(null);
+    setImportError('');
+    setNotice(copy(locale,
+      `已将“${source.pack.displayName}”的 ${source.version.versionLabel} 版本复制到未保存草稿，并建议新标签 ${nextLabel}。只有你稍后明确发布，才会创建新的不可变版本；历史版本不会被改写。`,
+      `Copied ${source.pack.displayName} ${source.version.versionLabel} into an unsaved draft and suggested ${nextLabel}. A new immutable version is created only if you explicitly publish it; history is never overwritten.`,
+    ));
+  };
+
+  const exportInspectedVersion = () => {
+    if (!inspectedVersion || busy) return;
+    const exported = createPersonalCompendiumExport(inspectedVersion);
+    if (exported.ok === false) {
+      setNotice(copy(locale, exported.message, 'This version could not be exported within the personal-pack size limit.'));
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([exported.json], { type: 'application/json;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = exported.filename;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    setNotice(copy(locale,
+      `已导出 ${inspectedVersion.pack.displayName} · ${inspectedVersion.version.versionLabel}。文件不包含账号、房间或数据库对象 ID；重新导入时仍会先预览并创建新内容或新版本。`,
+      `Exported ${inspectedVersion.pack.displayName} · ${inspectedVersion.version.versionLabel}. The file contains no account, Room, or database object IDs; re-import still requires preview and creates new content or a new version.`,
+    ));
   };
 
   const beginNewVersion = async (pack: PersonalCompendiumPack) => {
@@ -298,16 +371,11 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
     setBusy(true);
     setNotice('');
     try {
-      const source = await personalCompendiumPackApiClient.getVersion(pack.packId, pack.latestVersion.packVersionId);
-      setVersioningPackId(pack.packId);
-      setDraftEntries(source.entries.map((entry) => ({
-        entryKind: entry.entryKind as PersonalCompendiumEntryInput['entryKind'],
-        displayName: entry.displayName,
-        content: entry.content,
-        metadata: entry.metadata,
-      })));
-      setFields((previous) => ({ ...previous, packName: pack.displayName, versionLabel: '1.1.0' }));
-      setNotice(copy(locale, `已将“${pack.displayName}”的当前版本复制到草稿。你可以增删条目后发布新版本；旧版本不会被改写。`, `Copied the current ${pack.displayName} version into a draft. Add or remove entries, then publish a new version; the old version will not change.`));
+      const [source, versions] = await Promise.all([
+        personalCompendiumPackApiClient.getVersion(pack.packId, pack.latestVersion.packVersionId),
+        personalCompendiumPackApiClient.listVersions(pack.packId),
+      ]);
+      copyVersionToDraft(source, versions);
     } catch (reason) {
       setNotice(reason instanceof ApiClientError && reason.statusCode === 401
         ? copy(locale, '需要先登录，才能基于已有资料包创建新版本。', 'Sign in to create a new version from an existing pack.')
@@ -636,8 +704,8 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                   {copy(locale, '个人资料不会改写官方资料库，也不会自动加入服务器或房间。房间准入与可用内容由主持人后续审核。', 'Personal content never changes the official library and is not automatically added to a Server or Room. Room admission and allowed content remain host-reviewed.')}
                 </p>
               </div>
-              {presentation === 'card' && <button type="button" onClick={() => setOpen(false)} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-xs font-bold text-[#58180d]">{copy(locale, '关闭', 'Close')}</button>}
-              {presentation === 'workbench' && onCloseWorkbench && <button type="button" onClick={onCloseWorkbench} className="rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-xs font-bold text-[#58180d]">{copy(locale, '返回车卡', 'Return to builder')}</button>}
+              {presentation === 'card' && <button type="button" onClick={() => setOpen(false)} aria-label={copy(locale, '关闭我的 D&D 规则内容', 'Close my D&D rules content')} title={copy(locale, '关闭', 'Close')} className="grid h-9 w-9 place-items-center rounded-md border border-[#58180d]/20 bg-white text-lg font-bold text-[#58180d]">×</button>}
+              {presentation === 'workbench' && onCloseWorkbench && <button type="button" onClick={onCloseWorkbench} aria-label={copy(locale, '返回车卡', 'Return to builder')} title={copy(locale, '返回车卡', 'Return to builder')} className="grid h-9 w-9 place-items-center rounded-md border border-[#58180d]/20 bg-white text-lg font-bold text-[#58180d]">←</button>}
             </div>
 
             <div className="mt-4 rounded-lg border border-[#58180d]/15 bg-white/70 p-3">
@@ -646,7 +714,7 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                 <button type="button" onClick={() => void refresh()} disabled={loading || busy} className="rounded-md border border-[#58180d]/20 bg-white px-2.5 py-1.5 text-xs font-bold text-[#58180d] disabled:opacity-40">{copy(locale, '刷新', 'Refresh')}</button>
               </div>
               {loading && <p className="mt-2 text-xs text-[#2c1810]/65">{copy(locale, '正在加载…', 'Loading…')}</p>}
-              {!loading && packs.length === 0 && !notice && <p className="mt-2 text-xs text-[#2c1810]/65">{copy(locale, '尚未创建自定义内容。创建一项后会自动保存到你的私人资料库。', 'No custom content yet. Your first entry will be saved to a private library automatically.')}</p>}
+              {!loading && packs.length === 0 && !notice && <p className="mt-2 text-xs text-[#2c1810]/65">{copy(locale, '尚未创建自定义内容。完成条目并明确保存后，它会进入你的私人资料库。', 'No custom content yet. Complete an entry and explicitly save it to add it to your private library.')}</p>}
               {!loading && packs.length > 0 && <div className="mt-3 grid gap-2 sm:grid-cols-2">{packs.map((pack) => (
                 <article key={pack.packId} className={`rounded-md border p-3 ${versioningPackId === pack.packId ? 'border-[#a35b11]/60 bg-[#fff1c7]/55' : 'border-[#58180d]/16 bg-white/65'}`}>
                   <div className="flex flex-wrap items-start justify-between gap-2">
@@ -674,6 +742,17 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
                     <p className="font-bold">{inspectedVersion.pack.displayName} · {inspectedVersion.version.versionLabel}</p>
                     <span>{copy(locale, '已发布版本不可直接修改', 'Published versions are immutable')}</span>
                   </div>
+                  <div className="mt-3 flex flex-wrap items-end gap-2 rounded border border-[#2f7f68]/15 bg-white/65 p-2">
+                    <label className="grid min-w-48 gap-1 text-[11px] font-bold text-[#184f42]">
+                      <span>{copy(locale, `版本历史 · ${inspectedVersions.length}`, `Version history · ${inspectedVersions.length}`)}</span>
+                      <select value={inspectedVersion.version.packVersionId} onChange={(event) => void selectInspectedVersion(event.target.value)} disabled={inspectLoading || busy} className="rounded border border-[#2f7f68]/25 bg-white px-2 py-1.5 text-xs font-normal disabled:opacity-50">
+                        {inspectedVersions.map((version) => <option key={version.packVersionId} value={version.packVersionId}>{version.versionLabel}{version.createdAt ? ` · ${version.createdAt.slice(0, 10)}` : ''}</option>)}
+                      </select>
+                    </label>
+                    <button type="button" onClick={exportInspectedVersion} disabled={inspectLoading || busy} className="rounded border border-[#2f7f68]/25 bg-white px-2.5 py-1.5 text-xs font-bold text-[#184f42] disabled:opacity-40">{copy(locale, '导出此版本 JSON', 'Export this version JSON')}</button>
+                    <button type="button" onClick={() => copyVersionToDraft(inspectedVersion, inspectedVersions)} disabled={inspectLoading || busy} className="rounded border border-[#a35b11]/25 bg-[#fff1c7]/55 px-2.5 py-1.5 text-xs font-bold text-[#7a4610] disabled:opacity-40">{copy(locale, '基于此版本创建草稿', 'Create draft from this version')}</button>
+                  </div>
+                  <p className="mt-2 leading-5 text-[#184f42]/80">{copy(locale, '导出是个人备份，不是发布到创意工坊；创建草稿也不会写入数据库，只有之后明确“发布新版本”才会持久化。', 'Export is a personal backup, not Workshop publication. Creating a draft also performs no database write; only a later explicit “Publish new version” persists it.')}</p>
                   {inspectedVersion.entries.length === 0 ? <p className="mt-2">{copy(locale, '此版本没有可显示的条目。', 'This version has no displayable entries.')}</p> : <ul className="mt-2 space-y-1.5">
                     {inspectedVersion.entries.map((entry) => <li key={entry.compendiumEntryId} className="flex flex-wrap items-center justify-between gap-2 rounded border border-[#2f7f68]/15 bg-white/65 px-2 py-1.5"><span className="font-semibold">{entry.displayName}</span><span className="rounded-full bg-[#2f7f68]/10 px-2 py-0.5 text-[10px] font-bold">{entry.entryKind}</span></li>)}
                   </ul>}

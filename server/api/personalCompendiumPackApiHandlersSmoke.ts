@@ -21,7 +21,10 @@ export async function runPersonalCompendiumPackApiHandlersSmoke(): Promise<{ tot
         return { ok: true, value: ownerId === 'user_a' ? [userPack] : [] };
       },
       async listCompendiumPackVersions(packId) {
-        return { ok: true, value: [{ packVersionId: `version_${packId}`, packId, versionLabel: '1.0.0', manifest: {}, source: {}, rights: {}, schemaVersion: 1 }] };
+        return { ok: true, value: [
+          { packVersionId: `version_${packId}_2`, packId, versionLabel: '1.1.0', manifest: { private: true }, source: { authorUserId: 'user_a' }, rights: { visibilityScope: 'user_private' }, schemaVersion: 1, createdAt: '2026-08-15T00:00:00.000Z' },
+          { packVersionId: `version_${packId}`, packId, versionLabel: '1.0.0', manifest: {}, source: {}, rights: {}, schemaVersion: 1, createdAt: '2026-08-14T00:00:00.000Z' },
+        ] };
       },
       async listCompendiumEntries(packVersionId) {
         return { ok: true, value: packVersionId === 'version_pack_a' ? [userEntry] : [] };
@@ -71,6 +74,15 @@ export async function runPersonalCompendiumPackApiHandlersSmoke(): Promise<{ tot
     assert(captured && !('worldServerId' in captured), 'personal publication must not create a server binding');
     assert(captured?.rights?.visibilityScope === 'user_private', 'visibility must be assigned by server');
     assert(captured?.entries[0]?.sourceRef?.authorUserId === 'user_a', 'source author must be server-assigned');
+  });
+  await check('03a_owner_lists_bounded_version_summaries_without_private_manifest', async () => {
+    const result = await handlers.listPackVersions('pack_a', { viewer: owner });
+    assert(result.ok === true && Array.isArray(result.value) && result.value.length === 2, 'owner should receive version history');
+    const first = result.ok === true ? (result.value as Array<Record<string, unknown>>)[0] : undefined;
+    assert(first?.versionLabel === '1.1.0' && !('manifest' in first) && !('source' in first) && !('rights' in first), 'history must be a compact safe projection');
+  });
+  await check('03b_non_owner_cannot_discover_version_history', async () => {
+    assert(hasStatus(await handlers.listPackVersions('pack_a', { viewer: anotherUser }), 404), 'expected not found for another user');
   });
   await check('04_unsupported_entry_kind_is_rejected', async () => {
     const before = captured;

@@ -1098,3 +1098,12 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - A deterministic client plan validates identity, enums, numeric ranges, list limits, line formats, no-op output, and exact form freshness before explicit application.
 - Application changes only the unsaved workbench form. Existing pending-entry, immutable-version persistence, ownership, private visibility, and Room-review paths remain authoritative; no public Workshop, package install, rule execution, or autonomous write is introduced.
 - Landmark: `DND_PERSONAL_CONTENT_AI_DRAFTING_V1`.
+
+## DND Personal Content Portability & Historical Draft Restore v1
+
+- Files: `src/lib/platform/personalCompendiumImport.ts`, `src/lib/api/personalCompendiumPackApiClient.ts`, `server/api/personalCompendiumPackApiHandlers.ts`, and `src/components/platform/DndPersonalSpeciesPackPanel.tsx`.
+- The authenticated owner may list a compact projection of every immutable private-compendium version, inspect one selected version, and explicitly export a bounded `trpg-personal-compendium-pack` v1 JSON envelope.
+- Transfer JSON omits persistence and account scope IDs, remains compatible with the legacy compact import shape, and must pass runtime validation and preview before the existing publish path can write anything.
+- Historical restore copies one version into unsaved Flow State with a non-conflicting proposed label. It never overwrites history; only the existing explicit append-version API creates Persistent Domain State.
+- This is owner-private Compendium portability, not WorkshopPackageManifest, PackageLibraryEntry, installation, subscription, dependency resolution, public publication, or package rollback.
+- Landmark: `DND_PERSONAL_CONTENT_PORTABILITY_RESTORE_V1`.
