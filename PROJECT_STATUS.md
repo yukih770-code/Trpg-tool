@@ -739,6 +739,18 @@ Landmark: `CAMPAIGN_AI_CURATED_MEMORY_ADOPTION_V1`.
 
 ---
 
+## Embedded Runtime Session AI Drafts v1
+
+- Room Runtime 的 Session AI 已从全屏模态框移入 RuntimeLog 自身，入口改为次级、可折叠的 `智能整理`；它不是聊天框，也没有新增页面、全局导航或并行 AI 中心。
+- 既有备团提纲、会中建议和会后纪要之外，新增 `人物传记草稿` 与 `任务日志草稿`。人物传记必须由主持人明确填写人物焦点，客户端与服务端均 fail closed。
+- 两项会后任务只使用当前主持人有权看到的有界服务端日志投影。提示词明确禁止声称已更新角色卡或任务状态，并要求把身份、时间线与规则疑点列为待核风险。
+- 草稿仍是有 TTL、房间/成员/用户绑定的一次性 Server State。主持人逐字预览后选择 `hostOnly` 或 `public`，确认时比对最新 RuntimeLog seq，并且只追加新事件而不改写历史。
+- 本批次没有 Actor、Campaign、RuntimeActor、GeneratedArtifact、AI Memory、schema/migration 或后台自动生成写入；把草稿正式绑定角色或转成可管理战役文档仍是后续独立链。
+
+Landmark: `EMBEDDED_RUNTIME_SESSION_AI_DRAFTS_V1`.
+
+---
+
 ## Known Intentional Non-Replacements
 
 - `computeEmpFromHumanity` in `cpStore.ts` — delta-based (adjusts EMP only at ten-boundary crossings). Semantically different from `getCpRuntimeEmp` (absolute `floor(humanity/10)`). Left as-is by design.

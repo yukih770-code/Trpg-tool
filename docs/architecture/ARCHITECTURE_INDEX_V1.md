@@ -1056,3 +1056,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
   feature-name tables for character selection and advancement preview.
 - Compatibility names are retained where older saved characters depend on them.
 - See `docs/implementation/P6_DND_OWNER_SOURCE_SUBCLASS_BATCH_4.md`.
+
+## Embedded Runtime Session AI Drafts v1
+
+- Files: `src/lib/ai/sessionAssistantTypes.ts`, `server/ai/roomSessionAssistantContext.ts`, `server/api/roomSessionAssistantHandlers.ts`, `src/components/platform/RoomSessionAssistantDialog.tsx`, and `RoomRuntimeLogPreviewPanel.tsx`.
+- The active authenticated host may generate preparation, in-session, recap, character-biography, or quest-log drafts from the existing bounded server-side RuntimeLog projection. Biography requires an explicit character focus.
+- The workflow is an inline RuntimeLog aid, not a chat surface. Confirmation appends one host-only or public log event after stale/TTL/context checks.
+- Do not treat biography/quest prose as Actor, character-sheet, quest, Campaign, or Runtime state. No autonomous generation, direct write-back, GeneratedArtifact, or AI Memory is part of this chain.
+- Landmark: `EMBEDDED_RUNTIME_SESSION_AI_DRAFTS_V1`.

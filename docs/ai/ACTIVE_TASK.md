@@ -4,69 +4,57 @@
 
 ## Task
 
-- ID: Campaign AI Curated Memory Adoption v1
-- Name: `CAMPAIGN_AI_CURATED_MEMORY_ADOPTION_V1`
-- Goal: Let an authorized host explicitly adopt or withdraw a saved creative proposal as recoverable, owner-private campaign AI memory, then make adopted memory available as a bounded source for later campaign assistance.
-- Phase: Internal AI foundation / campaign memory
+- ID: Embedded Runtime Session AI Drafts v1
+- Name: `EMBEDDED_RUNTIME_SESSION_AI_DRAFTS_V1`
+- Goal: Embed host-only Session AI into the RuntimeLog surface and add bounded post-session character-biography and quest-log draft workflows without exposing a chat/modal experience or mutating authoritative game state.
+- Phase: Internal AI foundation / runtime assistance
 - Status: Complete
 
 ## Layer Declaration
 
-- IA: Existing campaign-detail contextual AI panel; no new page or navigation entry.
-- Object: viewer-owned GeneratedArtifact, viewer-owned campaign-scoped AI Memory, server-projected source DTOs.
-- State: UI State, Flow State, Server State, Persistent Domain State.
-- Excluded: CampaignObject payload writes, BlockDocument/ContentDocument, CampaignMembership, Actor, Room, RuntimeObject, RuntimeLog, Collaborative State, Workshop/publication.
+- IA: Existing Room RuntimeLog contextual panel; no new page, dialog, navigation entry, or global AI center.
+- Object: server-projected Room RuntimeLog events and transient host-owned AI suggestion.
+- State: UI State, Flow State, Server State, append-only RuntimeLog Persistent Domain State after explicit confirmation.
+- Excluded: ActorVaultActor, CampaignActorInstance, RuntimeActor, character sheet, quest state, CampaignObject, GeneratedArtifact, AI Memory, Workshop/publication, background generation.
 
 ## UI And Action Declaration
 
-- Page responsibility: review saved private Campaign AI artifacts and manage whether a creative artifact is available to later AI as a host-adopted direction.
-- New object-level secondary actions: `采用为 AI 战役记忆`, `撤回采用`, and `重新采用`.
-- Adoption is an explicit persistent action; it is not a primary page CTA and does not publish, notify, enter Runtime, or modify campaign/player-visible content.
-- No page-level Back/Home/exit affordance, chat box, global AI center, or parallel AI entry.
+- Page responsibility: read the room timeline and explicitly turn its current projection into a host-reviewed operational or post-session draft.
+- Contextual secondary entry: `智能整理`; the workflow expands inline inside RuntimeLog and is not a modal or conversation UI.
+- Tasks: preparation, in-session guidance, recap, character biography draft, and quest log draft.
+- Character biography requires a host-supplied character focus. It remains prose in RuntimeLog and is never treated as a character-sheet write.
+- Confirm is the only persistent action and appends one new RuntimeLog event; discard/collapse does not write.
 
 ## Authority, Visibility And Lifecycle
 
-- Every adoption/withdrawal request re-authorizes authenticated campaign edit authority and re-checks artifact owner/campaign/task/lifecycle on the server.
-- Only unarchived `worldbuilding_outline` / `adventure_seed` artifacts may create a memory.
-- AI Memory is fixed to `user_private`, `memory_scope=campaign`, and current owner/campaign; it never becomes shared/public in v1.
-- Adoption creates one AI Memory plus append-only provenance atomically. Withdrawal archives the memory; re-adoption restores it. No hard delete.
-- Archiving a source artifact with an active adopted memory is rejected until adoption is withdrawn.
-
-## Retrieval And Meaning
-
-- `adopted_memories` is a distinct selectable source family and is checked by retrieval preflight plus post-fetch scope guard.
-- UI selects it by default for contextual acceleration, but users may deselect it per request.
-- Adopted means “host-approved direction for future private AI assistance,” not established player-visible fact, published handout, BlockDocument, official adventure, Workshop item, or Runtime state.
-- Unadopted saved artifacts remain drafts/inspiration and are never silently promoted.
+- Every status/generate/confirm request re-checks authenticated active Room host authority on the server.
+- Model context is the existing bounded host projection only; room text and host focus remain untrusted input.
+- Confirmation fails stale when RuntimeLog changed, is one-shot, and durably appends rather than rewriting history.
+- Host chooses `hostOnly` or `public`; public copy is spoiler-conscious but still requires explicit review.
 
 ## Allowed Files
 
-- `src/lib/ai/campaignArtifactAssistantTypes.ts`
-- `server/ai/campaignArtifactContext.ts`
-- `server/services/generatedArtifactPersistence.ts`
-- `server/services/generatedArtifactPersistenceSmoke.ts`
-- `server/api/campaignArtifactAssistantHandlers.ts`
-- `server/api/campaignArtifactAssistantRoutes.ts`
-- `server/api/campaignArtifactAssistantHandlersSmoke.ts`
-- `src/lib/api/campaignArtifactAssistantApiClient.ts`
-- `src/lib/api/campaignArtifactAssistantApiClientSmoke.ts`
-- `src/components/platform/CampaignAiArtifactPanel.tsx`
-- focused package scripts only if needed
+- `src/lib/ai/sessionAssistantTypes.ts`
+- `server/api/roomSessionAssistantHandlers.ts`
+- `server/api/roomSessionAssistantHandlersSmoke.ts`
+- `server/ai/roomSessionAssistantSmoke.ts`
+- `src/components/platform/RoomSessionAssistantDialog.tsx`
+- `src/components/platform/RoomRuntimeLogPreviewPanel.tsx`
+- focused client smoke/docs/package scripts only if required
 - `PROJECT_STATUS.md`, `TEST_CHECKLIST.md`, `docs/ai/*`
 
 ## Forbidden Changes
 
-- Schema/migrations or concrete repository SQL changes
-- Campaign, BlockDocument/ContentDocument, membership, Actor, Room, Runtime, RuntimeLog, permission, account, Workshop, or public/shared writes
-- Autonomous adoption, background model call, hidden auto-apply, ProposedCommand, publication, recommendation ranking
+- Schema/migrations, repository SQL, GeneratedArtifact/AI Memory persistence
+- Actor, character sheet, campaign, membership, map, combat, permission, account, Workshop, or public-page writes
+- Autonomous/background model calls, chat UI, modal UI, hidden auto-apply, ProposedCommand, rules adjudication
 - `output/`, `tools/`, `work/`
 
 ## Completion Criteria
 
-- Creative artifact adoption atomically persists one curated AI Memory and one append-only provenance row; duplicate adoption is idempotent.
-- Withdrawal/archive and re-adoption/restore are recoverable; source artifact archive is reference-safe.
-- Owner/campaign/task/lifecycle checks fail closed and other users cannot observe the resource.
-- Later Campaign AI can use active adopted memories only through explicit bounded source selection and both AI context guards.
-- UI clearly distinguishes saved proposal, adopted AI memory, withdrawn memory, and published/campaign fact semantics.
-- Existing preparation/recap/creative generation and all other AI routes continue to pass.
-- TypeScript, server/frontend builds, focused smokes, policy checks, diff check, docs, and one isolated commit pass.
+- Biography and quest-log tasks validate through shared types, model schema, gateway parsing, server prompt, and focused smokes.
+- Biography generation fails closed without an explicit character focus.
+- Host Session AI is embedded inline in RuntimeLog with no dialog/backdrop/chat metaphor.
+- A draft can be generated, reviewed, discarded, or explicitly appended as host-only/public; stale and one-shot guards remain intact.
+- UI copy states that post-session drafts do not update character sheets, quests, or campaign facts.
+- Navigation keyword search, TypeScript, server/frontend builds, focused smokes, diff check, docs, and one isolated commit pass.

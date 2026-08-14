@@ -3,6 +3,7 @@ import { createRoom } from '../services/createRoom.js';
 import type { RoomRuntimeLogEvent, RoomSnapshot } from '../protocol/room-protocol.js';
 import { buildRoomSessionAssistantContext } from './roomSessionAssistantContext.js';
 import { createRoomSessionAssistantSuggestionRegistry, type StoredRoomSessionAssistantSuggestion } from './roomSessionAssistantRegistry.js';
+import { parseRoomSessionAssistantSuggestion, roomSessionAssistantTaskRequiresFocus } from '../../src/lib/ai/sessionAssistantTypes.js';
 
 const created = createRoom({ displayName: '雾港', hostDisplayName: '主持人', hostUserId: 'user_host', systemId: 'dnd5e-2024' }).room;
 const host = created.members[0]!;
@@ -39,6 +40,30 @@ assert(!serializedContext.includes(player.memberId));
 assert(!serializedContext.includes('binding_secret'));
 assert(!serializedContext.includes('opaque-secret'));
 assert.equal(hostContext.context.fingerprint.length, 64);
+assert.equal(roomSessionAssistantTaskRequiresFocus('character_biography'), true);
+assert.equal(roomSessionAssistantTaskRequiresFocus('quest_log'), false);
+assert.equal(parseRoomSessionAssistantSuggestion({
+  version: 1,
+  task: 'character_biography',
+  title: '洛恩传记草稿',
+  summary: '本场经历摘要',
+  highlights: ['发现线索'],
+  risks: ['身份待核'],
+  suggestedNextSteps: ['主持人复核'],
+  hostDraft: '仅主持人草稿',
+  publicDraft: '公开草稿',
+})?.task, 'character_biography');
+assert.equal(parseRoomSessionAssistantSuggestion({
+  version: 1,
+  task: 'quest_log',
+  title: '任务日志草稿',
+  summary: '本场任务摘要',
+  highlights: [],
+  risks: [],
+  suggestedNextSteps: [],
+  hostDraft: '仅主持人草稿',
+  publicDraft: '公开草稿',
+})?.task, 'quest_log');
 
 let clock = 1_000;
 const registry = createRoomSessionAssistantSuggestionRegistry({ now: () => clock, maxEntries: 2 });

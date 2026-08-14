@@ -54,7 +54,9 @@ let forceMismatchedTask = false;
 const generatedTask = (request: StructuredModelRequest): RoomSessionAssistantTask =>
   request.prompt.includes('任务：preparation') ? 'preparation'
     : request.prompt.includes('任务：in_session') ? 'in_session'
-      : 'recap';
+      : request.prompt.includes('任务：character_biography') ? 'character_biography'
+        : request.prompt.includes('任务：quest_log') ? 'quest_log'
+          : 'recap';
 const gateway: ModelGateway = {
   generateCampaignArtifactSuggestion: async () => { throw new Error('not used'); },
   catalog: async () => ({
@@ -167,6 +169,23 @@ assert.equal((publicEvent.payload as { summary?: string }).summary, undefined);
 assert.equal((publicEvent.payload as { title?: string }).title, undefined);
 assert.equal((publicEvent.payload as { contextFingerprint?: string }).contextFingerprint, undefined);
 assert.equal(broadcasts.length, 2);
+
+assert.equal((await handlers.generate({ ...base, body: { memberId: host.memberId, task: 'character_biography' } })).statusCode, 400);
+const biographyDraft = await handlers.generate({ ...base, body: { memberId: host.memberId, task: 'character_biography', focus: '人物：洛恩；只整理本场可见经历' } });
+assert(biographyDraft.ok);
+assert(requestSeen?.prompt.includes('人物：洛恩'));
+assert(requestSeen?.system.includes('never claim to update a character sheet'));
+const biographyValue = biographyDraft.value as RoomSessionAssistantSuggestionResult;
+assert.equal(biographyValue.task, 'character_biography');
+assert((await handlers.confirm({ ...base, suggestionId: biographyValue.suggestionId, body: { visibility: 'hostOnly' } })).ok);
+
+const questDraft = await handlers.generate({ ...base, body: { memberId: host.memberId, task: 'quest_log' } });
+assert(questDraft.ok);
+assert(requestSeen?.system.includes('authoritative quest state was changed'));
+const questValue = questDraft.value as RoomSessionAssistantSuggestionResult;
+assert.equal(questValue.task, 'quest_log');
+assert((await handlers.confirm({ ...base, suggestionId: questValue.suggestionId, body: { visibility: 'hostOnly' } })).ok);
+assert.equal(broadcasts.length, 4);
 
 const expiringDraft = await handlers.generate({ ...base, body: { memberId: host.memberId, task: 'preparation' } });
 assert(expiringDraft.ok);

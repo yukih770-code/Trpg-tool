@@ -12,7 +12,7 @@ import type {
   RoomRuntimeLogVisibility,
 } from '../../lib/platform/roomRuntimeLogTypes';
 import type { SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
-import { RoomSessionAssistantDialog } from './RoomSessionAssistantDialog';
+import { RoomSessionAssistantPanel } from './RoomSessionAssistantDialog';
 
 /**
  * RoomRuntimeLogPreviewPanel (v0).
@@ -411,18 +411,6 @@ export function RoomRuntimeLogPreviewPanel({
         </button>
         {!collapsed && (
           <div className="flex items-center gap-1.5">
-            {enableHostSessionAssistant && currentMemberId && (
-              <RoomSessionAssistantDialog
-                roomId={roomId}
-                baseUrl={baseUrl}
-                memberId={currentMemberId}
-                onConfirmed={(event) => {
-                  setEvents((previous) => mergeEvents(previous, [event]));
-                  latestSeqRef.current = Math.max(latestSeqRef.current, event.seq);
-                  setLatestSeqDisplay(latestSeqRef.current);
-                }}
-              />
-            )}
             <button
               type="button"
               className={btn}
@@ -443,6 +431,19 @@ export function RoomRuntimeLogPreviewPanel({
       <p className="mb-2 mt-1.5 text-[10px] text-slate-500">
         这是当前成员的 server-side RuntimeLog 投影：主持人可见公开与 hostOnly 事件，其他成员只接收允许的投影。
       </p>
+
+      {enableHostSessionAssistant && currentMemberId && (
+        <RoomSessionAssistantPanel
+          roomId={roomId}
+          baseUrl={baseUrl}
+          memberId={currentMemberId}
+          onConfirmed={(event) => {
+            setEvents((previous) => mergeEvents(previous, [event]));
+            latestSeqRef.current = Math.max(latestSeqRef.current, event.seq);
+            setLatestSeqDisplay(latestSeqRef.current);
+          }}
+        />
+      )}
 
       {listError && <div className="mb-2 rounded border border-red-400/40 bg-red-500/10 px-2 py-1 text-[10px] text-red-700">日志加载失败：{listError}</div>}
 

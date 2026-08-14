@@ -1,6 +1,11 @@
 import type { RoomRuntimeLogEvent } from '../platform/roomRuntimeLogTypes.js';
 
-export type RoomSessionAssistantTask = 'preparation' | 'in_session' | 'recap';
+export type RoomSessionAssistantTask =
+  | 'preparation'
+  | 'in_session'
+  | 'recap'
+  | 'character_biography'
+  | 'quest_log';
 export type RoomSessionAssistantVisibility = 'hostOnly' | 'public';
 
 export type RoomSessionAssistantSuggestion = {
@@ -62,7 +67,15 @@ function stringList(value: unknown, maxItems: number, maxText: number): string[]
 }
 
 export function isRoomSessionAssistantTask(value: unknown): value is RoomSessionAssistantTask {
-  return value === 'preparation' || value === 'in_session' || value === 'recap';
+  return value === 'preparation'
+    || value === 'in_session'
+    || value === 'recap'
+    || value === 'character_biography'
+    || value === 'quest_log';
+}
+
+export function roomSessionAssistantTaskRequiresFocus(task: RoomSessionAssistantTask): boolean {
+  return task === 'character_biography';
 }
 
 export function selectRoomSessionAssistantDraft(
@@ -86,7 +99,7 @@ export function parseRoomSessionAssistantSuggestion(value: unknown): RoomSession
   return { version: 1, task: source.task, title, summary, highlights, risks, suggestedNextSteps, hostDraft, publicDraft };
 }
 
-const taskEnum: RoomSessionAssistantTask[] = ['preparation', 'in_session', 'recap'];
+const taskEnum: RoomSessionAssistantTask[] = ['preparation', 'in_session', 'recap', 'character_biography', 'quest_log'];
 
 export const ROOM_SESSION_ASSISTANT_OUTPUT_SCHEMA = {
   type: 'object',

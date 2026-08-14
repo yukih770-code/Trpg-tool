@@ -1742,6 +1742,21 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8aq. Embedded Runtime Session AI Drafts v1
+
+- [x] `character_biography` and `quest_log` pass the shared task parser, structured schema, gateway result parser, API task match, and focused smokes
+- [x] Character biography generation requires an explicit bounded character focus in both UI and server validation
+- [x] Model guidance treats RuntimeLog/focus as untrusted input, uses only the existing bounded host projection, and forbids claims of character-sheet or authoritative quest-state mutation
+- [x] Session AI is embedded inside RuntimeLog with no modal backdrop, dialog role, chat metaphor, page, navigation, or global AI entry
+- [x] Existing preparation, in-session, and recap tasks retain generate → preview → discard/confirm behavior
+- [x] Confirmation remains host-authorized, visibility-explicit, stale-checked, durable, append-only, and one-shot
+- [x] UI states that biography/quest output is reviewable prose and does not update character sheets, quest state, or campaign facts
+- [x] Navigation keyword audit contains no new Back/Home/exit affordance
+- [x] Focused Session AI smokes, TypeScript, server/frontend builds, policy checks, and diff check pass
+- [ ] Structured character/document adoption, GeneratedArtifact persistence, AI Memory, background generation, and automatic post-session triggers are implemented (future tasks)
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

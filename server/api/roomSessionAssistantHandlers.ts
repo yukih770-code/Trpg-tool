@@ -13,6 +13,7 @@ import { parseAiRoutingPreferenceHeaders } from '../../src/lib/ai/modelRoutingTy
 import {
   ROOM_SESSION_ASSISTANT_OUTPUT_SCHEMA,
   isRoomSessionAssistantTask,
+  roomSessionAssistantTaskRequiresFocus,
   type RoomSessionAssistantSuggestionResult,
   type RoomSessionAssistantTask,
   type RoomSessionAssistantVisibility,
@@ -108,6 +109,8 @@ const TASK_GUIDANCE: Record<RoomSessionAssistantTask, string> = {
   preparation: 'Prepare a concise host brief: likely opening, tensions, missing preparation, and next beats. Do not invent established facts.',
   in_session: 'Give actionable host guidance for the next few minutes based only on the projected event history and stated focus.',
   recap: 'Draft a factual session recap. Separate host-only interpretation from a spoiler-conscious public recap.',
+  character_biography: 'Draft a post-session biography passage only for the character explicitly named in host focus. Separate observed events from interpretation, flag uncertain identity or chronology in risks, and never claim to update a character sheet.',
+  quest_log: 'Draft a post-session quest log from observed events. Distinguish completed, active, discovered, and uncertain leads in prose; never claim that authoritative quest state was changed.',
 };
 
 function prompt(task: RoomSessionAssistantTask, focus: string | undefined, context: unknown): StructuredModelRequest {
@@ -171,7 +174,9 @@ export function createRoomSessionAssistantApiHandlers(options: CreateRoomSession
       const body = record(input.body);
       const task = body?.task;
       const focus = body?.focus === undefined ? undefined : text(body.focus, 2_000);
-      if (!isRoomSessionAssistantTask(task) || (body?.focus !== undefined && focus === undefined)) {
+      if (!isRoomSessionAssistantTask(task)
+        || (body?.focus !== undefined && focus === undefined)
+        || (isRoomSessionAssistantTask(task) && roomSessionAssistantTaskRequiresFocus(task) && !focus)) {
         return errorResponse(400, { kind: 'validation', message: 'Invalid Session AI request.' }, { requestId: input.requestId });
       }
       const runtime = options.runtimeLogRegistry.list(input.roomId);
