@@ -775,6 +775,18 @@ Landmark: `SESSION_AI_CURATED_REFERENCE_ADOPTION_V1`.
 
 ---
 
+## Embedded DND Builder AI Guidance v1
+
+- DND 车卡智能辅助已从全屏模态框移入现有 Builder 工作区，作为标题下方的次级折叠面板；没有新增页面、全局 AI 入口、返回控件或聊天框。
+- 面板展开时会根据当前角色缺少的姓名、物种、职业、背景、属性购点与人物设定准备一个可编辑的起始方向，用户无需先理解提示词写法。
+- 既有模型路由状态、生成取消、结构化预览、本地规则校验、警告、放弃、显式确认、陈旧保护、审计与一步撤销全部保留。角色切换会中止旧请求并清除旧角色的预览。
+- 建议生成仍只读取有界角色摘要与允许选项名称，不读取 Campaign、Room 或 Runtime。生成与预览不写角色；只有既有 `commitDndCharacterAssistantPlan` / undo 边界会修改 Owned Actor。
+- Builder 的下一步/完成仍是页面主路径，智能辅助不接管创建流程，也不进入 Character Sheet、Actor Vault、规则库或 Runtime。
+
+Landmark: `EMBEDDED_DND_BUILDER_AI_GUIDANCE_V1`.
+
+---
+
 ## Known Intentional Non-Replacements
 
 - `computeEmpFromHumanity` in `cpStore.ts` — delta-based (adjusts EMP only at ten-boundary crossings). Semantically different from `getCpRuntimeEmp` (absolute `floor(humanity/10)`). Left as-is by design.

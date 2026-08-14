@@ -27,7 +27,7 @@ import {
   type DndLevelOneReadinessCode,
 } from '../lib/dnd2024/dndLevelOneCharacter';
 import { toast } from 'sonner';
-import { DndCharacterAssistantDialog } from '../components/dnd/DndCharacterAssistantDialog';
+import { DndCharacterAssistantPanel } from '../components/dnd/DndCharacterAssistantPanel';
 
 type BuilderSection =
   | 'identity'
@@ -959,17 +959,16 @@ export function Creator({
   return (
     <div className="mx-auto w-full max-w-[1440px] overflow-x-hidden">
       <div className="mb-3 rounded-lg border border-[#58180d]/20 bg-[#fff8e6]/72 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+        <div>
           <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#58180d]/60">
             {t('dndBuilder.header.eyebrow')}
           </div>
           <h1 className="mt-1 text-2xl font-bold text-[#58180d] md:text-3xl">{t('dndBuilder.header.title')}</h1>
           <p className="mt-1 text-sm text-[#58180d]/70">{t('dndBuilder.header.subtitle')}</p>
-          </div>
-          <DndCharacterAssistantDialog classes={CLASS_DATA} backgrounds={AVAILABLE_BACKGROUND_DATA} feats={FEAT_DATA} />
         </div>
       </div>
+
+      <DndCharacterAssistantPanel classes={CLASS_DATA} backgrounds={AVAILABLE_BACKGROUND_DATA} feats={FEAT_DATA} />
 
       <details className="mb-3 rounded-lg border border-[#58180d]/20 bg-[#fff8e6]/82 p-3 lg:hidden">
         <summary className="cursor-pointer list-none text-sm font-bold text-[#58180d]">

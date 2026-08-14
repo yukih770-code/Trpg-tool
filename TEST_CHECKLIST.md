@@ -1793,6 +1793,24 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8at. Embedded DND Builder AI Guidance v1
+
+- [x] DND Builder renders one inline collapsible intelligent-guidance panel below its header
+- [x] The former dialog component, modal backdrop, dialog role, `aria-modal`, close cross, and parallel header button are removed
+- [x] Expanding the panel prepares a context-aware editable direction from the current Actor draft and refreshes model-route status
+- [x] Collapsing or switching Actor aborts in-flight generation; switching Actor also clears the prior Actor's intent, error, and preview
+- [x] Loading, cancel, unavailable, retry, preview, warning, discard, explicit confirm, stale, audit, and one-step undo states remain available inline
+- [x] Generate/preview performs no Actor write; confirm and undo reuse the existing guarded store methods without store/schema changes
+- [x] Builder next/finish remains the primary creation path; no Character Sheet, Actor Vault, Campaign, Runtime, catalog, or navigation entry was added
+- [x] Static audit finds no `fixed inset-0`, dialog role, `aria-modal`, old dialog reference, Back/Home/up/current-location label, or surviving old component file
+- [x] `npm run frontend:verify:dnd-character-assistant` and `npm run api:verify:dnd-character-assistant` pass
+- [x] `npm run frontend:verify:dnd-level-one-character` and `npm run frontend:verify:dnd-level-advancement` pass
+- [x] Model gateway/routing and AI scope/retrieval policy smokes pass
+- [x] `npx tsc --noEmit`, `npm run server:build`, `npm run build`, and `git diff --check` pass
+- [ ] Live local-model visual/click acceptance is completed on a machine with a configured local model
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

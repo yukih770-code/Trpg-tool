@@ -4,56 +4,45 @@
 
 ## Task
 
-- ID: Session AI Curated Reference Adoption v1
-- Name: `SESSION_AI_CURATED_REFERENCE_ADOPTION_V1`
-- Goal: Let an authorized campaign manager explicitly adopt a saved Session biography or quest-log outcome as an owner-private, reversible AI Memory reference, and include it in later Campaign AI generation only when the manager selects the dedicated source family for that request.
-- Phase: Internal AI foundation / curated continuity
+- ID: Embedded DND Builder AI Guidance v1
+- Name: `EMBEDDED_DND_BUILDER_AI_GUIDANCE_V1`
+- Goal: Replace the modal DND character AI interaction with an inline, context-aware Builder guidance surface while preserving deterministic validation, explicit preview/confirm, stale protection, audit, and one-step undo.
+- Phase: Internal AI foundation / embedded character creation assistance
 - Status: Complete
 
 ## Layer Declaration
 
-- IA: Existing campaign-detail `AI 备团与回顾` history and source selector only; no new page, modal, global AI entry, or Runtime control.
-- Object: viewer-owned Session GeneratedArtifact as reviewed source; viewer-owned campaign-scoped AI Memory as curated reference; Campaign and RuntimeSession remain scope/provenance references only.
-- State: UI State, Flow State, Persistent Domain State AI Memory, Server State retrieval projection.
-- Excluded: ActorVaultActor, CampaignActorInstance, RuntimeActor, RuntimeLog mutation, character sheet, quest state, Campaign payload, BlockDocument/Handout, Workshop/publication, Collaborative State.
+- IA: Existing DND Character Builder only, directly below the Builder header; no new page, modal, global AI entry, Character Sheet entry, Campaign entry, or Runtime control.
+- Object: Current user-owned Actor draft; available class/background/feat catalog names are bounded read-only option context.
+- State: UI State for expansion/status/input/preview; Flow State for an uncommitted suggestion; the existing explicit Actor commit/undo path is the only Persistent Domain State write.
+- Excluded: Actor Vault, Character Sheet, Character Audit restructuring, Campaign, Room, Runtime, catalog browsing, rule effects, backend/schema/repository behavior, Collaborative State.
 
 ## Page Responsibility And Action Hierarchy
 
-- Campaign detail owns adoption, withdrawal, source selection, archive, and restore because all are management actions on campaign-scoped private AI outcomes.
-- `采用为后续 AI 参考` is a contextual secondary action on eligible Session outcomes; it never becomes the page primary CTA.
-- `已采用的会后参考` is a separate request-local source family and is off by default.
-- Hidden actions: automatic adoption, background retrieval, direct character/quest/Campaign application, public/share, Workshop publication, and BlockDocument promotion.
-
-## Authority, Retrieval And Persistence
-
-- Every list/adopt/withdraw/generate request re-checks authenticated campaign `edit` authority and owner/campaign scope.
-- Only active owner-private `session_character_biography` and `session_quest_log` artifacts are eligible for Session reference adoption.
-- First adoption atomically writes one `session_outcome_reference` AI Memory and one append-only GeneratedArtifact provenance source. Repeated adoption is idempotent; withdrawal archives; re-adoption restores the same memory.
-- Session reference memory remains `user_private`, `memory_scope=campaign`, and carries its RuntimeSession only as provenance where available.
-- Retrieval keeps creative directions and Session references in separate source families. Session references enter a model request only after explicit request-local selection, continue through preflight/post-fetch scope enforcement, and are labeled as fallible narrative references rather than campaign fact.
+- Builder remains responsible for step-by-step character creation/editing and its existing live summary.
+- Builder remains not responsible for Actor library management, the full Character Sheet, Campaign selection, Runtime, rules browsing, or source-status management.
+- Primary CTA remains the existing Builder next/finish path.
+- `智能辅助` is a collapsed secondary creation-flow surface; generate/cancel, discard, explicit confirm, audit, and undo remain inside that surface.
+- Hidden actions: automatic Actor mutation, background generation, direct completion, campaign/runtime reads, navigation shortcuts, catalog expansion, and rules adjudication.
 
 ## Allowed Files
 
-- `src/lib/ai/campaignArtifactAssistantTypes.ts`
-- `server/ai/campaignArtifactContext.ts`
-- `server/api/campaignArtifactAssistantHandlers.ts`
-- `server/api/campaignArtifactAssistantHandlersSmoke.ts`
-- `src/components/platform/CampaignAiArtifactPanel.tsx`
-- focused API client smoke only if needed
+- `src/components/dnd/DndCharacterAssistantPanel.tsx`
+- `src/components/dnd/DndCharacterAssistantDialog.tsx` (removal only)
+- `src/pages/Creator.tsx`
+- focused smoke/package script only if required
 - `PROJECT_STATUS.md`, `TEST_CHECKLIST.md`, `docs/ai/*`, architecture index
 
 ## Forbidden Changes
 
-- Schema/migrations or concrete repository SQL changes
-- RuntimeLog, Actor, character sheet, quest, Campaign payload, membership, permission model, map, combat, BlockDocument/Handout, Workshop, or public/shared writes
-- Automatic/background adoption or retrieval, default-on Session reference sources, ProposedCommand, rules adjudication, cloud billing
+- Character store behavior, schema, migration, save format, rules data, rule calculation, backend/repository/API contract, Campaign, Room, Runtime, map, combat, multiplayer, Workshop, or Character Sheet
+- Any modal/chat surface or automatic/background Actor write
 - `output/`, `tools/`, `work/`
 
 ## Completion Criteria
 
-- Eligible Session outcome completes explicit adopt → atomic private AI Memory/provenance → history status projection → explicit request-local retrieval → cited Campaign AI draft.
-- Factual campaign artifacts, archived artifacts, other owner/campaign records, unauthorized viewers, withdrawn memories, and unselected Session reference families fail closed or remain absent.
-- Adoption is idempotent and recoverable; active memory protects its source artifact from archive until withdrawal.
-- Model guidance and UI distinguish reviewed Session reference from role sheet, quest state, public fact, Handout, RuntimeLog, and campaign truth.
-- Existing creative adoption, campaign generation, Session persistence, authority, visibility, and atomic rollback regressions pass.
-- Navigation/action audit, TypeScript, server/frontend builds, focused smokes, policy checks, diff check, docs, cleanup, and one isolated commit pass.
+- DND Builder exposes one inline collapsible intelligent-guidance surface with route status, context-aware starting direction, generation/cancel, deterministic preview, discard, explicit confirm, stale protection, audit, and safe one-step undo.
+- Collapsing or switching Actor aborts in-flight generation and clears Actor-specific preview state.
+- No `fixed inset-0`, `role="dialog"`, `aria-modal`, close cross, or parallel navigation entry remains for this feature.
+- Suggestion generation performs no Actor write; only the existing explicit confirm/undo store methods mutate the Actor.
+- Focused assistant and DND creation regressions, policy checks, navigation/modal audit, TypeScript, server/frontend builds, diff check, docs, cleanup, and one isolated commit pass.

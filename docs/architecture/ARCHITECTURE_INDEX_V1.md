@@ -1082,3 +1082,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - Retrieval must re-authorize campaign edit access, enforce owner/campaign/lifecycle scope, pass preflight and post-fetch guards, preserve uncertainties, and label the source as a fallible narrative reference rather than campaign fact.
 - Adoption is idempotent and recoverable through archive/restore of the same memory. No Actor, sheet, quest, Campaign payload, RuntimeLog, BlockDocument/Handout, public/shared, Workshop, or schema/migration write is implied.
 - Landmark: `SESSION_AI_CURATED_REFERENCE_ADOPTION_V1`.
+
+## Embedded DND Builder AI Guidance v1
+
+- Files: `src/components/dnd/DndCharacterAssistantPanel.tsx` and `src/pages/Creator.tsx`.
+- DND character intelligence is an inline, collapsible Builder creation-flow aid rather than a modal, chat surface, global route, or Character Sheet/Runtime entry.
+- It may read only the current bounded Owned Actor draft and allowed option names. Suggestions stay in UI/Flow State until explicit preview confirmation invokes the existing guarded Actor commit; one-step undo keeps the existing exact-snapshot boundary.
+- Builder next/finish remains primary. No store/schema, rules data/effects, Campaign, Room, Runtime, catalog browsing, navigation, or backend contract is introduced by this UI integration.
+- Landmark: `EMBEDDED_DND_BUILDER_AI_GUIDANCE_V1`.
