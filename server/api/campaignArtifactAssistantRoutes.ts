@@ -25,6 +25,8 @@ export function registerCampaignArtifactAssistantApiRoutes(app: Express, handler
   app.get(root, (req, res) => void invoke(req, res, handlers.list));
   app.post(`${root}/suggestions`, (req, res) => void invoke(req, res, handlers.generate));
   app.post(`${root}/suggestions/:suggestionId/confirm`, (req, res) => void invoke(req, res, handlers.confirm));
+  app.post(`${root}/:artifactId/adopt`, (req, res) => void invoke(req, res, handlers.adopt));
+  app.post(`${root}/:artifactId/withdraw-adoption`, (req, res) => void invoke(req, res, handlers.withdrawAdoption));
   app.post(`${root}/:artifactId/archive`, (req, res) => void invoke(req, res, handlers.archive));
   app.post(`${root}/:artifactId/restore`, (req, res) => void invoke(req, res, handlers.restore));
 }

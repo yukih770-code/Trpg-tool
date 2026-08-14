@@ -16,6 +16,8 @@ await client.status('server/1', 'campaign/1');
 await client.list('server/1', 'campaign/1', true);
 await client.generate('server/1', 'campaign/1', { task: 'preparation_brief', sourceFamilies: ['campaign_summary'] });
 await client.confirm('server/1', 'campaign/1', 'draft/1');
+await client.adopt('server/1', 'campaign/1', 'artifact/1');
+await client.withdrawAdoption('server/1', 'campaign/1', 'artifact/1');
 await client.archive('server/1', 'campaign/1', 'artifact/1');
 await client.restore('server/1', 'campaign/1', 'artifact/1');
 
@@ -25,7 +27,9 @@ assert.ok(calls[1].url.endsWith('/artifacts?includeArchived=true'));
 assert.equal(calls[2].init?.method, 'POST');
 assert.equal(new Headers(calls[2].init?.headers).get('x-trpg-ai-mode'), 'auto');
 assert.ok(calls[3].url.endsWith('/suggestions/draft%2F1/confirm'));
-assert.ok(calls[4].url.endsWith('/artifact%2F1/archive'));
-assert.ok(calls[5].url.endsWith('/artifact%2F1/restore'));
+assert.ok(calls[4].url.endsWith('/artifact%2F1/adopt'));
+assert.ok(calls[5].url.endsWith('/artifact%2F1/withdraw-adoption'));
+assert.ok(calls[6].url.endsWith('/artifact%2F1/archive'));
+assert.ok(calls[7].url.endsWith('/artifact%2F1/restore'));
 
 console.log('campaign artifact assistant API client smoke passed');

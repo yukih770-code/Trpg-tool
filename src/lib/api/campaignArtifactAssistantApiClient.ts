@@ -8,6 +8,8 @@ export interface CampaignArtifactAssistantApiClient {
   list(worldServerId: string, campaignId: string, includeArchived?: boolean, signal?: AbortSignal): Promise<SavedCampaignArtifact[]>;
   generate(worldServerId: string, campaignId: string, input: { task: CampaignArtifactTask; focus?: string; sourceFamilies: CampaignArtifactSourceFamily[] }, signal?: AbortSignal): Promise<CampaignArtifactSuggestionResult>;
   confirm(worldServerId: string, campaignId: string, suggestionId: string): Promise<SavedCampaignArtifact>;
+  adopt(worldServerId: string, campaignId: string, artifactId: string): Promise<SavedCampaignArtifact>;
+  withdrawAdoption(worldServerId: string, campaignId: string, artifactId: string): Promise<SavedCampaignArtifact>;
   archive(worldServerId: string, campaignId: string, artifactId: string): Promise<SavedCampaignArtifact>;
   restore(worldServerId: string, campaignId: string, artifactId: string): Promise<SavedCampaignArtifact>;
 }
@@ -22,6 +24,8 @@ export function createCampaignArtifactAssistantApiClient(options: ApiClientOptio
     list: (worldServerId, campaignId, includeArchived = false, signal) => client.request(`${root(worldServerId, campaignId)}?includeArchived=${includeArchived}`, { signal }),
     generate: (worldServerId, campaignId, input, signal) => client.request(`${root(worldServerId, campaignId)}/suggestions`, { method: 'POST', signal, headers: currentAiRoutingHeaders(), body: JSON.stringify(input) }),
     confirm: (worldServerId, campaignId, suggestionId) => client.request(`${root(worldServerId, campaignId)}/suggestions/${segment(suggestionId)}/confirm`, { method: 'POST' }),
+    adopt: (worldServerId, campaignId, artifactId) => client.request(`${root(worldServerId, campaignId)}/${segment(artifactId)}/adopt`, { method: 'POST' }),
+    withdrawAdoption: (worldServerId, campaignId, artifactId) => client.request(`${root(worldServerId, campaignId)}/${segment(artifactId)}/withdraw-adoption`, { method: 'POST' }),
     archive: (worldServerId, campaignId, artifactId) => client.request(`${root(worldServerId, campaignId)}/${segment(artifactId)}/archive`, { method: 'POST' }),
     restore: (worldServerId, campaignId, artifactId) => client.request(`${root(worldServerId, campaignId)}/${segment(artifactId)}/restore`, { method: 'POST' }),
   };

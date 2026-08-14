@@ -716,6 +716,19 @@ Landmark: `CAMPAIGN_AI_CREATIVE_SEEDS_V1`.
 
 ---
 
+## Campaign AI Curated Memory Adoption v1
+
+- 世界观/冒险创意成果新增可恢复的 `采用为 AI 战役记忆` 工作流。采用不是聊天操作，也不是把草稿自动写入战役：它由主持人显式触发，只创建当前 owner、当前 campaign 下的 `user_private` AI Memory。
+- 首次采用通过单个 PostgreSQL 事务原子写入 `ai_memory_entries` 与一条指向源 GeneratedArtifact 的 append-only `ai_context_sources`；稳定 memory id 使重复采用幂等。撤回采用归档记忆，重新采用恢复同一记录，不提供硬删除。
+- `adopted_memories` 成为独立的有界来源族，并在战役 AI 面板中默认勾选、允许用户按请求取消。读取仍执行 retrieval preflight + post-fetch scope guard；只有 active、owner/campaign 匹配、`campaign_creative_adoption`、`user_private` 的记忆会进入模型。
+- 已采用记忆表示“主持人确认给后续私有 AI 使用的设计方向”，不等于玩家可见事实、已发布 Handout/BlockDocument、官方/工坊内容或 Runtime 状态。未采用成果不会静默升级；撤回后立即退出 AI 上下文。
+- 来源成果在记忆 active 时不能归档，必须先撤回采用；非创意成果、已归档成果、其他 owner/campaign 或无编辑权限的请求全部 fail closed。
+- 架构审查明确拒绝把提案复制到旧 `content_documents.body_text`：正式结构化文档仍应遵守 BlockDocument 协议，避免产生第二份内容真相。本批次没有 schema/migration、Campaign payload、Runtime、成员或公开/共享写入。
+
+Landmark: `CAMPAIGN_AI_CURATED_MEMORY_ADOPTION_V1`.
+
+---
+
 ## Build Status
 
 | Check | Status |

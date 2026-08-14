@@ -1,6 +1,6 @@
 export type CampaignArtifactTask = 'preparation_brief' | 'campaign_recap' | 'worldbuilding_outline' | 'adventure_seed';
-export type CampaignArtifactSourceFamily = 'campaign_summary' | 'actor_summaries' | 'room_summaries' | 'prior_artifacts';
-export type CampaignArtifactSourceKind = 'campaign_summary' | 'campaign_actor_summary' | 'campaign_room_summary' | 'prior_artifact';
+export type CampaignArtifactSourceFamily = 'campaign_summary' | 'actor_summaries' | 'room_summaries' | 'prior_artifacts' | 'adopted_memories';
+export type CampaignArtifactSourceKind = 'campaign_summary' | 'campaign_actor_summary' | 'campaign_room_summary' | 'prior_artifact' | 'adopted_memory';
 
 export type CampaignArtifactSource = {
   sourceId: string;
@@ -47,6 +47,12 @@ export type SavedCampaignArtifact = {
   createdAt?: string;
   updatedAt?: string;
   archivedAt?: string;
+  adoption?: {
+    memoryEntryId: string;
+    status: 'active' | 'archived';
+    adoptedAt?: string;
+    updatedAt?: string;
+  };
 };
 
 export const CAMPAIGN_ARTIFACT_OUTPUT_SCHEMA = {
@@ -100,7 +106,7 @@ export function isCreativeCampaignArtifactTask(task: CampaignArtifactTask): bool
 }
 
 export function isCampaignArtifactSourceFamily(value: unknown): value is CampaignArtifactSourceFamily {
-  return value === 'campaign_summary' || value === 'actor_summaries' || value === 'room_summaries' || value === 'prior_artifacts';
+  return value === 'campaign_summary' || value === 'actor_summaries' || value === 'room_summaries' || value === 'prior_artifacts' || value === 'adopted_memories';
 }
 
 export function parseCampaignArtifactSuggestion(value: unknown): CampaignArtifactSuggestion | null {

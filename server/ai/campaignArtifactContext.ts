@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import type { GeneratedArtifactRecord } from '../adapters/postgresGeneratedArtifactRepository.js';
+import type { AiMemoryEntryRecord, GeneratedArtifactRecord } from '../adapters/postgresGeneratedArtifactRepository.js';
 import type { PostgresCampaignRecord } from '../adapters/postgresCampaignRepository.js';
 import type { CampaignActorInstanceRecord, RoomRecord } from '../adapters/postgresPlatformFoundationRepository.js';
 import type { WorldServerMembershipRecord, WorldServerRecord } from '../adapters/postgresWorldServerRepository.js';
@@ -61,6 +61,7 @@ export function buildCampaignArtifactContext(input: {
   actors: CampaignActorInstanceRecord[];
   rooms: RoomRecord[];
   priorArtifacts: GeneratedArtifactRecord[];
+  adoptedMemories: AiMemoryEntryRecord[];
   sourceFamilies: CampaignArtifactSourceFamily[];
 }): CampaignArtifactContextResult {
   const selected = new Set(input.sourceFamilies);
@@ -70,6 +71,7 @@ export function buildCampaignArtifactContext(input: {
   const requestedKinds = new Set<string>();
   if (selected.has('campaign_summary') || selected.has('actor_summaries') || selected.has('room_summaries')) requestedKinds.add('campaign');
   if (selected.has('prior_artifacts')) requestedKinds.add('generated_artifact');
+  if (selected.has('adopted_memories')) requestedKinds.add('ai_memory');
   const preflight = buildAiContextRetrievalPreflight({ actor, requestScope, sources: [...requestedKinds].map((sourceKind) => ({ sourceKind, requestedBodyAccess: true, requestedLimit: 50 })) });
   if (preflight.deniedCount > 0) return { decision: 'denied', reason: 'One or more selected source families failed AI retrieval preflight.' };
 
@@ -101,6 +103,13 @@ export function buildCampaignArtifactContext(input: {
     ownerUserId: artifact.ownerId, worldServerId: input.server.worldServerId, campaignId: input.campaign.campaignId,
     visibilityScope: 'user_private', aiScope: 'private_only', lifecycleStatus: artifact.archivedAt ? 'archived' : 'active',
     metadata: { sourceKind: 'prior_artifact', sourceRefId: artifact.artifactId, updatedAt: artifact.updatedAt },
+  })));
+  if (selected.has('adopted_memories')) input.adoptedMemories.slice(0, 10).forEach((memory) => candidates.push(normalizeAiContextCandidateMetadata({
+    sourceKind: 'ai_memory', contextItemId: `ai_memory:${memory.memoryEntryId}`, contentKind: 'ai_memory', contentId: memory.memoryEntryId,
+    title: memory.title ?? '已采用的战役方向', body: `主持人已采用的 AI 战役方向（仅供后续私有 AI 协助，不代表已公开或发布）：\n${memory.contentText.slice(0, 6_000)}`,
+    ownerUserId: memory.ownerId, worldServerId: input.server.worldServerId, campaignId: input.campaign.campaignId,
+    visibilityScope: 'user_private', aiScope: 'private_only', lifecycleStatus: memory.archivedAt ? 'archived' : 'active', reviewStatus: 'adopted',
+    metadata: { sourceKind: 'adopted_memory', sourceRefId: memory.memoryEntryId, updatedAt: memory.updatedAt },
   })));
 
   const pack = buildAiContextPack({ actor, requestScope, worldServer: worldContext(input.server, input.membership), candidates, maxItems: 50 });

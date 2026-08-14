@@ -1076,6 +1076,17 @@ This file helps AI quickly locate important types, helper functions, store actio
 - `CampaignAiArtifactPanel`: task selection plus pre-generation, preview, and history proposal disclosure; no chat, navigation, auto-apply, Workshop claim, or Runtime action — `src/components/platform/CampaignAiArtifactPanel.tsx`.
 - Focused end-to-end regression: `npm run api:verify:campaign-artifact-assistant` verifies both creative task kinds through explicit confirmation and private persistence.
 
+## Campaign AI Curated Memory Adoption
+
+- `AI-LANDMARK: CAMPAIGN_AI_CURATED_MEMORY_ADOPTION_V1`: explicit creative-artifact adoption → atomic owner-private AI Memory + provenance → reversible withdrawal/restore → bounded reuse by later campaign AI.
+- `GeneratedArtifactPersistencePort.createMemoryWithSources()`: one transaction for curated AI Memory and append-only context sources — `server/services/generatedArtifactPersistence.ts`.
+- `ADOPTION_MEMORY_KIND` / `adoptionMemoryId()` / `isAdoptionMemory()`: stable idempotency and strict owner/campaign/scope/kind association — `server/api/campaignArtifactAssistantHandlers.ts`.
+- `adopt()` / `withdrawAdoption()`: server-authorized creative-only adoption, idempotent restore, archival withdrawal, and active-reference protection — `server/api/campaignArtifactAssistantHandlers.ts`.
+- `adopted_memories` / `adopted_memory`: distinct request source family and projected citation kind — `src/lib/ai/campaignArtifactAssistantTypes.ts`.
+- `buildCampaignArtifactContext()`: active owner-private adoption memories enter only through AI-memory preflight plus post-fetch scope guard — `server/ai/campaignArtifactContext.ts`.
+- `CampaignAiArtifactPanel`: secondary adopt/withdraw/re-adopt actions, source-family opt-out, and explicit non-public/non-Runtime disclosure — `src/components/platform/CampaignAiArtifactPanel.tsx`.
+- Focused regression: existing campaign handler/client and atomic-persistence scripts cover adoption authority, idempotency, lifecycle, reference guard, bounded retrieval, durable citations, and rollback.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

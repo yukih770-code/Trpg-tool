@@ -1724,6 +1724,24 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8ap. Campaign AI Curated Memory Adoption v1
+
+- [x] Only active owner/campaign-matched `worldbuilding_outline` and `adventure_seed` artifacts can be adopted; factual, archived, cross-owner, and unauthorized requests fail closed
+- [x] First adoption atomically creates one `campaign_creative_adoption` AI Memory plus one append-only GeneratedArtifact provenance row
+- [x] AI Memory is fixed to `memory_scope=campaign` and `visibility_scope=user_private`; no Campaign/BlockDocument/Runtime/Workshop/public write occurs
+- [x] Duplicate adoption is idempotent; withdrawal archives the memory; re-adoption restores the same record; no hard delete exists
+- [x] Active adoption blocks source artifact archive until withdrawal, preserving a recoverable provenance chain
+- [x] `adopted_memories` passes retrieval preflight and post-fetch context scope guard and only active owner/campaign memories enter later generation
+- [x] Withdrawn memory produces an empty bounded source family and cannot enter later model context
+- [x] Adopted-memory citations survive generate → confirm → durable artifact projection
+- [x] UI defaults the adopted-memory source on but permits request-local opt-out and clearly separates AI direction from campaign fact/publication/Runtime state
+- [x] Navigation keyword audit found no page-level Back/Home/exit affordance; new adoption controls remain secondary object actions
+- [x] Atomic persistence smoke covers commit and rollback for both GeneratedArtifact and AI Memory source writes
+- [x] Existing character/session/campaign AI routes, model routing, AI policies, TypeScript, server/frontend builds, and diff checks pass
+- [ ] Promotion to a real structured BlockDocument/Handout, campaign-shared memory, cross-host review, and Runtime reconciliation are implemented (future tasks)
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |
