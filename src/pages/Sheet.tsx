@@ -24,6 +24,8 @@ import { makeCharacterProfileDraft, resolveAvatarImageUrl, type CharacterProfile
 import { getDndCharacterSpellIndex } from '../lib/dnd2024/dndSpellAvailability';
 import { createTranslator, readStoredLocale } from '../i18n';
 import { CharacterCampaignCta, useCharacterCampaignCta } from '../components/platform/CharacterCampaignCta';
+import { DndLevelAdvancementDialog } from '../components/dnd/DndLevelAdvancementDialog';
+import { normalizeDndClassLevels } from '../lib/dnd2024/multiclass';
 
 type SheetProps = {
   onStartPlaying?: () => void;
@@ -164,6 +166,11 @@ export function Sheet({ onStartPlaying, initialSection }: SheetProps = {}) {
   const hasClassResources = character.classResources.length > 0 || Boolean(character.pactMagicState);
   const compactPanelClass = 'rounded-lg border border-[#58180d]/15 bg-white/55 p-3 shadow-sm';
   const compactTitleClass = 'mb-2 border-b border-[#58180d]/12 pb-1 text-[11px] font-black uppercase tracking-[0.16em] text-[#58180d]';
+  const classLevelAllocations = normalizeDndClassLevels(character.classLevels, {
+    className: character.jobClass,
+    level: character.level,
+    subclass: character.subclass,
+  });
 
   // Profile / inventory view-models (display only; no store schema change).
   const dndProfile = makeCharacterProfileDraft({
@@ -217,15 +224,18 @@ export function Sheet({ onStartPlaying, initialSection }: SheetProps = {}) {
         <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#58180d]/70">
           DND 5e 2024 · {t('dndSheet.compact.characterSheet')}
         </div>
-        {onStartPlaying && (
-          <button
-            type="button"
-            onClick={onStartPlaying}
-            className="border-2 border-[#58180d] bg-[#58180d] px-4 py-1.5 text-center text-[#fdf6e3] transition hover:bg-[#2c1810]"
-          >
-            <span className="block text-sm font-black uppercase tracking-wider">{t('dndSheet.compact.startPlaying')}</span>
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <DndLevelAdvancementDialog />
+          {onStartPlaying && (
+            <button
+              type="button"
+              onClick={onStartPlaying}
+              className="border-2 border-[#58180d] bg-[#58180d] px-4 py-1.5 text-center text-[#fdf6e3] transition hover:bg-[#2c1810]"
+            >
+              <span className="block text-sm font-black uppercase tracking-wider">{t('dndSheet.compact.startPlaying')}</span>
+            </button>
+          )}
+        </div>
       </header>
 
       <CharacterSheetSectionTabs
@@ -261,6 +271,13 @@ export function Sheet({ onStartPlaying, initialSection }: SheetProps = {}) {
                 <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.species')}:</strong> {character.race || '-'} {character.subrace || ''}</span>
                 <span><strong className="text-[#58180d]">{t('dndWorkspace.characters.background')}:</strong> {character.background || '-'}</span>
                 <span><strong className="text-[#58180d]">{t('dndSheet.compact.genderAge')}:</strong> {character.gender || '-'} / {character.age || '-'}</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 text-[11px] font-bold text-[#58180d]">
+                {classLevelAllocations.map((allocation) => (
+                  <span key={allocation.classId || allocation.className} className="border border-[#58180d]/25 bg-white/55 px-2 py-0.5">
+                    {allocation.className}{allocation.subclass ? ` · ${allocation.subclass}` : ''} L{allocation.level}
+                  </span>
+                ))}
               </div>
               <div className="space-y-2 border-t border-[#58180d]/15 pt-2">
                 <SheetNotesEditor

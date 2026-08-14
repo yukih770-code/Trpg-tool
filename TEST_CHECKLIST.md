@@ -1613,6 +1613,24 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8aj. DND Level Advancement Chain v1
+
+- [x] Level management has one primary entry on the owned character sheet and no combat-panel entry
+- [x] Closing or cancelling discards transient choices without a persistent write
+- [x] Target class, subclass, ASI/feat, cap, duplicate, and prerequisite blockers are resolved before confirmation
+- [x] Fighter level 6 detects its source-backed ASI choice from the class progression table
+- [x] Single-class spell slots use local progression data and preserve already-spent slots
+- [x] Multiclass allocation preserves existing standard slots and surfaces combined-spellcasting/manual-review warnings
+- [x] Target-class resources use allocated class level rather than total character level
+- [x] Confirm atomically updates both the active compatibility character and its Owned Actor vault row
+- [x] Safe undo succeeds only while the current actor exactly matches the committed advancement snapshot
+- [x] Character sheet displays every class/subclass level allocation
+- [x] `npm run frontend:verify:dnd-level-advancement` passes
+- [x] TypeScript and frontend build pass
+- [x] Campaign, Room, Runtime authority, rule-data text, and automatic effect execution remain unchanged
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

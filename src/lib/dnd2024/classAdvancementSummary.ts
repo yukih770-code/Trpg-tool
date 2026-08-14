@@ -63,16 +63,16 @@ function resolveClassKey(classDef: ClassDef | undefined): DndClassKey | undefine
   return CLASS_KEY_BY_NAME[classDef.name];
 }
 
-/**
- * Produces a display-only summary for the next level of a single-class character.
- * It deliberately does not mutate CharacterData or evaluate feature text.
- */
+/** Produces a display-only summary for the next allocated class level. */
 export function getDndClassAdvancementSummary(input: {
   classDef?: ClassDef;
   currentLevel: number;
   hasSelectedSubclass: boolean;
 }): DndClassAdvancementSummary {
-  const currentLevel = Math.max(1, Math.floor(input.currentLevel));
+  // A newly selected multiclass target starts at class level 0 and advances
+  // to level 1. Keeping zero here prevents the preview from skipping the
+  // target class's first-level features.
+  const currentLevel = Math.max(0, Math.floor(input.currentLevel));
   const nextLevel = Math.min(20, currentLevel + 1);
   const canLevelUp = currentLevel < 20;
   const classDef = input.classDef;
@@ -113,15 +113,23 @@ export function getDndClassAdvancementSummary(input: {
     : coverage === 'personal'
       ? '此个人职业保留作者声明；具体等级规则应在房间审核时确认。'
       : undefined;
+  const progressionRequiresSubclass = Boolean(
+    !input.hasSelectedSubclass && levelData?.features.some((feature) => feature.includes('子职')),
+  );
+  const subclassOptions = input.hasSelectedSubclass
+    ? []
+    : progressionRequiresSubclass
+      // The owner-source progression table is authoritative for unlock level;
+      // older ClassDef entries may still carry legacy unlock-level metadata.
+      ? classDef.subclasses
+      : classDef.subclasses.filter((subclass) => subclass.unlockLevel === nextLevel);
 
   return {
     currentLevel,
     nextLevel,
     canLevelUp,
     averageHitPointIncrease: AVERAGE_HIT_POINTS_BY_DIE[classDef.hitDice],
-    subclassOptions: input.hasSelectedSubclass
-      ? []
-      : classDef.subclasses.filter((subclass) => subclass.unlockLevel === nextLevel),
+    subclassOptions,
     features,
     resources: unique(levelData?.resources.map((resource) => resource.sourceFeature) ?? []),
     actions: unique(levelData?.actions.map((action) => action.nameCn) ?? []),

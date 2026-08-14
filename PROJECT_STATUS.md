@@ -633,6 +633,21 @@ Landmark: `ACTIVE_ROOM_REQUEST_LEASE_V1`.
 
 ---
 
+## DND Level Advancement Chain v1
+
+- Level management now has one primary entry on the owned character sheet instead of being mixed into the combat/play panel.
+- A pure plan contract resolves target-class level, subclass and ASI/feat requirements, source-backed preview, deterministic average HP, blockers, and explicit automation warnings before any write.
+- Fighter extra ASI levels and other class-specific advancement choices are detected from the local owner-source progression table rather than a generic hardcoded level list.
+- Confirm commits the compatibility character and its `characters[]` Owned Actor record atomically with a stale-plan guard.
+- Single-class standard slots follow the local progression table and preserve already-spent slots; multiclass combined spellcasting remains deliberately deferred and preserves existing slots.
+- Class resources refresh against the allocated class level, while total-character proficiency formulas continue to use total level.
+- The character sheet displays every class/subclass allocation after commit. A persisted one-step receipt permits safe undo only while the actor still exactly matches the committed snapshot.
+- Upgrade drafts and previews remain transient flow state; they do not write Campaign, Room, or Runtime state.
+
+Landmark: `DND_LEVEL_ADVANCEMENT_CHAIN_V1`.
+
+---
+
 ## Build Status
 
 | Check | Status |

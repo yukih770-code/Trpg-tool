@@ -2,14 +2,14 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { CharacterData, AttributeName, SkillName, SpellInfo, CustomMod, CURRENT_DND_CHARACTER_SCHEMA_VERSION } from '../lib/dnd-types';
 import { migrateCharacter } from '../lib/characterMigration';
-import { initializeClassResourcesForCharacter, refreshClassResourcesForCharacter } from '../lib/dnd2024/resource-utils';
-import {
-  canAllocateDndClassLevel,
-  incrementDndClassLevel,
-  normalizeDndClassLevels,
-  type DndClassLevelTarget,
-} from '../lib/dnd2024/multiclass';
+import { initializeClassResourcesForCharacter } from '../lib/dnd2024/resource-utils';
 import { isPristineDndCharacterDraft } from '../lib/dnd2024/dndLevelOneCharacter';
+import {
+  canUndoDndLevelAdvancement,
+  makeDndLevelAdvancementReceipt,
+  type DndLevelAdvancementPlan,
+  type DndLevelAdvancementReceipt,
+} from '../lib/dnd2024/dndLevelAdvancement';
 
 export type DndSpellcastingResourceConsumption = {
   ok: boolean;
@@ -156,6 +156,7 @@ interface CharacterState {
   // ── Multi-actor fields (DND_MULTI_ACTOR_STORE_MINIMAL_IMPLEMENTATION_V1) ──
   characters: CharacterData[];
   activeCharacterId: string | null;
+  lastLevelAdvancement: DndLevelAdvancementReceipt | null;
   setActiveCharacterId: (id: string) => void;
   addCharacter: (data: CharacterData) => void;
   commitCompletedCharacter: (data: CharacterData) => void;
@@ -168,13 +169,8 @@ interface CharacterState {
   updateAttrPointBuy: (attr: AttributeName, value: number) => void;
   restShort: () => void;
   restLong: () => void;
-  levelUp: (
-    hpIncrease: number,
-    subclass?: string,
-    attrs?: AttributeName[],
-    feat?: string,
-    targetClass?: DndClassLevelTarget,
-  ) => void;
+  commitLevelAdvancement: (plan: DndLevelAdvancementPlan) => boolean;
+  undoLastLevelAdvancement: () => boolean;
   modifyHp: (amount: number) => void;
   updateSpellbook: (known: SpellInfo[], prepared: string[]) => void;
   consumeSpellcastingResource: (spellLevel: number) => DndSpellcastingResourceConsumption;
@@ -197,6 +193,7 @@ export const useCharacterStore = create<CharacterState>()(
       character: _initialChar,
       characters: [_initialChar],
       activeCharacterId: _initialChar.id,
+      lastLevelAdvancement: null,
 
       updateField: (key, value) => set((state) => ({
         character: { ...state.character, [key]: value }
@@ -319,84 +316,43 @@ export const useCharacterStore = create<CharacterState>()(
         };
       }),
 
-      levelUp: (hpIncrease, newSubclass, extraAttrs, newFeat, targetClass) => set((state) => {
-        const char = state.character;
-        const primary = {
-          className: char.jobClass,
-          level: char.level,
-          subclass: char.subclass,
-        };
-        const selectedTarget = targetClass?.className.trim()
-          ? targetClass
-          : primary;
-        const normalizedClassLevels = normalizeDndClassLevels(char.classLevels, primary);
-        if (!canAllocateDndClassLevel(normalizedClassLevels, selectedTarget).allowed) {
-          return state;
+      commitLevelAdvancement: (plan) => {
+        const state = get();
+        if (
+          !plan.ready ||
+          !plan.nextCharacter ||
+          plan.actorId !== state.character.id ||
+          plan.baseLevel !== state.character.level ||
+          plan.baseFingerprint !== JSON.stringify(state.character)
+        ) {
+          return false;
         }
-        const nextClassLevels = incrementDndClassLevel(
-          normalizedClassLevels,
-          { ...selectedTarget, subclass: newSubclass || selectedTarget.subclass },
-          primary,
-        );
-        const isPrimaryAllocation = selectedTarget.className === char.jobClass;
-        // No combined-caster calculation exists yet. Preserve resources once a
-        // character has more than one class instead of inventing slot totals.
-        const hasSingleClassAllocation = nextClassLevels.length === 1;
-        const nextLvl = char.level + 1;
-        const isCaster = hasSingleClassAllocation && ['法师', '吟游诗人', '牧师', '邪术师', '德鲁伊', '术士'].includes(char.jobClass);
-        const newSlots = { ...char.spellbook.slots };
-        
-        if (isCaster) {
-          if (nextLvl >= 1) newSlots[1] = { max: nextLvl === 1 ? 2 : nextLvl === 2 ? 3 : 4, current: nextLvl === 1 ? 2 : nextLvl === 2 ? 3 : 4 };
-          if (nextLvl >= 3) newSlots[2] = { max: nextLvl === 3 ? 2 : 3, current: nextLvl === 3 ? 2 : 3 };
-          if (nextLvl >= 5) newSlots[3] = { max: nextLvl === 5 ? 2 : 3, current: nextLvl === 5 ? 2 : 3 };
-          if (nextLvl >= 7) newSlots[4] = { max: nextLvl === 7 ? 1 : 2, current: nextLvl === 7 ? 1 : 2 };
-          if (nextLvl >= 9) newSlots[5] = { max: nextLvl === 9 ? 1 : 2, current: nextLvl === 9 ? 1 : 2 };
-        }
+        const receipt = makeDndLevelAdvancementReceipt(state.character, plan);
+        if (!receipt) return false;
+        const nextCharacter = plan.nextCharacter;
+        set({
+          character: nextCharacter,
+          characters: state.characters.some((character) => character.id === nextCharacter.id)
+            ? state.characters.map((character) => character.id === nextCharacter.id ? nextCharacter : character)
+            : [...state.characters, nextCharacter],
+          activeCharacterId: nextCharacter.id,
+          lastLevelAdvancement: receipt,
+        });
+        return true;
+      },
 
-        const newAttrs = { ...char.attrs };
-        if (extraAttrs) {
-           extraAttrs.forEach(a => {
-              newAttrs[a] = { ...newAttrs[a], extrabonus: (newAttrs[a].extrabonus || 0) + 1 };
-           });
-        }
-
-        const newFeats = [...char.feats];
-        if (newFeat && !newFeats.includes(newFeat)) {
-           newFeats.push(newFeat);
-        }
-
-        const leveledCharacter: CharacterData = {
-          ...char,
-          level: nextLvl,
-          classLevels: nextClassLevels,
-          hpMax: char.hpMax + hpIncrease,
-          hpCurrent: char.hpCurrent + hpIncrease,
-          hitDiceCurrent: char.hitDiceCurrent + 1,
-          subclass: isPrimaryAllocation ? (newSubclass || char.subclass) : char.subclass,
-          attrs: newAttrs,
-          feats: newFeats,
-          spellbook: {
-            ...char.spellbook,
-            slots: newSlots
-          }
-        };
-
-        const refreshedResources = hasSingleClassAllocation
-          ? refreshClassResourcesForCharacter(leveledCharacter)
-          : {
-            classResources: leveledCharacter.classResources,
-            pactMagicState: leveledCharacter.pactMagicState,
-          };
-
-        return {
-          character: {
-            ...leveledCharacter,
-            classResources: refreshedResources.classResources,
-            pactMagicState: refreshedResources.pactMagicState,
-          }
-        };
-      }),
+      undoLastLevelAdvancement: () => {
+        const state = get();
+        if (!canUndoDndLevelAdvancement(state.character, state.lastLevelAdvancement)) return false;
+        const previous = state.lastLevelAdvancement!.before;
+        set({
+          character: previous,
+          characters: state.characters.map((character) => character.id === previous.id ? previous : character),
+          activeCharacterId: previous.id,
+          lastLevelAdvancement: null,
+        });
+        return true;
+      },
 
       modifyHp: (amount) => set((state) => {
         let temp = state.character.tempHp;
@@ -714,6 +670,7 @@ export const useCharacterStore = create<CharacterState>()(
           character: unknown;
           characters: unknown[];
           activeCharacterId: string | null;
+          lastLevelAdvancement: unknown;
         }> | null;
         if (!p || typeof p !== 'object') return current;
 
@@ -747,6 +704,9 @@ export const useCharacterStore = create<CharacterState>()(
           character: activeChar,
           characters: migratedList,
           activeCharacterId: activeChar.id,
+          lastLevelAdvancement: p.lastLevelAdvancement && typeof p.lastLevelAdvancement === 'object'
+            ? p.lastLevelAdvancement as DndLevelAdvancementReceipt
+            : null,
         };
       },
     }
