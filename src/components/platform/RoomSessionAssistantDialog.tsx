@@ -25,11 +25,13 @@ const TASKS: Array<{ id: RoomSessionAssistantTask; label: string; hint: string }
 ];
 
 function statusText(status: AiModelGatewayStatus | null): string {
-  if (!status) return '正在检查本地模型…';
-  if (!status.configured) return '尚未配置本地模型。';
+  if (!status) return '正在检查 AI 路由…';
+  if (status.reason === 'user-disabled') return '此设备已关闭 AI，可在平台设置中重新开启。';
+  if (status.reason === 'route-unavailable') return '所选 AI 路由尚未接入，请改用自动或本地模型。';
+  if (!status.configured) return '后端尚未配置可用 AI 提供商。';
   if (status.reason === 'provider-unreachable') return '无法连接本地模型服务。';
   if (status.reason === 'model-unavailable') return `模型 ${status.model ?? ''} 尚未安装或名称不匹配。`;
-  return `${status.model ?? '本地模型'} 已就绪。`;
+  return `${status.model ?? 'AI 模型'} 已就绪。`;
 }
 
 function errorText(error: unknown): string {

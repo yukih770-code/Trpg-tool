@@ -679,6 +679,19 @@ Landmark: `ROOM_SESSION_AI_ASSISTANT_V1`.
 
 ---
 
+## AI Settings + Model Routing v1
+
+- `AI 与自动化` 已从不可用占位区变成真实的平台设置面板：当前设备可选择关闭、自动路由或一个后端确认已安装的本地模型；云端 API 仍是明确禁用的未接入项。
+- 认证目录端点只返回允许模型的 ID、大小和结构化输出/取消/超时能力，不返回 Ollama base URL、提示词、凭据或隐藏清单字段。
+- 浏览器偏好是可替换的设备级 `localStorage` 状态，每次车卡或 Session AI 请求即时读取；它不是账号权限、服务器设置或业务实体。
+- 服务端把偏好当作不可信输入：显式本地模型必须仍在实时/短缓存 inventory 和可选 allowlist 内。关闭、云端未接入、未安装或被禁止的模型都在调用 `/api/chat` 前失败。
+- 自动路由确定性优先已安装 Qwen 3.6，再使用配置默认模型，最后使用其他允许模型；项目不安装模型，也不把这一产品默认描述成通用模型排名。
+- DND 车卡与 Room Session 助手共享同一路由器，同时保留原有认证、主持权限、上下文投影、预览、确认、陈旧保护和写入边界。
+
+Landmark: `AI_SETTINGS_MODEL_ROUTING_V1`.
+
+---
+
 ## Build Status
 
 | Check | Status |

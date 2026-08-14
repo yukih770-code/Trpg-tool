@@ -9,6 +9,7 @@ import type { RoomMapRegistry } from '../room-map-registry.js';
 import { resolveRoomParticipant } from '../room/roomRuntimePermissionGuard.js';
 import { appendRuntimeLogEvent } from '../services/appendRuntimeLogEvent.js';
 import type { RoomRuntimeLogEvent } from '../protocol/room-protocol.js';
+import { parseAiRoutingPreferenceHeaders } from '../../src/lib/ai/modelRoutingTypes.js';
 import {
   ROOM_SESSION_ASSISTANT_OUTPUT_SCHEMA,
   isRoomSessionAssistantTask,
@@ -35,6 +36,7 @@ export type RoomSessionAssistantApiRequest = {
   memberId?: unknown;
   suggestionId?: string;
   body?: unknown;
+  headers?: Record<string, string | string[] | undefined>;
   viewer: CurrentViewerContext;
   signal?: AbortSignal;
 };
@@ -95,7 +97,9 @@ function requireHost(
 function modelFailure(error: unknown, requestId?: string): ApiResult {
   if (!(error instanceof ModelGatewayError)) return errorResponse(503, { kind: 'unavailable', message: 'Session AI is unavailable.', retryable: true }, { requestId });
   if (error.kind === 'cancelled') return errorResponse(408, { kind: 'unavailable', message: 'Session AI request was cancelled.', retryable: false }, { requestId });
-  if (error.kind === 'not_configured') return errorResponse(503, { kind: 'unavailable', message: 'Local model provider is not configured.', retryable: false }, { requestId });
+  if (error.kind === 'not_configured') return errorResponse(503, { kind: 'unavailable', message: 'AI is disabled or no provider is configured.', retryable: false }, { requestId });
+  if (error.kind === 'route_unavailable') return errorResponse(503, { kind: 'unavailable', message: 'The selected AI route is not available.', retryable: false }, { requestId });
+  if (error.kind === 'model_unavailable') return errorResponse(503, { kind: 'unavailable', message: 'The selected local model is not installed or allowed.', retryable: false }, { requestId });
   if (error.kind === 'invalid_output') return errorResponse(503, { kind: 'validation', message: 'The model returned an invalid Session AI draft.', retryable: true }, { requestId });
   return errorResponse(503, { kind: 'unavailable', message: error.kind === 'timeout' ? 'Local model request timed out.' : 'Local model provider is unavailable.', retryable: error.retryable }, { requestId });
 }
@@ -159,7 +163,7 @@ export function createRoomSessionAssistantApiHandlers(options: CreateRoomSession
     async status(input) {
       const host = requireHost(input, options);
       if ('response' in host) return host.response;
-      return okResponse(await options.gateway.status(input.signal), { requestId: input.requestId });
+      return okResponse(await options.gateway.status(input.signal, parseAiRoutingPreferenceHeaders(input.headers)), { requestId: input.requestId });
     },
     async generate(input) {
       const host = requireHost(input, options);
@@ -180,7 +184,11 @@ export function createRoomSessionAssistantApiHandlers(options: CreateRoomSession
       });
       if (context.decision !== 'ready') return errorResponse(403, { kind: 'bad_request', message: 'Only an active host projection can be used.' }, { requestId: input.requestId });
       try {
-        const generated = await options.gateway.generateRoomSessionSuggestion(prompt(task, focus, context.context), input.signal);
+        const generated = await options.gateway.generateRoomSessionSuggestion(
+          prompt(task, focus, context.context),
+          input.signal,
+          parseAiRoutingPreferenceHeaders(input.headers),
+        );
         if (generated.task !== task) return errorResponse(503, { kind: 'validation', message: 'The model returned a mismatched Session AI task.' }, { requestId: input.requestId });
         const expiresAt = now() + ttlMs;
         const result: RoomSessionAssistantSuggestionResult = {

@@ -3,6 +3,7 @@ import type {
   DndPointBuyScores,
 } from '../../src/lib/ai/dndCharacterAssistantTypes.js';
 import { DND_CHARACTER_ASSISTANT_OUTPUT_SCHEMA } from '../../src/lib/ai/dndCharacterAssistantTypes.js';
+import { parseAiRoutingPreferenceHeaders } from '../../src/lib/ai/modelRoutingTypes.js';
 import { createCurrentViewerContextFromAuthSession, type CurrentViewerContext } from '../auth/currentViewerContext.js';
 import { resolveApiAuthSession, type ApiRequestLike } from '../auth/requestAuthSession.js';
 import { createConfiguredModelGateway } from '../ai/modelGatewayComposition.js';
@@ -21,6 +22,7 @@ export type AiCharacterAssistantApiRequest = {
 };
 
 export interface AiCharacterAssistantApiHandlers {
+  catalog(input: AiCharacterAssistantApiRequest): Promise<ApiResult>;
   status(input: AiCharacterAssistantApiRequest): Promise<ApiResult>;
   suggest(input: AiCharacterAssistantApiRequest): Promise<ApiResult>;
 }
@@ -117,7 +119,9 @@ function modelFailure(error: unknown, requestId?: string): ApiResult {
     return errorResponse(503, { kind: 'unavailable', message: 'Character assistant is unavailable.', retryable: true }, { requestId });
   }
   if (error.kind === 'cancelled') return errorResponse(408, { kind: 'unavailable', message: 'Character assistant request was cancelled.', retryable: false }, { requestId });
-  if (error.kind === 'not_configured') return errorResponse(503, { kind: 'unavailable', message: 'Local model provider is not configured.', retryable: false }, { requestId });
+  if (error.kind === 'not_configured') return errorResponse(503, { kind: 'unavailable', message: 'AI is disabled or no provider is configured.', retryable: false }, { requestId });
+  if (error.kind === 'route_unavailable') return errorResponse(503, { kind: 'unavailable', message: 'The selected AI route is not available.', retryable: false }, { requestId });
+  if (error.kind === 'model_unavailable') return errorResponse(503, { kind: 'unavailable', message: 'The selected local model is not installed or allowed.', retryable: false }, { requestId });
   if (error.kind === 'invalid_output') return errorResponse(503, { kind: 'validation', message: 'The model returned an invalid structured suggestion.', retryable: true }, { requestId });
   return errorResponse(503, { kind: 'unavailable', message: error.kind === 'timeout' ? 'Local model request timed out.' : 'Local model provider is unavailable.', retryable: error.retryable }, { requestId });
 }
@@ -142,10 +146,15 @@ function buildPrompt(input: DndCharacterAssistantRequest): { system: string; pro
 export function createAiCharacterAssistantApiHandlers(options: CreateAiCharacterAssistantApiHandlersOptions = {}): AiCharacterAssistantApiHandlers {
   const gateway = options.gateway ?? createConfiguredModelGateway(process.env);
   return {
+    async catalog(input) {
+      const viewer = requireViewer(input, options);
+      if (isResponse(viewer)) return viewer;
+      return okResponse(await gateway.catalog(input.signal, input.body === true), { requestId: input.requestId });
+    },
     async status(input) {
       const viewer = requireViewer(input, options);
       if (isResponse(viewer)) return viewer;
-      return okResponse(await gateway.status(input.signal), { requestId: input.requestId });
+      return okResponse(await gateway.status(input.signal, parseAiRoutingPreferenceHeaders(input.headers)), { requestId: input.requestId });
     },
     async suggest(input) {
       const viewer = requireViewer(input, options);
@@ -153,7 +162,7 @@ export function createAiCharacterAssistantApiHandlers(options: CreateAiCharacter
       const parsed = parseRequest(input.body);
       if (!parsed) return errorResponse(400, { kind: 'validation', message: 'Invalid character-assistant request.' }, { requestId: input.requestId });
       try {
-        return okResponse(await gateway.generateDndCharacterSuggestion(buildPrompt(parsed), input.signal), { requestId: input.requestId });
+        return okResponse(await gateway.generateDndCharacterSuggestion(buildPrompt(parsed), input.signal, parseAiRoutingPreferenceHeaders(input.headers)), { requestId: input.requestId });
       } catch (error) {
         return modelFailure(error, input.requestId);
       }

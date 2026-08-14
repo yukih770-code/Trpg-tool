@@ -33,6 +33,7 @@ async function invoke(
 }
 
 export function registerAiCharacterAssistantApiRoutes(app: Express, handlers: AiCharacterAssistantApiHandlers): void {
+  app.get('/api/ai/model-gateway/catalog', (req, res) => void invoke(req, res, (input) => handlers.catalog({ ...input, body: req.query.refresh === '1' })));
   app.get('/api/ai/model-gateway/status', (req, res) => void invoke(req, res, handlers.status));
   app.post('/api/ai/dnd-character-assistant/suggest', (req, res) => void invoke(req, res, handlers.suggest));
 }

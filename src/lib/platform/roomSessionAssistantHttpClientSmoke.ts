@@ -45,7 +45,9 @@ await client.confirm('room/one', 'suggestion/one', 'member host', 'public');
 
 assert.equal(calls[0]?.url, 'https://runtime.example.test/api/ai/rooms/room%2Fone/session-assistant/status?memberId=member+host');
 assert.equal(calls[0]?.init?.credentials, 'include');
+assert.equal(new Headers(calls[0]?.init?.headers).get('x-trpg-ai-mode'), 'auto');
 assert.equal(calls[1]?.init?.method, 'POST');
+assert.equal(new Headers(calls[1]?.init?.headers).get('x-trpg-ai-mode'), 'auto');
 assert.equal(calls[1]?.init?.body, JSON.stringify({ memberId: 'member host', task: 'recap', focus: '只写事实' }));
 assert.equal(calls[2]?.url, 'https://runtime.example.test/api/ai/rooms/room%2Fone/session-assistant/suggestions/suggestion%2Fone/confirm');
 assert.equal(calls[2]?.init?.body, JSON.stringify({ memberId: 'member host', visibility: 'public' }));

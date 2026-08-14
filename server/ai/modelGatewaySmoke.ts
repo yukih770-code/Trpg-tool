@@ -24,9 +24,10 @@ const validSessionSuggestion = {
 const request = { system: 'system', prompt: 'prompt', schema: { type: 'object' } };
 
 assert.equal(readLocalModelGatewayConfig({}).configured, false);
-assert.equal(readLocalModelGatewayConfig({ LOCAL_AI_PROVIDER: 'ollama' }).error, 'missing-model');
+assert.equal(readLocalModelGatewayConfig({ LOCAL_AI_PROVIDER: 'ollama' }).configured, true);
 assert.equal(readLocalModelGatewayConfig({ LOCAL_AI_PROVIDER: 'ollama', LOCAL_AI_MODEL: 'local-model', LOCAL_AI_BASE_URL: 'file:///tmp/model' }).error, 'invalid-base-url');
 assert.equal(readLocalModelGatewayConfig({ LOCAL_AI_MODEL: 'local-model' }).configured, true);
+assert.deepEqual(readLocalModelGatewayConfig({ LOCAL_AI_PROVIDER: 'ollama', LOCAL_AI_ALLOWED_MODELS: ' qwen3.6:27b, llama3.2, qwen3.6:27b ' }).allowedModels, ['qwen3.6:27b', 'llama3.2']);
 
 const provider: StructuredModelProvider = {
   id: 'ollama',
@@ -35,7 +36,10 @@ const provider: StructuredModelProvider = {
   generate: async () => validSuggestion,
 };
 const gateway = createModelGateway({ provider, timeoutMs: 1_000 });
+assert.equal((await gateway.catalog()).models[0]?.id, 'local-model');
 assert.deepEqual((await gateway.status()).reason, undefined);
+assert.equal((await gateway.status(undefined, { mode: 'off' })).reason, 'user-disabled');
+assert.equal((await gateway.status(undefined, { mode: 'cloud' })).reason, 'route-unavailable');
 assert.equal((await gateway.generateDndCharacterSuggestion(request)).suggestion.patch.name, '测试角色');
 const sessionGateway = createModelGateway({ provider: { ...provider, generate: async () => validSessionSuggestion }, timeoutMs: 1_000 });
 assert.equal((await sessionGateway.generateRoomSessionSuggestion(request)).suggestion.publicDraft, '公开草稿');

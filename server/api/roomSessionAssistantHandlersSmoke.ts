@@ -48,6 +48,7 @@ const seed = appendRuntimeLogEvent(rooms, logs, {
 assert.equal(seed.decision, 'appended');
 
 let requestSeen: StructuredModelRequest | undefined;
+let routingModelSeen = '';
 let suggestionNumber = 0;
 let forceMismatchedTask = false;
 const generatedTask = (request: StructuredModelRequest): RoomSessionAssistantTask =>
@@ -55,13 +56,20 @@ const generatedTask = (request: StructuredModelRequest): RoomSessionAssistantTas
     : request.prompt.includes('任务：in_session') ? 'in_session'
       : 'recap';
 const gateway: ModelGateway = {
+  catalog: async () => ({
+    local: { configured: true, reachable: true, defaultModel: 'local-model' },
+    cloud: { configured: false, reason: 'not-implemented' },
+    models: [{ id: 'local-model', provider: 'ollama', route: 'local', installed: true, recommended: false, capabilities: ['structured-output', 'cancellation', 'timeout'] }],
+    refreshedAt: 1,
+  }),
   status: async () => ({
     configured: true, reachable: true, provider: 'ollama', route: 'local', model: 'local-model',
     capabilities: ['structured-output', 'cancellation', 'timeout'],
   }),
   generateDndCharacterSuggestion: async () => { throw new Error('not used'); },
-  generateRoomSessionSuggestion: async (request) => {
+  generateRoomSessionSuggestion: async (request, _signal, preference) => {
     requestSeen = request;
+    routingModelSeen = preference?.localModel ?? '';
     suggestionNumber += 1;
     const requestedTask = generatedTask(request);
     const task = forceMismatchedTask ? (requestedTask === 'recap' ? 'preparation' : 'recap') : requestedTask;
@@ -113,9 +121,11 @@ assert.equal((await handlers.status({ ...base, viewer: viewer('user_player'), me
 
 const staleDraft = await handlers.generate({
   ...base,
+  headers: { 'x-trpg-ai-mode': 'local', 'x-trpg-ai-model': 'qwen3.6:27b' },
   body: { memberId: host.memberId, task: 'recap', focus: '保持简短', events: ['client-forged-event'] },
 });
 assert.equal(staleDraft.ok, true);
+assert.equal(routingModelSeen, 'qwen3.6:27b');
 assert(requestSeen?.prompt.includes('真正的幕后线索'));
 assert(!requestSeen?.prompt.includes('client-forged-event'));
 assert(!requestSeen?.prompt.includes(host.memberId));

@@ -1045,6 +1045,17 @@ This file helps AI quickly locate important types, helper functions, store actio
 - Entry wiring: `RoomRuntimeLogPreviewPanel` enabled only by host `RoomRuntimeEntryBridge`; lobby calls do not opt in.
 - Focused smokes: `npm run ai:verify:room-session-assistant`, `npm run api:verify:room-session-assistant`, `npm run frontend:verify:room-session-assistant`.
 
+## AI Settings + Model Routing
+
+- `AI-LANDMARK: AI_SETTINGS_MODEL_ROUTING_V1`: authenticated safe model catalog → device-local route preference → server-authoritative model resolution → existing AI task gateways.
+- `AiRoutingPreference` / `AiModelCatalog` / `parseAiRoutingPreferenceHeaders()`: bounded shared route intent and safe catalog projection — `src/lib/ai/modelRoutingTypes.ts`.
+- `readAiRoutingPreference()` / `writeAiRoutingPreference()` / `currentAiRoutingHeaders()`: replaceable device-local preference adapter read per request — `src/lib/ai/modelRoutingPreference.ts`.
+- `createRoutedLocalModelGateway()`: Ollama inventory cache, optional allowlist, Qwen 3.6 automatic preference, explicit-model validation, and route failure classification — `server/ai/modelRoutingGateway.ts`.
+- `GET /api/ai/model-gateway/catalog`: authenticated catalog projection and explicit refresh — `server/api/aiCharacterAssistantRoutes.ts`.
+- `AiSettingsPanel`: existing Settings category UI for truthful availability and Off/Auto/Local choice; Cloud is disabled — `src/components/platform/AiSettingsPanel.tsx`.
+- `resolveAiSettingsAvailability()`: pure loading/error/not-configured/unreachable/empty/ready presentation state — `src/lib/ai/aiSettingsPresentation.ts`.
+- Focused smokes: `npm run ai:verify:model-routing`, `npm run frontend:verify:ai-routing-settings`, plus both existing AI API/client suites.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

@@ -1,5 +1,6 @@
 import { createApiClient, type ApiClientOptions } from '../api/apiClient';
 import type { AiModelGatewayStatus } from '../ai/dndCharacterAssistantTypes';
+import { currentAiRoutingHeaders } from '../ai/modelRoutingPreference';
 import type {
   RoomSessionAssistantConfirmResult,
   RoomSessionAssistantGenerateInput,
@@ -18,11 +19,12 @@ export function createRoomSessionAssistantHttpClient(options: ApiClientOptions =
   return {
     status: (roomId, memberId, signal) => {
       const query = new URLSearchParams({ memberId });
-      return client.request(`/api/ai/rooms/${encodeURIComponent(roomId)}/session-assistant/status?${query}`, { signal });
+      return client.request(`/api/ai/rooms/${encodeURIComponent(roomId)}/session-assistant/status?${query}`, { signal, headers: currentAiRoutingHeaders() });
     },
     generate: (roomId, input, signal) => client.request(`/api/ai/rooms/${encodeURIComponent(roomId)}/session-assistant/suggestions`, {
       method: 'POST',
       signal,
+      headers: currentAiRoutingHeaders(),
       body: JSON.stringify(input),
     }),
     confirm: (roomId, suggestionId, memberId, visibility) => client.request(`/api/ai/rooms/${encodeURIComponent(roomId)}/session-assistant/suggestions/${encodeURIComponent(suggestionId)}/confirm`, {

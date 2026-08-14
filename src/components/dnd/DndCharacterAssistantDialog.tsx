@@ -15,11 +15,13 @@ import { useCharacterStore } from '../../store/characterStore';
 type Props = { classes: ClassDef[]; backgrounds: BackgroundDef[]; feats: FeatDef[] };
 
 function statusMessage(status: AiModelGatewayStatus | null): string {
-  if (!status) return '正在检查本地模型…';
-  if (!status.configured) return '尚未配置本地模型。请先在后端设置 LOCAL_AI_MODEL。';
+  if (!status) return '正在检查 AI 路由…';
+  if (status.reason === 'user-disabled') return '此设备已关闭 AI，可在“设置 → AI 与自动化”中重新开启。';
+  if (status.reason === 'route-unavailable') return '所选 AI 路由尚未接入，请在设置中选择自动或本地模型。';
+  if (!status.configured) return '后端尚未配置可用 AI 提供商。';
   if (status.reason === 'provider-unreachable') return '无法连接本地模型服务，请确认它已在本机启动。';
   if (status.reason === 'model-unavailable') return `模型 ${status.model ?? ''} 尚未安装或名称不匹配。`;
-  return `${status.model ?? '本地模型'} 已就绪；建议仍需你的确认。`;
+  return `${status.model ?? 'AI 模型'} 已就绪；建议仍需你的确认。`;
 }
 
 export function DndCharacterAssistantDialog({ classes, backgrounds, feats }: Props) {
@@ -47,7 +49,7 @@ export function DndCharacterAssistantDialog({ classes, backgrounds, feats }: Pro
     try {
       setStatus(await aiModelGatewayApiClient.status());
     } catch (reason) {
-      setStatusError(reason instanceof ApiClientError ? reason.message : '无法读取本地模型状态。');
+      setStatusError(reason instanceof ApiClientError ? reason.message : '无法读取 AI 路由状态。');
     }
   };
 

@@ -19,7 +19,13 @@ async function invoke(
   const abort = () => controller.abort();
   req.once('aborted', abort);
   try {
-    const result = await handler({ ...input, requestId: requestId(req), viewer, signal: controller.signal });
+    const result = await handler({
+      ...input,
+      requestId: requestId(req),
+      headers: req.headers as Record<string, string | string[] | undefined>,
+      viewer,
+      signal: controller.signal,
+    });
     if (!res.headersSent) res.status(result.statusCode).json(result);
   } catch {
     if (!res.headersSent) res.status(500).json({ ok: false, statusCode: 500, error: { kind: 'internal', message: 'Session AI request failed.' }, requestId: requestId(req) });

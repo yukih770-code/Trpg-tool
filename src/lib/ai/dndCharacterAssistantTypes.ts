@@ -1,3 +1,5 @@
+import type { AiModelCapability, AiRouteMode } from './modelRoutingTypes.js';
+
 export type DndAssistantAttributeName = 'Str' | 'Dex' | 'Con' | 'Int' | 'Wis' | 'Cha';
 export type DndPointBuyScores = Record<DndAssistantAttributeName, number>;
 
@@ -43,10 +45,10 @@ export type AiModelGatewayStatus = {
   configured: boolean;
   reachable: boolean;
   provider: 'ollama' | 'disabled';
-  route: 'local';
+  route: AiRouteMode;
   model?: string;
-  capabilities: Array<'structured-output' | 'cancellation' | 'timeout'>;
-  reason?: 'not-configured' | 'provider-unreachable' | 'model-unavailable';
+  capabilities: AiModelCapability[];
+  reason?: 'not-configured' | 'provider-unreachable' | 'model-unavailable' | 'user-disabled' | 'route-unavailable';
 };
 
 export type DndCharacterAssistantGatewayResult = {

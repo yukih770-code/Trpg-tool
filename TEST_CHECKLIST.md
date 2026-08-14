@@ -1673,6 +1673,24 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8am. AI Settings + Model Routing v1
+
+- [x] Authenticated model catalog exposes only safe installed-model projection fields and never provider URL or credentials
+- [x] Device-local preference parser safely falls back to Auto after missing, malformed, oversized, or invalid stored values
+- [x] Settings distinguishes loading, error, not configured, provider unreachable, no installed model, and ready states
+- [x] Off, Auto, and explicit Local model choices are real; Cloud API is visibly disabled and not presented as implemented
+- [x] Auto deterministically prefers an installed Qwen 3.6, then configured default, then another allowed model
+- [x] Explicit local model must be installed and optionally allowlisted; invalid choices fail before model generation
+- [x] DND Character and Room Session clients read preference per request and send bounded route/model headers
+- [x] Server revalidates route/model and preserves existing authentication, host authority, projection, preview, confirmation, stale, and write contracts
+- [x] `npm run ai:verify:model-gateway` and `npm run ai:verify:model-routing` pass
+- [x] `npm run api:verify:dnd-character-assistant` and `npm run api:verify:room-session-assistant` pass
+- [x] `npm run frontend:verify:ai-routing-settings`, character assistant, and room session assistant smokes pass
+- [ ] Live Ollama catalog and inference acceptance passes on a machine with an installed Qwen 3.6 model
+- [ ] Cloud provider, privacy consent, usage ledger, budget, failure compensation, and billing are implemented (future task)
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

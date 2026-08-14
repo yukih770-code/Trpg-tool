@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { AiModelGatewayStatus, DndCharacterAssistantGatewayResult } from '../../src/lib/ai/dndCharacterAssistantTypes.js';
 import { parseDndCharacterAssistantSuggestion } from '../../src/lib/ai/dndCharacterAssistantTypes.js';
+import type { AiModelCatalog, AiRoutingPreference } from '../../src/lib/ai/modelRoutingTypes.js';
 import type { RoomSessionAssistantSuggestionResult } from '../../src/lib/ai/sessionAssistantTypes.js';
 import { parseRoomSessionAssistantSuggestion } from '../../src/lib/ai/sessionAssistantTypes.js';
 
@@ -19,7 +20,7 @@ export interface StructuredModelProvider {
   generate(request: StructuredModelRequest, signal: AbortSignal): Promise<unknown>;
 }
 
-export type ModelGatewayFailureKind = 'not_configured' | 'unavailable' | 'timeout' | 'cancelled' | 'invalid_output' | 'provider_error';
+export type ModelGatewayFailureKind = 'not_configured' | 'route_unavailable' | 'model_unavailable' | 'unavailable' | 'timeout' | 'cancelled' | 'invalid_output' | 'provider_error';
 export class ModelGatewayError extends Error {
   constructor(readonly kind: ModelGatewayFailureKind, message: string, readonly retryable: boolean) {
     super(message);
@@ -27,9 +28,10 @@ export class ModelGatewayError extends Error {
 }
 
 export interface ModelGateway {
-  status(signal?: AbortSignal): Promise<AiModelGatewayStatus>;
-  generateDndCharacterSuggestion(input: StructuredModelRequest, signal?: AbortSignal): Promise<DndCharacterAssistantGatewayResult>;
-  generateRoomSessionSuggestion(input: StructuredModelRequest, signal?: AbortSignal): Promise<Omit<RoomSessionAssistantSuggestionResult, 'expiresAt' | 'contextThroughSeq'>>;
+  catalog(signal?: AbortSignal, refresh?: boolean): Promise<AiModelCatalog>;
+  status(signal?: AbortSignal, preference?: AiRoutingPreference): Promise<AiModelGatewayStatus>;
+  generateDndCharacterSuggestion(input: StructuredModelRequest, signal?: AbortSignal, preference?: AiRoutingPreference): Promise<DndCharacterAssistantGatewayResult>;
+  generateRoomSessionSuggestion(input: StructuredModelRequest, signal?: AbortSignal, preference?: AiRoutingPreference): Promise<Omit<RoomSessionAssistantSuggestionResult, 'expiresAt' | 'contextThroughSeq'>>;
 }
 
 function timedSignal(timeoutMs: number, external?: AbortSignal): { signal: AbortSignal; cleanup(): void; timedOut(): boolean } {
@@ -50,7 +52,33 @@ export function createModelGateway(input: { provider?: StructuredModelProvider; 
   const capabilities: AiModelGatewayStatus['capabilities'] = ['structured-output', 'cancellation', 'timeout'];
 
   return {
-    async status(external) {
+    async catalog(external) {
+      const status = await this.status(external);
+      const readyModel = status.provider === 'ollama' && status.reachable && !status.reason ? status.model : undefined;
+      return {
+        local: {
+          configured: status.configured,
+          reachable: status.reachable,
+          ...(status.model ? { defaultModel: status.model } : {}),
+          ...(readyModel?.toLowerCase().startsWith('qwen3.6') ? { recommendedModel: readyModel } : {}),
+          ...(!status.configured ? { reason: 'not-configured' as const } : !status.reachable ? { reason: 'provider-unreachable' as const } : !readyModel ? { reason: 'no-models-installed' as const } : {}),
+        },
+        cloud: { configured: false, reason: 'not-implemented' },
+        models: readyModel ? [{
+          id: readyModel,
+          provider: 'ollama',
+          route: 'local',
+          installed: true,
+          recommended: readyModel.toLowerCase().startsWith('qwen3.6'),
+          capabilities,
+        }] : [],
+        refreshedAt: Date.now(),
+      };
+    },
+
+    async status(external, preference = { mode: 'auto' }) {
+      if (preference.mode === 'off') return { configured: false, reachable: false, provider: 'disabled', route: 'off', capabilities, reason: 'user-disabled' };
+      if (preference.mode === 'cloud') return { configured: false, reachable: false, provider: 'disabled', route: 'cloud', capabilities, reason: 'route-unavailable' };
       if (!provider) return { configured: false, reachable: false, provider: 'disabled', route: 'local', capabilities, reason: 'not-configured' };
       const scope = timedSignal(Math.min(input.timeoutMs, 5_000), external);
       try {
@@ -71,7 +99,9 @@ export function createModelGateway(input: { provider?: StructuredModelProvider; 
       }
     },
 
-    async generateDndCharacterSuggestion(request, external) {
+    async generateDndCharacterSuggestion(request, external, preference = { mode: 'auto' }) {
+      if (preference.mode === 'off') throw new ModelGatewayError('not_configured', 'AI is disabled on this device.', false);
+      if (preference.mode === 'cloud') throw new ModelGatewayError('route_unavailable', 'Cloud AI is not available.', false);
       if (!provider) throw new ModelGatewayError('not_configured', 'Local model provider is not configured.', false);
       const scope = timedSignal(input.timeoutMs, external);
       try {
@@ -96,7 +126,9 @@ export function createModelGateway(input: { provider?: StructuredModelProvider; 
       }
     },
 
-    async generateRoomSessionSuggestion(request, external) {
+    async generateRoomSessionSuggestion(request, external, preference = { mode: 'auto' }) {
+      if (preference.mode === 'off') throw new ModelGatewayError('not_configured', 'AI is disabled on this device.', false);
+      if (preference.mode === 'cloud') throw new ModelGatewayError('route_unavailable', 'Cloud AI is not available.', false);
       if (!provider) throw new ModelGatewayError('not_configured', 'Local model provider is not configured.', false);
       const scope = timedSignal(input.timeoutMs, external);
       try {

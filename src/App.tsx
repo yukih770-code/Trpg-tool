@@ -42,6 +42,7 @@ import { LocalDevIdentitySwitcher } from './components/platform/LocalDevIdentity
 import { PrivateAlphaLoginPanel } from './components/platform/PrivateAlphaLoginPanel';
 import { ServerInvitePanel } from './components/platform/ServerInvitePanel';
 import { DndPrivateSpeciesPackEditorPanel } from './components/platform/DndPrivateSpeciesPackEditorPanel';
+import { AiSettingsPanel } from './components/platform/AiSettingsPanel';
 
 type AppView = 'home' | 'play' | 'placeholder' | 'systemLibrary' | 'workshop' | 'fanPlaza' | 'documents' | 'personalHub' | 'userProfile';
 type PlayStage = 'menu' | 'workspace';
@@ -747,7 +748,6 @@ export default function App() {
     图鉴与资料包: ['服务器图鉴', '私有资料包', '工坊资料包', '资料包版本', '发布到服务器图鉴'],
     聊天与发言: ['公告发布权限', '频道 / 聊天室规则', '@全体成员权限', '上传文件权限', '消息管理权限'],
     战役与房间: ['谁可以创建战役', '谁可以创建房间', '房间可见性', '旧版本房间加入策略', '运行中房间兼容策略'],
-    'AI 与自动化': ['AI 可读取范围', 'AI 草稿确认', '自动化权限', '私有资料隔离', 'AI 操作审计'],
     高级设置: ['服务器刷新策略', '软更新策略', '规则版本发布', '公式编辑器', '导入 / 导出', '备份与恢复', '审计日志', '危险区'],
     数据与备份: ['导出平台备份', '导入平台备份', '本地备份目录', '清理缓存'],
     媒体与存储: ['素材目录', '图片缓存', '原图保存策略', '存储占用'],
@@ -763,7 +763,6 @@ export default function App() {
     '图鉴与资料包',
     '聊天与发言',
     '战役与房间',
-    'AI 与自动化',
     '高级设置',
   ]);
   const reservedSettingsRow = (label: string) => (
@@ -828,6 +827,9 @@ export default function App() {
     );
   };
   const renderSettingsCategory = (cat: string) => {
+    if (cat === 'AI 与自动化') {
+      return <AiSettingsPanel locale={locale} />;
+    }
     if (cat === '邀请与加入申请' && selectedServerId && entryStage === 'platform') {
       return <ServerInvitePanel worldServerId={selectedServerId} locale={locale} canManage={canManageSelectedServer} />;
     }
