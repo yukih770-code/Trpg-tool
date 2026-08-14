@@ -751,6 +751,18 @@ Landmark: `EMBEDDED_RUNTIME_SESSION_AI_DRAFTS_V1`.
 
 ---
 
+## Session AI Campaign Artifact Persistence v1
+
+- 战役绑定房间中的主持人现在可以把已逐字预览的 `人物传记草稿` 或 `任务日志草稿` 显式保存为当前账号、当前战役、当前 RuntimeSession 下的 `user_private` GeneratedArtifact；临时房间和缺少 RuntimeSession 的房间不显示此目的地。
+- 保存不是第二次模型生成，也不修改 RuntimeLog、角色卡、任务状态或 Campaign 正文。服务端重新验证 active Room host、World Server owner/active admin、战役绑定、建议 TTL/一次性归属以及最新 RuntimeLog seq。
+- 一次 PostgreSQL 原子操作写入成果和一条 append-only `runtime_session_projection` 来源。来源只保存会话、序号和上下文指纹等有界元数据，不复制原始 RuntimeLog 正文。
+- 已保存的会后成果复用战役详情现有的 AI 成果历史、归档和恢复动作，并以独立类型和风险提示呈现。它们在 v1 中明确排除于 `prior_artifacts` 检索，不能因为“已保存”就静默成为后续 AI 的战役事实。
+- 保存与“确认写入 RuntimeLog”是两个互斥、显式目的地；建议成功消费一次后不能重复使用。本批次没有 schema/migration、AI Memory、Actor/quest/Campaign payload、公开/共享、Workshop 或后台自动生成写入。
+
+Landmark: `SESSION_AI_CAMPAIGN_ARTIFACT_PERSISTENCE_V1`.
+
+---
+
 ## Known Intentional Non-Replacements
 
 - `computeEmpFromHumanity` in `cpStore.ts` — delta-based (adjusts EMP only at ten-boundary crossings). Semantically different from `getCpRuntimeEmp` (absolute `floor(humanity/10)`). Left as-is by design.

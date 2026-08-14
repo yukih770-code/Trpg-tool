@@ -1753,7 +1753,24 @@ After modifying one system, verify the other two are unaffected:
 - [x] UI states that biography/quest output is reviewable prose and does not update character sheets, quest state, or campaign facts
 - [x] Navigation keyword audit contains no new Back/Home/exit affordance
 - [x] Focused Session AI smokes, TypeScript, server/frontend builds, policy checks, and diff check pass
-- [ ] Structured character/document adoption, GeneratedArtifact persistence, AI Memory, background generation, and automatic post-session triggers are implemented (future tasks)
+- [x] Eligible biography/quest-log GeneratedArtifact persistence is implemented by the next focused chain; structured character/document adoption, AI Memory, background generation, and automatic post-session triggers remain future tasks
+
+---
+
+## 8ar. Session AI Campaign Artifact Persistence v1
+
+- [x] Only `character_biography` and `quest_log` suggestions from a campaign-linked RuntimeSession expose the save destination
+- [x] Save re-authorizes authenticated active Room host plus World Server owner/active admin and verifies the room's world/campaign/session binding
+- [x] Expired, consumed, cross-context, non-manager, ineligible-task, ad-hoc-room, and stale-RuntimeLog requests fail closed without persistence
+- [x] Explicit save atomically creates one owner-private GeneratedArtifact and one append-only `runtime_session_projection` source with stable IDs
+- [x] Provenance contains bounded source metadata, RuntimeLog seq, and context fingerprint but does not copy raw RuntimeLog bodies
+- [x] Save consumes the transient suggestion once; confirming to RuntimeLog and saving to campaign history remain mutually exclusive explicit destinations
+- [x] Campaign history projects session biography/quest-log outcomes and supports existing archive/restore lifecycle actions
+- [x] Session outcomes are visibly labeled as private drafts and do not mutate character sheets, quest state, Campaign payload, RuntimeLog history, or public/shared state
+- [x] Saved session outcomes are excluded from `prior_artifacts` retrieval and cannot silently become later AI campaign fact
+- [x] Navigation/action audit found no new Back/Home/exit control, modal backdrop, dialog role, page, or global AI entry
+- [x] Model gateway/routing, AI scope/retrieval, Session handler/client, Campaign artifact handler/client, atomic persistence, Runtime visibility, TypeScript, server/frontend builds, and diff checks pass
+- [ ] Live local-model inference and real PostgreSQL multi-user acceptance remain deployment checks
 
 ---
 

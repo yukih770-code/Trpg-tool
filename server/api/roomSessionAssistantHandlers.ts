@@ -8,6 +8,8 @@ import type { RuntimeLogRegistry } from '../runtime-log-registry.js';
 import type { RoomMapRegistry } from '../room-map-registry.js';
 import { resolveRoomParticipant } from '../room/roomRuntimePermissionGuard.js';
 import { appendRuntimeLogEvent } from '../services/appendRuntimeLogEvent.js';
+import { authorizeCloudRoomCreate, type CloudRoomCreateWorldRepository } from '../services/authorizeCloudRoomCreate.js';
+import type { GeneratedArtifactPersistencePort } from '../services/generatedArtifactPersistence.js';
 import type { RoomRuntimeLogEvent } from '../protocol/room-protocol.js';
 import { parseAiRoutingPreferenceHeaders } from '../../src/lib/ai/modelRoutingTypes.js';
 import {
@@ -18,6 +20,12 @@ import {
   type RoomSessionAssistantTask,
   type RoomSessionAssistantVisibility,
 } from '../../src/lib/ai/sessionAssistantTypes.js';
+import type {
+  CampaignArtifactSource,
+  CampaignArtifactSuggestion,
+  SavedCampaignArtifact,
+  SessionArtifactTask,
+} from '../../src/lib/ai/campaignArtifactAssistantTypes.js';
 import { errorResponse, okResponse, type ServerApiResponse } from './apiResponse.js';
 
 // AI-LANDMARK: ROOM_SESSION_AI_ASSISTANT_V1
@@ -46,6 +54,7 @@ export interface RoomSessionAssistantApiHandlers {
   status(input: RoomSessionAssistantApiRequest): Promise<ApiResult>;
   generate(input: RoomSessionAssistantApiRequest): Promise<ApiResult>;
   confirm(input: RoomSessionAssistantApiRequest): Promise<ApiResult>;
+  saveArtifact(input: RoomSessionAssistantApiRequest): Promise<ApiResult>;
 }
 
 export type CreateRoomSessionAssistantApiHandlersOptions = {
@@ -54,6 +63,8 @@ export type CreateRoomSessionAssistantApiHandlersOptions = {
   roomMapRegistry: RoomMapRegistry;
   gateway: ModelGateway;
   suggestionRegistry: RoomSessionAssistantSuggestionRegistry;
+  campaignArtifactPersistence?: GeneratedArtifactPersistencePort;
+  campaignArtifactWorldRepository?: CloudRoomCreateWorldRepository;
   now?: () => number;
   ttlMs?: number;
   isRoomRuntimeReady?: () => boolean;
@@ -112,6 +123,49 @@ const TASK_GUIDANCE: Record<RoomSessionAssistantTask, string> = {
   character_biography: 'Draft a post-session biography passage only for the character explicitly named in host focus. Separate observed events from interpretation, flag uncertain identity or chronology in risks, and never claim to update a character sheet.',
   quest_log: 'Draft a post-session quest log from observed events. Distinguish completed, active, discovered, and uncertain leads in prose; never claim that authoritative quest state was changed.',
 };
+
+function artifactDestination(room: NonNullable<ReturnType<RoomRegistry['get']>>) {
+  const worldServerId = room.campaignRef?.worldServerId?.trim();
+  const campaignId = room.campaignRef?.campaignId?.trim();
+  const runtimeSessionId = room.identity.sessionId?.trim();
+  if (!worldServerId || !campaignId || !runtimeSessionId) return undefined;
+  return {
+    worldServerId,
+    campaignId,
+    runtimeSessionId,
+    campaignDisplayName: room.campaignRef?.displayName?.trim() || room.identity.displayName?.trim() || '当前战役',
+  };
+}
+
+function sessionArtifactTask(task: RoomSessionAssistantTask): SessionArtifactTask | null {
+  if (task === 'character_biography') return 'session_character_biography';
+  if (task === 'quest_log') return 'session_quest_log';
+  return null;
+}
+
+function sessionArtifactKind(task: SessionArtifactTask): string {
+  return task === 'session_character_biography' ? 'room_session_ai_character_biography' : 'room_session_ai_quest_log';
+}
+
+function campaignArtifactSuggestion(
+  task: SessionArtifactTask,
+  sourceId: string,
+  stored: RoomSessionAssistantSuggestionResult,
+): CampaignArtifactSuggestion {
+  return {
+    version: 1,
+    task,
+    title: stored.suggestion.title,
+    summary: stored.suggestion.summary,
+    sections: [{
+      heading: task === 'session_character_biography' ? '人物传记草稿' : '任务日志草稿',
+      body: stored.suggestion.hostDraft,
+      sourceIds: [sourceId],
+    }],
+    uncertainties: stored.suggestion.risks,
+    suggestedNextSteps: stored.suggestion.suggestedNextSteps,
+  };
+}
 
 function prompt(task: RoomSessionAssistantTask, focus: string | undefined, context: unknown): StructuredModelRequest {
   return {
@@ -196,10 +250,12 @@ export function createRoomSessionAssistantApiHandlers(options: CreateRoomSession
         );
         if (generated.task !== task) return errorResponse(503, { kind: 'validation', message: 'The model returned a mismatched Session AI task.' }, { requestId: input.requestId });
         const expiresAt = now() + ttlMs;
+        const destination = artifactDestination(host.room);
         const result: RoomSessionAssistantSuggestionResult = {
           ...generated,
           expiresAt,
           contextThroughSeq: context.context.latestSeq,
+          ...(destination ? { artifactDestination: destination } : {}),
         };
         options.suggestionRegistry.put({
           ...result,
@@ -207,6 +263,7 @@ export function createRoomSessionAssistantApiHandlers(options: CreateRoomSession
           memberId: host.memberId,
           viewerUserId: host.viewerUserId,
           contextFingerprint: context.context.fingerprint,
+          ...(focus ? { focus } : {}),
         });
         return okResponse(result, { requestId: input.requestId });
       } catch (error) {
@@ -247,6 +304,93 @@ export function createRoomSessionAssistantApiHandlers(options: CreateRoomSession
       options.suggestionRegistry.consume(suggestionId);
       options.broadcastRuntimeLogAppended(input.roomId, [appended.event]);
       return okResponse({ event: appended.event, suggestionId }, { requestId: input.requestId });
+    },
+    async saveArtifact(input) {
+      const host = requireHost(input, options);
+      if ('response' in host) return host.response;
+      const suggestionId = text(input.suggestionId, 200);
+      if (!suggestionId) return errorResponse(400, { kind: 'validation', message: 'suggestionId is required.' }, { requestId: input.requestId });
+      const stored = options.suggestionRegistry.get({ suggestionId, roomId: input.roomId, memberId: host.memberId, viewerUserId: host.viewerUserId });
+      if (stored.decision === 'forbidden') return errorResponse(403, { kind: 'bad_request', message: 'This suggestion belongs to another room context.' }, { requestId: input.requestId });
+      if (stored.decision === 'expired') return errorResponse(409, { kind: 'conflict', message: 'This Session AI draft has expired. Generate a new draft.' }, { requestId: input.requestId });
+      if (stored.decision !== 'ready') return errorResponse(404, { kind: 'not_found', message: 'Session AI draft not found or already used.' }, { requestId: input.requestId });
+      const task = sessionArtifactTask(stored.value.task);
+      const destination = artifactDestination(host.room);
+      if (!task || !destination || !stored.value.artifactDestination
+        || destination.worldServerId !== stored.value.artifactDestination.worldServerId
+        || destination.campaignId !== stored.value.artifactDestination.campaignId
+        || destination.runtimeSessionId !== stored.value.artifactDestination.runtimeSessionId) {
+        return errorResponse(409, { kind: 'conflict', message: 'This draft is not eligible for campaign artifact storage.' }, { requestId: input.requestId });
+      }
+      if (!options.campaignArtifactWorldRepository || !options.campaignArtifactPersistence) {
+        return errorResponse(503, { kind: 'unavailable', message: 'Campaign artifact storage is unavailable.', retryable: true }, { requestId: input.requestId });
+      }
+      const authorization = await authorizeCloudRoomCreate(options.campaignArtifactWorldRepository, {
+        worldServerId: destination.worldServerId,
+        campaignId: destination.campaignId,
+        viewerUserId: host.viewerUserId,
+      });
+      if (authorization.status === 'unavailable') return errorResponse(503, { kind: 'unavailable', message: 'Campaign authority is temporarily unavailable.', retryable: true }, { requestId: input.requestId });
+      if (authorization.status !== 'authorized') return errorResponse(403, { kind: 'bad_request', message: 'Campaign manager authority is required.' }, { requestId: input.requestId });
+      const runtime = options.runtimeLogRegistry.list(input.roomId);
+      if (runtime.latestSeq !== stored.value.contextThroughSeq) {
+        return errorResponse(409, { kind: 'conflict', message: 'RuntimeLog changed after this draft was generated. Generate a fresh draft.' }, { requestId: input.requestId });
+      }
+      const artifactId = `generated_artifact_${suggestionId}`;
+      const sourceId = `runtime_session_projection:${destination.runtimeSessionId}:${stored.value.contextThroughSeq}`;
+      const source: CampaignArtifactSource = {
+        sourceId,
+        sourceKind: 'runtime_session_projection',
+        sourceRefId: destination.runtimeSessionId,
+        title: `${host.room.identity.displayName ?? destination.campaignDisplayName} · RuntimeLog 投影`,
+        excerpt: `主持人有权查看的 ${stored.value.contextThroughSeq > 0 ? `RuntimeLog 截至 seq ${stored.value.contextThroughSeq}` : '空 RuntimeLog'}；原始日志正文未复制到成果来源摘要。`,
+      };
+      const suggestion = campaignArtifactSuggestion(task, sourceId, stored.value);
+      const saved = await options.campaignArtifactPersistence.createArtifactWithSources({
+        artifact: {
+          artifactId,
+          ownerId: host.viewerUserId,
+          campaignId: destination.campaignId,
+          runtimeSessionId: destination.runtimeSessionId,
+          artifactKind: sessionArtifactKind(task),
+          title: suggestion.title,
+          summary: suggestion.summary,
+          contentFormat: 'structured_json',
+          visibilityScope: 'user_private',
+          payload: { suggestion, sessionSuggestion: stored.value.suggestion, task: stored.value.task, ...(stored.value.focus ? { focus: stored.value.focus } : {}) },
+          sourcePayload: { sources: [source], contextFingerprint: stored.value.contextFingerprint, contextThroughSeq: stored.value.contextThroughSeq },
+          modelPayload: { provider: stored.value.provider, route: stored.value.route, model: stored.value.model, generatedAt: new Date(stored.value.createdAt).toISOString(), suggestionId },
+          schemaVersion: 1,
+        },
+        sources: [{
+          contextSourceId: `ai_context_source_${suggestionId}`,
+          ownerId: host.viewerUserId,
+          campaignId: destination.campaignId,
+          artifactId,
+          sourceKind: source.sourceKind,
+          sourceRefId: source.sourceRefId,
+          sourcePayload: { sourceId, title: source.title, excerpt: source.excerpt, contextFingerprint: stored.value.contextFingerprint, contextThroughSeq: stored.value.contextThroughSeq },
+          schemaVersion: 1,
+        }],
+      });
+      if ('kind' in saved) {
+        const statusCode = saved.kind === 'conflict' ? 409 : 503;
+        return errorResponse(statusCode, { kind: statusCode === 409 ? 'conflict' : 'unavailable', message: statusCode === 409 ? 'This Session AI draft was already saved.' : 'Campaign artifact storage is unavailable.', retryable: statusCode === 503 }, { requestId: input.requestId });
+      }
+      options.suggestionRegistry.consume(suggestionId);
+      const artifact: SavedCampaignArtifact = {
+        artifactId: saved.artifact.artifactId,
+        task,
+        title: saved.artifact.title,
+        ...(saved.artifact.summary ? { summary: saved.artifact.summary } : {}),
+        visibility: 'user_private',
+        suggestion,
+        sources: [source],
+        model: stored.value.model,
+        ...(saved.artifact.createdAt ? { createdAt: saved.artifact.createdAt } : {}),
+        ...(saved.artifact.updatedAt ? { updatedAt: saved.artifact.updatedAt } : {}),
+      };
+      return okResponse({ artifact, suggestionId }, { requestId: input.requestId, statusCode: 201 });
     },
   };
 }

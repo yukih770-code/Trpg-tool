@@ -1064,3 +1064,12 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - The workflow is an inline RuntimeLog aid, not a chat surface. Confirmation appends one host-only or public log event after stale/TTL/context checks.
 - Do not treat biography/quest prose as Actor, character-sheet, quest, Campaign, or Runtime state. No autonomous generation, direct write-back, GeneratedArtifact, or AI Memory is part of this chain.
 - Landmark: `EMBEDDED_RUNTIME_SESSION_AI_DRAFTS_V1`.
+
+## Session AI Campaign Artifact Persistence v1
+
+- Files: `server/api/roomSessionAssistantHandlers.ts`, `server/api/campaignArtifactAssistantHandlers.ts`, `server/services/generatedArtifactPersistence.ts`, `src/components/platform/RoomSessionAssistantDialog.tsx`, and `src/components/platform/CampaignAiArtifactPanel.tsx`.
+- Eligible post-session biography and quest-log drafts may be explicitly projected from a verified campaign RuntimeSession into one owner-private GeneratedArtifact plus append-only provenance.
+- Save must re-check active Room host, World Server owner/active admin, world/campaign/session binding, suggestion ownership/TTL/one-shot state, and latest RuntimeLog seq.
+- Session outcomes remain narrative drafts: no Actor, sheet, quest, Campaign payload, RuntimeLog, public/shared, Workshop, ProposedCommand, or AI Memory write is implied.
+- `runtime_session_projection` provenance stores only bounded metadata; raw RuntimeLog bodies are not copied. Saved session outcomes are excluded from `prior_artifacts` retrieval until a future explicit adoption contract exists.
+- Landmark: `SESSION_AI_CAMPAIGN_ARTIFACT_PERSISTENCE_V1`.

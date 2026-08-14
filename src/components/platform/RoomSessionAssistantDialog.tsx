@@ -54,6 +54,7 @@ export function RoomSessionAssistantPanel({ roomId, baseUrl, memberId, onConfirm
   const [visibility, setVisibility] = useState<RoomSessionAssistantVisibility>('hostOnly');
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [savingArtifact, setSavingArtifact] = useState(false);
   const [error, setError] = useState('');
   const controller = useRef<AbortController | null>(null);
 
@@ -112,7 +113,7 @@ export function RoomSessionAssistantPanel({ roomId, baseUrl, memberId, onConfirm
   };
 
   const confirm = async () => {
-    if (!suggestion || confirming) return;
+    if (!suggestion || confirming || savingArtifact) return;
     setConfirming(true);
     setError('');
     try {
@@ -128,6 +129,23 @@ export function RoomSessionAssistantPanel({ roomId, baseUrl, memberId, onConfirm
     }
   };
 
+  const saveArtifact = async () => {
+    if (!suggestion?.artifactDestination || savingArtifact || confirming) return;
+    setSavingArtifact(true);
+    setError('');
+    try {
+      const result = await client.saveArtifact(roomId, suggestion.suggestionId, memberId);
+      toast(`已保存到「${suggestion.artifactDestination.campaignDisplayName}」的私有 AI 成果。`);
+      setSuggestion(null);
+      setExpanded(false);
+      void result;
+    } catch (reason) {
+      setError(errorText(reason));
+    } finally {
+      setSavingArtifact(false);
+    }
+  };
+
   const ready = Boolean(status?.configured && status.reachable && !status.reason);
   const selectedTask = TASKS.find((item) => item.id === task) ?? TASKS[1];
   const focusRequired = roomSessionAssistantTaskRequiresFocus(task);
@@ -138,7 +156,7 @@ export function RoomSessionAssistantPanel({ roomId, baseUrl, memberId, onConfirm
       <button
         type="button"
         onClick={toggleExpanded}
-        disabled={confirming}
+        disabled={confirming || savingArtifact}
         className="flex w-full items-center justify-between gap-3 text-left disabled:opacity-50"
         aria-expanded={expanded}
       >
@@ -163,7 +181,7 @@ export function RoomSessionAssistantPanel({ roomId, baseUrl, memberId, onConfirm
               <button
                 key={item.id}
                 type="button"
-                disabled={loading || confirming}
+                disabled={loading || confirming || savingArtifact}
                 onClick={() => { setTask(item.id); setSuggestion(null); setError(''); }}
                 className={`rounded border p-2.5 text-left ${task === item.id ? 'border-violet-600 bg-white shadow-sm' : 'border-violet-200 bg-violet-50/40'}`}
               >
@@ -178,7 +196,7 @@ export function RoomSessionAssistantPanel({ roomId, baseUrl, memberId, onConfirm
             <textarea
               value={focus}
               onChange={(event) => setFocus(event.target.value.slice(0, 2000))}
-              disabled={loading || confirming}
+              disabled={loading || confirming || savingArtifact}
               placeholder={focusRequired ? '例如：人物“洛恩”；只整理本场可见经历与性格变化。' : `补充${selectedTask.label}需要特别关注的人物、节奏或问题。`}
               className="mt-1.5 min-h-20 w-full rounded border border-slate-300 bg-white p-2.5 text-xs outline-none focus:border-violet-500"
             />
@@ -189,7 +207,7 @@ export function RoomSessionAssistantPanel({ roomId, baseUrl, memberId, onConfirm
             {loading ? (
               <button type="button" onClick={() => controller.current?.abort()} className="shrink-0 rounded border border-slate-400 px-3 py-1.5 text-[11px] font-bold">取消生成</button>
             ) : (
-              <button type="button" onClick={() => void generate()} disabled={!ready || confirming || (focusRequired && !focus.trim())} className="shrink-0 rounded bg-violet-700 px-3 py-1.5 text-[11px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">生成待确认草稿</button>
+              <button type="button" onClick={() => void generate()} disabled={!ready || confirming || savingArtifact || (focusRequired && !focus.trim())} className="shrink-0 rounded bg-violet-700 px-3 py-1.5 text-[11px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-40">生成待确认草稿</button>
             )}
           </div>
           {loading && <p className="mt-2 text-center text-[11px] text-slate-500" aria-live="polite">正在根据服务端投影日志生成草稿…</p>}
@@ -221,9 +239,13 @@ export function RoomSessionAssistantPanel({ roomId, baseUrl, memberId, onConfirm
                 <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed">{draft}</p>
               </div>
               <p className="text-[10px] leading-relaxed text-slate-500">若日志在生成后发生变化，服务端会拒绝过期草稿。确认只追加一条新日志，不改写历史记录。</p>
+              {suggestion.artifactDestination && (suggestion.task === 'character_biography' || suggestion.task === 'quest_log') && (
+                <p className="rounded border border-violet-200 bg-violet-50 px-2.5 py-2 text-[10px] leading-relaxed text-violet-900">也可以保存为「{suggestion.artifactDestination.campaignDisplayName}」的仅本人可见会后成果；保存后可在战役详情归档或恢复，但不会写入角色卡、任务状态或战役正文。</p>
+              )}
               <div className="flex justify-end gap-2 border-t border-slate-200 pt-3">
-                <button type="button" onClick={() => setSuggestion(null)} disabled={confirming} className="rounded border border-slate-400 px-3 py-1.5 text-[11px] font-bold">放弃草稿</button>
-                <button type="button" onClick={() => void confirm()} disabled={confirming} className="rounded bg-violet-700 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50">{confirming ? '确认中…' : visibility === 'public' ? '确认公开写入' : '确认私密写入'}</button>
+                <button type="button" onClick={() => setSuggestion(null)} disabled={confirming || savingArtifact} className="rounded border border-slate-400 px-3 py-1.5 text-[11px] font-bold">放弃草稿</button>
+                {suggestion.artifactDestination && (suggestion.task === 'character_biography' || suggestion.task === 'quest_log') && <button type="button" onClick={() => void saveArtifact()} disabled={confirming || savingArtifact} className="rounded border border-violet-600 bg-white px-3 py-1.5 text-[11px] font-bold text-violet-800 disabled:opacity-50">{savingArtifact ? '保存中…' : '保存到战役成果'}</button>}
+                <button type="button" onClick={() => void confirm()} disabled={confirming || savingArtifact} className="rounded bg-violet-700 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50">{confirming ? '确认中…' : visibility === 'public' ? '确认公开写入' : '确认私密写入'}</button>
               </div>
             </section>
           )}

@@ -54,4 +54,10 @@ export function registerRoomSessionAssistantApiRoutes(
     suggestionId: req.params.suggestionId,
     body: req.body,
   }, resolveViewer(req), handlers.confirm));
+  app.post('/api/ai/rooms/:roomId/session-assistant/suggestions/:suggestionId/save-artifact', (req, res) => void invoke(req, res, {
+    roomId: req.params.roomId,
+    memberId: req.body?.memberId,
+    suggestionId: req.params.suggestionId,
+    body: req.body,
+  }, resolveViewer(req), handlers.saveArtifact));
 }

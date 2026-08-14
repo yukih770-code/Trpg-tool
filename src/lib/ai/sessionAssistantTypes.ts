@@ -1,4 +1,5 @@
 import type { RoomRuntimeLogEvent } from '../platform/roomRuntimeLogTypes.js';
+import type { SavedCampaignArtifact } from './campaignArtifactAssistantTypes.js';
 
 export type RoomSessionAssistantTask =
   | 'preparation'
@@ -29,6 +30,12 @@ export type RoomSessionAssistantSuggestionResult = {
   createdAt: number;
   expiresAt: number;
   contextThroughSeq: number;
+  artifactDestination?: {
+    worldServerId: string;
+    campaignId: string;
+    runtimeSessionId: string;
+    campaignDisplayName: string;
+  };
   suggestion: RoomSessionAssistantSuggestion;
 };
 
@@ -45,6 +52,11 @@ export type RoomSessionAssistantConfirmInput = {
 
 export type RoomSessionAssistantConfirmResult = {
   event: RoomRuntimeLogEvent;
+  suggestionId: string;
+};
+
+export type RoomSessionAssistantSaveArtifactResult = {
+  artifact: SavedCampaignArtifact;
   suggestionId: string;
 };
 

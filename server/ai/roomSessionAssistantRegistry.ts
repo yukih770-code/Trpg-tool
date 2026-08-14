@@ -5,6 +5,7 @@ export type StoredRoomSessionAssistantSuggestion = RoomSessionAssistantSuggestio
   memberId: string;
   viewerUserId: string;
   contextFingerprint: string;
+  focus?: string;
 };
 
 export interface RoomSessionAssistantSuggestionRegistry {

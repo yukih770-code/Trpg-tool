@@ -10,6 +10,7 @@ import { approveMember } from '../services/approveMember.js';
 import { createRoom } from '../services/createRoom.js';
 import { joinRoom } from '../services/joinRoom.js';
 import type { RoomSessionAssistantTask, RoomSessionAssistantSuggestionResult } from '../../src/lib/ai/sessionAssistantTypes.js';
+import type { GeneratedArtifactPersistencePort } from '../services/generatedArtifactPersistence.js';
 import { createRoomSessionAssistantApiHandlers } from './roomSessionAssistantHandlers.js';
 
 function viewer(userId: string | null): CurrentViewerContext {
@@ -24,7 +25,14 @@ function viewer(userId: string | null): CurrentViewerContext {
 }
 
 const rooms = createInMemoryRoomRegistry();
-const created = createRoom({ displayName: '雾港之夜', hostDisplayName: '主持人', hostUserId: 'user_host', systemId: 'dnd5e-2024' }).room;
+const created = createRoom({
+  displayName: '雾港之夜',
+  hostDisplayName: '主持人',
+  hostUserId: 'user_host',
+  systemId: 'dnd5e-2024',
+  sessionId: 'runtime_session_1',
+  campaignRef: { source: 'localCampaignLibrary', worldServerId: 'world_1', campaignId: 'campaign_1', displayName: '雾港战役', systemId: 'dnd5e-2024' },
+}).room;
 rooms.create(created);
 const host = created.members[0]!;
 const joined = joinRoom(rooms, {
@@ -46,6 +54,8 @@ const seed = appendRuntimeLogEvent(rooms, logs, {
   text: '真正的幕后线索',
 });
 assert.equal(seed.decision, 'appended');
+assert(seed.event);
+assert.equal(logs.confirmPending(created.identity.roomId, seed.event.eventId), 'confirmed');
 
 let requestSeen: StructuredModelRequest | undefined;
 let routingModelSeen = '';
@@ -100,6 +110,8 @@ const gateway: ModelGateway = {
 
 let clock = 10_000;
 let roomRuntimeReady = false;
+let campaignManagerAllowed = true;
+let persistedArtifactInput: Parameters<GeneratedArtifactPersistencePort['createArtifactWithSources']>[0] | undefined;
 const broadcasts: string[] = [];
 const handlers = createRoomSessionAssistantApiHandlers({
   roomRegistry: rooms,
@@ -109,8 +121,49 @@ const handlers = createRoomSessionAssistantApiHandlers({
   suggestionRegistry: createRoomSessionAssistantSuggestionRegistry({ now: () => clock }),
   now: () => clock,
   ttlMs: 60_000,
+  campaignArtifactWorldRepository: {
+    getWorldServerById: async () => ({ ok: true, value: { ownerId: campaignManagerAllowed ? 'user_host' : 'another_owner' } }),
+    getWorldServerMembershipByUser: async () => ({ ok: true, value: campaignManagerAllowed ? { roleKey: 'admin', membershipStatus: 'active' } : { roleKey: 'player', membershipStatus: 'active' } }),
+    getWorldServerCampaignBindingByPair: async () => ({ ok: true, value: {} }),
+  },
+  campaignArtifactPersistence: {
+    createArtifactWithSources: async (input) => {
+      persistedArtifactInput = input;
+      return {
+        ok: true,
+        artifact: {
+          artifactId: input.artifact.artifactId,
+          ownerId: input.artifact.ownerId,
+          campaignId: input.artifact.campaignId,
+          runtimeSessionId: input.artifact.runtimeSessionId,
+          artifactKind: input.artifact.artifactKind,
+          title: input.artifact.title,
+          summary: input.artifact.summary,
+          contentFormat: input.artifact.contentFormat ?? 'structured_json',
+          visibilityScope: input.artifact.visibilityScope ?? 'user_private',
+          payload: input.artifact.payload ?? {},
+          sourcePayload: input.artifact.sourcePayload ?? {},
+          modelPayload: input.artifact.modelPayload ?? {},
+          schemaVersion: input.artifact.schemaVersion ?? 1,
+          createdAt: new Date(clock).toISOString(),
+          updatedAt: new Date(clock).toISOString(),
+        },
+        sources: input.sources.map((source) => ({
+          contextSourceId: source.contextSourceId,
+          ownerId: source.ownerId,
+          campaignId: source.campaignId,
+          artifactId: source.artifactId,
+          sourceKind: source.sourceKind,
+          sourceRefId: source.sourceRefId,
+          sourcePayload: source.sourcePayload ?? {},
+          schemaVersion: source.schemaVersion ?? 1,
+        })),
+      };
+    },
+    createMemoryWithSources: async () => ({ ok: false, kind: 'database_error', retryable: false }),
+  },
   isRoomRuntimeReady: () => roomRuntimeReady,
-  confirmRuntimeLogAppend: async () => true,
+  confirmRuntimeLogAppend: async (event) => logs.confirmPending(event.roomId, event.eventId) === 'confirmed',
   broadcastRuntimeLogAppended: (_roomId, events) => broadcasts.push(...events.map((event) => event.eventId)),
 });
 const base = { roomId: created.identity.roomId, viewer: viewer('user_host'), memberId: host.memberId };
@@ -135,13 +188,16 @@ assert(!requestSeen?.prompt.includes(host.memberId));
 assert(!requestSeen?.prompt.includes(created.identity.roomId));
 const staleValue = staleDraft.ok ? staleDraft.value as RoomSessionAssistantSuggestionResult : undefined;
 assert(staleValue);
-assert.equal(appendRuntimeLogEvent(rooms, logs, {
+const contextChange = appendRuntimeLogEvent(rooms, logs, {
   roomId: created.identity.roomId,
   authorMemberId: host.memberId,
   kind: 'host.note',
   visibility: 'hostOnly',
   text: '上下文随后发生变化',
-}).decision, 'appended');
+});
+assert.equal(contextChange.decision, 'appended');
+assert(contextChange.event);
+assert.equal(logs.confirmPending(created.identity.roomId, contextChange.event.eventId), 'confirmed');
 assert.equal((await handlers.confirm({ ...base, suggestionId: staleValue.suggestionId, body: { visibility: 'hostOnly' } })).statusCode, 409);
 
 const privateDraft = await handlers.generate({ ...base, body: { memberId: host.memberId, task: 'in_session' } });
@@ -187,6 +243,40 @@ assert.equal(questValue.task, 'quest_log');
 assert((await handlers.confirm({ ...base, suggestionId: questValue.suggestionId, body: { visibility: 'hostOnly' } })).ok);
 assert.equal(broadcasts.length, 4);
 
+const savedBiographyDraft = await handlers.generate({ ...base, body: { memberId: host.memberId, task: 'character_biography', focus: '人物：洛恩' } });
+assert(savedBiographyDraft.ok);
+const savedBiographyValue = savedBiographyDraft.value as RoomSessionAssistantSuggestionResult;
+assert.equal(savedBiographyValue.artifactDestination?.runtimeSessionId, 'runtime_session_1');
+const savedBiography = await handlers.saveArtifact({ ...base, suggestionId: savedBiographyValue.suggestionId, body: { memberId: host.memberId } });
+assert(savedBiography.ok);
+assert.equal(savedBiography.statusCode, 201);
+assert.equal(persistedArtifactInput?.artifact.campaignId, 'campaign_1');
+assert.equal(persistedArtifactInput?.artifact.runtimeSessionId, 'runtime_session_1');
+assert.equal(persistedArtifactInput?.artifact.artifactKind, 'room_session_ai_character_biography');
+assert.equal(persistedArtifactInput?.artifact.visibilityScope, 'user_private');
+assert.equal(persistedArtifactInput?.sources.length, 1);
+assert.equal(persistedArtifactInput?.sources[0]?.sourceKind, 'runtime_session_projection');
+assert(!JSON.stringify(persistedArtifactInput?.artifact.sourcePayload).includes('真正的幕后线索'));
+assert.equal((await handlers.saveArtifact({ ...base, suggestionId: savedBiographyValue.suggestionId, body: { memberId: host.memberId } })).statusCode, 404);
+
+const ineligibleDraft = await handlers.generate({ ...base, body: { memberId: host.memberId, task: 'recap' } });
+assert(ineligibleDraft.ok);
+assert.equal((await handlers.saveArtifact({ ...base, suggestionId: (ineligibleDraft.value as RoomSessionAssistantSuggestionResult).suggestionId, body: { memberId: host.memberId } })).statusCode, 409);
+
+campaignManagerAllowed = false;
+const unauthorizedSaveDraft = await handlers.generate({ ...base, body: { memberId: host.memberId, task: 'quest_log' } });
+assert(unauthorizedSaveDraft.ok);
+assert.equal((await handlers.saveArtifact({ ...base, suggestionId: (unauthorizedSaveDraft.value as RoomSessionAssistantSuggestionResult).suggestionId, body: { memberId: host.memberId } })).statusCode, 403);
+campaignManagerAllowed = true;
+
+const staleSaveDraft = await handlers.generate({ ...base, body: { memberId: host.memberId, task: 'quest_log' } });
+assert(staleSaveDraft.ok);
+const saveContextChange = appendRuntimeLogEvent(rooms, logs, { roomId: created.identity.roomId, authorMemberId: host.memberId, kind: 'host.note', visibility: 'hostOnly', text: '保存前日志变化' });
+assert.equal(saveContextChange.decision, 'appended');
+assert(saveContextChange.event);
+assert.equal(logs.confirmPending(created.identity.roomId, saveContextChange.event.eventId), 'confirmed');
+assert.equal((await handlers.saveArtifact({ ...base, suggestionId: (staleSaveDraft.value as RoomSessionAssistantSuggestionResult).suggestionId, body: { memberId: host.memberId } })).statusCode, 409);
+
 const expiringDraft = await handlers.generate({ ...base, body: { memberId: host.memberId, task: 'preparation' } });
 assert(expiringDraft.ok);
 clock += 60_001;
@@ -202,4 +292,4 @@ assert.equal((await handlers.generate({ ...base, body: { memberId: host.memberId
 forceMismatchedTask = false;
 assert.equal((await handlers.confirm({ ...base, suggestionId: 'missing', body: { visibility: 'actorPrivate' } })).statusCode, 400);
 
-console.log('Room Session AI API handler smoke passed: host authority, server projection, stale/expiry rejection, one-shot append, and public redaction.');
+console.log('Room Session AI API handler smoke passed: host/manager authority, bounded projection, stale/expiry rejection, one-shot RuntimeLog append, private campaign artifact persistence, and public redaction.');

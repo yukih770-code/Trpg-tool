@@ -1,12 +1,12 @@
 import { createApiClient, type ApiClientOptions } from './apiClient';
 import type { AiModelGatewayStatus } from '../ai/dndCharacterAssistantTypes';
 import { currentAiRoutingHeaders } from '../ai/modelRoutingPreference';
-import type { CampaignArtifactSourceFamily, CampaignArtifactSuggestionResult, CampaignArtifactTask, SavedCampaignArtifact } from '../ai/campaignArtifactAssistantTypes';
+import type { CampaignArtifactGenerationTask, CampaignArtifactSourceFamily, CampaignArtifactSuggestionResult, SavedCampaignArtifact } from '../ai/campaignArtifactAssistantTypes';
 
 export interface CampaignArtifactAssistantApiClient {
   status(worldServerId: string, campaignId: string, signal?: AbortSignal): Promise<AiModelGatewayStatus>;
   list(worldServerId: string, campaignId: string, includeArchived?: boolean, signal?: AbortSignal): Promise<SavedCampaignArtifact[]>;
-  generate(worldServerId: string, campaignId: string, input: { task: CampaignArtifactTask; focus?: string; sourceFamilies: CampaignArtifactSourceFamily[] }, signal?: AbortSignal): Promise<CampaignArtifactSuggestionResult>;
+  generate(worldServerId: string, campaignId: string, input: { task: CampaignArtifactGenerationTask; focus?: string; sourceFamilies: CampaignArtifactSourceFamily[] }, signal?: AbortSignal): Promise<CampaignArtifactSuggestionResult>;
   confirm(worldServerId: string, campaignId: string, suggestionId: string): Promise<SavedCampaignArtifact>;
   adopt(worldServerId: string, campaignId: string, artifactId: string): Promise<SavedCampaignArtifact>;
   withdrawAdoption(worldServerId: string, campaignId: string, artifactId: string): Promise<SavedCampaignArtifact>;

@@ -116,6 +116,7 @@ import { registerRoomSessionAssistantApiRoutes } from './api/roomSessionAssistan
 import { createRoomSessionAssistantApiHandlers } from './api/roomSessionAssistantHandlers.js';
 import { registerCampaignArtifactAssistantApiRoutes } from './api/campaignArtifactAssistantRoutes.js';
 import { createCampaignArtifactAssistantApiHandlers } from './api/campaignArtifactAssistantHandlers.js';
+import { createPostgresGeneratedArtifactPersistence } from './services/generatedArtifactPersistence.js';
 import { createPrivateAlphaAuthService, readPrivateAlphaAuthConfigFromEnv } from './auth/privateAlphaAuth.js';
 import { getVerifiedViewer, setPrivateAlphaViewer } from './auth/requestViewer.js';
 import { createCurrentViewerContextFromAuthSession, type CurrentViewerContext } from './auth/currentViewerContext.js';
@@ -467,6 +468,8 @@ registerRoomSessionAssistantApiRoutes(app, createRoomSessionAssistantApiHandlers
   roomMapRegistry,
   gateway: modelGateway,
   suggestionRegistry: roomSessionAssistantSuggestionRegistry,
+  campaignArtifactPersistence: createPostgresGeneratedArtifactPersistence(),
+  campaignArtifactWorldRepository: worldServerRepository,
   isRoomRuntimeReady: () => startupRecoveryReadiness.snapshot().status === 'ready' && liveRoomDurabilityCircuit.isReady(),
   confirmRuntimeLogAppend,
   broadcastRuntimeLogAppended: (roomId, events) => roomSocketServer.broadcastRuntimeLogAppended(roomId, events),

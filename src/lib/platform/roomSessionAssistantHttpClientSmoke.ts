@@ -28,6 +28,8 @@ const client = createRoomSessionAssistantHttpClient({
       ? { configured: true, reachable: true, provider: 'ollama', route: 'local', model: 'local-model', capabilities: [] }
       : String(url).endsWith('/confirm')
         ? { suggestionId: suggestion.suggestionId, event: { eventId: 'event-1', roomId: 'room/one', seq: 5, createdAt: new Date().toISOString(), kind: 'host.note', visibility: 'public', text: '公开草稿' } }
+        : String(url).endsWith('/save-artifact')
+          ? { suggestionId: suggestion.suggestionId, artifact: { artifactId: 'artifact-1', task: 'session_quest_log', title: '任务日志', visibility: 'user_private', suggestion: {}, sources: [] } }
         : suggestion;
     return new Response(JSON.stringify({ ok: true, statusCode: 200, value }), {
       status: 200,
@@ -42,6 +44,7 @@ assert.equal(selectRoomSessionAssistantDraft(suggestion.suggestion, 'public'), '
 await client.status('room/one', 'member host');
 await client.generate('room/one', { memberId: 'member host', task: 'recap', focus: '只写事实' });
 await client.confirm('room/one', 'suggestion/one', 'member host', 'public');
+await client.saveArtifact('room/one', 'suggestion/one', 'member host');
 
 assert.equal(calls[0]?.url, 'https://runtime.example.test/api/ai/rooms/room%2Fone/session-assistant/status?memberId=member+host');
 assert.equal(calls[0]?.init?.credentials, 'include');
@@ -51,5 +54,7 @@ assert.equal(new Headers(calls[1]?.init?.headers).get('x-trpg-ai-mode'), 'auto')
 assert.equal(calls[1]?.init?.body, JSON.stringify({ memberId: 'member host', task: 'recap', focus: '只写事实' }));
 assert.equal(calls[2]?.url, 'https://runtime.example.test/api/ai/rooms/room%2Fone/session-assistant/suggestions/suggestion%2Fone/confirm');
 assert.equal(calls[2]?.init?.body, JSON.stringify({ memberId: 'member host', visibility: 'public' }));
+assert.equal(calls[3]?.url, 'https://runtime.example.test/api/ai/rooms/room%2Fone/session-assistant/suggestions/suggestion%2Fone/save-artifact');
+assert.equal(calls[3]?.init?.body, JSON.stringify({ memberId: 'member host' }));
 
 console.log('Room Session AI HTTP client smoke passed.');

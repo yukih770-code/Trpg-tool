@@ -9,16 +9,20 @@ const server = { worldServerId: 'server-1', ownerId: 'user-1', serverHandle: 'gr
 let invalidCitation = false;
 let nextTask: CampaignArtifactTask = 'preparation_brief';
 let citationSourceId = 'campaign:campaign-1';
+let lastCampaignPrompt = '';
 const gateway: ModelGateway = {
   catalog: async () => ({ local: { configured: true, reachable: true, defaultModel: 'qwen3.6:8b' }, cloud: { configured: false, reason: 'not-implemented' }, models: [], refreshedAt: Date.now() }),
   status: async () => ({ configured: true, reachable: true, provider: 'ollama', route: 'local', model: 'qwen3.6:8b', capabilities: ['structured-output'] }),
   generateDndCharacterSuggestion: async () => { throw new Error('not used'); },
   generateRoomSessionSuggestion: async () => { throw new Error('not used'); },
-  generateCampaignArtifactSuggestion: async (_request, _signal, preference) => ({
+  generateCampaignArtifactSuggestion: async (request, _signal, preference) => {
+    lastCampaignPrompt = request.prompt;
+    return ({
     suggestionId: `suggestion-${Date.now()}`,
     task: nextTask, provider: 'ollama', route: 'local', model: preference?.mode === 'local' ? preference.localModel ?? 'qwen3.6:8b' : 'qwen3.6:8b', createdAt: Date.now(),
     suggestion: { version: 1, task: nextTask, title: nextTask === 'worldbuilding_outline' ? '世界观提案' : nextTask === 'adventure_seed' ? '冒险种子提案' : '下次备团简报', summary: '围绕商队失踪展开。', sections: [{ heading: '开场', body: '从灰雾中的求救信号开始。', sourceIds: [invalidCitation ? 'invented-source' : citationSourceId] }], uncertainties: ['失踪原因尚未提供。'], suggestedNextSteps: ['准备两名可替换 NPC。'] },
-  }),
+    });
+  },
 };
 
 const artifacts: GeneratedArtifactRecord[] = [];
@@ -100,6 +104,40 @@ assert.deepEqual(
   ['preparation_brief', 'worldbuilding_outline', 'adventure_seed'],
   'saved creative artifacts must pass the shared parser and remain readable',
 );
+
+const sessionArtifact: GeneratedArtifactRecord = {
+  artifactId: 'generated_artifact_ai_session_saved',
+  ownerId: 'user-1',
+  campaignId: 'campaign-1',
+  runtimeSessionId: 'runtime-session-1',
+  artifactKind: 'room_session_ai_character_biography',
+  title: '洛恩人物传记草稿',
+  summary: '从本场日志整理的人物经历。',
+  contentFormat: 'structured_json',
+  visibilityScope: 'user_private',
+  payload: { suggestion: { version: 1, task: 'session_character_biography', title: '洛恩人物传记草稿', summary: '从本场日志整理的人物经历。', sections: [{ heading: '人物传记草稿', body: '洛恩在雾港发现了新的线索。', sourceIds: ['runtime_session_projection:runtime-session-1:8'] }], uncertainties: ['动机待主持人确认'], suggestedNextSteps: ['复核后再决定是否写入正式人物资料'] } },
+  sourcePayload: { sources: [{ sourceId: 'runtime_session_projection:runtime-session-1:8', sourceKind: 'runtime_session_projection', sourceRefId: 'runtime-session-1', title: '雾港 · RuntimeLog 投影', excerpt: '主持人有权查看的 RuntimeLog 截至 seq 8；原始日志正文未复制到成果来源摘要。' }] },
+  modelPayload: { model: 'qwen3.6:8b' },
+  schemaVersion: 1,
+  createdAt: '2026-08-14T00:20:00.000Z',
+  updatedAt: '2026-08-14T00:20:00.000Z',
+};
+artifacts.push(sessionArtifact);
+const listWithSessionOutcome = await handlers.list({ viewer, params, query: {} });
+assert.equal(listWithSessionOutcome.statusCode, 200);
+const projectedSessionOutcome = (listWithSessionOutcome as unknown as { value: Array<{ artifactId: string; task: CampaignArtifactTask; sources: Array<{ sourceKind: string }> }> }).value.find((item) => item.artifactId === sessionArtifact.artifactId);
+assert.equal(projectedSessionOutcome?.task, 'session_character_biography');
+assert.equal(projectedSessionOutcome?.sources[0]?.sourceKind, 'runtime_session_projection');
+assert.equal((await handlers.archive({ viewer, params: { ...params, artifactId: sessionArtifact.artifactId } })).statusCode, 200);
+assert.ok(sessionArtifact.archivedAt);
+assert.equal((await handlers.restore({ viewer, params: { ...params, artifactId: sessionArtifact.artifactId } })).statusCode, 200);
+assert.equal(sessionArtifact.archivedAt, undefined);
+
+nextTask = 'campaign_recap';
+citationSourceId = `generated_artifact:${artifacts[0].artifactId}`;
+const priorArtifactDraft = await handlers.generate({ viewer, params, body: { task: 'campaign_recap', sourceFamilies: ['prior_artifacts'] } });
+assert.equal(priorArtifactDraft.statusCode, 200);
+assert(!lastCampaignPrompt.includes(sessionArtifact.title), 'saved Session outcomes must not silently enter later AI retrieval');
 
 const worldbuildingArtifact = artifacts.find((item) => item.artifactKind === 'campaign_ai_worldbuilding_outline');
 assert.ok(worldbuildingArtifact);

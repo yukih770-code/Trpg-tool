@@ -1,6 +1,8 @@
-export type CampaignArtifactTask = 'preparation_brief' | 'campaign_recap' | 'worldbuilding_outline' | 'adventure_seed';
+export type CampaignArtifactGenerationTask = 'preparation_brief' | 'campaign_recap' | 'worldbuilding_outline' | 'adventure_seed';
+export type SessionArtifactTask = 'session_character_biography' | 'session_quest_log';
+export type CampaignArtifactTask = CampaignArtifactGenerationTask | SessionArtifactTask;
 export type CampaignArtifactSourceFamily = 'campaign_summary' | 'actor_summaries' | 'room_summaries' | 'prior_artifacts' | 'adopted_memories';
-export type CampaignArtifactSourceKind = 'campaign_summary' | 'campaign_actor_summary' | 'campaign_room_summary' | 'prior_artifact' | 'adopted_memory';
+export type CampaignArtifactSourceKind = 'campaign_summary' | 'campaign_actor_summary' | 'campaign_room_summary' | 'prior_artifact' | 'adopted_memory' | 'runtime_session_projection';
 
 export type CampaignArtifactSource = {
   sourceId: string;
@@ -98,6 +100,10 @@ function textList(value: unknown, maxItems: number, maxLength: number, allowEmpt
 }
 
 export function isCampaignArtifactTask(value: unknown): value is CampaignArtifactTask {
+  return isCampaignArtifactGenerationTask(value) || value === 'session_character_biography' || value === 'session_quest_log';
+}
+
+export function isCampaignArtifactGenerationTask(value: unknown): value is CampaignArtifactGenerationTask {
   return value === 'preparation_brief' || value === 'campaign_recap' || value === 'worldbuilding_outline' || value === 'adventure_seed';
 }
 

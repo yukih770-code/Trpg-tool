@@ -17,7 +17,7 @@ import { parseAiRoutingPreferenceHeaders } from '../../src/lib/ai/modelRoutingTy
 import {
   CAMPAIGN_ARTIFACT_OUTPUT_SCHEMA,
   isCampaignArtifactSourceFamily,
-  isCampaignArtifactTask,
+  isCampaignArtifactGenerationTask,
   isCreativeCampaignArtifactTask,
   parseCampaignArtifactSuggestion,
   validateCampaignArtifactCitations,
@@ -103,6 +103,14 @@ function isCampaignAiArtifact(record: GeneratedArtifactRecord): boolean {
   return record.artifactKind === 'campaign_ai_preparation_brief'
     || record.artifactKind === 'campaign_ai_campaign_recap'
     || record.artifactKind === 'campaign_ai_worldbuilding_outline'
+    || record.artifactKind === 'campaign_ai_adventure_seed'
+    || record.artifactKind === 'room_session_ai_character_biography'
+    || record.artifactKind === 'room_session_ai_quest_log';
+}
+function isCampaignGeneratedArtifact(record: GeneratedArtifactRecord): boolean {
+  return record.artifactKind === 'campaign_ai_preparation_brief'
+    || record.artifactKind === 'campaign_ai_campaign_recap'
+    || record.artifactKind === 'campaign_ai_worldbuilding_outline'
     || record.artifactKind === 'campaign_ai_adventure_seed';
 }
 function projectedSource(value: unknown): SavedCampaignArtifact['sources'][number] | null {
@@ -113,7 +121,7 @@ function projectedSource(value: unknown): SavedCampaignArtifact['sources'][numbe
   const sourceRefId = string(source?.sourceRefId);
   const title = string(source?.title, 300);
   const excerpt = string(source?.excerpt, 4_000);
-  const kinds = new Set(['campaign_summary', 'campaign_actor_summary', 'campaign_room_summary', 'prior_artifact', 'adopted_memory']);
+  const kinds = new Set(['campaign_summary', 'campaign_actor_summary', 'campaign_room_summary', 'prior_artifact', 'adopted_memory', 'runtime_session_projection']);
   if (!sourceId || typeof sourceKind !== 'string' || !kinds.has(sourceKind) || !sourceRefId || !title || !excerpt) return null;
   return { sourceId, sourceKind: sourceKind as SavedCampaignArtifact['sources'][number]['sourceKind'], sourceRefId, title, excerpt, ...(typeof source.updatedAt === 'string' ? { updatedAt: source.updatedAt } : {}) };
 }
@@ -244,7 +252,7 @@ export function createCampaignArtifactAssistantApiHandlers(options: CreateCampai
       ownedMemories(access, false),
     ]);
     if (!actors.ok || !rooms.ok || 'statusCode' in artifacts || 'statusCode' in memories) return repositoryFailure();
-    return buildCampaignArtifactContext({ viewerUserId: access.viewerUserId, server: access.server, membership: access.membership, campaign: access.campaign, actors: actors.value, rooms: rooms.value, priorArtifacts: artifacts, adoptedMemories: memories, sourceFamilies: families });
+    return buildCampaignArtifactContext({ viewerUserId: access.viewerUserId, server: access.server, membership: access.membership, campaign: access.campaign, actors: actors.value, rooms: rooms.value, priorArtifacts: artifacts.filter(isCampaignGeneratedArtifact), adoptedMemories: memories, sourceFamilies: families });
   }
 
   async function mutateArtifact(input: CampaignArtifactAssistantApiRequest, restore: boolean): Promise<ApiResult> {
@@ -288,7 +296,7 @@ export function createCampaignArtifactAssistantApiHandlers(options: CreateCampai
       const task = body?.task;
       const focus = body?.focus === undefined ? undefined : string(body.focus, 1_200);
       const rawFamilies = body?.sourceFamilies;
-      if (!isCampaignArtifactTask(task) || !Array.isArray(rawFamilies) || rawFamilies.length < 1 || rawFamilies.length > 5 || !rawFamilies.every(isCampaignArtifactSourceFamily) || (body?.focus !== undefined && focus === undefined)) return errorResponse(400, { kind: 'validation', message: 'Invalid Campaign AI request.' }, { requestId: input.requestId });
+      if (!isCampaignArtifactGenerationTask(task) || !Array.isArray(rawFamilies) || rawFamilies.length < 1 || rawFamilies.length > 5 || !rawFamilies.every(isCampaignArtifactSourceFamily) || (body?.focus !== undefined && focus === undefined)) return errorResponse(400, { kind: 'validation', message: 'Invalid Campaign AI request.' }, { requestId: input.requestId });
       const families = [...new Set(rawFamilies)] as CampaignArtifactSourceFamily[];
       const projected = await context(access, families);
       if ('statusCode' in projected) return projected;

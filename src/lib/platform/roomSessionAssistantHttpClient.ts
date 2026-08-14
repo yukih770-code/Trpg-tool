@@ -5,6 +5,7 @@ import type {
   RoomSessionAssistantConfirmResult,
   RoomSessionAssistantGenerateInput,
   RoomSessionAssistantSuggestionResult,
+  RoomSessionAssistantSaveArtifactResult,
   RoomSessionAssistantVisibility,
 } from '../ai/sessionAssistantTypes';
 
@@ -12,6 +13,7 @@ export type RoomSessionAssistantHttpClient = {
   status(roomId: string, memberId: string, signal?: AbortSignal): Promise<AiModelGatewayStatus>;
   generate(roomId: string, input: RoomSessionAssistantGenerateInput, signal?: AbortSignal): Promise<RoomSessionAssistantSuggestionResult>;
   confirm(roomId: string, suggestionId: string, memberId: string, visibility: RoomSessionAssistantVisibility): Promise<RoomSessionAssistantConfirmResult>;
+  saveArtifact(roomId: string, suggestionId: string, memberId: string): Promise<RoomSessionAssistantSaveArtifactResult>;
 };
 
 export function createRoomSessionAssistantHttpClient(options: ApiClientOptions = {}): RoomSessionAssistantHttpClient {
@@ -30,6 +32,10 @@ export function createRoomSessionAssistantHttpClient(options: ApiClientOptions =
     confirm: (roomId, suggestionId, memberId, visibility) => client.request(`/api/ai/rooms/${encodeURIComponent(roomId)}/session-assistant/suggestions/${encodeURIComponent(suggestionId)}/confirm`, {
       method: 'POST',
       body: JSON.stringify({ memberId, visibility }),
+    }),
+    saveArtifact: (roomId, suggestionId, memberId) => client.request(`/api/ai/rooms/${encodeURIComponent(roomId)}/session-assistant/suggestions/${encodeURIComponent(suggestionId)}/save-artifact`, {
+      method: 'POST',
+      body: JSON.stringify({ memberId }),
     }),
   };
 }
