@@ -1020,6 +1020,19 @@ This file helps AI quickly locate important types, helper functions, store actio
 - `verifyPrivateAlphaAcceptancePreflight.ts`: read-only operator command; reads frontend, `/health`, and `/api/auth/me`, performs no sign-in or write.
 - Focused smoke: `server/config/privateAlphaAcceptancePreflightSmoke.ts`; commands `npm run alpha:verify:acceptance-preflight-contract` and `npm run alpha:verify:acceptance-preflight`.
 
+## Local AI Kernel + DND Character Assistant
+
+- `AI-LANDMARK: LOCAL_AI_KERNEL_DND_CHARACTER_ASSISTANT_V1`: backend Model Gateway, Ollama provider, authenticated API, DND Builder assistant, deterministic commit/audit chain.
+- `readLocalModelGatewayConfig()`: server-only provider/model/base URL/timeout parsing and safety validation — `server/config/modelGatewayConfig.ts`.
+- `createModelGateway()` / `ModelGatewayError`: provider-neutral structured inference, cancellation, timeout, output validation, and normalized failure contract — `server/ai/modelGateway.ts`.
+- `createLocalOllamaProvider()`: real `/api/tags` availability check and schema-constrained `/api/chat` call — `server/ai/localOllamaProvider.ts`.
+- `createConfiguredModelGateway()`: environment-to-provider composition seam — `server/ai/modelGatewayComposition.ts`.
+- `createAiCharacterAssistantApiHandlers()` / `registerAiCharacterAssistantApiRoutes()`: authenticated status and DND suggestion endpoints — `server/api/aiCharacterAssistantHandlers.ts`, `server/api/aiCharacterAssistantRoutes.ts`.
+- `buildDndCharacterAssistantRequest()` / `buildDndCharacterAssistantPlan()`: bounded owner context and deterministic local validation/preview — `src/lib/ai/dndCharacterAssistant.ts`.
+- `commitDndCharacterAssistantPlan()` / `undoLastDndCharacterAssistantCommit()`: stale-guarded atomic Owned Actor update, bounded local audit, and exact-snapshot undo — `src/store/characterStore.ts`.
+- `DndCharacterAssistantDialog`: contextual Builder entry and loading/unavailable/error/cancel/preview/confirm/audit UI — `src/components/dnd/DndCharacterAssistantDialog.tsx`.
+- Focused smokes: `npm run ai:verify:model-gateway`, `npm run api:verify:dnd-character-assistant`, `npm run frontend:verify:dnd-character-assistant`.
+
 ## General Search Notes
 
 - If a symbol listed here cannot be found, use targeted search for the exact symbol name.

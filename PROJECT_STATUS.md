@@ -648,6 +648,21 @@ Landmark: `DND_LEVEL_ADVANCEMENT_CHAIN_V1`.
 
 ---
 
+## Local AI Kernel + DND Character Assistant v1
+
+- A provider-neutral backend Model Gateway now composes from server-only environment configuration. Its first real provider checks installed Ollama models through `/api/tags` and requests schema-constrained output through `/api/chat`.
+- Authenticated status and suggestion endpoints normalize not-configured, unavailable, timeout, cancellation, provider, and invalid-output failures without returning the provider URL or secrets to the browser.
+- The DND Builder sends only a bounded owner-private Actor summary and available option names. It does not read Campaign, Room, Runtime, inventory, private GM data, or another user's Actor.
+- Model output is never written directly. A deterministic plan verifies local class/background/origin-feat options, completed-character limits, background/feat consistency, and the exact 27-point-buy budget before exposing confirmation.
+- Confirm atomically updates the active compatibility character and its `characters[]` Owned Actor row with an exact stale-plan guard. A bounded local audit records apply/revert actions; one-step undo succeeds only while the Actor still matches the committed snapshot.
+- The Builder exposes truthful loading, unavailable, model-missing, error, cancel, preview, warning, discard, confirm, stale, audit, and undo states. No separate chatbot route or parallel Builder was added.
+- The project does not bundle or install a model. Protocol and failure behavior are covered by deterministic fake-provider/Ollama-fetch smokes; a live inference acceptance requires the deployer to configure and run a real local model.
+- Cloud providers, billing, shared server-side AI artifacts, Campaign/Session AI, Runtime advice, spell/equipment generation, and automatic effects remain out of scope.
+
+Landmark: `LOCAL_AI_KERNEL_DND_CHARACTER_ASSISTANT_V1`.
+
+---
+
 ## Build Status
 
 | Check | Status |

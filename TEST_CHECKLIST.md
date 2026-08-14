@@ -1631,6 +1631,27 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8ak. Local AI Kernel + DND Character Assistant v1
+
+- [x] Backend-only configuration rejects unsafe provider URLs and does not expose provider URLs or secrets to the browser
+- [x] Unconfigured, unreachable, model-missing, timeout, cancellation, provider-error, and invalid-output states are normalized truthfully
+- [x] Ollama status checks `/api/tags`; structured generation uses `/api/chat` with a JSON schema and no streaming
+- [x] Status and suggestion endpoints require the existing verified viewer boundary
+- [x] The request contains only a bounded owner Actor summary and available option names, with no inventory, Campaign, Room, Runtime, GM-private, or other-user context
+- [x] Model output is runtime-parsed and then deterministically validated against local options, completed-character limits, background/origin-feat consistency, and exact 27-point buy
+- [x] Loading, unavailable, model-missing, error, cancel, preview, warning, discard, confirm, stale, audit, and undo states are represented in the existing Builder
+- [x] Confirm is the only write boundary and atomically updates the active character plus its Owned Actor vault row
+- [x] Stale suggestions cannot overwrite later edits; undo requires an exact committed snapshot
+- [x] Audit is bounded and locally persistent; cloud/shared AI artifact persistence is not claimed
+- [x] No Campaign, Room, Runtime, visibility projection, billing, rule data, character schema, or migration changed
+- [x] `npm run ai:verify:model-gateway` passes
+- [x] `npm run api:verify:dnd-character-assistant` passes
+- [x] `npm run frontend:verify:dnd-character-assistant` passes
+- [x] TypeScript, server build, frontend build, existing DND creation/advancement regressions, AI scope/retrieval policies, and diff checks pass
+- [ ] Live Ollama inference acceptance passes after a deployer installs and configures a local model (not bundled by this repository)
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

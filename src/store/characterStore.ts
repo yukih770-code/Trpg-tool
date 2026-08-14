@@ -10,6 +10,12 @@ import {
   type DndLevelAdvancementPlan,
   type DndLevelAdvancementReceipt,
 } from '../lib/dnd2024/dndLevelAdvancement';
+import {
+  canUndoDndCharacterAssistantCommit,
+  type DndCharacterAssistantAuditRecord,
+  type DndCharacterAssistantCommitReceipt,
+  type DndCharacterAssistantPlan,
+} from '../lib/ai/dndCharacterAssistant';
 
 export type DndSpellcastingResourceConsumption = {
   ok: boolean;
@@ -157,6 +163,8 @@ interface CharacterState {
   characters: CharacterData[];
   activeCharacterId: string | null;
   lastLevelAdvancement: DndLevelAdvancementReceipt | null;
+  dndCharacterAssistantAudit: DndCharacterAssistantAuditRecord[];
+  lastDndCharacterAssistantCommit: DndCharacterAssistantCommitReceipt | null;
   setActiveCharacterId: (id: string) => void;
   addCharacter: (data: CharacterData) => void;
   commitCompletedCharacter: (data: CharacterData) => void;
@@ -171,6 +179,8 @@ interface CharacterState {
   restLong: () => void;
   commitLevelAdvancement: (plan: DndLevelAdvancementPlan) => boolean;
   undoLastLevelAdvancement: () => boolean;
+  commitDndCharacterAssistantPlan: (plan: DndCharacterAssistantPlan) => boolean;
+  undoLastDndCharacterAssistantCommit: () => boolean;
   modifyHp: (amount: number) => void;
   updateSpellbook: (known: SpellInfo[], prepared: string[]) => void;
   consumeSpellcastingResource: (spellLevel: number) => DndSpellcastingResourceConsumption;
@@ -194,6 +204,8 @@ export const useCharacterStore = create<CharacterState>()(
       characters: [_initialChar],
       activeCharacterId: _initialChar.id,
       lastLevelAdvancement: null,
+      dndCharacterAssistantAudit: [],
+      lastDndCharacterAssistantCommit: null,
 
       updateField: (key, value) => set((state) => ({
         character: { ...state.character, [key]: value }
@@ -350,6 +362,76 @@ export const useCharacterStore = create<CharacterState>()(
           characters: state.characters.map((character) => character.id === previous.id ? previous : character),
           activeCharacterId: previous.id,
           lastLevelAdvancement: null,
+        });
+        return true;
+      },
+
+      commitDndCharacterAssistantPlan: (plan) => {
+        const state = get();
+        if (
+          !plan.ready ||
+          !plan.nextCharacter ||
+          plan.actorId !== state.character.id ||
+          plan.baseFingerprint !== JSON.stringify(state.character)
+        ) return false;
+        const committedAt = Date.now();
+        const nextCharacter = plan.nextCharacter;
+        const audit: DndCharacterAssistantAuditRecord = {
+          auditId: `dnd-ai-audit-${plan.suggestionId}-${committedAt}`,
+          suggestionId: plan.suggestionId,
+          actorId: nextCharacter.id,
+          action: 'applied',
+          provider: plan.provider,
+          model: plan.model,
+          summary: plan.summary,
+          changedFields: plan.changedFields,
+          occurredAt: committedAt,
+        };
+        set({
+          character: nextCharacter,
+          characters: state.characters.some((character) => character.id === nextCharacter.id)
+            ? state.characters.map((character) => character.id === nextCharacter.id ? nextCharacter : character)
+            : [...state.characters, nextCharacter],
+          activeCharacterId: nextCharacter.id,
+          dndCharacterAssistantAudit: [...state.dndCharacterAssistantAudit, audit].slice(-50),
+          lastDndCharacterAssistantCommit: {
+            suggestionId: plan.suggestionId,
+            actorId: nextCharacter.id,
+            provider: plan.provider,
+            model: plan.model,
+            summary: plan.summary,
+            changedFields: plan.changedFields,
+            before: state.character,
+            after: nextCharacter,
+            committedAt,
+          },
+        });
+        return true;
+      },
+
+      undoLastDndCharacterAssistantCommit: () => {
+        const state = get();
+        const receipt = state.lastDndCharacterAssistantCommit;
+        if (!canUndoDndCharacterAssistantCommit(state.character, receipt)) return false;
+        const previous = receipt!.before;
+        const occurredAt = Date.now();
+        const audit: DndCharacterAssistantAuditRecord = {
+          auditId: `dnd-ai-audit-revert-${receipt!.suggestionId}-${occurredAt}`,
+          suggestionId: receipt!.suggestionId,
+          actorId: previous.id,
+          action: 'reverted',
+          provider: receipt!.provider,
+          model: receipt!.model,
+          summary: `撤销：${receipt!.summary}`,
+          changedFields: receipt!.changedFields,
+          occurredAt,
+        };
+        set({
+          character: previous,
+          characters: state.characters.map((character) => character.id === previous.id ? previous : character),
+          activeCharacterId: previous.id,
+          dndCharacterAssistantAudit: [...state.dndCharacterAssistantAudit, audit].slice(-50),
+          lastDndCharacterAssistantCommit: null,
         });
         return true;
       },
@@ -671,6 +753,8 @@ export const useCharacterStore = create<CharacterState>()(
           characters: unknown[];
           activeCharacterId: string | null;
           lastLevelAdvancement: unknown;
+          dndCharacterAssistantAudit: unknown;
+          lastDndCharacterAssistantCommit: unknown;
         }> | null;
         if (!p || typeof p !== 'object') return current;
 
@@ -706,6 +790,12 @@ export const useCharacterStore = create<CharacterState>()(
           activeCharacterId: activeChar.id,
           lastLevelAdvancement: p.lastLevelAdvancement && typeof p.lastLevelAdvancement === 'object'
             ? p.lastLevelAdvancement as DndLevelAdvancementReceipt
+            : null,
+          dndCharacterAssistantAudit: Array.isArray(p.dndCharacterAssistantAudit)
+            ? p.dndCharacterAssistantAudit.slice(-50) as DndCharacterAssistantAuditRecord[]
+            : [],
+          lastDndCharacterAssistantCommit: p.lastDndCharacterAssistantCommit && typeof p.lastDndCharacterAssistantCommit === 'object'
+            ? p.lastDndCharacterAssistantCommit as DndCharacterAssistantCommitReceipt
             : null,
         };
       },
