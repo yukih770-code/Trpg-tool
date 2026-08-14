@@ -6,6 +6,8 @@ import type { RoomSessionAssistantSuggestionResult } from '../../src/lib/ai/sess
 import { parseRoomSessionAssistantSuggestion } from '../../src/lib/ai/sessionAssistantTypes.js';
 import type { CampaignArtifactSuggestionResult } from '../../src/lib/ai/campaignArtifactAssistantTypes.js';
 import { parseCampaignArtifactSuggestion } from '../../src/lib/ai/campaignArtifactAssistantTypes.js';
+import type { DndPersonalContentAssistantGatewayResult } from '../../src/lib/ai/dndPersonalContentAssistantTypes.js';
+import { parseDndPersonalContentAssistantSuggestion } from '../../src/lib/ai/dndPersonalContentAssistantTypes.js';
 
 export type StructuredModelRequest = {
   system: string;
@@ -33,6 +35,7 @@ export interface ModelGateway {
   catalog(signal?: AbortSignal, refresh?: boolean): Promise<AiModelCatalog>;
   status(signal?: AbortSignal, preference?: AiRoutingPreference): Promise<AiModelGatewayStatus>;
   generateDndCharacterSuggestion(input: StructuredModelRequest, signal?: AbortSignal, preference?: AiRoutingPreference): Promise<DndCharacterAssistantGatewayResult>;
+  generateDndPersonalContentSuggestion?(input: StructuredModelRequest, signal?: AbortSignal, preference?: AiRoutingPreference): Promise<DndPersonalContentAssistantGatewayResult>;
   generateRoomSessionSuggestion(input: StructuredModelRequest, signal?: AbortSignal, preference?: AiRoutingPreference): Promise<Omit<RoomSessionAssistantSuggestionResult, 'expiresAt' | 'contextThroughSeq'>>;
   generateCampaignArtifactSuggestion(input: StructuredModelRequest, signal?: AbortSignal, preference?: AiRoutingPreference): Promise<Omit<CampaignArtifactSuggestionResult, 'expiresAt' | 'sources'>>;
 }
@@ -113,6 +116,33 @@ export function createModelGateway(input: { provider?: StructuredModelProvider; 
         if (!suggestion) throw new ModelGatewayError('invalid_output', 'Model output did not match the character-assistant schema.', true);
         return {
           suggestionId: `ai_suggestion_${randomUUID()}`,
+          provider: provider.id,
+          route: 'local',
+          model: provider.model,
+          createdAt: Date.now(),
+          suggestion,
+        };
+      } catch (error) {
+        if (error instanceof ModelGatewayError) throw error;
+        if (scope.timedOut()) throw new ModelGatewayError('timeout', 'Local model request timed out.', true);
+        if (external?.aborted) throw new ModelGatewayError('cancelled', 'Local model request was cancelled.', false);
+        throw new ModelGatewayError('provider_error', 'Local model provider request failed.', true);
+      } finally {
+        scope.cleanup();
+      }
+    },
+
+    async generateDndPersonalContentSuggestion(request, external, preference = { mode: 'auto' }) {
+      if (preference.mode === 'off') throw new ModelGatewayError('not_configured', 'AI is disabled on this device.', false);
+      if (preference.mode === 'cloud') throw new ModelGatewayError('route_unavailable', 'Cloud AI is not available.', false);
+      if (!provider) throw new ModelGatewayError('not_configured', 'Local model provider is not configured.', false);
+      const scope = timedSignal(input.timeoutMs, external);
+      try {
+        const value = await provider.generate(request, scope.signal);
+        const suggestion = parseDndPersonalContentAssistantSuggestion(value);
+        if (!suggestion) throw new ModelGatewayError('invalid_output', 'Model output did not match the personal-content schema.', true);
+        return {
+          suggestionId: `ai_content_${randomUUID()}`,
           provider: provider.id,
           route: 'local',
           model: provider.model,

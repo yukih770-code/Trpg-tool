@@ -20,6 +20,8 @@ import {
   parseDndPersonalRuleComponents,
   type DndPersonalEditorEntryKind,
 } from '../../lib/dnd/dndPersonalContentDefinitions';
+import { DND_PERSONAL_CONTENT_ASSISTANT_FIELDS_BY_KIND, type DndPersonalContentAssistantFieldKey, type DndPersonalContentAssistantFieldValues } from '../../lib/ai/dndPersonalContentAssistantTypes';
+import { DndPersonalContentAssistantPanel } from './DndPersonalContentAssistantPanel';
 
 type Props = {
   locale: Locale;
@@ -256,6 +258,17 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
     choices: fields.ruleChoices,
     triggers: fields.ruleTriggers,
   });
+  const assistantValues = useMemo(() => Object.fromEntries(
+    DND_PERSONAL_CONTENT_ASSISTANT_FIELDS_BY_KIND[fields.entryKind].map((field) => [field, fields[field]]),
+  ) as DndPersonalContentAssistantFieldValues, [fields]);
+  const applyAssistantValues = (nextValues: DndPersonalContentAssistantFieldValues, changedFields: DndPersonalContentAssistantFieldKey[]) => {
+    setFields((previous) => {
+      const allowed = new Set(DND_PERSONAL_CONTENT_ASSISTANT_FIELDS_BY_KIND[previous.entryKind]);
+      const updates = Object.fromEntries(changedFields.filter((field) => allowed.has(field) && typeof nextValues[field] === 'string').map((field) => [field, nextValues[field]]));
+      return { ...previous, ...updates } as Fields;
+    });
+    setNotice(copy(locale, `智能草稿已填入当前表单的 ${changedFields.length} 个字段；请继续人工检查，再决定是否加入待保存内容。`, `The intelligent draft filled ${changedFields.length} fields in the current form. Review them before adding the entry to pending content.`));
+  };
 
   const inspectPack = async (pack: PersonalCompendiumPack) => {
     if (!pack.latestVersion || busy) return;
@@ -832,6 +845,7 @@ export function DndPersonalSpeciesPackPanel({ locale, presentation = 'card', onC
               <FormField label={copy(locale, '简短说明', 'Short summary')} hint={copy(locale, '给车卡与主持人快速阅读的简介。不要填写自动结算、伤害公式或隐藏权限。', 'A quick description for the builder and host. Do not put automation, damage formulas, or hidden permissions here.')}>
                 <textarea value={fields.summary} onChange={(event) => update('summary', event.target.value)} placeholder={copy(locale, '可选：用一两句话说明主题与玩法感受', 'Optional: summarize the theme in one or two sentences')} disabled={busy} className="min-h-20 rounded-md border border-[#58180d]/20 bg-white px-3 py-2 text-sm font-normal disabled:opacity-50" />
               </FormField>
+              <DndPersonalContentAssistantPanel locale={locale} entryKind={fields.entryKind} values={assistantValues} disabled={busy} onApply={applyAssistantValues} />
               <details className="rounded-md border border-[#a35b11]/25 bg-[#fff8e6] p-3">
                 <summary className="cursor-pointer text-sm font-bold text-[#58180d]">{copy(locale, '通用规则组件（可选）', 'Shared rule components (optional)')}</summary>
                 <p className="mt-1 text-xs leading-5 text-[#2c1810]/65">{copy(locale, '资源、动作、选择与触发可以被任意原创内容复用。它们会作为结构化、可审核的资料保存；当前不会自动施法、扣除资源或执行效果。', 'Resources, actions, choices, and triggers can be reused by any original content. They are stored as structured, reviewable facts and do not currently cast, spend resources, or execute effects automatically.')}</p>

@@ -787,6 +787,18 @@ Landmark: `EMBEDDED_DND_BUILDER_AI_GUIDANCE_V1`.
 
 ---
 
+## DND Personal Content AI Drafting v1
+
+- Workshop → 我的创作的 DND 私人内容工作台新增内联、可折叠的 `智能起草`，覆盖物种、职业、子职、背景、专长、法术、物品、怪物、规则与其他条目；没有新增聊天框、模态框、页面或全局 AI 入口。
+- 已认证作者可以基于当前未保存表单和可编辑目标调用现有模型路由。请求与响应均受条目类型、字段白名单、长度及结构化 schema 约束；提示词明确要求原创兼容资料，不复制官方出版文本。
+- 模型结果必须先经过确定性计划校验，检查类型/字段越界、重复字段、无变化、必填项、枚举、数值范围、列表上限和行格式；预览会显示改动、理由、警告与阻断问题，并用表单指纹阻止陈旧建议覆盖新编辑。
+- `应用到表单` 只合并到当前未保存字段。加入待保存内容、不可变版本保存、私有归属与房间审核继续使用现有显式流程；AI 不直接写数据库、发布内容、准入房间或执行规则效果。
+- 新增前端计划/API 客户端、服务端鉴权 handler/route、模型网关与路由专项 smoke；个人内容、模型路由、AI scope/retrieval 策略、TypeScript 和前后端构建均回归通过。
+
+Landmark: `DND_PERSONAL_CONTENT_AI_DRAFTING_V1`.
+
+---
+
 ## Known Intentional Non-Replacements
 
 - `computeEmpFromHumanity` in `cpStore.ts` — delta-based (adjusts EMP only at ten-boundary crossings). Semantically different from `getCpRuntimeEmp` (absolute `floor(humanity/10)`). Left as-is by design.

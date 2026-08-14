@@ -110,6 +110,8 @@ import { registerActorApiRoutes } from './api/actorApiRoutes.js';
 import { createActorApiHandlers } from './api/actorApiHandlers.js';
 import { registerAiCharacterAssistantApiRoutes } from './api/aiCharacterAssistantRoutes.js';
 import { createAiCharacterAssistantApiHandlers } from './api/aiCharacterAssistantHandlers.js';
+import { registerDndPersonalContentAssistantApiRoutes } from './api/dndPersonalContentAssistantRoutes.js';
+import { createDndPersonalContentAssistantApiHandlers } from './api/dndPersonalContentAssistantHandlers.js';
 import { createConfiguredModelGateway } from './ai/modelGatewayComposition.js';
 import { createRoomSessionAssistantSuggestionRegistry } from './ai/roomSessionAssistantRegistry.js';
 import { registerRoomSessionAssistantApiRoutes } from './api/roomSessionAssistantRoutes.js';
@@ -309,6 +311,11 @@ registerActorApiRoutes(app, createActorApiHandlers({
 }));
 const modelGateway = createConfiguredModelGateway(process.env);
 registerAiCharacterAssistantApiRoutes(app, createAiCharacterAssistantApiHandlers({
+  gateway: modelGateway,
+  allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
+  nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
+}));
+registerDndPersonalContentAssistantApiRoutes(app, createDndPersonalContentAssistantApiHandlers({
   gateway: modelGateway,
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',

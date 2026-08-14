@@ -4,6 +4,14 @@ import { ModelGatewayError } from './modelGateway.js';
 import { createRoutedLocalModelGateway } from './modelRoutingGateway.js';
 
 const validSuggestion = { version: 1, summary: '建议', rationale: [], patch: { name: '阿尔法' }, warnings: [] };
+const validPersonalContentSuggestion = {
+  version: 1,
+  entryKind: 'spell',
+  proposalSummary: '补全法术草稿',
+  fieldValues: [{ field: 'entryName', value: '星辉束' }],
+  rationale: ['补全可识别的名称。'],
+  warnings: [],
+};
 const request = { system: 'system', prompt: 'prompt', schema: { type: 'object' } };
 const chatModels: string[] = [];
 let tagRequests = 0;
@@ -75,6 +83,22 @@ const allowlisted = createRoutedLocalModelGateway({
   fetcher,
 });
 assert.deepEqual((await allowlisted.catalog()).models.map((model) => model.id), ['llama3.2:latest']);
+
+const personalContentModels: string[] = [];
+const personalContentGateway = createRoutedLocalModelGateway({
+  config: readLocalModelGatewayConfig({ LOCAL_AI_PROVIDER: 'ollama', LOCAL_AI_BASE_URL: 'http://127.0.0.1:11434', LOCAL_AI_MODEL: 'llama3.2:latest' }),
+  fetcher: async (url, init) => {
+    if (String(url).endsWith('/api/tags')) {
+      return new Response(JSON.stringify({ models: [{ name: 'llama3.2:latest', size: 2_000_000_000 }] }), { status: 200 });
+    }
+    const body = JSON.parse(String(init?.body)) as { model: string };
+    personalContentModels.push(body.model);
+    return new Response(JSON.stringify({ message: { content: JSON.stringify(validPersonalContentSuggestion) } }), { status: 200 });
+  },
+});
+const personalContentResult = await personalContentGateway.generateDndPersonalContentSuggestion!(request);
+assert.equal(personalContentResult.suggestion.entryKind, 'spell');
+assert.deepEqual(personalContentModels, ['llama3.2:latest']);
 
 const unreachable = createRoutedLocalModelGateway({
   config: readLocalModelGatewayConfig({ LOCAL_AI_PROVIDER: 'ollama' }),

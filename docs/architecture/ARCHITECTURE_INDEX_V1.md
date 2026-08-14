@@ -1090,3 +1090,11 @@ Foundational audits (read once for context): `REPOSITORY_ARCHITECTURE_AUDIT_V1`,
 - It may read only the current bounded Owned Actor draft and allowed option names. Suggestions stay in UI/Flow State until explicit preview confirmation invokes the existing guarded Actor commit; one-step undo keeps the existing exact-snapshot boundary.
 - Builder next/finish remains primary. No store/schema, rules data/effects, Campaign, Room, Runtime, catalog browsing, navigation, or backend contract is introduced by this UI integration.
 - Landmark: `EMBEDDED_DND_BUILDER_AI_GUIDANCE_V1`.
+
+## DND Personal Content AI Drafting v1
+
+- Files: `src/lib/ai/dndPersonalContentAssistantTypes.ts`, `src/lib/ai/dndPersonalContentAssistant.ts`, `server/api/dndPersonalContentAssistantHandlers.ts`, `src/components/platform/DndPersonalContentAssistantPanel.tsx`, and `DndPersonalSpeciesPackPanel.tsx`.
+- An authenticated author may request one original, schema-bounded draft for any existing private DND editor kind through the shared model-routing boundary. Server validation enforces request bounds and per-kind field allowlists before and after model generation.
+- A deterministic client plan validates identity, enums, numeric ranges, list limits, line formats, no-op output, and exact form freshness before explicit application.
+- Application changes only the unsaved workbench form. Existing pending-entry, immutable-version persistence, ownership, private visibility, and Room-review paths remain authoritative; no public Workshop, package install, rule execution, or autonomous write is introduced.
+- Landmark: `DND_PERSONAL_CONTENT_AI_DRAFTING_V1`.

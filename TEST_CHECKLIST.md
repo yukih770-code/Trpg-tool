@@ -1811,6 +1811,23 @@ After modifying one system, verify the other two are unaffected:
 
 ---
 
+## 8au. DND Personal Content AI Drafting v1
+
+- [x] Workshop private DND content workbench exposes one inline collapsible intelligent-drafting surface for all ten existing editor kinds
+- [x] Authenticated API input restricts intent, locale, entry kind, current-value size, and per-kind field allowlist
+- [x] Model output is runtime-parsed and server post-checked for the requested kind and allowed fields
+- [x] Prompt treats form text as untrusted data, requires original compatible material, and forbids official-text reproduction and save/publish/Room claims
+- [x] Deterministic plan blocks kind/field mismatch, duplicate fields, no-op output, missing identity, invalid enum/numeric/list/line formats, and silent truncation
+- [x] Preview shows changed fields, rationale, warnings, and blockers; exact form fingerprint prevents stale application
+- [x] Generate/cancel/unavailable/error/retry/discard/explicit-apply states are covered without a chat, modal, new page, or navigation action
+- [x] Apply changes only the unsaved form; add-to-pending, immutable version save, ownership, private visibility, and Room review remain separate existing actions
+- [x] `npm run frontend:verify:dnd-personal-content-assistant`, `npm run api:verify:dnd-personal-content-assistant`, model gateway, and routing smokes pass
+- [x] Existing personal compendium/version/import/definition/adapter and room personal-content reference regressions pass
+- [x] AI scope/retrieval policy smokes, `npx tsc --noEmit`, `npm run server:build`, `npm run build`, static UI audit, and `git diff --check` pass
+- [ ] Live local-model visual/click acceptance is completed on a machine with a configured local model
+
+---
+
 ## 8. Pre-Commit Checklist Summary
 
 | Step | Command / Action | Pass? |

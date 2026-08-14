@@ -21,6 +21,14 @@ const validSessionSuggestion = {
   hostDraft: '主持人草稿',
   publicDraft: '公开草稿',
 };
+const validPersonalContentSuggestion = {
+  version: 1,
+  entryKind: 'item',
+  proposalSummary: '原创物品草稿',
+  fieldValues: [{ field: 'entryName', value: '潮声罗盘' }],
+  rationale: ['声明式资料'],
+  warnings: ['需要主持人审核'],
+};
 const request = { system: 'system', prompt: 'prompt', schema: { type: 'object' } };
 
 assert.equal(readLocalModelGatewayConfig({}).configured, false);
@@ -43,9 +51,12 @@ assert.equal((await gateway.status(undefined, { mode: 'cloud' })).reason, 'route
 assert.equal((await gateway.generateDndCharacterSuggestion(request)).suggestion.patch.name, '测试角色');
 const sessionGateway = createModelGateway({ provider: { ...provider, generate: async () => validSessionSuggestion }, timeoutMs: 1_000 });
 assert.equal((await sessionGateway.generateRoomSessionSuggestion(request)).suggestion.publicDraft, '公开草稿');
+const contentGateway = createModelGateway({ provider: { ...provider, generate: async () => validPersonalContentSuggestion }, timeoutMs: 1_000 });
+assert.equal((await contentGateway.generateDndPersonalContentSuggestion!(request)).suggestion.fieldValues[0]?.field, 'entryName');
 
 const invalidGateway = createModelGateway({ provider: { ...provider, generate: async () => ({ invalid: true }) }, timeoutMs: 1_000 });
 await assert.rejects(() => invalidGateway.generateDndCharacterSuggestion(request), (error) => error instanceof ModelGatewayError && error.kind === 'invalid_output');
+await assert.rejects(() => invalidGateway.generateDndPersonalContentSuggestion!(request), (error) => error instanceof ModelGatewayError && error.kind === 'invalid_output');
 const oversizedGateway = createModelGateway({
   provider: { ...provider, generate: async () => ({ ...validSuggestion, rationale: Array(9).fill('过多理由') }) },
   timeoutMs: 1_000,

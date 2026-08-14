@@ -11,6 +11,8 @@ const client = createAiModelGatewayApiClient({
       ? { local: { configured: true, reachable: true, recommendedModel: 'model' }, cloud: { configured: false, reason: 'not-implemented' }, models: [{ id: 'model', provider: 'ollama', route: 'local', installed: true, recommended: true, capabilities: [] }], refreshedAt: 1 }
       : String(url).endsWith('/status')
       ? { configured: true, reachable: true, provider: 'ollama', route: 'local', model: 'model', capabilities: [] }
+      : String(url).includes('/dnd-personal-content-assistant/')
+      ? { suggestionId: 'c1', provider: 'ollama', route: 'local', model: 'model', createdAt: 1, suggestion: { version: 1, entryKind: 'species', proposalSummary: 'ok', fieldValues: [{ field: 'entryName', value: 'A' }], rationale: [], warnings: [] } }
       : { suggestionId: 's1', provider: 'ollama', route: 'local', model: 'model', createdAt: 1, suggestion: { version: 1, summary: 'ok', rationale: [], patch: { name: 'A' }, warnings: [] } };
     return new Response(JSON.stringify({ ok: true, statusCode: 200, value }), { status: 200, headers: { 'content-type': 'application/json' } });
   },
@@ -23,10 +25,15 @@ const request = {
   options: { classes: ['战士'], backgrounds: ['士兵'], originFeats: ['警觉'] },
 };
 await client.suggestDndCharacter(request);
+const contentRequest = { intent: 'draft', locale: 'zh-CN' as const, draft: { entryKind: 'species' as const, values: { size: '中型' } } };
+await client.suggestDndPersonalContent(contentRequest);
 assert.equal(calls[0]?.url, 'https://api.example.test/api/ai/model-gateway/catalog?refresh=1');
 assert.equal(calls[1]?.url, 'https://api.example.test/api/ai/model-gateway/status');
 assert.equal(new Headers(calls[1]?.init?.headers).get('x-trpg-ai-mode'), 'auto');
 assert.equal(calls[2]?.init?.method, 'POST');
 assert.equal(new Headers(calls[2]?.init?.headers).get('x-trpg-ai-mode'), 'auto');
 assert.equal(calls[2]?.init?.body, JSON.stringify(request));
+assert.equal(calls[3]?.url, 'https://api.example.test/api/ai/dnd-personal-content-assistant/suggest');
+assert.equal(calls[3]?.init?.method, 'POST');
+assert.equal(calls[3]?.init?.body, JSON.stringify(contentRequest));
 console.log('AI model gateway API client smoke passed.');

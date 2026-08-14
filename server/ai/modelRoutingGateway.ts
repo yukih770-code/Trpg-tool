@@ -173,6 +173,12 @@ export function createRoutedLocalModelGateway(input: {
       const model = await resolve(preference, external);
       return executor(model).generateDndCharacterSuggestion(request, external, { mode: 'local', localModel: model });
     },
+    async generateDndPersonalContentSuggestion(request: StructuredModelRequest, external, preference) {
+      const model = await resolve(preference, external);
+      const generated = executor(model).generateDndPersonalContentSuggestion;
+      if (!generated) throw new ModelGatewayError('unavailable', 'Personal content generation is unavailable.', true);
+      return generated(request, external, { mode: 'local', localModel: model });
+    },
     async generateRoomSessionSuggestion(request: StructuredModelRequest, external, preference) {
       const model = await resolve(preference, external);
       return executor(model).generateRoomSessionSuggestion(request, external, { mode: 'local', localModel: model });
