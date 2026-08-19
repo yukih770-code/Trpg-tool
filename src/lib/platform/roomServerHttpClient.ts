@@ -24,7 +24,7 @@ import type {
   RoomRuntimeLogEvent,
   RoomRuntimeLogListResult,
 } from './roomRuntimeLogTypes';
-import type { SharedDiceRollResponse } from './sharedDiceTypes';
+import type { SharedDiceRollMode, SharedDiceRollResponse } from './sharedDiceTypes';
 import type { AppendRoomMapEventInput, RoomMapEvent, RoomMapEventListResult } from './roomMapTypes';
 import type { CharacterClearanceDetails } from './characterClearanceDetails';
 import type { RoomRuntimeActorProjectionListResult } from './roomRuntimeActorProjectionTypes';
@@ -340,11 +340,14 @@ export async function setRoomMapMemberPermission(
  * returns the dice.roll event + roll. The client never computes randomness, and
  * never optimistically inserts the log event (it arrives via runtimeLogAppended
  * or the response here).
+ *
+ * T1: `mode` / `dc` are semantic INTENT for a single-d20 check. The server
+ * validates the shape, rolls, and resolves the outcome.
  */
 export async function rollSharedDice(
   config: RoomServerHttpClientConfig,
   roomId: string,
-  input: { memberId: string; expression: string; label?: string },
+  input: { memberId: string; expression: string; label?: string; mode?: SharedDiceRollMode; dc?: number },
 ): Promise<SharedDiceRollResponse> {
   return request<SharedDiceRollResponse>(config, `/rooms/${encodeURIComponent(roomId)}/runtime/dice-roll`, {
     method: 'POST',

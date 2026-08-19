@@ -871,6 +871,106 @@ async function main(): Promise<void> {
     playerSocket.waitFor('player_dice_broadcast', (message) => socketStreamContains(message, 'runtimeLogAppended', playerDiceId)),
   ]);
 
+  // ── T1: semantic d20 check (advantage + DC), and request-fabrication guard ──
+  // The body deliberately carries resolved-looking fields. The request is INTENT
+  // only: the server must ignore them and compute the faces, kept die, total and
+  // DC outcome itself from its crypto RNG.
+  const advantageDice = await player.request('roll_advantage_with_dc', pathFor('rooms', liveRoomId, 'runtime', 'dice-roll'), {
+    method: 'POST',
+    body: JSON.stringify({
+      memberId: playerMemberId,
+      expression: '1d20+3',
+      label: 'Alpha advantage check',
+      mode: 'advantage',
+      dc: 12,
+      // Fabricated resolved fields — must all be ignored.
+      rawRolls: [20, 20],
+      keptRoll: 20,
+      total: 999,
+      outcome: 'success',
+      isNatural20: true,
+      isNatural1: true,
+      terms: [{ count: 1, sides: 20, rolls: [20], subtotal: 20 }],
+      modifier: 900,
+    }),
+  });
+  const advantageRoll = isRecord(advantageDice.body) && isRecord(advantageDice.body.roll) ? advantageDice.body.roll : undefined;
+  const advantageEvent = isRecord(advantageDice.body) && isRecord(advantageDice.body.event) ? advantageDice.body.event : undefined;
+  const advantageEventId = typeof advantageEvent?.eventId === 'string' ? advantageEvent.eventId : undefined;
+  if (!advantageDice.ok || !advantageRoll || !advantageEventId) throw new Error('advantage_dice_failed');
+
+  const advantageFaces = Array.isArray(advantageRoll.rawRolls)
+    ? (advantageRoll.rawRolls as unknown[]).filter((face): face is number => typeof face === 'number')
+    : [];
+  const advantageKept = typeof advantageRoll.keptRoll === 'number' ? advantageRoll.keptRoll : undefined;
+  const advantageTotal = typeof advantageRoll.total === 'number' ? advantageRoll.total : undefined;
+  const advantageTerms = recordArray(advantageRoll.terms);
+
+  if (!addAssertion(
+    'two_account_advantage_roll_is_server_resolved',
+    advantageRoll.mode === 'advantage'
+      && advantageFaces.length === 2
+      && advantageKept === Math.max(...advantageFaces)
+      && advantageRoll.modifier === 3
+      && advantageTotal === (advantageKept as number) + 3
+      && advantageRoll.normalizedExpression === '1d20+3'
+      && advantageRoll.dc === 12
+      && advantageRoll.outcome === ((advantageTotal as number) >= 12 ? 'success' : 'failure')
+      && advantageRoll.isNatural20 === (advantageKept === 20)
+      && advantageRoll.isNatural1 === (advantageKept === 1),
+    'advantage_roll_not_server_resolved',
+  )) throw new Error('advantage_dice_semantics_failed');
+
+  if (!addAssertion(
+    'two_account_dice_request_fabrication_ignored',
+    advantageTotal !== 999
+      && advantageRoll.modifier !== 900
+      && advantageTerms.length === 1
+      && Array.isArray(advantageTerms[0]?.rolls)
+      && (advantageTerms[0].rolls as unknown[]).length === 1
+      && (advantageTerms[0].rolls as unknown[])[0] === advantageKept
+      && advantageTotal === advantageTerms.reduce(
+        (sum, term) => sum + (typeof term.subtotal === 'number' ? term.subtotal : 0),
+        typeof advantageRoll.modifier === 'number' ? advantageRoll.modifier : 0,
+      ),
+    'fabricated_roll_fields_were_trusted',
+  )) throw new Error('dice_fabrication_guard_failed');
+
+  const [hostAdvantageMessage, playerAdvantageMessage] = await Promise.all([
+    hostSocket.waitFor('advantage_dice_broadcast', (message) => socketStreamContains(message, 'runtimeLogAppended', advantageEventId)),
+    playerSocket.waitFor('advantage_dice_broadcast', (message) => socketStreamContains(message, 'runtimeLogAppended', advantageEventId)),
+  ]);
+  const hostAdvantagePayload = runtimeEventFromMessage(hostAdvantageMessage, advantageEventId)?.payload;
+  const playerAdvantagePayload = runtimeEventFromMessage(playerAdvantageMessage, advantageEventId)?.payload;
+  if (!addAssertion(
+    'two_account_advantage_projection_converged',
+    isRecord(hostAdvantagePayload)
+      && isRecord(playerAdvantagePayload)
+      && hostAdvantagePayload.mode === 'advantage'
+      && playerAdvantagePayload.mode === 'advantage'
+      && hostAdvantagePayload.keptRoll === advantageKept
+      && playerAdvantagePayload.keptRoll === advantageKept
+      && hostAdvantagePayload.total === advantageTotal
+      && playerAdvantagePayload.total === advantageTotal
+      && hostAdvantagePayload.outcome === advantageRoll.outcome
+      && playerAdvantagePayload.outcome === advantageRoll.outcome,
+    'advantage_projection_did_not_converge',
+  )) throw new Error('advantage_dice_projection_failed');
+
+  // A non-d20 pool must never be reinterpreted as a D&D check.
+  await player.request('advantage_on_pool_rejected', pathFor('rooms', liveRoomId, 'runtime', 'dice-roll'), {
+    method: 'POST',
+    body: JSON.stringify({ memberId: playerMemberId, expression: '2d6+3', mode: 'advantage' }),
+  }, [400]);
+  await player.request('dc_on_pool_rejected', pathFor('rooms', liveRoomId, 'runtime', 'dice-roll'), {
+    method: 'POST',
+    body: JSON.stringify({ memberId: playerMemberId, expression: '2d6+3', dc: 12 }),
+  }, [400]);
+  await player.request('invalid_roll_mode_rejected', pathFor('rooms', liveRoomId, 'runtime', 'dice-roll'), {
+    method: 'POST',
+    body: JSON.stringify({ memberId: playerMemberId, expression: '1d20', mode: 'superAdvantage' }),
+  }, [400]);
+
   const beforeDisconnectLog = await player.request('read_reconnect_runtime_cursor', `${pathFor('rooms', liveRoomId, 'runtime-log')}?memberId=${encodeURIComponent(playerMemberId)}`);
   const beforeDisconnectMap = await player.request('read_reconnect_map_cursor', `${pathFor('rooms', liveRoomId, 'map-events')}?memberId=${encodeURIComponent(playerMemberId)}&mapId=${encodeURIComponent(mapId)}`);
   const runtimeCursor = isRecord(beforeDisconnectLog.body) && typeof beforeDisconnectLog.body.latestSeq === 'number' ? beforeDisconnectLog.body.latestSeq : undefined;

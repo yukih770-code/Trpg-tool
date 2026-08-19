@@ -4,6 +4,7 @@ import type { RoomRuntimeEntryContext, RoomRuntimeEntryMode } from '../../lib/pl
 import type { RoomCampaignRefSource, RoomReadyStatus, RoomSnapshot } from '../../lib/platform/roomTypes';
 import type { RoomRuntimeLogEvent } from '../../lib/platform/roomRuntimeLogTypes';
 import type { RoomMapEvent, RoomMapLivePreview } from '../../lib/platform/roomMapTypes';
+import type { SharedDiceRollMode } from '../../lib/platform/sharedDiceTypes';
 import {
   appendRoomMapEvent,
   appendRoomRuntimeLogEvent,
@@ -156,12 +157,14 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   // Room mode: the SERVER rolls (crypto) and writes the room RuntimeLog; we feed
   // the returned event into the log panel and return the roll to the dock.
   const diceConfig: RoomServerHttpClientConfig = { baseUrl: context.serverBaseUrl };
-  const handleRoomDiceRoll = async (input: { expression: string; label?: string }) => {
+  const handleRoomDiceRoll = async (input: { expression: string; label?: string; mode?: SharedDiceRollMode; dc?: number }) => {
     if (!context.currentMemberId) throw new Error('需要成员身份才能掷骰。');
     const resp = await rollSharedDice(diceConfig, context.roomId, {
       memberId: context.currentMemberId,
       expression: input.expression,
       label: input.label,
+      mode: input.mode,
+      dc: input.dc,
     });
     if (resp.ok === false) throw new Error(resp.message || resp.error);
     setLogLiveEvents((prev) => [...prev, resp.event]);
@@ -1050,7 +1053,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                     targets={dndActionTargets}
                     selectedTargetId={selectedCombatantId}
                     onSelectTarget={setSelectedCombatantId}
-                    onRoll={(input) => { void handleRoomDiceRoll(input); }}
+                    onRoll={handleRoomDiceRoll}
                   />
                 ) : undefined,
               scenePanel:

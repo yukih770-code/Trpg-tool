@@ -92,7 +92,7 @@ import {
 } from './db/postgresDndPrivateMonsterSchemaReadiness.js';
 import { MEMORY_STORAGE_CAPABILITY } from './storage/memory-storage-adapter.js';
 import { createRoomSocketServer } from './transport/roomSocketServer.js';
-import type { AppendRoomMapEventInput, AppendRoomRuntimeLogEventInput, RoomJoinRequest } from './protocol/room-protocol.js';
+import type { AppendRoomMapEventInput, AppendRoomRuntimeLogEventInput, RoomJoinRequest, SharedDiceRollMode } from './protocol/room-protocol.js';
 // P5.10G: dev-only read-only User routes (gated; never in production).
 import { registerUserDevRoutes } from './api/userDevRoutes.js';
 import { defaultPostgresUserApiHandlers } from './api/userApiHandlers.js';
@@ -416,6 +416,16 @@ function requireRoomRuntimeAction(
     return undefined;
   }
   return room;
+}
+
+/**
+ * Narrows an untrusted body field to the semantic d20 roll mode. Anything the
+ * client sends beyond this enum is rejected rather than coerced.
+ */
+function readSharedDiceRollMode(value: unknown): { ok: true; mode: SharedDiceRollMode | undefined } | { ok: false } {
+  if (value === undefined) return { ok: true, mode: undefined };
+  if (value === 'normal' || value === 'advantage' || value === 'disadvantage') return { ok: true, mode: value };
+  return { ok: false };
 }
 
 function requireRoomParticipant(
@@ -1291,7 +1301,11 @@ app.post('/rooms/:roomId/map-permissions/:memberId', async (req, res) => {
 // Server-authoritative manual dice: server parses + rolls, appends a public
 // dice.roll RuntimeLog event, and broadcasts it via the existing runtimeLogAppended.
 app.post('/rooms/:roomId/runtime/dice-roll', async (req, res) => {
-  const body = (req.body ?? {}) as { memberId?: unknown; expression?: unknown; label?: unknown };
+  // The request carries INTENT ONLY. Only these four fields are read; any
+  // resolved-looking field a client tries to send (keptRoll / rawRolls / total /
+  // outcome / isNatural20 / isNatural1) is ignored here and recomputed by the
+  // server from its crypto RNG.
+  const body = (req.body ?? {}) as { memberId?: unknown; expression?: unknown; label?: unknown; mode?: unknown; dc?: unknown };
   if (typeof body.memberId !== 'string' || body.memberId.trim() === '') {
     res.status(400).json({ ok: false, error: 'invalidRequest', message: 'memberId is required.' });
     return;
@@ -1300,12 +1314,23 @@ app.post('/rooms/:roomId/runtime/dice-roll', async (req, res) => {
     res.status(400).json({ ok: false, error: 'invalidExpression', message: 'expression is required.' });
     return;
   }
+  const requestedMode = readSharedDiceRollMode(body.mode);
+  if (requestedMode.ok === false) {
+    res.status(400).json({ ok: false, error: 'invalidRollMode', message: 'mode must be normal, advantage, or disadvantage.' });
+    return;
+  }
+  if (body.dc !== undefined && (typeof body.dc !== 'number' || !Number.isInteger(body.dc))) {
+    res.status(400).json({ ok: false, error: 'invalidDc', message: 'dc must be an integer.' });
+    return;
+  }
   if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.memberId, 'runtime.event.append')) return;
   const result = rollSharedDice(registry, runtimeLogRegistry, {
     roomId: req.params.roomId,
     memberId: body.memberId,
     expression: body.expression,
     label: typeof body.label === 'string' ? body.label : undefined,
+    mode: requestedMode.mode,
+    dc: typeof body.dc === 'number' ? body.dc : undefined,
   });
   if (result.decision !== 'rolled' || !result.event || !result.roll) {
     const status = result.decision === 'roomNotFound' || result.decision === 'memberNotFound' ? 404 : 400;

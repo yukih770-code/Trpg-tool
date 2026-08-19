@@ -267,14 +267,35 @@ function DiceResultLine({ roll }: { roll: SharedDiceRollResult }) {
     <div className="mt-0.5 flex flex-wrap items-baseline gap-1.5 text-[11px]">
       <span className="text-slate-500">掷骰</span>
       <span className="font-bold text-slate-700">{roll.normalizedExpression}</span>
+      {roll.mode && roll.mode !== 'normal' && (
+        <span className="rounded-full bg-indigo-500/10 px-1.5 py-0.5 text-[9px] font-bold text-indigo-700">
+          {roll.mode === 'advantage' ? '优势' : '劣势'}
+        </span>
+      )}
       {roll.label && <span className="text-[10px] text-slate-400">· {roll.label}</span>}
       <span className="text-slate-500">
-        {roll.terms.map((t, i) => (
-          <span key={i}>{i > 0 ? ' + ' : ''}[{t.rolls.join(', ')}]</span>
-        ))}
+        {/* Advantage/disadvantage shows both faces and which one counted; older
+            events without semantic metadata keep the original term rendering. */}
+        {roll.rawRolls && roll.keptRoll !== undefined ? (
+          <span>
+            [{roll.rawRolls.join(', ')}]
+            {roll.rawRolls.length > 1 && <span className="font-bold text-slate-700"> → {roll.keptRoll}</span>}
+          </span>
+        ) : (
+          roll.terms.map((t, i) => (
+            <span key={i}>{i > 0 ? ' + ' : ''}[{t.rolls.join(', ')}]</span>
+          ))
+        )}
         {roll.modifier !== 0 && <span>{roll.modifier > 0 ? ` + ${roll.modifier}` : ` - ${Math.abs(roll.modifier)}`}</span>}
       </span>
       <span className="text-base font-black leading-none text-emerald-700">= {roll.total}</span>
+      {roll.dc !== undefined && (
+        <span className={`text-[10px] font-bold ${roll.outcome === 'success' ? 'text-emerald-700' : 'text-red-700'}`}>
+          DC {roll.dc} {roll.outcome === 'success' ? '成功' : '失败'}
+        </span>
+      )}
+      {roll.isNatural20 && <span className="text-[10px] font-bold text-amber-700">天然 20</span>}
+      {roll.isNatural1 && <span className="text-[10px] font-bold text-slate-500">天然 1</span>}
     </div>
   );
 }

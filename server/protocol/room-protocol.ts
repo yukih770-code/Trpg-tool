@@ -41,6 +41,8 @@ export type {
   SharedDiceRollResult,
   SharedDiceRollRequest,
   SharedDiceRollResponse,
+  SharedDiceRollMode,
+  SharedDiceRollOutcome,
 } from '../../src/lib/platform/sharedDiceTypes.js';
 
 export type {

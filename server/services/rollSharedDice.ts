@@ -9,13 +9,18 @@
  * (RuntimeLog is the only authoritative record — no separate dice registry). The
  * HTTP handler broadcasts it via the existing runtimeLogAppended. Manual fallback
  * tray — NOT a rules engine. No eval, no new dependency.
+ *
+ * T1: the request may additionally carry semantic d20 intent (`mode`, `dc`).
+ * That intent is passed to the same shared pure roller; the resolved faces,
+ * kept die, total and DC outcome are computed HERE from the crypto RNG and are
+ * never accepted from the client. The event kind stays `dice.roll`.
  */
 
 import { randomInt } from 'node:crypto';
 
 import type { RoomRegistry } from '../room-registry.js';
 import type { RuntimeLogRegistry } from '../runtime-log-registry.js';
-import type { RoomRuntimeLogEvent, SharedDiceRollResult } from '../protocol/room-protocol.js';
+import type { RoomRuntimeLogEvent, SharedDiceRollMode, SharedDiceRollResult } from '../protocol/room-protocol.js';
 import { appendRuntimeLogEvent } from './appendRuntimeLogEvent.js';
 import { rollSharedDiceExpression, formatSharedDiceRoll } from '../../src/lib/platform/sharedDiceExpression.js';
 
@@ -24,6 +29,10 @@ export interface RollSharedDiceInput {
   memberId: string;
   expression: string;
   label?: string;
+  /** Semantic d20 intent only; rejected unless the expression is a single d20. */
+  mode?: SharedDiceRollMode;
+  /** Semantic check DC only; rejected unless the expression is a single d20. */
+  dc?: number;
 }
 
 export interface RollSharedDiceResult {
@@ -34,7 +43,9 @@ export interface RollSharedDiceResult {
     | 'memberNotFound'
     | 'memberNotActive'
     | 'invalidExpression'
-    | 'expressionTooLarge';
+    | 'expressionTooLarge'
+    | 'invalidRollMode'
+    | 'invalidDc';
   event?: RoomRuntimeLogEvent;
   roll?: SharedDiceRollResult;
   message?: string;
@@ -62,7 +73,11 @@ export function rollSharedDice(
     return { decision: 'memberNotActive', message: `Member status is "${member.status}".` };
   }
 
-  const outcome = rollSharedDiceExpression(input.expression, cryptoDiceRng, input.label);
+  const outcome = rollSharedDiceExpression(input.expression, cryptoDiceRng, {
+    label: input.label,
+    mode: input.mode,
+    dc: input.dc,
+  });
   if (outcome.ok === false) return { decision: outcome.code, message: outcome.message };
   const roll = outcome.roll;
 

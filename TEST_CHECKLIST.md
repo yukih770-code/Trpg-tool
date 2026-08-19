@@ -18,6 +18,38 @@ npm run build
 
 Both must pass before committing.
 
+### Room Runtime Server-Authoritative d20 Check (T1)
+
+```bash
+npm run frontend:verify:shared-dice
+npm run frontend:verify:dnd-dice
+npm run runtime:verify:room-lifecycle
+npm run runtime:verify:live-room-log-recovery
+npm run runtime:verify:runtime-visibility-projection
+```
+
+- [ ] 单个 d20 表达式可选择普通 / 优势 / 劣势，并可填写可选 DC。
+- [ ] 优势保留较高骰、劣势保留较低骰；被舍弃的骰面只出现在结构化元数据里。
+- [ ] `total` 仍等于 `terms` 小计加修正值；旧的 `dice.roll` 事件显示不变。
+- [ ] `2d6+3`、`2d20`、`1d12+4` 不能被当作 D&D 检定，会明确报错而不是被重新解释。
+- [ ] 没有 DC 时不会凭空产生成败结论。
+- [ ] 天然 20 / 天然 1 只作为元数据显示，不会自动判定成功或失败。
+- [ ] 发起掷骰的玩家在动作面板直接看到服务器判定结果，无需打开日志抽屉。
+- [ ] 重启恢复后，`dice.roll` 事件仍保留 mode / rawRolls / keptRoll / dc / outcome。
+- [ ] 客户端在请求里伪造 keptRoll / total / outcome 不会被信任。
+
+真实双账号验收（需要后端与 PostgreSQL）：
+
+```bash
+npm run alpha:verify:two-account-protocol
+```
+
+- [ ] `two_account_advantage_roll_is_server_resolved` 通过。
+- [ ] `two_account_dice_request_fabrication_ignored` 通过。
+- [ ] `two_account_advantage_projection_converged` 通过。
+
+---
+
 ### DND Level-One Character Commit Chain
 
 ```bash

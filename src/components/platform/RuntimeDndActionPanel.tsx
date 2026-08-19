@@ -1,4 +1,7 @@
+import { useState } from 'react';
+
 import type { RoomRuntimeDndActionShortcut } from '../../lib/platform/roomRuntimeActorProjectionTypes';
+import type { SharedDiceRollMode, SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
 
 export interface RuntimeDndActionPanelProps {
   characterName?: string;
@@ -6,8 +9,18 @@ export interface RuntimeDndActionPanelProps {
   targets?: Array<{ id: string; label: string }>;
   selectedTargetId?: string;
   onSelectTarget?: (targetId: string | undefined) => void;
-  onRoll?: (input: { expression: string; label: string }) => void;
+  /**
+   * Submits the roll to the authoritative room dice path. When it resolves, the
+   * panel shows THAT result; it never recomputes a roll of its own.
+   */
+  onRoll?: (input: { expression: string; label: string; mode?: SharedDiceRollMode; dc?: number }) => Promise<SharedDiceRollResult> | void;
 }
+
+const ROLL_MODE_OPTIONS: Array<{ id: SharedDiceRollMode; label: string }> = [
+  { id: 'normal', label: '普通' },
+  { id: 'advantage', label: '优势' },
+  { id: 'disadvantage', label: '劣势' },
+];
 
 /**
  * Player-facing DND action palette for the Room Runtime.
@@ -15,6 +28,11 @@ export interface RuntimeDndActionPanelProps {
  * It is deliberately a roll launcher, not an authority surface: target choice
  * only enriches the append-only dice label, while hit resolution and HP changes
  * remain under the existing host-confirmed combat controls.
+ *
+ * T1: d20 rolls may carry 普通 / 优势 / 劣势 as semantic intent, and the latest
+ * AUTHORITATIVE server result is shown inline so a player no longer has to open
+ * the log drawer to see their own roll. The RuntimeLog remains the shared,
+ * durable history; this strip is only the initiating player's echo.
  */
 export function RuntimeDndActionPanel({
   characterName,
@@ -24,9 +42,27 @@ export function RuntimeDndActionPanel({
   onSelectTarget,
   onRoll,
 }: RuntimeDndActionPanelProps) {
+  const [rollMode, setRollMode] = useState<SharedDiceRollMode>('normal');
+  const [lastRoll, setLastRoll] = useState<SharedDiceRollResult | null>(null);
+  const [rollError, setRollError] = useState<string | null>(null);
+
   const selectedTarget = targets.find((target) => target.id === selectedTargetId);
   const labelPrefix = characterName?.trim() || '我的角色';
   const targetSuffix = selectedTarget ? ` → ${selectedTarget.label}` : '';
+
+  /**
+   * Fire the authoritative roll and display whatever the server returns. No
+   * local dice are rolled here and no result is recomputed.
+   */
+  const submitRoll = (input: { expression: string; label: string; mode?: SharedDiceRollMode }) => {
+    if (!onRoll) return;
+    setRollError(null);
+    const pending = onRoll(input) as Promise<SharedDiceRollResult> | undefined;
+    if (!pending || typeof pending.then !== 'function') return;
+    void pending
+      .then((result) => { if (result) setLastRoll(result); })
+      .catch((error) => setRollError(error instanceof Error ? error.message : String(error)));
+  };
 
   const actionPresentation = (action: RoomRuntimeDndActionShortcut) => {
     switch (action.kind) {
@@ -45,7 +81,64 @@ export function RuntimeDndActionPanel({
         <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8b3a2f]/75">DND 动作</div>
         <div className="mt-0.5 text-sm font-black text-[#4a1e17]">{labelPrefix}的回合操作</div>
         <p className="mt-1 text-[10px] leading-relaxed text-[#6e4237]">先选择目标，再掷攻击或伤害。骰子会公开记录；命中和伤害结算仍由主持人确认。</p>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] font-bold text-[#6e4237]">d20 检定</span>
+          <div className="inline-flex overflow-hidden rounded border border-[#8b3a2f]/35">
+            {ROLL_MODE_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={rollMode === option.id}
+                onClick={() => setRollMode(option.id)}
+                className={`px-2 py-1 text-[10px] font-bold ${rollMode === option.id ? 'bg-[#8b3a2f] text-white' : 'bg-white/80 text-[#6b281d]'}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <span className="text-[9px] text-[#6e4237]/75">只作用于攻击与检定，伤害骰不受影响。</span>
+        </div>
       </header>
+
+      {(lastRoll || rollError) && (
+        <div className="rounded-md border border-emerald-600/25 bg-emerald-50/70 p-2.5">
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-800/75">本次结果（服务器判定）</div>
+          {rollError ? (
+            <p className="mt-1 text-[11px] font-bold text-red-700">{rollError}</p>
+          ) : lastRoll ? (
+            <>
+              <div className="mt-1 flex flex-wrap items-baseline gap-2">
+                <span className="text-2xl font-black leading-none text-emerald-700">{lastRoll.total}</span>
+                <span className="text-[10px] text-slate-500">{lastRoll.normalizedExpression}</span>
+                {lastRoll.mode && lastRoll.mode !== 'normal' && (
+                  <span className="rounded-full bg-emerald-600/10 px-2 py-0.5 text-[9px] font-bold text-emerald-800">
+                    {lastRoll.mode === 'advantage' ? '优势' : '劣势'}
+                  </span>
+                )}
+                {lastRoll.dc !== undefined && (
+                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${lastRoll.outcome === 'success' ? 'bg-emerald-600/15 text-emerald-800' : 'bg-red-600/10 text-red-700'}`}>
+                    DC {lastRoll.dc} {lastRoll.outcome === 'success' ? '成功' : '失败'}
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 text-[10px] text-slate-600">
+                {lastRoll.rawRolls && lastRoll.keptRoll !== undefined ? (
+                  <span>
+                    骰面 [{lastRoll.rawRolls.join(', ')}]
+                    {lastRoll.rawRolls.length > 1 && <span className="font-bold text-slate-800"> → 采用 {lastRoll.keptRoll}</span>}
+                  </span>
+                ) : (
+                  <span>骰面 {lastRoll.terms.map((term) => `[${term.rolls.join(', ')}]`).join(' + ')}</span>
+                )}
+                {lastRoll.modifier !== 0 && <span>{lastRoll.modifier > 0 ? ` + ${lastRoll.modifier}` : ` - ${Math.abs(lastRoll.modifier)}`}</span>}
+                {lastRoll.isNatural20 && <span className="ml-1 font-bold text-amber-700">天然 20</span>}
+                {lastRoll.isNatural1 && <span className="ml-1 font-bold text-slate-500">天然 1</span>}
+              </div>
+              <p className="mt-1 text-[9px] leading-relaxed text-slate-500">完整记录已写入会话日志；命中与伤害结算仍由主持人确认。</p>
+            </>
+          ) : null}
+        </div>
+      )}
 
       <div className="rounded-md border border-slate-300/60 bg-white/75 p-2">
         <label className="flex items-center gap-2 text-[10px] font-bold text-slate-600">
@@ -83,8 +176,8 @@ export function RuntimeDndActionPanel({
                   <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${presentation.tone}`}>{presentation.badge}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {attack && <button type="button" disabled={!onRoll} onClick={() => onRoll?.({ expression: attack, label: `${labelPrefix} · ${action.name} 攻击${targetSuffix}` })} className="rounded border border-[#8b3a2f]/45 bg-white px-2.5 py-1.5 text-[10px] font-bold text-[#6b281d] disabled:opacity-45">{action.kind === 'spell_attack' ? '法术攻击' : '攻击掷骰'}</button>}
-                  {action.damageFormula && <button type="button" disabled={!onRoll} onClick={() => onRoll?.({ expression: action.damageFormula!, label: `${labelPrefix} · ${action.name} 伤害${targetSuffix}` })} className="rounded border border-amber-500/45 bg-amber-50 px-2.5 py-1.5 text-[10px] font-bold text-amber-900 disabled:opacity-45">掷伤害 {action.damageFormula}</button>}
+                  {attack && <button type="button" disabled={!onRoll} onClick={() => submitRoll({ expression: attack, label: `${labelPrefix} · ${action.name} 攻击${targetSuffix}`, mode: rollMode })} className="rounded border border-[#8b3a2f]/45 bg-white px-2.5 py-1.5 text-[10px] font-bold text-[#6b281d] disabled:opacity-45">{action.kind === 'spell_attack' ? '法术攻击' : '攻击掷骰'}</button>}
+                  {action.damageFormula && <button type="button" disabled={!onRoll} onClick={() => submitRoll({ expression: action.damageFormula!, label: `${labelPrefix} · ${action.name} 伤害${targetSuffix}` })} className="rounded border border-amber-500/45 bg-amber-50 px-2.5 py-1.5 text-[10px] font-bold text-amber-900 disabled:opacity-45">掷伤害 {action.damageFormula}</button>}
                   {action.kind === 'spell_cast' && <span className="rounded border border-indigo-300/60 bg-indigo-50 px-2.5 py-1.5 text-[10px] font-bold text-indigo-800">施放效果由主持人确认</span>}
                 </div>
               </article>
@@ -98,7 +191,7 @@ export function RuntimeDndActionPanel({
           <div className="text-[10px] font-bold text-slate-700">通用检定</div>
           <div className="text-[9px] text-slate-500">没有专用动作时使用。</div>
         </div>
-        <button type="button" disabled={!onRoll} onClick={() => onRoll?.({ expression: '1d20', label: `${labelPrefix} 检定${targetSuffix}` })} className="rounded border border-slate-400/50 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-700 disabled:opacity-45">掷 d20</button>
+        <button type="button" disabled={!onRoll} onClick={() => submitRoll({ expression: '1d20', label: `${labelPrefix} 检定${targetSuffix}`, mode: rollMode })} className="rounded border border-slate-400/50 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-700 disabled:opacity-45">掷 d20</button>
       </div>
     </div>
   );

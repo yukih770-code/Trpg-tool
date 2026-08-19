@@ -5,7 +5,7 @@ import {
   parseSharedDiceExpression,
   type AllowedDiceSides,
 } from '../../lib/platform/sharedDiceExpression';
-import type { SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
+import type { SharedDiceRollMode, SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
 
 /**
  * SharedDiceDock (M25 / M25.1) — manual shared dice tray (execution-agnostic).
@@ -18,14 +18,32 @@ import type { SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
  * randomness authority and does NOT write RuntimeLog — the caller does:
  *   - room mode: onRoll → server (crypto) → room RuntimeLog + broadcast.
  *   - local mode: onRoll → browser RNG → local RuntimeLog.
- * NOT a rules engine (no advantage/disadvantage/system bonuses). For +/- the user
- * types it into the expression (e.g. d20+5). Client parse mirrors the server
- * grammar for tray sync + gating; the actual roll authority is `onRoll`.
+ * NOT a rules engine (no system bonuses). For +/- the user types it into the
+ * expression (e.g. d20+5). Client parse mirrors the server grammar for tray sync
+ * + gating; the actual roll authority is `onRoll`.
+ *
+ * T1: when the pool is exactly one d20, a 普通 / 优势 / 劣势 control and an
+ * optional DC appear. They are sent as semantic INTENT — the server rolls and
+ * resolves — and are hidden for any other pool so the UI never implies a
+ * semantic the server would reject.
  */
 
 export interface SharedDiceDockProps {
-  onRoll: (input: { expression: string; label?: string }) => Promise<SharedDiceRollResult>;
+  onRoll: (input: { expression: string; label?: string; mode?: SharedDiceRollMode; dc?: number }) => Promise<SharedDiceRollResult>;
   canRoll?: boolean;
+}
+
+const ROLL_MODE_OPTIONS: Array<{ id: SharedDiceRollMode; label: string }> = [
+  { id: 'normal', label: '普通' },
+  { id: 'advantage', label: '优势' },
+  { id: 'disadvantage', label: '劣势' },
+];
+
+/** Mirrors the server rule: semantic d20 = exactly one d20 and nothing else. */
+function isSingleD20Pool(pool: { ok: boolean; dice: Record<number, number> }): boolean {
+  if (!pool.ok) return false;
+  const sides = Object.keys(pool.dice).filter((key) => (pool.dice[Number(key)] ?? 0) > 0);
+  return sides.length === 1 && sides[0] === '20' && pool.dice[20] === 1;
 }
 
 /** Rebuild a canonical expression from a dice pool + net modifier. */
@@ -51,9 +69,14 @@ export function SharedDiceDock({ onRoll, canRoll }: SharedDiceDockProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastRoll, setLastRoll] = useState<SharedDiceRollResult | null>(null);
+  const [rollMode, setRollMode] = useState<SharedDiceRollMode>('normal');
+  const [dcInput, setDcInput] = useState('');
 
   const pool = poolFromExpression(expression);
   const canSubmit = canRoll !== false && expression.trim() !== '' && pool.ok && !busy;
+  const semanticD20 = isSingleD20Pool(pool);
+  const dcValue = dcInput.trim() === '' ? undefined : Number(dcInput);
+  const dcValid = dcValue === undefined || Number.isInteger(dcValue);
 
   const addDie = (sides: AllowedDiceSides) => {
     const p = poolFromExpression(expression);
@@ -81,10 +104,15 @@ export function SharedDiceDock({ onRoll, canRoll }: SharedDiceDockProps) {
   };
 
   const roll = () => {
-    if (!pool.ok || expression.trim() === '') return;
+    if (!pool.ok || expression.trim() === '' || !dcValid) return;
     setBusy(true);
     setError(null);
-    onRoll({ expression: expression.trim() })
+    // Semantics are sent only when the pool actually is a single d20; every
+    // other pool keeps the original v0 request shape.
+    onRoll({
+      expression: expression.trim(),
+      ...(semanticD20 ? { mode: rollMode, ...(dcValue === undefined ? {} : { dc: dcValue }) } : {}),
+    })
       .then((result) => setLastRoll(result))
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setBusy(false));
@@ -137,6 +165,37 @@ export function SharedDiceDock({ onRoll, canRoll }: SharedDiceDockProps) {
         </button>
       </div>
 
+      {/* Semantic d20 controls — shown only for a single-d20 pool. */}
+      {semanticD20 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <div className="inline-flex overflow-hidden rounded border border-slate-400/50">
+            {ROLL_MODE_OPTIONS.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={rollMode === option.id}
+                onClick={() => setRollMode(option.id)}
+                className={`px-2 py-1 text-[11px] font-bold ${rollMode === option.id ? 'bg-emerald-600 text-white' : 'bg-white/80 text-slate-600'}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <label className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500">
+            DC
+            <input
+              className={`${input} w-16`}
+              value={dcInput}
+              inputMode="numeric"
+              onChange={(e) => { setDcInput(e.target.value); setError(null); }}
+              placeholder="可选"
+              aria-invalid={!dcValid}
+            />
+          </label>
+          {!dcValid && <span className="text-[10px] text-amber-700">DC 需要是整数。</span>}
+        </div>
+      )}
+
       {/* Free expression + roll */}
       <div className="flex flex-wrap items-center gap-1.5">
         <input
@@ -147,7 +206,7 @@ export function SharedDiceDock({ onRoll, canRoll }: SharedDiceDockProps) {
           placeholder="表达式，例如 d20+5"
           aria-invalid={expression.trim() !== '' && !pool.ok}
         />
-        <button type="button" className={btn} disabled={!canSubmit} onClick={roll}>
+        <button type="button" className={btn} disabled={!canSubmit || !dcValid} onClick={roll}>
           {busy ? '掷骰中…' : '掷骰'}
         </button>
       </div>
@@ -155,11 +214,26 @@ export function SharedDiceDock({ onRoll, canRoll }: SharedDiceDockProps) {
       {canRoll === false && <div className="text-[10px] italic text-slate-400">当前无法掷骰。</div>}
       {lastRoll && (
         <div className="text-[10px] text-slate-500">
-          {lastRoll.terms.map((t, i) => (
-            <span key={i}>{i > 0 ? ' + ' : ''}[{t.rolls.join(', ')}]</span>
-          ))}
+          {lastRoll.rawRolls && lastRoll.keptRoll !== undefined ? (
+            <span>
+              [{lastRoll.rawRolls.join(', ')}]
+              {lastRoll.rawRolls.length > 1 && <span className="font-bold text-slate-700"> → {lastRoll.keptRoll}</span>}
+            </span>
+          ) : (
+            lastRoll.terms.map((t, i) => (
+              <span key={i}>{i > 0 ? ' + ' : ''}[{t.rolls.join(', ')}]</span>
+            ))
+          )}
           {lastRoll.modifier !== 0 && <span>{lastRoll.modifier > 0 ? ` + ${lastRoll.modifier}` : ` - ${Math.abs(lastRoll.modifier)}`}</span>}
           <span className="ml-1 font-bold text-slate-700">= {lastRoll.total}</span>
+          {lastRoll.mode && lastRoll.mode !== 'normal' && (
+            <span className="ml-1 text-slate-400">（{lastRoll.mode === 'advantage' ? '优势' : '劣势'}）</span>
+          )}
+          {lastRoll.dc !== undefined && (
+            <span className={`ml-1 font-bold ${lastRoll.outcome === 'success' ? 'text-emerald-700' : 'text-red-700'}`}>
+              DC {lastRoll.dc} {lastRoll.outcome === 'success' ? '成功' : '失败'}
+            </span>
+          )}
         </div>
       )}
     </div>

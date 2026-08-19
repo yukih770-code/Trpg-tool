@@ -4,51 +4,88 @@
 
 ## Task
 
-- ID: DND Personal Content Portability & Historical Draft Restore v1
-- Name: `DND_PERSONAL_CONTENT_PORTABILITY_RESTORE_V1`
-- Goal: Let an authenticated owner inspect all immutable versions of a private DND compendium pack, export one selected version as a bounded versioned JSON transfer envelope, and copy any selected historical version into the existing unsaved new-version draft flow without overwriting history.
-- Phase: Private ecosystem / portable authored content
-- Status: Complete
+- ID: Room Runtime Server-Authoritative d20 Check v1 (T1)
+- Name: `ROOM_RUNTIME_SERVER_AUTHORITATIVE_D20_CHECK_V1`
+- Goal: Let a player at a real multiplayer table roll a d20 check as normal,
+  advantage or disadvantage against an optional DC, with the server — not the
+  client — deciding the dice faces, the kept die, the total and the DC outcome,
+  and with the initiating player seeing that authoritative result immediately.
+- Phase: Core D&D tabletop comfort (precedes the CharacterData → Runtime slice)
+- Status: Implemented; awaiting local dependency-backed validation
 
 ## Layer Declaration
 
-- IA: Existing Workshop private `我的创作` workbench only; no new page, modal, global navigation entry, public Workshop detail, or package-library surface.
-- Object: Owner-private personal compendium pack/version and its CatalogObject entry projections. This is not a WorkshopPackageManifest, PackageLibraryEntry, CampaignObject, or RuntimeObject.
-- State: UI State for selected/expanded version and transfer notices; Flow State for the copied unsaved entries; authenticated Server State for owner-scoped version summaries/details; existing Persistent Domain State only when the owner separately invokes the current immutable-version publish API.
-- Import/export: Dedicated `trpg-personal-compendium-pack` transfer envelope v1. Legacy accepted personal-pack JSON remains import-compatible. Persistence, owner, Server, Room, version, and entry IDs are omitted; import always creates fresh server-assigned identities.
-- Excluded: public publication, package installation/subscription/update/rollback, dependencies, Room admission, official compendium data, rule execution, schema/migration, media binaries, cloud storage, collaborative editing.
+- IA: Existing Room Runtime only — the dock 投骰 panel, the D&D 动作 panel and the
+  existing log drawer. No new page, route, modal, dock action or navigation entry.
+- Object: `LogEvent` only. The existing `dice.roll` RuntimeLog event is extended
+  additively. No new event kind, no `CatalogObject`, `OwnedObject`,
+  `CampaignObject` or `RuntimeObject` is created or mutated.
+- State: `Server State` (authoritative roll resolution + append), `UI State`
+  (selected roll mode, DC input, last-result echo). No `Persistent Domain State`
+  beyond the existing RuntimeLog append, no `Collaborative State` change.
+- Authority: request carries INTENT ONLY (`expression`, `label`, `mode`, `dc`).
+  Randomness stays in `node:crypto.randomInt` behind the existing shared,
+  RNG-injected pure roller. Resolved fields sent by a client are ignored.
+- Rules boundary: naturals are metadata; `outcome` is derived solely from
+  `total >= dc`. No universal auto-success / auto-failure is encoded.
+- Excluded: attack vs AC, critical damage, damage application, HP mutation,
+  spell/resource mechanics, CharacterData-derived bonuses, host tooling
+  relocation, the dual runtime-event write path (T7), AI, Workshop, routing,
+  multi-instance authority.
 
 ## Page Responsibility And Action Hierarchy
 
-- The private content workbench remains responsible for authoring, previewing, version history, portable owner backup, import preview, and explicit immutable-version save.
-- It remains not responsible for public discovery/publication, Package Library lifecycle, campaign entry, Room approval, Runtime execution, or official-source redistribution.
-- Pack-card primary action remains `查看内容`; its existing current-version draft action remains secondary.
-- Inside the inspected object detail, selecting a historical version, exporting it, and copying it to a new-version draft are secondary object-management actions.
-- The existing `发布新版本` action remains the only persistence commit after a historical version is copied into Flow State.
-- Hidden actions: overwrite version, preserve source IDs on import, automatic download on inspection, automatic save, public share, install/enable/rollback package, Room activation, and destructive history mutation.
+- The Room Runtime dock keeps one 投骰 tool; the semantic controls live inside
+  the existing panel rather than adding a competing action.
+- The D&D 动作 panel remains a roll launcher. It now shows the authoritative
+  result of the roll it just submitted; it still resolves nothing itself.
+- The RuntimeLog drawer remains the shared, durable session history.
+- Hidden actions: rolling locally, editing a resolved result, applying damage
+  from a roll, and any auto-hit / auto-miss inference.
 
 ## Allowed Files
 
-- `src/lib/platform/personalCompendiumImport.ts` and focused smoke
-- `src/lib/api/personalCompendiumPackApiClient.ts` and focused smoke
-- `server/api/personalCompendiumPackApiHandlers.ts`, routes, and focused smoke/verification
-- `src/components/platform/DndPersonalSpeciesPackPanel.tsx`
-- `package.json`
-- `PROJECT_STATUS.md`, `TEST_CHECKLIST.md`, `ECOSYSTEM_AND_AI_ROADMAP.md`
-- `docs/ai/ACTIVE_TASK.md`, `docs/architecture/ARCHITECTURE_INDEX_V1.md`, relevant implementation docs
+- `src/lib/platform/sharedDiceTypes.ts`
+- `src/lib/platform/sharedDiceExpression.ts`
+- `src/lib/platform/sharedDiceExpressionSmoke.ts` (new)
+- `src/lib/platform/roomServerHttpClient.ts`
+- `src/components/platform/SharedDiceDock.tsx`
+- `src/components/platform/RuntimeDndActionPanel.tsx`
+- `src/components/platform/RoomRuntimeEntryBridge.tsx`
+- `src/components/platform/RoomRuntimeLogPreviewPanel.tsx`
+- `server/protocol/room-protocol.ts`
+- `server/services/rollSharedDice.ts`
+- `server/room-server.ts` (dice route only)
+- `server/services/liveRoomRuntimeLogPersistenceSmoke.ts`
+- `server/api/verifyPrivateAlphaTwoAccountProtocol.ts`
+- `package.json` (one new verify script)
+- `CURRENT_PLATFORM_STAGE.md`, `TEST_CHECKLIST.md`, `docs/ai/ACTIVE_TASK.md`
 
 ## Forbidden Changes
 
-- PostgreSQL schema/migrations, repository storage semantics, official/local rule data, character store, Campaign, Room, Runtime, permissions, Workshop public catalog, PackageLibraryEntry, WorkshopPackageManifest, media, AI/model behavior
-- Any overwrite/delete of an immutable version or automatic persistence from inspection/export/draft restore
+- `src/lib/dnd/dndDiceRoller.ts` and its smoke (kept as the regression guard)
+- A new `RoomRuntimeLogEventKind`, or widening either kind whitelist
+- Expression-grammar syntax for advantage (no `kh1` / `adv` inside the string)
+- Dependencies, registry configuration, unrelated `package-lock.json` churn
+- PostgreSQL schema / migrations, repository storage semantics
+- Character store, Campaign, Room lifecycle, permissions, map, combat state
 - `output/`, `tools/`, `work/`
 
 ## Completion Criteria
 
-- Owner-only API lists bounded immutable version summaries only after pack ownership is resolved.
-- Client exposes typed version history and continues to read one selected version through the owner-only endpoint.
-- Export helper creates a bounded, human-readable, versioned personal-pack envelope with no owner/user/Room/server IDs and round-trips through import preview.
-- Import accepts the new envelope and the existing legacy shape, rejects unsupported format versions, invalid entry kinds/payloads, and oversize transfer text before any write.
-- Workbench can select and inspect every version, download only after an explicit action, and copy the selected version into the existing unsaved new-version draft.
-- Copying a historical version performs no write and clearly states that publishing creates a new immutable version; old Room references remain unchanged.
-- Focused API/client/transfer smokes, existing personal-content/import/Room-reference regressions, navigation/action audit, TypeScript, server/frontend builds, diff check, docs, cleanup, and one isolated commit pass.
+- Advantage / disadvantage / DC apply only to a single-d20 expression; `2d6+3`,
+  `2d20` and `1d12+4` are rejected as semantic checks and still roll normally.
+- `total` stays authoritative and `total = sum(terms) + modifier` holds in every
+  mode; the kept die is the ordinary term and the discarded face lives only in
+  `rawRolls`.
+- A request with no `mode`/`dc` produces the exact v0 payload; old `dice.roll`
+  events keep rendering through every existing consumer.
+- Natural 20 / natural 1 are recorded and never resolve a check by themselves.
+- A `dice.roll` carrying the new fields survives persist → restore verbatim,
+  proving the recovery whitelist needs no widening.
+- Fabricated resolved fields in a request are ignored; the server recomputes.
+- Host and player projections converge on the same authoritative result.
+- The initiating player sees the result without opening the log drawer.
+- Dedicated shared-dice smoke, persistence round-trip, two-account protocol,
+  TypeScript, frontend build, server build, diff check and docs all pass in one
+  isolated commit.

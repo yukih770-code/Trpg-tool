@@ -213,8 +213,72 @@ async function main(): Promise<void> {
   const queuedB = coordinator.queue(room, { ...event(room.identity.roomId, 301), eventId: 'queued-b' });
   await Promise.all([queuedA, queuedB]);
 
+  // ── T1: a semantic d20 dice.roll must survive persist -> restore verbatim ──
+  // The kind stays `dice.roll`, so the recovery whitelist in
+  // liveRoomRuntimeLogPersistence must not need widening. This proves it, and
+  // proves the additive semantic payload fields are not stripped on the way
+  // through the durable envelope.
+  const diceRepository = createRepository();
+  const diceRoom = createRoom({
+    hostDisplayName: 'Dice Host',
+    hostUserId: 'dice-host-user',
+    sessionId: 'runtime-session-dice',
+    campaignRef: {
+      source: 'unknown',
+      worldServerId: 'world-1',
+      campaignId: 'campaign-1',
+      displayName: 'Campaign',
+      systemId: 'dnd5e-2024',
+    },
+  }).room;
+  diceRoom.members[0].memberId = 'dice-host-member';
+  await prepareLiveRoomRuntimeSession(diceRepository, diceRoom);
+  const semanticDiceEvent: RoomRuntimeLogEvent = {
+    eventId: 'dice-advantage-1',
+    roomId: diceRoom.identity.roomId,
+    seq: 1,
+    createdAt: '2026-08-19T00:00:00.000Z',
+    authorMemberId: 'dice-host-member',
+    kind: 'dice.roll',
+    visibility: 'public',
+    text: '掷骰 1d20+5（优势）：[7, 15] → 15 + 5 = 20 · DC 15 成功',
+    payload: {
+      expression: '1d20+5',
+      normalizedExpression: '1d20+5',
+      label: 'Alpha turn check',
+      terms: [{ count: 1, sides: 20, rolls: [15], subtotal: 15 }],
+      modifier: 5,
+      total: 20,
+      mode: 'advantage',
+      rawRolls: [7, 15],
+      keptRoll: 15,
+      dc: 15,
+      outcome: 'success',
+      isNatural20: false,
+      isNatural1: false,
+    },
+  };
+  const dicePersist = await persistLiveRoomRuntimeLogEvent(diceRepository, diceRoom, semanticDiceEvent);
+  const diceRoomRegistry = createInMemoryRoomRegistry();
+  diceRoomRegistry.create(diceRoom);
+  const diceLogRegistry = createInMemoryRuntimeLogRegistry();
+  const diceRestore = await restoreLiveRoomRuntimeLogs(diceRepository, diceRoomRegistry, diceLogRegistry);
+  const restoredDice = diceLogRegistry.list(diceRoom.identity.roomId).events[0];
+  const restoredDicePayload = (restoredDice?.payload ?? {}) as Record<string, unknown>;
+
   const stored = repository.events.get(sessionId) ?? [];
   const checks = [
+    dicePersist.status === 'persisted',
+    diceRestore.decision === 'restored' && diceRestore.restoredEventCount === 1,
+    restoredDice?.kind === 'dice.roll' && restoredDice?.eventId === 'dice-advantage-1',
+    restoredDicePayload.mode === 'advantage',
+    Array.isArray(restoredDicePayload.rawRolls)
+      && (restoredDicePayload.rawRolls as number[]).join(',') === '7,15',
+    restoredDicePayload.keptRoll === 15,
+    restoredDicePayload.dc === 15 && restoredDicePayload.outcome === 'success',
+    restoredDicePayload.isNatural20 === false && restoredDicePayload.isNatural1 === false,
+    restoredDicePayload.total === 20 && restoredDicePayload.normalizedExpression === '1d20+5',
+    restoredDice?.text === semanticDiceEvent.text,
     localPrepare.decision === 'skippedNoPersistentContext',
     firstPrepare.decision === 'ready' && secondPrepare.decision === 'ready' && repository.sessions.size === 1,
     conflict.decision === 'contextConflict',
