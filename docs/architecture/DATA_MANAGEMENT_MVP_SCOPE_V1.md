@@ -1,6 +1,19 @@
 # Data Management MVP Scope v1
 
-Status: architecture scope contract only.
+Status: architecture scope contract only. **Phase scope superseded 2026-08-18 —
+see the note below.**
+
+> **Superseded phase note (2026-08-18).** The offline personal-campaign phase this
+> document scopes has been passed. Backend persistence, WebSocket/server
+> authority, the account system, permissions, `CampaignMembership`,
+> `CampaignActorInstance` and map / Scene / Token now exist in the repository.
+> The exclusion lists in §1 and §3 are therefore **historical**, not prohibitions,
+> and must not be cited to block work on those systems — each is governed by its
+> own Level 1 contract via `AI_CONTRACT_ENFORCEMENT_MATRIX_V1.md`.
+>
+> What remains binding here: local-first work must stay replaceable behind a
+> repository/adapter boundary, must validate before write, must preview before
+> commit, and must never present placeholder behavior as real data management.
 
 This document defines the smallest data-management path that can turn the current
 platform shell into a local, personal campaign tool. It does not authorize UI,
@@ -53,7 +66,8 @@ does not count as real data management.
 The MVP is for local browser/notebook use. It should be useful for one person
 running or preparing a campaign on one machine.
 
-The MVP does not include:
+The MVP does not include (historical phase list — see the superseded note at the
+top of this document; several of these now exist and are governed elsewhere):
 
 - real multiplayer sync;
 - WebSocket or server authority;

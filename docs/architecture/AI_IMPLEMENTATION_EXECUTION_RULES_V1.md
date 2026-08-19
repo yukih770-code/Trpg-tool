@@ -248,12 +248,24 @@ Forbidden:
 4. Forcing DND / COC / CP RED into one visual template that erases system
    differences.
 
-## 11. Data Management MVP Check
+## 11. Data Management MVP Check (superseded phase note)
+
+> **Superseded 2026-08-18.** This section described the offline personal-campaign
+> phase that the repository has already passed. Real multiplayer, permissions,
+> `CampaignMembership`, `CampaignActorInstance`, map / Scene / Token,
+> backend / WebSocket and the account system now exist in the repository with
+> their own migrations, services, routes and smokes. The lists below are retained
+> as history and **must not be used to prohibit work on those systems**.
+>
+> Still binding and unchanged: §5 (long-term architecture non-regression),
+> §6 (mandatory layer declaration), §12 (placeholder transparency). Work on a
+> shipped system is governed by the Level 1 contracts the Matrix triggers for
+> that domain, not by this section.
 
 Data implementation must prioritize the offline personal campaign MVP while
 preserving long-term architecture.
 
-Current phase priority:
+Historical phase priority (offline personal-campaign MVP, completed):
 
 1. Campaign Local Store.
 2. `CampaignLibraryShell` connected to real local campaign store.
@@ -264,7 +276,8 @@ Current phase priority:
 7. Manual State Change -> RuntimeLog.
 8. Local import/export envelope.
 
-Do not implement early:
+Historical "do not implement early" list (no longer in force; every item except
+Handout publishing and the Workshop installer now exists in the repository):
 
 - real multiplayer;
 - complete permissions;
@@ -274,6 +287,11 @@ Do not implement early:
 - complete Handout publishing;
 - complete Workshop installer;
 - complete backend / WebSocket / account system.
+
+Current rule for the items above: the binding requirement is non-regression
+(§5) and honest labeling (§12), not prohibition. Handout publishing and the
+Workshop installer remain unbuilt, but that is a product-priority fact, not a
+gate — they are governed by their own contracts when scoped.
 
 ## 12. Placeholder Transparency
 
@@ -357,6 +375,12 @@ The AI must stop and report rather than implement when it detects:
 - a task that would imply backend, permission, multiplayer, map, handout, or log
   behavior without an explicit data contract;
 - a navigation change that would create duplicate visible back/exit controls.
+
+Not a stop condition: implementing or extending a system the repository already
+ships — multiplayer, permissions, `CampaignMembership`, `CampaignActorInstance`,
+map / Scene / Token, backend / WebSocket, or the account system. §11 is a
+superseded phase note and does not create an MVP-versus-architecture conflict
+for this purpose.
 
 ## 16. Acceptance Boundary
 
