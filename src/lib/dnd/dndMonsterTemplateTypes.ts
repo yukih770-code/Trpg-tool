@@ -74,7 +74,7 @@ export function dndMonsterToLiteActorSheet(monster: DndPrivateMonsterTemplate): 
       armorClass: monster.armorClass,
       maxHp: monster.hitPointsAverage,
       currentHp: monster.hitPointsAverage,
-      speedFt: numericSpeed(monster.speed),
+      speedFt: readDndNumericSpeed(monster.speed),
     },
     savingThrows: monster.savingThrows,
     skills: monster.skills,
@@ -84,7 +84,12 @@ export function dndMonsterToLiteActorSheet(monster: DndPrivateMonsterTemplate): 
   };
 }
 
-function numericSpeed(speed: Record<string, unknown>): number | undefined {
+/**
+ * Reads a walking speed in feet out of a loosely typed speed value.
+ * Exported so the character derivation reuses this parser instead of adding a
+ * second one; a `CharacterData.speed` string is passed as `{ walk: speed }`.
+ */
+export function readDndNumericSpeed(speed: Record<string, unknown>): number | undefined {
   const walk = speed.walk ?? speed.speed;
   if (typeof walk === 'number' && Number.isFinite(walk)) return Math.trunc(walk);
   if (typeof walk === 'string') {

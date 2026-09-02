@@ -26,6 +26,11 @@ import { createTranslator, readStoredLocale } from '../i18n';
 import { CharacterCampaignCta, useCharacterCampaignCta } from '../components/platform/CharacterCampaignCta';
 import { DndLevelAdvancementDialog } from '../components/dnd/DndLevelAdvancementDialog';
 import { normalizeDndClassLevels } from '../lib/dnd2024/multiclass';
+import {
+  getDndAbilityData,
+  getDndCharacterArmorClass,
+  getDndCharacterProficiencyBonus,
+} from '../lib/dnd2024/dndCharacterCombatMath';
 
 type SheetProps = {
   onStartPlaying?: () => void;
@@ -84,14 +89,12 @@ export function Sheet({ onStartPlaying, initialSection }: SheetProps = {}) {
     { key: 'Cha', label: '魅力' },
   ];
 
-  const getAttrData = (attr: AttributeName) => {
-    const data = character.attrs[attr];
-    const score = data.base + data.pointbuy + data.racebonus + data.extrabonus;
-    const mod = Math.floor((score - 10) / 2);
-    return { score, mod };
-  };
+  // AI-LANDMARK: DND_CHARACTER_COMBAT_MATH_V1
+  // These formulas live in dndCharacterCombatMath so the derivation that fills
+  // the campaign combat sheet cannot disagree with this page.
+  const getAttrData = (attr: AttributeName) => getDndAbilityData(character.attrs, attr);
 
-  const getProfBonus = () => Math.ceil(1 + (character.level / 4));
+  const getProfBonus = () => getDndCharacterProficiencyBonus(character.level);
 
   const allSkills: { name: SkillName; attr: AttributeName }[] = [
     { name: '运动', attr: 'Str' },
@@ -134,11 +137,11 @@ export function Sheet({ onStartPlaying, initialSection }: SheetProps = {}) {
   
   // Calculate dynamic AC based on class (e.g. Barbarian Unarmored Defense)
   const dexMod = getAttrData('Dex').mod;
-  const conMod = getAttrData('Con').mod;
-  let acTotal = character.acMod + dexMod;
-  if (character.jobClass === '野蛮人' && character.acMod === 10) { // Assuming no armor
-     acTotal += conMod;
-  }
+  const acTotal = getDndCharacterArmorClass({
+    acMod: character.acMod,
+    attrs: character.attrs,
+    jobClass: character.jobClass,
+  });
   
   const initiative = dexMod;
   const savingThrows = classDef?.savingThrows || [];

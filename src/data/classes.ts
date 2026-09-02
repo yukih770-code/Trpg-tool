@@ -1,5 +1,5 @@
-import { ClassDef } from '../lib/dnd-types';
-import type { RuleDataMetadata } from '../lib/rules/rule-data-metadata';
+import { ClassDef } from '../lib/dnd-types.js';
+import type { RuleDataMetadata } from '../lib/rules/rule-data-metadata.js';
 
 // AI-LANDMARK: DND_RULE_METADATA_APPLICATION
 export const DND_CLASS_DATA_ACCURACY: RuleDataMetadata = {

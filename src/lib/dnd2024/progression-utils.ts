@@ -12,7 +12,7 @@
  * 本轮不接入 Creator / Gameplay / Sheet。
  */
 
-import { DND2024_CLASS_PROGRESSIONS } from '../../data/dnd2024/classProgression';
+import { DND2024_CLASS_PROGRESSIONS } from '../../data/dnd2024/classProgression.js';
 import type {
   DndClassKey,
   Dnd2024ClassProgression,
@@ -24,7 +24,7 @@ import type {
   ActionDefinition,
   PassiveFeatureDefinition,
   SpellSlotProgression,
-} from './progression-types';
+} from './progression-types.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 等级校验工具（内部使用）

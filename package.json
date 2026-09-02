@@ -120,6 +120,7 @@
     "frontend:verify:scene-snapshot": "tsx src/lib/scene/sceneRuntimeSnapshotSmoke.ts",
     "frontend:verify:scene-state": "tsx src/lib/api/sceneStateApiClientSmoke.ts",
     "frontend:verify:dnd-dice": "tsx src/lib/dnd/dndDiceRollerSmoke.ts",
+    "frontend:verify:character-lite-sheet": "tsx src/lib/dnd/dndCharacterToLiteActorSheetSmoke.ts",
     "frontend:verify:shared-dice": "tsx src/lib/platform/sharedDiceExpressionSmoke.ts",
     "frontend:verify:dnd-lite-actor": "tsx src/lib/dnd/dndLiteActorSheetSmoke.ts",
     "frontend:verify:campaign-actor-overrides": "tsx src/lib/platform/campaignActorOverrideSmoke.ts",

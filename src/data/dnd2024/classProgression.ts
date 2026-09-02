@@ -24,8 +24,8 @@ import {
   SpellSlotProgression,
   SpellcastingProgression,
   Dnd2024LevelProgression,
-} from '../../lib/dnd2024/progression-types';
-import type { RuleDataMetadata } from '../../lib/rules/rule-data-metadata';
+} from '../../lib/dnd2024/progression-types.js';
+import type { RuleDataMetadata } from '../../lib/rules/rule-data-metadata.js';
 
 export const DND_CLASS_PROGRESSION_ACCURACY: RuleDataMetadata = {
   source: 'dnd-local-chm-primary',

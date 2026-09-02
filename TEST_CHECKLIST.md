@@ -90,6 +90,48 @@ npm run alpha:verify:restart-recovery -- --verify
 
 ---
 
+### Character → DND Lite 战斗卡派生 (T9)
+
+主持人不再手动重敲角色数值：`从角色卡填充 / Fill from character` 从战役角色的
+CharacterData 快照确定性派生现有的 `DndLiteActorSheet`。
+
+```bash
+npm run frontend:verify:character-lite-sheet
+npm run frontend:verify:dnd-level-one-character
+npm run frontend:verify:dnd-dice
+npm run frontend:verify:shared-dice
+npm run api:verify:world
+npm run api:verify:campaign-room
+npm run runtime:verify:runtime-visibility-projection
+```
+
+- [ ] 六项属性、熟练加值、豁免、全部 18 项技能、HP、速度、AC 与角色卡逐项一致。
+- [ ] 8 级熟练加值为 3（分段边界）；1-20 级与旧的 `Math.ceil(1 + level/4)` 完全一致。
+- [ ] 野蛮人无甲防御：`acMod === 10` 时加体质调整值；穿甲（`acMod = 16`）后不再加。
+- [ ] 非野蛮人在 `acMod === 10` 时不会获得体质加值。
+- [ ] `currentHp` 超过 `maxHp` 时被夹紧；派生结果通过 `validateDndLiteActorSheet`。
+- [ ] `actions` 保持为空，并在 `omissions` 中如实列出；不臆造攻击加值或伤害骰。
+- [ ] `omissions` 同时包含法术位、职业资源、物品、状态。
+- [ ] `approximations` 包含 AC、豁免、技能，UI 明确提示需复核。
+- [ ] 豁免熟练取「存储字段 ∪ 职业定义」的并集。
+- [ ] 18 个中文技能名与 18 个 lite 技能 key 双向全覆盖、无重复。
+- [ ] 同一角色重复派生结果完全一致；派生不修改输入对象。
+- [ ] 快照守卫拒绝空对象、null、数组、缺失/未来 schema 版本、COC 角色卡。
+- [ ] 派生只填充草稿；已保存的战斗卡在主持人按下保存前不受影响。
+- [ ] 面板明确说明数据来自加入战役时冻结的快照，不会随升级自动更新。
+- [ ] 无自动同步、无 RuntimeLog 事件、无新事件种类、无 schema 变更。
+- [ ] `Sheet.tsx` 在所有可达等级（1-20）显示不变。
+
+真实本地验收：
+
+- [ ] 主持人在战役工作台选择一个已批准的玩家角色，点击「从角色卡填充」。
+- [ ] 面板显示需复核 / 未导出清单与冻结快照提示。
+- [ ] 保存后 `overridePayload.dndLiteActorSheetV1` 写入成功。
+- [ ] 房间 Runtime 的角色投影随之带出 AC / HP（此前 AC 为空）。
+- [ ] T1 / T7 行为无回归。
+
+---
+
 ### Local Dev Viewer Fixture 与 PostgreSQL 错误码保真
 
 `dev:local` 现在保证配置的 `VITE_DEV_VIEWER_USER_ID` 在本地数据库中真实存在；

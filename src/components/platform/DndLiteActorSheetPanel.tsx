@@ -3,6 +3,7 @@ import { createTranslator, type Locale } from '../../i18n';
 import type { CampaignActorInstance } from '../../lib/api/campaignRoomApiClient';
 import { createDefaultDndLiteActorSheet, getDndLiteCombatantPrefill, summarizeDndLiteActorSheet, validateDndLiteActorSheet } from '../../lib/dnd/dndLiteActorSheet';
 import { DND_ABILITY_KEYS, DND_SKILL_KEYS, type DndAbilityKey, type DndLiteActorAction, type DndLiteActorActionKind, type DndLiteActorKind, type DndLiteActorSheet, type DndSkillKey } from '../../lib/dnd/dndLiteActorTypes';
+import { deriveDndLiteActorSheetFromSnapshot, readDndCharacterSnapshot, type DndCharacterSheetDerivation } from '../../lib/dnd/dndCharacterToLiteActorSheet';
 
 type Props = {
   locale: Locale;
@@ -22,6 +23,30 @@ const abilityNames: Record<DndAbilityKey, [string, string]> = {
 
 const skillNames: Record<DndSkillKey, [string, string]> = {
   acrobatics: ['体操', 'Acrobatics'], animalHandling: ['驯兽', 'Animal Handling'], arcana: ['奥秘', 'Arcana'], athletics: ['运动', 'Athletics'], deception: ['欺瞒', 'Deception'], history: ['历史', 'History'], insight: ['洞悉', 'Insight'], intimidation: ['威吓', 'Intimidation'], investigation: ['调查', 'Investigation'], medicine: ['医药', 'Medicine'], nature: ['自然', 'Nature'], perception: ['察觉', 'Perception'], performance: ['表演', 'Performance'], persuasion: ['游说', 'Persuasion'], religion: ['宗教', 'Religion'], sleightOfHand: ['巧手', 'Sleight of Hand'], stealth: ['隐匿', 'Stealth'], survival: ['求生', 'Survival'],
+};
+
+// T9 derivation copy. Kept local and bilingual, exactly like abilityNames /
+// skillNames above, so filling from a character adds no i18n key.
+const derivationText = {
+  fill: ['从角色卡填充', 'Fill from character'],
+  noSnapshot: ['该角色没有可读取的角色卡快照，请手动填写。', 'No readable character snapshot for this actor — fill the sheet manually.'],
+  filled: ['已从角色卡填充。请复核后再保存。', 'Filled from the character sheet. Review it before saving.'],
+  frozen: ['数据来自加入战役时冻结的角色卡快照，不会随角色升级自动更新。', 'Values come from the character snapshot frozen when this actor joined the campaign; they do not update as the character levels up.'],
+  needsReview: ['需复核', 'Needs review'],
+  notDerived: ['未导出', 'Not derived'],
+  overwriteWarning: ['将覆盖当前草稿；已保存的卡片在你按下保存前不受影响。', 'This replaces the current draft. The saved sheet is untouched until you press save.'],
+} as const;
+
+const derivedFieldText: Record<string, [string, string]> = {
+  armorClass: ['护甲等级', 'Armour class'],
+  savingThrows: ['豁免', 'Saving throws'],
+  skills: ['技能', 'Skills'],
+  speedFt: ['速度', 'Speed'],
+  actions: ['动作', 'Actions'],
+  spellSlots: ['法术位', 'Spell slots'],
+  classResources: ['职业资源', 'Class resources'],
+  inventory: ['物品', 'Inventory'],
+  conditions: ['状态', 'Conditions'],
 };
 
 function actorKindFromCampaign(actor: CampaignActorInstance): DndLiteActorKind {
@@ -44,13 +69,45 @@ export function DndLiteActorSheetPanel({ locale, canManage, campaignActors, shee
   const [skillValue, setSkillValue] = useState('');
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
+  // Result of the last explicit fill, so the panel can report what was
+  // approximated and what the character could not supply.
+  const [derivation, setDerivation] = useState<DndCharacterSheetDerivation | undefined>(undefined);
   const selectedActor = useMemo(() => campaignActors.find((actor) => actor.campaignActorInstanceId === actorInstanceId), [actorInstanceId, campaignActors]);
 
   useEffect(() => {
     if (!selectedActor) return;
     setDraft(sheets[selectedActor.campaignActorInstanceId] ?? createDefaultDndLiteActorSheet({ displayName: selectedActor.displayName, actorKind: actorKindFromCampaign(selectedActor) }));
     setNotice('');
+    // Deliberately does NOT derive here. Filling is an explicit host action:
+    // an automatic fill would let a host save derived numbers without ever
+    // having looked at them.
+    setDerivation(undefined);
   }, [selectedActor, sheets]);
+
+  const canDeriveFromCharacter = useMemo(
+    () => Boolean(selectedActor && readDndCharacterSnapshot(selectedActor.snapshotPayload)),
+    [selectedActor],
+  );
+
+  /**
+   * Fills the DRAFT from the campaign actor's character snapshot. It never
+   * writes: the host still reviews and presses save, and an already-saved sheet
+   * stays untouched until they do.
+   */
+  const fillFromCharacter = () => {
+    if (!selectedActor) return;
+    const result = deriveDndLiteActorSheetFromSnapshot(selectedActor.snapshotPayload, {
+      displayNameFallback: selectedActor.displayName,
+    });
+    if (!result) {
+      setDerivation(undefined);
+      setNotice(derivationText.noSnapshot[locale === 'en' ? 1 : 0]);
+      return;
+    }
+    setDraft({ ...result.sheet, actorKind: actorKindFromCampaign(selectedActor) });
+    setDerivation(result);
+    setNotice(derivationText.filled[locale === 'en' ? 1 : 0]);
+  };
 
   const update = (next: Partial<DndLiteActorSheet>) => setDraft((previous) => ({ ...previous, ...next }));
   const updateDefense = (key: keyof DndLiteActorSheet['defenses'], value: string) => setDraft((previous) => ({ ...previous, defenses: { ...previous.defenses, [key]: asNumber(value) } }));
@@ -107,6 +164,17 @@ export function DndLiteActorSheetPanel({ locale, canManage, campaignActors, shee
       {campaignActors.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-[#2f2a22]/15 bg-white p-4 text-sm text-[#51483d]">{t('dndActorSheet.noActors')}</p> : <>
         <div className="mt-4 rounded-xl border border-[#2f2a22]/10 bg-white p-3"><label className="text-xs font-bold">{t('dndActorSheet.selectActor')}</label><select value={actorInstanceId} onChange={(event) => setActorInstanceId(event.target.value)} disabled={!canManage} className="mt-2 w-full rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm disabled:opacity-50"><option value="">{t('dndActorSheet.chooseActor')}</option>{campaignActors.map((actor) => <option key={actor.campaignActorInstanceId} value={actor.campaignActorInstanceId}>{actor.displayName}{sheets[actor.campaignActorInstanceId] ? ` · ${t('dndActorSheet.sheetReady')}` : ''}</option>)}</select></div>
         {selectedActor && <div className="mt-4 grid gap-3">
+          <div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={fillFromCharacter} disabled={!canManage || saving || !canDeriveFromCharacter} className="rounded-md border border-[#58180d]/25 bg-[#fffaf0] px-3 py-2 text-xs font-bold text-[#58180d] disabled:opacity-40">{derivationText.fill[locale === 'en' ? 1 : 0]}</button>
+              <span className="text-[11px] leading-4 text-[#51483d]">{canDeriveFromCharacter ? derivationText.overwriteWarning[locale === 'en' ? 1 : 0] : derivationText.noSnapshot[locale === 'en' ? 1 : 0]}</span>
+            </div>
+            {derivation && <div className="mt-3 grid gap-2 rounded-lg bg-[#f7f3ea] p-3 text-[11px] leading-5 text-[#51483d]">
+              <p>{derivationText.frozen[locale === 'en' ? 1 : 0]}</p>
+              {derivation.approximations.length > 0 && <p><span className="font-bold text-[#8b3a2f]">{derivationText.needsReview[locale === 'en' ? 1 : 0]}:</span> {derivation.approximations.map((field) => (derivedFieldText[field] ?? [field, field])[locale === 'en' ? 1 : 0]).join('、')}</p>}
+              {derivation.omissions.length > 0 && <p><span className="font-bold">{derivationText.notDerived[locale === 'en' ? 1 : 0]}:</span> {derivation.omissions.map((field) => (derivedFieldText[field] ?? [field, field])[locale === 'en' ? 1 : 0]).join('、')}</p>}
+            </div>}
+          </div>
           <div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3"><div className="grid gap-2 sm:grid-cols-3"><input value={draft.displayName} onChange={(event) => update({ displayName: event.target.value })} disabled={!canManage} placeholder={t('dndActorSheet.displayName')} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm disabled:opacity-50" /><select value={draft.actorKind} onChange={(event) => update({ actorKind: event.target.value as DndLiteActorKind })} disabled={!canManage} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm disabled:opacity-50"><option value="pc">{t('dndActorSheet.pc')}</option><option value="npc">{t('dndActorSheet.npc')}</option><option value="monster">{t('dndActorSheet.monster')}</option><option value="unknown">{t('dndActorSheet.unknown')}</option></select><input value={draft.proficiencyBonus} onChange={(event) => update({ proficiencyBonus: asNumber(event.target.value, draft.proficiencyBonus) ?? draft.proficiencyBonus })} disabled={!canManage} type="number" placeholder={t('dndActorSheet.proficiency')} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm disabled:opacity-50" /></div><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5"><input value={draft.defenses.armorClass ?? ''} onChange={(event) => updateDefense('armorClass', event.target.value)} disabled={!canManage} type="number" placeholder={t('dndActorSheet.ac')} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm disabled:opacity-50" /><input value={draft.defenses.currentHp ?? ''} onChange={(event) => updateDefense('currentHp', event.target.value)} disabled={!canManage} type="number" placeholder={t('dndActorSheet.currentHp')} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm disabled:opacity-50" /><input value={draft.defenses.maxHp ?? ''} onChange={(event) => updateDefense('maxHp', event.target.value)} disabled={!canManage} type="number" placeholder={t('dndActorSheet.maxHp')} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm disabled:opacity-50" /><input value={draft.defenses.temporaryHp ?? ''} onChange={(event) => updateDefense('temporaryHp', event.target.value)} disabled={!canManage} type="number" placeholder={t('dndActorSheet.tempHp')} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm disabled:opacity-50" /><input value={draft.defenses.speedFt ?? ''} onChange={(event) => updateDefense('speedFt', event.target.value)} disabled={!canManage} type="number" placeholder={t('dndActorSheet.speed')} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm disabled:opacity-50" /></div></div>
           <div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3"><h5 className="font-bold text-sm">{t('dndActorSheet.abilities')}</h5><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{DND_ABILITY_KEYS.map((key) => <label key={key} className="rounded-lg bg-[#f7f3ea] px-3 py-2 text-xs"><span className="font-bold">{abilityNames[key][locale === 'en' ? 1 : 0]}</span><span className="ml-2 text-[#51483d]">{t('dndActorSheet.modifier')} {draft.abilities[key] >= 10 ? '+' : ''}{Math.floor((draft.abilities[key] - 10) / 2)}</span><input value={draft.abilities[key]} onChange={(event) => updateAbility(key, event.target.value)} disabled={!canManage} type="number" className="mt-2 w-full rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-sm disabled:opacity-50" /></label>)}</div></div>
           <div className="grid gap-3 lg:grid-cols-2"><div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3"><h5 className="font-bold text-sm">{t('dndActorSheet.saves')}</h5><div className="mt-3 flex gap-2"><select value={saveKey} onChange={(event) => setSaveKey(event.target.value as DndAbilityKey)} disabled={!canManage} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 bg-white px-2 py-2 text-xs disabled:opacity-50">{DND_ABILITY_KEYS.map((key) => <option key={key} value={key}>{abilityNames[key][locale === 'en' ? 1 : 0]}</option>)}</select><input value={saveValue} onChange={(event) => setSaveValue(event.target.value)} disabled={!canManage} type="number" placeholder={t('dndActorSheet.override')} className="w-24 rounded-md border border-[#2f2a22]/15 px-2 py-2 text-xs disabled:opacity-50" /><button type="button" onClick={addSaveOverride} disabled={!canManage} className="rounded-md border border-[#2f2a22]/15 px-2 text-xs font-bold disabled:opacity-40">{t('dndActorSheet.set')}</button></div><div className="mt-2 flex flex-wrap gap-2">{Object.entries(draft.savingThrows ?? {}).map(([key, value]) => <button key={key} type="button" onClick={() => setDraft((previous) => { const next = { ...previous.savingThrows }; delete next[key as DndAbilityKey]; return { ...previous, savingThrows: next }; })} disabled={!canManage} className="rounded-full bg-[#f7f3ea] px-2 py-1 text-xs">{abilityNames[key as DndAbilityKey][locale === 'en' ? 1 : 0]} {value} ×</button>)}</div></div><div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3"><h5 className="font-bold text-sm">{t('dndActorSheet.skills')}</h5><div className="mt-3 flex gap-2"><select value={skillKey} onChange={(event) => setSkillKey(event.target.value as DndSkillKey)} disabled={!canManage} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 bg-white px-2 py-2 text-xs disabled:opacity-50">{DND_SKILL_KEYS.map((key) => <option key={key} value={key}>{skillNames[key][locale === 'en' ? 1 : 0]}</option>)}</select><input value={skillValue} onChange={(event) => setSkillValue(event.target.value)} disabled={!canManage} type="number" placeholder={t('dndActorSheet.override')} className="w-24 rounded-md border border-[#2f2a22]/15 px-2 py-2 text-xs disabled:opacity-50" /><button type="button" onClick={addSkillOverride} disabled={!canManage} className="rounded-md border border-[#2f2a22]/15 px-2 text-xs font-bold disabled:opacity-40">{t('dndActorSheet.set')}</button></div><div className="mt-2 flex flex-wrap gap-2">{Object.entries(draft.skills ?? {}).map(([key, value]) => <button key={key} type="button" onClick={() => setDraft((previous) => { const next = { ...previous.skills }; delete next[key as DndSkillKey]; return { ...previous, skills: next }; })} disabled={!canManage} className="rounded-full bg-[#f7f3ea] px-2 py-1 text-xs">{skillNames[key as DndSkillKey][locale === 'en' ? 1 : 0]} {value} ×</button>)}</div></div></div>

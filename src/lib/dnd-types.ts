@@ -26,7 +26,7 @@ export interface SpellInfo {
   /** Canonical Chinese name when source-verified; legacy `name_cn` remains the UI/storage key. */
   nameCn?: string;
   /** Per-entry rule data provenance (optional; legacy entries may rely on module-level metadata). */
-  ruleMeta?: import('./rules/rule-data-metadata').RuleDataMetadata;
+  ruleMeta?: import('./rules/rule-data-metadata.js').RuleDataMetadata;
   name_cn: string;
   name_en: string;
   level: number;
@@ -52,7 +52,7 @@ export interface SubclassDef {
   /** Stable id for corrected entries, e.g. `subclass.bard.lore` (optional for legacy data). */
   id?: string;
   /** Per-entry rule data provenance (optional; legacy entries may rely on module-level metadata). */
-  ruleMeta?: import('./rules/rule-data-metadata').RuleDataMetadata;
+  ruleMeta?: import('./rules/rule-data-metadata.js').RuleDataMetadata;
   name: string;
   desc: string;
   unlockLevel: number;
@@ -63,7 +63,7 @@ export interface ClassDef {
   /** Stable id for corrected entries, e.g. `class.fighter` (optional for legacy data). */
   id?: string;
   /** Per-entry rule data provenance (optional; legacy entries may rely on module-level metadata). */
-  ruleMeta?: import('./rules/rule-data-metadata').RuleDataMetadata;
+  ruleMeta?: import('./rules/rule-data-metadata.js').RuleDataMetadata;
   name: string;
   desc: string;
   primaryAbility: AttributeName;
@@ -80,7 +80,7 @@ export interface RaceDef {
   /** Stable id for corrected entries, e.g. `species.human` (optional for legacy data). */
   id?: string;
   /** Per-entry rule data provenance (optional; legacy entries may rely on module-level metadata). */
-  ruleMeta?: import('./rules/rule-data-metadata').RuleDataMetadata;
+  ruleMeta?: import('./rules/rule-data-metadata.js').RuleDataMetadata;
   name: string;
   desc: string;
   strBonus: number;
@@ -117,7 +117,7 @@ export interface BackgroundDef {
   /** Canonical Chinese name when source-verified; legacy `name` remains the UI/storage key. */
   nameCn?: string;
   /** Per-entry rule data provenance (optional; legacy entries may rely on module-level metadata). */
-  ruleMeta?: import('./rules/rule-data-metadata').RuleDataMetadata;
+  ruleMeta?: import('./rules/rule-data-metadata.js').RuleDataMetadata;
   name: string;
   desc: string;
   skillProficiencies: SkillName[];
@@ -282,7 +282,7 @@ export interface FeatDef {
   /** Chinese display name without parenthetical English when known. */
   nameCn?: string;
   /** Per-entry rule data provenance (optional; legacy entries may rely on module-level metadata). */
-  ruleMeta?: import('./rules/rule-data-metadata').RuleDataMetadata;
+  ruleMeta?: import('./rules/rule-data-metadata.js').RuleDataMetadata;
   name: string;
   desc: string;
   prerequisiteDesc: string;
