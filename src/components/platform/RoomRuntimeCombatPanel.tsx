@@ -144,10 +144,32 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
     [roomEvents],
   );
 
+  /**
+   * Appends a combat mutation, rolling the optimistic local change back if the
+   * server never accepted it.
+   *
+   * Every `table.*` mutator applies its change locally and returns the event to
+   * append. Without the rollback below a failed append left the host looking at
+   * damage, a condition or a turn change that no other client would ever see and
+   * that no replay would ever reproduce.
+   *
+   * `table.state` read here is still the PRE-mutation value: the mutator's
+   * `setState` only affects the next render, not this closure. That is what
+   * makes the snapshot correct without touching any call site.
+   *
+   * Caveat: if a second mutation is issued before the first append fails, the
+   * rollback returns to the older snapshot. That is deliberate — the room is
+   * already out of sync at that point, and the next server event batch restores
+   * the authoritative state through the replay effect above.
+   */
   const persist = (event: CombatRuntimeEventDraft | null) => {
     if (!event) return;
+    const rollbackState = table.state;
     setError(null);
-    void onAppendEvent(event).catch(() => setError(zh ? '战斗记录保存失败，请检查同步后重试。' : 'Unable to save the combat update.'));
+    void onAppendEvent(event).catch(() => {
+      table.replaceState(rollbackState);
+      setError(zh ? '战斗记录保存失败，本地改动已回滚，请检查同步后重试。' : 'Unable to save the combat update. The local change was rolled back.');
+    });
   };
 
   const addToken = (token: MapToken) => {

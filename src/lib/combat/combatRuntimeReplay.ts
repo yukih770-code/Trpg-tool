@@ -89,7 +89,10 @@ function combatantInput(value: unknown, fallback?: Combatant): Combatant | null 
     status: input?.status === undefined ? fallback?.status : status(input.status),
     hpDisplay: hpDisplayValue(input?.hpDisplay) ?? fallback?.hpDisplay,
     acDisplay: acDisplayValue(input?.acDisplay) ?? fallback?.acDisplay,
-    visibility: input?.visibility === 'hostFull' || input?.visibility === 'ownerFull' || input?.visibility === 'partyPublic' || input?.visibility === 'publicObserved' || input?.visibility === 'investigated' ? input.visibility as RuntimeVisibility : fallback?.visibility,
+    // 'publicShared' is the tier every ordinary active member receives, so
+    // omitting it here silently dropped the visibility of every combatant on
+    // every non-host client. Kept identical to mapRuntimeReplay's guard.
+    visibility: input?.visibility === 'hostFull' || input?.visibility === 'ownerFull' || input?.visibility === 'partyPublic' || input?.visibility === 'publicShared' || input?.visibility === 'publicObserved' || input?.visibility === 'investigated' ? input.visibility as RuntimeVisibility : fallback?.visibility,
     relation: input?.relation === 'self' || input?.relation === 'ally' || input?.relation === 'enemy' || input?.relation === 'npc' || input?.relation === 'object' || input?.relation === 'unknown' ? input.relation as RuntimeTokenRelation : fallback?.relation,
   };
   return createCombatant(next);

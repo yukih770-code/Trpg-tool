@@ -1,4 +1,6 @@
 import { replayCombatRuntimeEvents, type CombatRuntimeReplayEvent } from './combatRuntimeReplay';
+import { createCombatant, type CombatRuntimeTableState, type Combatant } from './combatRuntimeTypes';
+import type { RuntimeVisibility } from '../platform/roomRuntimeVisibility';
 
 const createdAt = '2026-07-16T00:00:00.000Z';
 
@@ -117,6 +119,63 @@ const cases: Array<{ name: string; run: () => void }> = [
     name: 'replays end state',
     run: () => {
       assertEqual(replayCombatRuntimeEvents(events).turn.status, 'ended', 'end should be restored');
+    },
+  },
+  {
+    // Regression: 'publicShared' is the tier every ordinary active member gets
+    // from the server projector, and the replay guard omitted it — so every
+    // non-host client silently dropped the visibility of every combatant.
+    name: 'preserves every runtime visibility tier through replay',
+    run: () => {
+      const tiers: RuntimeVisibility[] = ['hostFull', 'ownerFull', 'partyPublic', 'publicShared', 'publicObserved', 'investigated'];
+      for (const visibility of tiers) {
+        const state = replayCombatRuntimeEvents([
+          event(1, 'combat.combatant_added', { combatant: { ...alpha, visibility } }),
+        ]);
+        assertEqual(state.combatants[0]?.visibility, visibility, `visibility ${visibility} should survive replay`);
+      }
+    },
+  },
+  {
+    name: 'drops an unrecognised visibility rather than trusting it',
+    run: () => {
+      const state = replayCombatRuntimeEvents([
+        event(1, 'combat.combatant_added', { combatant: { ...alpha, visibility: 'totallyPrivate' } }),
+      ]);
+      assertEqual(state.combatants[0]?.visibility, undefined, 'an unknown visibility must not be carried');
+    },
+  },
+  {
+    // The combat panel rolls a failed optimistic write back by handing the
+    // pre-mutation state to `replaceState`, which re-normalises each combatant
+    // through `createCombatant`. That round trip must lose nothing, or a
+    // rollback would quietly corrupt the table it is meant to repair.
+    name: 'a replayed state survives the rollback round trip unchanged',
+    run: () => {
+      const replayed = replayCombatRuntimeEvents([
+        event(1, 'combat.started', {
+          combatants: [
+            { ...alpha, armorClass: 15, temporaryHp: 3, visibility: 'publicShared', relation: 'ally', initiative: 18, conditions: ['中毒'] },
+            { ...beta, armorClass: 13, initiative: 12 },
+          ],
+          activeCombatantId: 'alpha',
+          roundNumber: 1,
+          turnIndex: 0,
+        }),
+      ]);
+      // Exactly what useCombatRuntimeTable.replaceState does.
+      const roundTripped: CombatRuntimeTableState = {
+        combatants: replayed.combatants.map((combatant: Combatant) => createCombatant({ ...combatant, conditions: [...combatant.conditions] })),
+        turn: { ...replayed.turn },
+      };
+      assertEqual(roundTripped, replayed, 'rollback normalisation must preserve the state exactly');
+      assertEqual(roundTripped.combatants[0]?.armorClass, 15, 'rollback must preserve armour class');
+      assertEqual(roundTripped.combatants[0]?.visibility, 'publicShared', 'rollback must preserve visibility');
+      assertEqual(roundTripped.combatants[0]?.conditions, ['中毒'], 'rollback must preserve conditions');
+      assertEqual(roundTripped.turn.activeCombatantId, 'alpha', 'rollback must preserve the active turn');
+      // The rollback copy must not alias the state it replaced.
+      assert(roundTripped.combatants[0] !== replayed.combatants[0], 'rollback must not alias the previous combatant');
+      assert(roundTripped.combatants[0]?.conditions !== replayed.combatants[0]?.conditions, 'rollback must not alias the previous condition array');
     },
   },
   {
