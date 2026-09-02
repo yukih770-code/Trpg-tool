@@ -22,7 +22,13 @@ import {
 import { createRuntimeEventRepositoryPort } from '../runtime/runtimeEventRepositoryPortAdapter.js';
 
 export const LIVE_ROOM_MAP_PAYLOAD_KEY = 'liveRoomMapEventV1';
-const EVENT_KIND_PREFIX = 'room.mapEvent.';
+/**
+ * Durable event-kind namespace reserved for live-room map recovery envelopes.
+ * Only this module may produce it; the campaign runtime-event API rejects it so
+ * a direct write can never be replayed as live-room map state.
+ */
+export const LIVE_ROOM_MAP_EVENT_KIND_PREFIX = 'room.mapEvent.';
+const EVENT_KIND_PREFIX = LIVE_ROOM_MAP_EVENT_KIND_PREFIX;
 const RESTORE_PAGE_SIZE = 200;
 
 type LiveRoomMapRepository = Pick<

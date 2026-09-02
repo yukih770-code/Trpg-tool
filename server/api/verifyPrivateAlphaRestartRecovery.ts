@@ -17,6 +17,10 @@ type RecoveryState = {
   mapEventId: string;
   mapId: string;
   characterTokenId: string;
+  /** T7: marker that a rejected campaign-side write would have carried. */
+  forgedMarker: string;
+  /** T7: the exact ordered RuntimeLog projection the player saw before restart. */
+  preRestartPlayerEventIds: string[];
 };
 
 const phase = process.argv.includes('--prepare') ? 'prepare' : process.argv.includes('--verify') ? 'verify' : undefined;
@@ -41,6 +45,15 @@ function objectValue(body: unknown): JsonRecord | undefined {
 
 function recordArray(value: unknown): JsonRecord[] {
   return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+/** Reads the additive machine-readable discriminator on a server API error envelope. */
+function apiErrorDiscriminator(body: unknown): { kind?: string; reason?: string } {
+  if (!isRecord(body) || body.ok !== false || !isRecord(body.error)) return {};
+  return {
+    kind: typeof body.error.kind === 'string' ? body.error.kind : undefined,
+    reason: typeof body.error.reason === 'string' ? body.error.reason : undefined,
+  };
 }
 
 function pathFor(...parts: string[]): string {
@@ -115,11 +128,13 @@ function report(status: 'prepared' | 'passed' | 'failed'): void {
       playerTokenAuthorityRecovered: steps.some((step) => step.name === 'verify_player_token_authority_recovered' && step.status === 'passed'),
       combatRecovered: steps.some((step) => step.name === 'verify_combat_runtime_log_recovered' && step.status === 'passed'),
       mapRecovered: steps.some((step) => step.name === 'verify_map_restart_recovered' && step.status === 'passed'),
+      singleRuntimeWritePathEnforced: steps.some((step) => step.name === 'verify_recovered_state_equals_what_players_saw' && step.status === 'passed'),
     },
     notes: [
       'The phase state file is operator-local and contains both session cookies; this report never prints them or any identifier.',
       'Server, campaign, and room fixtures are archived/closed during verify cleanup.',
       'Room Map recovery is verified by the original event identifier and grid payload after a real process restart.',
+      'T7: reserved durable event kinds and live-session campaign writes are rejected before restart, and the recovered RuntimeLog is compared against the projection the player actually saw.',
     ],
   }, null, 2));
 }
@@ -267,7 +282,75 @@ async function prepare(): Promise<void> {
   });
   if (!permissionResponse.ok) throw new Error('player_token_permission_failed');
 
-  await writeFile(statePath, JSON.stringify({ hostCookie, playerCookie, worldId, campaignId, roomId, hostMemberId, playerMemberId, bindingId, combatStartedId, combatTurnId, mapEventId, mapId, characterTokenId } satisfies RecoveryState), { encoding: 'utf8', flag: 'wx' });
+  // ── T7: a campaign-side write must never manufacture recovered live-room state ──
+  // The reserved durable namespaces below are produced ONLY by the live-room
+  // persistence modules and are trusted verbatim by startup recovery. Accepting
+  // one here would let a caller forge history that appears after a restart.
+  const forgedMarker = `t7-forged-${suffix}`;
+  const campaignRoomRoot = `${worldRoot}/campaigns/${encodeURIComponent(campaignId)}/rooms/${encodeURIComponent(roomId)}`;
+  const liveRuntimeSessionId = typeof identity?.sessionId === 'string' ? identity.sessionId : undefined;
+  assertion(
+    'prepare_live_room_owns_a_runtime_session',
+    typeof liveRuntimeSessionId === 'string' && liveRuntimeSessionId.length > 0,
+    'live_room_runtime_session_id_missing',
+  );
+  const forgedRuntimeLogWrite = await client.request('prepare_forged_runtime_log_kind_rejected', `${campaignRoomRoot}/runtime-events`, {
+    method: 'POST',
+    body: JSON.stringify({
+      runtimeSessionId: liveRuntimeSessionId ?? `runtime_session_absent_${suffix}`,
+      eventKind: 'room.runtimeLog.combat.round_advanced',
+      payload: {
+        schemaVersion: 1,
+        event: { eventId: forgedMarker, kind: 'combat.round_advanced', visibility: 'public', text: forgedMarker, payload: { roundNumber: 99, turnIndex: 0, activeCombatantId: 'restart-combatant' } },
+      },
+    }),
+  }, [400]);
+  const forgedMapEventWrite = await client.request('prepare_forged_map_event_kind_rejected', `${campaignRoomRoot}/runtime-events`, {
+    method: 'POST',
+    body: JSON.stringify({
+      runtimeSessionId: liveRuntimeSessionId ?? `runtime_session_absent_${suffix}`,
+      eventKind: 'room.mapEvent.map.grid_updated',
+      payload: {
+        schemaVersion: 1,
+        event: { mapEventId: forgedMarker, mapId, eventKind: 'map.grid_updated', payload: { grid: { enabled: true, sizePx: 999, feetPerSquare: 5, originX: 0, originY: 0, snap: true, showCoordinates: true } } },
+      },
+    }),
+  }, [400]);
+  const shadowSessionWrite = await client.request('prepare_campaign_write_into_live_session_rejected', `${campaignRoomRoot}/runtime-events`, {
+    method: 'POST',
+    body: JSON.stringify({
+      runtimeSessionId: liveRuntimeSessionId,
+      eventKind: 'chat.message',
+      visibility: 'public',
+      payload: { text: forgedMarker },
+    }),
+  }, [409]);
+  assertion(
+    'prepare_reserved_and_live_campaign_writes_rejected',
+    forgedRuntimeLogWrite.ok
+      && forgedMapEventWrite.ok
+      && shadowSessionWrite.ok
+      && apiErrorDiscriminator(forgedRuntimeLogWrite.body).reason === 'reserved_runtime_event_kind'
+      && apiErrorDiscriminator(forgedMapEventWrite.body).reason === 'reserved_runtime_event_kind'
+      && apiErrorDiscriminator(shadowSessionWrite.body).reason === 'session_owned_by_live_room',
+    'campaign_side_runtime_writes_were_not_rejected',
+  );
+
+  // Freeze exactly what the player could see before the restart. Event ids are
+  // durable identities, so this survives any re-sequencing during recovery.
+  const preRestartPlayerLog = await player.request('prepare_player_runtime_log_projection', `${pathFor('rooms', roomId, 'runtime-log')}?memberId=${encodeURIComponent(playerMemberId)}`);
+  const preRestartPlayerEventIds = (isRecord(preRestartPlayerLog.body) ? recordArray(preRestartPlayerLog.body.events) : [])
+    .map((event) => (typeof event.eventId === 'string' ? event.eventId : ''))
+    .filter((eventId) => eventId !== '');
+  if (!preRestartPlayerLog.ok) throw new Error('player_runtime_log_projection_failed');
+  assertion(
+    'prepare_player_projection_excludes_rejected_writes',
+    !JSON.stringify(isRecord(preRestartPlayerLog.body) ? recordArray(preRestartPlayerLog.body.events) : []).includes(forgedMarker),
+    'rejected_campaign_write_reached_the_player_projection',
+  );
+
+
+  await writeFile(statePath, JSON.stringify({ hostCookie, playerCookie, worldId, campaignId, roomId, hostMemberId, playerMemberId, bindingId, combatStartedId, combatTurnId, mapEventId, mapId, characterTokenId, forgedMarker, preRestartPlayerEventIds } satisfies RecoveryState), { encoding: 'utf8', flag: 'wx' });
   assertion('prepare_restart_fixture', true, 'restart_fixture_not_prepared');
 }
 
@@ -305,6 +388,21 @@ async function verify(): Promise<void> {
       'verify_player_lobby_recovered',
       playerEntry.ok && isRecord(playerEntry.body) && playerEntry.body.memberId === state.playerMemberId && recoveredBinding?.status === 'approved' && recoveredReady?.status === 'ready',
       'player_lobby_not_recovered',
+    );
+
+    // ── T7: recovered state must equal exactly what the player saw before ──
+    // Read before any post-restart append so the comparison is against the
+    // frozen pre-restart projection and nothing else.
+    const recoveredPlayerLog = await player.request('verify_player_runtime_log_after_restart', `${pathFor('rooms', state.roomId, 'runtime-log')}?memberId=${encodeURIComponent(state.playerMemberId)}`);
+    const recoveredPlayerEvents = isRecord(recoveredPlayerLog.body) ? recordArray(recoveredPlayerLog.body.events) : [];
+    const recoveredPlayerEventIds = recoveredPlayerEvents.map((event) => (typeof event.eventId === 'string' ? event.eventId : ''));
+    assertion(
+      'verify_recovered_state_equals_what_players_saw',
+      recoveredPlayerLog.ok
+        && !JSON.stringify(recoveredPlayerEvents).includes(state.forgedMarker)
+        && recoveredPlayerEventIds.length === state.preRestartPlayerEventIds.length
+        && recoveredPlayerEventIds.every((eventId, index) => eventId === state.preRestartPlayerEventIds[index]),
+      'recovered_runtime_log_diverged_from_pre_restart_player_projection',
     );
 
     const unready = await player.request('verify_player_unready_after_restart', pathFor('rooms', state.roomId, 'members', state.playerMemberId, 'ready'), {

@@ -290,6 +290,16 @@ registerWorldServerApiRoutes(app, createWorldServerApiHandlers({
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));
 registerCampaignRoomApiRoutes(app, createCampaignRoomApiHandlers({
+  // T7: the campaign runtime-session API must not authoritatively mutate a
+  // session an active live room is running. The in-memory registry below IS the
+  // live authority, so this is a read over existing state, not a new record.
+  liveRoomRuntimeSessionId: (roomId) => {
+    const room = registry.get(roomId);
+    if (!room) return undefined;
+    const lifecycle = room.identity.lifecycleStatus;
+    if (lifecycle === 'closed' || lifecycle === 'archived') return undefined;
+    return room.identity.sessionId;
+  },
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));

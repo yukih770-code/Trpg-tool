@@ -56,6 +56,8 @@ import {
 import { createRuntimeEventRepositoryPort } from '../runtime/runtimeEventRepositoryPortAdapter.js';
 import { resolveRuntimeSessionContext } from '../runtime/runtimeSessionContext.js';
 import { LIVE_ROOM_SNAPSHOT_METADATA_KEY } from '../services/liveRoomLifecyclePersistence.js';
+import { LIVE_ROOM_RUNTIME_LOG_EVENT_KIND_PREFIX } from '../services/liveRoomRuntimeLogPersistence.js';
+import { LIVE_ROOM_MAP_EVENT_KIND_PREFIX } from '../services/liveRoomMapPersistence.js';
 
 type ApiResult = ServerApiResponse<unknown>;
 type BodyRecord = Record<string, unknown>;
@@ -104,7 +106,24 @@ export interface CampaignRoomApiRequest {
   viewer?: CurrentViewerContext;
 }
 
+/**
+ * Reports the runtime session an ACTIVE live room currently owns for a room, or
+ * undefined when no live room is running it. This is a read over the existing
+ * in-memory room registry — the live authority itself — and introduces no new
+ * state and no second source of truth.
+ */
+export type LiveRoomRuntimeSessionLookup = (roomId: string) => string | undefined;
+
+/**
+ * Explicit opt-out for compositions that genuinely have no room registry.
+ * Required rather than optional so the authority guard can never disappear by
+ * forgetting to pass it; opting out stays deliberate and greppable.
+ */
+export const NO_LIVE_ROOM_REGISTRY: LiveRoomRuntimeSessionLookup = () => undefined;
+
 export interface CreateCampaignRoomApiHandlersOptions {
+  /** Required: see NO_LIVE_ROOM_REGISTRY for the explicit opt-out. */
+  liveRoomRuntimeSessionId: LiveRoomRuntimeSessionLookup;
   worldRepository?: WorldRepository;
   campaignRepository?: CampaignRepository;
   foundationRepository?: FoundationApiRepository;
@@ -299,7 +318,7 @@ interface AuthorizedCampaign extends AuthorizedWorld {
   binding: WorldServerCampaignBindingRecord;
 }
 
-export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHandlersOptions = {}): CampaignRoomApiHandlers {
+export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHandlersOptions): CampaignRoomApiHandlers {
   const worldRepository = options.worldRepository ?? createPostgresWorldServerRepository();
   const campaignRepository = options.campaignRepository ?? createPostgresCampaignRepository();
   const foundationRepository = options.foundationRepository ?? createPostgresPlatformFoundationRepository();
@@ -308,6 +327,43 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
     options.runtimeEventPersistenceRepository ?? createRuntimeEventRepositoryPort(runtimeRepository);
   const campaignRoomRepository = options.campaignRoomRepository ?? createPostgresCampaignRoomRepository();
   const sceneStateRepository = options.sceneStateRepository ?? createPostgresSceneStateRepository();
+  const liveRoomRuntimeSessionId = options.liveRoomRuntimeSessionId;
+
+  /**
+   * T7 invariant: while an active live room owns a runtime session, that session
+   * is mutated only through the live-room authority path (member/permission
+   * guard -> in-memory registry -> durable confirmation -> WebSocket broadcast).
+   * Campaign-side direct mutation is rejected rather than synchronised.
+   * Reads stay open so a live session's history can still be reviewed.
+   */
+  function liveRoomConflict(roomId: string, runtimeSessionId: string | undefined, requestId: string | undefined): ApiResult | null {
+    const liveSessionId = liveRoomRuntimeSessionId(roomId);
+    if (!liveSessionId) return null;
+    if (runtimeSessionId !== undefined && liveSessionId !== runtimeSessionId) return null;
+    return errorResponse(409, {
+      kind: 'conflict',
+      reason: 'session_owned_by_live_room',
+      message: 'This runtime session is being run live. Make changes through the live room.',
+    }, { requestId });
+  }
+
+  /**
+   * The durable event-kind namespaces below are produced ONLY by the live-room
+   * persistence modules and are trusted by startup recovery. Accepting them here
+   * would let a caller manufacture recovered live-room state, so they are
+   * refused for every session — live or preparation.
+   */
+  function reservedEventKind(eventKind: string, requestId: string | undefined): ApiResult | null {
+    const reserved = eventKind.startsWith(LIVE_ROOM_RUNTIME_LOG_EVENT_KIND_PREFIX)
+      || eventKind.startsWith(LIVE_ROOM_MAP_EVENT_KIND_PREFIX);
+    return reserved
+      ? errorResponse(400, {
+          kind: 'bad_request',
+          reason: 'reserved_runtime_event_kind',
+          message: 'This event kind is reserved for live-room recovery and cannot be written directly.',
+        }, { requestId })
+      : null;
+  }
 
   async function authorizeWorld(input: CampaignRoomApiRequest, action: ApiGuardAction, hide = action === 'view'): Promise<AuthorizedWorld | ApiResult> {
     const requestId = requestIdOf(input);
@@ -675,6 +731,12 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
     async createRuntimeSession(input) {
       const room = await authorizeRoomManagement(input);
       if (isApiResult(room)) return room;
+      // runtime_sessions.room_id is not unique, so a second session could be
+      // created for a room that a live room is already running. That session
+      // would then win the `updated_at DESC` lookup and silently become the
+      // campaign workspace's target. Refuse while the room is live.
+      const liveCreateConflict = liveRoomConflict(room.room.roomId, undefined, requestIdOf(input));
+      if (liveCreateConflict) return liveCreateConflict;
       const body = bodyOf(input);
       const session = unwrap(await runtimeRepository.createRuntimeSession({
         runtimeSessionId: stringOf(body.runtimeSessionId) ?? randomUUID(),
@@ -702,6 +764,8 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
       const session = await sessionForRoom(input, room.access, stringOf(input.query?.runtimeSessionId) ?? stringOf(bodyOf(input).runtimeSessionId));
       if (isApiResult(session)) return session;
       if (!session) return errorResponse(404, { kind: 'not_found', message: 'Runtime session not found.' }, { requestId: requestIdOf(input) });
+      const liveUpdateConflict = liveRoomConflict(room.room.roomId, session.runtimeSessionId, requestIdOf(input));
+      if (liveUpdateConflict) return liveUpdateConflict;
       const body = bodyOf(input);
       const updated = unwrap(await runtimeRepository.updateRuntimeSession({
         runtimeSessionId: session.runtimeSessionId,
@@ -812,9 +876,15 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
       const eventKind = stringOf(body.eventKind);
       if (!sessionId) return requiredString('runtimeSessionId', requestIdOf(input));
       if (!eventKind) return requiredString('eventKind', requestIdOf(input));
+      // Namespace check first: it is independent of liveness and must hold for
+      // preparation sessions too.
+      const reserved = reservedEventKind(eventKind, requestIdOf(input));
+      if (reserved) return reserved;
       const session = await sessionForRoom(input, room.access, sessionId);
       if (isApiResult(session)) return session;
       if (!session) return errorResponse(404, { kind: 'not_found', message: 'Runtime session not found.' }, { requestId: requestIdOf(input) });
+      const liveAppendConflict = liveRoomConflict(room.room.roomId, session.runtimeSessionId, requestIdOf(input));
+      if (liveAppendConflict) return liveAppendConflict;
       const contextResult = resolveRuntimeSessionContext({
         worldServerId: room.access.server.worldServerId,
         campaignId: room.access.campaign.campaignId,
@@ -862,7 +932,12 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
   return handlers;
 }
 
-export const defaultPostgresCampaignRoomApiHandlers = createCampaignRoomApiHandlers();
+// Not mounted by any server composition; kept as a convenience export. It has no
+// room registry, so it declares the opt-out explicitly rather than silently
+// losing the live-room authority guard.
+export const defaultPostgresCampaignRoomApiHandlers = createCampaignRoomApiHandlers({
+  liveRoomRuntimeSessionId: NO_LIVE_ROOM_REGISTRY,
+});
 
 export type {
   CampaignActorInstanceRecord,

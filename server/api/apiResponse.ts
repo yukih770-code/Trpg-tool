@@ -17,6 +17,12 @@ export interface ServerApiError {
   kind: ServerApiErrorKind;
   message: string;
   retryable?: boolean;
+  /**
+   * Optional machine-readable discriminator for cases where `kind` alone is
+   * ambiguous (several distinct failures share `bad_request` / `conflict`).
+   * Additive: existing errors omit it and existing clients ignore it.
+   */
+  reason?: string;
 }
 
 export type ServerApiResponse<T> =

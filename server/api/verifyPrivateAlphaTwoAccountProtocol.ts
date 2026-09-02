@@ -51,6 +51,15 @@ function errorReason(body: unknown, status: number): string {
   return `http_${status}`;
 }
 
+/** Reads the additive machine-readable discriminator on a server API error envelope. */
+function apiErrorDiscriminator(body: unknown): { kind?: string; reason?: string } {
+  if (!isRecord(body) || body.ok !== false || !isRecord(body.error)) return {};
+  return {
+    kind: typeof body.error.kind === 'string' ? body.error.kind : undefined,
+    reason: typeof body.error.reason === 'string' ? body.error.reason : undefined,
+  };
+}
+
 function pathFor(...parts: string[]): string {
   return `/${parts.map((part) => encodeURIComponent(part)).join('/')}`;
 }
@@ -298,6 +307,7 @@ function report(status: string): void {
       mapAuthorityProjected: steps.some((step) => step.name === 'two_account_map_authority_projection_confirmed' && step.status === 'passed'),
       combatTurnConverged: steps.some((step) => step.name === 'two_account_combat_turn_converged' && step.status === 'passed'),
       reconnectCatchUpVerified: steps.some((step) => step.name === 'player_socket_missing_suffix_recovered' && step.status === 'passed'),
+      singleRuntimeWritePathEnforced: steps.some((step) => step.name === 'two_account_single_runtime_write_path_confirmed' && step.status === 'passed'),
     },
     notes: [
       'Host and Player use separate in-memory cookie jars and distinct verified user ids.',
@@ -970,6 +980,144 @@ async function main(): Promise<void> {
     method: 'POST',
     body: JSON.stringify({ memberId: playerMemberId, expression: '1d20', mode: 'superAdvantage' }),
   }, [400]);
+
+  // ── T7: the campaign runtime-session API must not write into a live room ────
+  // While this room is live, the in-memory registry is the authority. The
+  // campaign-side runtime API is a preparation surface, so it must REJECT rather
+  // than silently write a second, invisible copy of session state.
+  const campaignRoomRoot = `${campaignRoot}/rooms/${encodeURIComponent(liveRoomId)}`;
+  const liveRuntimeSessionId = typeof identity?.sessionId === 'string' ? identity.sessionId : undefined;
+  if (!addAssertion(
+    't7_live_room_owns_a_runtime_session',
+    typeof liveRuntimeSessionId === 'string' && liveRuntimeSessionId.length > 0,
+    'live_room_runtime_session_id_missing',
+  )) throw new Error('t7_live_runtime_session_missing');
+
+  const beforeT7Log = await player.request('read_t7_baseline_cursor', `${pathFor('rooms', liveRoomId, 'runtime-log')}?memberId=${encodeURIComponent(playerMemberId)}`);
+  const t7BaselineSeq = isRecord(beforeT7Log.body) && typeof beforeT7Log.body.latestSeq === 'number' ? beforeT7Log.body.latestSeq : undefined;
+  if (!beforeT7Log.ok || t7BaselineSeq === undefined) throw new Error('t7_baseline_cursor_read_failed');
+
+  const t7Marker = `t7-campaign-write-${suffix}`;
+  const carriesT7Marker = (message: JsonRecord): boolean =>
+    message.type === 'runtimeLogAppended' && JSON.stringify(message.events ?? []).includes(t7Marker);
+
+  // 1. A direct campaign-side append against the live session is a conflict.
+  const blockedAppend = await host.request('t7_campaign_append_into_live_session_rejected', `${campaignRoomRoot}/runtime-events`, {
+    method: 'POST',
+    body: JSON.stringify({
+      runtimeSessionId: liveRuntimeSessionId,
+      eventKind: 'chat.message',
+      visibility: 'public',
+      payload: { text: t7Marker },
+    }),
+  }, [409]);
+  const blockedAppendError = apiErrorDiscriminator(blockedAppend.body);
+  if (!addAssertion(
+    't7_live_append_reports_ownership_conflict',
+    blockedAppendError.kind === 'conflict' && blockedAppendError.reason === 'session_owned_by_live_room',
+    'live_append_conflict_discriminator_missing',
+  )) throw new Error('t7_live_append_discriminator_failed');
+
+  // 2. The rejected write must reach nobody: no broadcast on either socket.
+  await hostSocket.expectAbsent('t7_campaign_append_broadcast', carriesT7Marker);
+  await playerSocket.expectAbsent('t7_campaign_append_broadcast', carriesT7Marker);
+
+  // 3. Session creation and mutation are refused for the same reason.
+  const blockedCreate = await host.request('t7_campaign_create_session_while_live_rejected', `${campaignRoomRoot}/runtime-session`, {
+    method: 'POST',
+    body: JSON.stringify({ title: `T7 shadow session ${suffix}`, status: 'active' }),
+  }, [409]);
+  const blockedUpdate = await host.request('t7_campaign_update_session_while_live_rejected', `${campaignRoomRoot}/runtime-session`, {
+    method: 'PATCH',
+    body: JSON.stringify({ runtimeSessionId: liveRuntimeSessionId, status: 'ended' }),
+  }, [409]);
+  if (!addAssertion(
+    't7_live_session_lifecycle_is_live_room_only',
+    apiErrorDiscriminator(blockedCreate.body).reason === 'session_owned_by_live_room'
+      && apiErrorDiscriminator(blockedUpdate.body).reason === 'session_owned_by_live_room',
+    'live_session_lifecycle_conflict_missing',
+  )) throw new Error('t7_live_session_lifecycle_failed');
+
+  // 4. Reserved durable namespaces are refused independently of liveness, and
+  //    BEFORE the session is even resolved — a bogus session id still yields 400.
+  const forgedRuntimeLogKind = await host.request('t7_reserved_runtime_log_kind_rejected', `${campaignRoomRoot}/runtime-events`, {
+    method: 'POST',
+    body: JSON.stringify({
+      runtimeSessionId: `runtime_session_absent_${suffix}`,
+      eventKind: 'room.runtimeLog.chat.message',
+      payload: { text: t7Marker },
+    }),
+  }, [400]);
+  const forgedMapEventKind = await host.request('t7_reserved_map_event_kind_rejected', `${campaignRoomRoot}/runtime-events`, {
+    method: 'POST',
+    body: JSON.stringify({
+      runtimeSessionId: `runtime_session_absent_${suffix}`,
+      eventKind: 'room.mapEvent.tokenPlaced',
+      payload: { text: t7Marker },
+    }),
+  }, [400]);
+  const forgedRuntimeLogError = apiErrorDiscriminator(forgedRuntimeLogKind.body);
+  const forgedMapEventError = apiErrorDiscriminator(forgedMapEventKind.body);
+  if (!addAssertion(
+    't7_reserved_kinds_rejected_independently_of_liveness',
+    forgedRuntimeLogError.kind === 'bad_request'
+      && forgedRuntimeLogError.reason === 'reserved_runtime_event_kind'
+      && forgedMapEventError.kind === 'bad_request'
+      && forgedMapEventError.reason === 'reserved_runtime_event_kind',
+    'reserved_event_kind_rejection_missing',
+  )) throw new Error('t7_reserved_kind_rejection_failed');
+
+  // 5. Reads stay open: a live session's history is still reviewable.
+  const liveSessionRead = await host.request('t7_campaign_session_read_still_allowed', `${campaignRoomRoot}/runtime-session?runtimeSessionId=${encodeURIComponent(liveRuntimeSessionId as string)}`);
+  const liveEventsRead = await host.request('t7_campaign_events_read_still_allowed', `${campaignRoomRoot}/runtime-events?runtimeSessionId=${encodeURIComponent(liveRuntimeSessionId as string)}`);
+  if (!addAssertion(
+    't7_live_session_reads_remain_open',
+    liveSessionRead.ok && liveEventsRead.ok,
+    'live_session_reads_were_blocked',
+  )) throw new Error('t7_live_session_read_failed');
+
+  // 6. Nothing was appended: the authoritative cursor has not moved.
+  const afterRejectionsLog = await player.request('read_t7_post_rejection_cursor', `${pathFor('rooms', liveRoomId, 'runtime-log')}?memberId=${encodeURIComponent(playerMemberId)}`);
+  const t7PostRejectionSeq = isRecord(afterRejectionsLog.body) && typeof afterRejectionsLog.body.latestSeq === 'number' ? afterRejectionsLog.body.latestSeq : undefined;
+  if (!addAssertion(
+    't7_rejected_writes_left_the_log_untouched',
+    afterRejectionsLog.ok && t7PostRejectionSeq === t7BaselineSeq,
+    'rejected_campaign_write_changed_the_runtime_log',
+  )) throw new Error('t7_cursor_moved_after_rejection');
+
+  // 7. The same intent through the live-room authority still works and converges.
+  const t7LiveIntent = await host.request('t7_same_intent_via_live_room_succeeds', pathFor('rooms', liveRoomId, 'runtime-log', 'events'), {
+    method: 'POST',
+    body: JSON.stringify({
+      authorMemberId: hostMemberId,
+      kind: 'chat.message',
+      visibility: 'public',
+      text: t7Marker,
+    }),
+  });
+  const t7LiveEvent = isRecord(t7LiveIntent.body) && isRecord(t7LiveIntent.body.event) ? t7LiveIntent.body.event : undefined;
+  const t7LiveEventId = typeof t7LiveEvent?.eventId === 'string' ? t7LiveEvent.eventId : undefined;
+  if (!t7LiveIntent.ok || !t7LiveEventId) throw new Error('t7_live_room_intent_failed');
+  const [hostT7Message, playerT7Message] = await Promise.all([
+    hostSocket.waitFor('t7_live_intent_broadcast', (message) => socketStreamContains(message, 'runtimeLogAppended', t7LiveEventId)),
+    playerSocket.waitFor('t7_live_intent_broadcast', (message) => socketStreamContains(message, 'runtimeLogAppended', t7LiveEventId)),
+  ]);
+  const hostT7Event = runtimeEventFromMessage(hostT7Message, t7LiveEventId);
+  const playerT7Event = runtimeEventFromMessage(playerT7Message, t7LiveEventId);
+  const afterLiveIntentLog = await player.request('read_t7_post_live_intent_cursor', `${pathFor('rooms', liveRoomId, 'runtime-log')}?memberId=${encodeURIComponent(playerMemberId)}`);
+  const t7PostLiveIntentSeq = isRecord(afterLiveIntentLog.body) && typeof afterLiveIntentLog.body.latestSeq === 'number' ? afterLiveIntentLog.body.latestSeq : undefined;
+  if (!addAssertion(
+    'two_account_single_runtime_write_path_confirmed',
+    Boolean(hostT7Event)
+      && Boolean(playerT7Event)
+      && hostT7Event?.kind === 'chat.message'
+      && playerT7Event?.kind === 'chat.message'
+      && afterLiveIntentLog.ok
+      && t7PostLiveIntentSeq !== undefined
+      && t7BaselineSeq !== undefined
+      && t7PostLiveIntentSeq > t7BaselineSeq,
+    'live_room_write_path_did_not_converge',
+  )) throw new Error('t7_live_write_path_convergence_failed');
 
   const beforeDisconnectLog = await player.request('read_reconnect_runtime_cursor', `${pathFor('rooms', liveRoomId, 'runtime-log')}?memberId=${encodeURIComponent(playerMemberId)}`);
   const beforeDisconnectMap = await player.request('read_reconnect_map_cursor', `${pathFor('rooms', liveRoomId, 'map-events')}?memberId=${encodeURIComponent(playerMemberId)}&mapId=${encodeURIComponent(mapId)}`);

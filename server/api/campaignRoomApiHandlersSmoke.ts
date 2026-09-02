@@ -2,6 +2,7 @@ import type { Express } from 'express';
 
 import {
   createCampaignRoomApiHandlers,
+  NO_LIVE_ROOM_REGISTRY,
   type CampaignRoomApiRequest,
 } from './campaignRoomApiHandlers.js';
 import { registerCampaignRoomApiRoutes } from './campaignRoomApiRoutes.js';
@@ -146,6 +147,8 @@ function sessionRecord(): RuntimeSessionRecord {
 function makeFakeHandlers(options: {
   runtimeEventPersistenceRepository?: RuntimeEventPersistenceRepositoryPort;
   runtimeEventPersistenceBridgeEnabled?: boolean;
+  /** T7: the runtime session an active live room currently owns for ROOM_ID. */
+  liveRoomSessionId?: string;
 } = {}) {
   const server = serverRecord();
   const campaigns = new Map<string, PostgresCampaignRecord>([[CAMPAIGN_ID, campaignRecord()]]);
@@ -334,6 +337,8 @@ function makeFakeHandlers(options: {
   };
 
   return createCampaignRoomApiHandlers({
+    liveRoomRuntimeSessionId: (roomId) =>
+      options.liveRoomSessionId && roomId === ROOM_ID ? options.liveRoomSessionId : undefined,
     worldRepository,
     campaignRepository,
     foundationRepository,
@@ -473,7 +478,7 @@ export async function runCampaignRoomApiHandlerSmoke(): Promise<{ total: number;
     return paths.some((path) => path.endsWith('/campaigns')) && paths.some((path) => path.endsWith('/runtime-events'));
   });
   await check('47_repository_failure_sanitized', async () => {
-    const broken = createCampaignRoomApiHandlers({ worldRepository: { ...({
+    const broken = createCampaignRoomApiHandlers({ liveRoomRuntimeSessionId: NO_LIVE_ROOM_REGISTRY, worldRepository: { ...({
       getWorldServerById: async () => fail('database_error'),
       getWorldServerMembershipByUser: async () => ok(null),
       getWorldServerCampaignBindingByPair: async () => ok(null),
@@ -484,7 +489,7 @@ export async function runCampaignRoomApiHandlerSmoke(): Promise<{ total: number;
     return hasStatus(response, 503) && response.ok === false && !response.error.message.includes('fake repository failure');
   });
   await check('48_no_database_url_in_response', async () => {
-    const broken = createCampaignRoomApiHandlers({ worldRepository: { getWorldServerById: async () => fail('database_error') } as never });
+    const broken = createCampaignRoomApiHandlers({ liveRoomRuntimeSessionId: NO_LIVE_ROOM_REGISTRY, worldRepository: { getWorldServerById: async () => fail('database_error') } as never });
     const response = await broken.listCampaigns(base());
     return JSON.stringify(response).includes('DATABASE_URL') === false;
   });
@@ -596,6 +601,82 @@ export async function runCampaignRoomApiHandlerSmoke(): Promise<{ total: number;
     const response = await handlers.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'status.201' } });
     return hasStatus(response, 201);
   });
+
+  // ── T7: live-room ownership guard + reserved event-kind namespace ──────────
+  // `liveRoomSessionId` makes ROOM_ID's session live-owned, mirroring what the
+  // in-memory room registry reports in the real composition.
+  const liveHandlers = () => makeFakeHandlers({ liveRoomSessionId: SESSION_ID });
+
+  const isLiveConflict = (response: { statusCode: number; ok: boolean } & Record<string, unknown>): boolean =>
+    response.statusCode === 409
+    && response.ok === false
+    && (response as { error?: { kind?: string; reason?: string } }).error?.kind === 'conflict'
+    && (response as { error?: { kind?: string; reason?: string } }).error?.reason === 'session_owned_by_live_room';
+
+  const isReservedKindRejection = (response: { statusCode: number; ok: boolean } & Record<string, unknown>): boolean =>
+    response.statusCode === 400
+    && response.ok === false
+    && (response as { error?: { kind?: string; reason?: string } }).error?.kind === 'bad_request'
+    && (response as { error?: { kind?: string; reason?: string } }).error?.reason === 'reserved_runtime_event_kind';
+
+  await check('71_t7_prep_session_append_still_succeeds', async () =>
+    hasStatus(await handlers.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'prep.note', visibility: 'public' } }), 201));
+
+  await check('72_t7_live_owned_append_is_409_conflict', async () =>
+    isLiveConflict(await liveHandlers().appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'combat.turn_advanced', visibility: 'public' } })));
+
+  await check('73_t7_rejected_append_never_reaches_persistence', async () => {
+    const calls: RuntimeEventPersistenceAppendInput[] = [];
+    const handler = makeFakeHandlers({ liveRoomSessionId: SESSION_ID, runtimeEventPersistenceRepository: bridgePort(undefined, calls) });
+    const response = await handler.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'combat.turn_advanced' } });
+    return isLiveConflict(response) && calls.length === 0;
+  });
+
+  await check('74_t7_live_owned_update_session_is_409', async () =>
+    isLiveConflict(await liveHandlers().updateRuntimeSession({ ...room(OWNER), body: { runtimeSessionId: SESSION_ID, status: 'ended' } })));
+
+  await check('75_t7_live_owned_create_second_session_is_409', async () =>
+    isLiveConflict(await liveHandlers().createRuntimeSession({ ...room(OWNER), body: { title: 'shadow session' } })));
+
+  await check('76_t7_reads_stay_open_while_live', async () => {
+    const live = liveHandlers();
+    return isSuccess(await live.listRuntimeEvents(room(MEMBER))) && isSuccess(await live.getRuntimeSession(room(MEMBER)));
+  });
+
+  await check('77_t7_prep_create_session_still_succeeds', async () =>
+    hasStatus(await handlers.createRuntimeSession({ ...room(OWNER), body: { title: 'prep session' } }), 201));
+
+  await check('78_t7_closed_room_is_not_live_owned', async () => {
+    // The production lookup returns undefined for a closed/archived room; the
+    // fixture models that by reporting no live session.
+    const reopened = makeFakeHandlers({ liveRoomSessionId: undefined });
+    return hasStatus(await reopened.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'after.disband' } }), 201);
+  });
+
+  await check('79_t7_other_room_session_is_unaffected', async () => {
+    const handler = makeFakeHandlers({ liveRoomSessionId: 'some-other-session' });
+    return hasStatus(await handler.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'unrelated.note' } }), 201);
+  });
+
+  await check('80_t7_reserved_runtime_log_kind_rejected_for_prep', async () =>
+    isReservedKindRejection(await handlers.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'room.runtimeLog.dice.roll', payload: { liveRoomRuntimeLogEventV1: { schemaVersion: 1 } } } })));
+
+  await check('81_t7_reserved_map_kind_rejected_for_prep', async () =>
+    isReservedKindRejection(await handlers.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'room.mapEvent.map.token_moved' } })));
+
+  await check('82_t7_reserved_kind_never_reaches_persistence', async () => {
+    const calls: RuntimeEventPersistenceAppendInput[] = [];
+    const handler = makeFakeHandlers({ runtimeEventPersistenceRepository: bridgePort(undefined, calls) });
+    await handler.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'room.runtimeLog.chat.message' } });
+    return calls.length === 0;
+  });
+
+  await check('83_t7_reserved_kind_rejected_before_session_lookup', async () =>
+    // No runtimeSessionId resolution should be required to refuse the namespace.
+    isReservedKindRejection(await handlers.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: 'session-does-not-exist', eventKind: 'room.runtimeLog.host.note' } })));
+
+  await check('84_t7_ordinary_kinds_are_unaffected', async () =>
+    hasStatus(await handlers.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'roomless.note' } }), 201));
 
   const passed = cases.filter((item) => item.passed).length;
   return { total: cases.length, passed, failed: cases.length - passed, cases };

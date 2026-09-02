@@ -50,6 +50,46 @@ npm run alpha:verify:two-account-protocol
 
 ---
 
+### Single Runtime-Event Write Path (T7)
+
+在实时房间运行期间，Campaign 侧 runtime API 不再是第二条权威写入路径。
+
+```bash
+npm run api:verify:campaign-room
+npm run runtime:verify:live-room-log-recovery
+npm run runtime:verify:runtime-visibility-projection
+npm run runtime:verify:room-lifecycle
+```
+
+- [ ] 房间处于 open / inSession / paused 时，`POST .../runtime-events` 针对该实时 Session 返回 409，`error.reason` 为 `session_owned_by_live_room`。
+- [ ] 同样条件下 `POST .../runtime-session` 与 `PATCH .../runtime-session` 也返回 409。
+- [ ] `room.runtimeLog.` / `room.mapEvent.` 前缀的 eventKind 一律返回 400，`error.reason` 为 `reserved_runtime_event_kind`；该判断先于 Session 查找，且与房间是否实时无关。
+- [ ] 被拒绝的写入不会产生任何 WebSocket 广播，RuntimeLog 的 `latestSeq` 不变。
+- [ ] 读取路径不受影响：实时 Session 的 `GET runtime-session` 与 `GET runtime-events` 仍返回 200。
+- [ ] 房间 closed / archived 后，Campaign 侧 runtime API 恢复可写（准备用途）。
+- [ ] `createCampaignRoomApiHandlers` 的 `liveRoomRuntimeSessionId` 为必填；显式退出使用 `NO_LIVE_ROOM_REGISTRY`，遗漏即编译失败。
+- [ ] T1 未受影响：`dice.roll` 的 mode / rawRolls / keptRoll / dc / outcome 语义与文本输出不变。
+
+真实双账号与重启验收（需要后端与 PostgreSQL）：
+
+```bash
+npm run alpha:verify:two-account-protocol
+npm run alpha:verify:restart-recovery -- --prepare
+# 重启进程后
+npm run alpha:verify:restart-recovery -- --verify
+```
+
+- [ ] `t7_live_append_reports_ownership_conflict` 通过。
+- [ ] `t7_live_session_lifecycle_is_live_room_only` 通过。
+- [ ] `t7_reserved_kinds_rejected_independently_of_liveness` 通过。
+- [ ] `t7_rejected_writes_left_the_log_untouched` 通过。
+- [ ] `t7_live_session_reads_remain_open` 通过。
+- [ ] `two_account_single_runtime_write_path_confirmed` 通过。
+- [ ] `prepare_reserved_and_live_campaign_writes_rejected` 通过。
+- [ ] `verify_recovered_state_equals_what_players_saw` 通过（重启后玩家投影与重启前逐条一致，且不含被拒绝写入的痕迹）。
+
+---
+
 ### DND Level-One Character Commit Chain
 
 ```bash

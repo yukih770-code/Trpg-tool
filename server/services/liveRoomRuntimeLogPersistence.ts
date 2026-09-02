@@ -29,7 +29,13 @@ import { createRuntimeEventRepositoryPort } from '../runtime/runtimeEventReposit
 import { COMBAT_RUNTIME_EVENT_KINDS } from '../../src/lib/combat/combatRuntimeTypes.js';
 
 export const LIVE_ROOM_RUNTIME_LOG_PAYLOAD_KEY = 'liveRoomRuntimeLogEventV1';
-const EVENT_KIND_PREFIX = 'room.runtimeLog.';
+/**
+ * Durable event-kind namespace reserved for live-room RuntimeLog recovery
+ * envelopes. Only this module may produce it; the campaign runtime-event API
+ * rejects it so a direct write can never be replayed as live-room state.
+ */
+export const LIVE_ROOM_RUNTIME_LOG_EVENT_KIND_PREFIX = 'room.runtimeLog.';
+const EVENT_KIND_PREFIX = LIVE_ROOM_RUNTIME_LOG_EVENT_KIND_PREFIX;
 const RESTORE_PAGE_SIZE = 200;
 const ROOM_RUNTIME_LOG_KINDS: readonly RoomRuntimeLogEvent['kind'][] = [
   'system.note',
