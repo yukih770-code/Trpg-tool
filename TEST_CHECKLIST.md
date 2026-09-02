@@ -90,6 +90,49 @@ npm run alpha:verify:restart-recovery -- --verify
 
 ---
 
+### Character Runtime Combat Binding (T10)
+
+派生的角色数值真正进入实时战斗：加入战斗表时不再硬编码 `armorClass: undefined`
+与 `initiativeModifier: 0`，改为读取房间已加载的 RuntimeActorProjection。
+
+```bash
+npm run runtime:verify:combatant-seed
+npm run runtime:verify:runtime-visibility-projection
+npm run runtime:verify:combat-replay
+npm run runtime:verify:combat-table
+npm run frontend:verify:character-lite-sheet
+npm run api:verify:campaign-room
+npm run alpha:verify:two-account-protocol
+```
+
+- [ ] 战士的 AC 从投影进入战斗表（此前恒为空，需主持人手敲）。
+- [ ] 敏捷调整值进入 `initiativeModifier`，先攻掷骰为 `1d20 + 调整值`（此前恒为 +0）。
+- [ ] 负数与零调整值都能如实带入，零值也标记为来自投影。
+- [ ] HP 以 Token 为先：主持人改过的 Token HP 不会被投影覆盖。
+- [ ] Token 没有 HP 时投影作为回退填充；状态同理。
+- [ ] 没有匹配投影时行为与改动前完全一致（无 AC、调整值为 0、保留 Token HP）。
+- [ ] Token 优先按 `actorBindingId` 匹配投影，其次 `campaignActorInstanceId`。
+- [ ] 战斗层不读取 CharacterData：`combatantSeedFromProjection` / `combatRuntimeTypes` /
+      `combatRuntimeReplay` / `useCombatRuntimeTable` / `RoomRuntimeCombatPanel`
+      的 import 中不出现 characterStore / CharacterData / dnd-types。
+- [ ] `seededFromProjection` 仅用于报告，不进入 combatant，也不进入
+      `combat.combatant_added` 事件负载。
+- [ ] 既有战斗回放不变：`combat.started` / `damage_applied` / `turn_advanced`
+      重建结果与排序完全一致。
+- [ ] 投影新增 `initiativeModifier` 为可选只读字段；无 abilities 时为 undefined，
+      不伪造 0；投影仍不携带原始属性值。
+- [ ] 无新事件种类、无 schema 变更、无迁移、无 RuntimeLog 写入。
+
+真实本地验收：
+
+- [ ] 主持人在 T9 中为玩家角色填充并保存战斗卡。
+- [ ] 将该角色 Token 加入战斗表：AC 已自动带出，无需手敲。
+- [ ] 掷先攻结果等于 `d20 + 敏捷调整值`。
+- [ ] 怪物 Token（无绑定）行为不变。
+- [ ] T1 / T7 / T9 行为无回归。
+
+---
+
 ### Character → DND Lite 战斗卡派生 (T9)
 
 主持人不再手动重敲角色数值：`从角色卡填充 / Fill from character` 从战役角色的

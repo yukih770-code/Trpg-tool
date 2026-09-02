@@ -52,6 +52,7 @@ function readDndLiteCombatSummary(payload: Record<string, unknown>): {
   currentHp?: number;
   maxHp?: number;
   temporaryHp?: number;
+  initiativeModifier?: number;
 } | undefined {
   const sheet = record(payload[DND_LITE_ACTOR_SHEET_OVERRIDE_KEY]);
   if (!sheet || sheet.schemaVersion !== 1 || typeof sheet.displayName !== 'string' || !sheet.displayName.trim()) return undefined;
@@ -62,10 +63,15 @@ function readDndLiteCombatSummary(payload: Record<string, unknown>): {
   const currentHp = safeInteger(defenses.currentHp);
   const maxHp = safeInteger(defenses.maxHp);
   if (currentHp !== undefined && maxHp !== undefined && currentHp > maxHp) return undefined;
+  // Initiative modifier is the dexterity modifier of the approved sheet. It is
+  // computed here rather than shipped as a raw ability score so the projection
+  // stays the compact combat summary it has always been.
+  const dexterity = safeInteger(record(sheet.abilities)?.dexterity);
   return {
     displayName: sheet.displayName.trim(), actorKind,
     armorClass: safeInteger(defenses.armorClass), currentHp, maxHp,
     temporaryHp: safeInteger(defenses.temporaryHp),
+    initiativeModifier: dexterity === undefined ? undefined : Math.floor((dexterity - 10) / 2),
   };
 }
 
@@ -141,6 +147,7 @@ function fromCampaignOverride(
     hpMax: dndSheet.maxHp,
     temporaryHp: dndSheet.temporaryHp,
     armorClass: dndSheet.armorClass,
+    initiativeModifier: dndSheet.initiativeModifier,
     source: 'campaignOverride',
   };
 }

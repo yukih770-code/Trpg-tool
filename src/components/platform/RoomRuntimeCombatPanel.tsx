@@ -6,6 +6,8 @@ import { hasCombatRuntimeEvents, type CombatRuntimeReplayEvent } from '../../lib
 import { sortCombatants, type CombatRuntimeEventDraft, type CombatRuntimeTableState, type Combatant, type CombatantKind } from '../../lib/combat/combatRuntimeTypes';
 import { useCombatRuntimeTable } from '../../lib/combat/useCombatRuntimeTable';
 import type { MapToken } from '../../lib/map/mapRuntimeTypes';
+import { combatantSeedForToken } from '../../lib/combat/combatantSeedFromProjection';
+import type { RoomRuntimeActorProjection } from '../../lib/platform/roomRuntimeActorProjectionTypes';
 import type { RoomRuntimeLogEvent } from '../../lib/platform/roomRuntimeLogTypes';
 import type { SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
 import { runtimeAcDisplayLabel, runtimeHpDisplayLabel } from '../../lib/platform/roomRuntimeVisibility';
@@ -19,6 +21,13 @@ export interface RoomRuntimeCombatPanelProps {
   role: RuntimeRole;
   roomEvents: RoomRuntimeLogEvent[];
   placedTokens: MapToken[];
+  /**
+   * Room Runtime actor projections. The only character-derived source the combat
+   * table reads: it supplies AC and the initiative modifier, which a map token
+   * has never carried. Optional so a room without projections behaves exactly
+   * as before.
+   */
+  actorProjections?: RoomRuntimeActorProjection[];
   myActorBindingId?: string;
   selectedCombatantId?: string;
   onSelectCombatant: (combatantId: string) => void;
@@ -93,7 +102,7 @@ function diceRollFromEvent(event: RoomRuntimeLogEvent): SharedDiceRollResult | u
  * mutation is persisted through the Room RuntimeLog before other clients replay
  * it; player and spectator branches intentionally have no mutation handlers.
  */
-export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, placedTokens, myActorBindingId, selectedCombatantId, onSelectCombatant, onLocateCombatant, onStateChange, onAppendEvent, onQuickRoll }: RoomRuntimeCombatPanelProps) {
+export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, placedTokens, actorProjections, myActorBindingId, selectedCombatantId, onSelectCombatant, onLocateCombatant, onStateChange, onAppendEvent, onQuickRoll }: RoomRuntimeCombatPanelProps) {
   const table = useCombatRuntimeTable(scopeKey);
   const restoredKeyRef = useRef('');
   const [error, setError] = useState<string | null>(null);
@@ -143,6 +152,10 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
 
   const addToken = (token: MapToken) => {
     if (!canManage || findCombatantLinkedToMapToken(token, table.state.combatants)) return;
+    // AC and the initiative modifier come from the actor projection; HP and
+    // conditions stay token-first. Nothing here reads CharacterData.
+    // `seededFromProjection` is reporting only and must not enter the combatant.
+    const { seededFromProjection: _seededFromProjection, ...seed } = combatantSeedForToken(token, actorProjections);
     const result = table.addCombatant({
       displayName: token.displayName ?? token.name,
       kind: tokenKind(token),
@@ -150,13 +163,8 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
       sourceActorInstanceId: token.sourceActorInstanceId ?? token.campaignActorId,
       mapTokenId: token.id,
       controllerUserId: token.controlledByUserId ?? token.ownerUserId,
-      initiativeModifier: 0,
+      ...seed,
       initiativeFormula: '1d20 + modifier',
-      armorClass: undefined,
-      hpCurrent: token.hpSummary?.current,
-      hpMax: token.hpSummary?.max,
-      temporaryHp: token.hpSummary?.temporary,
-      conditions: token.conditionSummary ?? [],
     });
     onSelectCombatant(result.combatant.id);
     persist(result.event);

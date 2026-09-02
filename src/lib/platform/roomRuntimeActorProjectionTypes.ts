@@ -18,6 +18,12 @@ export interface RoomRuntimeActorProjection {
   hpMax?: number;
   temporaryHp?: number;
   armorClass?: number;
+  /**
+   * Initiative modifier derived from the approved combat sheet's dexterity.
+   * Presentation/seed value only: it decides no turn order by itself, and the
+   * roll that uses it stays a host action.
+   */
+  initiativeModifier?: number;
   /** Reserved for a future explicit condition projection; omitted today. */
   conditions?: string[];
   source: RoomRuntimeActorProjectionSource;

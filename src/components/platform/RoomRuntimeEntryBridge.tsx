@@ -773,6 +773,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         role={shellMode}
         roomEvents={recentEvents}
         placedTokens={roomMapBoard.tokens}
+        actorProjections={runtimeActorProjections}
         myActorBindingId={context.approvedActorBindingId}
         selectedCombatantId={selectedCombatantId}
         onSelectCombatant={setSelectedCombatantId}
