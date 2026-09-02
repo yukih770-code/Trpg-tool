@@ -90,6 +90,52 @@ npm run alpha:verify:restart-recovery -- --verify
 
 ---
 
+### Local Dev Viewer Fixture 与 PostgreSQL 错误码保真
+
+`dev:local` 现在保证配置的 `VITE_DEV_VIEWER_USER_ID` 在本地数据库中真实存在；
+`queryPostgres` 不再丢弃驱动错误码，仓储里既有的 `23505` / `23503` / `42P01` 分支重新可达。
+
+```bash
+npm run db:verify:dev-viewer
+npm run db:verify:database-error
+npm run api:verify:world
+npm run frontend:verify:world
+npm run frontend:verify:local-playable-lobby
+npm run db:verify:runtime:write
+npm run db:verify:world:write
+```
+
+- [ ] `db:seed:dev-viewer` 在全新数据库上创建本地开发用户，并报告 `decision: seeded`。
+- [ ] 再次运行报告 `decision: alreadyPresent`，不写入、不重置资料、不新增身份行。
+- [ ] 手工改过的本地开发用户显示名在重复运行后保持不变。
+- [ ] 未配置或空白的 `VITE_DEV_VIEWER_USER_ID` 报 `missingConfiguration`，不臆测 id。
+- [ ] `db:seed:dev-viewer -- --check-only` 只读探测，绝不写入。
+- [ ] 报告中不出现 SQL、连接串、凭据或堆栈。
+- [ ] 被包装的驱动错误保留安全的 `code` / `constraint`；含空格、SQL、连接串或超长的值一律丢弃。
+- [ ] 非 PG 错误（null / undefined / 字符串 / 数字 / 普通 Error）仍安全归类为 `database_error`。
+- [ ] `checkPostgresHealth` 的 `errorKind` 与既有分类字符串保持一致。
+- [ ] 创建 World Server 时 owner 用户缺失返回 **409**（`error.reason` 为 `missing_owner_user`），不再是 503。
+- [ ] 普通重复冲突仍是无 `reason` 的 409，文案不变。
+- [ ] `schema_missing` / `not_configured` 仍然是 503。
+- [ ] 409 响应体不含 `23503`、SQL、列名、连接串或堆栈。
+- [ ] UI 对该情况显示「当前开发用户未在本地数据库中创建，请先创建 dev viewer fixture。」，不再显示「世界服务器服务暂时不可用。」。
+- [ ] Runtime 事件幂等重试行为未变（事务路径原本就保留原始驱动错误）。
+
+真实本地验收：
+
+```powershell
+npm run dev:local:stop
+npm run dev:local
+npm run dev:local:doctor
+```
+
+- [ ] `dev:local` 在迁移与 schema 就绪之后、后端/前端启动之前完成 dev viewer 播种。
+- [ ] 创建 World Server 成功；重启 `dev:local` 后该 World Server 仍在。
+- [ ] 重启 `dev:local` 不会重复创建或重置本地开发用户。
+- [ ] 后端仍为 `localDev` 且数据库就绪；T7 行为无回归。
+
+---
+
 ### DND Level-One Character Commit Chain
 
 ```bash

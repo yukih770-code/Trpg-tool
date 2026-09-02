@@ -5,20 +5,23 @@ import {
   readDatabaseRuntimeConfigFromEnv,
   type DatabaseRuntimeConfig,
 } from '../config/databaseRuntimeConfig.js';
+import {
+  PostgresDatabaseError,
+  classifyPostgresDriverError,
+  wrapPostgresQueryError,
+} from './postgresDatabaseError.js';
+
+// The error envelope lives in a dependency-free module so its sanitization
+// contract can be smoke-tested without `pg`. Re-exported here so every existing
+// `from './postgresClient.js'` import keeps working unchanged.
+export {
+  PostgresDatabaseError,
+  readSafePostgresErrorCode,
+  readSafePostgresErrorConstraint,
+} from './postgresDatabaseError.js';
+export type { PostgresDatabaseErrorKind } from './postgresDatabaseError.js';
 
 const { Pool } = pg;
-
-export type PostgresDatabaseErrorKind = 'not_configured' | 'connection_error' | 'query_error';
-
-export class PostgresDatabaseError extends Error {
-  readonly kind: PostgresDatabaseErrorKind;
-
-  constructor(kind: PostgresDatabaseErrorKind, message: string) {
-    super(message);
-    this.name = 'PostgresDatabaseError';
-    this.kind = kind;
-  }
-}
 
 export type PostgresHealthStatus =
   | {
@@ -60,17 +63,6 @@ export function getPostgresPool(
   return sharedPool;
 }
 
-function classifyDatabaseError(error: unknown): string {
-  const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
-  if (code === 'ECONNREFUSED') return 'connection_refused';
-  if (code === 'ETIMEDOUT') return 'connection_timeout';
-  if (code === 'ENOTFOUND') return 'host_not_found';
-  if (code === '28P01') return 'authentication_failed';
-  if (code === '3D000') return 'database_not_found';
-  if (code === '42P01') return 'schema_missing';
-  return 'database_error';
-}
-
 export async function queryPostgres<T extends QueryResultRow>(
   text: string,
   values?: readonly unknown[],
@@ -83,7 +75,9 @@ export async function queryPostgres<T extends QueryResultRow>(
   try {
     return await pool.query<T>(text, values ? [...values] : undefined);
   } catch (error) {
-    throw new PostgresDatabaseError('query_error', classifyDatabaseError(error));
+    // Preserves ONLY the bounded driver identifiers. `message` stays the
+    // existing classification string, so callers comparing it keep working.
+    throw wrapPostgresQueryError(error);
   }
 }
 
@@ -115,7 +109,7 @@ export async function checkPostgresHealth(
     return { configured: true, status: 'ok', latencyMs: Date.now() - startedAt };
   } catch (error) {
     const errorKind =
-      error instanceof PostgresDatabaseError ? error.message : classifyDatabaseError(error);
+      error instanceof PostgresDatabaseError ? error.message : classifyPostgresDriverError(error);
     return {
       configured: true,
       status: 'error',

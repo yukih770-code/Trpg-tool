@@ -2,6 +2,11 @@ export type ApiErrorPayload = {
   kind: string;
   message: string;
   retryable?: boolean;
+  /**
+   * Optional machine-readable discriminator for cases where `kind` alone is
+   * ambiguous. Additive: existing errors omit it and existing callers ignore it.
+   */
+  reason?: string;
 };
 
 export type ApiSuccess<T> = {
@@ -31,6 +36,8 @@ export class ApiClientError extends Error {
   readonly kind: ApiClientErrorKind;
   readonly statusCode?: number;
   readonly apiErrorKind?: string;
+  /** Server-supplied discriminator when `apiErrorKind` alone is ambiguous. */
+  readonly apiErrorReason?: string;
   readonly retryable: boolean;
 
   constructor(
@@ -39,6 +46,7 @@ export class ApiClientError extends Error {
     options: {
       statusCode?: number;
       apiErrorKind?: string;
+      apiErrorReason?: string;
       retryable?: boolean;
     } = {},
   ) {
@@ -47,6 +55,7 @@ export class ApiClientError extends Error {
     this.kind = kind;
     this.statusCode = options.statusCode;
     this.apiErrorKind = options.apiErrorKind;
+    this.apiErrorReason = options.apiErrorReason;
     this.retryable = options.retryable === true;
   }
 }

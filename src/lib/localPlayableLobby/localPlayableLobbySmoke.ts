@@ -1,4 +1,4 @@
-import { classifyApiServiceFailure, resolveDevViewerUserId } from '../api/apiClient';
+import { classifyApiServiceFailure, MISSING_OWNER_USER_REASON, resolveDevViewerUserId } from '../api/apiClient';
 import { ApiClientError } from '../api/apiTypes';
 
 type SelectionState = {
@@ -51,6 +51,20 @@ function runSmoke(): void {
   if (classifyApiServiceFailure(new ApiClientError('api_error', 'unavailable', { statusCode: 503 })) !== 'service_unavailable') {
     throw new Error('world service outage was not classified');
   }
+  // A missing local dev user arrives as a discriminated 409, not a 401 and not a
+  // 503. It must read as an identity problem the operator can fix, never as a
+  // service outage or as a duplicate the operator should retry.
+  const missingOwner = new ApiClientError('api_error', 'conflict', {
+    statusCode: 409,
+    apiErrorKind: 'conflict',
+    apiErrorReason: MISSING_OWNER_USER_REASON,
+  });
+  if (classifyApiServiceFailure(missingOwner) !== 'invalid_dev_identity') {
+    throw new Error('missing local dev user was not classified as an identity problem');
+  }
+  if (classifyApiServiceFailure(new ApiClientError('api_error', 'conflict', { statusCode: 409, apiErrorKind: 'conflict' })) === 'invalid_dev_identity') {
+    throw new Error('an ordinary conflict must not be read as a missing dev identity');
+  }
 
   // The smoke intentionally stays backend-free. Actor binding is represented by
   // campaign records only; live room actor state is outside this slice.
@@ -62,8 +76,8 @@ function runSmoke(): void {
 
 runSmoke();
 console.log(JSON.stringify({
-  total: 11,
-  passed: 11,
+  total: 13,
+  passed: 13,
   cases: [
     'dev identity visibility is UI-only and can be hidden in production',
     'campaign selection resets room selection',
@@ -75,6 +89,8 @@ console.log(JSON.stringify({
     'configured dev identity is preferred over stale local selection',
     'missing dev fixture is distinguished from backend unavailability',
     'world service unavailability is distinguished from backend unavailability',
+    'a missing local dev user reads as an identity problem, not a 503 outage',
+    'an ordinary conflict is not mistaken for a missing local dev user',
     'actor binding remains a campaign-record placeholder',
   ],
   notes: ['No backend, database, WebSocket, or mock network is used.'],

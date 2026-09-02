@@ -149,6 +149,16 @@ function Ensure-LocalDatabaseReady {
     Write-LocalStatus 'Verifying all local PostgreSQL schemas.'
     & npm run db:verify:e2e -- --strict
     if ($LASTEXITCODE -ne 0) { throw 'Local PostgreSQL readiness verification failed.' }
+    # Migrations and schema readiness do NOT guarantee the one row every local
+    # write depends on. The local identity seam accepts VITE_DEV_VIEWER_USER_ID
+    # without a database lookup, so a recreated volume reads fine and then fails
+    # every write on `world_servers.owner_id -> users`. Seeding is idempotent:
+    # an existing viewer is read and left untouched.
+    if (-not $PrivateAlpha) {
+      Write-LocalStatus 'Ensuring the configured local development viewer exists.'
+      & npm run db:seed:dev-viewer -- --strict
+      if ($LASTEXITCODE -ne 0) { throw 'The local development viewer fixture could not be prepared.' }
+    }
   } finally {
     Pop-Location
   }

@@ -219,6 +219,72 @@ export async function runWorldServerApiHandlersSmoke(): Promise<{ total: number;
   await check('45_member_join_request_listing_is_protected', async () => expectStatus(() => handlers.listJoinRequests(req(member, ws)), 403));
   await check('46_missing_foundation_dependency_is_safe', async () => { const withoutFoundation = createWorldServerApiHandlers({ worldServerRepository: world, foundationRepository: null }); await expectStatus(() => withoutFoundation.listSettingsVersions(req(owner, ws)), 503); });
 
+  // ── Missing local dev user: honest 409, never a generic 503 ───────────────
+  // The local identity seam accepts `x-dev-user-id` without a database lookup,
+  // so a database with no such user reads fine and fails the first write on
+  // `world_servers.owner_id -> users`. Before the driver code was preserved,
+  // that FK violation was erased into `database_error` and surfaced as
+  // "the world server service is temporarily unavailable" — untrue and
+  // unactionable. It must now arrive as a discriminated conflict.
+  const missingOwnerRepository = (): WorldServerApiRepository => ({
+    ...world,
+    async createWorldServer() {
+      return {
+        ok: false,
+        error: {
+          kind: 'conflict',
+          reason: 'missing_owner_user',
+          message: 'World server owner user does not exist.',
+        },
+      };
+    },
+  });
+  const missingOwnerResponse = async (): Promise<ServerApiResponse<unknown>> =>
+    createWorldServerApiHandlers({ worldServerRepository: missingOwnerRepository(), foundationRepository: foundation })
+      .createWorldServer(req(owner, {}, { displayName: 'Seeded', serverHandle: 'seeded' }));
+
+  await check('47_missing_owner_user_is_409_not_503', async () => {
+    const result = await missingOwnerResponse();
+    assert(result.ok === false && result.statusCode === 409, 'expected 409 for a missing owner user');
+  });
+  await check('48_missing_owner_user_carries_a_discriminator', async () => {
+    const result = await missingOwnerResponse();
+    assert(
+      result.ok === false && result.error.kind === 'conflict' && result.error.reason === 'missing_owner_user',
+      'expected a conflict discriminated as missing_owner_user',
+    );
+  });
+  await check('49_missing_owner_user_is_not_reported_as_unavailable', async () => {
+    const result = await missingOwnerResponse();
+    assert(result.ok === false && result.error.kind !== 'unavailable' && result.statusCode !== 503, 'a missing owner must not read as service unavailability');
+  });
+  await check('50_missing_owner_user_response_stays_sanitized', async () => {
+    const serialized = JSON.stringify(await missingOwnerResponse());
+    assert(!serialized.includes('23503'), 'the driver code must not reach the client');
+    assert(!serialized.toUpperCase().includes('INSERT INTO') && !serialized.includes('owner_id'), 'no SQL or column name may reach the client');
+    assert(!serialized.includes('postgres://') && !serialized.includes('DATABASE_URL'), 'no connection detail may reach the client');
+    assert(!serialized.includes('    at '), 'no stack trace may reach the client');
+  });
+  await check('51_ordinary_conflict_keeps_the_generic_message', async () => {
+    const duplicate: WorldServerApiRepository = {
+      ...world,
+      async createWorldServer() { return { ok: false, error: { kind: 'conflict', message: 'World server row already exists (duplicate handle/code/pair).' } }; },
+    };
+    const result = await createWorldServerApiHandlers({ worldServerRepository: duplicate, foundationRepository: foundation })
+      .createWorldServer(req(owner, {}, { displayName: 'Dup', serverHandle: 'dup' }));
+    assert(result.ok === false && result.statusCode === 409 && result.error.reason === undefined, 'a duplicate must stay an undiscriminated conflict');
+    assert(!JSON.stringify(result).includes('duplicate handle/code/pair'), 'the repository message must not reach the client');
+  });
+  await check('52_schema_missing_still_maps_to_503', async () => {
+    const brokenSchema: WorldServerApiRepository = {
+      ...world,
+      async createWorldServer() { return { ok: false, error: { kind: 'schema_missing', message: 'World server repository table is missing.' } }; },
+    };
+    const result = await createWorldServerApiHandlers({ worldServerRepository: brokenSchema, foundationRepository: foundation })
+      .createWorldServer(req(owner, {}, { displayName: 'Broken', serverHandle: 'broken' }));
+    assert(result.ok === false && result.statusCode === 503 && result.error.kind === 'unavailable', 'a genuinely unavailable schema must still be 503');
+  });
+
   const passed = cases.filter((item) => item.passed).length;
   return { total: cases.length, passed, failed: cases.length - passed, cases };
 }

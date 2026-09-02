@@ -91,10 +91,19 @@ export type ApiServiceFailureKind =
   | 'not_found'
   | 'request_failed';
 
+/**
+ * Server discriminator for "the signed-in user has no row in this database".
+ * In local development that is exactly the missing dev viewer fixture, so it is
+ * classified as an identity problem rather than a data conflict — retrying can
+ * never resolve it, and the fixture is what has to be created.
+ */
+export const MISSING_OWNER_USER_REASON = 'missing_owner_user';
+
 export function classifyApiServiceFailure(error: ApiClientError | null): ApiServiceFailureKind | null {
   if (!error) return null;
   if (error.kind === 'configuration') return 'frontend_misconfigured';
   if (error.kind === 'network') return 'backend_unreachable';
+  if (error.apiErrorReason === MISSING_OWNER_USER_REASON) return 'invalid_dev_identity';
   if (error.statusCode === 401 || error.apiErrorKind === 'unauthenticated') return 'invalid_dev_identity';
   if (error.statusCode === 503 || error.apiErrorKind === 'unavailable') return 'service_unavailable';
   if (error.statusCode === 403) return 'access_denied';
@@ -174,6 +183,7 @@ export function createApiClient(options: ApiClientOptions = {}) {
       throw new ApiClientError('api_error', error?.message ?? safeMessage(response.status), {
         statusCode: body.statusCode || response.status,
         apiErrorKind: error?.kind,
+        apiErrorReason: error?.reason,
         retryable: error?.retryable ?? response.status >= 500,
       });
     }

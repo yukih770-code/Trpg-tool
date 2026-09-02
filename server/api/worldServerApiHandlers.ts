@@ -11,6 +11,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   createPostgresWorldServerRepository,
+  MISSING_OWNER_USER_REASON,
   type PostgresWorldServerRepository,
   type PostgresWorldServerRepositoryErrorKind,
   type PostgresWorldServerRepositoryResult,
@@ -175,9 +176,20 @@ function responseIs(value: unknown): value is ApiResult {
   return isRecord(value) && typeof value.ok === 'boolean' && typeof value.statusCode === 'number';
 }
 
-function repoError<T>(error: { kind: PostgresWorldServerRepositoryErrorKind; retryable?: boolean }, requestId?: string): ServerApiResponse<T> {
+function repoError<T>(error: { kind: PostgresWorldServerRepositoryErrorKind; retryable?: boolean; reason?: string }, requestId?: string): ServerApiResponse<T> {
   if (error.kind === 'not_found') return errorResponse(404, { kind: 'not_found', message: 'World server resource not found.' }, { requestId });
-  if (error.kind === 'conflict') return errorResponse(409, { kind: 'conflict', message: 'World server request conflicts with existing data.' }, { requestId });
+  if (error.kind === 'conflict') {
+    // A missing owner user is a distinct, actionable failure that retrying can
+    // never resolve, so it is discriminated rather than reported as a duplicate.
+    if (error.reason === MISSING_OWNER_USER_REASON) {
+      return errorResponse(409, {
+        kind: 'conflict',
+        reason: MISSING_OWNER_USER_REASON,
+        message: 'The signed-in user does not exist in this database.',
+      }, { requestId });
+    }
+    return errorResponse(409, { kind: 'conflict', message: 'World server request conflicts with existing data.' }, { requestId });
+  }
   if (error.kind === 'not_configured' || error.kind === 'schema_missing' || error.kind === 'database_error') {
     return errorResponse(503, { kind: 'unavailable', message: 'World server service is unavailable.', retryable: error.retryable }, { requestId });
   }

@@ -1,6 +1,6 @@
 import type { QueryResult, QueryResultRow } from 'pg';
 
-import { PostgresDatabaseError, queryPostgres } from '../db/postgresClient.js';
+import { PostgresDatabaseError, queryPostgres, readSafePostgresErrorCode } from '../db/postgresClient.js';
 
 /**
  * Postgres World Server + Membership + Game System repository (P5.16-P5.18) — server-only.
@@ -38,8 +38,23 @@ export type PostgresWorldServerRepositoryResult<T> =
         kind: PostgresWorldServerRepositoryErrorKind;
         message: string;
         retryable?: boolean;
+        /**
+         * Optional machine-readable discriminator for cases where `kind` alone
+         * is ambiguous. Additive: existing errors omit it and existing callers
+         * ignore it.
+         */
+        reason?: string;
       };
     };
+
+/**
+ * `world_servers` has exactly ONE outbound foreign key — `owner_id -> users` —
+ * so a foreign-key violation on its INSERT can only mean the owner user row is
+ * missing. That is the everyday local-development failure: the dev identity seam
+ * accepts `x-dev-user-id` without a database lookup, so a database with no such
+ * user reads fine and fails on the first write.
+ */
+export const MISSING_OWNER_USER_REASON = 'missing_owner_user';
 
 // ── Records ──────────────────────────────────────────────────────────────────
 
@@ -614,6 +629,28 @@ function mapRepositoryError(error: unknown): PostgresWorldServerRepositoryResult
   return { ok: false, error: { kind: 'database_error', message: 'World server repository query failed.', retryable } };
 }
 
+/**
+ * `createWorldServer` inserts into exactly one table, and that table has exactly
+ * one foreign key (`owner_id -> users`). A 23503 here is therefore PROVABLY a
+ * missing owner user, which is why the precise reason is attached at this call
+ * site and not in the shared mapper — every other table has a wider FK set where
+ * the same code would be ambiguous.
+ */
+function mapCreateWorldServerError(error: unknown): PostgresWorldServerRepositoryResult<never> {
+  const mapped = mapRepositoryError(error);
+  if (mapped.ok === false && readSafePostgresErrorCode(error) === '23503') {
+    return {
+      ok: false,
+      error: {
+        ...mapped.error,
+        reason: MISSING_OWNER_USER_REASON,
+        message: 'World server owner user does not exist.',
+      },
+    };
+  }
+  return mapped;
+}
+
 // ── Row mappers ──────────────────────────────────────────────────────────────
 
 function rowToServer(row: WorldServerRow): WorldServerRecord {
@@ -955,7 +992,7 @@ export function createPostgresWorldServerRepository(
       );
       return { ok: true, value: record };
     } catch (error) {
-      return mapRepositoryError(error);
+      return mapCreateWorldServerError(error);
     }
   }
 

@@ -184,6 +184,9 @@ function createServerHandle(displayName: string): string {
 }
 
 function createServerErrorMessage(error: ApiClientError | null, locale: Locale, privateAlphaAuthEnabled = false): string {
+  // A missing local dev user arrives as a 409, but it is an identity problem,
+  // not a duplicate — say so instead of telling the host to retry.
+  if (classifyApiServiceFailure(error) === 'invalid_dev_identity') return apiErrorMessage(error, locale, privateAlphaAuthEnabled);
   if (error?.statusCode === 400) return locale === 'en' ? 'Unable to create the server. Check the server name and try again.' : '无法创建服务器，请检查服务器名称后重试。';
   if (error?.statusCode === 409) return locale === 'en' ? 'This server request conflicts with existing data. Try again.' : '服务器创建请求与现有数据冲突，请重试。';
   return apiErrorMessage(error, locale, privateAlphaAuthEnabled);

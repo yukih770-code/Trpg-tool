@@ -131,6 +131,53 @@ export async function runWorldServerApiClientSmoke(): Promise<SmokeCase[]> {
     assert(invite.inviteStatus === 'revoked', 'revoke response was not returned');
   });
 
+  await check('error_reason_discriminator_is_carried', async () => {
+    // The server discriminates a missing owner user from an ordinary duplicate
+    // using the additive `reason` field. The client must carry it through, or
+    // the UI falls back to "retry, this conflicts with existing data" for a
+    // condition retrying can never fix.
+    const client = createWorldServerApiClient({
+      baseUrl: 'http://localhost:8787',
+      env: { DEV: true, VITE_DEV_VIEWER_USER_ID: 'dev-user' },
+      fetcher: async () => jsonResponse({
+        ok: false,
+        statusCode: 409,
+        error: { kind: 'conflict', reason: 'missing_owner_user', message: 'The signed-in user does not exist in this database.' },
+      }, 409),
+    });
+    let captured: unknown;
+    try {
+      await client.createWorldServer({ displayName: 'Test Server', serverHandle: 'missing-owner-smoke' });
+    } catch (error) {
+      captured = error;
+    }
+    assert(captured instanceof ApiClientError, 'expected an ApiClientError');
+    const failure = captured as ApiClientError;
+    assert(failure.statusCode === 409, 'status code was not carried');
+    assert(failure.apiErrorKind === 'conflict', 'error kind was not carried');
+    assert(failure.apiErrorReason === 'missing_owner_user', 'error reason discriminator was not carried');
+  });
+
+  await check('error_without_reason_stays_undiscriminated', async () => {
+    const client = createWorldServerApiClient({
+      baseUrl: 'http://localhost:8787',
+      env: { DEV: true, VITE_DEV_VIEWER_USER_ID: 'dev-user' },
+      fetcher: async () => jsonResponse({
+        ok: false,
+        statusCode: 409,
+        error: { kind: 'conflict', message: 'World server request conflicts with existing data.' },
+      }, 409),
+    });
+    let captured: unknown;
+    try {
+      await client.createWorldServer({ displayName: 'Dup', serverHandle: 'dup-smoke' });
+    } catch (error) {
+      captured = error;
+    }
+    assert(captured instanceof ApiClientError, 'expected an ApiClientError');
+    assert((captured as ApiClientError).apiErrorReason === undefined, 'an absent reason must stay undefined');
+  });
+
   return cases;
 }
 
