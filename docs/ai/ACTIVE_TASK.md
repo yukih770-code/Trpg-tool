@@ -4,88 +4,98 @@
 
 ## Task
 
-- ID: Room Runtime Server-Authoritative d20 Check v1 (T1)
-- Name: `ROOM_RUNTIME_SERVER_AUTHORITATIVE_D20_CHECK_V1`
-- Goal: Let a player at a real multiplayer table roll a d20 check as normal,
-  advantage or disadvantage against an optional DC, with the server — not the
-  client — deciding the dice faces, the kept die, the total and the DC outcome,
-  and with the initiating player seeing that authoritative result immediately.
-- Phase: Core D&D tabletop comfort (precedes the CharacterData → Runtime slice)
+- ID: Campaign Actor Source Baseline v1 (T11a)
+- Name: `CAMPAIGN_ACTOR_SOURCE_BASELINE_V1`
+- Goal: A campaign actor froze the character a host approved, but nothing
+  recorded WHICH version it froze — `snapshot_hash` was NULL for every player
+  character ever linked. A player could level up and no one could tell. This
+  records a combat-relevant baseline at the moment of the link and reports, as
+  one boolean, whether the source has moved since.
+- Phase: Core D&D tabletop comfort — the third rung of CharacterData → Runtime
 - Status: Implemented; awaiting local dependency-backed validation
+- Explicitly NOT in this task: T11b (host review endpoint, derived proposal and
+  field diff, explicit acceptance, review UI).
 
 ## Layer Declaration
 
-- IA: Existing Room Runtime only — the dock 投骰 panel, the D&D 动作 panel and the
-  existing log drawer. No new page, route, modal, dock action or navigation entry.
-- Object: `LogEvent` only. The existing `dice.roll` RuntimeLog event is extended
-  additively. No new event kind, no `CatalogObject`, `OwnedObject`,
-  `CampaignObject` or `RuntimeObject` is created or mutated.
-- State: `Server State` (authoritative roll resolution + append), `UI State`
-  (selected roll mode, DC input, last-result echo). No `Persistent Domain State`
-  beyond the existing RuntimeLog append, no `Collaborative State` change.
-- Authority: request carries INTENT ONLY (`expression`, `label`, `mode`, `dc`).
-  Randomness stays in `node:crypto.randomInt` behind the existing shared,
-  RNG-injected pure roller. Resolved fields sent by a client are ignored.
-- Rules boundary: naturals are metadata; `outcome` is derived solely from
-  `total >= dc`. No universal auto-success / auto-failure is encoded.
-- Excluded: attack vs AC, critical damage, damage application, HP mutation,
-  spell/resource mechanics, CharacterData-derived bonuses, host tooling
-  relocation, the dual runtime-event write path (T7), AI, Workshop, routing,
-  multi-instance authority.
+- IA: No UI change at all. No new page, route, modal, dock action, panel or
+  control. One optional boolean appears on an existing Runtime read.
+- Object: No new object, no new table, no migration, no new combat event and no
+  new event kind. `campaign_actor_instances.snapshot_hash` already existed and
+  was already accepted by `createCampaignActorInstance`; it was simply never
+  written. `RoomRuntimeActorProjection` gains one optional boolean.
+- State: No new store, no schema change, no RuntimeLog write. The baseline is
+  written exactly once, in the same INSERT that writes `snapshot_payload`.
+- Authority: unchanged. The flag is a REVIEW SIGNAL, not a gate. It ejects no
+  player, blocks no reconnect, refuses no room entry, and mutates no live
+  combat. It never produces an admission status and specifically never produces
+  `ActorAdmissionStatus = 'stale'`.
+- Rules boundary: no rule is read, invented or applied. The covered field set is
+  the set the T9 derivation reads, minus volatile values.
+- Excluded: snapshot refresh, acceptance, review endpoints, review UI (all
+  T11b); server-authoritative attacks (T12), typed conditions (T13), resources
+  and slots (T14), AI, spells, inventory.
 
 ## Page Responsibility And Action Hierarchy
 
-- The Room Runtime dock keeps one 投骰 tool; the semantic controls live inside
-  the existing panel rather than adding a competing action.
-- The D&D 动作 panel remains a roll launcher. It now shows the authoritative
-  result of the roll it just submitted; it still resolves nothing itself.
-- The RuntimeLog drawer remains the shared, durable session history.
-- Hidden actions: rolling locally, editing a resolved result, applying damage
-  from a roll, and any auto-hit / auto-miss inference.
+- The host remains the only reviewer. Nothing about this task decides for them.
+- A difference means "a host may want to look", never "re-derive the sheet".
+  Applying a derived sheet stays the explicit T9 `从角色卡填充` flow, and a
+  GM-edited `override.dndLiteActorSheetV1` is never touched by this task.
+- Hidden actions: any automatic snapshot refresh, any automatic re-derivation,
+  and any projection of the hash itself to any client.
 
 ## Allowed Files
 
-- `src/lib/platform/sharedDiceTypes.ts`
-- `src/lib/platform/sharedDiceExpression.ts`
-- `src/lib/platform/sharedDiceExpressionSmoke.ts` (new)
-- `src/lib/platform/roomServerHttpClient.ts`
-- `src/components/platform/SharedDiceDock.tsx`
-- `src/components/platform/RuntimeDndActionPanel.tsx`
-- `src/components/platform/RoomRuntimeEntryBridge.tsx`
-- `src/components/platform/RoomRuntimeLogPreviewPanel.tsx`
-- `server/protocol/room-protocol.ts`
-- `server/services/rollSharedDice.ts`
-- `server/room-server.ts` (dice route only)
-- `server/services/liveRoomRuntimeLogPersistenceSmoke.ts`
-- `server/api/verifyPrivateAlphaTwoAccountProtocol.ts`
-- `package.json` (one new verify script)
-- `CURRENT_PLATFORM_STAGE.md`, `TEST_CHECKLIST.md`, `docs/ai/ACTIVE_TASK.md`
+- `src/lib/dnd/dndCharacterCombatRelevantFields.ts` (new, pure)
+- `src/lib/dnd/dndCharacterCombatRelevantFieldsSmoke.ts` (new)
+- `server/services/dndCharacterCombatRelevantHash.ts` (new)
+- `server/services/dndCharacterCombatRelevantHashSmoke.ts` (new)
+- `src/lib/platform/roomRuntimeActorProjectionTypes.ts` (one optional field)
+- `server/services/linkApprovedRoomBindingToCampaignActor.ts` (+ its smoke)
+- `server/services/projectRoomRuntimeActorProjections.ts` (+ its smoke)
+- `server/room-server.ts` (pass the read-only Vault port at one call site)
+- `package.json` (two verify scripts)
+- `TEST_CHECKLIST.md`, `docs/ai/ACTIVE_TASK.md`
+- Prerequisite, applied first and gated on Windows builds:
+  `.js` import suffixes in `src/lib/dnd-types.ts`,
+  `src/lib/dnd/dndCharacterToLiteActorSheet.ts`,
+  `src/lib/dnd2024/dndCharacterCombatMath.ts`,
+  `src/lib/dnd2024/progression-utils.ts`, `src/data/classes.ts`,
+  `src/data/dnd2024/classProgression.ts`
 
 ## Forbidden Changes
 
-- `src/lib/dnd/dndDiceRoller.ts` and its smoke (kept as the regression guard)
-- A new `RoomRuntimeLogEventKind`, or widening either kind whitelist
-- Expression-grammar syntax for advantage (no `kh1` / `adv` inside the string)
-- Dependencies, registry configuration, unrelated `package-lock.json` churn
-- PostgreSQL schema / migrations, repository storage semantics
-- Character store, Campaign, Room lifecycle, permissions, map, combat state
-- `output/`, `tools/`, `work/`
+- Any migration or PostgreSQL schema change
+- `UpdateCampaignActorInstanceInput` and the client-facing campaign actor update
+  surface — a client-supplied `snapshotHash` or `snapshotPayload` must stay
+  rejected/ignored
+- `roomRuntimeEntryGuard.ts`, `ActorAdmissionStatus`, the admission pipeline
+- Combat state, `combatRuntimeReplay.ts`, `combatRuntimeTypes.ts`, the runtime
+  log, either kind whitelist, T7 files, T1 files
+- CharacterData storage, `src/store/characterStore.ts`, the character builder
+- `override.dndLiteActorSheetV1` — a GM's edited combat sheet
+- AI, spell system, inventory system
+- `output/`, `tools/`, `work/`, `.work/`, `.yuki-private-judge-stage/`
 
 ## Completion Criteria
 
-- Advantage / disadvantage / DC apply only to a single-d20 expression; `2d6+3`,
-  `2d20` and `1d12+4` are rejected as semantic checks and still roll normally.
-- `total` stays authoritative and `total = sum(terms) + modifier` holds in every
-  mode; the kept die is the ordinary term and the discarded face lives only in
-  `rawRolls`.
-- A request with no `mode`/`dc` produces the exact v0 payload; old `dice.roll`
-  events keep rendering through every existing consumer.
-- Natural 20 / natural 1 are recorded and never resolve a check by themselves.
-- A `dice.roll` carrying the new fields survives persist → restore verbatim,
-  proving the recovery whitelist needs no widening.
-- Fabricated resolved fields in a request are ignored; the server recomputes.
-- Host and player projections converge on the same authoritative result.
-- The initiating player sees the result without opening the log drawer.
-- Dedicated shared-dice smoke, persistence round-trip, two-account protocol,
-  TypeScript, frontend build, server build, diff check and docs all pass in one
-  isolated commit.
+- Two payloads produce the same canonical string exactly when they would derive
+  the same combat sheet, for the covered fields; asserted in both directions,
+  field by field.
+- `snapshot_hash` is written at first link, from the SAME object stored as
+  `snapshot_payload`, and stays NULL when the payload is not a character this
+  build can read.
+- Every non-comparison outcome projects the field as ABSENT — no stored
+  baseline, an unrecognised baseline, no Vault port, a failed Vault read, an
+  archived actor, an unreadable current payload, a non-DND system. Absence
+  means unknown, never "unchanged".
+- A level-up flags; a round of damage does not.
+- The flag reaches the host and a member's own binding only; the hash itself
+  reaches no client at all.
+- A confirmed comparison, in either direction, leaves every combat value on the
+  projection byte-identical, and a failed Vault read does not degrade
+  `persistence`.
+- The generic campaign actor update path still cannot write either field.
+- Field, hash, link, projection, T9 and T10 suites, TypeScript, frontend build
+  and server build all pass, in one isolated commit, before T11b starts.

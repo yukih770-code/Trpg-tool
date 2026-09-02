@@ -122,6 +122,8 @@
     "frontend:verify:dnd-dice": "tsx src/lib/dnd/dndDiceRollerSmoke.ts",
     "frontend:verify:character-lite-sheet": "tsx src/lib/dnd/dndCharacterToLiteActorSheetSmoke.ts",
     "runtime:verify:combatant-seed": "tsx src/lib/combat/combatantSeedFromProjectionSmoke.ts",
+    "frontend:verify:character-combat-relevant-fields": "tsx src/lib/dnd/dndCharacterCombatRelevantFieldsSmoke.ts",
+    "runtime:verify:character-source-hash": "tsx server/services/dndCharacterCombatRelevantHashSmoke.ts",
     "frontend:verify:shared-dice": "tsx src/lib/platform/sharedDiceExpressionSmoke.ts",
     "frontend:verify:dnd-lite-actor": "tsx src/lib/dnd/dndLiteActorSheetSmoke.ts",
     "frontend:verify:campaign-actor-overrides": "tsx src/lib/platform/campaignActorOverrideSmoke.ts",

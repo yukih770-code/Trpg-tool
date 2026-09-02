@@ -1,11 +1,29 @@
 import type { CampaignActorInstanceRecord, PostgresPlatformFoundationRepositoryResult } from '../adapters/postgresPlatformFoundationRepository.js';
 import type { RoomActorBindingSummary, RoomSnapshot } from '../../src/lib/platform/roomTypes.js';
 import type { RoomRuntimeActorProjection, RoomRuntimeActorProjectionListResult, RoomRuntimeDndActionShortcut } from '../../src/lib/platform/roomRuntimeActorProjectionTypes.js';
+import {
+  DND_COMBAT_RELEVANT_HASH_SYSTEM_ID,
+  compareDndCharacterCombatRelevantHash,
+  sourceChangedSinceApprovalFlag,
+} from './dndCharacterCombatRelevantHash.js';
 
 const DND_LITE_ACTOR_SHEET_OVERRIDE_KEY = 'dndLiteActorSheetV1';
 
 export interface RoomRuntimeActorProjectionRepository {
   getCampaignActorInstanceById(campaignActorInstanceId: string): Promise<PostgresPlatformFoundationRepositoryResult<CampaignActorInstanceRecord | null>>;
+}
+
+/**
+ * Read-only Vault port used ONLY to answer "has the source changed?".
+ *
+ * Separate from the campaign repository on purpose: this is the one place the
+ * Runtime read touches the owner-scoped Vault, and it may only ever reduce the
+ * character to a single boolean. No Vault payload, field, or hash reaches the
+ * projection. Optional, so a caller that cannot supply it simply gets the
+ * honest "unknown" (the field omitted) instead of a failed read.
+ */
+export interface RoomRuntimeActorSourceRepository {
+  getActorById(actorId: string): Promise<{ ok: true; value: { payload?: Record<string, unknown>; archivedAt?: string } | null } | { ok: false; error: unknown }>;
 }
 
 function approvedBinding(binding: RoomActorBindingSummary): boolean {
@@ -153,6 +171,57 @@ function fromCampaignOverride(
 }
 
 /**
+ * Who may be told that a character's source has moved.
+ *
+ * The host reviews every player's actor, so the host sees the flag for all
+ * approved bindings. A player sees it only for their own. Everyone else gets
+ * the field omitted, which reads as "unknown" — not as "unchanged".
+ */
+function maySeeSourceChange(
+  binding: RoomActorBindingSummary,
+  room: RoomSnapshot,
+  currentMemberId: string | undefined,
+): boolean {
+  if (!currentMemberId) return false;
+  if (binding.memberId === currentMemberId) return true;
+  return room.members.find((candidate) => candidate.memberId === currentMemberId)?.role === 'host';
+}
+
+/**
+ * Resolves the review flag for one binding.
+ *
+ * Returns `undefined` — meaning UNKNOWN — for every case that is not a
+ * confirmed comparison: the viewer may not see it, the system is not DND, the
+ * campaign row carries no baseline, the Vault port was not supplied, the read
+ * failed, or the actor is gone. A failure here must never degrade the rest of
+ * the projection, so it is swallowed rather than marking persistence
+ * unavailable: the combat facts a table needs were still read successfully.
+ */
+async function resolveSourceChangedSinceApproval(input: {
+  binding: RoomActorBindingSummary;
+  campaignRecord: CampaignActorInstanceRecord;
+  sourceRepository?: RoomRuntimeActorSourceRepository;
+}): Promise<boolean | undefined> {
+  const { binding, campaignRecord, sourceRepository } = input;
+  if (!sourceRepository) return undefined;
+  if (binding.actorRef.systemId !== DND_COMBAT_RELEVANT_HASH_SYSTEM_ID) return undefined;
+  if (!campaignRecord.snapshotHash) return undefined;
+  const sourceActorId = campaignRecord.sourceActorId?.trim();
+  if (!sourceActorId) return undefined;
+
+  try {
+    const result = await sourceRepository.getActorById(sourceActorId);
+    if (!result.ok || !result.value || result.value.archivedAt) return undefined;
+    return sourceChangedSinceApprovalFlag(compareDndCharacterCombatRelevantHash({
+      storedHash: campaignRecord.snapshotHash,
+      currentPayload: result.value.payload,
+    }));
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Produces a compact Runtime projection from approved room bindings only.
  * The campaign record is accepted only when it belongs to the Room's campaign
  * and its recorded owner matches the binding member. Missing storage never
@@ -162,6 +231,8 @@ function fromCampaignOverride(
 export async function projectRoomRuntimeActorProjections(input: {
   room: RoomSnapshot;
   repository: RoomRuntimeActorProjectionRepository;
+  /** Optional; without it every actor's `sourceChangedSinceApproval` is omitted. */
+  sourceRepository?: RoomRuntimeActorSourceRepository;
   currentMemberId?: string;
 }): Promise<RoomRuntimeActorProjectionListResult> {
   const bindings = (input.room.lobby?.actorBindings ?? []).filter(approvedBinding);
@@ -193,7 +264,16 @@ export async function projectRoomRuntimeActorProjections(input: {
         const spellbookActions = readDndSpellbookActionShortcuts(record.snapshotPayload);
         selfDndActions = [...explicitActions, ...spellbookActions].slice(0, 16);
       }
-      return fromCampaignOverride(binding, record);
+      const projection = fromCampaignOverride(binding, record);
+      if (!maySeeSourceChange(binding, input.room, input.currentMemberId)) return projection;
+      const sourceChangedSinceApproval = await resolveSourceChangedSinceApproval({
+        binding,
+        campaignRecord: record,
+        sourceRepository: input.sourceRepository,
+      });
+      return sourceChangedSinceApproval === undefined
+        ? projection
+        : { ...projection, sourceChangedSinceApproval };
     } catch {
       persistence = 'unavailable';
       return fallback;

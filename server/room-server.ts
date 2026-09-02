@@ -829,7 +829,15 @@ app.get('/rooms/:roomId/runtime-actors', async (req, res) => {
   const room = requireRoomRuntimeAction(req, res, req.params.roomId, memberId, 'combat.view');
   if (!room) return;
 
-  const result = await projectRoomRuntimeActorProjections({ room, repository: platformFoundationRepository, currentMemberId: memberId });
+  const result = await projectRoomRuntimeActorProjections({
+    room,
+    repository: platformFoundationRepository,
+    // Read-only Vault port for the source-change review flag (T11a). It can
+    // only ever become one boolean on the host's own view or a member's own
+    // binding; no Vault payload leaves the server through this route.
+    sourceRepository: actorVaultRepository,
+    currentMemberId: memberId,
+  });
   res.json(result);
 });
 

@@ -11,6 +11,10 @@
 import { randomUUID } from 'node:crypto';
 
 import type { RoomRegistry } from '../room-registry.js';
+import {
+  DND_COMBAT_RELEVANT_HASH_SYSTEM_ID,
+  formatDndCharacterCombatRelevantHash,
+} from './dndCharacterCombatRelevantHash.js';
 
 type RepositoryResult<T> = { ok: true; value: T } | { ok: false; error: unknown };
 
@@ -38,6 +42,12 @@ interface FoundationRepository {
     ownerId?: string;
     actorKind?: string;
     displayName: string;
+    /**
+     * Baseline for `sourceChangedSinceApproval` (T11a). Written ONLY here, in
+     * the same call that writes `snapshotPayload`, so the two can never
+     * disagree. The generic client-facing update path does not accept it.
+     */
+    snapshotHash?: string;
     snapshotPayload?: Record<string, unknown>;
     overridePayload?: Record<string, unknown>;
   }): Promise<RepositoryResult<unknown>>;
@@ -128,6 +138,13 @@ export async function linkApprovedRoomBindingToCampaignActor(
     const existing = existingResult.value.find((item) => item.sourceActorId === actor.actorId && item.ownerId === actor.ownerId);
     const campaignActorInstanceId = existing?.campaignActorInstanceId ?? `campaign_actor_${randomUUID()}`;
     if (!existing) {
+      // Hash the SAME object that becomes `snapshot_payload`, in the same
+      // statement, so the recorded baseline always describes the recorded
+      // source. An unreadable or non-DND payload yields no hash and the column
+      // stays NULL, which later reads as "unknown" rather than "unchanged".
+      const snapshotHash = actor.systemId === DND_COMBAT_RELEVANT_HASH_SYSTEM_ID
+        ? formatDndCharacterCombatRelevantHash(actor.payload)
+        : undefined;
       const created = await foundationRepository.createCampaignActorInstance({
         campaignActorInstanceId,
         campaignId,
@@ -135,6 +152,7 @@ export async function linkApprovedRoomBindingToCampaignActor(
         ownerId: actor.ownerId,
         actorKind: 'pc',
         displayName: actor.displayName,
+        ...(snapshotHash ? { snapshotHash } : {}),
         snapshotPayload: actor.payload,
         overridePayload: {},
       });

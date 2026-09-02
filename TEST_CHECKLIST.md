@@ -90,6 +90,76 @@ npm run alpha:verify:restart-recovery -- --verify
 
 ---
 
+### Campaign Actor Source Baseline (T11a)
+
+战役角色第一次建立时记录角色来源的「战斗相关」基线哈希，并在 Runtime 读取里以
+一个可选布尔值报告来源是否已经变动。这是**复核提示**，不是准入判定：不踢人、
+不阻断重连、不拦截入场、不改动实时战斗，也不使用
+`ActorAdmissionStatus = 'stale'`。
+
+T11b（主持人复核端点、派生提案与字段差异、显式接受、复核界面）不属于本任务。
+
+```bash
+npm run frontend:verify:character-combat-relevant-fields
+npm run runtime:verify:character-source-hash
+npm run runtime:verify:room-binding-campaign-actor
+npm run runtime:verify:room-runtime-actor-projection
+npm run frontend:verify:character-lite-sheet
+npm run runtime:verify:combatant-seed
+npm run frontend:verify:combat-replay
+npm run frontend:verify:combat-runtime-table
+npm run runtime:verify:runtime-visibility-projection
+npm run api:verify:campaign-room
+npm run alpha:verify:two-account-protocol
+```
+
+覆盖字段集：
+
+- [ ] 覆盖字段变动会改变规范化字符串：`name` / `level` / `jobClass` /
+      `classLevels` / 六项属性的四个加成部分 / `acMod` / `hpMax` / `speed` /
+      豁免熟练 / 技能熟练 / `schemaVersion`。
+- [ ] 排除字段不会改变字符串：`hpCurrent` / `tempHp` / `deathSaves` /
+      `hitDiceCurrent` / 种族 / 子种族 / 子职业 / 背景 / 性别 / 年龄 / 体型 /
+      描述 / 外貌 / 物品 / 金币 / 专长 / 武器与护甲训练 / 语言 / 法术书 / `id`。
+- [ ] 对象键顺序不影响结果；技能与豁免熟练的顺序与重复不影响结果。
+- [ ] `classLevels` 顺序**有意义**（它确实会改变 T9 派生出的战斗卡）。
+- [ ] 读不懂的负载不产生任何哈希：非对象 / 空对象 / 缺 `schemaVersion` /
+      更高版本 / 缺属性部件 / 战斗卡冒充角色卡。
+
+基线写入：
+
+- [ ] 首次建立战役角色时写入 `snapshot_hash`，且与同一次写入的
+      `snapshot_payload` 一致（同一对象、同一语句）。
+- [ ] 负载不是本版本能读懂的角色时，`snapshot_hash` 保持 NULL。
+- [ ] 复用既有战役角色时不重写基线。
+- [ ] 无迁移、无 schema 变更；客户端可见的战役角色更新接口仍然无法写入
+      `snapshotHash` 或 `snapshotPayload`。
+
+`sourceChangedSinceApproval` 投影：
+
+- [ ] 升级（等级 / 属性 / 熟练 / AC / hpMax / 速度 / 兼职）→ `true`。
+- [ ] 掉血、临时 HP、死亡豁免、消耗生命骰 → `false`（不是复核事件）。
+- [ ] 以下每一种都**省略该字段**（省略 = 未知，绝不等于「未变动」）：没有基线 /
+      基线版本或系统不认识 / 未提供 Vault 读取端口 / Vault 读取失败 /
+      角色已归档 / 当前负载读不懂 / 非 DND 系统。
+- [ ] 仅主持人与「本人自己的绑定」能看到该字段；其他玩家看不到，未认证读取
+      也看不到。
+- [ ] 哈希本身绝不出现在任何投影里，`snapshotHash` / `sourceActorId` 同样不出现。
+- [ ] 无论结果为 `true` / `false` / 省略，投影上的战斗数值逐字段不变
+      （AC / HP / 先攻调整值 / source）。
+- [ ] Vault 读取失败不会把 `persistence` 降级为 `unavailable`。
+
+真实本地验收：
+
+- [ ] 玩家提交角色、主持人批准，战役角色行的 `snapshot_hash` 非空。
+- [ ] 玩家在角色卡里升一级后重新同步，主持人的 Runtime 读取出现变动标记。
+- [ ] 该标记出现期间：玩家不掉线、可重连、可再次入场、战斗表数值不变。
+- [ ] 玩家自己看得到自己的标记，看不到别人的。
+- [ ] 主持人已编辑过的 `dndLiteActorSheetV1` 战斗卡完全没有被改动。
+- [ ] T1 / T7 / T9 / T10 行为无回归。
+
+---
+
 ### Character Runtime Combat Binding (T10)
 
 派生的角色数值真正进入实时战斗：加入战斗表时不再硬编码 `armorClass: undefined`

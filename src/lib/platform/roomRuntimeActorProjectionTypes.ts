@@ -26,6 +26,24 @@ export interface RoomRuntimeActorProjection {
   initiativeModifier?: number;
   /** Reserved for a future explicit condition projection; omitted today. */
   conditions?: string[];
+  /**
+   * Whether the player's Vault character has changed, in a combat-relevant way,
+   * since the campaign froze the source this actor was linked from (T11a).
+   *
+   * A REVIEW SIGNAL ONLY. It ejects nobody, blocks no reconnect, gates no room
+   * entry, and mutates no live combat. It is not an admission status and in
+   * particular is not `ActorAdmissionStatus = 'stale'`.
+   *
+   * OMITTED means UNKNOWN, never "verified unchanged": there is no stored
+   * baseline, the stored baseline predates this build's covered field set, or
+   * the current character cannot be read. `false` is the only claim that the
+   * two were compared and matched.
+   *
+   * Returned only to the room host and to a member about their own binding, so
+   * the projection does not hand every player a change-detection oracle on
+   * everyone else's character. The hash itself is never projected.
+   */
+  sourceChangedSinceApproval?: boolean;
   source: RoomRuntimeActorProjectionSource;
 }
 
