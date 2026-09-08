@@ -109,6 +109,7 @@
     "runtime:verify:actor-binding-vault": "tsx server/services/resolveOwnedRoomActorBindingSmoke.ts",
     "runtime:verify:room-binding-campaign-actor": "tsx server/services/linkApprovedRoomBindingToCampaignActorSmoke.ts",
     "runtime:verify:room-runtime-actor-projection": "tsx server/services/projectRoomRuntimeActorProjectionsSmoke.ts",
+    "platform:verify:room-system-registry": "tsx src/lib/platform/roomSystemRegistrySmoke.ts",
     "runtime:verify:cloud-room-launch": "tsx server/services/authorizeCloudRoomCreateSmoke.ts",
     "runtime:verify:live-room-lifecycle": "tsx server/services/liveRoomLifecyclePersistenceSmoke.ts",
     "runtime:verify:token-ownership": "tsx server/room/roomTokenControlSmoke.ts",

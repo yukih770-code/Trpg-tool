@@ -35,7 +35,15 @@ export type RoomJoinApprovalMode =
   | 'autoApproveWithInviteCode'
   | 'closed';
 
-export type RoomSystemId = 'dnd5e-2024' | 'coc7e' | 'cp-red' | 'custom';
+/**
+ * Opaque, stable game-system identifier.
+ *
+ * Deliberately NOT a closed literal union: membership is validated at the
+ * boundary by `roomSystemRegistry` (`isKnownRoomSystemId`), which is the single
+ * canonical source. Widening this to a string means a new Game System is added
+ * in one place instead of three kernel files.
+ */
+export type RoomSystemId = string;
 
 export type RoomLifecycleStatus =
   | 'draft'

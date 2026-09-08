@@ -22,6 +22,7 @@ import express, { type Request } from 'express';
 
 import { createInMemoryRoomRegistry } from './room-registry.js';
 import { createRoom, validateCampaignRef, type CreateRoomInput } from './services/createRoom.js';
+import { DEFAULT_ROOM_SYSTEM_ID } from '../src/lib/platform/roomSystemRegistry.js';
 import { joinRoom } from './services/joinRoom.js';
 import { approveMember } from './services/approveMember.js';
 import { rejectMember } from './services/rejectMember.js';
@@ -713,7 +714,7 @@ app.post('/rooms/create', async (req, res) => {
   }
   // Optional campaign linkage (M19 / M19.2): validate displayName, source enum,
   // systemId enum, and system match.
-  const campaignRefError = validateCampaignRef(body.campaignRef, body.systemId ?? 'dnd5e-2024');
+  const campaignRefError = validateCampaignRef(body.campaignRef, body.systemId ?? DEFAULT_ROOM_SYSTEM_ID);
   if (campaignRefError) {
     res.status(400).json({ error: campaignRefError });
     return;

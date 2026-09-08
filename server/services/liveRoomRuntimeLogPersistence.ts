@@ -27,6 +27,7 @@ import {
 } from '../runtime/runtimeEventPersistenceBridge.js';
 import { createRuntimeEventRepositoryPort } from '../runtime/runtimeEventRepositoryPortAdapter.js';
 import { COMBAT_RUNTIME_EVENT_KINDS } from '../../src/lib/combat/combatRuntimeTypes.js';
+import { isKnownRoomSystemId } from '../../src/lib/platform/roomSystemRegistry.js';
 
 export const LIVE_ROOM_RUNTIME_LOG_PAYLOAD_KEY = 'liveRoomRuntimeLogEventV1';
 /**
@@ -91,7 +92,7 @@ function campaignRefOf(value: unknown): RoomCampaignRef | undefined {
   if (
     (source !== 'localCampaignLibrary' && source !== 'imported' && source !== 'workshop' && source !== 'unknown')
     || !displayName
-    || (systemId !== 'dnd5e-2024' && systemId !== 'coc7e' && systemId !== 'cp-red' && systemId !== 'custom')
+    || !isKnownRoomSystemId(systemId)
   ) return undefined;
   return {
     source,

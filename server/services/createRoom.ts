@@ -8,6 +8,11 @@
 
 import { randomUUID } from 'node:crypto';
 
+import {
+  DEFAULT_ROOM_SYSTEM_ID,
+  KNOWN_ROOM_SYSTEM_IDS,
+} from '../../src/lib/platform/roomSystemRegistry.js';
+
 import type {
   RoomMemberIdentity,
   RoomSnapshot,
@@ -39,7 +44,11 @@ export const VALID_ROOM_CAMPAIGN_SOURCES: readonly RoomCampaignRefSource[] = [
   'workshop',
   'unknown',
 ];
-export const VALID_ROOM_SYSTEM_IDS: readonly RoomSystemId[] = ['dnd5e-2024', 'coc7e', 'cp-red', 'custom'];
+/**
+ * Re-exported from the canonical registry so existing importers keep working.
+ * The list itself is no longer declared here (P8 P0-A).
+ */
+export const VALID_ROOM_SYSTEM_IDS: readonly RoomSystemId[] = KNOWN_ROOM_SYSTEM_IDS;
 
 export type CampaignRefValidationError = 'invalidCampaignRef' | 'campaignSystemMismatch';
 
@@ -77,7 +86,7 @@ function makeRoomCode(): string {
 
 export function createRoom(input: CreateRoomInput): CreateRoomResult {
   const now = new Date().toISOString();
-  const systemId: RoomSystemId = input.systemId ?? 'dnd5e-2024';
+  const systemId: RoomSystemId = input.systemId ?? DEFAULT_ROOM_SYSTEM_ID;
   // Defensive validation so a direct service call (test/future code) cannot
   // bypass the HTTP handler and write an invalid campaignRef into a room.
   const campaignRefError = validateCampaignRef(input.campaignRef, systemId);
