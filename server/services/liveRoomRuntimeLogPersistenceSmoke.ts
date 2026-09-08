@@ -8,6 +8,8 @@ import { createInMemoryRoomRegistry } from '../room-registry.js';
 import { createInMemoryRuntimeLogRegistry } from '../runtime-log-registry.js';
 import type { RoomRuntimeLogEvent } from '../protocol/room-protocol.js';
 import { createRoom } from './createRoom.js';
+import { ROOM_RUNTIME_LOG_EVENT_KINDS } from '../../src/lib/platform/roomRuntimeLogTypes.js';
+import { appendRuntimeLogEvent } from './appendRuntimeLogEvent.js';
 import {
   LIVE_ROOM_RUNTIME_LOG_PAYLOAD_KEY,
   createLiveRoomRuntimeLogPersistenceCoordinator,
@@ -267,7 +269,7 @@ async function main(): Promise<void> {
   const restoredDicePayload = (restoredDice?.payload ?? {}) as Record<string, unknown>;
 
   const stored = repository.events.get(sessionId) ?? [];
-  const checks = [
+  const checks: boolean[] = [
     dicePersist.status === 'persisted',
     diceRestore.decision === 'restored' && diceRestore.restoredEventCount === 1,
     restoredDice?.kind === 'dice.roll' && restoredDice?.eventId === 'dice-advantage-1',
@@ -292,8 +294,74 @@ async function main(): Promise<void> {
     nonEmptyRestore.skippedRoomCount === 1 && nonEmptyRegistry.list(room.identity.roomId).events.length === 1,
     repository.maxActiveAppends === 1,
   ];
+  // ── P8 P0-B invariant ────────────────────────────────────────────────────
+  // EVERY canonical runtime-log event kind must survive
+  // append -> persist -> restart -> restore.
+  //
+  // This is the regression that makes the original defect structurally
+  // impossible: append and recovery once kept two hand-written whitelists, so a
+  // kind accepted live could be silently dropped on restart. A kind added to
+  // ROOM_RUNTIME_LOG_EVENT_KINDS in future is covered here automatically.
+  const kindRepository = createRepository();
+  const kindRoomRegistry = createInMemoryRoomRegistry();
+  const kindLogRegistry = createInMemoryRuntimeLogRegistry();
+  const kindRoom = createRoom({
+    hostDisplayName: 'Kind Host',
+    hostUserId: 'kind-host-user',
+    sessionId: 'runtime-session-kinds',
+    campaignRef: {
+      source: 'unknown',
+      worldServerId: 'world-kinds',
+      campaignId: 'campaign-kinds',
+      displayName: 'Kinds Campaign',
+      systemId: 'dnd5e-2024',
+    },
+  }).room;
+  kindRoomRegistry.create(kindRoom);
+  const kindRoomId = kindRoom.identity.roomId;
+  const kindHostMemberId = kindRoom.members[0].memberId;
+  await prepareLiveRoomRuntimeSession(kindRepository, kindRoom);
+
+  const acceptedKinds: string[] = [];
+  for (const kind of ROOM_RUNTIME_LOG_EVENT_KINDS) {
+    // Append through the real service so the canonical list is exercised on the
+    // WRITE side exactly as production does, not simulated.
+    const appended = appendRuntimeLogEvent(kindRoomRegistry, kindLogRegistry, {
+      roomId: kindRoomId,
+      authorMemberId: kindHostMemberId,
+      kind,
+      text: `invariant ${kind}`,
+    });
+    if (appended.decision !== 'appended' || !appended.event) {
+      throw new Error(`P0-B invariant: append rejected canonical kind "${kind}" (${appended.decision}).`);
+    }
+    acceptedKinds.push(kind);
+    const persisted = await persistLiveRoomRuntimeLogEvent(kindRepository, kindRoom, appended.event);
+    if (persisted.status !== 'persisted') {
+      throw new Error(`P0-B invariant: kind "${kind}" was accepted but not persisted (${persisted.status}).`);
+    }
+  }
+
+  // Restart: a fresh in-memory registry, restored purely from durable rows.
+  const restartedLogRegistry = createInMemoryRuntimeLogRegistry();
+  const kindRestore = await restoreLiveRoomRuntimeLogs(kindRepository, kindRoomRegistry, restartedLogRegistry);
+  const restoredKinds = restartedLogRegistry.list(kindRoomId).events.map((event) => event.kind);
+  const missingAfterRestart = acceptedKinds.filter((kind) => !restoredKinds.includes(kind as RoomRuntimeLogEvent['kind']));
+
+  checks.push(
+    ROOM_RUNTIME_LOG_EVENT_KINDS.length > 0,
+    acceptedKinds.length === ROOM_RUNTIME_LOG_EVENT_KINDS.length,
+    kindRestore.decision === 'restored',
+    kindRestore.restoredEventCount === ROOM_RUNTIME_LOG_EVENT_KINDS.length,
+    restoredKinds.length === ROOM_RUNTIME_LOG_EVENT_KINDS.length,
+    missingAfterRestart.length === 0,
+  );
+  if (missingAfterRestart.length > 0) {
+    throw new Error(`P0-B invariant: kinds accepted live but lost on restart: ${missingAfterRestart.join(', ')}`);
+  }
+
   if (checks.some((check) => !check)) throw new Error('Live room RuntimeLog persistence smoke failed.');
-  console.log(JSON.stringify({ status: 'passed', checks: checks.length }));
+  console.log(JSON.stringify({ status: 'passed', checks: checks.length, canonicalKinds: ROOM_RUNTIME_LOG_EVENT_KINDS.length }));
 }
 
 void main();

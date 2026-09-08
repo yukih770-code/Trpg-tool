@@ -12,16 +12,35 @@
  */
 
 import type { RoomCampaignRef } from './roomTypes.js';
-import type { CombatRuntimeEventKind } from '../combat/combatRuntimeTypes.js';
+import { COMBAT_RUNTIME_EVENT_KINDS } from '../combat/combatRuntimeTypes.js';
 
-export type RoomRuntimeLogEventKind =
-  | 'system.note'
-  | 'chat.message'
-  | 'dice.roll'
-  | 'host.note'
-  | 'state.manualChange'
-  /** Host-authoritative combat state transitions, replayed by the Room Runtime. */
-  | CombatRuntimeEventKind;
+/**
+ * Platform-level RuntimeLog event kinds that are not combat transitions.
+ * Extending this list is a deliberate platform change: a client, a Game System
+ * or a content pack can never contribute a kind.
+ */
+export const ROOM_RUNTIME_LOG_BASE_EVENT_KINDS = [
+  'system.note',
+  'chat.message',
+  'dice.roll',
+  'host.note',
+  'state.manualChange',
+] as const;
+
+/**
+ * THE canonical runtime-log event-kind list (P8 boundary cleanup, P0-B).
+ *
+ * Append validation and live-room restart recovery both consume this array.
+ * They previously kept two hand-maintained copies, so a kind added to only one
+ * was accepted live and then silently dropped on restart. Combat transitions
+ * are host-authoritative and replayed by the Room Runtime.
+ */
+export const ROOM_RUNTIME_LOG_EVENT_KINDS = [
+  ...ROOM_RUNTIME_LOG_BASE_EVENT_KINDS,
+  ...COMBAT_RUNTIME_EVENT_KINDS,
+] as const;
+
+export type RoomRuntimeLogEventKind = typeof ROOM_RUNTIME_LOG_EVENT_KINDS[number];
 
 export type RoomRuntimeLogVisibility = 'public' | 'hostOnly' | 'actorPrivate';
 

@@ -26,7 +26,7 @@ import {
   type RuntimeEventPersistenceBridgeResult,
 } from '../runtime/runtimeEventPersistenceBridge.js';
 import { createRuntimeEventRepositoryPort } from '../runtime/runtimeEventRepositoryPortAdapter.js';
-import { COMBAT_RUNTIME_EVENT_KINDS } from '../../src/lib/combat/combatRuntimeTypes.js';
+import { ROOM_RUNTIME_LOG_EVENT_KINDS } from '../../src/lib/platform/roomRuntimeLogTypes.js';
 import { isKnownRoomSystemId } from '../../src/lib/platform/roomSystemRegistry.js';
 
 export const LIVE_ROOM_RUNTIME_LOG_PAYLOAD_KEY = 'liveRoomRuntimeLogEventV1';
@@ -38,14 +38,6 @@ export const LIVE_ROOM_RUNTIME_LOG_PAYLOAD_KEY = 'liveRoomRuntimeLogEventV1';
 export const LIVE_ROOM_RUNTIME_LOG_EVENT_KIND_PREFIX = 'room.runtimeLog.';
 const EVENT_KIND_PREFIX = LIVE_ROOM_RUNTIME_LOG_EVENT_KIND_PREFIX;
 const RESTORE_PAGE_SIZE = 200;
-const ROOM_RUNTIME_LOG_KINDS: readonly RoomRuntimeLogEvent['kind'][] = [
-  'system.note',
-  'chat.message',
-  'dice.roll',
-  'host.note',
-  'state.manualChange',
-  ...COMBAT_RUNTIME_EVENT_KINDS,
-];
 
 type LiveRoomRuntimeRepository = Pick<
   PostgresRuntimeEventRepository,
@@ -78,7 +70,7 @@ function stringOf(value: unknown): string | undefined {
 
 function eventKindOf(value: unknown): RoomRuntimeLogEvent['kind'] | undefined {
   const kind = stringOf(value);
-  return kind && ROOM_RUNTIME_LOG_KINDS.includes(kind as RoomRuntimeLogEvent['kind'])
+  return kind && (ROOM_RUNTIME_LOG_EVENT_KINDS as readonly RoomRuntimeLogEvent['kind'][]).includes(kind as RoomRuntimeLogEvent['kind'])
     ? kind as RoomRuntimeLogEvent['kind']
     : undefined;
 }

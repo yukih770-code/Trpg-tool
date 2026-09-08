@@ -26,17 +26,9 @@ import type {
   RoomRuntimeLogEventKind,
   RoomRuntimeLogVisibility,
 } from '../protocol/room-protocol.js';
-import { COMBAT_RUNTIME_EVENT_KINDS } from '../../src/lib/combat/combatRuntimeTypes.js';
+import { ROOM_RUNTIME_LOG_EVENT_KINDS } from '../../src/lib/platform/roomRuntimeLogTypes.js';
 import { requiresLiveRoomDurableAppend } from './liveRoomDurableAppendConfirmation.js';
 
-const VALID_KINDS: readonly RoomRuntimeLogEventKind[] = [
-  'system.note',
-  'chat.message',
-  'dice.roll',
-  'host.note',
-  'state.manualChange',
-  ...COMBAT_RUNTIME_EVENT_KINDS,
-];
 const VALID_VISIBILITIES: readonly RoomRuntimeLogVisibility[] = ['public', 'hostOnly', 'actorPrivate'];
 
 export interface AppendRuntimeLogEventServiceInput {
@@ -75,7 +67,7 @@ export function appendRuntimeLogEvent(
     return { decision: 'roomClosed', message: 'The room is closed.' };
   }
 
-  if (!VALID_KINDS.includes(input.kind)) {
+  if (!(ROOM_RUNTIME_LOG_EVENT_KINDS as readonly RoomRuntimeLogEventKind[]).includes(input.kind)) {
     return { decision: 'invalidLogEvent', message: `Invalid kind "${String(input.kind)}".` };
   }
 
