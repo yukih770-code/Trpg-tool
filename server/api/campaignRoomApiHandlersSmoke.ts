@@ -38,6 +38,8 @@ import type {
   RuntimeEventPersistenceRepositoryPort,
   RuntimeEventPersistenceRepositoryResult,
 } from '../runtime/runtimeEventPersistenceBridge.js';
+import type { CampaignActorSourceVaultRepository } from '../services/campaignActorSourceReview.js';
+import { formatDndCharacterCombatRelevantHash } from '../services/dndCharacterCombatRelevantHash.js';
 
 type Result<T> = PostgresCampaignRepositoryResult<T>;
 
@@ -144,11 +146,56 @@ function sessionRecord(): RuntimeSessionRecord {
   };
 }
 
+/**
+ * T11b fixtures. A minimal D&D character in the two versions a host reviews.
+ * Deliberately carries private fields (inventory, spellbook, backstory) so the
+ * privacy assertion has something real to catch.
+ */
+const dndAttr = (score: number) => ({ base: score, pointbuy: 0, racebonus: 0, extrabonus: 0 });
+function dndCharacter(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    schemaVersion: 4, id: 'vault-char', name: 'Maris', race: '人类', jobClass: '战士',
+    classLevels: [{ className: '战士', level: 5 }], level: 5, hpMax: 38, hpCurrent: 12,
+    acMod: 15, speed: '30', description: 'A private backstory nobody else should read.',
+    attrs: { Str: dndAttr(16), Dex: dndAttr(14), Con: dndAttr(15), Int: dndAttr(10), Wis: dndAttr(12), Cha: dndAttr(8) },
+    skillProficiencies: ['运动'], savingThrowProficiencies: ['Str', 'Con'],
+    spellbook: { known: [{ name_en: 'Fireball' }], prepared: [], slots: {} },
+    inventory: ['私人日记'], coin: 512, isCompleted: true,
+    ...overrides,
+  };
+}
+const SOURCE_V1 = dndCharacter();
+const SOURCE_V2 = dndCharacter({
+  level: 9, classLevels: [{ className: '战士', level: 9 }], hpMax: 45, acMod: 16,
+  attrs: { Str: dndAttr(18), Dex: dndAttr(14), Con: dndAttr(15), Int: dndAttr(10), Wis: dndAttr(12), Cha: dndAttr(8) },
+});
+const SOURCE_V1_HASH = formatDndCharacterCombatRelevantHash(SOURCE_V1)!;
+const SOURCE_V2_HASH = formatDndCharacterCombatRelevantHash(SOURCE_V2)!;
+
+/**
+ * A Vault that always answers with `payload`, as the real repository would.
+ * `ownerId` defaults to the owner these fixtures create the campaign actor as,
+ * so the T11b link-ownership guard is satisfied unless a case overrides it.
+ */
+function fakeActorVault(payload: Record<string, unknown> | null, ownerId: string = OWNER): CampaignActorSourceVaultRepository {
+  return {
+    getActorById: async () => ({
+      ok: true,
+      value: payload === null ? null : {
+        actorId: 'vault-1', ownerId, systemId: 'dnd5e-2024',
+        displayName: 'Maris', payload,
+      },
+    }),
+  };
+}
+
 function makeFakeHandlers(options: {
   runtimeEventPersistenceRepository?: RuntimeEventPersistenceRepositoryPort;
   runtimeEventPersistenceBridgeEnabled?: boolean;
   /** T7: the runtime session an active live room currently owns for ROOM_ID. */
   liveRoomSessionId?: string;
+  /** T11b: the Vault the server reads a linked character source from. */
+  actorVaultRepository?: CampaignActorSourceVaultRepository;
 } = {}) {
   const server = serverRecord();
   const campaigns = new Map<string, PostgresCampaignRecord>([[CAMPAIGN_ID, campaignRecord()]]);
@@ -242,6 +289,30 @@ function makeFakeHandlers(options: {
         displayName: input.displayName ?? current.displayName,
         instanceStatus: input.instanceStatus ?? current.instanceStatus,
         overridePayload: input.overridePayload ?? current.overridePayload,
+      };
+      actors.set(updated.campaignActorInstanceId, updated);
+      return ok(updated);
+    },
+    // T11b: mirrors the real atomic write — snapshot payload + hash advance
+    // together, and the acceptance breadcrumb is MERGED beside the combat sheet
+    // rather than replacing the override bag.
+    acceptCampaignActorSourceUpdate: async (input: {
+      campaignActorInstanceId: string;
+      snapshotPayload: Record<string, unknown>;
+      snapshotHash: string;
+      acceptance: { acceptedByUserId?: string; acceptedAt: string; previousSnapshotHash?: string };
+    }) => {
+      const current = actors.get(input.campaignActorInstanceId);
+      if (!current || current.archivedAt) return ok(null);
+      const updated = {
+        ...current,
+        snapshotPayload: input.snapshotPayload,
+        snapshotHash: input.snapshotHash,
+        overridePayload: {
+          ...current.overridePayload,
+          sourceAcceptanceV1: { schemaVersion: 1, ...input.acceptance },
+        },
+        updatedAt: '2026-01-03T00:00:00.000Z',
       };
       actors.set(updated.campaignActorInstanceId, updated);
       return ok(updated);
@@ -347,6 +418,7 @@ function makeFakeHandlers(options: {
     sceneStateRepository: sceneStateRepository as never,
     runtimeEventPersistenceRepository: options.runtimeEventPersistenceRepository,
     runtimeEventPersistenceBridgeEnabled: options.runtimeEventPersistenceBridgeEnabled,
+    actorVaultRepository: options.actorVaultRepository,
   });
 }
 
@@ -406,6 +478,109 @@ export async function runCampaignRoomApiHandlerSmoke(): Promise<{ total: number;
   await check('18_campaign_actor_detail', async () => isSuccess(await handlers.getCampaignActor({ ...base(), params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, actorInstanceId: 'missing' } })) === false);
   await check('19_campaign_actor_archive_missing_404', async () => hasStatus(await handlers.archiveCampaignActor({ ...base(), params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, actorInstanceId: 'missing' } }), 404));
   await check('20_campaign_actor_source_is_metadata', async () => isSuccess(await handlers.createCampaignActor({ ...base(), body: { displayName: 'Metadata Actor', sourceActorId: 'vault-2', snapshotPayload: { hp: 10 } } })));
+
+  // ── T11b: host review and accept of a character source update ────────────
+  // Each case builds its own handler set so acceptance writes stay isolated.
+  async function linkedSourceActor(vault: CampaignActorSourceVaultRepository | null) {
+    const scoped = makeFakeHandlers({ actorVaultRepository: vault ?? undefined });
+    const created = await scoped.createCampaignActor({
+      ...base(),
+      body: {
+        displayName: 'Maris', sourceActorId: 'vault-1',
+        snapshotPayload: SOURCE_V1, snapshotHash: SOURCE_V1_HASH,
+        overridePayload: { dndLiteActorSheetV1: { hostEditedArmorClass: 17 } },
+      },
+    });
+    const id = (created as { value?: { campaignActorInstanceId?: string } }).value?.campaignActorInstanceId ?? '';
+    if (!id) throw new Error('T11b fixture: campaign actor was not created');
+    const params = { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, actorInstanceId: id };
+    return { handlers: scoped, id, params };
+  }
+
+  await check('20a_source_review_anonymous_401', async () => {
+    const { handlers: scoped, params } = await linkedSourceActor(fakeActorVault(SOURCE_V2));
+    return hasStatus(await scoped.reviewCampaignActorSource({ params }), 401);
+  });
+  await check('20b_source_review_member_denied', async () => {
+    const { handlers: scoped, params } = await linkedSourceActor(fakeActorVault(SOURCE_V2));
+    return hasStatus(await scoped.reviewCampaignActorSource({ ...base(MEMBER), params }), 404);
+  });
+  await check('20c_source_review_outsider_denied', async () => {
+    const { handlers: scoped, params } = await linkedSourceActor(fakeActorVault(SOURCE_V2));
+    return hasStatus(await scoped.reviewCampaignActorSource({ ...base(OUTSIDER), params }), 404);
+  });
+  await check('20d_source_accept_member_denied', async () => {
+    const { handlers: scoped, params } = await linkedSourceActor(fakeActorVault(SOURCE_V2));
+    return hasStatus(await scoped.acceptCampaignActorSource({ ...base(MEMBER), params, body: { expectedSourceHash: SOURCE_V2_HASH } }), 404);
+  });
+  await check('20e_source_review_reports_change', async () => {
+    const { handlers: scoped, params } = await linkedSourceActor(fakeActorVault(SOURCE_V2));
+    const response = await scoped.reviewCampaignActorSource({ ...base(), params });
+    const value = (response as { value?: { status?: string; sourceChangedSinceApproval?: boolean; review?: { changedFields: Array<{ key: string }> } } }).value;
+    return isSuccess(response)
+      && value?.status === 'changed'
+      && value?.sourceChangedSinceApproval === true
+      && (value?.review?.changedFields ?? []).some((field) => field.key === 'defenses.maxHp');
+  });
+  await check('20f_source_review_never_returns_raw_character', async () => {
+    const { handlers: scoped, params } = await linkedSourceActor(fakeActorVault(SOURCE_V2));
+    const response = await scoped.reviewCampaignActorSource({ ...base(), params });
+    if (!isSuccess(response)) return false; // an error body must not pass this vacuously
+    const serialised = JSON.stringify(response);
+    return ['attrs', 'pointbuy', 'spellbook', 'Fireball', 'coin', '私人日记',
+      'A private backstory', 'snapshotPayload', 'jobClass', 'hpCurrent']
+      .every((leak) => !serialised.includes(leak));
+  });
+  await check('20g_source_accept_requires_expected_hash_400', async () => {
+    const { handlers: scoped, params } = await linkedSourceActor(fakeActorVault(SOURCE_V2));
+    return hasStatus(await scoped.acceptCampaignActorSource({ ...base(), params, body: {} }), 400);
+  });
+  await check('20h_source_accept_stale_hash_409', async () => {
+    const { handlers: scoped, params } = await linkedSourceActor(fakeActorVault(SOURCE_V2));
+    return hasStatus(await scoped.acceptCampaignActorSource({ ...base(), params, body: { expectedSourceHash: SOURCE_V1_HASH } }), 409);
+  });
+  await check('20i_source_accept_advances_snapshot_and_keeps_override', async () => {
+    const { handlers: scoped, params } = await linkedSourceActor(fakeActorVault(SOURCE_V2));
+    const accepted = await scoped.acceptCampaignActorSource({ ...base(), params, body: { expectedSourceHash: SOURCE_V2_HASH } });
+    if (!isSuccess(accepted)) return false;
+    const detail = await scoped.getCampaignActor({ ...base(), params });
+    const actor = (detail as { value?: { snapshotHash?: string; snapshotPayload?: Record<string, unknown>; overridePayload?: Record<string, unknown> } }).value;
+    const override = actor?.overridePayload as { dndLiteActorSheetV1?: { hostEditedArmorClass?: number }; sourceAcceptanceV1?: unknown } | undefined;
+    return actor?.snapshotHash === SOURCE_V2_HASH
+      && (actor?.snapshotPayload as { level?: number } | undefined)?.level === 9
+      && override?.dndLiteActorSheetV1?.hostEditedArmorClass === 17
+      && Boolean(override?.sourceAcceptanceV1);
+  });
+  await check('20j_source_review_reads_unchanged_after_accept', async () => {
+    const { handlers: scoped, params } = await linkedSourceActor(fakeActorVault(SOURCE_V2));
+    await scoped.acceptCampaignActorSource({ ...base(), params, body: { expectedSourceHash: SOURCE_V2_HASH } });
+    const response = await scoped.reviewCampaignActorSource({ ...base(), params });
+    const value = (response as { value?: { status?: string; sourceChangedSinceApproval?: boolean } }).value;
+    return value?.status === 'unchanged' && value?.sourceChangedSinceApproval === false;
+  });
+  await check('20k_source_review_without_vault_503', async () => {
+    const { handlers: scoped, params } = await linkedSourceActor(null);
+    return hasStatus(await scoped.reviewCampaignActorSource({ ...base(), params }), 503);
+  });
+  await check('20l_source_review_deleted_source_404', async () => {
+    const { handlers: scoped, params } = await linkedSourceActor(fakeActorVault(null));
+    return hasStatus(await scoped.reviewCampaignActorSource({ ...base(), params }), 404);
+  });
+  await check('20m_source_review_foreign_owner_404', async () => {
+    const { handlers: scoped, params } = await linkedSourceActor(fakeActorVault(SOURCE_V2, OUTSIDER));
+    return hasStatus(await scoped.reviewCampaignActorSource({ ...base(), params }), 404);
+  });
+  await check('20n_source_accept_foreign_owner_404', async () => {
+    const { handlers: scoped, params } = await linkedSourceActor(fakeActorVault(SOURCE_V2, OUTSIDER));
+    return hasStatus(await scoped.acceptCampaignActorSource({ ...base(), params, body: { expectedSourceHash: SOURCE_V2_HASH } }), 404);
+  });
+  await check('20o_source_review_unlinked_actor_400', async () => {
+    const scoped = makeFakeHandlers({ actorVaultRepository: fakeActorVault(SOURCE_V2) });
+    const created = await scoped.createCampaignActor({ ...base(), body: { displayName: 'Unlinked', snapshotPayload: SOURCE_V1 } });
+    const id = (created as { value?: { campaignActorInstanceId?: string } }).value?.campaignActorInstanceId ?? '';
+    if (!id) throw new Error('T11b fixture: unlinked campaign actor was not created');
+    return hasStatus(await scoped.reviewCampaignActorSource({ ...base(), params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID, actorInstanceId: id } }), 400);
+  });
   await check('19_room_list_success', async () => isSuccess(await handlers.listRooms(base(MEMBER))));
   await check('20_room_create_member_success', async () => hasStatus(await handlers.createRoom({ ...base(MEMBER), body: { roomCode: 'NEW123' } }), 201));
   await check('21_anonymous_room_create_401', async () => hasStatus(await handlers.createRoom({ params: { worldServerId: SERVER_ID, campaignId: CAMPAIGN_ID }, body: {} }), 401));

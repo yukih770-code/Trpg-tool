@@ -45,6 +45,50 @@ export type CampaignActorInstance = {
   archivedAt?: string;
 };
 
+/**
+ * T11b: the host-facing review of a linked character source.
+ *
+ * Deliberately NOT the character. The server derives these values from the
+ * player's Vault actor at an already-authorized boundary and returns only the
+ * combat-relevant field diff; no raw `CharacterData` crosses this wire.
+ */
+export type CampaignActorSourceReviewField = {
+  key: string;
+  label: string;
+  group: 'identity' | 'defenses' | 'abilities' | 'proficiencies';
+  before?: string;
+  after?: string;
+  changed: boolean;
+};
+
+export type CampaignActorSourceReview = {
+  status: 'unchanged' | 'changed' | 'unknown';
+  changedFields: CampaignActorSourceReviewField[];
+  comparedFieldCount: number;
+  unreadable?: 'accepted' | 'current' | 'both';
+  currentDisplayName?: string;
+  /** Field names the derivation approximated or did not cover at all. */
+  approximations: string[];
+  omissions: string[];
+};
+
+export type CampaignActorSourceReviewResponse = {
+  campaignActorInstanceId: string;
+  status: 'unchanged' | 'changed' | 'unknown';
+  sourceChangedSinceApproval: boolean;
+  review?: CampaignActorSourceReview;
+  acceptedSourceHash?: string;
+  /** The hash the host must echo back to accept exactly this version. */
+  currentSourceHash?: string;
+};
+
+export type CampaignActorSourceAcceptResponse = {
+  campaignActorInstanceId: string;
+  acceptedSourceHash?: string;
+  previousSourceHash?: string;
+  updatedAt?: string;
+};
+
 export type RoomRecord = {
   roomRecordId: string;
   roomId: string;
@@ -160,6 +204,14 @@ export type CampaignRoomApiClient = {
   createCampaignActor(worldServerId: string, campaignId: string, input: { displayName: string; actorKind?: string; sourceActorId?: string; overridePayload?: Record<string, unknown> }): Promise<CampaignActorInstance>;
   updateCampaignActor(worldServerId: string, campaignId: string, actorInstanceId: string, input: { displayName?: string; instanceStatus?: string; overridePayload?: Record<string, unknown> }): Promise<CampaignActorInstance>;
   archiveCampaignActor(worldServerId: string, campaignId: string, actorInstanceId: string): Promise<CampaignActorInstance | null>;
+  /** T11b: read-only. Never mutates the campaign actor or any runtime state. */
+  reviewCampaignActorSource(worldServerId: string, campaignId: string, actorInstanceId: string): Promise<CampaignActorSourceReviewResponse>;
+  /**
+   * T11b: accepts exactly the version the host reviewed. `expectedSourceHash`
+   * is an equality guard only — the server re-reads and re-derives the source
+   * and refuses (409) if it moved since the review.
+   */
+  acceptCampaignActorSource(worldServerId: string, campaignId: string, actorInstanceId: string, input: { expectedSourceHash: string }): Promise<CampaignActorSourceAcceptResponse>;
   listRooms(worldServerId: string, campaignId: string): Promise<RoomRecord[]>;
   getRoom(worldServerId: string, campaignId: string, roomId: string): Promise<RoomRecord>;
   createRoom(worldServerId: string, campaignId: string, input?: { roomId?: string; roomCode?: string; roomStatus?: string; multiplayerMode?: string; metadata?: Record<string, unknown> }): Promise<RoomRecord>;
@@ -212,6 +264,8 @@ export function createCampaignRoomApiClient(options: ApiClientOptions = {}): Cam
     createCampaignActor: (id, campaignId, input) => json('POST', `${campaignRoot(id, campaignId)}/actors`, input),
     updateCampaignActor: (id, campaignId, actorId, input) => json('PATCH', `${campaignRoot(id, campaignId)}/actors/${segment(actorId)}`, input),
     archiveCampaignActor: (id, campaignId, actorId) => json('POST', `${campaignRoot(id, campaignId)}/actors/${segment(actorId)}/archive`),
+    reviewCampaignActorSource: (id, campaignId, actorId) => request(`${campaignRoot(id, campaignId)}/actors/${segment(actorId)}/source-review`),
+    acceptCampaignActorSource: (id, campaignId, actorId, input) => json('POST', `${campaignRoot(id, campaignId)}/actors/${segment(actorId)}/source-review/accept`, input),
     listRooms: (id, campaignId) => request(`${campaignRoot(id, campaignId)}/rooms`),
     getRoom: (id, campaignId, roomId) => request(roomRoot(id, campaignId, roomId)),
     createRoom: (id, campaignId, input) => json('POST', `${campaignRoot(id, campaignId)}/rooms`, input),

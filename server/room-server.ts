@@ -290,6 +290,9 @@ registerWorldServerApiRoutes(app, createWorldServerApiHandlers({
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));
+// The Vault repository remains independent from rooms. It is consulted only to
+// canonicalize an explicit persisted actorId during lobby binding submission.
+const actorVaultRepository = createPostgresActorRepository();
 registerCampaignRoomApiRoutes(app, createCampaignRoomApiHandlers({
   // T7: the campaign runtime-session API must not authoritatively mutate a
   // session an active live room is running. The in-memory registry below IS the
@@ -301,6 +304,9 @@ registerCampaignRoomApiRoutes(app, createCampaignRoomApiHandlers({
     if (lifecycle === 'closed' || lifecycle === 'archived') return undefined;
     return room.identity.sessionId;
   },
+  // T11b: read-only Vault port so the host review/accept routes can derive from
+  // the current source server-side. No Vault payload leaves through them.
+  actorVaultRepository: actorVaultRepository,
   allowDevAuthHeaders: serverRuntimeConfig.devUserApiEnabled === true,
   nodeEnv: serverRuntimeConfig.environment === 'localDev' ? 'development' : 'production',
 }));
@@ -336,9 +342,6 @@ registerCampaignArtifactAssistantApiRoutes(app, createCampaignArtifactAssistantA
 // Memory-live ActorAdmission authority. Campaign-linked room startup rebuilds
 // validated records from the durable Room clearance summaries below.
 const actorAdmissionRegistry = createInMemoryActorAdmissionRegistry();
-// The Vault repository remains independent from rooms. It is consulted only to
-// canonicalize an explicit persisted actorId during lobby binding submission.
-const actorVaultRepository = createPostgresActorRepository();
 const platformFoundationRepository = createPostgresPlatformFoundationRepository();
 const worldServerRepository = createPostgresWorldServerRepository();
 const runtimeEventRepository = createPostgresRuntimeEventRepository();

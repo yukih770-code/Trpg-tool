@@ -7,6 +7,11 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import {
+  acceptCampaignActorSourceUpdate,
+  reviewCampaignActorSourceUpdate,
+  type CampaignActorSourceVaultRepository,
+} from '../services/campaignActorSourceReview.js';
 
 import {
   createPostgresCampaignRepository,
@@ -77,6 +82,7 @@ type CampaignRepository = Pick<PostgresCampaignRepository,
   | 'restoreCampaign'
 >;
 type FoundationApiRepository = Pick<FoundationRepository,
+  | 'acceptCampaignActorSourceUpdate'
   | 'getCampaignActorInstanceById'
   | 'listCampaignActorInstances'
   | 'createCampaignActorInstance'
@@ -127,6 +133,12 @@ export interface CreateCampaignRoomApiHandlersOptions {
   worldRepository?: WorldRepository;
   campaignRepository?: CampaignRepository;
   foundationRepository?: FoundationApiRepository;
+  /**
+   * Read-only Vault port for T11b source review. Optional: without it the
+   * review and accept routes report the source as unavailable rather than
+   * failing the whole handler set.
+   */
+  actorVaultRepository?: CampaignActorSourceVaultRepository;
   runtimeRepository?: RuntimeRepository;
   runtimeEventPersistenceRepository?: RuntimeEventPersistenceRepositoryPort;
   runtimeEventPersistenceBridgeEnabled?: boolean;
@@ -148,6 +160,10 @@ export interface CampaignRoomApiHandlers {
   createCampaignActor(input: CampaignRoomApiRequest): Promise<ApiResult>;
   updateCampaignActor(input: CampaignRoomApiRequest): Promise<ApiResult>;
   archiveCampaignActor(input: CampaignRoomApiRequest): Promise<ApiResult>;
+  /** T11b: compact, privacy-safe review of a changed character source. */
+  reviewCampaignActorSource(input: CampaignRoomApiRequest): Promise<ApiResult>;
+  /** T11b: explicit host acceptance of the current character source. */
+  acceptCampaignActorSource(input: CampaignRoomApiRequest): Promise<ApiResult>;
   listRooms(input: CampaignRoomApiRequest): Promise<ApiResult>;
   getRoom(input: CampaignRoomApiRequest): Promise<ApiResult>;
   createRoom(input: CampaignRoomApiRequest): Promise<ApiResult>;
@@ -322,6 +338,7 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
   const worldRepository = options.worldRepository ?? createPostgresWorldServerRepository();
   const campaignRepository = options.campaignRepository ?? createPostgresCampaignRepository();
   const foundationRepository = options.foundationRepository ?? createPostgresPlatformFoundationRepository();
+  const actorVaultRepository = options.actorVaultRepository;
   const runtimeRepository = options.runtimeRepository ?? createPostgresRuntimeEventRepository();
   const runtimeEventPersistenceRepository =
     options.runtimeEventPersistenceRepository ?? createRuntimeEventRepositoryPort(runtimeRepository);
@@ -649,6 +666,96 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
       if (!actor || actor.campaignId !== access.campaign.campaignId) return errorResponse(404, { kind: 'not_found', message: 'Campaign actor not found.' }, { requestId: requestIdOf(input) });
       const archived = unwrap(await foundationRepository.archiveCampaignActorInstance(actorId), requestIdOf(input), 'Campaign actor');
       return isApiResult(archived) ? archived : okResponse(archived, { requestId: requestIdOf(input) });
+    },
+
+    /**
+     * T11b review. Requires campaign EDIT rights: this is a host action, and a
+     * player must not be able to inspect another player's derived character
+     * values through it.
+     *
+     * The response carries derived, combat-relevant values and a field diff
+     * only — never the Vault payload the server read to produce them.
+     */
+    async reviewCampaignActorSource(input) {
+      const access = await authorizeCampaign(input, 'edit');
+      if (isApiResult(access)) return access;
+      const actorId = idParam(input, 'actorInstanceId');
+      if (!actorId) return requiredString('actorInstanceId', requestIdOf(input));
+      const actor = unwrap(await foundationRepository.getCampaignActorInstanceById(actorId), requestIdOf(input), 'Campaign actor');
+      if (isApiResult(actor)) return actor;
+      if (!actor || actor.campaignId !== access.campaign.campaignId) {
+        return errorResponse(404, { kind: 'not_found', message: 'Campaign actor not found.' }, { requestId: requestIdOf(input) });
+      }
+      if (!actorVaultRepository) {
+        return errorResponse(503, { kind: 'unavailable', message: 'Character source review is not available on this server.', retryable: true }, { requestId: requestIdOf(input) });
+      }
+      const result = await reviewCampaignActorSourceUpdate({ actor, vaultRepository: actorVaultRepository });
+      if (result.decision === 'notLinkedToSource' || result.decision === 'unsupportedSystem') {
+        return errorResponse(400, { kind: 'validation', message: result.message ?? 'Source review is unavailable for this actor.', reason: result.decision }, { requestId: requestIdOf(input) });
+      }
+      if (result.decision === 'sourceUnavailable') {
+        return errorResponse(404, { kind: 'not_found', message: result.message ?? 'The linked character is no longer available.', reason: result.decision }, { requestId: requestIdOf(input) });
+      }
+      if (result.decision !== 'reviewed') {
+        return errorResponse(503, { kind: 'unavailable', message: result.message ?? 'The character source could not be read.', retryable: true, reason: result.decision }, { requestId: requestIdOf(input) });
+      }
+      return okResponse({
+        campaignActorInstanceId: result.campaignActorInstanceId,
+        status: result.status,
+        sourceChangedSinceApproval: result.sourceChangedSinceApproval,
+        review: result.review,
+        acceptedSourceHash: result.acceptedSourceHash,
+        currentSourceHash: result.currentSourceHash,
+      }, { requestId: requestIdOf(input) });
+    },
+
+    /**
+     * T11b acceptance. The body carries ONE field, `expectedSourceHash`, and it
+     * is used only as an equality guard against the server's own re-derivation.
+     * A client-supplied payload, hash-as-data or derived sheet is never stored.
+     */
+    async acceptCampaignActorSource(input) {
+      const access = await authorizeCampaign(input, 'edit');
+      if (isApiResult(access)) return access;
+      const actorId = idParam(input, 'actorInstanceId');
+      if (!actorId) return requiredString('actorInstanceId', requestIdOf(input));
+      const actor = unwrap(await foundationRepository.getCampaignActorInstanceById(actorId), requestIdOf(input), 'Campaign actor');
+      if (isApiResult(actor)) return actor;
+      if (!actor || actor.campaignId !== access.campaign.campaignId) {
+        return errorResponse(404, { kind: 'not_found', message: 'Campaign actor not found.' }, { requestId: requestIdOf(input) });
+      }
+      if (!actorVaultRepository) {
+        return errorResponse(503, { kind: 'unavailable', message: 'Character source acceptance is not available on this server.', retryable: true }, { requestId: requestIdOf(input) });
+      }
+      const body = bodyOf(input);
+      const expectedSourceHash = stringOf(body.expectedSourceHash);
+      if (!expectedSourceHash) return requiredString('expectedSourceHash', requestIdOf(input));
+
+      const result = await acceptCampaignActorSourceUpdate({
+        actor,
+        vaultRepository: actorVaultRepository,
+        acceptanceRepository: foundationRepository,
+        expectedSourceHash,
+        acceptedByUserId: access.viewer?.viewerUserId ?? undefined,
+      });
+      if (result.decision === 'notLinkedToSource' || result.decision === 'unsupportedSystem' || result.decision === 'sourceUnreadable') {
+        return errorResponse(400, { kind: 'validation', message: result.message ?? 'Source acceptance is unavailable for this actor.', reason: result.decision }, { requestId: requestIdOf(input) });
+      }
+      if (result.decision === 'sourceUnavailable') {
+        return errorResponse(404, { kind: 'not_found', message: result.message ?? 'The linked character is no longer available.', reason: result.decision }, { requestId: requestIdOf(input) });
+      }
+      if (result.decision === 'reviewVersionMismatch') {
+        return errorResponse(409, { kind: 'conflict', message: result.message ?? 'The character changed again since it was reviewed.', reason: result.decision }, { requestId: requestIdOf(input) });
+      }
+      if (result.decision !== 'accepted' || !result.actor) {
+        return errorResponse(503, { kind: 'unavailable', message: result.message ?? 'The accepted source could not be stored.', retryable: true, reason: result.decision }, { requestId: requestIdOf(input) });
+      }
+      return okResponse({
+        campaignActorInstanceId: result.campaignActorInstanceId,
+        acceptedSourceHash: result.acceptedSourceHash,
+        previousSourceHash: result.previousSourceHash,
+        updatedAt: result.actor.updatedAt,
+      }, { requestId: requestIdOf(input) });
     },
 
     async listRooms(input) {

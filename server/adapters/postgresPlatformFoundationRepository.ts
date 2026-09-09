@@ -268,6 +268,37 @@ export interface CreateCampaignActorInstanceInput {
   overridePayload?: Record<string, unknown>;
 }
 
+/**
+ * Dedicated acceptance write (T11b).
+ *
+ * The ONLY way `snapshot_payload` / `snapshot_hash` advance after the first
+ * link. Deliberately separate from `UpdateCampaignActorInstanceInput`, which
+ * stays unable to write either field, so the client-facing campaign actor
+ * update route can never move the accepted source baseline.
+ *
+ * The two fields are written in ONE statement: they must always describe the
+ * same version of the same character.
+ */
+/**
+ * Namespaced key for the acceptance breadcrumb inside `override_payload`.
+ * A sibling of `dndLiteActorSheetV1`, never a replacement for it.
+ */
+export const CAMPAIGN_ACTOR_SOURCE_ACCEPTANCE_KEY = 'sourceAcceptanceV1';
+
+export interface AcceptCampaignActorSourceUpdateInput {
+  campaignActorInstanceId: string;
+  /** The exact source payload being accepted, as read by the server. */
+  snapshotPayload: Record<string, unknown>;
+  /** Combat-relevant hash of exactly that payload. */
+  snapshotHash: string;
+  /** Bounded breadcrumb; stored beside the combat sheet, never replacing it. */
+  acceptance: {
+    acceptedByUserId?: string;
+    acceptedAt: string;
+    previousSnapshotHash?: string;
+  };
+}
+
 /** Mutable campaign/session state. The source snapshot remains immutable here. */
 export interface UpdateCampaignActorInstanceInput {
   campaignActorInstanceId: string;
@@ -852,6 +883,45 @@ export function createPostgresPlatformFoundationRepository(
     );
   };
 
+  /**
+   * Atomically advance the accepted source baseline (T11b).
+   *
+   * `snapshot_payload` and `snapshot_hash` move together in a single UPDATE, so
+   * a reader can never observe a hash describing a different payload than the
+   * one stored beside it.
+   *
+   * The acceptance breadcrumb is merged into `override_payload` with
+   * `jsonb_set`, NOT by replacing the object: accepting a new SOURCE version
+   * must leave the campaign-local combat sheet (`dndLiteActorSheetV1`) exactly
+   * as the host left it. Applying derived combat values stays the separate,
+   * explicit T9 flow.
+   */
+  const acceptCampaignActorSourceUpdate = (input: AcceptCampaignActorSourceUpdateInput) => {
+    const now = new Date().toISOString();
+    return one<CampaignActorInstanceRecord>(
+      `UPDATE campaign_actor_instances
+       SET snapshot_payload = $2::jsonb,
+           snapshot_hash = $3,
+           override_payload = jsonb_set(
+             COALESCE(override_payload, '{}'::jsonb),
+             '{${CAMPAIGN_ACTOR_SOURCE_ACCEPTANCE_KEY}}',
+             $4::jsonb,
+             true
+           ),
+           updated_at = $5
+       WHERE campaign_actor_instance_id = $1 AND archived_at IS NULL
+       RETURNING ${ACTOR_INSTANCE_COLS}`,
+      [
+        input.campaignActorInstanceId,
+        JSON.stringify(input.snapshotPayload),
+        input.snapshotHash,
+        JSON.stringify({ schemaVersion: 1, ...input.acceptance }),
+        now,
+      ],
+      rowToActorInstance,
+    );
+  };
+
   const archiveCampaignActorInstance = (campaignActorInstanceId: string, archivedAt?: string) =>
     one<CampaignActorInstanceRecord>(`UPDATE campaign_actor_instances SET archived_at = $2, updated_at = $2 WHERE campaign_actor_instance_id = $1 RETURNING ${ACTOR_INSTANCE_COLS}`, [campaignActorInstanceId, archivedAt ?? new Date().toISOString()], rowToActorInstance);
 
@@ -1073,6 +1143,7 @@ export function createPostgresPlatformFoundationRepository(
     archiveCompendiumPack,
     restoreCompendiumPack,
     createCampaignActorInstance,
+    acceptCampaignActorSourceUpdate,
     getCampaignActorInstanceById,
     listCampaignActorInstances,
     updateCampaignActorInstance,

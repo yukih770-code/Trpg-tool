@@ -409,6 +409,28 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
     setPendingDndActorSheets((previous) => ({ ...previous, [actorInstanceId]: sheet }));
   };
 
+  /**
+   * T11b. Read-only host review of a linked character source. Returns the
+   * server's derived summary; the client never receives the player's
+   * character data and never caches one.
+   */
+  const handleReviewDndActorSource = async (actorInstanceId: string) => {
+    if (!selectedCampaignId || !canManageServer) throw new Error('Campaign actor review is unavailable.');
+    return campaignRoomApiClient.reviewCampaignActorSource(worldServerId, selectedCampaignId, actorInstanceId);
+  };
+
+  /**
+   * T11b. Accepts the reviewed version as the campaign's frozen source.
+   * Deliberately does NOT touch the combat sheet override or any runtime
+   * state; it only refreshes the campaign detail so the panel and the T9
+   * "Fill from character" action see the newly accepted snapshot.
+   */
+  const handleAcceptDndActorSource = async (actorInstanceId: string, expectedSourceHash: string) => {
+    if (!selectedCampaignId || !canManageServer) throw new Error('Campaign actor review is unavailable.');
+    await campaignRoomApiClient.acceptCampaignActorSource(worldServerId, selectedCampaignId, actorInstanceId, { expectedSourceHash });
+    await campaignDetail.refresh();
+  };
+
   const handleClearDndActorSheet = async (actorInstanceId: string) => {
     if (!selectedCampaignId || !canManageServer) throw new Error('Campaign actor editing is unavailable.');
     const actor = campaignDetail.actors.find((item) => item.campaignActorInstanceId === actorInstanceId);
@@ -699,6 +721,8 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     onClear={handleClearDndActorSheet}
                     onUseAction={(actorInstanceId, actionId) => setDndDicePreset({ actorInstanceId, actionId, nonce: Date.now() })}
                     onAddToCombat={(prefill) => setDndActorPrefill({ ...prefill, nonce: Date.now() })}
+                    onReviewSource={handleReviewDndActorSource}
+                    onAcceptSource={handleAcceptDndActorSource}
                   />}
                   {isDndCampaign(selectedCampaign?.campaign.systemId) && <DndMonsterTemplateLibraryPanel
                     locale={locale}

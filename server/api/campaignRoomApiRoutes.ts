@@ -60,6 +60,9 @@ export function registerCampaignRoomApiRoutes(app: Express, handlers: CampaignRo
   app.get(`${campaigns}/:campaignId/actors/:actorInstanceId`, (req, res) => void invoke(res, handlers.getCampaignActor, req));
   app.patch(`${campaigns}/:campaignId/actors/:actorInstanceId`, (req, res) => void invoke(res, handlers.updateCampaignActor, req));
   app.post(`${campaigns}/:campaignId/actors/:actorInstanceId/archive`, (req, res) => void invoke(res, handlers.archiveCampaignActor, req));
+  // T11b: host review + explicit acceptance of a changed character source.
+  app.get(`${campaigns}/:campaignId/actors/:actorInstanceId/source-review`, (req, res) => void invoke(res, handlers.reviewCampaignActorSource, req));
+  app.post(`${campaigns}/:campaignId/actors/:actorInstanceId/source-review/accept`, (req, res) => void invoke(res, handlers.acceptCampaignActorSource, req));
 
   const rooms = `${campaigns}/:campaignId/rooms`;
   app.get(rooms, (req, res) => void invoke(res, handlers.listRooms, req));
