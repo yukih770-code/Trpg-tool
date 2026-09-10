@@ -310,6 +310,7 @@ export function buildRuntimeDockActions(
   }
   // host
   return [
+    ...(isDnd && extras?.dndActionPanel ? [{ id: 'dndActions', label: '攻击动作', shortLabel: '攻击', mobilePlacement: 'direct' as const, panel: extras.dndActionPanel }] : []),
     { id: 'dice', label: '投骰', mobilePlacement: 'primary', panel: dicePanel },
     {
       id: 'scene',

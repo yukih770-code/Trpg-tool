@@ -159,6 +159,8 @@ import {
 } from './services/liveRoomDurabilityCircuit.js';
 import { createLiveRoomTrafficGate } from './services/liveRoomTrafficGate.js';
 import { createLiveRoomTrafficMiddleware } from './services/liveRoomTrafficMiddleware.js';
+import { registerDndAttackRoutes } from './api/dndAttackHandlers.js';
+import { ResolvedIntentIndex } from './services/resolvedIntentIndex.js';
 
 const app = express();
 const serverRuntimeConfig = readServerRuntimeConfigFromEnv(process.env);
@@ -493,6 +495,13 @@ function confirmRuntimeLogAppend(event: NonNullable<ReturnType<typeof appendRunt
 }
 
 const roomSessionAssistantSuggestionRegistry = createRoomSessionAssistantSuggestionRegistry();
+registerDndAttackRoutes(app, {
+  rooms: registry, log: runtimeLogRegistry, maps: roomMapRegistry,
+  repository: platformFoundationRepository, sessions: runtimeEventRepository,
+  intents: new ResolvedIntentIndex(), confirm: confirmRuntimeLogAppend,
+  viewer: resolveRoomRequestViewer,
+  broadcast: (roomId, events) => roomSocketServer.broadcastRuntimeLogAppended(roomId, events),
+});
 registerRoomSessionAssistantApiRoutes(app, createRoomSessionAssistantApiHandlers({
   roomRegistry: registry,
   runtimeLogRegistry,

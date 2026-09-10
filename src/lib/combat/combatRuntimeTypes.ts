@@ -88,6 +88,7 @@ export const COMBAT_RUNTIME_EVENT_KINDS = [
   'combat.combatant_updated',
   'combat.combatant_removed',
   'combat.damage_applied',
+  'combat.attack_resolved',
   'combat.healing_applied',
   'combat.temporary_hp_applied',
   'combat.condition_added',

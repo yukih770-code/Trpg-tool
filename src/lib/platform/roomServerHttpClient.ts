@@ -29,6 +29,8 @@ import type { AppendRoomMapEventInput, RoomMapEvent, RoomMapEventListResult } fr
 import type { CharacterClearanceDetails } from './characterClearanceDetails';
 import type { RoomRuntimeActorProjectionListResult } from './roomRuntimeActorProjectionTypes';
 import { resolveDevViewerUserId } from '../api/apiClient';
+import type { DndAttackIntent, DndAttackResponse } from '../dnd/dndAttackIntent';
+import type { RoomRuntimeDndActionShortcut } from './roomRuntimeActorProjectionTypes';
 
 export interface RoomServerHttpClientConfig {
   baseUrl: string;
@@ -353,4 +355,17 @@ export async function rollSharedDice(
     method: 'POST',
     body: JSON.stringify(input),
   });
+}
+
+/** Never mint IDs here: transport retries must reuse the deliberate action. */
+export function declareRoomDndAttack(config: RoomServerHttpClientConfig, roomId: string, memberId: string, intent: DndAttackIntent): Promise<DndAttackResponse> {
+  return request(config, `/rooms/${encodeURIComponent(roomId)}/runtime/dnd-attack`, {
+    method: 'POST', body: JSON.stringify({ memberId, intentId: intent.intentId, actorCombatantId: intent.actorCombatantId,
+      targetCombatantId: intent.targetCombatantId, actionId: intent.actionId, mode: intent.mode }),
+  });
+}
+
+export function listRoomDndAttackActions(config: RoomServerHttpClientConfig, roomId: string, memberId: string, actorCombatantId: string): Promise<{ actions: RoomRuntimeDndActionShortcut[] }> {
+  const query = new URLSearchParams({ memberId, actorCombatantId });
+  return request(config, `/rooms/${encodeURIComponent(roomId)}/runtime/dnd-actions?${query}`);
 }

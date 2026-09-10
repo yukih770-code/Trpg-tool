@@ -253,6 +253,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
 
       {canManage && (
         <>
+          <p className="mt-3 text-[10px] text-slate-500">{zh ? '主持人手动控制：HP 调整与攻击动作结算独立。攻击请使用「攻击动作」。' : 'Manual Host controls: HP adjustments are separate from resolved attacks. Use Attack Actions to attack.'}</p>
           <div className="mt-3 border-t border-slate-300/40 pt-3">
             <div className="flex items-center justify-between gap-2"><span className="text-[11px] font-bold text-slate-700">{zh ? '已放置单位' : 'Placed tokens'}</span><span className="text-[10px] text-slate-500">{zh ? '从地图加入战斗' : 'Add from map'}</span></div>
             {placedTokens.length === 0 ? <p className="mt-1 text-[11px] text-slate-500">{zh ? '地图上还没有可加入的 Token。' : 'No placed tokens yet.'}</p> : <div className="mt-2 flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">{placedTokens.map((token) => { const joined = findCombatantLinkedToMapToken(token, table.state.combatants); return <button key={token.id} type="button" disabled={!!joined} onClick={() => addToken(token)} className="rounded border border-slate-400/35 bg-white px-2 py-1 text-[10px] font-bold text-slate-700 disabled:opacity-45">{joined ? `${token.displayName ?? token.name} · ${zh ? '已加入' : 'Added'}` : `＋ ${token.displayName ?? token.name}`}</button>; })}</div>}

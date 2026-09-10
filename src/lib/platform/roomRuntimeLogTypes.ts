@@ -42,6 +42,9 @@ export const ROOM_RUNTIME_LOG_EVENT_KINDS = [
 
 export type RoomRuntimeLogEventKind = typeof ROOM_RUNTIME_LOG_EVENT_KINDS[number];
 
+/** Internal resolution producers only; never accepted by generic append. */
+export const SERVER_RESOLVED_EVENT_KINDS = ['combat.attack_resolved'] as const;
+
 export type RoomRuntimeLogVisibility = 'public' | 'hostOnly' | 'actorPrivate';
 
 export interface RoomRuntimeLogEvent {

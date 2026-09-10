@@ -26,7 +26,7 @@ import type {
   RoomRuntimeLogEventKind,
   RoomRuntimeLogVisibility,
 } from '../protocol/room-protocol.js';
-import { ROOM_RUNTIME_LOG_EVENT_KINDS } from '../../src/lib/platform/roomRuntimeLogTypes.js';
+import { ROOM_RUNTIME_LOG_EVENT_KINDS, SERVER_RESOLVED_EVENT_KINDS } from '../../src/lib/platform/roomRuntimeLogTypes.js';
 import { requiresLiveRoomDurableAppend } from './liveRoomDurableAppendConfirmation.js';
 
 const VALID_VISIBILITIES: readonly RoomRuntimeLogVisibility[] = ['public', 'hostOnly', 'actorPrivate'];
@@ -51,90 +51,50 @@ export interface AppendRuntimeLogEventResult {
     | 'memberNotAuthorized'
     | 'invalidActorBinding'
     | 'invalidLogEvent'
-    | 'unsupportedVisibility';
+    | 'unsupportedVisibility'
+    | 'serverResolvedKind';
   event?: RoomRuntimeLogEvent;
   message?: string;
 }
 
-export function appendRuntimeLogEvent(
-  roomRegistry: RoomRegistry,
-  logRegistry: RuntimeLogRegistry,
-  input: AppendRuntimeLogEventServiceInput,
-): AppendRuntimeLogEventResult {
+/** Shared structural context validation; this grants no append capability. */
+export function validateRuntimeLogAppendContext(
+  roomRegistry: RoomRegistry, input: AppendRuntimeLogEventServiceInput,
+): AppendRuntimeLogEventResult | undefined {
   const room = roomRegistry.get(input.roomId);
-  if (!room) return { decision: 'roomNotFound', message: `No room "${input.roomId}".` };
-  if (room.identity.lifecycleStatus === 'closed' || room.identity.lifecycleStatus === 'archived') {
-    return { decision: 'roomClosed', message: 'The room is closed.' };
-  }
-
-  if (!(ROOM_RUNTIME_LOG_EVENT_KINDS as readonly RoomRuntimeLogEventKind[]).includes(input.kind)) {
-    return { decision: 'invalidLogEvent', message: `Invalid kind "${String(input.kind)}".` };
-  }
-
-  const visibility: RoomRuntimeLogVisibility = input.visibility ?? 'public';
-  if (!VALID_VISIBILITIES.includes(visibility)) {
-    return { decision: 'invalidLogEvent', message: `Invalid visibility "${String(input.visibility)}".` };
-  }
-  // v0: actorPrivate has no real projection backing — reject rather than imply
-  // privacy that does not exist.
-  if (visibility === 'actorPrivate') {
-    return { decision: 'unsupportedVisibility', message: 'actorPrivate is not supported in v0.' };
-  }
-
-  // Resolve the author (if named) and enforce existence + active. Best-effort
-  // scaffold semantics — NOT a real auth/permission system.
-  const authorMember =
-    input.authorMemberId !== undefined
-      ? room.members.find((m) => m.memberId === input.authorMemberId)
-      : undefined;
+  if (!room) return { decision: 'roomNotFound' };
+  if (room.identity.lifecycleStatus === 'closed' || room.identity.lifecycleStatus === 'archived') return { decision: 'roomClosed' };
+  const visibility = input.visibility ?? 'public';
+  if (!VALID_VISIBILITIES.includes(visibility)) return { decision: 'invalidLogEvent' };
+  if (visibility === 'actorPrivate') return { decision: 'unsupportedVisibility' };
   if (input.authorMemberId !== undefined) {
-    if (!authorMember) return { decision: 'memberNotFound', message: `No member "${input.authorMemberId}".` };
-    if (authorMember.status !== 'active') {
-      return { decision: 'memberNotActive', message: `Member status is "${authorMember.status}".` };
-    }
+    const member = room.members.find((m) => m.memberId === input.authorMemberId);
+    if (!member) return { decision: 'memberNotFound' };
+    if (member.status !== 'active') return { decision: 'memberNotActive' };
   }
-
-  // Author/role requirements per kind/visibility (scaffold semantics, NOT auth):
-  //  - chat.message requires an active author (no anonymous chat).
-  //  - host.note, hostOnly, and combat.* require an active HOST author.
-  //  - system.note / dice.roll / state.manualChange may be author-less (and are
-  //    already active-checked above when an author is present).
-  const requiresHostAuthor = input.kind === 'host.note' || visibility === 'hostOnly' || input.kind.startsWith('combat.');
-  const requiresAuthor = requiresHostAuthor || input.kind === 'chat.message';
-  if (requiresAuthor && !authorMember) {
-    return {
-      decision: 'memberNotAuthorized',
-      message: requiresHostAuthor
-        ? 'host.note / hostOnly requires an active host author.'
-        : 'chat.message requires an active author.',
-    };
-  }
-  if (requiresHostAuthor && authorMember && authorMember.role !== 'host') {
-    return { decision: 'memberNotAuthorized', message: 'host.note / hostOnly requires a host author.' };
-  }
-
-  // actorBindingId is never blindly trusted: it must be an approved lobby binding
-  // owned by the author.
   if (input.actorBindingId !== undefined) {
     const binding = room.lobby?.actorBindings.find((b) => b.bindingId === input.actorBindingId);
-    if (!binding || binding.memberId !== input.authorMemberId || binding.status !== 'approved') {
-      return { decision: 'invalidActorBinding', message: 'actorBindingId is not an approved binding for this author.' };
-    }
+    if (!binding || binding.memberId !== input.authorMemberId || binding.status !== 'approved') return { decision: 'invalidActorBinding' };
   }
+  return undefined;
+}
 
+export function appendRuntimeLogEvent(
+  roomRegistry: RoomRegistry, logRegistry: RuntimeLogRegistry, input: AppendRuntimeLogEventServiceInput,
+): AppendRuntimeLogEventResult {
+  if ((SERVER_RESOLVED_EVENT_KINDS as readonly string[]).includes(input.kind)) return { decision: 'serverResolvedKind' };
+  const invalid = validateRuntimeLogAppendContext(roomRegistry, input);
+  if (invalid) return invalid;
+  if (!(ROOM_RUNTIME_LOG_EVENT_KINDS as readonly string[]).includes(input.kind)) return { decision: 'invalidLogEvent' };
+  const room = roomRegistry.get(input.roomId)!;
+  const visibility = input.visibility ?? 'public';
+  const author = room.members.find((m) => m.memberId === input.authorMemberId);
+  const requiresHost = input.kind === 'host.note' || visibility === 'hostOnly' || input.kind.startsWith('combat.');
+  if ((requiresHost && author?.role !== 'host') || (input.kind === 'chat.message' && !author)) return { decision: 'memberNotAuthorized' };
   const event = logRegistry.append(input.roomId, {
-    eventId: `logevent_${randomUUID()}`,
-    roomId: input.roomId,
-    createdAt: new Date().toISOString(),
-    authorMemberId: input.authorMemberId,
-    actorBindingId: input.actorBindingId,
-    // Read-only copy from the room — never from the client body.
-    campaignRef: room.campaignRef,
-    kind: input.kind,
-    visibility,
-    text: input.text,
-    payload: input.payload,
+    eventId: 'logevent_' + randomUUID(), roomId: input.roomId, createdAt: new Date().toISOString(),
+    authorMemberId: input.authorMemberId, actorBindingId: input.actorBindingId,
+    campaignRef: room.campaignRef, kind: input.kind, visibility, text: input.text, payload: input.payload,
   }, { pending: requiresLiveRoomDurableAppend(room) });
-
   return { decision: 'appended', event };
 }

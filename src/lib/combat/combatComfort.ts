@@ -1,4 +1,4 @@
-import type { Combatant, CombatRuntimeEventDraft } from './combatRuntimeTypes';
+import type { Combatant, CombatRuntimeEventDraft } from './combatRuntimeTypes.js';
 
 export type CombatChangeContext = {
   sourceName?: string;

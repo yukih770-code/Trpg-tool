@@ -31,6 +31,7 @@ export const ROOM_RUNTIME_ACTIONS = [
   'map.token.assignOwner',
   'combat.view',
   'combat.edit',
+  'combat.action.declare',
   'runtime.event.append',
   'room.host.manage',
 ] as const;
@@ -82,6 +83,7 @@ export function resolveRoomRuntimePermissions(facts: RoomRuntimePermissionFacts)
   permissions['combat.view'] = true;
 
   if (facts.roomRole === 'player') {
+    permissions['combat.action.declare'] = true;
     permissions['map.preview.range.temporary'] = true;
     permissions['runtime.event.append'] = true;
     permissions['map.template.fix'] = facts.grants?.some((grant) => grant.action === 'map.template.fix') === true;

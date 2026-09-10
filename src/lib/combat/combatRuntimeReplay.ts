@@ -170,6 +170,23 @@ export function replayCombatRuntimeEvents(events: ReadonlyArray<CombatRuntimeRep
       state = createCombatRuntimeTableState();
       continue;
     }
+    if (event.eventKind === 'combat.attack_resolved') {
+      // Projected snapshots above already contain viewer-safe state. Raw replay
+      // applies only the frozen structural mutation, never facts or rules.
+      if (!Array.isArray(payload.combatants) && Array.isArray(payload.mutations)) {
+        for (const value of payload.mutations) {
+          const mutation = record(value);
+          if (mutation?.type !== 'combatantHp') continue;
+          state = { ...state, combatants: state.combatants.map((combatant) => {
+            if (combatant.id !== mutation.combatantId) return combatant;
+            const hpCurrent = numberValue(mutation.afterHp) ?? combatant.hpCurrent;
+            const temporaryHp = numberValue(mutation.afterTemporaryHp) ?? combatant.temporaryHp;
+            return { ...combatant, hpCurrent, hitPoints: hpCurrent, temporaryHp: temporaryHp || undefined };
+          }) };
+        }
+      }
+      continue;
+    }
     if (
       event.eventKind === 'combat.damage_applied'
       || event.eventKind === 'combat.healing_applied'

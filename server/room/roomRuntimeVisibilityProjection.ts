@@ -8,6 +8,7 @@
  */
 
 import { replayCombatRuntimeEvents } from '../../src/lib/combat/combatRuntimeReplay.js';
+import { projectAttackResolvedFacts } from './projectAttackResolvedFacts.js';
 import type { Combatant } from '../../src/lib/combat/combatRuntimeTypes.js';
 import { replayMapRuntimeEvents } from '../../src/lib/map/mapRuntimeReplay.js';
 import type { MapAreaTemplate, MapToken } from '../../src/lib/map/mapRuntimeTypes.js';
@@ -232,6 +233,8 @@ function projectCombatPayload(scope: ViewerScope, event: RoomRuntimeLogEvent, hi
     combatantCount: combatants.length,
     combatants,
     targetCombatantId: typeof payload.targetCombatantId === 'string' ? payload.targetCombatantId : undefined,
+    ...(event.kind === 'combat.attack_resolved'
+      ? projectAttackResolvedFacts(payload, combatants.find((combatant) => combatant.id === payload.targetCombatantId)) : {}),
   };
 }
 

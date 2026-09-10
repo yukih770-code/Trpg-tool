@@ -12,10 +12,13 @@ import {
   listRoomMapEvents,
   listRoomRuntimeLog,
   rollSharedDice,
+  declareRoomDndAttack,
+  listRoomDndAttackActions,
   setRoomMapMemberPermission,
   type RoomServerHttpClientConfig,
 } from '../../lib/platform/roomServerHttpClient';
 import type { RoomRuntimeActorProjection, RoomRuntimeDndActionShortcut } from '../../lib/platform/roomRuntimeActorProjectionTypes';
+import type { DndAttackIntent } from '../../lib/dnd/dndAttackIntent';
 import { createRoomSocketClient, type RoomSocketConnectionState } from '../../lib/platform/roomSocketClient';
 import { resolveDevViewerUserId } from '../../lib/api/apiClient';
 import { resolveRoomRuntimePermissions } from '../../lib/platform/roomRuntimePermissions';
@@ -191,6 +194,9 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const [roomCombatState, setRoomCombatState] = useState<CombatRuntimeTableState>(createCombatRuntimeTableState);
   const [runtimeActorProjections, setRuntimeActorProjections] = useState<RoomRuntimeActorProjection[]>([]);
   const [selfDndActions, setSelfDndActions] = useState<RoomRuntimeDndActionShortcut[]>([]);
+  const [hostAttackActorId, setHostAttackActorId] = useState('');
+  const [authoredAttacks, setAuthoredAttacks] = useState<{ actorId: string; actions: RoomRuntimeDndActionShortcut[] }>({ actorId: '', actions: [] });
+  const [attackActionsError, setAttackActionsError] = useState<string>();
   const [selectedCombatantId, setSelectedCombatantId] = useState<string | undefined>();
   const [combatantToLocate, setCombatantToLocate] = useState<string | undefined>();
   const [inspectedToken, setInspectedToken] = useState<MapToken | undefined>();
@@ -710,9 +716,28 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     [context.approvedActorBindingId, roomCombatState.combatants, roomMapBoard.tokens],
   );
   const dndActionTargets = useMemo(
-    () => roomCombatState.combatants.map((combatant) => ({ id: combatant.id, label: combatant.displayName })),
+    () => roomCombatState.combatants.filter((combatant) => combatant.status === 'active' && !combatant.isDefeated).map((combatant) => ({ id: combatant.id, label: combatant.displayName })),
     [roomCombatState.combatants],
   );
+
+  const attackActorId = shellMode === 'host' ? hostAttackActorId : myRuntimeCombatant?.id;
+  useEffect(() => {
+    let cancelled = false;
+    setAttackActionsError(undefined);
+    if (context.systemId !== 'dnd5e-2024' || !context.currentMemberId || !attackActorId || shellMode === 'spectator') return;
+    listRoomDndAttackActions({ baseUrl: context.serverBaseUrl }, context.roomId, context.currentMemberId, attackActorId)
+      .then((result) => { if (!cancelled) setAuthoredAttacks({ actorId: attackActorId, actions: result.actions }); })
+      .catch((error) => { if (!cancelled) { setAuthoredAttacks({ actorId: attackActorId, actions: [] }); setAttackActionsError(error instanceof Error ? error.message : String(error)); } });
+    return () => { cancelled = true; };
+  }, [attackActorId, context.currentMemberId, context.roomId, context.serverBaseUrl, context.systemId, shellMode, connState]);
+  const handleDeclareAttack = async (intent: DndAttackIntent) => {
+    if (!context.currentMemberId) throw new Error('需要成员身份才能声明攻击。');
+    const result = await declareRoomDndAttack({ baseUrl: context.serverBaseUrl }, context.roomId, context.currentMemberId, intent);
+    setLogLiveEvents((prev) => [...prev, result.event]);
+    // HTTP and socket use the same authoritative event; replay deduplicates it.
+    setRecentEvents((prev) => prev.some((event) => event.eventId === result.event.eventId) ? prev : [...prev, result.event].sort((a, b) => a.seq - b.seq));
+    return result;
+  };
 
   const card = 'rounded border border-slate-400/30 bg-white/60 p-3';
   const label = 'text-[11px] font-bold uppercase tracking-wide text-slate-600';
@@ -1047,15 +1072,21 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                   />
                 ) : undefined,
               dndActionPanel:
-                context.systemId === 'dnd5e-2024' && shellMode === 'player' ? (
-                  <RuntimeDndActionPanel
-                    characterName={characterSummary?.displayName ?? context.actorRef?.displayName}
-                    actions={selfDndActions}
+                context.systemId === 'dnd5e-2024' && shellMode !== 'spectator' ? (
+                  <div key={`${context.serverBaseUrl}:${context.roomId}:${context.currentMemberId}:${currentRoom?.identity.sessionId}`}><RuntimeDndActionPanel
+                    scopeKey={`${context.serverBaseUrl}:${context.roomId}:${context.currentMemberId}:${currentRoom?.identity.sessionId}`}
+                    actorCombatantId={attackActorId}
+                    actors={shellMode === 'host' ? dndActionTargets : undefined}
+                    onSelectActor={setHostAttackActorId}
+                    onDeclare={handleDeclareAttack}
+                    actionsError={attackActionsError}
+                    characterName={shellMode === 'host' ? dndActionTargets.find((actor) => actor.id === attackActorId)?.label : characterSummary?.displayName ?? context.actorRef?.displayName}
+                    actions={[...(authoredAttacks.actorId === attackActorId ? authoredAttacks.actions : []), ...(shellMode === 'player' ? selfDndActions.filter((action) => action.kind !== 'weapon_attack' && action.kind !== 'spell_attack') : [])]}
                     targets={dndActionTargets}
                     selectedTargetId={selectedCombatantId}
                     onSelectTarget={setSelectedCombatantId}
                     onRoll={handleRoomDiceRoll}
-                  />
+                  /></div>
                 ) : undefined,
               scenePanel:
                 shellMode === 'host' ? (

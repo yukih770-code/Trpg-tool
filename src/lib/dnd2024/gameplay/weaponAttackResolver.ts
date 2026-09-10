@@ -1,4 +1,9 @@
 /**
+ * Non-authoritative prototype. Production T12 attacks resolve through
+ * server/services/declareDndAttack.ts -> resolveDndAttackAction.ts ->
+ * applyRuntimeResolution.ts and the authoritative Room RuntimeLog.
+ * This prototype is not part of that path.
+ *
  * DND weapon attack resolver (v0) — pure function, dagger melee only.
  *
  * AI-LANDMARK: DND_WEAPON_ATTACK_RESOLVER_V0

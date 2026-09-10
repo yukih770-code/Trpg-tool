@@ -13,6 +13,7 @@ import type {
 } from '../../lib/platform/roomRuntimeLogTypes';
 import type { SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
 import { RoomSessionAssistantPanel } from './RoomSessionAssistantDialog';
+import { RoomAttackResolutionDetails } from './RoomAttackResolutionDetails';
 
 /**
  * RoomRuntimeLogPreviewPanel (v0).
@@ -58,6 +59,7 @@ const KIND_LABEL: Record<RoomRuntimeLogEventKind, string> = {
   'combat.combatant_updated': '战斗状态',
   'combat.combatant_removed': '离开战斗',
   'combat.damage_applied': '伤害',
+  'combat.attack_resolved': '攻击结算',
   'combat.healing_applied': '治疗',
   'combat.temporary_hp_applied': '临时生命',
   'combat.condition_added': '状态',
@@ -85,6 +87,7 @@ const KIND_TONE: Record<RoomRuntimeLogEventKind, string> = {
   'combat.combatant_updated': 'bg-rose-500/10 text-rose-700',
   'combat.combatant_removed': 'bg-rose-500/10 text-rose-700',
   'combat.damage_applied': 'bg-rose-500/10 text-rose-700',
+  'combat.attack_resolved': 'bg-rose-500/10 text-rose-700',
   'combat.healing_applied': 'bg-rose-500/10 text-rose-700',
   'combat.temporary_hp_applied': 'bg-rose-500/10 text-rose-700',
   'combat.condition_added': 'bg-rose-500/10 text-rose-700',
@@ -132,7 +135,7 @@ const LOG_FILTERS: { id: LogFilterId; label: string; empty: string }[] = [
 function matchesLogFilter(e: RoomRuntimeLogEvent, filter: LogFilterId): boolean {
   switch (filter) {
     case 'all': return true;
-    case 'dice': return e.kind === 'dice.roll';
+    case 'dice': return e.kind === 'dice.roll' || e.kind === 'combat.attack_resolved';
     case 'info': return e.kind === 'host.note';
     case 'state': return e.kind === 'state.manualChange';
     case 'other': return e.kind === 'system.note' || e.kind === 'chat.message';
@@ -540,6 +543,11 @@ export function RoomRuntimeLogPreviewPanel({
               </div>
               {e.kind === 'dice.roll' && asDiceRoll(e.payload) ? (
                 <DiceResultLine roll={asDiceRoll(e.payload)!} />
+              ) : e.kind === 'combat.attack_resolved' ? (
+                <>
+                  <p className="mt-0.5 text-xs">{e.text}</p>
+                  <RoomAttackResolutionDetails payload={e.payload} />
+                </>
               ) : e.kind === 'host.note' || e.kind === 'state.manualChange' ? (
                 <RunNoteLine e={e} />
               ) : (

@@ -1,9 +1,19 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import type { DndAttackIntent, DndAttackResponse } from '../../lib/dnd/dndAttackIntent';
+import { DndAttackPendingIntent } from '../../lib/dnd/dndAttackPendingIntent';
+import { RoomServerHttpError } from '../../lib/platform/roomServerHttpClient';
+import { RoomAttackResolutionDetails } from './RoomAttackResolutionDetails';
 
 import type { RoomRuntimeDndActionShortcut } from '../../lib/platform/roomRuntimeActorProjectionTypes';
 import type { SharedDiceRollMode, SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
 
 export interface RuntimeDndActionPanelProps {
+  scopeKey: string;
+  actorCombatantId?: string;
+  actors?: Array<{ id: string; label: string }>;
+  onSelectActor?: (actorId: string) => void;
+  onDeclare?: (intent: DndAttackIntent) => Promise<DndAttackResponse>;
+  actionsError?: string;
   characterName?: string;
   actions: RoomRuntimeDndActionShortcut[];
   targets?: Array<{ id: string; label: string }>;
@@ -25,9 +35,8 @@ const ROLL_MODE_OPTIONS: Array<{ id: SharedDiceRollMode; label: string }> = [
 /**
  * Player-facing DND action palette for the Room Runtime.
  *
- * It is deliberately a roll launcher, not an authority surface: target choice
- * only enriches the append-only dice label, while hit resolution and HP changes
- * remain under the existing host-confirmed combat controls.
+ * T12 attacks declare intent only. HP arrives through authoritative replay.
+ * The independent generic dice launcher remains a manual check tool.
  *
  * T1: d20 rolls may carry 普通 / 优势 / 劣势 as semantic intent, and the latest
  * AUTHORITATIVE server result is shown inline so a player no longer has to open
@@ -35,6 +44,7 @@ const ROLL_MODE_OPTIONS: Array<{ id: SharedDiceRollMode; label: string }> = [
  * durable history; this strip is only the initiating player's echo.
  */
 export function RuntimeDndActionPanel({
+  scopeKey, actorCombatantId, actors, onSelectActor, onDeclare, actionsError,
   characterName,
   actions,
   targets = [],
@@ -45,6 +55,35 @@ export function RuntimeDndActionPanel({
   const [rollMode, setRollMode] = useState<SharedDiceRollMode>('normal');
   const [lastRoll, setLastRoll] = useState<SharedDiceRollResult | null>(null);
   const [rollError, setRollError] = useState<string | null>(null);
+  const pendingStore = useMemo(() => {
+    let storage: Storage | undefined;
+    try { storage = window.sessionStorage; } catch { /* Browser storage can be disabled. */ }
+    return new DndAttackPendingIntent(`t12:${scopeKey}`, storage);
+  }, [scopeKey]);
+  const [pendingAttack, setPendingAttack] = useState(() => pendingStore.read());
+  const [attackResult, setAttackResult] = useState<DndAttackResponse | null>(null);
+  const [attackBusy, setAttackBusy] = useState(false);
+  const attackBusyRef = useRef(false);
+  const submitAttack = async (intent: DndAttackIntent) => {
+    if (!onDeclare || attackBusyRef.current) return;
+    attackBusyRef.current = true; setAttackBusy(true); setRollError(null);
+    try {
+      const result = await onDeclare(intent);
+      setAttackResult(result); pendingStore.complete(intent.intentId); setPendingAttack(undefined);
+    } catch (error) {
+      setRollError(error instanceof Error ? error.message : String(error));
+      // Only a definite rejected request may be abandoned automatically. Lost
+      // responses / 5xx keep the same frozen intent for the explicit retry.
+      if (error instanceof RoomServerHttpError && error.status >= 400 && error.status < 500) {
+        pendingStore.complete(intent.intentId); setPendingAttack(undefined);
+      }
+    } finally { attackBusyRef.current = false; setAttackBusy(false); }
+  };
+  const declareAttack = (actionId: string) => {
+    if (!actorCombatantId || !selectedTargetId || pendingStore.read() || attackBusyRef.current) return;
+    const intent = pendingStore.begin({ actorCombatantId, targetCombatantId: selectedTargetId, actionId, mode: rollMode });
+    setPendingAttack(intent); void submitAttack(intent);
+  };
 
   const selectedTarget = targets.find((target) => target.id === selectedTargetId);
   const labelPrefix = characterName?.trim() || '我的角色';
@@ -80,7 +119,8 @@ export function RuntimeDndActionPanel({
       <header className="rounded-md border border-[#8b3a2f]/25 bg-[#fff5ed] p-2.5">
         <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8b3a2f]/75">DND 动作</div>
         <div className="mt-0.5 text-sm font-black text-[#4a1e17]">{labelPrefix}的回合操作</div>
-        <p className="mt-1 text-[10px] leading-relaxed text-[#6e4237]">先选择目标，再掷攻击或伤害。骰子会公开记录；命中和伤害结算仍由主持人确认。</p>
+        <p className="mt-1 text-[10px] leading-relaxed text-[#6e4237]">选择目标并声明攻击。服务器掷攻击与伤害骰，判定命中并更新生命值；结果写入会话日志。</p>
+        {actors && <label className="mt-2 block text-xs">行动角色 <select disabled={attackBusy || !!pendingAttack} value={actorCombatantId ?? ''} onChange={(event) => onSelectActor?.(event.target.value)} className="rounded border bg-white p-1"><option value="">选择角色 / NPC</option>{actors.map((actor) => <option key={actor.id} value={actor.id}>{actor.label}</option>)}</select></label>}
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className="text-[10px] font-bold text-[#6e4237]">d20 检定</span>
           <div className="inline-flex overflow-hidden rounded border border-[#8b3a2f]/35">
@@ -99,6 +139,18 @@ export function RuntimeDndActionPanel({
           <span className="text-[9px] text-[#6e4237]/75">只作用于攻击与检定，伤害骰不受影响。</span>
         </div>
       </header>
+
+      {actionsError && <p role="alert" className="text-xs text-red-700">动作读取失败：{actionsError}</p>}
+      {!actorCombatantId && <p className="text-xs text-slate-600">请先将行动角色加入战斗并选择角色。</p>}
+      {pendingAttack && <div className="rounded border border-amber-400 bg-amber-50 p-2 text-xs">
+        {attackBusy ? '等待服务器结算…' : '上次攻击尚未确认。重试会复用同一请求，不会重复执行已结算攻击。'}
+        <button type="button" disabled={attackBusy || !onDeclare} onClick={() => void submitAttack(pendingAttack)} className="ml-2 rounded border px-2 py-1 disabled:opacity-40">重试同一攻击</button>
+      </div>}
+      {attackResult && <div className="rounded border border-emerald-400 bg-emerald-50 p-2 text-xs" role="status">
+        <strong>攻击结果（服务器）</strong><p>{attackResult.event.text}</p>
+        {attackResult.replayed && <p>已恢复原始结算结果。</p>}
+        <RoomAttackResolutionDetails payload={attackResult.event.payload} />
+      </div>}
 
       {(lastRoll || rollError) && (
         <div className="rounded-md border border-emerald-600/25 bg-emerald-50/70 p-2.5">
@@ -134,7 +186,7 @@ export function RuntimeDndActionPanel({
                 {lastRoll.isNatural20 && <span className="ml-1 font-bold text-amber-700">天然 20</span>}
                 {lastRoll.isNatural1 && <span className="ml-1 font-bold text-slate-500">天然 1</span>}
               </div>
-              <p className="mt-1 text-[9px] leading-relaxed text-slate-500">完整记录已写入会话日志；命中与伤害结算仍由主持人确认。</p>
+              <p className="mt-1 text-[9px] leading-relaxed text-slate-500">通用骰子记录已写入会话日志。</p>
             </>
           ) : null}
         </div>
@@ -155,11 +207,12 @@ export function RuntimeDndActionPanel({
         {targets.length === 0 && <p className="mt-1 text-[9px] leading-relaxed text-slate-500">战斗开始后，可从地图或先攻栏选中目标。</p>}
       </div>
 
-      {actions.length === 0 ? (
+      {!actions.some((action) => action.kind === 'weapon_attack' || action.kind === 'spell_attack') && (
         <div className="rounded-md border border-dashed border-slate-400/45 bg-white/55 p-3 text-[11px] leading-relaxed text-slate-600">
-          这个角色还没有可用动作。可先使用下方通用 d20；主持人可在战役角色资料中补充武器、法术或其他动作的攻击与伤害骰。
+          这个角色尚无可结算的已编写攻击。主持人可在战役角色的 Lite Sheet 中添加攻击动作；装备展示不会自动生成攻击。
         </div>
-      ) : (
+      )}
+      {actions.length > 0 && (
         <div className="grid gap-2">
           {actions.map((action) => {
             const attack = action.attackBonus === undefined ? undefined : `d20${action.attackBonus >= 0 ? '+' : ''}${action.attackBonus}`;
@@ -176,8 +229,8 @@ export function RuntimeDndActionPanel({
                   <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${presentation.tone}`}>{presentation.badge}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {attack && <button type="button" disabled={!onRoll} onClick={() => submitRoll({ expression: attack, label: `${labelPrefix} · ${action.name} 攻击${targetSuffix}`, mode: rollMode })} className="rounded border border-[#8b3a2f]/45 bg-white px-2.5 py-1.5 text-[10px] font-bold text-[#6b281d] disabled:opacity-45">{action.kind === 'spell_attack' ? '法术攻击' : '攻击掷骰'}</button>}
-                  {action.damageFormula && <button type="button" disabled={!onRoll} onClick={() => submitRoll({ expression: action.damageFormula!, label: `${labelPrefix} · ${action.name} 伤害${targetSuffix}` })} className="rounded border border-amber-500/45 bg-amber-50 px-2.5 py-1.5 text-[10px] font-bold text-amber-900 disabled:opacity-45">掷伤害 {action.damageFormula}</button>}
+                  {(action.kind === 'weapon_attack' || action.kind === 'spell_attack') && <button type="button" disabled={!onDeclare || !actorCombatantId || !selectedTargetId || attackBusy || !!pendingAttack} onClick={() => declareAttack(action.id)} className="rounded border border-[#8b3a2f]/45 bg-white px-2.5 py-1.5 text-[10px] font-bold text-[#6b281d] disabled:opacity-45">声明攻击</button>}
+                  {action.kind === 'damage_only' && action.damageFormula && <button type="button" disabled={!onRoll} onClick={() => submitRoll({ expression: action.damageFormula!, label: `${labelPrefix} · ${action.name} 手动伤害骰${targetSuffix}` })} className="rounded border border-amber-500/45 bg-amber-50 px-2.5 py-1.5 text-[10px] font-bold text-amber-900 disabled:opacity-45">手动掷骰（不改变 HP）</button>}
                   {action.kind === 'spell_cast' && <span className="rounded border border-indigo-300/60 bg-indigo-50 px-2.5 py-1.5 text-[10px] font-bold text-indigo-800">施放效果由主持人确认</span>}
                 </div>
               </article>

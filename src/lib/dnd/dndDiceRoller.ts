@@ -10,7 +10,7 @@ import type {
   DndRollRandom,
   DndRuntimeEventDraft,
   ParsedDndDiceFormula,
-} from './dndDiceTypes';
+} from './dndDiceTypes.js';
 
 const MAX_FORMULA_LENGTH = 80;
 const MAX_DICE = 100;

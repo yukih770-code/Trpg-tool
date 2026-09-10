@@ -10,6 +10,8 @@ import type { RoomRuntimeLogEvent } from '../protocol/room-protocol.js';
 import { createRoom } from './createRoom.js';
 import { ROOM_RUNTIME_LOG_EVENT_KINDS } from '../../src/lib/platform/roomRuntimeLogTypes.js';
 import { appendRuntimeLogEvent } from './appendRuntimeLogEvent.js';
+import { applyRuntimeResolution } from './applyRuntimeResolution.js';
+import { createCombatant } from '../../src/lib/combat/combatRuntimeTypes.js';
 import {
   LIVE_ROOM_RUNTIME_LOG_PAYLOAD_KEY,
   createLiveRoomRuntimeLogPersistenceCoordinator,
@@ -326,11 +328,25 @@ async function main(): Promise<void> {
   for (const kind of ROOM_RUNTIME_LOG_EVENT_KINDS) {
     // Append through the real service so the canonical list is exercised on the
     // WRITE side exactly as production does, not simulated.
-    const appended = appendRuntimeLogEvent(kindRoomRegistry, kindLogRegistry, {
+    const appended = kind === 'combat.attack_resolved' ? {
+      decision: 'appended',
+      event: await applyRuntimeResolution({ rooms: kindRoomRegistry, log: kindLogRegistry,
+        context: { roomId: kindRoomId, memberId: kindHostMemberId, sessionId: kindRoom.identity.sessionId!,
+          actorCombatantId: 'kind-actor', targetCombatantId: 'kind-target', intentId: 'kind-intent', fingerprint: 'kind-fingerprint', expectedSeq: kindLogRegistry.list(kindRoomId).latestSeq },
+        proposal: { systemId: kindRoom.identity.systemId, resolutionId: 'kind-resolution', publicSummaryText: 'Attack resolved.', publicFacts: {}, privilegedFacts: {},
+          mutations: [{ type: 'combatantHp', combatantId: 'kind-target', beforeHp: 10, afterHp: 9, beforeTemporaryHp: 0, afterTemporaryHp: 0 }] },
+        confirm: async (event) => {
+          const result = await persistLiveRoomRuntimeLogEvent(kindRepository, kindRoom, event);
+          if (result.status !== 'persisted') return false;
+          kindLogRegistry.confirmPending(kindRoomId, event.eventId); return true;
+        },
+      }),
+    } : appendRuntimeLogEvent(kindRoomRegistry, kindLogRegistry, {
       roomId: kindRoomId,
       authorMemberId: kindHostMemberId,
       kind,
       text: `invariant ${kind}`,
+      payload: kind === 'combat.started' ? { combatants: ['kind-actor', 'kind-target'].map((id) => createCombatant({ id, kind: 'npc', hpCurrent: 10, hpMax: 10, initiativeModifier: 0, conditions: [] })) } : undefined,
     });
     if (appended.decision !== 'appended' || !appended.event) {
       throw new Error(`P0-B invariant: append rejected canonical kind "${kind}" (${appended.decision}).`);
@@ -340,6 +356,7 @@ async function main(): Promise<void> {
     if (persisted.status !== 'persisted') {
       throw new Error(`P0-B invariant: kind "${kind}" was accepted but not persisted (${persisted.status}).`);
     }
+    kindLogRegistry.confirmPending(kindRoomId, appended.event.eventId);
   }
 
   // Restart: a fresh in-memory registry, restored purely from durable rows.
