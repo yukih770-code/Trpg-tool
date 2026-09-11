@@ -15,6 +15,7 @@ import { useRuntimeEvents } from '../../lib/campaignRoom/useRuntimeEvents';
 import { CombatRuntimeTable } from './CombatRuntimeTable';
 import { BasicMapBoard } from './BasicMapBoard';
 import { DndDiceCheckPanel } from './DndDiceCheckPanel';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../../../components/ui/dialog';
 import { DndLiteActorSheetPanel } from './DndLiteActorSheetPanel';
 import { DndMonsterTemplateLibraryPanel } from './DndMonsterTemplateLibraryPanel';
 import { SavedSceneLibraryPanel } from './SavedSceneLibraryPanel';
@@ -223,13 +224,15 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const [runtimeCombatState, setRuntimeCombatState] = useState<CombatRuntimeTableState>({ combatants: [], turn: { status: 'setup', roundNumber: 1, turnIndex: -1 } });
   const [combatantToLocate, setCombatantToLocate] = useState<string>();
   const [runtimeMapBoard, setRuntimeMapBoard] = useState<MapBoardState | undefined>();
-  const [pendingDndActorSheets, setPendingDndActorSheets] = useState<Record<string, DndLiteActorSheet>>({});
+  const [campaignActorRevision, setCampaignActorRevision] = useState(0);
+  const [actorEntry, setActorEntry] = useState<{ actorId?: string; source: 'campaign' | 'token' | 'combat' | 'runtime' } | null>(null);
   const [dndDicePreset, setDndDicePreset] = useState<{ actorInstanceId: string; actionId?: string; nonce: number }>();
   const [dndActorPrefill, setDndActorPrefill] = useState<(DndLiteCombatantPrefill & { nonce: number }) | undefined>();
   const [dndMonsterActionPreset, setDndMonsterActionPreset] = useState<{ monsterName: string; action: DndMonsterAction; nonce: number }>();
   const [dndDamagePreset, setDndDamagePreset] = useState<CombatDamagePreset>();
   const [snapshotImportVersion, setSnapshotImportVersion] = useState(0);
   const [actorName, setActorName] = useState('');
+  const [actorKind, setActorKind] = useState<'pc' | 'npc' | 'monster'>('pc');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiClientError | null>(null);
   const [liveRoomSession, setLiveRoomSession] = useState<HostedRoomLaunchSession | null>(null);
@@ -251,18 +254,17 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
     }
   }, [campaigns, selectedCampaignId]);
 
+  useEffect(() => { setActorEntry(null); }, [selectedCampaignId]);
+
   const selectedCampaign: CampaignListItem | undefined = useMemo(
     () => campaigns.find((item) => item.campaign.campaignId === selectedCampaignId),
     [campaigns, selectedCampaignId],
   );
-  useEffect(() => {
-    setPendingDndActorSheets({});
-  }, [selectedCampaignId]);
   const dndMonsters = useDndMonsterTemplates(isDndCampaign(selectedCampaign?.campaign.systemId) ? worldServerId : '');
   const campaignDetail = useCampaignDetail(worldServerId, selectedCampaignId, { enabled: selectedCampaignId !== '' });
   const dndActorSheets = useMemo(
-    () => ({ ...projectDndLiteActorSheets(campaignDetail.actors), ...pendingDndActorSheets }),
-    [campaignDetail.actors, pendingDndActorSheets],
+    () => projectDndLiteActorSheets(campaignDetail.actors),
+    [campaignDetail.actors],
   );
   const activeRooms = useMemo(
     () => campaignDetail.rooms.filter((room) => !room.closedAt && !['closed', 'archived', 'disbanded'].includes(room.roomStatus.toLowerCase())),
@@ -403,10 +405,10 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
     if (!selectedCampaignId || !canManageServer) throw new Error('Campaign actor editing is unavailable.');
     const actor = campaignDetail.actors.find((item) => item.campaignActorInstanceId === actorInstanceId);
     if (!actor) throw new Error('Campaign actor not found.');
-    await campaignRoomApiClient.updateCampaignActor(worldServerId, selectedCampaignId, actorInstanceId, {
+    await campaignDetail.updateActor(actorInstanceId, {
       overridePayload: withDndLiteActorSheetOverride(actor.overridePayload, sheet),
     });
-    setPendingDndActorSheets((previous) => ({ ...previous, [actorInstanceId]: sheet }));
+    setCampaignActorRevision(value => value + 1);
   };
 
   /**
@@ -435,14 +437,10 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
     if (!selectedCampaignId || !canManageServer) throw new Error('Campaign actor editing is unavailable.');
     const actor = campaignDetail.actors.find((item) => item.campaignActorInstanceId === actorInstanceId);
     if (!actor) throw new Error('Campaign actor not found.');
-    await campaignRoomApiClient.updateCampaignActor(worldServerId, selectedCampaignId, actorInstanceId, {
+    await campaignDetail.updateActor(actorInstanceId, {
       overridePayload: withoutDndLiteActorSheetOverride(actor.overridePayload),
     });
-    setPendingDndActorSheets((previous) => {
-      const next = { ...previous };
-      delete next[actorInstanceId];
-      return next;
-    });
+    setCampaignActorRevision(value => value + 1);
   };
 
   const handleCreateMonsterActorDraft = async (monster: DndPrivateMonsterTemplate) => {
@@ -454,7 +452,6 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
         sourceActorId: `private-monster:${monster.monsterTemplateId}`,
         overridePayload: withDndLiteActorSheetOverride({}, dndMonsterToLiteActorSheet(monster)),
       });
-      setPendingDndActorSheets((previous) => ({ ...previous, [actor.campaignActorInstanceId]: dndMonsterToLiteActorSheet(monster) }));
       await campaignDetail.refresh();
     });
   };
@@ -478,15 +475,43 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
     const displayName = actorName.trim();
     if (!displayName || !selectedCampaignId || !canManageServer) return;
     await runAction(async () => {
-      await campaignRoomApiClient.createCampaignActor(worldServerId, selectedCampaignId, { displayName, actorKind: 'pc' });
+      const actor = await campaignRoomApiClient.createCampaignActor(worldServerId, selectedCampaignId, { displayName, actorKind });
       setActorName('');
       await campaignDetail.refresh();
+      if (isDndCampaign(selectedCampaign?.campaign.systemId)) setActorEntry({ actorId: actor.campaignActorInstanceId, source: actorEntry?.source ?? 'campaign' });
     });
   };
 
+  const actorCreationForm = <form onSubmit={(event) => void handleCreateCampaignActor(event)} className="flex flex-wrap gap-2">
+    <input value={actorName} onChange={(event) => setActorName(event.target.value)} placeholder={t('campaignRoom.actorName')} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm" />
+    <select aria-label={locale === 'en' ? 'Actor kind' : '角色类型'} value={actorKind} onChange={event => setActorKind(event.target.value as typeof actorKind)} className="rounded-md border px-2 text-sm"><option value="pc">{locale === 'en' ? 'Player character' : '玩家角色'}</option><option value="npc">NPC</option><option value="monster">{locale === 'en' ? 'Monster' : '怪物'}</option></select>
+    <button type="submit" disabled={busy || !actorName.trim()} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-xs font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.bindActor')}</button>
+  </form>;
+
+  const liveOwnedRoom = Boolean(selectedRoom && isRecoverableLiveLobby(selectedRoom));
+  const actorSurface = <Dialog open={actorEntry !== null} onOpenChange={open => { if (!open) setActorEntry(null); }}>
+    <DialogContent className="z-[150] max-h-[90dvh] overflow-y-auto sm:max-w-5xl" data-entry-source={actorEntry?.source}>
+      <button type="button" className="w-fit text-xs font-bold underline" onClick={() => void campaignDetail.refresh()}>{locale === 'en' ? 'Refresh actor records' : '刷新角色资料'}</button>
+      <DialogTitle>{locale === 'en' ? 'Campaign combat sheet' : '战役战斗卡'}</DialogTitle>
+      <DialogDescription>{locale === 'en' ? 'Edit the campaign definition. Current encounter HP and the player’s source character stay separate.' : '编辑战役中的战斗资料；当前战斗 HP 与玩家角色库原件分别保留。'}</DialogDescription>
+      {canManageServer && <details className="rounded border p-3"><summary className="cursor-pointer font-bold">{t('campaignRoom.bindActor')}</summary><div className="mt-3">{actorCreationForm}</div>{actionError && <p role="alert" className="mt-2 text-sm text-[#8b3a2f]">{errorText(actionError, locale) || actionError.message}</p>}</details>}
+      {actorEntry && <DndLiteActorSheetPanel
+        locale={locale} canManage={canManageServer} campaignActors={campaignDetail.actors} sheets={dndActorSheets}
+        initialActorInstanceId={actorEntry.actorId}
+        onSave={handleSaveDndActorSheet} onClear={handleClearDndActorSheet}
+        onReviewSource={handleReviewDndActorSource} onAcceptSource={handleAcceptDndActorSource}
+        onUseAction={!liveRoomSession && !liveOwnedRoom && runtimeSessionId ? (actorInstanceId, actionId) => { setDndDicePreset({ actorInstanceId, actionId, nonce: Date.now() }); setActorEntry(null); } : undefined}
+        onAddToCombat={!liveRoomSession && !liveOwnedRoom && runtimeSessionId ? prefill => { setDndActorPrefill({ ...prefill, nonce: Date.now() }); setActorEntry(null); } : undefined}
+      />}
+    </DialogContent>
+  </Dialog>;
+
   if (liveRoomSession) {
     return (
-      <HostedRoomLaunchPanel
+      <>{actorSurface}<HostedRoomLaunchPanel
+        campaignActorRevision={campaignActorRevision}
+        campaignActorCandidates={canManageServer ? actorPresenceCandidates.filter(candidate => Boolean(candidate.campaignActorId)) : undefined}
+        onOpenCampaignActor={canManageServer && isDndCampaign(selectedCampaign?.campaign.systemId) ? (actorId, source) => setActorEntry({ actorId, source }) : undefined}
         baseUrl={liveRoomSession.baseUrl}
         room={liveRoomSession.room}
         hostMemberId={liveRoomSession.hostMemberId}
@@ -500,12 +525,13 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
           void campaignDetail.refresh();
         }}
         panelClassName="rounded-2xl border border-[#2f2a22]/12 bg-white p-4 shadow-sm"
-      />
+      /></>
     );
   }
 
   return (
     <section className="flex flex-col gap-4">
+      {actorSurface}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{t('campaignRoom.eyebrow')}</div>
@@ -517,7 +543,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
         </button>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(16rem,0.75fr)_minmax(0,1.25fr)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(15rem,0.5fr)_minmax(0,1.5fr)]">
         <div className="flex flex-col gap-3">
           <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
@@ -545,8 +571,8 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
             </div>
           </div>
 
-          <form onSubmit={(event) => void handleCreateCampaign(event)} className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/70 p-4">
-            <h3 className="font-bold">{t('campaignRoom.createCampaign')}</h3>
+          <details open={campaigns.length === 0} className="rounded-xl border border-[#2f2a22]/15 bg-white/70 p-4"><summary className="cursor-pointer font-bold">{t('campaignRoom.createCampaign')}</summary>
+          <form onSubmit={(event) => void handleCreateCampaign(event)}>
             <div className="mt-3 flex flex-col gap-2">
               <input value={campaignTitle} onChange={(event) => setCampaignTitle(event.target.value)} placeholder={t('campaignRoom.campaignTitle')} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm" />
               <textarea value={campaignDescription} onChange={(event) => setCampaignDescription(event.target.value)} placeholder={t('campaignRoom.campaignDescription')} className="min-h-20 rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm" />
@@ -560,7 +586,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
               )}
               <button type="submit" disabled={busy || !campaignTitle.trim() || !campaignSystemId.trim()} className="w-fit rounded-md bg-[#17130f] px-3 py-2 text-sm font-bold text-white disabled:opacity-40">{t('campaignRoom.create')}</button>
             </div>
-          </form>
+          </form></details>
         </div>
 
         <div className="flex flex-col gap-4">
@@ -580,36 +606,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                   {gameSystemLabel(campaignDetail.detail.campaign.systemId, gameSystems, locale)}
                 </span>
               </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.actorCount')}</strong><div className="mt-1 text-[#51483d]">{campaignDetail.actors.length}</div></div>
-                <div className="rounded-xl bg-[#f7f3ea] p-3 text-sm"><strong>{t('campaignRoom.roomCount')}</strong><div className="mt-1 text-[#51483d]">{activeRooms.length}</div></div>
-              </div>
-              <CampaignAiArtifactPanel locale={locale} worldServerId={worldServerId} campaignId={campaignDetail.detail.campaign.campaignId} canManage={canManageServer} />
-              <div className="mt-4 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <h4 className="font-bold">{t('campaignRoom.actorBindings')}</h4>
-                    <p className="mt-1 text-xs text-[#51483d]">{t('campaignRoom.actorBindingsNote')}</p>
-                  </div>
-                  {canManageServer && (
-                    <form onSubmit={(event) => void handleCreateCampaignActor(event)} className="flex flex-wrap gap-2">
-                      <input value={actorName} onChange={(event) => setActorName(event.target.value)} placeholder={t('campaignRoom.actorName')} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm" />
-                      <button type="submit" disabled={busy || !actorName.trim()} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-xs font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.bindActor')}</button>
-                    </form>
-                  )}
-                </div>
-                {campaignDetail.actors.length === 0 && <p className="mt-3 text-xs text-[#51483d]">{t('campaignRoom.noActors')}</p>}
-                {campaignDetail.actors.length > 0 && (
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {campaignDetail.actors.map((actor) => (
-                      <div key={actor.campaignActorInstanceId} className="rounded-lg border border-[#2f2a22]/10 bg-white px-3 py-2 text-xs">
-                        <div className="font-bold">{actorLabel(actor, t('campaignRoom.actorRecord'))}</div>
-                        <div className="mt-1 text-[#51483d]">{actor.instanceStatus} · {actor.sourceActorId ? t('campaignRoom.sourceActorConnected') : t('campaignRoom.sourceActorLocal')}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <p className="mt-3 text-xs text-[#51483d]">{campaignDetail.actors.length} {t('campaignRoom.actorCount')} · {activeRooms.length} {t('campaignRoom.roomCount')}</p>
               {campaignDetail.partialErrors.length > 0 && <p className="mt-3 text-xs text-[#51483d]">{t('campaignRoom.partialSync')}</p>}
               <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
                 <h4 className="font-bold">{t('campaignRoom.rooms')}</h4>
@@ -646,6 +643,30 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                   </div>
                 ))}
               </div>
+              <details className="mt-5 border-t border-[#2f2a22]/15 pt-4"><summary className="cursor-pointer font-bold">{locale === 'en' ? 'Campaign preparation & characters' : '战役准备与角色管理'}</summary>
+              <CampaignAiArtifactPanel locale={locale} worldServerId={worldServerId} campaignId={campaignDetail.detail.campaign.campaignId} canManage={canManageServer} />
+              <div className="mt-4 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="font-bold">{t('campaignRoom.actorBindings')}</h4>
+                    <p className="mt-1 text-xs text-[#51483d]">{t('campaignRoom.actorBindingsNote')}</p>
+                  </div>
+                  {canManageServer && actorCreationForm}
+                </div>
+                {isDndCampaign(selectedCampaign?.campaign.systemId) && <button type="button" onClick={() => setActorEntry({ source: 'campaign' })} className="mt-3 rounded border px-3 py-2 text-sm font-bold">{locale === 'en' ? 'Open campaign combat sheet' : '打开战役战斗卡'}</button>}
+                {campaignDetail.actors.length === 0 && <p className="mt-3 text-xs text-[#51483d]">{t('campaignRoom.noActors')}</p>}
+                {campaignDetail.actors.length > 0 && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {campaignDetail.actors.map((actor) => (
+                      <div key={actor.campaignActorInstanceId} className="rounded-lg border border-[#2f2a22]/10 bg-white px-3 py-2 text-xs">
+                        <div className="font-bold">{actorLabel(actor, t('campaignRoom.actorRecord'))}</div>
+                        <div className="mt-1 text-[#51483d]">{isDndCampaign(selectedCampaign?.campaign.systemId) && <button type="button" className="mr-2 font-bold underline" onClick={() => setActorEntry({ actorId: actor.campaignActorInstanceId, source: 'campaign' })}>{locale === 'en' ? 'Open campaign combat sheet' : '打开战役战斗卡'}</button>}{actor.instanceStatus} · {actor.sourceActorId ? t('campaignRoom.sourceActorConnected') : t('campaignRoom.sourceActorLocal')}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              </details>
               {canManageServer && (
                 <details className="mt-5 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3">
                   <summary className="cursor-pointer list-none font-bold text-[#2f2a22]">
@@ -672,7 +693,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
           )}
 
           {selectedRoom && roomDetail.room && (
-            <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm">
+            <details className="rounded-xl border border-[#2f2a22]/12 bg-white p-4"><summary className="cursor-pointer font-bold">{locale === 'en' ? 'Room details & session tools' : '房间资料与会话管理'}</summary><div className="mt-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div><div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{t('campaignRoom.roomDetail')}</div><h3 className="mt-1 text-xl font-bold">{roomLabel(roomDetail.room)}</h3></div>
                 <button type="button" onClick={() => void roomDetail.refresh()} className="text-xs font-bold underline">{t('campaignRoom.refresh')}</button>
@@ -691,7 +712,8 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
               <div className="mt-5 border-t border-[#2f2a22]/10 pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-2"><h4 className="font-bold">{t('campaignRoom.runtimeSession')}</h4>{!roomDetail.runtimeSession && canManageServer && <button type="button" disabled={busy} onClick={() => void handleCreateRuntimeSession()} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-xs font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.createSession')}</button>}</div>
                 {!roomDetail.runtimeSession && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noSession')}</p>}
-                {roomDetail.runtimeSession && (
+                {liveOwnedRoom && <p className="mt-3 text-sm">{locale === 'en' ? 'This session belongs to a live room. Resume the lobby above to adjust the map or combat.' : '本会话由联机房间管理。请从上方恢复大厅，调整地图或战斗。'}</p>}
+                {roomDetail.runtimeSession && !liveOwnedRoom && (
                   <details className="mt-3 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3">
                     <summary className="cursor-pointer list-none font-bold text-[#2f2a22]">
                       {sessionToolsTitle}
@@ -712,18 +734,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     snapshotImportVersion={snapshotImportVersion}
                     onAppendEvent={handleAppendMapEvent}
                   />
-                  {isDndCampaign(selectedCampaign?.campaign.systemId) && <DndLiteActorSheetPanel
-                    locale={locale}
-                    canManage={canManageServer}
-                    campaignActors={campaignDetail.actors}
-                    sheets={dndActorSheets}
-                    onSave={handleSaveDndActorSheet}
-                    onClear={handleClearDndActorSheet}
-                    onUseAction={(actorInstanceId, actionId) => setDndDicePreset({ actorInstanceId, actionId, nonce: Date.now() })}
-                    onAddToCombat={(prefill) => setDndActorPrefill({ ...prefill, nonce: Date.now() })}
-                    onReviewSource={handleReviewDndActorSource}
-                    onAcceptSource={handleAcceptDndActorSource}
-                  />}
+                  {isDndCampaign(selectedCampaign?.campaign.systemId) && <button type="button" onClick={() => setActorEntry({ source: 'campaign' })} className="my-3 rounded border px-3 py-2 text-sm font-bold">{locale === 'en' ? 'Open campaign combat sheet' : '打开战役战斗卡'}</button>}
                   {isDndCampaign(selectedCampaign?.campaign.systemId) && <DndMonsterTemplateLibraryPanel
                     locale={locale}
                     worldServerId={worldServerId}
@@ -806,7 +817,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                   </details>
                 )}
               </div>
-            </div>
+            </div></details>
           )}
         </div>
       </div>

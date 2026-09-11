@@ -528,6 +528,7 @@ export function PlayWorkspace({
             )}
             {/* AI-LANDMARK: ACTOR_VAULT_RESPONSIBILITY_CLEANUP_HIDE_RUNTIME_CTA_V1 — onStartPlaying not passed; runtime entry gated. */}
             {tab === 'sheet' && <Sheet initialSection={dndSheetInitialSection} />}
+            {tab === 'gameplay' && <p className="mb-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm">本地角色游玩：使用角色库数据；联机战斗请进入房间桌面。</p>}
             {tab === 'gameplay' && <Gameplay />}
           </div>
         </div>
@@ -574,6 +575,7 @@ export function PlayWorkspace({
               />
             )}
             {system === 'CoC' && tab === 'sheet' && <CocSheet />}
+            {tab === 'gameplay' && <p className="mb-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm">本地角色游玩：使用角色库数据；联机战斗请进入房间桌面。</p>}
             {system === 'CoC' && tab === 'gameplay' && <CocGameplay embedded />}
 
             {system === 'CP' && tab === 'creator' && (

@@ -7,6 +7,7 @@
  * All data comes from PlatformDataService (owner-scoped). No publish, no real
  * collection write, no dependency/version/manifest exposure, no backend.
  */
+import { BlockDocumentReader } from './BlockDocumentReader';
 import { useState } from 'react';
 import { createTranslator, type Locale } from '../../i18n';
 // P5.4: the hub viewer is the REAL local anonymous user (P5.1), no longer the
@@ -51,9 +52,12 @@ const HEALTH_BADGE: Record<PackageHealthStatus, string> = {
 
 export function PersonalContentHub({ locale }: PersonalContentHubProps) {
   const { t } = createTranslator(locale);
+  const [documentId, setDocumentId] = useState<string | null>(null);
   const [tab, setTab] = useState<HubTab>('documents');
 
   const viewer = getCurrentLocalViewerContext();
+
+  if (documentId) return <BlockDocumentReader documentId={documentId} viewer={viewer} t={t} onBack={() => setDocumentId(null)} />;
 
   const visibilityChip = (visibility?: string) =>
     visibility ? (
@@ -70,6 +74,7 @@ export function PersonalContentHub({ locale }: PersonalContentHubProps) {
           {KIND_LABEL[item.kind]}
         </span>
       </div>
+      {item.kind === 'document' && <button type="button" className="mt-2 w-fit text-sm font-bold underline" onClick={() => setDocumentId(item.id)}>{locale === 'en' ? 'Open document' : '打开文档'}</button>}
       {item.subtitle && <p className="mt-0.5 text-[11px] text-[#51483d]/70">{item.subtitle}</p>}
       <div className="mt-2 flex flex-wrap items-center gap-1">
         {visibilityChip(item.visibility)}

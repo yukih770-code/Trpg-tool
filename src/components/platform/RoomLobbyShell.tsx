@@ -776,7 +776,8 @@ export function RoomLobbyShell({
           Active hosts/players keep this available so a submitted, approved, or
           Ready character can still be replaced through the same review path. */}
       {presentation.canShowCharacterEntry && (
-      <section className={`${card} border-amber-400/45 bg-amber-50/35`}>
+      <details open={currentMember?.role !== 'host' && !myBinding} className={`${card} border-amber-400/45 bg-amber-50/35`}>
+        <summary className="mb-2 cursor-pointer font-bold text-sm">{currentMember?.role === 'host' ? '主持人角色（可选）' : myBinding ? '当前角色与更换角色' : '选择入场角色'}</summary>
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <div className={`mb-1.5 ${label}`}>入场角色</div>
@@ -874,7 +875,7 @@ export function RoomLobbyShell({
                 {bindingBusy ? '提交中…' : iAmActive ? (myBinding ? '更新入场角色' : currentMember?.role === 'host' ? '提交主持人角色' : '提交角色申请') : '等待加入批准后提交'}
               </button>
             </div>}
-            {entryActionMode === 'quickDraft' && <details open className="rounded border border-slate-300/40 bg-white/50 px-2 py-1">
+            {entryActionMode === 'quickDraft' && <details className="rounded border border-slate-300/40 bg-white/50 px-2 py-1">
               <summary className="cursor-pointer text-[10px] font-bold text-slate-500">快速角色摘要（可选）</summary>
               <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-4">
                 <label className="sm:col-span-4 flex flex-col gap-0.5 text-[10px] text-slate-500">简短说明
@@ -904,10 +905,10 @@ export function RoomLobbyShell({
           {!iAmActive && <p className="text-[10px] italic text-slate-500">你可以先选择或创建角色；成为在线成员后即可提交给主持人。若想旁观，请返回加入页选择旁观者。</p>}
         </div>
         {bindingError && <div className="mt-1 text-[10px] font-bold text-red-700">提交失败：{bindingError}</div>}
-      </section>
+      </details>
       )}
 
-      {presentation.shouldShowHostReviewQueue && isHostScaffold && (
+      {presentation.shouldShowHostReviewQueue && isHostScaffold && (reviewQueueCount > 0 || memberActionError || reviewError) && (
         <section className={card}>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <div className={label}>主持人待处理</div>

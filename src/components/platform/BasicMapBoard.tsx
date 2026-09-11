@@ -32,6 +32,8 @@ type Props = {
   locateCombatantId?: string;
   /** Lets the Runtime combat surface follow a token selection without changing map ownership. */
   onSelectCombatant?: (combatantId: string) => void;
+  /** Live shell coordinates map utilities with its one supporting panel. */
+  exclusiveRuntimePanels?: boolean;
   /** Opens a viewer-safe runtime inspect panel from a selected map token. */
   onInspectToken?: (token: MapToken) => void;
   /** Optional sources from system-specific actor/monster surfaces. */
@@ -64,6 +66,7 @@ type UtilityPanel = RuntimeMapUtilityPanel | undefined;
 type TemplateCommitMode = 'preview' | 'pinned';
 type Point = { x: number; y: number };
 type DragState =
+  | { kind: 'denied-token'; startX: number; startY: number }
   | { kind: 'pan'; startX: number; startY: number; originX: number; originY: number }
   | { kind: 'token'; tokenId: string; startX: number; startY: number; originX: number; originY: number; last: Point }
   | { kind: 'template'; templateId: string; startX: number; startY: number; originX: number; originY: number; last: Point }
@@ -171,7 +174,7 @@ function templateDragHint(shape: MapTemplateShape, locale: Locale): string {
   return '起点是角点，拖动到对角。';
 }
 
-export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], activeCombatantId, locateCombatantId, onSelectCombatant, onInspectToken, actorPresenceCandidates = [], canManage, canMoveToken, tokenMoveDeniedMessage, controlledTokenBindingId, canPinRanges = false, canShareTemporaryRanges = false, sharedPreviews = [], onSharePreview, mapCollaborators = [], onSetCanPinRanges, onSetCanMoveOwnToken, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace' }: Props) {
+export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], activeCombatantId, locateCombatantId, onSelectCombatant, onInspectToken, actorPresenceCandidates = [], canManage, canMoveToken, tokenMoveDeniedMessage, controlledTokenBindingId, canPinRanges = false, canShareTemporaryRanges = false, sharedPreviews = [], onSharePreview, mapCollaborators = [], onSetCanPinRanges, onSetCanMoveOwnToken, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace', exclusiveRuntimePanels = false }: Props) {
   // AI-LANDMARK: HOST_FREE_TOKEN_PERSISTENT_ACTOR_VAULT_ENTRY_V1
   // AI-LANDMARK: MOBILE_RUNTIME_MAP_PANEL_COORDINATION_V1
   const { t } = createTranslator(locale);
@@ -271,7 +274,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
   useEffect(() => {
     if (!tokenMenu) return;
     const close = (event?: globalThis.PointerEvent) => {
-      if ((event.target as HTMLElement | null)?.closest('[data-token-context-menu]')) return;
+      if ((event?.target as HTMLElement | null)?.closest('[data-token-context-menu]')) return;
       setTokenMenu(undefined);
     };
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
@@ -287,7 +290,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     const closeForCompetingRuntimeSurface = () => {
       if (presentation !== 'runtime') return;
       setActivePanel((current) => shouldCloseRuntimeMapPanelForCompetingSurface(
-        typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+        exclusiveRuntimePanels || (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches),
         current,
       ) ? undefined : current);
     };
@@ -302,7 +305,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
       window.removeEventListener(RUNTIME_ACTION_DOCK_DID_OPEN_EVENT, closeForCompetingRuntimeSurface);
       window.removeEventListener('keydown', closeOnEscape);
     };
-  }, [presentation]);
+  }, [presentation, exclusiveRuntimePanels]);
 
   const emit = (event: MapRuntimeEventDraft | null) => {
     if (!event || !onAppendEvent) return;
@@ -456,7 +459,9 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
         if (mayMoveToken(token)) {
           dragRef.current = { kind: 'token', tokenId, startX: event.clientX, startY: event.clientY, originX: token.x, originY: token.y, last: { x: token.x, y: token.y } };
         } else {
-          setEventError(moveDeniedMessage);
+          // Selecting an attack target is allowed even when moving it is not.
+          // Report denial only when the pointer actually attempts a drag.
+          dragRef.current = { kind: 'denied-token', startX: event.clientX, startY: event.clientY };
         }
       }
     } else {
@@ -469,6 +474,10 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     const drag = dragRef.current;
     const element = boardRef.current;
     if (!drag || !element) return;
+    if (drag.kind === 'denied-token') {
+      if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 4) setEventError(moveDeniedMessage);
+      return;
+    }
     const rect = element.getBoundingClientRect();
     if (drag.kind === 'measure') {
       const end = pointFromEvent(event);
@@ -505,7 +514,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     const element = boardRef.current;
     if (drag.kind === 'token') {
       const token = board.state.tokens.find((item) => item.id === drag.tokenId);
-      if (token) {
+      if (token && (drag.last.x !== drag.originX || drag.last.y !== drag.originY)) {
         emit(board.moveToken(token.id, drag.last.x, drag.last.y));
         if (element) {
           const rect = element.getBoundingClientRect();
@@ -664,6 +673,25 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     </div>}
   </div>;
 
+  // Both entry contexts mount the same placement controls and handlers.
+  const placementControls = <div data-canonical-surface="token-placement">
+        <form onSubmit={handleAddManualToken} className="mt-3 rounded-lg border border-amber-300/60 bg-amber-50/70 p-2.5">
+          <div className="text-xs font-black text-slate-800">{locale === 'en' ? 'Place unlinked marker' : '放置独立标记'}</div>
+          <p className="mt-0.5 text-[10px] leading-4 text-slate-600">{locale === 'en' ? 'Scene placement only; no campaign actor is created. Use an existing actor below when available.' : '仅在地图中放置，不创建战役角色；已有角色请从下方选择。'}</p>
+          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_6rem] gap-1.5">
+            <input value={tokenName} onChange={(event) => setTokenName(event.target.value)} aria-label={t('mapRuntime.tokenName')} placeholder={t('mapRuntime.tokenName')} className="min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs" />
+            <select value={tokenSize} onChange={(event) => setTokenSize(event.target.value as MapTokenSize)} aria-label={locale === 'en' ? 'Token size' : 'Token 体型'} className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs">{sizes.map((size) => <option key={size} value={size}>{sizeLabel(size, locale)}</option>)}</select>
+          </div>
+          <input value={tokenNotes} onChange={(event) => setTokenNotes(event.target.value)} aria-label={t('mapRuntime.tokenNotes')} placeholder={t('mapRuntime.tokenNotes')} className="mt-1.5 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs" />
+          <button type="submit" disabled={!tokenName.trim()} className="mt-2 w-full rounded-md bg-[#17130f] px-3 py-2 text-xs font-black text-white disabled:opacity-40">{locale === 'en' ? 'Place on map' : '放到地图'}</button>
+        </form>
+        <div className="mt-3 border-t border-slate-200 pt-3">
+          <div className="text-[11px] font-black text-slate-700">{locale === 'en' ? 'Place existing actor or combatant' : '放置已有角色或战斗单位'}</div>
+          <p className="mt-0.5 text-[10px] text-slate-500">{locale === 'en' ? 'Keeps the source link; an existing placement can be located.' : '保留来源关联；已有放置时可直接定位。'}</p>
+          <div className="mt-2 max-h-56 space-y-1.5 overflow-y-auto">{presenceCandidates.map((candidate) => { const linked = linkedTokenForCandidate(board.state.tokens, candidate); return <div key={`${candidate.sourceType}:${candidate.sourceId}`} className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5"><div className="min-w-0"><div className="truncate text-xs font-bold text-slate-800">{candidate.displayName}</div><div className="text-[10px] text-slate-500">{sourceLabel(candidate.sourceType, locale)}{candidate.hpSummary ? ` · HP ${candidate.hpSummary.current ?? '—'}${candidate.hpSummary.max !== undefined ? `/${candidate.hpSummary.max}` : ''}` : ''}</div></div><button type="button" onClick={() => linked ? locateCandidate(candidate) : placeCandidate(candidate)} className="shrink-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-bold text-slate-700">{linked ? (locale === 'en' ? 'Locate' : '定位') : (locale === 'en' ? 'Place on map' : '放到地图')}</button></div>; })}{presenceCandidates.length === 0 && <p className="rounded-md bg-slate-50 px-2 py-2 text-[11px] text-slate-500">{locale === 'en' ? 'No linked actors available. You can still place an unlinked marker above.' : '暂无可关联角色；仍可从上方放置独立标记。'}</p>}</div>
+        </div>
+  </div>;
+
   if (presentation === 'runtime') {
     const toolButtonClass = (active: boolean) => `flex min-h-11 w-12 flex-col items-center justify-center gap-0.5 rounded-lg border px-1 text-[#2f2a22] shadow-sm transition sm:w-14 ${active ? 'border-[#58180d]/60 bg-[#fff0d6] text-[#58180d]' : 'border-white/70 bg-white/90 hover:bg-white'}`;
     const compactPanelClass = 'absolute left-16 right-2 top-2 z-30 max-h-[75vh] overflow-y-auto rounded-xl border border-slate-300/80 bg-white/95 p-3 shadow-xl backdrop-blur-sm sm:left-20 sm:right-auto sm:top-3 sm:w-80';
@@ -682,7 +710,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
       const opening = isOpeningRuntimeMapPanel(activePanel, panel);
       if (id === 'template') setToolMode('template');
       setActivePanel(resolveRuntimeMapPanelToggle(activePanel, panel));
-      if (opening && compactViewport) {
+      if (opening && (compactViewport || exclusiveRuntimePanels)) {
         window.dispatchEvent(new Event(RUNTIME_MAP_PANEL_DID_OPEN_EVENT));
       }
     };
@@ -706,7 +734,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
           {templateDraftLayer}
           {measurementLayer}
           {sharedPreviewLayer}
-          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => selectToken(token)} onDoubleClick={() => onInspectToken?.(token)} onContextMenu={(event) => openTokenMenu(event, token)} className={`group absolute z-20 flex max-w-36 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold hover:z-30 focus-visible:z-30 ${mayMoveToken(token) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} ${isCurrentTurnToken(token) ? 'drop-shadow-[0_0_10px_rgba(245,197,24,.95)]' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={mayMoveToken(token) ? '你的角色，可移动；双击可查看信息。' : '右键或双击查看信息'}>{tokenContents(token)}{isCurrentTurnToken(token) && <span className="rounded bg-[#f5c518] px-1 text-[9px] font-black text-[#17130f]">当前回合</span>}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
+          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => selectToken(token)} onDoubleClick={() => onInspectToken?.(token)} onKeyDown={(event) => { if ((event.key === 'Enter' && event.shiftKey) || event.key === 'ContextMenu') { event.preventDefault(); onInspectToken?.(token); } }} onContextMenu={(event) => openTokenMenu(event, token)} className={`group absolute z-20 flex max-w-36 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold hover:z-30 focus-visible:z-30 ${mayMoveToken(token) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} ${isCurrentTurnToken(token) ? 'drop-shadow-[0_0_10px_rgba(245,197,24,.95)]' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={mayMoveToken(token) ? '你的角色，可移动；双击可查看信息。' : '右键、双击或 Shift+Enter 查看信息'}>{tokenContents(token)}{isCurrentTurnToken(token) && <span className="rounded bg-[#f5c518] px-1 text-[9px] font-black text-[#17130f]">当前回合</span>}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
         </div>
         {tokenMenuLayer}
       </div>
@@ -733,27 +761,13 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
       {activePanel === 'template' && <div className={compactPanelClass}><div className="flex items-center justify-between"><div className="text-sm font-black text-slate-800">范围工具</div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div><div className={`mt-3 grid gap-1.5 ${mayPinRanges ? 'grid-cols-2' : 'grid-cols-1'}`}><button type="button" onClick={() => setTemplateCommitMode('preview')} className={`rounded-md border px-2.5 py-2 text-left text-xs font-bold ${templateCommitMode === 'preview' ? 'border-[#294966]/50 bg-[#edf4ff] text-[#294966]' : 'border-slate-300 bg-white'}`}><span className="block">临时范围</span><span className="mt-0.5 block text-[10px] font-normal opacity-80">{canShareTemporaryRanges ? '房间成员可见，松开即消失' : '仅在当前视图显示，松开即消失'}</span></button>{mayPinRanges && <button type="button" onClick={() => setTemplateCommitMode('pinned')} className={`rounded-md border px-2.5 py-2 text-left text-xs font-bold ${templateCommitMode === 'pinned' ? 'border-[#58180d]/50 bg-[#fff0d6] text-[#58180d]' : 'border-slate-300 bg-white'}`}><span className="flex items-center gap-1"><Pin size={12} />固定范围</span><span className="mt-0.5 block text-[10px] font-normal opacity-80">会保存到地图记录</span></button>}</div><p className="mt-3 text-[11px] text-slate-500">{templateDragHint(templateShape, locale)}</p><div className="mt-3 grid grid-cols-2 gap-1.5">{([{ shape: 'circle', icon: Circle }, { shape: 'cone', icon: Triangle }, { shape: 'line', icon: Minus }, { shape: 'square', icon: Square }, { shape: 'rectangle', icon: RectangleHorizontal }] as const).map(({ shape, icon: Icon }) => <button key={shape} type="button" onClick={() => setTemplateShape(shape)} className={`flex items-center gap-2 rounded-md border px-2 py-2 text-left text-xs font-bold ${templateShape === shape ? 'border-[#58180d]/50 bg-[#fff0d6] text-[#58180d]' : 'border-slate-300 bg-white'}`}><Icon size={15} />{templateLabel(shape, locale)}</button>)}</div>{canManage && (onSetCanPinRanges || onSetCanMoveOwnToken) && mapCollaborators.length > 0 && <div className="mt-3 border-t border-slate-200 pt-3"><div className="text-[11px] font-black text-slate-700">玩家权限</div><p className="mt-0.5 text-[10px] text-slate-500">移动授权只适用于该玩家已准入的角色 Token；怪物、NPC 和其他玩家 Token 始终由主持人控制。</p><div className="mt-2 grid gap-1">{mapCollaborators.map((member) => <div key={member.memberId} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] font-bold text-slate-700"><span>{member.displayName}</span><span className="flex items-center gap-2 text-[10px]">{onSetCanMoveOwnToken && <label className="flex items-center gap-1.5"><span className="text-slate-500">移动角色</span><input type="checkbox" checked={member.canMoveOwnToken} onChange={(event) => { void onSetCanMoveOwnToken(member.memberId, event.target.checked).catch((error) => setEventError(error instanceof Error ? error.message : String(error))); }} /></label>}{onSetCanPinRanges && <label className="flex items-center gap-1.5"><span className="text-slate-500">固定范围</span><input type="checkbox" checked={member.canPinRanges} onChange={(event) => { void onSetCanPinRanges(member.memberId, event.target.checked).catch((error) => setEventError(error instanceof Error ? error.message : String(error))); }} /></label>}</span></div>)}</div></div>}</div>}
 
       {canManage && activePanel === 'units' && <div className={compactPanelClass}>
-        <div className="flex items-center justify-between gap-3"><div><div className="text-sm font-black text-slate-800">放置 Token</div><p className="mt-0.5 text-[11px] text-slate-500">可直接创建临时单位，也可放置已带入角色或战斗单位。</p></div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div>
-        <form onSubmit={handleAddManualToken} className="mt-3 rounded-lg border border-amber-300/60 bg-amber-50/70 p-2.5">
-          <div className="text-xs font-black text-slate-800">新建临时 Token</div>
-          <p className="mt-0.5 text-[10px] leading-4 text-slate-600">不需要角色加入。适合 NPC、敌人、召唤物、机关或临时标记。</p>
-          <div className="mt-2 grid grid-cols-[minmax(0,1fr)_6rem] gap-1.5">
-            <input value={tokenName} onChange={(event) => setTokenName(event.target.value)} placeholder="Token 名称" autoFocus className="min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs" />
-            <select value={tokenSize} onChange={(event) => setTokenSize(event.target.value as MapTokenSize)} aria-label="Token 体型" className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs">{sizes.map((size) => <option key={size} value={size}>{sizeLabel(size, locale)}</option>)}</select>
-          </div>
-          <input value={tokenNotes} onChange={(event) => setTokenNotes(event.target.value)} placeholder="主持人备注（可选）" className="mt-1.5 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs" />
-          <button type="submit" disabled={!tokenName.trim()} className="mt-2 w-full rounded-md bg-[#17130f] px-3 py-2 text-xs font-black text-white disabled:opacity-40">创建并放到地图</button>
-        </form>
-        <div className="mt-3 border-t border-slate-200 pt-3">
-          <div className="text-[11px] font-black text-slate-700">从已有单位放置</div>
-          <p className="mt-0.5 text-[10px] text-slate-500">保留角色或战斗表来源；已有 Token 时按钮会改为定位。</p>
-          <div className="mt-2 max-h-56 space-y-1.5 overflow-y-auto">{presenceCandidates.map((candidate) => { const linked = linkedTokenForCandidate(board.state.tokens, candidate); return <div key={`${candidate.sourceType}:${candidate.sourceId}`} className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5"><div className="min-w-0"><div className="truncate text-xs font-bold text-slate-800">{candidate.displayName}</div><div className="text-[10px] text-slate-500">{sourceLabel(candidate.sourceType, locale)}{candidate.hpSummary ? ` · HP ${candidate.hpSummary.current ?? '—'}${candidate.hpSummary.max !== undefined ? `/${candidate.hpSummary.max}` : ''}` : ''}</div></div><button type="button" onClick={() => linked ? locateCandidate(candidate) : placeCandidate(candidate)} className="shrink-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-[11px] font-bold text-slate-700">{linked ? '定位' : '放到地图'}</button></div>; })}{presenceCandidates.length === 0 && <p className="rounded-md bg-slate-50 px-2 py-2 text-[11px] text-slate-500">当前没有已带入单位；上方仍可直接创建临时 Token。</p>}</div>
-        </div>
+        <div className="flex items-center justify-between gap-3"><div><div className="text-sm font-black text-slate-800">放置 Token</div><p className="mt-0.5 text-[11px] text-slate-500">放置已有角色，或为地图放置独立标记。</p></div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div>
+        {placementControls}
       </div>}
 
       {selectedToken && canManage && <div className="absolute right-3 top-3 z-20 w-56 rounded-xl border border-slate-300/80 bg-white/95 p-3 shadow-xl backdrop-blur-sm"><div className="flex items-center justify-between gap-2"><div className="text-sm font-black text-slate-800">{selectedToken.name}</div><button type="button" onClick={() => board.selectToken(undefined)} className="text-xs font-bold text-slate-500">关闭</button></div><p className="mt-1 text-[11px] text-slate-500">{sourceLabel(selectedToken.sourceType, locale)}</p><div className="mt-3 flex gap-2"><button type="button" onClick={() => emit(board.updateToken(selectedToken.id, { isHidden: !selectedToken.isHidden }))} className="rounded-md border border-slate-300 px-2 py-1.5 text-xs font-bold">{selectedToken.isHidden ? t('mapRuntime.showToken') : t('mapRuntime.hideToken')}</button><button type="button" onClick={() => emit(board.removeToken(selectedToken.id))} className="rounded-md border border-[#8b3a2f]/30 px-2 py-1.5 text-xs font-bold text-[#8b3a2f]">{t('mapRuntime.removeToken')}</button></div></div>}
 
-      {!canManage && tokenControlHint && <div className="pointer-events-none absolute right-3 top-3 z-20 max-w-60 rounded-lg border border-slate-300/80 bg-white/95 px-3 py-2 text-[11px] font-bold text-slate-700 shadow-lg">{tokenControlHint}</div>}
+      {!canManage && tokenControlHint && (toolMode === 'move' || !!eventError) && <div className="pointer-events-none absolute right-3 top-3 z-20 max-w-60 rounded-lg border border-slate-300/80 bg-white/95 px-3 py-2 text-[11px] font-bold text-slate-700 shadow-lg">{tokenControlHint}</div>}
 
       {lastMovement && <div className="pointer-events-none absolute bottom-20 right-2 z-20 rounded-md bg-white/90 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 shadow md:bottom-4 md:right-3">{lastMovement.name} · {lastMovement.feet.toFixed(1)} ft</div>}
       {eventError && <div className="absolute bottom-20 left-2 z-20 rounded-md bg-[#fff0eb]/95 px-2.5 py-1.5 text-xs font-bold text-[#8b3a2f] shadow md:bottom-3 md:left-3">{eventError}</div>}
@@ -791,7 +805,7 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
         {templateDraftLayer}
         {measurementLayer}
         {sharedPreviewLayer}
-          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => selectToken(token)} onDoubleClick={() => onInspectToken?.(token)} onContextMenu={(event) => openTokenMenu(event, token)} className={`group absolute z-20 flex max-w-40 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold hover:z-30 focus-visible:z-30 ${token.isHidden ? 'opacity-70' : ''} ${isCurrentTurnToken(token) ? 'drop-shadow-[0_0_10px_rgba(245,197,24,.95)]' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title="双击或右键查看信息">{tokenContents(token)}{isCurrentTurnToken(token) && <span className="rounded bg-[#f5c518] px-1 text-[9px] font-black text-[#17130f]">当前回合</span>}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
+          {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => selectToken(token)} onDoubleClick={() => onInspectToken?.(token)} onKeyDown={(event) => { if ((event.key === 'Enter' && event.shiftKey) || event.key === 'ContextMenu') { event.preventDefault(); onInspectToken?.(token); } }} onContextMenu={(event) => openTokenMenu(event, token)} className={`group absolute z-20 flex max-w-40 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold hover:z-30 focus-visible:z-30 ${token.isHidden ? 'opacity-70' : ''} ${isCurrentTurnToken(token) ? 'drop-shadow-[0_0_10px_rgba(245,197,24,.95)]' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title="双击、右键或 Shift+Enter 查看信息">{tokenContents(token)}{isCurrentTurnToken(token) && <span className="rounded bg-[#f5c518] px-1 text-[9px] font-black text-[#17130f]">当前回合</span>}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
       </div>
       {tokenMenuLayer}
       {measurementDistance && <div className="absolute bottom-3 left-3 rounded-md bg-[#17130f]/85 px-2 py-1 text-xs font-bold text-white">{measurementDistance.feet.toFixed(1)} ft · {measurementDistance.squares.toFixed(1)} {t('mapRuntime.squares')}</div>}
@@ -801,9 +815,8 @@ export function BasicMapBoard({ locale, mapId, mapEvents, fallbackBackgroundUrl,
     {eventError && <p className="mt-2 rounded-lg bg-[#fff0eb] px-3 py-2 text-xs text-[#8b3a2f]">{eventError}</p>}
 
     {canManage && <div className="mt-4 grid gap-3 lg:grid-cols-2">
-      <form onSubmit={handleAddManualToken} className="rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3"><div className="font-bold text-sm">{t('mapRuntime.addToken')}</div><div className="mt-2 grid gap-2 sm:grid-cols-2"><input value={tokenName} onChange={(event) => setTokenName(event.target.value)} placeholder={t('mapRuntime.tokenName')} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs" /><select value={tokenSize} onChange={(event) => setTokenSize(event.target.value as MapTokenSize)} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs">{sizes.map((size) => <option key={size} value={size}>{sizeLabel(size, locale)}</option>)}</select><input value={tokenNotes} onChange={(event) => setTokenNotes(event.target.value)} placeholder={t('mapRuntime.tokenNotes')} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs sm:col-span-2" /></div><button type="submit" disabled={!tokenName.trim()} className="mt-2 rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{t('mapRuntime.addToken')}</button></form>
+      {placementControls}
       <form onSubmit={(event) => { event.preventDefault(); addTemplate({ x: 50, y: 50 }); }} className="rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3"><div className="flex items-center justify-between gap-2"><div className="font-bold text-sm">{t('mapRuntime.templates')}</div><button type="button" onClick={() => emit(board.clearTemplates())} disabled={(board.state.templates ?? []).length === 0} className="text-xs font-bold text-[#8b3a2f] disabled:opacity-40">{t('mapRuntime.clearTemplates')}</button></div><div className="mt-2 grid gap-2 sm:grid-cols-2"><select value={templateShape} onChange={(event) => setTemplateShape(event.target.value as MapTemplateShape)} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs">{templateShapes.map((shape) => <option key={shape} value={shape}>{templateLabel(shape, locale)}</option>)}</select><input value={templateSize} onChange={(event) => setTemplateSize(event.target.value)} type="number" min="1" placeholder={t('mapRuntime.templateSize')} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs" />{(templateShape === 'rectangle' || templateShape === 'line') && <input value={templateWidth} onChange={(event) => setTemplateWidth(event.target.value)} type="number" min="1" placeholder={t('mapRuntime.templateWidth')} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs" />}<input value={templateName} onChange={(event) => setTemplateName(event.target.value)} placeholder={t('mapRuntime.templateName')} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs" /></div><div className="mt-2 flex flex-wrap gap-1.5">{quickTemplateSizes.map((size) => <button key={size} type="button" onClick={() => setTemplateSize(String(size))} className="rounded-full border border-[#2f2a22]/15 bg-white px-2 py-1 text-[11px] font-bold">{size} ft</button>)}</div><button type="submit" className="mt-2 rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white">{t('mapRuntime.addTemplateAtCenter')}</button></form>
-      <div className="rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3"><div className="font-bold text-sm">放置单位</div><p className="mt-1 text-xs text-[#51483d]">角色和战斗单位会保留来源关联；已有 Token 时可直接定位。</p><div className="mt-2 grid gap-1.5">{presenceCandidates.map((candidate) => { const linked = linkedTokenForCandidate(board.state.tokens, candidate); return <div key={`${candidate.sourceType}:${candidate.sourceId}`} className="flex items-center justify-between gap-2 rounded-md border border-[#2f2a22]/10 bg-white px-2 py-1.5"><span className="min-w-0 truncate text-xs font-bold">{candidate.displayName} <span className="font-normal text-[#51483d]">· {sourceLabel(candidate.sourceType, locale)}</span></span><button type="button" onClick={() => linked ? locateCandidate(candidate) : placeCandidate(candidate)} className="shrink-0 rounded-md border border-[#2f2a22]/15 px-2 py-1 text-xs font-bold">{linked ? '定位' : '放到地图'}</button></div>; })}{presenceCandidates.length === 0 && <span className="text-xs text-[#51483d]">{t('mapRuntime.noSources')}</span>}</div></div>
       {selectedTemplate && <div className="rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3"><div className="flex items-center justify-between gap-2"><div className="font-bold text-sm">{t('mapRuntime.selectedTemplate')} · {templateLabel(selectedTemplate.shape, locale)}</div><div className="flex gap-2"><button type="button" onClick={() => emit(board.updateTemplate(selectedTemplate.id, { rotation: selectedTemplate.rotation - 45 }))} className="rounded-md border border-[#2f2a22]/15 px-2 py-1 text-xs font-bold">−45°</button><button type="button" onClick={() => emit(board.updateTemplate(selectedTemplate.id, { rotation: selectedTemplate.rotation + 45 }))} className="rounded-md border border-[#2f2a22]/15 px-2 py-1 text-xs font-bold">+45°</button><button type="button" onClick={() => emit(board.removeTemplate(selectedTemplate.id))} className="rounded-md border border-[#8b3a2f]/20 px-2 py-1 text-xs font-bold text-[#8b3a2f]">{t('mapRuntime.removeTemplate')}</button></div></div><p className="mt-2 text-xs text-[#51483d]">{t('mapRuntime.templateMoveHint')}</p></div>}
     </div>}
 

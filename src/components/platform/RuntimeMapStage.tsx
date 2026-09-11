@@ -63,7 +63,7 @@ export function RuntimeMapStage({ scene, role, loading }: RuntimeMapStageProps) 
         <div className="absolute inset-0 flex items-center justify-center p-6">
           <div className="max-w-md rounded-lg border border-slate-300/60 bg-white/70 p-4 text-center shadow-sm backdrop-blur-sm">
             <div className="text-[13px] font-bold text-slate-600">
-              {mapUrl !== '' && (!isLikelyHttpUrl(mapUrl) || imgFailed) ? '场景图无法显示' : '空舞台'}
+              {mapUrl !== '' && (!isLikelyHttpUrl(mapUrl) || imgFailed) ? '场景图无法显示' : '等待场景'}
             </div>
             <p className="mx-auto mt-1.5 max-w-sm text-[11px] leading-relaxed text-slate-500">
               {mapUrl !== '' && (!isLikelyHttpUrl(mapUrl) || imgFailed)
@@ -71,8 +71,8 @@ export function RuntimeMapStage({ scene, role, loading }: RuntimeMapStageProps) 
                 : loading
                   ? '正在载入当前场景…'
                   : role === 'host'
-                    ? '你还没有设置场景图。点击底部「当前场景」填入一张图片链接。你仍可以用公开信息、状态记录和日志推进本场。'
-                    : '主持人还没有设置场景图。你仍可以查看公开信息、状态记录和日志，了解当前进展。'}
+                    ? '点击「当前场景」设置场景图。'
+                    : '等待主持人设置场景图。'}
             </p>
           </div>
         </div>

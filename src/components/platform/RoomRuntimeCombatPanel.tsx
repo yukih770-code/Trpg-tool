@@ -11,7 +11,6 @@ import type { RoomRuntimeActorProjection } from '../../lib/platform/roomRuntimeA
 import type { RoomRuntimeLogEvent } from '../../lib/platform/roomRuntimeLogTypes';
 import type { SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
 import { runtimeAcDisplayLabel, runtimeHpDisplayLabel } from '../../lib/platform/roomRuntimeVisibility';
-import { CombatModeHud } from './CombatModeHud';
 
 type RuntimeRole = 'host' | 'player' | 'spectator';
 
@@ -32,7 +31,8 @@ export interface RoomRuntimeCombatPanelProps {
   selectedCombatantId?: string;
   onSelectCombatant: (combatantId: string) => void;
   onLocateCombatant: (combatantId: string) => void;
-  onStateChange: (state: CombatRuntimeTableState) => void;
+  onOpenCampaignActor?: (actorId: string) => void;
+  onStateChange?: (state: CombatRuntimeTableState) => void;
   onAppendEvent: (event: CombatRuntimeEventDraft) => Promise<void>;
   onQuickRoll?: (input: { expression: string; label: string }) => Promise<unknown>;
 }
@@ -54,10 +54,6 @@ function statusLabel(status: CombatRuntimeTableState['turn']['status'], zh: bool
   if (status === 'paused') return zh ? '已暂停' : 'Paused';
   if (status === 'ended') return zh ? '已结束' : 'Ended';
   return zh ? '准备中' : 'Setup';
-}
-
-function initials(name: string): string {
-  return name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.slice(0, 1)).join('').toUpperCase() || '?';
 }
 
 function combatHpLabel(combatant: Combatant, zh: boolean): string {
@@ -102,7 +98,7 @@ function diceRollFromEvent(event: RoomRuntimeLogEvent): SharedDiceRollResult | u
  * mutation is persisted through the Room RuntimeLog before other clients replay
  * it; player and spectator branches intentionally have no mutation handlers.
  */
-export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, placedTokens, actorProjections, myActorBindingId, selectedCombatantId, onSelectCombatant, onLocateCombatant, onStateChange, onAppendEvent, onQuickRoll }: RoomRuntimeCombatPanelProps) {
+export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, placedTokens, actorProjections, myActorBindingId, selectedCombatantId, onSelectCombatant, onLocateCombatant, onOpenCampaignActor, onStateChange, onAppendEvent }: RoomRuntimeCombatPanelProps) {
   const table = useCombatRuntimeTable(scopeKey);
   const restoredKeyRef = useRef('');
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +116,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
   const combatKey = combatEvents.map((event) => `${event.seq}:${event.eventKind}`).join('|');
 
   useEffect(() => {
-    onStateChange(table.state);
+    onStateChange?.(table.state);
   }, [onStateChange, table.state]);
 
   useEffect(() => {
@@ -131,8 +127,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
   }, [combatEvents, combatKey, scopeKey, table.restore]);
 
   const ordered = sortCombatants(table.state.combatants);
-  const active = table.state.turn.activeCombatantId ? table.state.combatants.find((combatant) => combatant.id === table.state.turn.activeCombatantId) : undefined;
-  const selected = table.state.combatants.find((combatant) => combatant.id === selectedCombatantId) ?? active;
+  const selected = table.state.combatants.find((combatant) => combatant.id === selectedCombatantId);
   const myToken = myActorBindingId ? placedTokens.find((token) => token.actorBindingId === myActorBindingId) : undefined;
   const myCombatant = myToken ? findCombatantLinkedToMapToken(myToken, table.state.combatants) : undefined;
   const recentDiceRolls = useMemo(
@@ -204,7 +199,6 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
         : table.temporaryHp(combatant.id, adjustment, false, { sourceName }));
     setHpAdjustment('');
   };
-  const linkedToken = active ? placedTokens.find((token) => findCombatantLinkedToMapToken(token, table.state.combatants)?.id === active.id) : undefined;
 
   return (
     <section className="rounded border border-slate-400/30 bg-white/60 p-3">
@@ -216,52 +210,18 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
         <span className="rounded-full bg-slate-900/8 px-2 py-1 text-[10px] font-bold text-slate-600">{ordered.length} {zh ? '个战斗单位' : 'combatants'}</span>
       </div>
 
-      <div className="mt-3">
-        <CombatModeHud
-          locale={locale}
-          state={table.state}
-          canManage={canManage}
-          onSelectCombatant={onSelectCombatant}
-          onLocateCombatant={onLocateCombatant}
-          onRequestDice={onQuickRoll ? (combatant) => void onQuickRoll({ expression: '1d20', label: `${combatant.displayName} ${zh ? '检定' : 'check'}` }) : undefined}
-          onAdvanceTurn={() => persist(table.moveTurn('next'))}
-          onPause={() => persist(table.pause())}
-          onResume={() => persist(table.resume())}
-          onEndCombat={() => persist(table.end())}
-        />
-      </div>
-
-      {active ? (
-        <div className="mt-3 rounded-lg border border-amber-400/40 bg-amber-50/80 p-2.5">
-          <div className="flex items-center gap-2">
-            {linkedToken?.imageUrl ? <img src={linkedToken.imageUrl} alt="" className="h-9 w-9 rounded-full object-cover" /> : <span className="grid h-9 w-9 place-items-center rounded-full bg-slate-800 text-xs font-black text-white">{initials(active.displayName)}</span>}
-            <div className="min-w-0"><div className="truncate text-sm font-black text-slate-800">{active.displayName}</div><div className="text-[10px] text-slate-600">{zh ? '当前回合' : 'Current turn'} · {zh ? '先攻' : 'Init'} {active.initiative ?? '—'}</div></div>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-bold text-slate-700">
-            <span className="rounded bg-white px-1.5 py-1">{combatHpLabel(active, zh)}</span>
-            {active.hpDisplay?.kind !== 'stage' && <span className="rounded bg-white px-1.5 py-1">{zh ? '临时' : 'Temp'} {active.temporaryHp ?? 0}</span>}
-            <span className="rounded bg-white px-1.5 py-1">{combatAcLabel(active, zh)}</span>
-            <span className="rounded bg-white px-1.5 py-1">{active.conditions.length ? active.conditions.join('、') : (zh ? '无状态' : 'No conditions')}</span>
-          </div>
-          <CombatHpBar combatant={active} zh={zh} />
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <button type="button" onClick={() => { onSelectCombatant(active.id); onLocateCombatant(active.id); }} className="rounded border border-slate-400/40 bg-white px-2 py-1 text-[10px] font-bold text-slate-700">{zh ? '定位 Token' : 'Locate token'}</button>
-            {role === 'player' && myCombatant?.id === active.id && onQuickRoll && <button type="button" onClick={() => void onQuickRoll({ expression: '1d20', label: `${active.displayName} ${zh ? '检定' : 'check'}` })} className="rounded border border-slate-400/40 bg-white px-2 py-1 text-[10px] font-bold text-slate-700">{zh ? '掷 d20' : 'Roll d20'}</button>}
-          </div>
-        </div>
-      ) : <p className="mt-3 text-[11px] leading-5 text-slate-500">{zh ? '将地图上的单位加入战斗，然后开始战斗。已有先攻会被保留，缺失先攻会自动掷骰。' : 'Add placed tokens, then start combat. Existing initiative is preserved.'}</p>}
-
       {canManage && (
         <>
-          <p className="mt-3 text-[10px] text-slate-500">{zh ? '主持人手动控制：HP 调整与攻击动作结算独立。攻击请使用「攻击动作」。' : 'Manual Host controls: HP adjustments are separate from resolved attacks. Use Attack Actions to attack.'}</p>
-          <div className="mt-3 border-t border-slate-300/40 pt-3">
+
+          <details open={table.state.turn.status === 'setup'} className="mt-3 border-t border-slate-300/40 pt-3"><summary className="cursor-pointer text-xs font-bold">{zh ? '遭遇设置 / 添加单位' : 'Encounter setup / add units'}</summary>
             <div className="flex items-center justify-between gap-2"><span className="text-[11px] font-bold text-slate-700">{zh ? '已放置单位' : 'Placed tokens'}</span><span className="text-[10px] text-slate-500">{zh ? '从地图加入战斗' : 'Add from map'}</span></div>
             {placedTokens.length === 0 ? <p className="mt-1 text-[11px] text-slate-500">{zh ? '地图上还没有可加入的 Token。' : 'No placed tokens yet.'}</p> : <div className="mt-2 flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">{placedTokens.map((token) => { const joined = findCombatantLinkedToMapToken(token, table.state.combatants); return <button key={token.id} type="button" disabled={!!joined} onClick={() => addToken(token)} className="rounded border border-slate-400/35 bg-white px-2 py-1 text-[10px] font-bold text-slate-700 disabled:opacity-45">{joined ? `${token.displayName ?? token.name} · ${zh ? '已加入' : 'Added'}` : `＋ ${token.displayName ?? token.name}`}</button>; })}</div>}
-          </div>
           <div className="mt-3 flex flex-wrap gap-1.5">
             <button type="button" onClick={() => persist(table.start())} disabled={ordered.length === 0 || table.state.turn.status === 'active'} className="rounded bg-slate-900 px-2.5 py-1.5 text-[10px] font-bold text-white disabled:opacity-40">{zh ? '开始战斗' : 'Start combat'}</button>
             <button type="button" onClick={() => persist(table.rollInitiativeGroup('missing'))} disabled={ordered.length === 0} className="rounded border border-slate-400/40 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-700 disabled:opacity-40">{zh ? '掷缺失先攻' : 'Roll missing'}</button>
             <button type="button" onClick={() => persist(table.rollInitiativeGroup('all'))} disabled={ordered.length === 0} className="rounded border border-slate-400/40 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-700 disabled:opacity-40">{zh ? '重新掷先攻' : 'Reroll initiative'}</button>
+          </div></details>
+          <div className="mt-3 flex flex-wrap gap-1.5">
             <button type="button" onClick={() => persist(table.moveTurn('next'))} disabled={table.state.turn.status !== 'active'} className="rounded border border-slate-400/40 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-700 disabled:opacity-40">{zh ? '下一回合' : 'Next turn'}</button>
             {table.state.turn.status === 'active' && <button type="button" onClick={() => persist(table.pause())} className="rounded border border-slate-400/40 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-700">{zh ? '暂停' : 'Pause'}</button>}
             {table.state.turn.status === 'paused' && <button type="button" onClick={() => persist(table.resume())} className="rounded border border-slate-400/40 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-700">{zh ? '继续' : 'Resume'}</button>}
@@ -276,13 +236,14 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
       {ordered.length > 0 && <div className="mt-3 space-y-1.5 border-t border-slate-300/40 pt-3">{ordered.map((combatant) => {
         const current = combatant.id === table.state.turn.activeCombatantId;
         const selectedNow = combatant.id === selected?.id;
-        return <div key={combatant.id} className={`rounded border px-2 py-2 ${current ? 'border-amber-400/55 bg-amber-50/70' : 'border-slate-300/45 bg-white/70'}`}>
+        return <div key={combatant.id} className={`border-b px-1 py-2 ${current ? 'border-amber-400/55 bg-amber-50/70' : 'border-slate-300/45 bg-white/70'}`}>
           <button type="button" onClick={() => { onSelectCombatant(combatant.id); onLocateCombatant(combatant.id); }} className="flex w-full items-center justify-between gap-2 text-left"><span className="min-w-0 truncate text-[11px] font-bold text-slate-800">{current ? '● ' : ''}{combatant.displayName}</span><span className="text-[10px] font-black text-slate-600">{zh ? '先攻' : 'Init'} {combatant.initiative ?? '—'}</span></button>
-          <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-slate-600"><span>{combatHpLabel(combatant, zh)}</span>{combatant.hpDisplay?.kind !== 'stage' && <><span>·</span><span>{zh ? '临时' : 'Temp'} {combatant.temporaryHp ?? 0}</span></>}<span>·</span><span>{combatAcLabel(combatant, zh)}</span>{combatant.conditions.length > 0 && <><span>·</span><span>{combatant.conditions.join('、')}</span></>}</div>
+          <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-slate-600"><span>{combatHpLabel(combatant, zh)}</span><span>·</span><span>{combatAcLabel(combatant, zh)}</span>{combatant.conditions.length > 0 && <><span>·</span><span>{combatant.conditions.join('、')}</span></>}</div>
+          {onOpenCampaignActor && combatant.sourceActorInstanceId && <button type="button" className="mt-1 text-xs font-bold underline" onClick={() => onOpenCampaignActor(combatant.sourceActorInstanceId!)}>{zh ? '打开战役战斗卡' : 'Open campaign combat sheet'}</button>}
           <CombatHpBar combatant={combatant} zh={zh} />
           {canManage && selectedNow && (
             <div className="mt-2 rounded border border-slate-300/70 bg-slate-50 p-2">
-              <div className="text-[10px] font-bold text-slate-700">{zh ? '主持人确认结算' : 'Host-confirmed adjustment'}</div>
+              <div className="text-[10px] font-bold text-slate-700">{zh ? '手动调整 HP' : 'Manual HP adjustment'}</div>
               {recentDiceRolls.length > 0 && (
                 <div className="mt-1.5 rounded bg-white/75 p-1.5">
                   <div className="text-[9px] font-bold text-slate-500">{zh ? '近期公开骰子' : 'Recent public rolls'}</div>
@@ -296,7 +257,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
                 </div>
               )}
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                <input value={hpAdjustment} onChange={(event) => setHpAdjustment(event.target.value)} type="number" min="0" placeholder={zh ? '数值' : 'Amount'} className="w-20 rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" />
+                <input aria-label={zh ? '调整数值' : 'Adjustment amount'} value={hpAdjustment} onChange={(event) => setHpAdjustment(event.target.value)} type="number" min="0" placeholder={zh ? '数值' : 'Amount'} className="w-20 rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" />
                 <button type="button" disabled={combatant.hpCurrent === undefined || !numberValue(hpAdjustment) || numberValue(hpAdjustment)! <= 0} onClick={() => applyHpAdjustment(combatant, 'damage')} className="rounded border border-red-300 bg-white px-2 py-1 text-[10px] font-bold text-red-700 disabled:opacity-40">{zh ? '应用伤害' : 'Apply damage'}</button>
                 <button type="button" disabled={combatant.hpCurrent === undefined || !numberValue(hpAdjustment) || numberValue(hpAdjustment)! <= 0} onClick={() => applyHpAdjustment(combatant, 'healing')} className="rounded border border-emerald-300 bg-white px-2 py-1 text-[10px] font-bold text-emerald-700 disabled:opacity-40">{zh ? '应用治疗' : 'Apply healing'}</button>
                 <button type="button" disabled={!numberValue(hpAdjustment) || numberValue(hpAdjustment)! <= 0} onClick={() => applyHpAdjustment(combatant, 'temporaryHp')} className="rounded border border-sky-300 bg-white px-2 py-1 text-[10px] font-bold text-sky-700 disabled:opacity-40">{zh ? '给予临时 HP' : 'Grant temp HP'}</button>
@@ -313,7 +274,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
               <p className="mt-1 text-[10px] text-slate-500">{combatant.hpCurrent === undefined ? (zh ? '先填写当前 HP，才能使用伤害或治疗快捷结算。' : 'Set current HP before using damage or healing adjustments.') : (zh ? '点击骰子结果只会填入数值；伤害会先抵扣临时 HP，所有改变仍需主持人确认。' : 'A roll only fills the value. Damage consumes temporary HP first; every change still needs host confirmation.')}</p>
             </div>
           )}
-          {canManage && selectedNow && <div className="mt-2 grid grid-cols-2 gap-1.5"><input defaultValue={combatant.initiative ?? ''} onBlur={(event) => update(combatant, { initiative: numberValue(event.target.value) })} type="number" placeholder={zh ? '先攻' : 'Initiative'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.hpCurrent ?? ''} onBlur={(event) => update(combatant, { hpCurrent: numberValue(event.target.value), hitPoints: numberValue(event.target.value) })} type="number" placeholder="HP" className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.hpMax ?? ''} onBlur={(event) => update(combatant, { hpMax: numberValue(event.target.value), maxHitPoints: numberValue(event.target.value) })} type="number" placeholder={zh ? '最大 HP' : 'Max HP'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.temporaryHp ?? ''} onBlur={(event) => update(combatant, { temporaryHp: numberValue(event.target.value) })} type="number" placeholder={zh ? '临时 HP' : 'Temp HP'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.armorClass ?? ''} onBlur={(event) => update(combatant, { armorClass: numberValue(event.target.value) })} type="number" placeholder="AC" className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.conditions.join(', ')} onBlur={(event) => update(combatant, { conditions: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) })} placeholder={zh ? '状态，逗号分隔' : 'Conditions'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /></div>}
+          {canManage && selectedNow && <details className="mt-2"><summary className="cursor-pointer text-xs">{zh ? '直接编辑数值' : 'Edit values'}</summary><div className="mt-2 grid grid-cols-2 gap-1.5"><input defaultValue={combatant.initiative ?? ''} onBlur={(event) => update(combatant, { initiative: numberValue(event.target.value) })} type="number" placeholder={zh ? '先攻' : 'Initiative'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.hpCurrent ?? ''} onBlur={(event) => update(combatant, { hpCurrent: numberValue(event.target.value), hitPoints: numberValue(event.target.value) })} type="number" placeholder="HP" className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.hpMax ?? ''} onBlur={(event) => update(combatant, { hpMax: numberValue(event.target.value), maxHitPoints: numberValue(event.target.value) })} type="number" placeholder={zh ? '最大 HP' : 'Max HP'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.temporaryHp ?? ''} onBlur={(event) => update(combatant, { temporaryHp: numberValue(event.target.value) })} type="number" placeholder={zh ? '临时 HP' : 'Temp HP'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.armorClass ?? ''} onBlur={(event) => update(combatant, { armorClass: numberValue(event.target.value) })} type="number" placeholder="AC" className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /><input defaultValue={combatant.conditions.join(', ')} onBlur={(event) => update(combatant, { conditions: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) })} placeholder={zh ? '状态，逗号分隔' : 'Conditions'} className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px]" /></div></details>}
         </div>;
       })}</div>}
       {error && <p className="mt-2 rounded bg-red-50 px-2.5 py-2 text-[10px] text-red-700">{error}</p>}

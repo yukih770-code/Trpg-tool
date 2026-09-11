@@ -23,9 +23,10 @@ assert.doesNotThrow(() => renderToStaticMarkup(<RoomAttackResolutionDetails payl
 const panel = renderToStaticMarkup(<RuntimeDndActionPanel scopeKey="test" actorCombatantId="pc"
   actions={[{ id: 'sword', name: 'Sword', kind: 'weapon_attack' }]} targets={[{ id: 'npc', label: 'Target' }]}
   selectedTargetId="npc" onDeclare={async () => { throw new Error('render never declares'); }} />);
-assert.ok(panel.includes('声明攻击'));
+// Deliberate UX label change; intent submission and all visibility assertions remain.
+assert.ok(panel.includes('>攻击</button>'));
 assert.ok(!panel.includes('攻击掷骰'));
 assert.ok(!panel.includes('掷伤害'));
-const empty = renderToStaticMarkup(<RuntimeDndActionPanel scopeKey="empty" actions={[]} />);
-assert.ok(empty.includes('尚无可结算的已编写攻击'));
+const empty = renderToStaticMarkup(<RuntimeDndActionPanel scopeKey="empty" actorCombatantId="pc" actions={[]} />);
+assert.ok(empty.includes('暂无已编写的攻击'));
 console.log('T12 rendering smoke passed: structured attack details, projection-gated vitals, no hidden-value fallback, intent button and authored-action empty state.');

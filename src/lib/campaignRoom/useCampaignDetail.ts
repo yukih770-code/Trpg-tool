@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiClientError } from '../api/apiTypes';
 import {
   campaignRoomApiClient,
@@ -20,7 +20,12 @@ export function useCampaignDetail(worldServerId: string, campaignId: string, opt
   const enabled = options.enabled !== false && worldServerId.trim() !== '' && campaignId.trim() !== '';
   const [state, setState] = useState<CampaignDetailState>({ detail: null, actors: [], rooms: [], loading: enabled, error: null, partialErrors: [] });
 
+  const revision = useRef(0);
+  const currentScope = useRef('');
+  currentScope.current = `${worldServerId}:${campaignId}`;
+
   const refresh = useCallback(async () => {
+    const request = ++revision.current;
     if (!enabled) {
       setState({ detail: null, actors: [], rooms: [], loading: false, error: null, partialErrors: [] });
       return;
@@ -31,6 +36,7 @@ export function useCampaignDetail(worldServerId: string, campaignId: string, opt
       campaignRoomApiClient.listCampaignActors(worldServerId, campaignId),
       campaignRoomApiClient.listRooms(worldServerId, campaignId),
     ]);
+    if (request !== revision.current || currentScope.current !== `${worldServerId}:${campaignId}`) return;
     if (detail.status === 'rejected') {
       setState({ detail: null, actors: [], rooms: [], loading: false, error: detail.reason instanceof ApiClientError ? detail.reason : new ApiClientError('invalid_response', '服务器请求暂时失败。'), partialErrors: [] });
       return;
@@ -57,5 +63,16 @@ export function useCampaignDetail(worldServerId: string, campaignId: string, opt
     return room;
   }, [campaignId, refresh, worldServerId]);
 
-  return { ...state, refresh, createRoom };
+  // Keep the accepted server record in the canonical actor collection. A
+  // separate saved-sheet overlay would resurrect stale data after clear.
+  const updateActor = useCallback(async (actorId: string, input: Parameters<typeof campaignRoomApiClient.updateCampaignActor>[3]) => {
+    const actor = await campaignRoomApiClient.updateCampaignActor(worldServerId, campaignId, actorId, input);
+    if (currentScope.current === `${worldServerId}:${campaignId}`) {
+      revision.current += 1;
+      setState(previous => ({ ...previous, loading: false, actors: previous.actors.map(item => item.campaignActorInstanceId === actorId ? actor : item) }));
+    }
+    return actor;
+  }, [campaignId, worldServerId]);
+
+  return { ...state, refresh, createRoom, updateActor };
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import type { MapTokenPresenceCandidate } from '../../lib/map/actorPresence';
 import type { RoomSnapshot } from '../../lib/platform/roomTypes';
 import type { RoomRuntimeEntryContext } from '../../lib/platform/roomRuntimeEntryTypes';
 import { RoomLobbyShell } from './RoomLobbyShell';
@@ -29,6 +30,9 @@ export interface HostedRoomLaunchPanelProps {
   originLabel?: string;
   originDetail?: string;
   onClose?: () => void;
+  campaignActorCandidates?: MapTokenPresenceCandidate[];
+  campaignActorRevision?: number;
+  onOpenCampaignActor?: (actorId: string | undefined, source: 'token' | 'combat' | 'runtime') => void;
   panelClassName?: string;
   onBackOverrideChange?: (override: { label?: string; onBack: () => void } | null) => void;
 }
@@ -43,6 +47,9 @@ export function HostedRoomLaunchPanel({
   originLabel = '主持战役',
   originDetail,
   onClose,
+  onOpenCampaignActor,
+  campaignActorCandidates,
+  campaignActorRevision,
   panelClassName,
   onBackOverrideChange,
 }: HostedRoomLaunchPanelProps) {
@@ -77,6 +84,9 @@ export function HostedRoomLaunchPanel({
         context={runtimeEntry.context}
         room={runtimeEntry.room}
         serverLabel={serverLabel}
+        campaignActorCandidates={campaignActorCandidates}
+        campaignActorRevision={campaignActorRevision}
+        onOpenCampaignActor={onOpenCampaignActor}
         onBackToLobby={() => setRuntimeEntry(null)}
       />
     );

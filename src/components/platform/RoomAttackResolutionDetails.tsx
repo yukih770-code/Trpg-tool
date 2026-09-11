@@ -4,6 +4,26 @@ function record(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
+/** Reads recorded outcome; presentation never re-evaluates AC or damage. */
+export function RoomAttackResult({ event }: { event: RoomRuntimeLogEvent }) {
+  const payload = record(event.payload);
+  const facts = record(payload.resolution);
+  const combatants = Array.isArray(payload.combatants) ? payload.combatants.map(record) : [];
+  const name = (id: unknown) => {
+    const candidate = combatants.find((item) => item.id === id)?.displayName;
+    return typeof candidate === 'string' ? candidate : undefined;
+  };
+  const state = record(payload.privileged);
+  const outcome = facts.critical ? '重击' : facts.outcome === 'hit' ? '命中' : facts.outcome === 'miss' ? '未命中' : '攻击';
+  return <div className="live-attack-result">
+    <strong>{outcome}{typeof facts.attackTotal === 'number' ? ` · ${facts.attackTotal}` : ''}</strong>
+    <span>{name(payload.actorCombatantId) ?? '角色'} → {name(payload.targetCombatantId) ?? '目标'}</span>
+    {typeof facts.damageTotal === 'number' && <span>伤害掷骰 <b>{facts.damageTotal}</b>{typeof facts.damageType === 'string' ? ` ${facts.damageType}` : ''}</span>}
+    {typeof state.afterHp === 'number' && <span>HP {state.afterHp}{typeof state.afterTemporaryHp === 'number' && state.afterTemporaryHp > 0 ? ` · 临时 HP ${state.afterTemporaryHp}` : ''}</span>}
+    <details><summary className="cursor-pointer text-xs underline">骰子与状态详情</summary><RoomAttackResolutionDetails payload={event.payload} /></details>
+  </div>;
+}
+
 /** Presentation only: every value comes from the server's per-viewer payload. */
 export function RoomAttackResolutionDetails({ payload }: { payload: RoomRuntimeLogEvent['payload'] }) {
   const p = record(payload);

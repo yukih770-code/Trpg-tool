@@ -1,14 +1,16 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import type { DndAttackIntent, DndAttackResponse } from '../../lib/dnd/dndAttackIntent';
 import { DndAttackPendingIntent } from '../../lib/dnd/dndAttackPendingIntent';
 import { RoomServerHttpError } from '../../lib/platform/roomServerHttpClient';
-import { RoomAttackResolutionDetails } from './RoomAttackResolutionDetails';
+import { RoomAttackResult } from './RoomAttackResolutionDetails';
 
 import type { RoomRuntimeDndActionShortcut } from '../../lib/platform/roomRuntimeActorProjectionTypes';
 import type { SharedDiceRollMode, SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
 
 export interface RuntimeDndActionPanelProps {
   scopeKey: string;
+  actorVitals?: ReactNode;
+  onRefreshActions?: () => void;
   actorCombatantId?: string;
   actors?: Array<{ id: string; label: string }>;
   onSelectActor?: (actorId: string) => void;
@@ -44,7 +46,7 @@ const ROLL_MODE_OPTIONS: Array<{ id: SharedDiceRollMode; label: string }> = [
  * durable history; this strip is only the initiating player's echo.
  */
 export function RuntimeDndActionPanel({
-  scopeKey, actorCombatantId, actors, onSelectActor, onDeclare, actionsError,
+  scopeKey, actorCombatantId, actors, onSelectActor, onDeclare, actionsError, actorVitals, onRefreshActions,
   characterName,
   actions,
   targets = [],
@@ -85,174 +87,49 @@ export function RuntimeDndActionPanel({
     setPendingAttack(intent); void submitAttack(intent);
   };
 
-  const selectedTarget = targets.find((target) => target.id === selectedTargetId);
+  const [selectedActionId, setSelectedActionId] = useState('');
+  const attacks = actions.filter((action) => action.kind === 'weapon_attack' || action.kind === 'spell_attack');
+  const actionId = pendingAttack?.actionId ?? attacks.find((action) => action.id === selectedActionId)?.id ?? attacks[0]?.id ?? '';
+  const displayedTargetId = pendingAttack?.targetCombatantId ?? selectedTargetId;
+  const displayedActorId = pendingAttack?.actorCombatantId ?? actorCombatantId;
+  const validTarget = targets.some((target) => target.id === selectedTargetId);
+  const frozen = attackBusy || !!pendingAttack;
   const labelPrefix = characterName?.trim() || '我的角色';
-  const targetSuffix = selectedTarget ? ` → ${selectedTarget.label}` : '';
-
-  /**
-   * Fire the authoritative roll and display whatever the server returns. No
-   * local dice are rolled here and no result is recomputed.
-   */
-  const submitRoll = (input: { expression: string; label: string; mode?: SharedDiceRollMode }) => {
-    if (!onRoll) return;
-    setRollError(null);
-    const pending = onRoll(input) as Promise<SharedDiceRollResult> | undefined;
-    if (!pending || typeof pending.then !== 'function') return;
-    void pending
-      .then((result) => { if (result) setLastRoll(result); })
-      .catch((error) => setRollError(error instanceof Error ? error.message : String(error)));
+  const submitRoll = async (input = { expression: '1d20', label: labelPrefix + ' 检定', mode: rollMode }) => {
+    try {
+      const result = await onRoll?.(input);
+      if (result) setLastRoll(result);
+      setRollError(null);
+    } catch (error) { setRollError(error instanceof Error ? error.message : String(error)); }
   };
-
-  const actionPresentation = (action: RoomRuntimeDndActionShortcut) => {
-    switch (action.kind) {
-      case 'weapon_attack': return { badge: '武器', tone: 'bg-[#8b3a2f]/10 text-[#8b3a2f]', summary: '武器攻击' };
-      case 'spell_attack': return { badge: '法术', tone: 'bg-violet-100 text-violet-800', summary: '法术攻击' };
-      case 'spell_cast': return { badge: action.availability === 'prepared' ? '已准备' : '已知法术', tone: 'bg-indigo-100 text-indigo-800', summary: `${action.spellLevel === 0 ? '戏法' : action.spellLevel === undefined ? '法术' : `${action.spellLevel} 环法术`}${action.activation ? ` · ${action.activation}` : ''}${action.range ? ` · ${action.range}` : ''}` };
-      case 'save_dc': return { badge: '豁免', tone: 'bg-sky-100 text-sky-800', summary: action.saveDc === undefined ? '豁免检定' : `${action.saveAbility ? `${saveAbilityLabel(action.saveAbility)}豁免 ` : ''}DC ${action.saveDc}` };
-      case 'damage_only': return { badge: '伤害', tone: 'bg-amber-100 text-amber-900', summary: '效果伤害' };
-      default: return { badge: '动作', tone: 'bg-slate-200 text-slate-700', summary: '自定义动作' };
-    }
-  };
-
-  return (
-    <div className="space-y-3 text-left">
-      <header className="rounded-md border border-[#8b3a2f]/25 bg-[#fff5ed] p-2.5">
-        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8b3a2f]/75">DND 动作</div>
-        <div className="mt-0.5 text-sm font-black text-[#4a1e17]">{labelPrefix}的回合操作</div>
-        <p className="mt-1 text-[10px] leading-relaxed text-[#6e4237]">选择目标并声明攻击。服务器掷攻击与伤害骰，判定命中并更新生命值；结果写入会话日志。</p>
-        {actors && <label className="mt-2 block text-xs">行动角色 <select disabled={attackBusy || !!pendingAttack} value={actorCombatantId ?? ''} onChange={(event) => onSelectActor?.(event.target.value)} className="rounded border bg-white p-1"><option value="">选择角色 / NPC</option>{actors.map((actor) => <option key={actor.id} value={actor.id}>{actor.label}</option>)}</select></label>}
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] font-bold text-[#6e4237]">d20 检定</span>
-          <div className="inline-flex overflow-hidden rounded border border-[#8b3a2f]/35">
-            {ROLL_MODE_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                aria-pressed={rollMode === option.id}
-                onClick={() => setRollMode(option.id)}
-                className={`px-2 py-1 text-[10px] font-bold ${rollMode === option.id ? 'bg-[#8b3a2f] text-white' : 'bg-white/80 text-[#6b281d]'}`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <span className="text-[9px] text-[#6e4237]/75">只作用于攻击与检定，伤害骰不受影响。</span>
-        </div>
-      </header>
-
-      {actionsError && <p role="alert" className="text-xs text-red-700">动作读取失败：{actionsError}</p>}
-      {!actorCombatantId && <p className="text-xs text-slate-600">请先将行动角色加入战斗并选择角色。</p>}
-      {pendingAttack && <div className="rounded border border-amber-400 bg-amber-50 p-2 text-xs">
-        {attackBusy ? '等待服务器结算…' : '上次攻击尚未确认。重试会复用同一请求，不会重复执行已结算攻击。'}
-        <button type="button" disabled={attackBusy || !onDeclare} onClick={() => void submitAttack(pendingAttack)} className="ml-2 rounded border px-2 py-1 disabled:opacity-40">重试同一攻击</button>
-      </div>}
-      {attackResult && <div className="rounded border border-emerald-400 bg-emerald-50 p-2 text-xs" role="status">
-        <strong>攻击结果（服务器）</strong><p>{attackResult.event.text}</p>
-        {attackResult.replayed && <p>已恢复原始结算结果。</p>}
-        <RoomAttackResolutionDetails payload={attackResult.event.payload} />
-      </div>}
-
-      {(lastRoll || rollError) && (
-        <div className="rounded-md border border-emerald-600/25 bg-emerald-50/70 p-2.5">
-          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-800/75">本次结果（服务器判定）</div>
-          {rollError ? (
-            <p className="mt-1 text-[11px] font-bold text-red-700">{rollError}</p>
-          ) : lastRoll ? (
-            <>
-              <div className="mt-1 flex flex-wrap items-baseline gap-2">
-                <span className="text-2xl font-black leading-none text-emerald-700">{lastRoll.total}</span>
-                <span className="text-[10px] text-slate-500">{lastRoll.normalizedExpression}</span>
-                {lastRoll.mode && lastRoll.mode !== 'normal' && (
-                  <span className="rounded-full bg-emerald-600/10 px-2 py-0.5 text-[9px] font-bold text-emerald-800">
-                    {lastRoll.mode === 'advantage' ? '优势' : '劣势'}
-                  </span>
-                )}
-                {lastRoll.dc !== undefined && (
-                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${lastRoll.outcome === 'success' ? 'bg-emerald-600/15 text-emerald-800' : 'bg-red-600/10 text-red-700'}`}>
-                    DC {lastRoll.dc} {lastRoll.outcome === 'success' ? '成功' : '失败'}
-                  </span>
-                )}
-              </div>
-              <div className="mt-1 text-[10px] text-slate-600">
-                {lastRoll.rawRolls && lastRoll.keptRoll !== undefined ? (
-                  <span>
-                    骰面 [{lastRoll.rawRolls.join(', ')}]
-                    {lastRoll.rawRolls.length > 1 && <span className="font-bold text-slate-800"> → 采用 {lastRoll.keptRoll}</span>}
-                  </span>
-                ) : (
-                  <span>骰面 {lastRoll.terms.map((term) => `[${term.rolls.join(', ')}]`).join(' + ')}</span>
-                )}
-                {lastRoll.modifier !== 0 && <span>{lastRoll.modifier > 0 ? ` + ${lastRoll.modifier}` : ` - ${Math.abs(lastRoll.modifier)}`}</span>}
-                {lastRoll.isNatural20 && <span className="ml-1 font-bold text-amber-700">天然 20</span>}
-                {lastRoll.isNatural1 && <span className="ml-1 font-bold text-slate-500">天然 1</span>}
-              </div>
-              <p className="mt-1 text-[9px] leading-relaxed text-slate-500">通用骰子记录已写入会话日志。</p>
-            </>
-          ) : null}
-        </div>
-      )}
-
-      <div className="rounded-md border border-slate-300/60 bg-white/75 p-2">
-        <label className="flex items-center gap-2 text-[10px] font-bold text-slate-600">
-          当前目标
-          <select
-            value={selectedTargetId ?? ''}
-            onChange={(event) => onSelectTarget?.(event.target.value || undefined)}
-            className="min-w-0 flex-1 rounded border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-medium text-slate-700"
-          >
-            <option value="">未选择目标</option>
-            {targets.map((target) => <option key={target.id} value={target.id}>{target.label}</option>)}
-          </select>
-        </label>
-        {targets.length === 0 && <p className="mt-1 text-[9px] leading-relaxed text-slate-500">战斗开始后，可从地图或先攻栏选中目标。</p>}
-      </div>
-
-      {!actions.some((action) => action.kind === 'weapon_attack' || action.kind === 'spell_attack') && (
-        <div className="rounded-md border border-dashed border-slate-400/45 bg-white/55 p-3 text-[11px] leading-relaxed text-slate-600">
-          这个角色尚无可结算的已编写攻击。主持人可在战役角色的 Lite Sheet 中添加攻击动作；装备展示不会自动生成攻击。
-        </div>
-      )}
-      {actions.length > 0 && (
-        <div className="grid gap-2">
-          {actions.map((action) => {
-            const attack = action.attackBonus === undefined ? undefined : `d20${action.attackBonus >= 0 ? '+' : ''}${action.attackBonus}`;
-            const presentation = actionPresentation(action);
-            return (
-              <article key={action.id} className="rounded-md border border-slate-300/65 bg-white/85 p-2.5 shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <h4 className="text-[12px] font-black text-slate-800">{action.name}</h4>
-                    <p className="mt-0.5 text-[9px] text-slate-500">
-                      {presentation.summary}{attack ? ` · 攻击 ${attack}` : ''}{action.damageFormula ? ` · 伤害 ${action.damageFormula}${action.damageType ? ` ${action.damageType}` : ''}` : ''}
-                    </p>
-                  </div>
-                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${presentation.tone}`}>{presentation.badge}</span>
-                </div>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {(action.kind === 'weapon_attack' || action.kind === 'spell_attack') && <button type="button" disabled={!onDeclare || !actorCombatantId || !selectedTargetId || attackBusy || !!pendingAttack} onClick={() => declareAttack(action.id)} className="rounded border border-[#8b3a2f]/45 bg-white px-2.5 py-1.5 text-[10px] font-bold text-[#6b281d] disabled:opacity-45">声明攻击</button>}
-                  {action.kind === 'damage_only' && action.damageFormula && <button type="button" disabled={!onRoll} onClick={() => submitRoll({ expression: action.damageFormula!, label: `${labelPrefix} · ${action.name} 手动伤害骰${targetSuffix}` })} className="rounded border border-amber-500/45 bg-amber-50 px-2.5 py-1.5 text-[10px] font-bold text-amber-900 disabled:opacity-45">手动掷骰（不改变 HP）</button>}
-                  {action.kind === 'spell_cast' && <span className="rounded border border-indigo-300/60 bg-indigo-50 px-2.5 py-1.5 text-[10px] font-bold text-indigo-800">施放效果由主持人确认</span>}
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
-
-      <div className="flex items-center justify-between gap-2 rounded-md border border-slate-300/60 bg-slate-50/80 p-2">
-        <div>
-          <div className="text-[10px] font-bold text-slate-700">通用检定</div>
-          <div className="text-[9px] text-slate-500">没有专用动作时使用。</div>
-        </div>
-        <button type="button" disabled={!onRoll} onClick={() => submitRoll({ expression: '1d20', label: `${labelPrefix} 检定${targetSuffix}`, mode: rollMode })} className="rounded border border-slate-400/50 bg-white px-2.5 py-1.5 text-[10px] font-bold text-slate-700 disabled:opacity-45">掷 d20</button>
-      </div>
+  if (!actorCombatantId && !pendingAttack) return <section className="live-exploration-actions" aria-label="角色与动作"><div><strong>{characterName || (actors ? '主持人' : '我的角色')}</strong><span>{actorVitals || '探索中 · 将角色加入战斗后可使用攻击。'}</span></div>{onRoll && <button type="button" onClick={() => void submitRoll()}>掷 d20</button>}{rollError && <span role="alert">{rollError}</span>}{lastRoll && <span role="status">检定 {lastRoll.total}</span>}</section>;
+  return <section aria-label="攻击动作" data-live-attack>
+    <div className="live-action-form">
+      {actors ? <label className="live-actor-select">控制角色 / NPC
+        <select aria-label="控制角色 / NPC" disabled={frozen} value={displayedActorId ?? ''} onChange={(event) => onSelectActor?.(event.target.value)}>
+          <option value="">选择行动角色</option>{pendingAttack && !actors.some((actor) => actor.id === displayedActorId) && <option value={displayedActorId}>待确认角色</option>}{actors.map((actor) => <option key={actor.id} value={actor.id}>{actor.label}</option>)}
+        </select>
+      </label> : <div className="live-actor-quick"><strong>{labelPrefix}</strong><small>{actorVitals ?? (actorCombatantId ? '选择动作与目标' : '尚未加入战斗')}</small></div>}
+      <label>动作<select aria-label="攻击动作" disabled={frozen || !attacks.length} value={actionId} onChange={(event) => setSelectedActionId(event.target.value)}>
+        {pendingAttack && !attacks.some((action) => action.id === actionId) ? <option value={actionId}>待确认动作</option> : !attacks.length && <option value="">暂无攻击动作</option>}{attacks.map((action) => <option key={action.id} value={action.id}>{action.name}</option>)}
+      </select></label>
+      <label className="live-target-field">目标<select aria-label="攻击目标" disabled={frozen} value={pendingAttack ? displayedTargetId : validTarget ? selectedTargetId : ''} onChange={(event) => onSelectTarget?.(event.target.value || undefined)}>
+        <option value="">在地图上选择目标</option>{pendingAttack && !targets.some((target) => target.id === displayedTargetId) && <option value={displayedTargetId}>待确认目标</option>}{targets.map((target) => <option key={target.id} value={target.id}>{target.label}</option>)}
+      </select></label>
+      <label>掷骰方式<select aria-label="掷骰方式" disabled={frozen} value={pendingAttack?.mode ?? rollMode} onChange={(event) => setRollMode(event.target.value as SharedDiceRollMode)}>
+        {ROLL_MODE_OPTIONS.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
+      </select></label>
+      <button className="live-attack-button" type="button" disabled={!onDeclare || !actorCombatantId || !validTarget || !actionId || frozen} onClick={() => declareAttack(actionId)}>{attackBusy ? '结算中…' : '攻击'}</button>
     </div>
-  );
-}
-
-function saveAbilityLabel(ability: NonNullable<RoomRuntimeDndActionShortcut['saveAbility']>): string {
-  const labels: Record<NonNullable<RoomRuntimeDndActionShortcut['saveAbility']>, string> = {
-    strength: '力量', dexterity: '敏捷', constitution: '体质', intelligence: '智力', wisdom: '感知', charisma: '魅力',
-  };
-  return labels[ability];
+    <div className="live-action-feedback">
+      {actionsError && <p role="alert" className="text-red-700">动作读取失败：{actionsError} {onRefreshActions && <button type="button" className="underline" onClick={onRefreshActions}>重新读取</button>}</p>}
+      {!attacks.length && !actionsError && <p className="text-slate-600">{actorCombatantId ? '暂无已编写的攻击；请在战役角色资料中添加。' : '将角色加入战斗后可使用攻击。'} {onRefreshActions && <button type="button" className="underline" onClick={onRefreshActions}>刷新动作</button>} {onRoll && <button type="button" className="ml-2 underline" onClick={() => void submitRoll()}>掷 d20</button>}</p>}
+      {attacks.length > 0 && !validTarget && !pendingAttack && <p className="text-slate-600">选择目标后即可攻击。</p>}
+      {pendingAttack && <div role="status" className="flex items-center justify-between gap-2 text-amber-800"><span>{attackBusy ? '正在结算攻击…' : '攻击尚未确认；重试会恢复同一次结果。'}</span><button type="button" disabled={attackBusy || !onDeclare} onClick={() => void submitAttack(pendingAttack)} className="rounded border border-amber-400 px-3 py-1">重试同一攻击</button></div>}
+      {rollError && <p role="alert" className="text-red-700">{rollError}</p>}
+      {attackResult && <div role="status"><RoomAttackResult event={attackResult.event} />{attackResult.replayed && <small>已恢复原始结果。</small>}</div>}
+      {lastRoll && <p role="status">检定 {lastRoll.total} · {lastRoll.normalizedExpression}</p>}
+      {actions.some((action) => action.kind !== 'weapon_attack' && action.kind !== 'spell_attack') && <details><summary className="cursor-pointer">其他动作与法术</summary><div className="flex flex-wrap gap-3 py-2">{actions.filter((action) => action.kind !== 'weapon_attack' && action.kind !== 'spell_attack').map((action) => <span key={action.id}>{action.name}{action.saveDc !== undefined && <small> · DC {action.saveDc} {action.saveAbility}</small>}{action.range && <small> · {action.range}</small>}{action.kind === 'damage_only' && action.damageFormula && <button type="button" className="ml-2 underline" disabled={!onRoll} onClick={() => void submitRoll({ expression: action.damageFormula!, label: labelPrefix + ' · ' + action.name, mode: 'normal' })}>手动掷骰</button>}{action.kind === 'spell_cast' && <small> · 主持人裁定</small>}</span>)}</div></details>}
+    </div>
+  </section>;
 }

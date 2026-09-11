@@ -9,11 +9,10 @@ import {
 import type {
   RoomRuntimeLogEvent,
   RoomRuntimeLogEventKind,
-  RoomRuntimeLogVisibility,
 } from '../../lib/platform/roomRuntimeLogTypes';
 import type { SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
 import { RoomSessionAssistantPanel } from './RoomSessionAssistantDialog';
-import { RoomAttackResolutionDetails } from './RoomAttackResolutionDetails';
+import { RoomAttackResult } from './RoomAttackResolutionDetails';
 
 /**
  * RoomRuntimeLogPreviewPanel (v0).
@@ -36,6 +35,7 @@ export interface RoomRuntimeLogPreviewPanelProps {
   currentMemberId?: string;
   currentMemberLabel?: string;
   canAppend?: boolean;
+  memberNames?: Record<string, string>;
   /** Live public events from the lobby's shared socket; consumed then cleared. */
   liveEvents?: RoomRuntimeLogEvent[];
   onConsumedLiveEvents?: () => void;
@@ -72,53 +72,8 @@ const KIND_LABEL: Record<RoomRuntimeLogEventKind, string> = {
   'combat.ended': '战斗结束',
 };
 
-// Per-kind badge tone so 投骰 / 公开信息 / 状态记录 / 系统 read apart at a glance.
-const KIND_TONE: Record<RoomRuntimeLogEventKind, string> = {
-  'chat.message': 'bg-slate-500/10 text-slate-600',
-  'system.note': 'bg-slate-500/10 text-slate-500',
-  'dice.roll': 'bg-indigo-500/10 text-indigo-700',
-  'host.note': 'bg-emerald-500/10 text-emerald-700',
-  'state.manualChange': 'bg-amber-500/10 text-amber-700',
-  'combat.started': 'bg-rose-500/10 text-rose-700',
-  'combat.initiative_rolled': 'bg-rose-500/10 text-rose-700',
-  'combat.turn_advanced': 'bg-rose-500/10 text-rose-700',
-  'combat.round_advanced': 'bg-rose-500/10 text-rose-700',
-  'combat.combatant_added': 'bg-rose-500/10 text-rose-700',
-  'combat.combatant_updated': 'bg-rose-500/10 text-rose-700',
-  'combat.combatant_removed': 'bg-rose-500/10 text-rose-700',
-  'combat.damage_applied': 'bg-rose-500/10 text-rose-700',
-  'combat.attack_resolved': 'bg-rose-500/10 text-rose-700',
-  'combat.healing_applied': 'bg-rose-500/10 text-rose-700',
-  'combat.temporary_hp_applied': 'bg-rose-500/10 text-rose-700',
-  'combat.condition_added': 'bg-rose-500/10 text-rose-700',
-  'combat.condition_removed': 'bg-rose-500/10 text-rose-700',
-  'combat.condition_toggled': 'bg-rose-500/10 text-rose-700',
-  'combat.hp_overridden': 'bg-rose-500/10 text-rose-700',
-  'combat.table_cleared': 'bg-rose-500/10 text-rose-700',
-  'combat.paused': 'bg-rose-500/10 text-rose-700',
-  'combat.resumed': 'bg-rose-500/10 text-rose-700',
-  'combat.ended': 'bg-rose-500/10 text-rose-700',
-};
-
-const VISIBILITY_LABEL: Record<RoomRuntimeLogVisibility, string> = {
-  public: '公开',
-  hostOnly: '仅主持人可见',
-  actorPrivate: '私密（v0 不支持）',
-};
-
 function shortId(id: string): string {
   return id.length <= 8 ? id : `…${id.slice(-6)}`;
-}
-
-function briefPayload(payload: unknown): string {
-  if (payload === undefined) return '';
-  try {
-    const json = JSON.stringify(payload);
-    if (!json) return '';
-    return json.length > 120 ? `${json.slice(0, 120)}…` : json;
-  } catch {
-    return '[unserializable]';
-  }
 }
 
 // ── M35 timeline filter ──────────────────────────────────────────────────────
@@ -309,6 +264,7 @@ export function RoomRuntimeLogPreviewPanel({
   currentMemberId,
   currentMemberLabel,
   canAppend,
+  memberNames = {},
   liveEvents,
   onConsumedLiveEvents,
   defaultCollapsed,
@@ -329,6 +285,9 @@ export function RoomRuntimeLogPreviewPanel({
   const [seenCount, setSeenCount] = useState(0);
   // M35 timeline filter + M36 session recap (both derive from the SAME events).
   const [logFilter, setLogFilter] = useState<LogFilterId>('all');
+  const [activityTab, setActivityTab] = useState<'chat' | 'game'>('game');
+  const [showDebug, setShowDebug] = useState(false);
+  const feedRef = useRef<HTMLDivElement>(null);
   const [showRecap, setShowRecap] = useState(false);
   const [recapCopied, setRecapCopied] = useState<'idle' | 'ok' | 'fail'>('idle');
 
@@ -407,28 +366,33 @@ export function RoomRuntimeLogPreviewPanel({
       text: draft.trim(),
       authorMemberId: currentMemberId,
     })
-      .then(() => {
-        // The appended event returns via the shared socket (runtimeLogAppended)
-        // and is merged by eventId, so no optimistic insert is needed.
+      .then(({ event }) => {
+        setEvents((previous) => mergeEvents(previous, [event]));
+        setActivityTab('chat');
         setDraft('');
       })
       .catch((e) => setSendError(errMsg(e)))
       .finally(() => setSending(false));
   };
 
-  const card = 'rounded border border-slate-400/30 bg-white/60 p-3';
+  useEffect(() => {
+    const feed = feedRef.current;
+    if (feed) feed.scrollTop = feed.scrollHeight;
+  }, [activityTab, collapsed, events.length]);
+  const visibleEvents = events.filter((event) => activityTab === 'chat' ? event.kind === 'chat.message' : event.kind !== 'chat.message' && matchesLogFilter(event, logFilter));
+
   const label = 'text-[11px] font-bold uppercase tracking-wide text-slate-600';
   const btn = 'rounded border border-slate-500/40 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide disabled:opacity-40';
   const input = 'rounded border border-slate-400/40 bg-white/70 px-2 py-1 text-[12px] outline-none';
 
   return (
-    <section className={card}>
+    <section className="live-activity">
       {/* Collapsible header: title + counts + (new) badge; expand to see list/input. */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <button type="button" className="flex items-center gap-2 text-left" onClick={toggleCollapsed} aria-expanded={!collapsed}>
           <span className="text-[10px] text-slate-400">{collapsed ? '▶' : '▼'}</span>
-          <span className={label}>RuntimeLog 预览</span>
-          <span className="text-[10px] text-slate-500">{events.length} 条 · seq {latestSeqDisplay}</span>
+          <span className={label}>聊天与游戏动态</span>
+          <span className="text-[10px] text-slate-500">{events.length} 条</span>
           {unread > 0 && (
             <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">有新日志 {unread}</span>
           )}
@@ -452,12 +416,10 @@ export function RoomRuntimeLogPreviewPanel({
 
       {collapsed ? null : (
         <>
-      <p className="mb-2 mt-1.5 text-[10px] text-slate-500">
-        这是当前成员的 server-side RuntimeLog 投影：主持人可见公开与 hostOnly 事件，其他成员只接收允许的投影。
-      </p>
+
 
       {enableHostSessionAssistant && currentMemberId && (
-        <RoomSessionAssistantPanel
+        <details className="my-2"><summary className="cursor-pointer text-xs">AI 本场助手</summary><RoomSessionAssistantPanel
           roomId={roomId}
           baseUrl={baseUrl}
           memberId={currentMemberId}
@@ -466,7 +428,7 @@ export function RoomRuntimeLogPreviewPanel({
             latestSeqRef.current = Math.max(latestSeqRef.current, event.seq);
             setLatestSeqDisplay(latestSeqRef.current);
           }}
-        />
+        /></details>
       )}
 
       {listError && <div className="mb-2 rounded border border-red-400/40 bg-red-500/10 px-2 py-1 text-[10px] text-red-700">日志加载失败：{listError}</div>}
@@ -506,8 +468,11 @@ export function RoomRuntimeLogPreviewPanel({
         </div>
       ) : (
       <>
-      {/* ── M35 timeline filter ── */}
-      <div className="mb-1.5 flex flex-wrap gap-1">
+      <div className="my-3 flex gap-2" aria-label="动态类别">
+        {(['chat', 'game'] as const).map((tab) => <button key={tab} type="button" className={btn} aria-pressed={activityTab === tab} onClick={() => setActivityTab(tab)}>{tab === 'chat' ? '聊天' : '游戏记录'}</button>)}
+      </div>
+      {/* Game-only filters preserve the existing projected event feed. */}
+      <div className="mb-1.5 flex flex-wrap gap-1" hidden={activityTab !== 'game'}>
         {LOG_FILTERS.map((f) => (
           <button
             key={f.id}
@@ -525,38 +490,33 @@ export function RoomRuntimeLogPreviewPanel({
         ))}
       </div>
 
-      <div className="max-h-72 space-y-1 overflow-y-auto">
-        {events.filter((e) => matchesLogFilter(e, logFilter)).length === 0 ? (
+      <div ref={feedRef} className="live-activity-feed space-y-1 overflow-y-auto" role="log" aria-label={activityTab === 'chat' ? '聊天消息' : '游戏记录'}>
+        {visibleEvents.length === 0 ? (
           <div className="text-[11px] italic text-slate-500">
-            {loading ? '加载中…' : LOG_FILTERS.find((f) => f.id === logFilter)?.empty}
+            {loading ? '加载中…' : activityTab === 'chat' ? '向队伍发送第一条消息。' : LOG_FILTERS.find((f) => f.id === logFilter)?.empty}
           </div>
         ) : (
-          events.filter((e) => matchesLogFilter(e, logFilter)).map((e) => (
-            <div key={e.eventId} className="rounded border border-slate-300/40 bg-white/70 px-2 py-1 text-[11px]">
+          visibleEvents.map((e) => (
+            <article key={e.eventId} className="border-b border-slate-300/50 py-3 text-[11px]">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[9px] font-bold text-slate-400">#{e.seq}</span>
-                <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${isSceneFocusEvent(e) ? 'bg-teal-500/10 text-teal-700' : (KIND_TONE[e.kind] ?? 'bg-slate-500/10 text-slate-600')}`}>{isSceneFocusEvent(e) ? '场景焦点' : (KIND_LABEL[e.kind] ?? e.kind)}</span>
-                <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{VISIBILITY_LABEL[e.visibility] ?? e.visibility}</span>
-                {e.authorMemberId && <span className="text-[9px] text-slate-400">作者 {shortId(e.authorMemberId)}</span>}
-                {e.actorBindingId && <span className="text-[9px] text-slate-400">角色 {shortId(e.actorBindingId)}</span>}
-                <span className="ml-auto text-[9px] text-slate-400">{e.createdAt}</span>
+                <span className="font-bold text-slate-600">{e.kind === 'chat.message' ? memberNames[e.authorMemberId ?? ''] ?? (e.authorMemberId === currentMemberId ? currentMemberLabel ?? '我' : '成员') : KIND_LABEL[e.kind] ?? '游戏事件'}</span>
+                {e.visibility === 'hostOnly' && <span className="text-amber-800">仅主持人</span>}
+                <time className="ml-auto text-slate-500" dateTime={e.createdAt}>{new Date(e.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time>
               </div>
               {e.kind === 'dice.roll' && asDiceRoll(e.payload) ? (
                 <DiceResultLine roll={asDiceRoll(e.payload)!} />
               ) : e.kind === 'combat.attack_resolved' ? (
-                <>
-                  <p className="mt-0.5 text-xs">{e.text}</p>
-                  <RoomAttackResolutionDetails payload={e.payload} />
-                </>
+                <RoomAttackResult event={e} />
               ) : e.kind === 'host.note' || e.kind === 'state.manualChange' ? (
                 <RunNoteLine e={e} />
               ) : (
                 <>
                   {e.text && <div className="mt-0.5 whitespace-pre-wrap text-[12px] text-slate-700">{e.text}</div>}
-                  {briefPayload(e.payload) && <div className="mt-0.5 break-all text-[9px] text-slate-400">{briefPayload(e.payload)}</div>}
+
                 </>
               )}
-            </div>
+              {showDebug && <pre className="mt-2 overflow-auto text-[10px]">{JSON.stringify(e, null, 2)}</pre>}
+            </article>
           ))
         )}
       </div>
@@ -567,10 +527,10 @@ export function RoomRuntimeLogPreviewPanel({
       <div className="mt-2 border-t border-slate-300/40 pt-2">
         <div className="flex flex-wrap items-center gap-2">
           <input
-            className={`${input} min-w-[200px] flex-1`}
+            aria-label="公开聊天消息" className={`${input} min-w-0 flex-1`}
             value={draft}
             onChange={(ev) => setDraft(ev.target.value)}
-            onKeyDown={(ev) => { if (ev.key === 'Enter' && canSend) sendChat(); }}
+            onKeyDown={(ev) => { if (ev.key === 'Enter' && !ev.nativeEvent.isComposing && canSend) sendChat(); }}
             placeholder={currentMemberId ? `以 ${currentMemberLabel ?? shortId(currentMemberId)} 发送公开消息…` : '需要成员身份才能发言'}
             disabled={canAppend === false || !currentMemberId}
           />
@@ -579,7 +539,7 @@ export function RoomRuntimeLogPreviewPanel({
           </button>
         </div>
         {sendError && <div className="mt-1 text-[10px] font-bold text-red-700">发送失败：{sendError}</div>}
-        <p className="mt-1 text-[10px] italic text-slate-400">这里发送公开聊天；投骰、发布公开信息和状态记录请使用底部行动坞。</p>
+        <details className="mt-4 text-xs"><summary className="cursor-pointer text-slate-500">诊断信息</summary><p>事件游标 {latestSeqDisplay} · 仅包含当前成员获准接收的数据</p><label className="flex items-center gap-2"><input type="checkbox" checked={showDebug} onChange={(event) => setShowDebug(event.target.checked)} />显示原始事件</label></details>
       </div>
         </>
       )}

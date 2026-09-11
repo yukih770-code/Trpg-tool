@@ -1,3 +1,5 @@
+import type { Combatant } from '../../lib/combat/combatRuntimeTypes';
+import { runtimeHpDisplayLabel, runtimeAcDisplayLabel } from '../../lib/platform/roomRuntimeVisibility';
 import { RuntimeActorBoundaryNote } from './RuntimeActorBoundaryNote';
 import { RuntimeInventoryBoundaryNote } from './RuntimeInventoryBoundaryNote';
 import { RuntimeActorSnapshotStatus } from './RuntimeActorSnapshotStatus';
@@ -60,6 +62,7 @@ export interface RuntimeCharacterSummary {
 
 export interface RuntimeCharacterSheetPanelProps {
   summary?: RuntimeCharacterSummary | null;
+  liveCombatant?: Combatant;
   role?: 'host' | 'player' | 'spectator';
   /** Read-only inventory / equipment summary (M55), built by runtimeInventoryAdapter. */
   inventory?: RuntimeInventorySummary | null;
@@ -75,12 +78,6 @@ const SYSTEM_LABEL: Record<string, string> = {
   coc7e: '克苏鲁的呼唤 7E',
   'cp-red': '赛博朋克 RED',
   custom: '自定义系统',
-};
-
-const SYSTEM_SHEET_HINT: Record<string, string> = {
-  'dnd5e-2024': '完整角色卡将包含：AC / HP / 临时 HP / 熟练加值 / 豁免 / 常用技能 / 法术资源 / 装备 / 被动感知。',
-  coc7e: '完整角色卡将包含：HP / MP / SAN / Luck / 主要技能 / 武器 / 随身物 / 伤势状态。',
-  'cp-red': '完整角色卡将包含：HP / Humanity / EMP / 护甲 / 武器 / 技能 / 角色能力 / 植入体（cyberware）。',
 };
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -127,8 +124,9 @@ function IdRow({ k, v, tone }: { k: string; v: string; tone?: 'ok' | 'warn' }) {
 }
 
 function StatGrid({ title, stats }: { title: string; stats: RuntimeCharacterStat[] }) {
+  if (stats.length === 0) return null;
   return (
-    <div className="rounded border border-slate-300/50 bg-white/70 p-2">
+    <div className="border-b border-slate-200 py-3">
       <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">{title}</div>
       {stats.length === 0 ? (
         <p className="text-[10px] italic text-slate-400">当前摘要暂无该项数据。</p>
@@ -163,7 +161,7 @@ function InvGroup({ title, items }: { title: string; items: RuntimeInventoryItem
   );
 }
 
-export function RuntimeCharacterSheetPanel({ summary, role, inventory, dndActions = [], dndActionTargets = [], selectedDndActionTargetId, onSelectDndActionTarget, onRollDndAction }: RuntimeCharacterSheetPanelProps) {
+export function RuntimeCharacterSheetPanel({ summary, liveCombatant, role, inventory, dndActions = [], dndActionTargets = [], selectedDndActionTargetId, onSelectDndActionTarget, onRollDndAction }: RuntimeCharacterSheetPanelProps) {
   if (!hasCharacter(summary)) {
     return (
       <div className="space-y-2 text-left">
@@ -177,20 +175,27 @@ export function RuntimeCharacterSheetPanel({ summary, role, inventory, dndAction
             </p>
           )}
         </div>
-        <RuntimeActorBoundaryNote variant="compact" />
+
       </div>
     );
   }
 
   const systemLabel = label(SYSTEM_LABEL, summary.system) ?? summary.system ?? '未知系统';
-  const systemHint = summary.system ? SYSTEM_SHEET_HINT[summary.system] : undefined;
   const sourceLabel = label(SOURCE_LABEL, summary.source);
   const admissionLabel = label(ADMISSION_LABEL, summary.admissionStatus);
   const bindingLabel = label(BINDING_LABEL, summary.bindingStatus);
   const readyLabel = label(READY_LABEL, summary.readyState);
 
+  // A live combat projection supersedes frozen sheet vitals during an encounter.
+  // Missing display values remain unknown; never fall back to stale exact stats.
+  const coreStats = liveCombatant ? [
+    { label: '生命状态', value: runtimeHpDisplayLabel(liveCombatant.hpDisplay) },
+    { label: '防护', value: runtimeAcDisplayLabel(liveCombatant.acDisplay) },
+    ...summary.coreStats.filter((stat) => !['生命值 (HP)', '临时 HP', '护甲等级 (AC)'].includes(stat.label)),
+    ...(liveCombatant.conditions.length ? [{ label: '状态', value: liveCombatant.conditions.join('、') }] : []),
+  ] : summary.coreStats;
   const hasAnyStats =
-    summary.coreStats.length > 0 ||
+    coreStats.length > 0 ||
     summary.skillHighlights.length > 0 ||
     summary.resourceHighlights.length > 0 ||
     summary.featureHighlights.length > 0 ||
@@ -210,7 +215,7 @@ export function RuntimeCharacterSheetPanel({ summary, role, inventory, dndAction
             <span className="text-[9px] text-slate-400">数据来源：{summary.dataSourceLabel}</span>
           )}
         </div>
-        <div className="mt-2 space-y-0">
+        <details className="mt-2"><summary className="cursor-pointer text-xs text-slate-500">角色来源与入场状态</summary><div className="mt-2 space-y-0">
           {summary.playerLabel && <IdRow k="玩家 / 席位" v={summary.playerLabel} />}
           <IdRow k="来源" v={sourceLabel ?? '当前房间绑定角色'} />
           {summary.ownershipLabel && <IdRow k="归属" v={summary.ownershipLabel.replace(/^当前角色归属：/, '')} />}
@@ -218,11 +223,11 @@ export function RuntimeCharacterSheetPanel({ summary, role, inventory, dndAction
           {admissionLabel && <IdRow k="准入" v={admissionLabel} tone={summary.admissionStatus === 'approved' ? 'ok' : 'warn'} />}
           {readyLabel && <IdRow k="准备" v={readyLabel} tone={summary.readyState === 'ready' ? 'ok' : 'warn'} />}
         </div>
+      <RuntimeActorSnapshotStatus confidence={summary.matchConfidence} sourceLabel={summary.dataSourceLabel} sourceKind={summary.dataSourceKind} />
+        </details>
       </div>
 
       {/* Snapshot match-confidence banner (M62). */}
-      <RuntimeActorSnapshotStatus confidence={summary.matchConfidence} sourceLabel={summary.dataSourceLabel} sourceKind={summary.dataSourceKind} />
-
       {summary.sourceWarnings.length > 0 && (
         <div className="rounded border border-amber-500/30 bg-amber-50/60 px-2 py-1.5 text-[10px] leading-relaxed text-amber-800">
           {summary.sourceWarnings.map((w, i) => <div key={i}>{w}</div>)}
@@ -232,16 +237,16 @@ export function RuntimeCharacterSheetPanel({ summary, role, inventory, dndAction
       {/* Character data sections (safe reads; empty states when no data). */}
       {!hasAnyStats ? (
         <div className="rounded border border-slate-300/50 bg-white/60 p-2 text-[10px] leading-relaxed text-slate-500">
-          当前摘要暂无角色卡数值。{systemHint ? <> {systemHint}</> : null} 有数据后，这里会显示核心状态、常用检定、资源与装备。
+          当前角色尚未提供数值。可在房间大厅检查已提交的角色。
         </div>
       ) : (
         <>
-          <StatGrid title="核心状态" stats={summary.coreStats} />
+          <StatGrid title="核心状态" stats={coreStats} />
           <StatGrid title="常用检定 / 技能" stats={summary.skillHighlights} />
           <StatGrid title="资源" stats={summary.resourceHighlights} />
           <StatGrid title="特性 / 能力" stats={summary.featureHighlights} />
           {summary.notes.length > 0 && (
-            <div className="rounded border border-slate-300/50 bg-white/70 p-2">
+            <div className="border-b border-slate-200 py-3">
               <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">备注 / 特性</div>
               <ul className="list-disc pl-4 text-[11px] text-slate-700">
                 {summary.notes.map((n, i) => <li key={i}>{n}</li>)}
@@ -252,8 +257,8 @@ export function RuntimeCharacterSheetPanel({ summary, role, inventory, dndAction
       )}
 
       {/* Read-only inventory / equipment view (M55). */}
-      {inventory && (
-        <div className="rounded border border-slate-300/50 bg-white/70 p-2">
+      {inventory?.hasAny && (
+        <div className="border-b border-slate-200 py-3">
           <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">装备 / 背包</div>
           {!inventory.hasAny ? (
             <p className="text-[10px] italic leading-relaxed text-slate-400">
@@ -268,12 +273,12 @@ export function RuntimeCharacterSheetPanel({ summary, role, inventory, dndAction
             </>
           )}
           <div className="mt-1.5">
-            <RuntimeInventoryBoundaryNote variant="compact" />
+            <details><summary className="cursor-pointer text-xs">物品信息说明</summary><RuntimeInventoryBoundaryNote variant="compact" /></details>
           </div>
         </div>
       )}
       {role === 'player' && dndActions.length > 0 && (
-        <div className="rounded border border-slate-300/50 bg-white/70 p-2">
+        <div className="border-b border-slate-200 py-3">
           <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">动作快捷掷骰</div>
           {dndActionTargets.length > 0 ? (
             (() => {
@@ -330,7 +335,7 @@ export function RuntimeCharacterSheetPanel({ summary, role, inventory, dndAction
         </div>
       )}
 
-      <RuntimeActorBoundaryNote variant="compact" />
+      <details><summary className="cursor-pointer text-xs text-slate-500">角色数据说明</summary><RuntimeActorBoundaryNote variant="compact" /></details>
     </div>
   );
 }

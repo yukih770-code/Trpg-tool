@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { RoomRuntimeEntryContext, RoomRuntimeEntryMode } from '../../lib/platform/roomRuntimeEntryTypes';
-import type { RoomCampaignRefSource, RoomReadyStatus, RoomSnapshot } from '../../lib/platform/roomTypes';
+import type { RoomSnapshot } from '../../lib/platform/roomTypes';
 import type { RoomRuntimeLogEvent } from '../../lib/platform/roomRuntimeLogTypes';
 import type { RoomMapEvent, RoomMapLivePreview } from '../../lib/platform/roomMapTypes';
 import type { SharedDiceRollMode } from '../../lib/platform/sharedDiceTypes';
@@ -24,7 +24,11 @@ import { resolveDevViewerUserId } from '../../lib/api/apiClient';
 import { resolveRoomRuntimePermissions } from '../../lib/platform/roomRuntimePermissions';
 import { isTokenLinkedToApprovedRoomMember } from '../../lib/platform/roomTokenOwnership';
 import { readStoredLocale } from '../../i18n';
-import { RuntimeFullscreenShell, type RuntimeShellMode } from './RuntimeFullscreenShell';
+import type { RuntimeShellMode } from './RuntimeFullscreenShell';
+import { LivePlayShell as RuntimeFullscreenShell } from './LivePlayShell';
+import { LiveCombatStrip } from './LiveCombatStrip';
+import { replayCombatRuntimeEvents } from '../../lib/combat/combatRuntimeReplay';
+import { runtimeHpDisplayLabel, runtimeAcDisplayLabel } from '../../lib/platform/roomRuntimeVisibility';
 import { SharedDiceDock } from './SharedDiceDock';
 import { RuntimeActionDock, buildRuntimeDockActions, requestRuntimeDockAction } from './RuntimeActionDock';
 import { RoomRuntimeLogPreviewPanel } from './RoomRuntimeLogPreviewPanel';
@@ -38,18 +42,16 @@ import { buildRuntimeCharacterSummary } from './runtimeActorSnapshotAdapter';
 import { buildRuntimeInventorySummary } from './runtimeInventoryAdapter';
 import { resolveRuntimeActorSnapshot } from './runtimeActorSnapshotSource';
 import { RuntimeSceneFocusPanel, type RuntimeSceneFocus } from './RuntimeSceneFocusPanel';
-import { RuntimeSceneBoardPanel, type RuntimeSceneBoardDice } from './RuntimeSceneBoardPanel';
 import { RuntimeMapStage } from './RuntimeMapStage';
 import { BasicMapBoard } from './BasicMapBoard';
 import { RoomRuntimeCombatPanel } from './RoomRuntimeCombatPanel';
-import { RuntimeMobileCombatHud } from './RuntimeMobileCombatHud';
 import { RuntimeTokenInspectPanel } from './RuntimeTokenInspectPanel';
 import { entryCharacterFromRoomBinding, entryCharacterToPresenceCandidate } from '../../lib/platform/entryCharacterRef';
 import type { MapTokenPresenceCandidate } from '../../lib/map/actorPresence';
 import type { MapInteractionPreview, MapRuntimeEventDraft, MapToken } from '../../lib/map/mapRuntimeTypes';
 import { replayMapRuntimeEvents } from '../../lib/map/mapRuntimeReplay';
-import { advanceTurn, createCombatRuntimeTableState, endCombat, type CombatRuntimeEventDraft, type CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
-import { findCombatantForActorBinding } from '../../lib/combat/roomRuntimeCombatLink';
+import { advanceTurn, type CombatRuntimeEventDraft } from '../../lib/combat/combatRuntimeTypes';
+import { findCombatantLinkedToMapToken, findCombatantForActorBinding } from '../../lib/combat/roomRuntimeCombatLink';
 
 /**
  * RoomRuntimeEntryBridge (v0 / UI1a) — multiplayer Runtime Alpha surface.
@@ -71,34 +73,16 @@ export interface RoomRuntimeEntryBridgeProps {
   room?: RoomSnapshot;
   serverLabel?: string;
   onBackToLobby?: () => void;
+  /** Supplied only by the already-authorized campaign workspace; a room role is not campaign permission. */
+  campaignActorCandidates?: MapTokenPresenceCandidate[];
+  campaignActorRevision?: number;
+  onOpenCampaignActor?: (actorId: string | undefined, source: 'token' | 'combat' | 'runtime') => void;
 }
-
-const ENTRY_MODE_LABEL: Record<RoomRuntimeEntryMode, string> = {
-  hostPreview: '主持人',
-  playerReady: '玩家',
-  spectatorPreview: '旁观者',
-};
-
-const READY_LABEL: Record<RoomReadyStatus, string> = {
-  ready: '已准备',
-  notReady: '未准备',
-};
-
-const CAMPAIGN_SOURCE_LABEL: Record<RoomCampaignRefSource, string> = {
-  localCampaignLibrary: '本地战役库',
-  imported: '导入战役',
-  workshop: '工坊',
-  unknown: '未知来源',
-};
 
 function entryModeToShellMode(mode: RoomRuntimeEntryMode): RuntimeShellMode {
   if (mode === 'hostPreview') return 'host';
   if (mode === 'spectatorPreview') return 'spectator';
   return 'player';
-}
-
-function shortId(id: string): string {
-  return id.length <= 8 ? id : `…${id.slice(-6)}`;
 }
 
 /** Read the scene-focus fields off a host.note payload (noteKind==='sceneFocus'). */
@@ -111,14 +95,6 @@ function sceneFromPayload(payload: unknown): { title?: string; body?: string; ma
     body: typeof p.body === 'string' ? p.body : undefined,
     mapUrl: typeof p.mapUrl === 'string' ? p.mapUrl : undefined,
   };
-}
-
-/** Narrow a dice.roll payload for the Scene Board's recent-rolls list. */
-function diceForBoard(payload: unknown): { expression: string; total: number; label?: string } | null {
-  if (!payload || typeof payload !== 'object') return null;
-  const p = payload as { normalizedExpression?: unknown; total?: unknown; label?: unknown };
-  if (typeof p.normalizedExpression !== 'string' || typeof p.total !== 'number') return null;
-  return { expression: p.normalizedExpression, total: p.total, label: typeof p.label === 'string' ? p.label : undefined };
 }
 
 const CLEARANCE_LABEL: Record<string, string> = {
@@ -145,7 +121,7 @@ function withCampaignRuntimeProjection(snapshot: unknown, projection: RoomRuntim
   };
 }
 
-export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLobby }: RoomRuntimeEntryBridgeProps) {
+export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLobby, onOpenCampaignActor, campaignActorCandidates = [], campaignActorRevision }: RoomRuntimeEntryBridgeProps) {
   // M32: the bridge owns a live socket while mounted (the lobby's socket closes
   // when the lobby unmounts). runtimeLogAppended feeds the log drawer AND the
   // public-info / state-log feeds from the same event stream; roomSnapshot keeps
@@ -191,14 +167,16 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const [mapLoading, setMapLoading] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [sharedMapPreviews, setSharedMapPreviews] = useState<Record<string, SharedMapPreview>>({});
-  const [roomCombatState, setRoomCombatState] = useState<CombatRuntimeTableState>(createCombatRuntimeTableState);
+  const roomCombatState = useMemo(() => replayCombatRuntimeEvents(recentEvents.map((event) => ({ eventKind: event.kind, payload: event.payload as Record<string, unknown> ?? {}, seq: event.seq, createdAt: event.createdAt }))), [recentEvents]);
   const [runtimeActorProjections, setRuntimeActorProjections] = useState<RoomRuntimeActorProjection[]>([]);
   const [selfDndActions, setSelfDndActions] = useState<RoomRuntimeDndActionShortcut[]>([]);
   const [hostAttackActorId, setHostAttackActorId] = useState('');
   const [authoredAttacks, setAuthoredAttacks] = useState<{ actorId: string; actions: RoomRuntimeDndActionShortcut[] }>({ actorId: '', actions: [] });
   const [attackActionsError, setAttackActionsError] = useState<string>();
+  const [actionsRevision, setActionsRevision] = useState(0);
   const [selectedCombatantId, setSelectedCombatantId] = useState<string | undefined>();
   const [combatantToLocate, setCombatantToLocate] = useState<string | undefined>();
+  const [panelRequest, setPanelRequest] = useState<{ panel: 'character'; nonce: number }>();
   const [inspectedToken, setInspectedToken] = useState<MapToken | undefined>();
   const roomSocketRef = useRef<ReturnType<typeof createRoomSocketClient> | null>(null);
 
@@ -256,7 +234,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         if (!cancelled) { setRuntimeActorProjections([]); setSelfDndActions([]); }
       });
     return () => { cancelled = true; };
-  }, [context.currentMemberId, context.roomId, context.serverBaseUrl]);
+  }, [context.currentMemberId, context.roomId, context.serverBaseUrl, campaignActorRevision]);
 
   const mergeNoteEvent = (event: RoomRuntimeLogEvent) => {
     if (!isNoteKind(event)) return;
@@ -421,13 +399,6 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     const transition = advanceTurn(roomCombatState, direction);
     if (!transition.event) return;
     await appendCombatEvent(transition.event);
-    setRoomCombatState(transition.state);
-  };
-
-  const endCombatFromHud = async () => {
-    const transition = endCombat(roomCombatState);
-    await appendCombatEvent(transition.event);
-    setRoomCombatState(transition.state);
   };
 
   const shareRoomMapPreview = useCallback((preview?: MapInteractionPreview) => {
@@ -528,15 +499,6 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         createdAt: latestSceneEvent.createdAt,
       }
     : null;
-
-  // Recent dice for the Scene Board (from the all-kinds public mirror).
-  const recentDice: RuntimeSceneBoardDice[] = recentEvents
-    .filter((e) => e.kind === 'dice.roll')
-    .map((e): RuntimeSceneBoardDice | null => {
-      const roll = diceForBoard(e.payload);
-      return roll ? { id: e.eventId, label: roll.label, expression: roll.expression, total: roll.total, createdAt: e.createdAt } : null;
-    })
-    .filter((x): x is RuntimeSceneBoardDice => x !== null);
 
   const stateLogItems: RuntimeStateLogItem[] = noteEvents
     .filter((e) => e.kind === 'state.manualChange')
@@ -651,14 +613,6 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   });
 
   const activeCount = members.filter((m) => m.status === 'active').length;
-  const approvedCount = actorBindings.filter((b) => b.status === 'approved').length;
-  const readyCount = members.filter((m) => {
-    const b = actorBindings.find((x) => x.memberId === m.memberId);
-    const r = readyStates.find((x) => x.memberId === m.memberId)?.status;
-    return m.status === 'active' && b?.status === 'approved' && r === 'ready';
-  }).length;
-
-  // M47 host actor roster: player → actor mapping + ready/admission (read-only).
   const rosterEntries: RuntimeActorRosterEntry[] = members
     .filter((m) => m.status !== 'left' && m.status !== 'kicked')
     .map((m) => {
@@ -720,7 +674,9 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     [roomCombatState.combatants],
   );
 
-  const attackActorId = shellMode === 'host' ? hostAttackActorId : myRuntimeCombatant?.id;
+  const attackActorId = shellMode === 'host'
+    ? [hostAttackActorId, roomCombatState.turn.activeCombatantId, dndActionTargets[0]?.id].find((id) => dndActionTargets.some((actor) => actor.id === id))
+    : myRuntimeCombatant?.id;
   useEffect(() => {
     let cancelled = false;
     setAttackActionsError(undefined);
@@ -729,7 +685,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       .then((result) => { if (!cancelled) setAuthoredAttacks({ actorId: attackActorId, actions: result.actions }); })
       .catch((error) => { if (!cancelled) { setAuthoredAttacks({ actorId: attackActorId, actions: [] }); setAttackActionsError(error instanceof Error ? error.message : String(error)); } });
     return () => { cancelled = true; };
-  }, [attackActorId, context.currentMemberId, context.roomId, context.serverBaseUrl, context.systemId, shellMode, connState]);
+  }, [attackActorId, context.currentMemberId, context.roomId, context.serverBaseUrl, context.systemId, shellMode, connState, actionsRevision, campaignActorRevision]);
   const handleDeclareAttack = async (intent: DndAttackIntent) => {
     if (!context.currentMemberId) throw new Error('需要成员身份才能声明攻击。');
     const result = await declareRoomDndAttack({ baseUrl: context.serverBaseUrl }, context.roomId, context.currentMemberId, intent);
@@ -739,60 +695,8 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
     return result;
   };
 
-  const card = 'rounded border border-slate-400/30 bg-white/60 p-3';
-  const label = 'text-[11px] font-bold uppercase tracking-wide text-slate-600';
-
-  // ── Left rail: my entry context (actor binding + ready) ────────────────────
-  const actorRail = (
-    <div className="space-y-2">
-      <div className="text-[11px]">
-        <div className="font-bold text-slate-800">{ENTRY_MODE_LABEL[context.entryMode]}</div>
-        <div className="text-[10px] text-slate-500">{context.entryMode === 'hostPreview' ? '可控制全部 Token' : context.entryMode === 'playerReady' ? '移动角色需主持人授权' : '只读观看'}</div>
-      </div>
-      <div className={card}>
-        <div className={`mb-1 ${label}`}>本次入场角色</div>
-        {context.actorRef ? (
-          <div>
-            <div className="font-bold text-slate-800">{context.actorRef.displayName}</div>
-            <div className="text-[10px] text-slate-500">
-              {context.actorRef.systemId}
-            </div>
-          </div>
-        ) : (
-          <div className="text-[11px] italic text-slate-500">当前无需选择角色。</div>
-        )}
-        <div className="mt-1 text-[11px]">准备：<span className="font-bold">{context.readyState ? READY_LABEL[context.readyState] : '—'}</span></div>
-      </div>
-    </div>
-  );
-
-  // ── Right inspector: mode-differentiated ───────────────────────────────────
-  const inspector = (
-    <div className="space-y-2">
-      {syncHint && (
-        <div className="rounded border border-amber-500/40 bg-amber-50/80 px-2 py-1.5 text-[10px] leading-relaxed text-amber-800">
-          {syncHint}
-        </div>
-      )}
-      {!syncDown && notesError && (
-        <div className="rounded border border-amber-500/40 bg-amber-50/80 px-2 py-1.5 text-[10px] leading-relaxed text-amber-800">
-          信息拉取失败，可点击面板中的「刷新」重试。实时推送不受影响。
-        </div>
-      )}
-      {!syncDown && mapError && (
-        <div className="rounded border border-amber-500/40 bg-amber-50/80 px-2 py-1.5 text-[10px] leading-relaxed text-amber-800">
-          地图记录拉取失败，当前地图可能不是最新。重新进入桌面后会再次尝试恢复。
-        </div>
-      )}
-      <div className={card}>
-        <div className={`mb-1 ${label}`}>房间概览</div>
-        <div className="flex flex-wrap gap-3 text-[11px]">
-          <span>在线 <b className="text-slate-800">{activeCount}</b></span>
-          <span>已准入角色 <b className="text-slate-800">{approvedCount}</b></span>
-          <span>已准备 <b className="text-slate-800">{readyCount}</b></span>
-        </div>
-      </div>
-      <RoomRuntimeCombatPanel
+  const actorRail = <div>{rosterEntries.map((entry) => <div className="live-party-row" key={entry.memberId}><i style={{ opacity: entry.online ? 1 : .3 }} /><div><strong>{entry.actorName || entry.name}</strong><span>{entry.name} · {entry.role === 'host' ? '主持人' : entry.role === 'spectator' ? '旁观' : entry.ready ? '已准备' : '玩家'}{entry.online ? '' : ' · 离线'}</span></div></div>)}</div>;
+  const inspector = (<RoomRuntimeCombatPanel
         locale={readStoredLocale()}
         scopeKey={`room:${context.roomId}`}
         role={shellMode}
@@ -803,82 +707,17 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
         selectedCombatantId={selectedCombatantId}
         onSelectCombatant={setSelectedCombatantId}
         onLocateCombatant={(combatantId) => { setSelectedCombatantId(combatantId); setCombatantToLocate(combatantId); }}
-        onStateChange={setRoomCombatState}
+        onOpenCampaignActor={shellMode === 'host' && onOpenCampaignActor ? actorId => onOpenCampaignActor(actorId, 'combat') : undefined}
         onAppendEvent={appendCombatEvent}
         onQuickRoll={handleRoomDiceRoll}
-      />
-      {shellMode === 'host' && (
-        <div className={card}>
-          <div className={`mb-1 ${label}`}>主持台</div>
-          <div className="space-y-0.5 text-[11px] text-slate-700">
-            <div>身份：<b>主持人</b></div>
-            <div>当前场景：<span className="text-slate-700">{currentScene ? (currentScene.title?.trim() || '（未命名场景）') : '未设置'}</span></div>
-            <div>公开信息 <b>{publicInfoItems.length}</b> 条 · 状态记录 <b>{stateLogItems.length}</b> 条{context.systemId === 'coc7e' ? <> · Keeper 笔记 <b>{keeperNoteItems.length}</b> 条</> : null}</div>
-            <div>
-              同步：<b className={syncDown ? 'text-amber-700' : 'text-emerald-700'}>{syncLabel}</b>
-              {lastSyncAt && (
-                <span className="ml-1 text-[10px] text-slate-400">最近 {new Date(lastSyncAt).toLocaleTimeString()}</span>
-              )}
-            </div>
-          </div>
-          <div className="mt-1.5 border-t border-slate-300/40 pt-1.5">
-            <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">玩家 · 角色名单</div>
-            <RuntimeActorRosterPanel entries={rosterEntries} />
-          </div>
-          <p className="mt-1.5 text-[10px] leading-relaxed text-slate-500">
-            下一步：用底部「当前场景」设置场景，用「公开信息」发布线索，用「状态记录」记下关键变化；日志抽屉可回看全程。
-          </p>
-        </div>
-      )}
-      {shellMode === 'player' && (
-        <div className={card}>
-          <div className={`mb-1 ${label}`}>我的信息</div>
-          <div className="space-y-0.5 text-[11px] text-slate-700">
-            <div>身份：<b>玩家</b></div>
-            <div>角色：<b>{context.actorRef?.displayName ?? '未绑定'}</b></div>
-            <div>同步：<b className={syncDown ? 'text-amber-700' : 'text-emerald-700'}>{syncLabel}</b></div>
-          </div>
-          <p className="mt-1.5 border-t border-slate-300/40 pt-1.5 text-[10px] leading-relaxed text-slate-500">
-            你可以投骰并查看公开信息。主持人授权后，才能移动自己的角色 Token；怪物和其他玩家 Token 始终由主持人控制。
-          </p>
-        </div>
-      )}
-      {shellMode === 'spectator' && (
-        <div className={card}>
-          <div className={`mb-1 ${label}`}>旁观视角</div>
-          <div className="space-y-0.5 text-[11px] text-slate-700">
-            <div>身份：<b>旁观者</b>（只读）</div>
-            <div>同步：<b className={syncDown ? 'text-amber-700' : 'text-emerald-700'}>{syncLabel}</b></div>
-          </div>
-          <p className="mt-1.5 border-t border-slate-300/40 pt-1.5 text-[10px] leading-relaxed text-slate-500">
-            你可以查看地图、测距、公开信息和日志；不能移动 Token 或修改地图。
-          </p>
-        </div>
-      )}
-      {context.campaignRef && (
-        <div className={card}>
-          <div className={`mb-1 ${label}`}>战役关联</div>
-          <div className="text-[11px] font-bold text-slate-800">{context.campaignRef.displayName}</div>
-          <div className="text-[10px] text-slate-500">
-            {CAMPAIGN_SOURCE_LABEL[context.campaignRef.source]} · {context.campaignRef.systemId}
-          </div>
-        </div>
-      )}
-      {/* Scene Board as a compact overlay (M47): current scene + recent activity. */}
-      <div className={card}>
-        <div className={`mb-1 ${label}`}>桌面动态</div>
-        <RuntimeSceneBoardPanel
-          scene={currentScene}
-          publicInfo={publicInfoItems}
-          stateLog={stateLogItems}
-          recentDice={recentDice}
-          role={shellMode}
-          meta={{ roomCode: context.roomCode, systemId: context.systemId, serverLabel: serverLabel ?? context.serverBaseUrl }}
-          loading={notesLoading}
-        />
-      </div>
-    </div>
-  );
+      />);
+  const preparation = shellMode === 'host' ? <div className="space-y-4">
+    <p className="text-xs text-slate-600">{context.campaignRef?.displayName ?? '本场会话'}</p>
+    <div className="flex flex-wrap gap-2"><button type="button" className="rounded border px-3 py-2" onClick={() => requestRuntimeDockAction('scene')}>设置场景</button><button type="button" className="rounded border px-3 py-2" onClick={onBackToLobby}>房间与角色审批</button></div>
+    {onOpenCampaignActor && <button type="button" className="rounded border px-3 py-2 font-bold" onClick={() => onOpenCampaignActor(undefined, 'runtime')}>打开战役战斗卡</button>}
+    <details><summary className="cursor-pointer py-2 font-bold">角色准入与资料说明</summary><RuntimeActorRosterPanel entries={rosterEntries} /></details>
+    <details><summary className="cursor-pointer py-2 font-bold">连接诊断</summary><p className="break-all text-xs">{serverLabel ?? context.serverBaseUrl} · {context.roomId}</p><p className="text-xs">{syncLabel}{lastSyncAt ? ' · ' + new Date(lastSyncAt).toLocaleTimeString() : ''}</p></details>
+  </div> : undefined;
 
   // ── Main stage: DND gets the shared Room Map board; other systems keep the
   // existing scene stage until they define their own map interaction contracts.
@@ -926,7 +765,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       locateCombatantId={combatantToLocate}
       onSelectCombatant={setSelectedCombatantId}
       onInspectToken={setInspectedToken}
-      actorPresenceCandidates={roomEntryCharacterCandidates}
+      actorPresenceCandidates={shellMode === 'host' ? [...roomEntryCharacterCandidates, ...campaignActorCandidates] : roomEntryCharacterCandidates}
       fallbackBackgroundUrl={currentScene?.mapUrl}
       sceneTitle={currentScene?.title}
       sceneDescription={currentScene?.body}
@@ -936,6 +775,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
           ? '你获得了本房间会话内的固定范围授权；服务重启后需要由主持人重新授予。'
           : '主持人可授权你移动自己的角色 Token；局域网连接本身不授予地图编辑权限。'}
       presentation="runtime"
+      exclusiveRuntimePanels
       canManage={runtimePermissions['map.grid.edit']}
       canMoveToken={(token) => runtimePermissions['map.token.move.own'] && isTokenLinkedToApprovedRoomMember(currentRoom, context.currentMemberId, token)}
       tokenMoveDeniedMessage="主持人尚未授权你移动角色，或该 Token 不属于你的已准入角色。"
@@ -952,6 +792,26 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   ) : (
     <RuntimeMapStage scene={currentScene} role={shellMode} loading={notesLoading || mapLoading} />
   );
+
+  const actionBar =
+                context.systemId === 'dnd5e-2024' && shellMode !== 'spectator' ? (
+                  <div key={`${context.serverBaseUrl}:${context.roomId}:${context.currentMemberId}:${currentRoom?.identity.sessionId}`}><RuntimeDndActionPanel
+                    scopeKey={`${context.serverBaseUrl}:${context.roomId}:${context.currentMemberId}:${currentRoom?.identity.sessionId}`}
+                    actorCombatantId={attackActorId}
+                    onRefreshActions={() => setActionsRevision((revision) => revision + 1)}
+                    actorVitals={myRuntimeCombatant ? [runtimeHpDisplayLabel(myRuntimeCombatant.hpDisplay), runtimeAcDisplayLabel(myRuntimeCombatant.acDisplay)].join(" · ") : undefined}
+                    actors={shellMode === 'host' ? dndActionTargets : undefined}
+                    onSelectActor={setHostAttackActorId}
+                    onDeclare={handleDeclareAttack}
+                    actionsError={attackActionsError}
+                    characterName={shellMode === 'host' ? dndActionTargets.find((actor) => actor.id === attackActorId)?.label : characterSummary?.displayName ?? context.actorRef?.displayName}
+                    actions={[...(authoredAttacks.actorId === attackActorId ? authoredAttacks.actions : []), ...(shellMode === 'player' ? selfDndActions.filter((action) => action.kind !== 'weapon_attack' && action.kind !== 'spell_attack') : [])]}
+                    targets={dndActionTargets}
+                    selectedTargetId={selectedCombatantId}
+                    onSelectTarget={setSelectedCombatantId}
+                    onRoll={handleRoomDiceRoll}
+                  /></div>
+                ) : undefined;
 
   if (currentRoom?.identity.lifecycleStatus === 'closed' || currentRoom?.identity.lifecycleStatus === 'archived') {
     return (
@@ -984,30 +844,31 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
       roomCode={context.roomCode}
       connectionLabel={syncLabel}
       connectionTone={connState === 'open' ? 'ok' : syncDown ? 'warn' : 'idle'}
-      sceneLabel="Runtime Alpha"
+      sceneLabel={currentScene?.title || undefined}
       onExit={onBackToLobby}
       exitLabel="返回房间大厅"
       mainStage={mainStage}
       actorRail={actorRail}
       inspector={inspector}
-      mobileStatus={
-        <RuntimeMobileCombatHud
-          locale={readStoredLocale()}
-          role={shellMode}
-          state={roomCombatState}
-          isMyTurn={shellMode === 'player' && !!myRuntimeCombatant && roomCombatState.turn.activeCombatantId === myRuntimeCombatant.id}
-          turnActionKind={context.systemId === 'dnd5e-2024' ? 'actions' : 'dice'}
-          onOpenTurnAction={shellMode === 'player' ? () => requestRuntimeDockAction(context.systemId === 'dnd5e-2024' ? 'dndActions' : 'dice') : undefined}
-          onLocateCombatant={(combatantId) => { setSelectedCombatantId(combatantId); setCombatantToLocate(combatantId); }}
-          onMoveTurn={shellMode === 'host' ? moveCombatTurnFromHud : undefined}
-          onEndCombat={shellMode === 'host' ? endCombatFromHud : undefined}
-        />
-      }
+      preparation={preparation}
+      panelRequest={panelRequest}
+      character={shellMode === 'player' ? <RuntimeCharacterSheetPanel liveCombatant={myRuntimeCombatant} summary={characterSummary} inventory={inventorySummary} role="player" /> : undefined}
+      partyCount={activeCount}
+      activityCount={recentEvents.length}
+      actionBar={actionBar}
+      statusNotice={syncHint || notesError || mapError || undefined}
+      turnBar={<LiveCombatStrip state={roomCombatState} ownCombatantId={myRuntimeCombatant?.id} onSelect={(id) => { setCombatantToLocate(id); if (shellMode === 'host') setHostAttackActorId(id); else setSelectedCombatantId(id); }} onNext={shellMode === 'host' ? () => moveCombatTurnFromHud('next') : undefined} />}
       overlay={inspectedToken && <RuntimeTokenInspectPanel
+        onOpenActor={shellMode === 'host' && onOpenCampaignActor && (inspectedToken.campaignActorId || inspectedToken.sourceActorInstanceId || findCombatantLinkedToMapToken(inspectedToken, roomCombatState.combatants)?.sourceActorInstanceId)
+          ? () => { onOpenCampaignActor(inspectedToken.campaignActorId || inspectedToken.sourceActorInstanceId || findCombatantLinkedToMapToken(inspectedToken, roomCombatState.combatants)?.sourceActorInstanceId, 'token'); }
+          : shellMode === 'player' && ((context.approvedActorBindingId && inspectedToken.actorBindingId === context.approvedActorBindingId && inspectedToken.roomMemberId === context.currentMemberId) || (myRuntimeCombatant && findCombatantLinkedToMapToken(inspectedToken, roomCombatState.combatants)?.id === myRuntimeCombatant.id))
+            ? () => { setInspectedToken(undefined); setPanelRequest({ panel: 'character', nonce: Date.now() }); } : undefined}
+        actorLinkLabel={shellMode === 'host' ? '打开战役战斗卡' : '打开已准入角色卡'}
         token={inspectedToken}
         combatant={roomCombatState.combatants.find((combatant) => combatant.mapTokenId === inspectedToken.id || combatant.id === inspectedToken.combatantId || combatant.id === inspectedToken.sourceCombatantId)}
         role={shellMode}
         onClose={() => setInspectedToken(undefined)}
+        onControl={shellMode === 'host' ? () => { const actor = roomCombatState.combatants.find((c) => c.mapTokenId === inspectedToken.id || c.id === inspectedToken.combatantId || c.id === inspectedToken.sourceCombatantId); if (actor) { setHostAttackActorId(actor.id); setInspectedToken(undefined); } } : undefined}
       />}
       actionDock={
         <RuntimeActionDock
@@ -1071,23 +932,6 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                     role="player"
                   />
                 ) : undefined,
-              dndActionPanel:
-                context.systemId === 'dnd5e-2024' && shellMode !== 'spectator' ? (
-                  <div key={`${context.serverBaseUrl}:${context.roomId}:${context.currentMemberId}:${currentRoom?.identity.sessionId}`}><RuntimeDndActionPanel
-                    scopeKey={`${context.serverBaseUrl}:${context.roomId}:${context.currentMemberId}:${currentRoom?.identity.sessionId}`}
-                    actorCombatantId={attackActorId}
-                    actors={shellMode === 'host' ? dndActionTargets : undefined}
-                    onSelectActor={setHostAttackActorId}
-                    onDeclare={handleDeclareAttack}
-                    actionsError={attackActionsError}
-                    characterName={shellMode === 'host' ? dndActionTargets.find((actor) => actor.id === attackActorId)?.label : characterSummary?.displayName ?? context.actorRef?.displayName}
-                    actions={[...(authoredAttacks.actorId === attackActorId ? authoredAttacks.actions : []), ...(shellMode === 'player' ? selfDndActions.filter((action) => action.kind !== 'weapon_attack' && action.kind !== 'spell_attack') : [])]}
-                    targets={dndActionTargets}
-                    selectedTargetId={selectedCombatantId}
-                    onSelectTarget={setSelectedCombatantId}
-                    onRoll={handleRoomDiceRoll}
-                  /></div>
-                ) : undefined,
               scenePanel:
                 shellMode === 'host' ? (
                   <RuntimeSceneFocusPanel
@@ -1102,14 +946,16 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                 ) : undefined,
             },
             context.systemId,
-          )}
+          ).filter((action) => action.id !== 'actor')}
         />
       }
       logDrawer={
         <RoomRuntimeLogPreviewPanel
+          memberNames={Object.fromEntries((currentRoom?.members ?? []).map((member) => [member.memberId, member.displayName]))}
           roomId={context.roomId}
           baseUrl={context.serverBaseUrl}
           currentMemberId={context.currentMemberId}
+          currentMemberLabel={currentRoom?.members.find((member) => member.memberId === context.currentMemberId)?.displayName}
           canAppend={!!context.currentMemberId}
           liveEvents={logLiveEvents}
           onConsumedLiveEvents={() => setLogLiveEvents([])}
