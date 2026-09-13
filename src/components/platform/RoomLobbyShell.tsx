@@ -26,6 +26,7 @@ import {
   type PersonalCompendiumPack,
 } from '../../lib/api/personalCompendiumPackApiClient';
 import { ensureLocalActorInCloud } from '../../lib/platform/actorVaultCloudSync';
+import { DndCharacterCreationDialog } from '../../pages/dndWorkspace/DndCharacterCreationDialog';
 import { getCharacterEntryActions, type CharacterEntryActionId } from '../../lib/platform/characterEntryCta';
 import {
   listActorVaultRecords,
@@ -47,6 +48,7 @@ import type {
 } from '../../lib/platform/roomRuntimeEntryTypes';
 import { evaluateRoomRuntimeEntryEligibility } from '../../lib/platform/roomRuntimeEntryGuard';
 import { describeRoomPlayerFlow } from '../../lib/platform/roomPlayerFlow';
+import { dndActorPresetQuickDraftValues, listDndActorPresets } from '../../lib/dnd/dndActorPresets';
 import { getRoomLobbyPresentationState } from '../../lib/platform/roomLobbyPresentationState';
 import type { RoomRuntimeLogEvent } from '../../lib/platform/roomRuntimeLogTypes';
 import { buildCharacterClearanceDetails, clearanceDetailsFromRoomActorRef } from '../../lib/platform/characterClearanceDetails';
@@ -109,7 +111,7 @@ const CONN_LABEL: Record<RoomSocketConnectionState, string> = {
 
 const SOURCE_LABEL: Record<RoomActorBindingSource, string> = {
   localActorVault: '本地角色库',
-  quickDraft: '快速角色草稿',
+  quickDraft: '临时角色',
   manualScaffold: '手动草稿',
   imported: '导入',
   unknown: '未知',
@@ -186,7 +188,9 @@ export function RoomLobbyShell({
   const [bindingHpCurrent, setBindingHpCurrent] = useState('');
   const [bindingHpMax, setBindingHpMax] = useState('');
   const [bindingArmorClass, setBindingArmorClass] = useState('');
-  const [entryActionMode, setEntryActionMode] = useState<'existing' | 'quickDraft' | null>(null);
+  const [entryActionMode, setEntryActionMode] = useState<'existing' | 'quickDraft' | null>('existing');
+  const [creatorOpen, setCreatorOpen] = useState(false);
+  const [localVaultRevision, setLocalVaultRevision] = useState(0);
   const [entryActionNotice, setEntryActionNotice] = useState<string | null>(null);
   const [bindingBusy, setBindingBusy] = useState(false);
   const [bindingError, setBindingError] = useState<string | null>(null);
@@ -220,7 +224,7 @@ export function RoomLobbyShell({
     return isActorVaultSystemId(systemId)
       ? listActorVaultRecords(systemId).filter((record) => record.status === 'active')
       : [];
-  }, [room?.identity.systemId]);
+  }, [room?.identity.systemId, localVaultRevision]);
   const selectedCloudActor = useMemo(
     () => cloudVaultRecords.find((actor) => actor.actorId === selectedCloudActorId),
     [cloudVaultRecords, selectedCloudActorId],
@@ -534,6 +538,7 @@ export function RoomLobbyShell({
     setBindingName(actor.displayName);
     setBindingSummary(actor.subtitle ?? '');
     setBindingSource('localActorVault');
+    setBindingHpCurrent(''); setBindingHpMax(''); setBindingArmorClass('');
     setEntryActionMode('existing');
   };
 
@@ -545,6 +550,7 @@ export function RoomLobbyShell({
     setBindingName(actor.displayName);
     setBindingSummary('');
     setBindingSource('localActorVault');
+    setBindingHpCurrent(''); setBindingHpMax(''); setBindingArmorClass('');
     setEntryActionMode('existing');
   };
 
@@ -554,15 +560,16 @@ export function RoomLobbyShell({
       setEntryActionMode('existing');
       setEntryActionNotice(vaultRecords.length > 0
         ? '从本地角色库选择一名与当前系统兼容的角色。'
-        : '本地角色库中还没有可用角色；可以创建快速角色或打开完整车卡创建。');
+        : '选择已有角色，或使用本系统的角色创建工具。');
       return;
     }
     if (actionId === 'quickDraft') {
       setBindingActorId('');
       setSelectedCloudActorId(null);
       setBindingSource('quickDraft');
+      setBindingName(''); setBindingSummary(''); setBindingHpCurrent(''); setBindingHpMax(''); setBindingArmorClass('');
       setEntryActionMode('quickDraft');
-      setEntryActionNotice('快速角色只用于当前房间的入场申请，不会写入角色库。');
+      setEntryActionNotice('临时角色只用于这个房间，不加入角色库。房间记录可能在本场结束后保留；目前不能自动转为角色库角色。');
       return;
     }
     if (actionId === 'skipHostCharacter') {
@@ -574,12 +581,13 @@ export function RoomLobbyShell({
       setEntryActionNotice('请返回加入页并选择「以旁观者加入」。旁观者不需要角色，也不能提交入场角色。');
       return;
     }
+    if (room?.identity.systemId === 'dnd5e-2024') { setCreatorOpen(true); return; }
     if (onOpenFullCharacterCreator) {
-      setEntryActionNotice('正在打开完整车卡创建。完成后请使用页面返回回到此大厅，再从本地角色库选择新角色。');
+      setEntryActionNotice('正在打开本系统的角色创建工具。完成后返回大厅选择角色。');
       onOpenFullCharacterCreator();
       return;
     }
-    setEntryActionNotice('当前系统尚未接通完整车卡创建。你仍可选择已有角色或创建快速角色。');
+    setEntryActionNotice('请在本系统角色库创建角色后返回选择；也可以在更多选项中使用临时角色。');
   };
 
   const reviewBinding = async (bindingId: string, action: 'approve' | 'reject') => {
@@ -661,6 +669,12 @@ export function RoomLobbyShell({
 
   return (
     <div className="space-y-4 rounded-lg border border-slate-400/30 bg-slate-50/60 p-4 text-[12px] text-slate-700">
+      {creatorOpen && <DndCharacterCreationDialog onClose={() => setCreatorOpen(false)} onCreated={actorId => {
+        const actor = listActorVaultRecords('dnd5e-2024').find(record => record.id === actorId);
+        setLocalVaultRevision(value => value + 1);
+        if (actor) { setBindingActorId(actor.id); setBindingName(actor.displayName); setBindingSummary(actor.subtitle ?? ''); setSelectedCloudActorId(null); setBindingSource('localActorVault'); setBindingHpCurrent(''); setBindingHpMax(''); setBindingArmorClass(''); setEntryActionMode('existing'); }
+        setEntryActionNotice('角色已保存到角色库并选中。确认后提交给主持人。'); setCreatorOpen(false);
+      }} />}
       {/* Header actions stay source-aware, while the default content remains product-facing. */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
@@ -718,7 +732,7 @@ export function RoomLobbyShell({
           )}
           {onEnterRuntime && presentation.canShowRuntimeEntry && (
             <button type="button" className="rounded border border-slate-700 bg-slate-800 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white disabled:opacity-40" disabled={!entryEligibility.canEnter} onClick={handleEnterRuntime}>
-              进入跑团桌面
+              {currentMember?.role === 'host' ? '以主持人身份进入桌面' : '进入跑团桌面'}
             </button>
           )}
           {presentation.canShowRuntimeEntry && !entryEligibility.canEnter && entryEligibility.reason && (
@@ -731,6 +745,165 @@ export function RoomLobbyShell({
           {disbandError && <span className="text-[10px] font-bold text-red-700">解散失败：{disbandError}</span>}
         </div>
       </section>
+
+      {/* AI-LANDMARK: HOST_FREE_TOKEN_PERSISTENT_ACTOR_VAULT_ENTRY_V1
+          Active hosts/players keep this available so a submitted, approved, or
+          Ready character can still be replaced through the same review path. */}
+      {presentation.canShowCharacterEntry && (
+      <details open={currentMember?.role !== 'host' && !myBinding} className={`${card} border-amber-400/45 bg-amber-50/35`}>
+        <summary className="mb-2 cursor-pointer font-bold text-sm">{currentMember?.role === 'host' ? '我也扮演角色（可选）' : myBinding ? '当前角色与更换角色' : '选择入场角色'}</summary>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <div className={`mb-1.5 ${label}`}>入场角色</div>
+            <div className="text-sm font-black text-slate-900">{myBinding ? '当前角色与更换角色' : '选择角色并提交审核'}</div>
+          </div>
+          <span className="rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-bold text-amber-800">{myBinding ? `当前：${myBinding.actorRef.displayName}` : '提交后等待主持人确认'}</span>
+        </div>
+        <p className="mb-2 text-[10px] text-slate-500">
+          {iAmActive
+            ? myBinding
+              ? '你可以继续使用当前角色，也可以从角色库选择其他角色重新提交。重新提交后需要主持人再次审核，并会取消原来的准备状态。'
+              : '选择角色库中的角色，或创建一个新角色。提交后等待主持人审核。'
+            : '主持人批准加入后即可选择并提交角色。'}
+        </p>
+
+        <div className="mb-3 flex flex-wrap gap-2" data-character-primary-actions>
+          {getCharacterEntryActions(currentMember?.role).filter(action => action.id === 'existing' || (action.id === 'fullSheet' && (room?.identity.systemId === 'dnd5e-2024' || onOpenFullCharacterCreator))).map(action => (
+            <button key={action.id} type="button" className={btn + ((action.id === 'existing' ? vaultRecords.length + cloudVaultRecords.length > 0 : vaultRecords.length + cloudVaultRecords.length === 0) ? ' border-slate-800 bg-slate-800 text-white hover:bg-slate-700' : ' bg-white text-slate-700')} onClick={() => handleEntryAction(action.id)}>{action.label}</button>
+          ))}
+        </div>
+        <details className="mb-3 text-xs" data-character-alternatives><summary className="cursor-pointer text-slate-600">更多加入方式</summary><div className="mt-2 flex flex-wrap gap-2">
+          {getCharacterEntryActions(currentMember?.role).filter(action => action.id !== 'existing' && action.id !== 'fullSheet').map(action => <button key={action.id} type="button" className={btn} onClick={() => handleEntryAction(action.id)}>{action.label}</button>)}
+        </div></details>
+        {entryActionNotice && <p className="mb-3 rounded border border-slate-300/50 bg-white/70 px-2 py-1.5 text-[10px] text-slate-600">{entryActionNotice}</p>}
+
+        {room?.identity.systemId === 'dnd5e-2024' && entryActionMode !== null && (
+          <details className="mb-3"><summary className="cursor-pointer text-xs">随角色带入自定义资料（可选）</summary><label className="mb-3 flex max-w-md flex-col gap-0.5 text-[10px] text-slate-500">
+            随角色提交的自定义资料（可选）
+            <select className={input} value={selectedPersonalPackVersionId} onChange={(event) => setSelectedPersonalPackVersionId(event.target.value)}>
+              <option value="">不带入个人资料包</option>
+              {personalPacks.map((pack) => pack.latestVersion && (
+                <option key={pack.latestVersion.packVersionId} value={pack.latestVersion.packVersionId}>
+                  {pack.displayName} · {pack.latestVersion.versionLabel}
+                </option>
+              ))}
+            </select>
+            <span className="text-[9px] text-slate-500">房间只会看到名称与版本；资料正文仍在你的个人资料库。主持人会随角色申请一并审核。</span>
+            {personalPacksError && <span className="text-[9px] text-amber-700">{personalPacksError}</span>}
+          </label></details>
+        )}
+
+        <div className="space-y-2">
+            {entryActionMode === 'existing' && (cloudVaultRecords.length > 0 || vaultRecords.length > 0 || cloudVaultLoading || cloudVaultError) && (
+              <label className="flex max-w-md flex-col gap-0.5 text-[10px] text-slate-500">从角色库选择
+                <select
+                  className={input}
+                  value={selectedCloudActor ? `cloud:${selectedCloudActor.actorId}` : bindingSource === 'localActorVault' ? `local:${bindingActorId}` : ''}
+                  onChange={(event) => {
+                    const [source, actorId] = event.target.value.split(':', 2);
+                    if (source === 'cloud') selectCloudVaultActor(actorId ?? '');
+                    if (source === 'local') selectVaultActor(actorId ?? '');
+                  }}
+                >
+                  <option value="">选择已有角色</option>
+                  {cloudVaultRecords.length > 0 && <optgroup label="已同步到云端">
+                    {cloudVaultRecords.map((actor) => <option key={actor.actorId} value={`cloud:${actor.actorId}`}>{actor.displayName}</option>)}
+                  </optgroup>}
+                  {vaultRecords.length > 0 && <optgroup label="仅本地（提交时自动同步）">
+                    {vaultRecords.map((actor) => <option key={actor.id} value={`local:${actor.id}`}>{actor.displayName}{actor.subtitle ? ` · ${actor.subtitle}` : ''}</option>)}
+                  </optgroup>}
+                </select>
+                <span className="flex items-center gap-2 text-[9px] text-slate-500">
+                  {cloudVaultLoading ? '正在读取云端角色库…' : '已同步角色可在其他设备继续使用。'}
+                  <button type="button" className="underline" onClick={() => setCloudVaultReloadVersion((version) => version + 1)}>刷新角色库</button>
+                </span>
+                {cloudVaultError && <span className="text-[9px] text-amber-700">{cloudVaultError}</span>}
+              </label>
+            )}
+            {entryActionMode === 'existing' && vaultRecords.length === 0 && cloudVaultRecords.length === 0 && !cloudVaultLoading && !cloudVaultError && (
+              <p className="text-[10px] italic text-slate-500">还没有角色。使用本系统的角色创建工具保存角色，然后在这里提交。临时加入请展开“更多加入方式”。</p>
+            )}
+            {entryActionMode === 'existing' && bindingName.trim() && (
+              <div className="rounded border border-slate-300/40 bg-white/50 px-2 py-1.5 text-[10px]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold text-slate-700">已选择：{bindingName}</span>
+                  <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 font-bold text-slate-600">{SOURCE_LABEL[bindingSource]}</span>
+                  <button type="button" className={submitCharacterBtn} disabled={bindingBusy || !iAmActive} onClick={submitBinding}>
+                    {bindingBusy ? '提交中…' : iAmActive ? (myBinding ? '更新入场角色' : '提交角色申请') : '等待加入批准后提交'}
+                  </button>
+                </div>
+                <CharacterClearanceDetailsPanel title="将提交给主持人的角色信息" details={submissionDetails} />
+                {selectedPersonalPack && <p className="mt-1 text-[10px] text-slate-600">随申请提交：{selectedPersonalPack.displayName} · {selectedPersonalPack.latestVersion?.versionLabel}。资料正文不会复制到房间。</p>}
+              </div>
+            )}
+            {entryActionMode === 'quickDraft' && <div className="flex flex-wrap items-end gap-2">
+              <label className="flex min-w-[220px] flex-col gap-0.5 text-[10px] text-slate-500">角色名
+                <input className={input} value={bindingName} onChange={(e) => { setBindingName(e.target.value); if (bindingSource === 'localActorVault') setBindingSource('quickDraft'); }} placeholder="例如 Elaria / 调查员 / Solo" />
+              </label>
+              <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">角色来源：{SOURCE_LABEL[bindingSource]}</span>
+              <button type="button" className={submitCharacterBtn} disabled={bindingBusy || !bindingName.trim() || !iAmActive} onClick={submitBinding}>
+                {bindingBusy ? '提交中…' : iAmActive ? (myBinding ? '更新入场角色' : '提交角色申请') : '等待加入批准后提交'}
+              </button>
+            </div>}
+            {entryActionMode === 'quickDraft' && <details className="rounded border border-slate-300/40 bg-white/50 px-2 py-1">
+              <summary className="cursor-pointer text-[10px] font-bold text-slate-500">高级：临时角色数值（可选）</summary>
+              {/* Reuses the same D&D archetype definitions the campaign NPC
+                  flow uses, rather than a second set of temporary-character
+                  templates. It only PREFILLS the three fields this admission
+                  contract already carries — abilities, saves, skills and
+                  actions have nowhere to go here, so they are deliberately not
+                  smuggled into the summary text. The values stay editable. */}
+              {room?.identity.systemId === 'dnd5e-2024' && <div className="mt-2 flex flex-wrap items-center gap-1.5" data-quick-draft-presets>
+                <span className="text-[10px] font-bold text-slate-500">快速填入：</span>
+                {listDndActorPresets('npc').filter((preset) => preset.id !== 'blank').map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    data-quick-draft-preset={preset.id}
+                    title={preset.blurbCn}
+                    onClick={() => {
+                      const values = dndActorPresetQuickDraftValues(preset.id, 'zh-CN');
+                      if (!values) return;
+                      setBindingSummary(values.summary);
+                      setBindingHpCurrent(values.hpCurrent === undefined ? '' : String(values.hpCurrent));
+                      setBindingHpMax(values.hpMax === undefined ? '' : String(values.hpMax));
+                      setBindingArmorClass(values.armorClass === undefined ? '' : String(values.armorClass));
+                    }}
+                    className="rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-700 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+                  >
+                    {preset.nameCn}
+                  </button>
+                ))}
+                <span className="w-full text-[10px] leading-4 text-slate-500">只填入下面这几项，填好后仍可自行修改。这些是本项目自定义的通用原型，不是官方资料。</span>
+              </div>}
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-4">
+                <label className="sm:col-span-4 flex flex-col gap-0.5 text-[10px] text-slate-500">简短说明
+                  <input className={input} value={bindingSummary} onChange={(e) => setBindingSummary(e.target.value)} placeholder="例如：1 级游侠，擅长侦察" />
+                </label>
+                <label className="flex flex-col gap-0.5 text-[10px] text-slate-500">当前 HP
+                  <input className={input} inputMode="decimal" value={bindingHpCurrent} onChange={(e) => setBindingHpCurrent(e.target.value)} />
+                </label>
+                <label className="flex flex-col gap-0.5 text-[10px] text-slate-500">最大 HP
+                  <input className={input} inputMode="decimal" value={bindingHpMax} onChange={(e) => setBindingHpMax(e.target.value)} />
+                </label>
+                <label className="flex flex-col gap-0.5 text-[10px] text-slate-500">AC / 防护
+                  <input className={input} inputMode="decimal" value={bindingArmorClass} onChange={(e) => setBindingArmorClass(e.target.value)} />
+                </label>
+              </div>
+
+            </details>}
+            {entryActionMode === 'quickDraft' && bindingName.trim() && (
+              <div className="rounded border border-slate-300/40 bg-white/50 px-2 py-1.5">
+                <CharacterClearanceDetailsPanel title="将提交给主持人的角色信息" details={submissionDetails} />
+                {selectedPersonalPack && <p className="mt-1 text-[10px] text-slate-600">随申请提交：{selectedPersonalPack.displayName} · {selectedPersonalPack.latestVersion?.versionLabel}。资料正文不会复制到房间。</p>}
+                <p className="mt-1 text-[10px] text-slate-500">临时角色不会加入角色库；主持人可能要求补充资料。</p>
+              </div>
+            )}
+          {!iAmActive && <p className="text-[10px] italic text-slate-500">你可以先选择或创建角色；成为在线成员后即可提交给主持人。若想旁观，请返回加入页选择旁观者。</p>}
+        </div>
+        {bindingError && <div className="mt-1 text-[10px] font-bold text-red-700">提交失败：{bindingError}</div>}
+      </details>
+      )}
 
       <section className={card}>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -763,7 +936,7 @@ export function RoomLobbyShell({
                 {isMe && <span className="rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-bold text-sky-700">我</span>}
                 <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">{status}</span>
                 <span className="min-w-0 truncate text-[10px] text-slate-500">
-                  {member.role === 'spectator' ? '旁观席' : binding?.actorRef.displayName ?? '尚未选择角色'}
+                  {member.role === 'spectator' ? '旁观席' : binding?.actorRef.displayName ?? (member.role === 'host' ? '仅主持' : '尚未选择角色')}
                 </span>
               </div>
             );
@@ -771,142 +944,6 @@ export function RoomLobbyShell({
           <div className="rounded border border-dashed border-slate-300/60 bg-white/40 px-2.5 py-2 text-[10px] text-slate-400">空位 · 等待玩家加入</div>
         </div>
       </section>
-
-      {/* AI-LANDMARK: HOST_FREE_TOKEN_PERSISTENT_ACTOR_VAULT_ENTRY_V1
-          Active hosts/players keep this available so a submitted, approved, or
-          Ready character can still be replaced through the same review path. */}
-      {presentation.canShowCharacterEntry && (
-      <details open={currentMember?.role !== 'host' && !myBinding} className={`${card} border-amber-400/45 bg-amber-50/35`}>
-        <summary className="mb-2 cursor-pointer font-bold text-sm">{currentMember?.role === 'host' ? '主持人角色（可选）' : myBinding ? '当前角色与更换角色' : '选择入场角色'}</summary>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <div className={`mb-1.5 ${label}`}>入场角色</div>
-            <div className="text-sm font-black text-slate-900">{myBinding ? '当前角色与更换角色' : '选择角色并提交审核'}</div>
-          </div>
-          <span className="rounded-full bg-amber-500/15 px-2 py-1 text-[10px] font-bold text-amber-800">{myBinding ? `当前：${myBinding.actorRef.displayName}` : '提交后等待主持人确认'}</span>
-        </div>
-        <p className="mb-2 text-[10px] text-slate-500">
-          {iAmActive
-            ? myBinding
-              ? '你可以继续使用当前角色，也可以从角色库选择其他角色重新提交。重新提交后需要主持人再次审核，并会取消旧 Ready。'
-              : '请选择已有角色、创建快速角色，或以旁观者加入。提交后等待主持人审核。'
-            : '主持人批准加入后即可选择并提交角色。'}
-        </p>
-
-        <div className="mb-3 flex flex-wrap gap-2">
-          {getCharacterEntryActions(currentMember?.role).map((action) => (
-            <button
-              key={action.id}
-              type="button"
-              className={`${btn} ${action.id === 'existing' ? 'border-slate-800 bg-slate-800 text-white hover:bg-slate-700' : action.id === 'quickDraft' ? 'border-amber-500/70 bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-white/70 text-slate-700 hover:bg-white'}`}
-              onClick={() => handleEntryAction(action.id)}
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
-        {entryActionNotice && <p className="mb-3 rounded border border-slate-300/50 bg-white/70 px-2 py-1.5 text-[10px] text-slate-600">{entryActionNotice}</p>}
-
-        {room?.identity.systemId === 'dnd5e-2024' && entryActionMode !== null && (
-          <label className="mb-3 flex max-w-md flex-col gap-0.5 text-[10px] text-slate-500">
-            随角色提交的自定义资料（可选）
-            <select className={input} value={selectedPersonalPackVersionId} onChange={(event) => setSelectedPersonalPackVersionId(event.target.value)}>
-              <option value="">不带入个人资料包</option>
-              {personalPacks.map((pack) => pack.latestVersion && (
-                <option key={pack.latestVersion.packVersionId} value={pack.latestVersion.packVersionId}>
-                  {pack.displayName} · {pack.latestVersion.versionLabel}
-                </option>
-              ))}
-            </select>
-            <span className="text-[9px] text-slate-500">房间只会看到名称与版本；资料正文仍在你的个人资料库。主持人会随角色申请一并审核。</span>
-            {personalPacksError && <span className="text-[9px] text-amber-700">{personalPacksError}</span>}
-          </label>
-        )}
-
-        <div className="space-y-2">
-            {entryActionMode === 'existing' && (cloudVaultRecords.length > 0 || vaultRecords.length > 0 || cloudVaultLoading || cloudVaultError) && (
-              <label className="flex max-w-md flex-col gap-0.5 text-[10px] text-slate-500">从角色库选择
-                <select
-                  className={input}
-                  value={selectedCloudActor ? `cloud:${selectedCloudActor.actorId}` : bindingSource === 'localActorVault' ? `local:${bindingActorId}` : ''}
-                  onChange={(event) => {
-                    const [source, actorId] = event.target.value.split(':', 2);
-                    if (source === 'cloud') selectCloudVaultActor(actorId ?? '');
-                    if (source === 'local') selectVaultActor(actorId ?? '');
-                  }}
-                >
-                  <option value="">选择已有角色</option>
-                  {cloudVaultRecords.length > 0 && <optgroup label="已同步到云端">
-                    {cloudVaultRecords.map((actor) => <option key={actor.actorId} value={`cloud:${actor.actorId}`}>{actor.displayName}</option>)}
-                  </optgroup>}
-                  {vaultRecords.length > 0 && <optgroup label="仅本地（提交时自动同步）">
-                    {vaultRecords.map((actor) => <option key={actor.id} value={`local:${actor.id}`}>{actor.displayName}{actor.subtitle ? ` · ${actor.subtitle}` : ''}</option>)}
-                  </optgroup>}
-                </select>
-                <span className="flex items-center gap-2 text-[9px] text-slate-500">
-                  {cloudVaultLoading ? '正在读取云端角色库…' : '已同步角色可在其他设备继续使用。'}
-                  <button type="button" className="underline" onClick={() => setCloudVaultReloadVersion((version) => version + 1)}>刷新角色库</button>
-                </span>
-                {cloudVaultError && <span className="text-[9px] text-amber-700">{cloudVaultError}</span>}
-              </label>
-            )}
-            {entryActionMode === 'existing' && vaultRecords.length === 0 && cloudVaultRecords.length === 0 && !cloudVaultLoading && !cloudVaultError && (
-              <p className="text-[10px] italic text-slate-500">当前账户没有可选角色。可创建快速角色，或完成完整车卡创建后返回此处选择。</p>
-            )}
-            {entryActionMode === 'existing' && bindingName.trim() && (
-              <div className="rounded border border-slate-300/40 bg-white/50 px-2 py-1.5 text-[10px]">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-bold text-slate-700">已选择：{bindingName}</span>
-                  <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 font-bold text-slate-600">{SOURCE_LABEL[bindingSource]}</span>
-                  <button type="button" className={submitCharacterBtn} disabled={bindingBusy || !iAmActive} onClick={submitBinding}>
-                    {bindingBusy ? '提交中…' : iAmActive ? (myBinding ? '更新入场角色' : currentMember?.role === 'host' ? '提交主持人角色' : '提交角色申请') : '等待加入批准后提交'}
-                  </button>
-                </div>
-                <CharacterClearanceDetailsPanel title="将提交给主持人的角色信息" details={submissionDetails} />
-                {selectedPersonalPack && <p className="mt-1 text-[10px] text-slate-600">随申请提交：{selectedPersonalPack.displayName} · {selectedPersonalPack.latestVersion?.versionLabel}。资料正文不会复制到房间。</p>}
-              </div>
-            )}
-            {entryActionMode === 'quickDraft' && <div className="flex flex-wrap items-end gap-2">
-              <label className="flex min-w-[220px] flex-col gap-0.5 text-[10px] text-slate-500">角色名
-                <input className={input} value={bindingName} onChange={(e) => { setBindingName(e.target.value); if (bindingSource === 'localActorVault') setBindingSource('quickDraft'); }} placeholder="例如 Elaria / 调查员 / Solo" />
-              </label>
-              <span className="rounded-full bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-bold text-slate-600">角色来源：{SOURCE_LABEL[bindingSource]}</span>
-              <button type="button" className={submitCharacterBtn} disabled={bindingBusy || !bindingName.trim() || !iAmActive} onClick={submitBinding}>
-                {bindingBusy ? '提交中…' : iAmActive ? (myBinding ? '更新入场角色' : currentMember?.role === 'host' ? '提交主持人角色' : '提交角色申请') : '等待加入批准后提交'}
-              </button>
-            </div>}
-            {entryActionMode === 'quickDraft' && <details className="rounded border border-slate-300/40 bg-white/50 px-2 py-1">
-              <summary className="cursor-pointer text-[10px] font-bold text-slate-500">快速角色摘要（可选）</summary>
-              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-4">
-                <label className="sm:col-span-4 flex flex-col gap-0.5 text-[10px] text-slate-500">简短说明
-                  <input className={input} value={bindingSummary} onChange={(e) => setBindingSummary(e.target.value)} placeholder="例如：1 级游侠，擅长侦察" />
-                </label>
-                <label className="flex flex-col gap-0.5 text-[10px] text-slate-500">当前 HP
-                  <input className={input} inputMode="decimal" value={bindingHpCurrent} onChange={(e) => setBindingHpCurrent(e.target.value)} />
-                </label>
-                <label className="flex flex-col gap-0.5 text-[10px] text-slate-500">最大 HP
-                  <input className={input} inputMode="decimal" value={bindingHpMax} onChange={(e) => setBindingHpMax(e.target.value)} />
-                </label>
-                <label className="flex flex-col gap-0.5 text-[10px] text-slate-500">AC / 防护
-                  <input className={input} inputMode="decimal" value={bindingArmorClass} onChange={(e) => setBindingArmorClass(e.target.value)} />
-                </label>
-              </div>
-              <label className="mt-2 flex max-w-xs flex-col gap-0.5 text-[10px] text-slate-500">角色 ID（可选）
-                <input className={input} value={bindingActorId} onChange={(e) => { setBindingActorId(e.target.value); setBindingSource('quickDraft'); }} placeholder="仅用于本地角色库匹配" />
-              </label>
-            </details>}
-            {entryActionMode === 'quickDraft' && bindingName.trim() && (
-              <div className="rounded border border-slate-300/40 bg-white/50 px-2 py-1.5">
-                <CharacterClearanceDetailsPanel title="将提交给主持人的角色信息" details={submissionDetails} />
-                {selectedPersonalPack && <p className="mt-1 text-[10px] text-slate-600">随申请提交：{selectedPersonalPack.displayName} · {selectedPersonalPack.latestVersion?.versionLabel}。资料正文不会复制到房间。</p>}
-                <p className="mt-1 text-[10px] text-slate-500">快速角色不会写入角色库；缺少装备或特性信息允许提交，但主持人可要求补充。</p>
-              </div>
-            )}
-          {!iAmActive && <p className="text-[10px] italic text-slate-500">你可以先选择或创建角色；成为在线成员后即可提交给主持人。若想旁观，请返回加入页选择旁观者。</p>}
-        </div>
-        {bindingError && <div className="mt-1 text-[10px] font-bold text-red-700">提交失败：{bindingError}</div>}
-      </details>
-      )}
 
       {presentation.shouldShowHostReviewQueue && isHostScaffold && (reviewQueueCount > 0 || memberActionError || reviewError) && (
         <section className={card}>

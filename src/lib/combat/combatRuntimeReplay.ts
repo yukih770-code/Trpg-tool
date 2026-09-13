@@ -30,6 +30,14 @@ function numberValue(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
+export function readCombatantConditionStates(value: unknown): NonNullable<Combatant['conditionStates']> {
+  return Array.isArray(value) ? value.flatMap(item => {
+    const c = record(item);
+    return c && stringValue(c.systemId) && stringValue(c.conditionId)
+      ? [{ systemId: c.systemId as string, conditionId: c.conditionId as string, ...(Number.isSafeInteger(c.level) && (c.level as number) > 0 ? { level: c.level as number } : {}) }] : [];
+  }) : [];
+}
+
 function hpDisplayValue(value: unknown): RuntimeHpDisplay | undefined {
   const input = record(value);
   if (!input || typeof input.kind !== 'string') return undefined;
@@ -84,6 +92,7 @@ function combatantInput(value: unknown, fallback?: Combatant): Combatant | null 
     temporaryHp: numberValue(input?.temporaryHp) ?? fallback?.temporaryHp,
     armorClass: numberValue(input?.armorClass) ?? fallback?.armorClass,
     conditions: input?.conditions === undefined ? fallback?.conditions ?? [] : conditions(input.conditions),
+    conditionStates: input?.conditionStates === undefined ? fallback?.conditionStates : readCombatantConditionStates(input.conditionStates),
     notes: stringValue(input?.notes) ?? fallback?.notes,
     isDefeated: typeof input?.isDefeated === 'boolean' ? input.isDefeated : fallback?.isDefeated,
     status: input?.status === undefined ? fallback?.status : status(input.status),
@@ -168,6 +177,17 @@ export function replayCombatRuntimeEvents(events: ReadonlyArray<CombatRuntimeRep
     }
     if (event.eventKind === 'combat.table_cleared') {
       state = createCombatRuntimeTableState();
+      continue;
+    }
+    if (event.eventKind === 'combat.conditions_updated') {
+      if (!Array.isArray(payload.combatants) && Array.isArray(payload.mutations)) {
+        for (const value of payload.mutations) {
+          const mutation = record(value);
+          if (mutation?.type !== 'combatantConditions') continue;
+          state = { ...state, combatants: state.combatants.map(c => c.id === mutation.combatantId
+            ? { ...c, conditionStates: readCombatantConditionStates(mutation.afterConditions) } : c) };
+        }
+      }
       continue;
     }
     if (event.eventKind === 'combat.attack_resolved') {

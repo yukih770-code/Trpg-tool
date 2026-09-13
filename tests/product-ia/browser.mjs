@@ -13,7 +13,7 @@ export async function verifyProductIa(browser, origin, output) {
  const prep=async()=>page.getByText('战役准备与角色管理',{exact:true}).click();
  const openActor=async(index=0)=>page.getByRole('button',{name:'打开战役战斗卡',exact:true}).nth(index+1).click();
  const close=async()=>{await page.keyboard.press('Escape');await sheet().waitFor({state:'hidden'});};
- const live=async()=>{await page.getByRole('button',{name:'恢复联机大厅',exact:true}).click();await page.getByRole('button',{name:'进入跑团桌面',exact:true}).click();await page.locator('[data-map-token="t3"]').waitFor();};
+ const live=async()=>{await page.getByRole('button',{name:'恢复联机大厅',exact:true}).click();await page.getByRole('button',{name:'以主持人身份进入桌面',exact:true}).click();await page.locator('[data-map-token="t3"]').waitFor();};
  await fs.mkdir(output,{recursive:true});
  await go();await prep();await openActor(3);
  check('campaign row selects its canonical actor',await sheet().getByPlaceholder('显示名称').inputValue()==='地精斥候');
@@ -58,13 +58,14 @@ export async function verifyProductIa(browser, origin, output) {
  await close();await page.getByRole('button',{name:'准备 / 管理',exact:true}).click();await page.locator('.live-context-panel').getByRole('button',{name:'打开战役战斗卡',exact:true}).click();
  check('host preparation opens canonical selector',await page.locator('[data-entry-source="runtime"]').isVisible());
  await sheet().locator('select').first().selectOption('actor3');check('selector converges to same state',await sheet().getByPlaceholder('护甲等级',{exact:true}).inputValue()==='18');await close();
- await page.locator('.live-context-panel').getByRole('button',{name:'打开战役战斗卡',exact:true}).click();await page.locator('[data-entry-source] summary').filter({hasText:'创建战役角色'}).click();
- await page.getByPlaceholder('角色名称',{exact:true}).fill('新地精');await page.getByRole('combobox',{name:'角色类型'}).selectOption('monster');await page.getByRole('button',{name:'创建战役角色',exact:true}).click();
+ await page.locator('.live-context-panel').getByRole('button',{name:'打开战役战斗卡',exact:true}).click();await page.getByRole('button',{name:'添加怪物',exact:true}).click();await page.getByText('没有合适的怪物？',{exact:true}).click();await page.getByRole('button',{name:'创建自定义怪物',exact:true}).click();
+ await sheet().getByPlaceholder('显示名称').fill('新地精');
+ check('custom monster opens canonical editor before persistence',await page.evaluate(()=>window.iaFixture.actors.every(a=>a.displayName!=='新地精')));
+ await sheet().getByPlaceholder('当前生命值',{exact:true}).fill('20');await sheet().getByPlaceholder('生命上限',{exact:true}).fill('20');await sheet().getByRole('button',{name:'创建角色',exact:true}).click();
  await sheet().getByPlaceholder('显示名称').waitFor();
- check('quick actor creation opens canonical editor',await sheet().getByPlaceholder('显示名称').inputValue()==='新地精');
+ check('custom monster creation stays in canonical editor',await sheet().getByPlaceholder('显示名称').inputValue()==='新地精');
  const newId=await page.evaluate(()=>window.iaFixture.actors.at(-1).campaignActorInstanceId);
  check('monster creation uses canonical persistent object',await page.evaluate(()=>window.iaFixture.actors.at(-1).actorKind==='monster'));
- await sheet().getByPlaceholder('当前生命值',{exact:true}).fill('20');await sheet().getByPlaceholder('生命上限',{exact:true}).fill('20');await page.getByRole('button',{name:'保存角色卡',exact:true}).click();await page.getByText('角色卡已保存到当前战役。',{exact:true}).waitFor();
  check('improvisation preserves table and runtime entry context',await page.locator('[data-live-play="host"]').count()===1&&await page.locator('[data-entry-source="runtime"]').isVisible());
  await close();await page.getByRole('button',{name:'放置 Token',exact:true}).click();
  const placement=page.locator('[data-canonical-surface="token-placement"]');
@@ -102,8 +103,8 @@ export async function verifyProductIa(browser, origin, output) {
  check('document entrances reuse identical reader',await page.locator('main').innerText()===docText);
  await shot('canonical-document-reader-1440');
  await go('workspace&role=host&new');await page.getByPlaceholder('战役名称',{exact:true}).fill('新战役');await page.getByRole('button',{name:'创建',exact:true}).click();await page.getByText('新战役',{exact:true}).first().waitFor();await prep();
- await page.getByPlaceholder('角色名称',{exact:true}).fill('新角色');await page.getByRole('button',{name:'创建战役角色',exact:true}).click();await sheet().getByPlaceholder('显示名称').waitFor();await close();
- await page.getByRole('button',{name:'创建房间记录',exact:true}).click();await page.getByRole('button',{name:'开启联机大厅',exact:true}).click();await page.getByRole('button',{name:'进入跑团桌面',exact:true}).click();await page.locator('[data-live-play="host"]').waitFor();
+ await page.getByRole('button',{name:'创建 NPC',exact:true}).click();await sheet().getByPlaceholder('显示名称').fill('新角色');await sheet().getByRole('button',{name:'创建角色',exact:true}).click();await sheet().getByPlaceholder('显示名称').waitFor();await close();
+ await page.getByText('高级：房间记录',{exact:true}).click();await page.getByRole('button',{name:'创建房间记录',exact:true}).click();await page.getByRole('button',{name:'开启联机大厅',exact:true}).click();await page.getByRole('button',{name:'以主持人身份进入桌面',exact:true}).click();await page.locator('[data-live-play="host"]').waitFor();
  check('new GM campaign actor room live workflow converges',await page.evaluate(()=>['campaign.create','actor.create','room.create','room.launch'].every(kind=>window.iaFixture.writes.some(w=>w.kind===kind))));
  await page.setViewportSize({width:1024,height:768});await page.getByRole('button',{name:'准备 / 管理',exact:true}).click();await page.locator('.live-context-panel').getByRole('button',{name:'打开战役战斗卡',exact:true}).click();
  await sheet().locator('select').first().selectOption({label:'新角色'});

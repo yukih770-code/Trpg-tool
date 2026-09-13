@@ -8,7 +8,7 @@ import { createInMemoryRoomRegistry } from '../room-registry.js';
 import { createInMemoryRuntimeLogRegistry } from '../runtime-log-registry.js';
 import type { RoomRuntimeLogEvent } from '../protocol/room-protocol.js';
 import { createRoom } from './createRoom.js';
-import { ROOM_RUNTIME_LOG_EVENT_KINDS } from '../../src/lib/platform/roomRuntimeLogTypes.js';
+import { ROOM_RUNTIME_LOG_EVENT_KINDS, SERVER_RESOLVED_EVENT_KINDS } from '../../src/lib/platform/roomRuntimeLogTypes.js';
 import { appendRuntimeLogEvent } from './appendRuntimeLogEvent.js';
 import { applyRuntimeResolution } from './applyRuntimeResolution.js';
 import { createCombatant } from '../../src/lib/combat/combatRuntimeTypes.js';
@@ -328,13 +328,14 @@ async function main(): Promise<void> {
   for (const kind of ROOM_RUNTIME_LOG_EVENT_KINDS) {
     // Append through the real service so the canonical list is exercised on the
     // WRITE side exactly as production does, not simulated.
-    const appended = kind === 'combat.attack_resolved' ? {
+    const resolved = (SERVER_RESOLVED_EVENT_KINDS as readonly string[]).includes(kind);
+    const appended = resolved ? {
       decision: 'appended',
-      event: await applyRuntimeResolution({ rooms: kindRoomRegistry, log: kindLogRegistry,
+      event: await applyRuntimeResolution({ rooms: kindRoomRegistry, log: kindLogRegistry, kind: kind as typeof SERVER_RESOLVED_EVENT_KINDS[number],
         context: { roomId: kindRoomId, memberId: kindHostMemberId, sessionId: kindRoom.identity.sessionId!,
-          actorCombatantId: 'kind-actor', targetCombatantId: 'kind-target', intentId: 'kind-intent', fingerprint: 'kind-fingerprint', expectedSeq: kindLogRegistry.list(kindRoomId).latestSeq },
+          actorCombatantId: 'kind-actor', targetCombatantId: 'kind-target', actorInstanceId: 'kind-instance', intentId: 'kind-intent', fingerprint: 'kind-fingerprint', expectedSeq: kindLogRegistry.list(kindRoomId).latestSeq },
         proposal: { systemId: kindRoom.identity.systemId, resolutionId: 'kind-resolution', publicSummaryText: 'Attack resolved.', publicFacts: {}, privilegedFacts: {},
-          mutations: [{ type: 'combatantHp', combatantId: 'kind-target', beforeHp: 10, afterHp: 9, beforeTemporaryHp: 0, afterTemporaryHp: 0 }] },
+          mutations: kind === 'combat.attack_resolved' ? [{ type: 'combatantHp', combatantId: 'kind-target', beforeHp: 10, afterHp: 9, beforeTemporaryHp: 0, afterTemporaryHp: 0 }] : kind === 'combat.conditions_updated' ? [{ type: 'combatantConditions', combatantId: 'kind-target', beforeConditions: [], afterConditions: [{ systemId: 'dnd5e-2024', conditionId: 'prone' }] }] : [] },
         confirm: async (event) => {
           const result = await persistLiveRoomRuntimeLogEvent(kindRepository, kindRoom, event);
           if (result.status !== 'persisted') return false;

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { RoomRegistry } from '../room-registry.js';
 import type { RuntimeLogRegistry } from '../runtime-log-registry.js';
 import { SERVER_RESOLVED_EVENT_KINDS, type RoomRuntimeLogEvent } from '../../src/lib/platform/roomRuntimeLogTypes.js';
-import type { SystemResolutionProposal } from '../../src/lib/platform/systemResolutionTypes.js';
+import type { SystemResolutionProposal, RuntimeMutation } from '../../src/lib/platform/systemResolutionTypes.js';
 import { replayCombatRuntimeEvents } from '../../src/lib/combat/combatRuntimeReplay.js';
 import { validateRuntimeLogAppendContext } from './appendRuntimeLogEvent.js';
 import { requiresLiveRoomDurableAppend } from './liveRoomDurableAppendConfirmation.js';
@@ -23,7 +23,8 @@ export function readAuthoritativeCombat(log: RuntimeLogRegistry, roomId: string)
 
 export interface RuntimeResolutionContext {
   roomId: string; memberId: string; actorBindingId?: string;
-  actorCombatantId: string; targetCombatantId: string;
+  actorCombatantId?: string; targetCombatantId?: string;
+  actorInstanceId?: string;
   intentId: string; fingerprint: string; sessionId: string;
   /** Revision of the authoritative history supplied to resolution. */
   expectedSeq: number;
@@ -32,7 +33,7 @@ export interface RuntimeResolutionContext {
 /** Partitioned internal append. Only applyRuntimeResolution calls this producer. */
 function appendResolvedRuntimeEvent(
   rooms: RoomRegistry, log: RuntimeLogRegistry,
-  context: RuntimeResolutionContext, kind: string, proposal: SystemResolutionProposal,
+  context: RuntimeResolutionContext, kind: string, proposal: SystemResolutionProposal<RuntimeMutation>,
 ): RoomRuntimeLogEvent {
   if (!(SERVER_RESOLVED_EVENT_KINDS as readonly string[]).includes(kind)) throw new RuntimeResolutionError('invalid_resolved_kind');
   const invalid = validateRuntimeLogAppendContext(rooms, { roomId: context.roomId, authorMemberId: context.memberId,
@@ -43,10 +44,11 @@ function appendResolvedRuntimeEvent(
   return log.append(context.roomId, {
     eventId: `logevent_${randomUUID()}`, roomId: context.roomId, createdAt: new Date().toISOString(),
     authorMemberId: context.memberId, actorBindingId: context.actorBindingId, campaignRef: room.campaignRef,
-    kind: 'combat.attack_resolved', visibility: 'public', text: proposal.publicSummaryText,
+    kind: kind as typeof SERVER_RESOLVED_EVENT_KINDS[number], visibility: 'public', text: proposal.publicSummaryText,
     payload: { schemaVersion: 1, systemId: proposal.systemId, resolutionId: proposal.resolutionId,
       sessionId: context.sessionId, intentId: context.intentId, fingerprint: context.fingerprint,
       actorCombatantId: context.actorCombatantId, targetCombatantId: context.targetCombatantId,
+      ...(context.actorInstanceId ? { actorInstanceId: context.actorInstanceId } : {}),
       resolution: proposal.publicFacts, privileged: proposal.privilegedFacts, mutations: proposal.mutations },
   }, { pending: requiresLiveRoomDurableAppend(room) });
 }
@@ -54,7 +56,7 @@ function appendResolvedRuntimeEvent(
 /** Validates structural transitions independently of the system's fact bags. */
 export async function applyRuntimeResolution(input: {
   rooms: RoomRegistry; log: RuntimeLogRegistry; context: RuntimeResolutionContext;
-  proposal: SystemResolutionProposal; kind?: string;
+  proposal: SystemResolutionProposal<RuntimeMutation>; kind?: string;
   confirm: (event: RoomRuntimeLogEvent) => Promise<boolean>;
 }): Promise<RoomRuntimeLogEvent> {
   const { rooms, log, context } = input;
@@ -67,16 +69,29 @@ export async function applyRuntimeResolution(input: {
   if (room.identity.sessionId !== context.sessionId) throw new RuntimeResolutionError('invalid_runtime', 409);
   if (log.list(context.roomId).latestSeq !== context.expectedSeq) throw new RuntimeResolutionError('stale_resolution', 409);
   const state = readAuthoritativeCombat(log, context.roomId);
-  for (const id of [context.actorCombatantId, context.targetCombatantId]) {
-    if (!state.combatants.some((c) => c.id === id && c.status === 'active' && !c.isDefeated)) throw new RuntimeResolutionError('invalid_combatant');
+  const kind = input.kind ?? 'combat.attack_resolved';
+  const actorOperation = kind === 'runtime.resource_changed' || kind === 'runtime.saving_throw_requested' || kind === 'runtime.saving_throw_resolved';
+  if (!(SERVER_RESOLVED_EVENT_KINDS as readonly string[]).includes(kind)) throw new RuntimeResolutionError('invalid_resolved_kind');
+  for (const id of actorOperation ? [] : [context.actorCombatantId, context.targetCombatantId]) {
+    if (!state.combatants.some((c) => c.id === id && c.status !== 'removed' && (kind !== 'combat.attack_resolved' || (c.status === 'active' && !c.isDefeated)))) throw new RuntimeResolutionError('invalid_combatant');
   }
-  if (!proposal.resolutionId || !Array.isArray(proposal.mutations) || proposal.mutations.length !== 1) throw new RuntimeResolutionError('invalid_mutation');
+  if (!proposal.resolutionId || !Array.isArray(proposal.mutations) || (actorOperation ? proposal.mutations.length > 1 : proposal.mutations.length !== 1)) throw new RuntimeResolutionError('invalid_mutation');
   const m = proposal.mutations[0];
-  const target = state.combatants.find((c) => c.id === m.combatantId);
-  if (m.type !== 'combatantHp' || !target || m.combatantId !== context.targetCombatantId) throw new RuntimeResolutionError('invalid_mutation');
-  if (![m.beforeHp, m.afterHp, m.beforeTemporaryHp, m.afterTemporaryHp].every((n) => Number.isSafeInteger(n) && n >= 0)
+  const target = m && 'combatantId' in m ? state.combatants.find((c) => c.id === m.combatantId) : undefined;
+  if (kind === 'runtime.saving_throw_requested' || kind === 'runtime.saving_throw_resolved') {
+    if (!context.actorInstanceId || proposal.mutations.length !== 0) throw new RuntimeResolutionError('invalid_saving_throw_mutation');
+  } else if (kind === 'runtime.resource_changed') {
+    if (!context.actorInstanceId) throw new RuntimeResolutionError('invalid_actor');
+    if (m && (m.type !== 'systemResource' || m.actorInstanceId !== context.actorInstanceId || !m.resourceId || ![m.before, m.after, m.max].every(n => Number.isSafeInteger(n) && n >= 0) || m.before > m.max || m.after > m.max)) throw new RuntimeResolutionError('invalid_resource');
+  } else if (!target || !m || !('combatantId' in m) || m.combatantId !== context.targetCombatantId) throw new RuntimeResolutionError('invalid_mutation');
+  else if (kind === 'combat.attack_resolved' && m.type === 'combatantHp') {
+    if (![m.beforeHp, m.afterHp, m.beforeTemporaryHp, m.afterTemporaryHp].every((n) => Number.isSafeInteger(n) && n >= 0)
     || (target.hpMax !== undefined && (!Number.isSafeInteger(target.hpMax) || m.afterHp > target.hpMax))) throw new RuntimeResolutionError('invalid_hp');
-  if (m.beforeHp !== target.hpCurrent || m.beforeTemporaryHp !== (target.temporaryHp ?? 0)) throw new RuntimeResolutionError('stale_resolution', 409);
+    if (m.beforeHp !== target.hpCurrent || m.beforeTemporaryHp !== (target.temporaryHp ?? 0)) throw new RuntimeResolutionError('stale_resolution', 409);
+  } else if (kind === 'combat.conditions_updated' && m.type === 'combatantConditions') {
+    if (!Array.isArray(m.afterConditions) || m.afterConditions.length > 64 || m.afterConditions.some(c => c.systemId !== proposal.systemId || typeof c.conditionId !== 'string' || !c.conditionId || c.conditionId.length > 100 || (c.level !== undefined && (!Number.isSafeInteger(c.level) || c.level < 1)))) throw new RuntimeResolutionError('invalid_conditions');
+    if (JSON.stringify(m.beforeConditions) !== JSON.stringify(target.conditionStates ?? [])) throw new RuntimeResolutionError('stale_resolution', 409);
+  } else throw new RuntimeResolutionError('invalid_mutation');
   const pending = pendingRooms.get(log) ?? new Set<string>();
   if (pending.has(context.roomId)) throw new RuntimeResolutionError('resolution_pending', 409);
   pendingRooms.set(log, pending); pending.add(context.roomId);

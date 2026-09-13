@@ -108,6 +108,10 @@ import { createPrivateCompendiumPackApiHandlers } from './api/privateCompendiumP
 import { registerPersonalCompendiumPackApiRoutes } from './api/personalCompendiumPackApiRoutes.js';
 import { createPersonalCompendiumPackApiHandlers } from './api/personalCompendiumPackApiHandlers.js';
 import { registerActorApiRoutes } from './api/actorApiRoutes.js';
+import { registerAssetApiRoutes } from './api/assetApiRoutes.js';
+import { createPlatformAssets } from './services/platformAssets.js';
+import { createFileAssetObjectStore } from './storage/assetObjectStore.js';
+import { canReadRoomAsset } from './room/roomAssetAccess.js';
 import { createActorApiHandlers } from './api/actorApiHandlers.js';
 import { registerAiCharacterAssistantApiRoutes } from './api/aiCharacterAssistantRoutes.js';
 import { createAiCharacterAssistantApiHandlers } from './api/aiCharacterAssistantHandlers.js';
@@ -495,6 +499,18 @@ function confirmRuntimeLogAppend(event: NonNullable<ReturnType<typeof appendRunt
 }
 
 const roomSessionAssistantSuggestionRegistry = createRoomSessionAssistantSuggestionRegistry();
+const platformAssets = createPlatformAssets({ store: createFileAssetObjectStore(process.env.ASSET_STORAGE_DIR || '.data/assets') });
+function assetRequestViewer(req: Request) {
+  if (getVerifiedViewer(req)) return resolveRoomRequestViewer(req);
+  // Same opt-in local-only identity seam as the browser WebSocket handshake.
+  const hint = typeof req.query.devViewerUserId === 'string' ? req.query.devViewerUserId : undefined;
+  return createCurrentViewerContextFromAuthSession(resolveApiAuthSession({ headers: hint ? { ...req.headers, 'x-dev-user-id': hint } : req.headers }, roomAuthSessionOptions));
+}
+registerAssetApiRoutes(app, { assets: platformAssets, viewer: assetRequestViewer,
+  canReadRoomAsset: (req, assetId) => canReadRoomAsset(
+    registry.get(typeof req.query.roomId === 'string' ? req.query.roomId : ''), roomMapRegistry, assetRequestViewer(req),
+    typeof req.query.memberId === 'string' ? req.query.memberId : '', assetId),
+});
 registerDndAttackRoutes(app, {
   rooms: registry, log: runtimeLogRegistry, maps: roomMapRegistry,
   repository: platformFoundationRepository, sessions: runtimeEventRepository,
@@ -1252,6 +1268,18 @@ app.post('/rooms/:roomId/map-events', async (req, res) => {
       return;
     }
   } else if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.authorMemberId, mapRuntimeActionForMapEvent(body.eventKind))) return;
+  // Choosing an image shares its room-visible use, never arbitrary private assets.
+  const tokenPayload = body.payload?.token && typeof body.payload.token === 'object' ? body.payload.token as Record<string, unknown> : body.payload;
+  const assetIds = [body.payload?.backgroundAssetId, tokenPayload?.imageAssetId].filter(value => value !== undefined && value !== null);
+  try {
+    for (const id of assetIds) {
+      if (typeof id !== 'string') throw new Error('invalid_asset');
+      const asset = await platformAssets.get(id), viewer = resolveRoomRequestViewer(req);
+      if (asset.ownerId !== viewer.viewerUserId && !canReadRoomAsset(registry.get(req.params.roomId), roomMapRegistry, viewer, body.authorMemberId, id)) throw new Error('asset_not_owned');
+    }
+  } catch { res.status(403).json({ error: 'asset_not_available' }); return; }
+  // Recheck membership after repository I/O.
+  if (assetIds.length && !requireRoomRuntimeAction(req, res, req.params.roomId, body.authorMemberId, mapRuntimeActionForMapEvent(body.eventKind))) return;
   const result = appendRoomMapEvent(registry, roomMapRegistry, {
     roomId: req.params.roomId,
     authorMemberId: body.authorMemberId,

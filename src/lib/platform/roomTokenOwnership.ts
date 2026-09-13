@@ -8,6 +8,9 @@ const PLAYER_BINDING_TOKEN_SOURCES = new Set<MapToken['sourceType']>([
   'quickDraft',
   'dndLiteActor',
   'campaign_actor',
+  // A player's server projection intentionally redacts the underlying source
+  // while retaining only their own opaque room member and binding ids.
+  'unknown',
 ]);
 
 /**
@@ -30,6 +33,7 @@ export function isTokenLinkedToApprovedRoomMember(
   // have both exact room member and approved binding metadata to move a token.
   if (!binding || token.roomMemberId !== memberId || token.actorBindingId !== binding.bindingId) return false;
   if (token.sourceType === 'roomActorBinding') return token.sourceId === binding.bindingId;
+  if (token.sourceType === 'unknown') return token.sourceId === undefined;
   const actorId = binding.actorRef.actorId?.trim();
   return !actorId || token.sourceId === actorId;
 }

@@ -96,11 +96,11 @@ export async function verifyLivePlay(browser, origin, output) {
  check('exploration has no disabled attack form',await page.locator('.live-action-form').count()===0);
  await geometry('host exploration 1440x900');await shot('host-exploration-1440');
  await page.getByRole('button',{name:'返回房间大厅',exact:true}).click();
- await page.getByRole('button',{name:'进入跑团桌面',exact:true}).waitFor();
- check('host character is optional and collapsed',await page.getByText('主持人角色（可选）',{exact:true}).evaluate(el=>!el.parentElement.open));
+ await page.getByRole('button',{name:'以主持人身份进入桌面',exact:true}).waitFor();
+ check('host character is optional and collapsed',await page.getByText('我也扮演角色（可选）',{exact:true}).evaluate(el=>!el.parentElement.open));
  check('empty review queue not shown',await page.getByText('主持人待处理',{exact:true}).count()===0);
  await shot('host-lobby-1440');
- await page.getByRole('button',{name:'进入跑团桌面',exact:true}).click();await page.locator('[data-live-play]').waitFor();
+ await page.getByRole('button',{name:'以主持人身份进入桌面',exact:true}).click();await page.locator('[data-live-play]').waitFor();
  await goto('role=spectator');
  check('spectator has no attack or host management controls',await page.locator('[data-live-attack]').count()===0&&await page.getByRole('button',{name:'准备 / 管理',exact:true}).count()===0);
  await shot('spectator-1440');

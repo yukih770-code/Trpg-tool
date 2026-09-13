@@ -11,7 +11,8 @@ import { AttributeName, SkillName, SpellInfo, type CharacterData } from '../lib/
 import type { RuntimeLogEntry, RuntimeLogKind } from '../lib/runtime-log-types';
 import { DND_ACTION_REGISTRY } from '../lib/dnd2024/actionRegistry';
 import type { DndActionDefinition, ResourceCost } from '../lib/dnd2024/action-registry-types';
-import { getDndSpellPreparationModel } from '../lib/dnd2024/spell-preparation-model';
+import { getDndSpellManagement } from '../lib/dnd2024/spellManagement';
+import { DndSpellManager } from '../components/dnd/DndSpellManager';
 import { ActionsPanel } from './gameplay/ActionsPanel';
 import { ChecksPanel } from './gameplay/ChecksPanel';
 import { ClassResourcePanel } from './gameplay/ClassResourcePanel';
@@ -288,42 +289,14 @@ export function Gameplay() {
     toast("发起攻击！");
   };
 
-  const spellPreparationModel = getDndSpellPreparationModel(character);
+  const personalSpells = character.spellbook.known.filter(spell => spell.id?.startsWith('personal.'));
+  const spellManagement = getDndSpellManagement(character, SPELL_DATA, personalSpells);
+  const spellPreparationModel = spellManagement.preparation;
   const isPreparedCaster = spellPreparationModel.isPreparedCaster;
   const maxPrepared = spellPreparationModel.preparedSpellLimit ?? 0;
   const isCaster = spellPreparationModel.isCaster;
-
-  const classSpells = SPELL_DATA.filter(s => s.classes.includes(character.jobClass));
-  const maxSpellLevel = Object.keys(character.spellbook.slots).length > 0 ? Math.max(...Object.keys(character.spellbook.slots).map(Number)) : 0;
-  
-  const availableSpells = classSpells.filter(s => s.level <= maxSpellLevel);
-  const knownSpells = character.spellbook.known || [];
-  const preparedSpells = character.spellbook.prepared || [];
-
-  const activeSpells = isPreparedCaster 
-    ? availableSpells.filter(s => preparedSpells.includes(s.name_cn))
-    : knownSpells;
-
-  const handleTogglePrepare = (spellName: string) => {
-    if (preparedSpells.includes(spellName)) {
-      updateSpellbook(knownSpells, preparedSpells.filter(n => n !== spellName));
-    } else {
-      if (preparedSpells.length >= maxPrepared) {
-         toast(`你最多只能准备 ${maxPrepared} 个法术！`);
-         return;
-      }
-      updateSpellbook(knownSpells, [...preparedSpells, spellName]);
-    }
-  };
-
-  const handleToggleLearn = (spell: SpellInfo) => {
-    const spellName = spell.name_cn;
-    if (knownSpells.find(s => s.name_cn === spellName)) {
-      updateSpellbook(knownSpells.filter(s => s.name_cn !== spellName), preparedSpells.filter(n => n !== spellName));
-    } else {
-      updateSpellbook([...knownSpells, spell], preparedSpells);
-    }
-  };
+  const preparedSpells = character.spellbook.prepared;
+  const activeSpells = spellManagement.active;
 
   const classDef = CLASS_DATA.find(c => c.name === character.jobClass);
 
@@ -644,110 +617,8 @@ export function Gameplay() {
               <button className="text-[#58180d] font-bold text-xl hover:opacity-70" onClick={() => setShowSpellManager(false)}>✕</button>
             </div>
             
-            {/* Context Help */}
-            <div className="bg-white/60 border border-[#58180d]/30 p-4 text-sm font-sans mb-2">
-              {isPreparedCaster ? (
-                <>
-                  <p className="font-bold text-[#58180d] mb-1">施法准备 (Prepared Spellcaster)</p>
-                  <p>作为{character.jobClass}，你需要在进行长休时准备你的法术。你可以准备 <strong className="text-red-800">{maxPrepared}</strong> 个法术。</p>
-                  <p className="mt-1 text-xs italic">{spellPreparationModel.ruleHint}</p>
-                  {spellPreparationModel.usesSpellbook && <p className="mt-1 text-xs italic">法师需要首先将法术抄录（学习）到法术书中，然后只能从法术书中准备法术。完整法术书工作流仍 deferred。</p>}
-                </>
-              ) : (
-                <>
-                  <p className="font-bold text-[#58180d] mb-1">已知施法 (Known Spellcaster)</p>
-                  <p>作为{character.jobClass}，你掌握固定数量的法术，一经掌握即可随时通过消耗法术位来施展。</p>
-                </>
-              )}
-            </div>
+            <DndSpellManager character={character} baseSpells={SPELL_DATA} personalSpells={personalSpells} onChange={book => updateSpellbook(book.known, book.prepared)} />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-[400px]">
-              {/* ALL SPELLS / AVAILABLE */}
-              <div className="border border-[#58180d] bg-white flex flex-col">
-                <div className="bg-[#58180d] text-white p-2 text-sm font-bold uppercase text-center tracking-wide">
-                  {character.jobClass === '法师' ? "职业可用法术 (加入法术书)" : isPreparedCaster ? "职业可用法术 (全表可用)" : "职业可用法术 (请学习)"}
-                </div>
-                <div className="p-3 space-y-2 overflow-y-auto max-h-[400px] flex-1">
-                   {availableSpells.map(spell => {
-                     const isKnown = knownSpells.some(s => s.name_cn === spell.name_cn);
-                     const isPrep = preparedSpells.includes(spell.name_cn);
-                     return (
-                       <div key={spell.name_cn} className="border border-[#58180d]/20 p-2 text-sm flex justify-between items-center bg-[#f4ecd8]/40 hover:bg-[#58180d]/10">
-                          <div>
-                            <span className="font-bold">{spell.name_cn}</span> <span className="text-[10px] text-[#58180d] italic">{spell.level}环</span>
-                            <p className="text-[10px] text-[#58180d]/70 w-40 truncate">{spell.desc}</p>
-                          </div>
-                          <div>
-                            {(!isPreparedCaster || character.jobClass === '法师') ? (
-                              <Button size="sm" variant={isKnown ? "default" : "outline"} className={`h-6 text-[10px] rounded-none px-2 ${isKnown ? 'bg-[#58180d] text-white hover:bg-red-800' : 'border-[#58180d]'}`} onClick={() => handleToggleLearn(spell)}>
-                                {isKnown ? '已学习/抄录' : '学习'}
-                              </Button>
-                            ) : (
-                              <Button size="sm" variant={isPrep ? "default" : "outline"} className={`h-6 text-[10px] rounded-none px-2 ${isPrep ? 'bg-[#58180d] text-white hover:bg-red-800' : 'border-[#58180d]'}`} onClick={() => handleTogglePrepare(spell.name_cn)}>
-                                {isPrep ? '已准备' : '准备'}
-                              </Button>
-                            )}
-                          </div>
-                       </div>
-                     )
-                   })}
-                </div>
-              </div>
-
-              {/* MY SPELLBOOK / PREPARED */}
-              <div className="border border-[#58180d] bg-[#f4ecd8] flex flex-col shadow-[2px_2px_0px_#58180d]">
-                <div className="bg-[#ede1c5] border-b border-[#58180d] p-2 text-sm font-bold uppercase text-center tracking-wide text-[#58180d] flex justify-between px-4">
-                  <span>我的配置</span>
-                  {isPreparedCaster && <span>{preparedSpells.length} / {maxPrepared} 已准备</span>}
-                </div>
-                <div className="p-3 space-y-2 overflow-y-auto max-h-[400px] flex-1">
-                  {(!isPreparedCaster || character.jobClass === '法师') && knownSpells.length === 0 && (
-                     <div className="text-center text-xs text-[#58180d]/50 p-4">你还没有学习任何法术。</div>
-                  )}
-                  {isPreparedCaster && character.jobClass !== '法师' && preparedSpells.length === 0 && (
-                     <div className="text-center text-xs text-[#58180d]/50 p-4">你还没有准备任何法术。</div>
-                  )}
-                  
-                  {character.jobClass === '法师' ? (
-                     knownSpells.map(spell => {
-                        const isPrep = preparedSpells.includes(spell.name_cn);
-                        return (
-                          <div key={spell.name_cn} className="border border-[#58180d] p-2 text-sm flex justify-between items-center bg-white shadow-sm">
-                            <div><span className="font-bold">{spell.name_cn}</span> <span className="text-[10px] text-[#58180d]">({spell.level}环)</span></div>
-                            <Button size="sm" variant={isPrep ? "default" : "outline"} className={`h-6 text-[10px] rounded-none px-2 ${isPrep ? 'bg-emerald-700 hover:bg-red-800 text-white border-emerald-700' : 'border-[#58180d]'}`} onClick={() => handleTogglePrepare(spell.name_cn)}>
-                              {isPrep ? '已准备' : '准备'}
-                            </Button>
-                          </div>
-                        )
-                     })
-                  ) : !isPreparedCaster ? (
-                     knownSpells.map(spell => (
-                        <div key={spell.name_cn} className="border border-[#58180d] p-2 text-sm flex justify-between items-center bg-white shadow-sm">
-                          <div className="font-bold">{spell.name_cn} <span className="text-[10px] font-normal text-[#58180d] italic">({spell.level}环)</span></div>
-                          <span className="text-[10px] text-emerald-800 font-bold uppercase">随时可用</span>
-                        </div>
-                     ))
-                  ) : (
-                     <div className="space-y-2">
-                       {/* Cleric / Druid Prepared */}
-                       {preparedSpells.map(spellName => {
-                         const spell = availableSpells.find(s => s.name_cn === spellName);
-                         if (!spell) return null;
-                         return (
-                           <div key={spell.name_cn} className="border border-[#58180d] p-2 text-sm flex justify-between items-center bg-white shadow-sm">
-                             <div className="font-bold">{spell.name_cn} <span className="text-[10px] font-normal text-[#58180d] italic">({spell.level}环)</span></div>
-                             <Button size="sm" variant="default" className="bg-[#58180d] text-white hover:bg-red-800 h-6 text-[10px] rounded-none px-2" onClick={() => handleTogglePrepare(spell.name_cn)}>
-                               卸下
-                             </Button>
-                           </div>
-                         )
-                       })}
-                     </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            
             <div className="flex justify-end pt-4 border-t border-[#58180d]/30">
                <Button className="rounded-none bg-[#58180d] text-[#fdf6e3] hover:opacity-90 uppercase font-bold" onClick={() => setShowSpellManager(false)}>完成 / 返回</Button>
             </div>

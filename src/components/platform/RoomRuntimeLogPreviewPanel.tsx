@@ -13,6 +13,8 @@ import type {
 import type { SharedDiceRollResult } from '../../lib/platform/sharedDiceTypes';
 import { RoomSessionAssistantPanel } from './RoomSessionAssistantDialog';
 import { RoomAttackResult } from './RoomAttackResolutionDetails';
+import { DndSavingThrowResult } from '../dnd/DndSavingThrowControls';
+import { DndRuntimeStateResult } from '../dnd/DndRuntimeStateResult';
 
 /**
  * RoomRuntimeLogPreviewPanel (v0).
@@ -60,6 +62,10 @@ const KIND_LABEL: Record<RoomRuntimeLogEventKind, string> = {
   'combat.combatant_removed': '离开战斗',
   'combat.damage_applied': '伤害',
   'combat.attack_resolved': '攻击结算',
+  'combat.conditions_updated': 'D&D 状态',
+  'runtime.resource_changed': '资源 / 施法',
+  'runtime.saving_throw_requested': '豁免请求',
+  'runtime.saving_throw_resolved': '豁免结算',
   'combat.healing_applied': '治疗',
   'combat.temporary_hp_applied': '临时生命',
   'combat.condition_added': '状态',
@@ -90,9 +96,9 @@ const LOG_FILTERS: { id: LogFilterId; label: string; empty: string }[] = [
 function matchesLogFilter(e: RoomRuntimeLogEvent, filter: LogFilterId): boolean {
   switch (filter) {
     case 'all': return true;
-    case 'dice': return e.kind === 'dice.roll' || e.kind === 'combat.attack_resolved';
+    case 'dice': return e.kind === 'dice.roll' || e.kind === 'combat.attack_resolved' || e.kind === 'runtime.saving_throw_requested' || e.kind === 'runtime.saving_throw_resolved';
     case 'info': return e.kind === 'host.note';
-    case 'state': return e.kind === 'state.manualChange';
+    case 'state': return e.kind === 'state.manualChange' || e.kind === 'runtime.resource_changed' || e.kind.startsWith('combat.') && e.kind !== 'combat.attack_resolved';
     case 'other': return e.kind === 'system.note' || e.kind === 'chat.message';
   }
 }
@@ -507,6 +513,10 @@ export function RoomRuntimeLogPreviewPanel({
                 <DiceResultLine roll={asDiceRoll(e.payload)!} />
               ) : e.kind === 'combat.attack_resolved' ? (
                 <RoomAttackResult event={e} />
+              ) : e.kind === 'runtime.saving_throw_requested' || e.kind === 'runtime.saving_throw_resolved' ? (
+                <DndSavingThrowResult event={e} />
+              ) : e.kind === 'runtime.resource_changed' || e.kind === 'combat.conditions_updated' ? (
+                <DndRuntimeStateResult event={e} />
               ) : e.kind === 'host.note' || e.kind === 'state.manualChange' ? (
                 <RunNoteLine e={e} />
               ) : (

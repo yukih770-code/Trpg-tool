@@ -1,3 +1,5 @@
+import { DndConditionControls, type DndConditionChange } from './DndConditionControls';
+import { dndConditionLabel } from '../../lib/dnd/dndConditions';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { Locale } from '../../i18n';
@@ -16,6 +18,7 @@ type RuntimeRole = 'host' | 'player' | 'spectator';
 
 export interface RoomRuntimeCombatPanelProps {
   locale: Locale;
+  onChangeCondition?: (intent: DndConditionChange) => Promise<unknown>;
   scopeKey: string;
   role: RuntimeRole;
   roomEvents: RoomRuntimeLogEvent[];
@@ -84,7 +87,7 @@ function CombatHpBar({ combatant, zh }: { combatant: Combatant; zh: boolean }) {
   </div>;
 }
 
-const QUICK_CONDITIONS = ['倒地', '中毒', '擒抱', '束缚', '恐慌', '震慑', '隐形', '昏迷'];
+
 
 function diceRollFromEvent(event: RoomRuntimeLogEvent): SharedDiceRollResult | undefined {
   if (event.kind !== 'dice.roll' || !event.payload || typeof event.payload !== 'object' || Array.isArray(event.payload)) return undefined;
@@ -98,7 +101,7 @@ function diceRollFromEvent(event: RoomRuntimeLogEvent): SharedDiceRollResult | u
  * mutation is persisted through the Room RuntimeLog before other clients replay
  * it; player and spectator branches intentionally have no mutation handlers.
  */
-export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, placedTokens, actorProjections, myActorBindingId, selectedCombatantId, onSelectCombatant, onLocateCombatant, onOpenCampaignActor, onStateChange, onAppendEvent }: RoomRuntimeCombatPanelProps) {
+export function RoomRuntimeCombatPanel({ onChangeCondition, locale, scopeKey, role, roomEvents, placedTokens, actorProjections, myActorBindingId, selectedCombatantId, onSelectCombatant, onLocateCombatant, onOpenCampaignActor, onStateChange, onAppendEvent }: RoomRuntimeCombatPanelProps) {
   const table = useCombatRuntimeTable(scopeKey);
   const restoredKeyRef = useRef('');
   const [error, setError] = useState<string | null>(null);
@@ -238,7 +241,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
         const selectedNow = combatant.id === selected?.id;
         return <div key={combatant.id} className={`border-b px-1 py-2 ${current ? 'border-amber-400/55 bg-amber-50/70' : 'border-slate-300/45 bg-white/70'}`}>
           <button type="button" onClick={() => { onSelectCombatant(combatant.id); onLocateCombatant(combatant.id); }} className="flex w-full items-center justify-between gap-2 text-left"><span className="min-w-0 truncate text-[11px] font-bold text-slate-800">{current ? '● ' : ''}{combatant.displayName}</span><span className="text-[10px] font-black text-slate-600">{zh ? '先攻' : 'Init'} {combatant.initiative ?? '—'}</span></button>
-          <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-slate-600"><span>{combatHpLabel(combatant, zh)}</span><span>·</span><span>{combatAcLabel(combatant, zh)}</span>{combatant.conditions.length > 0 && <><span>·</span><span>{combatant.conditions.join('、')}</span></>}</div>
+          <div className="mt-1 flex flex-wrap gap-1 text-[10px] text-slate-600"><span>{combatHpLabel(combatant, zh)}</span><span>·</span><span>{combatAcLabel(combatant, zh)}</span>{((combatant.conditionStates?.length ?? 0) > 0) && <span>{combatant.conditionStates!.map(c => dndConditionLabel(c, !zh)).join('、')}</span>}{combatant.conditions.length > 0 && <><span>·</span><span>{combatant.conditions.join('、')}</span></>}</div>
           {onOpenCampaignActor && combatant.sourceActorInstanceId && <button type="button" className="mt-1 text-xs font-bold underline" onClick={() => onOpenCampaignActor(combatant.sourceActorInstanceId!)}>{zh ? '打开战役战斗卡' : 'Open campaign combat sheet'}</button>}
           <CombatHpBar combatant={combatant} zh={zh} />
           {canManage && selectedNow && (
@@ -262,15 +265,7 @@ export function RoomRuntimeCombatPanel({ locale, scopeKey, role, roomEvents, pla
                 <button type="button" disabled={combatant.hpCurrent === undefined || !numberValue(hpAdjustment) || numberValue(hpAdjustment)! <= 0} onClick={() => applyHpAdjustment(combatant, 'healing')} className="rounded border border-emerald-300 bg-white px-2 py-1 text-[10px] font-bold text-emerald-700 disabled:opacity-40">{zh ? '应用治疗' : 'Apply healing'}</button>
                 <button type="button" disabled={!numberValue(hpAdjustment) || numberValue(hpAdjustment)! <= 0} onClick={() => applyHpAdjustment(combatant, 'temporaryHp')} className="rounded border border-sky-300 bg-white px-2 py-1 text-[10px] font-bold text-sky-700 disabled:opacity-40">{zh ? '给予临时 HP' : 'Grant temp HP'}</button>
               </div>
-              <div className="mt-2 border-t border-slate-300/60 pt-1.5">
-                <div className="text-[9px] font-bold text-slate-500">{zh ? '常用状态标记' : 'Common condition markers'}</div>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {QUICK_CONDITIONS.map((condition) => {
-                    const activeCondition = combatant.conditions.includes(condition);
-                    return <button key={condition} type="button" onClick={() => persist(table.setCondition(combatant.id, condition))} className={`rounded border px-1.5 py-1 text-[9px] font-bold ${activeCondition ? 'border-amber-400/60 bg-amber-100 text-amber-900' : 'border-slate-300 bg-white text-slate-600'}`}>{condition}</button>;
-                  })}
-                </div>
-              </div>
+              {onChangeCondition && <DndConditionControls combatantId={combatant.id} states={combatant.conditionStates} english={!zh} onChange={onChangeCondition} />}
               <p className="mt-1 text-[10px] text-slate-500">{combatant.hpCurrent === undefined ? (zh ? '先填写当前 HP，才能使用伤害或治疗快捷结算。' : 'Set current HP before using damage or healing adjustments.') : (zh ? '点击骰子结果只会填入数值；伤害会先抵扣临时 HP，所有改变仍需主持人确认。' : 'A roll only fills the value. Damage consumes temporary HP first; every change still needs host confirmation.')}</p>
             </div>
           )}

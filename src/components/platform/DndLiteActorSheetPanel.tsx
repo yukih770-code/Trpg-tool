@@ -1,9 +1,21 @@
+import { mintIntentId } from '../../lib/dnd/dndAttackPendingIntent';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createTranslator, type Locale } from '../../i18n';
 import type { CampaignActorInstance, CampaignActorSourceReviewResponse } from '../../lib/api/campaignRoomApiClient';
 import { createDefaultDndLiteActorSheet, getDndLiteCombatantPrefill, summarizeDndLiteActorSheet, validateDndLiteActorSheet } from '../../lib/dnd/dndLiteActorSheet';
 import { DND_ABILITY_KEYS, DND_SKILL_KEYS, type DndAbilityKey, type DndLiteActorAction, type DndLiteActorActionKind, type DndLiteActorKind, type DndLiteActorSheet, type DndSkillKey } from '../../lib/dnd/dndLiteActorTypes';
 import { deriveDndLiteActorSheetFromSnapshot, readDndCharacterSnapshot, type DndCharacterSheetDerivation } from '../../lib/dnd/dndCharacterToLiteActorSheet';
+import {
+  DND_ACTOR_PRESET_DEFINITION_VERSION,
+  compareDndActorPresetState,
+  dndActorPresetName,
+  getDndActorPreset,
+  materializeDndActorPreset,
+  resetSheetToDndActorPreset,
+  type DndActorPresetId,
+} from '../../lib/dnd/dndActorPresets';
+import { DndActorPresetPicker } from './DndActorPresetPicker';
+import { readDndActorPresetProvenance } from '../../lib/platform/campaignActorOverride';
 
 type Props = {
   locale: Locale;
@@ -13,6 +25,25 @@ type Props = {
   onSave: (actorInstanceId: string, sheet: DndLiteActorSheet) => Promise<void>;
   onClear: (actorInstanceId: string) => Promise<void>;
   initialActorInstanceId?: string;
+  /**
+   * Draft-first creation. When set, this id names an UNSAVED actor supplied in
+   * `campaignActors`; the panel edits it exactly like any other actor and calls
+   * `onCreate` only when the host presses the final Create action. This is how a
+   * new NPC or custom monster reaches the canonical sheet without a second
+   * editor and without persisting a half-empty actor first.
+   */
+  draftActorInstanceId?: string;
+  /**
+   * Which archetype list create mode offers. Present only in create mode: the
+   * starting archetype is an option INSIDE this surface, never a screen before
+   * it, so "Create NPC" lands straight in the full sheet.
+   */
+  presetAudience?: 'npc' | 'monster';
+  /**
+   * Create-mode commit. Kept separate from `onSave` so the edit path's contract
+   * is untouched; the caller turns the finished draft into one campaign actor.
+   */
+  onCreate?: (sheet: DndLiteActorSheet, presetId: DndActorPresetId, presetVersion: number) => Promise<void>;
   onUseAction?: (actorInstanceId: string, actionId: string) => void;
   onAddToCombat?: (prefill: ReturnType<typeof getDndLiteCombatantPrefill>) => void;
   /**
@@ -75,6 +106,34 @@ const reviewText = {
   hideDetail: ['收起差异', 'Hide details'],
 } as const;
 
+// Quick-actor preset copy. Same local bilingual pattern as the blocks above.
+const presetText = {
+  heading: ['起点原型', 'Starting archetype'],
+  preset: ['未改动', 'Preset'],
+  custom: ['已自定义', 'Custom'],
+  basedOn: ['起点：%s', 'Based on: %s'],
+  unknownVersion: ['该角色来自这个原型的较早版本，无法比较。', 'This actor came from an earlier version of this archetype, so it cannot be compared.'],
+  changedCount: ['已改动 %n 项原型数值。', '%n preset value(s) changed.'],
+  onlyThisActor: ['修改只影响这个角色，不会改变原型本身，也不影响其他角色。', 'Edits affect only this actor. The archetype itself and every other actor are untouched.'],
+  reset: ['恢复为原型数值', 'Reset to archetype'],
+  resetDone: ['已恢复原型数值。请复核后再保存。', 'Archetype values restored. Review them before saving.'],
+  resetNote: ['只恢复原型决定的数值；名称、备注、标签和临时生命保持不变。', 'Restores only the values the archetype decides — name, notes, tags and temporary HP stay as they are.'],
+  createActor: ['创建角色', 'Create actor'],
+  creatingHint: ['还没有保存。确认数值后按“创建角色”写入本战役。', 'Not saved yet. Review the values, then press Create actor to add it to this campaign.'],
+} as const;
+
+const presetFieldText: Record<string, [string, string]> = {
+  abilities: ['属性', 'Abilities'],
+  proficiencyBonus: ['熟练加值', 'Proficiency bonus'],
+  'defenses.armorClass': ['护甲等级', 'Armour class'],
+  'defenses.maxHp': ['最大生命', 'Max HP'],
+  'defenses.currentHp': ['当前生命', 'Current HP'],
+  'defenses.speedFt': ['速度', 'Speed'],
+  savingThrows: ['豁免', 'Saving throws'],
+  skills: ['技能', 'Skills'],
+  actions: ['动作', 'Actions'],
+};
+
 const reviewGroupText: Record<string, [string, string]> = {
   identity: ['身份', 'Identity'],
   defenses: ['防御', 'Defences'],
@@ -104,7 +163,7 @@ function asNumber(value: string, fallback?: number): number | undefined {
   return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
 }
 
-export function DndLiteActorSheetPanel({ locale, canManage, campaignActors, sheets, onSave, onClear, onUseAction, onAddToCombat, onReviewSource, onAcceptSource, initialActorInstanceId }: Props) {
+export function DndLiteActorSheetPanel({ locale, canManage, campaignActors, sheets, onSave, onClear, onUseAction, onAddToCombat, onReviewSource, onAcceptSource, initialActorInstanceId, draftActorInstanceId, presetAudience, onCreate }: Props) {
   const { t } = createTranslator(locale);
   const [actorInstanceId, setActorInstanceId] = useState(initialActorInstanceId ?? '');
   useEffect(() => { if (initialActorInstanceId) setActorInstanceId(initialActorInstanceId); }, [initialActorInstanceId]);
@@ -155,6 +214,16 @@ export function DndLiteActorSheetPanel({ locale, canManage, campaignActors, shee
   }, [selectedActor, sheets]);
 
   const text = (entry: readonly [string, string]) => entry[locale === 'en' ? 1 : 0];
+  /** True while the selected actor is an unsaved creation draft. */
+  const creating = Boolean(draftActorInstanceId) && actorInstanceId === draftActorInstanceId;
+  /**
+   * The starting archetype, chosen INSIDE this surface.
+   *
+   * There is deliberately no preceding "quick create" screen: Create NPC opens
+   * the full sheet with a sensible archetype already applied, and switching
+   * archetype re-seeds the same draft rather than moving to another editor.
+   */
+  const [createPresetId, setCreatePresetId] = useState<DndActorPresetId>(presetAudience === 'monster' ? 'brute' : 'commoner');
   const canReviewSource = Boolean(onReviewSource && selectedActor?.sourceActorId);
   /** The review currently on screen, or undefined if it describes another actor. */
   const currentReview = sourceReview && sourceReview.actorInstanceId === selectedActor?.campaignActorInstanceId
@@ -255,6 +324,74 @@ export function DndLiteActorSheetPanel({ locale, canManage, campaignActors, shee
   );
 
   /**
+   * Quick-actor preset provenance, read from the actor's own override bag.
+   *
+   * A LABEL only. It is never used to supply or override a sheet value, so it
+   * cannot drift behind the sheet; the saved sheet stays the single truth.
+   * Absent for every actor created before this feature, and never inferred by
+   * comparing an old actor's values against an archetype.
+   */
+  const presetProvenance = useMemo(
+    () => (selectedActor ? readDndActorPresetProvenance(selectedActor.overridePayload) : undefined),
+    [selectedActor],
+  );
+  const preset = getDndActorPreset(presetProvenance?.presetId);
+  /**
+   * Compared against the DRAFT, not the saved sheet, so the label flips the
+   * moment the host edits an archetype value rather than waiting for a save.
+   */
+  const presetState = useMemo(
+    () => (preset
+      ? compareDndActorPresetState({
+        presetId: preset.id,
+        presetVersion: presetProvenance?.presetVersion,
+        sheet: draft,
+        locale: locale === 'en' ? 'en' : 'zh-CN',
+      })
+      : undefined),
+    [preset, presetProvenance?.presetVersion, draft, locale],
+  );
+
+  /**
+   * Restores the archetype's values into the DRAFT. It writes nothing: the host
+   * still presses save, and ownership, bindings, admission, map tokens and live
+   * combat state are untouched either way.
+   */
+  /**
+   * Re-seeds the draft from another archetype.
+   *
+   * Preset-controlled values are replaced; the name the host has typed and any
+   * notes or tags survive, so trying archetypes never costs typing.
+   */
+  const chooseCreatePreset = (nextPresetId: DndActorPresetId) => {
+    setCreatePresetId(nextPresetId);
+    const seeded = materializeDndActorPreset(nextPresetId, {
+      displayName: draft.displayName,
+      actorKind: draft.actorKind,
+      locale: locale === 'en' ? 'en' : 'zh-CN',
+    });
+    setDraft((previous) => ({
+      ...seeded,
+      displayName: previous.displayName,
+      actorKind: previous.actorKind,
+      ...(previous.notes ? { notes: previous.notes } : {}),
+      ...(previous.tags?.length ? { tags: previous.tags } : {}),
+    }));
+  };
+
+  const resetToPreset = () => {
+    if (!preset) return;
+    const restored = resetSheetToDndActorPreset({
+      presetId: preset.id,
+      sheet: draft,
+      locale: locale === 'en' ? 'en' : 'zh-CN',
+    });
+    if (!restored) return;
+    setDraft(restored);
+    setNotice(text(presetText.resetDone));
+  };
+
+  /**
    * Fills the DRAFT from the campaign actor's character snapshot. It never
    * writes: the host still reviews and presses save, and an already-saved sheet
    * stays untouched until they do.
@@ -299,7 +436,8 @@ export function DndLiteActorSheetPanel({ locale, canManage, campaignActors, shee
     if (!validation.valid) { setNotice(t('dndActorSheet.invalid')); return; }
     setSaving(true);
     try {
-      await onSave(selectedActor.campaignActorInstanceId, draft);
+      if (creating && onCreate) await onCreate(draft, createPresetId, DND_ACTOR_PRESET_DEFINITION_VERSION);
+      else await onSave(selectedActor.campaignActorInstanceId, draft);
       setNotice(t('dndActorSheet.savedLocal'));
     } catch {
       setNotice(t('dndActorSheet.saveFailed'));
@@ -327,9 +465,53 @@ export function DndLiteActorSheetPanel({ locale, canManage, campaignActors, shee
       <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{t('dndActorSheet.eyebrow')}</div><h4 className="mt-1 text-xl font-black">{t('dndActorSheet.title')}</h4><p className="mt-1 max-w-2xl text-xs leading-5 text-[#51483d]">{t('dndActorSheet.note')}</p></div><span className="rounded-full bg-[#58180d]/10 px-2.5 py-1 text-xs font-bold text-[#58180d]">DND 5e</span></div>
       {!canManage && <p className="mt-3 rounded-lg bg-[#fff8e6] px-3 py-2 text-xs text-[#51483d]">{t('dndActorSheet.hostOnly')}</p>}
       {campaignActors.length === 0 ? <p className="mt-4 rounded-xl border border-dashed border-[#2f2a22]/15 bg-white p-4 text-sm text-[#51483d]">{t('dndActorSheet.noActors')}</p> : <>
-        <div className="mt-4 rounded-xl border border-[#2f2a22]/10 bg-white p-3"><label className="text-xs font-bold">{t('dndActorSheet.selectActor')}</label><select value={actorInstanceId} onChange={(event) => setActorInstanceId(event.target.value)} disabled={!canManage} className="mt-2 w-full rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm disabled:opacity-50"><option value="">{t('dndActorSheet.chooseActor')}</option>{campaignActors.map((actor) => <option key={actor.campaignActorInstanceId} value={actor.campaignActorInstanceId}>{actor.displayName}{sheets[actor.campaignActorInstanceId] ? ` · ${t('dndActorSheet.sheetReady')}` : ''}</option>)}</select></div>
+        {!creating && <div className="mt-4 rounded-xl border border-[#2f2a22]/10 bg-white p-3"><label className="text-xs font-bold">{t('dndActorSheet.selectActor')}</label><select value={actorInstanceId} onChange={(event) => setActorInstanceId(event.target.value)} disabled={!canManage} className="mt-2 w-full rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm disabled:opacity-50"><option value="">{t('dndActorSheet.chooseActor')}</option>{campaignActors.map((actor) => <option key={actor.campaignActorInstanceId} value={actor.campaignActorInstanceId}>{actor.displayName}{sheets[actor.campaignActorInstanceId] ? ` · ${t('dndActorSheet.sheetReady')}` : ''}</option>)}</select></div>}
+        {/* The starting archetype lives INSIDE the creation surface. There is no
+            separate quick-create screen: this is the full sheet from the first
+            moment, pre-filled so the fast path is good defaults rather than a
+            second, smaller editor. */}
+        {creating && presetAudience && <div className="mt-4 rounded-xl border border-[#2f2a22]/10 bg-white p-3">
+          <DndActorPresetPicker
+            locale={locale}
+            audience={presetAudience}
+            value={createPresetId}
+            onChange={chooseCreatePreset}
+            disabled={!canManage || saving}
+            groupName={`actor-create-preset-${presetAudience}`}
+          />
+        </div>}
+        {creating && <p className="mt-3 rounded-lg bg-[#fff6e6] px-3 py-2 text-xs leading-5 text-[#51483d]">{text(presetText.creatingHint)}</p>}
         {selectedActor && <div className="mt-4 grid gap-3">
-          {onReviewSource && <div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3">
+          {/* Quick-actor archetype status. Shown only for actors that actually
+              record a starting archetype; an older actor shows nothing rather
+              than having provenance guessed for it. */}
+          {preset && presetState && !creating && <div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3" data-dnd-actor-preset-status={presetState.status}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{text(presetText.heading)}</div>
+                <div className="mt-0.5 flex flex-wrap items-baseline gap-2">
+                  <span className="text-sm font-black text-[#2f2a22]">{dndActorPresetName(preset, locale === 'en' ? 'en' : 'zh-CN')}</span>
+                  {/* Status is carried by the word itself, not only by colour. */}
+                  {presetState.status !== 'unknown' && <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${presetState.status === 'custom' ? 'bg-[#8b3a2f]/10 text-[#8b3a2f]' : 'bg-[#2f6f4e]/10 text-[#2f6f4e]'}`}>
+                    {text(presetState.status === 'custom' ? presetText.custom : presetText.preset)}
+                  </span>}
+                </div>
+              </div>
+              {presetState.status === 'custom' && <button type="button" onClick={resetToPreset} disabled={!canManage || saving} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-xs font-bold disabled:opacity-40">{text(presetText.reset)}</button>}
+            </div>
+            {presetState.status === 'custom' && <div className="mt-2 grid gap-1">
+              <p className="text-[11px] leading-5 text-[#51483d]">{text(presetText.basedOn).replace('%s', dndActorPresetName(preset, locale === 'en' ? 'en' : 'zh-CN'))}</p>
+              <p className="text-[11px] leading-5 text-[#51483d]">
+                {text(presetText.changedCount).replace('%n', String(presetState.changedFields.length))}
+                {' '}
+                {presetState.changedFields.map((field) => (presetFieldText[field] ?? [field, field])[locale === 'en' ? 1 : 0]).join('、')}
+              </p>
+              <p className="text-[11px] leading-5 text-[#51483d]">{text(presetText.resetNote)}</p>
+            </div>}
+            {presetState.status === 'unknown' && <p className="mt-2 text-[11px] leading-5 text-[#51483d]">{text(presetText.unknownVersion)}</p>}
+            <p className="mt-2 text-[10px] leading-4 text-[#51483d]">{text(presetText.onlyThisActor)}</p>
+          </div>}
+          {onReviewSource && !creating && <div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h5 className="text-sm font-bold">{text(reviewText.heading)}</h5>
               {canReviewSource && <button type="button" onClick={() => sourceDetailOpen ? setSourceDetailOpen(false) : void reviewSource()} disabled={!canManage || (sourceBusy && !currentReview)} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-xs font-bold disabled:opacity-40">{sourceBusy && !currentReview ? text(reviewText.reviewing) : text(sourceDetailOpen ? reviewText.hideDetail : reviewText.showDetail)}</button>}
@@ -379,7 +561,7 @@ export function DndLiteActorSheetPanel({ locale, canManage, campaignActors, shee
           <div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3"><h5 className="font-bold text-sm">{t('dndActorSheet.abilities')}</h5><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{DND_ABILITY_KEYS.map((key) => <label key={key} className="rounded-lg bg-[#f7f3ea] px-3 py-2 text-xs"><span className="font-bold">{abilityNames[key][locale === 'en' ? 1 : 0]}</span><span className="ml-2 text-[#51483d]">{t('dndActorSheet.modifier')} {draft.abilities[key] >= 10 ? '+' : ''}{Math.floor((draft.abilities[key] - 10) / 2)}</span><input value={draft.abilities[key]} onChange={(event) => updateAbility(key, event.target.value)} disabled={!canManage} type="number" className="mt-2 w-full rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-sm disabled:opacity-50" /></label>)}</div></div>
           <div className="grid gap-3 lg:grid-cols-2"><div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3"><h5 className="font-bold text-sm">{t('dndActorSheet.saves')}</h5><div className="mt-3 flex gap-2"><select value={saveKey} onChange={(event) => setSaveKey(event.target.value as DndAbilityKey)} disabled={!canManage} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 bg-white px-2 py-2 text-xs disabled:opacity-50">{DND_ABILITY_KEYS.map((key) => <option key={key} value={key}>{abilityNames[key][locale === 'en' ? 1 : 0]}</option>)}</select><input value={saveValue} onChange={(event) => setSaveValue(event.target.value)} disabled={!canManage} type="number" placeholder={t('dndActorSheet.override')} className="w-24 rounded-md border border-[#2f2a22]/15 px-2 py-2 text-xs disabled:opacity-50" /><button type="button" onClick={addSaveOverride} disabled={!canManage} className="rounded-md border border-[#2f2a22]/15 px-2 text-xs font-bold disabled:opacity-40">{t('dndActorSheet.set')}</button></div><div className="mt-2 flex flex-wrap gap-2">{Object.entries(draft.savingThrows ?? {}).map(([key, value]) => <button key={key} type="button" onClick={() => setDraft((previous) => { const next = { ...previous.savingThrows }; delete next[key as DndAbilityKey]; return { ...previous, savingThrows: next }; })} disabled={!canManage} className="rounded-full bg-[#f7f3ea] px-2 py-1 text-xs">{abilityNames[key as DndAbilityKey][locale === 'en' ? 1 : 0]} {value} ×</button>)}</div></div><div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3"><h5 className="font-bold text-sm">{t('dndActorSheet.skills')}</h5><div className="mt-3 flex gap-2"><select value={skillKey} onChange={(event) => setSkillKey(event.target.value as DndSkillKey)} disabled={!canManage} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 bg-white px-2 py-2 text-xs disabled:opacity-50">{DND_SKILL_KEYS.map((key) => <option key={key} value={key}>{skillNames[key][locale === 'en' ? 1 : 0]}</option>)}</select><input value={skillValue} onChange={(event) => setSkillValue(event.target.value)} disabled={!canManage} type="number" placeholder={t('dndActorSheet.override')} className="w-24 rounded-md border border-[#2f2a22]/15 px-2 py-2 text-xs disabled:opacity-50" /><button type="button" onClick={addSkillOverride} disabled={!canManage} className="rounded-md border border-[#2f2a22]/15 px-2 text-xs font-bold disabled:opacity-40">{t('dndActorSheet.set')}</button></div><div className="mt-2 flex flex-wrap gap-2">{Object.entries(draft.skills ?? {}).map(([key, value]) => <button key={key} type="button" onClick={() => setDraft((previous) => { const next = { ...previous.skills }; delete next[key as DndSkillKey]; return { ...previous, skills: next }; })} disabled={!canManage} className="rounded-full bg-[#f7f3ea] px-2 py-1 text-xs">{skillNames[key as DndSkillKey][locale === 'en' ? 1 : 0]} {value} ×</button>)}</div></div></div>
           <div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3"><div className="flex items-center justify-between gap-2"><h5 className="font-bold text-sm">{t('dndActorSheet.actions')}</h5><button type="button" onClick={addAction} disabled={!canManage} className="rounded-md border border-[#2f2a22]/15 px-2.5 py-1.5 text-xs font-bold disabled:opacity-40">{t('dndActorSheet.addAction')}</button></div><div className="mt-3 grid gap-3">{draft.actions.map((action) => <div key={action.id} className="rounded-lg bg-[#f7f3ea] p-3"><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><input value={action.name} onChange={(event) => updateAction(action.id, { name: event.target.value })} disabled={!canManage} placeholder={t('dndActorSheet.actionName')} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs disabled:opacity-50" /><select value={action.kind} onChange={(event) => updateAction(action.id, { kind: event.target.value as DndLiteActorActionKind })} disabled={!canManage} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs disabled:opacity-50"><option value="weapon_attack">{t('dndActorSheet.weaponAttack')}</option><option value="spell_attack">{t('dndActorSheet.spellAttack')}</option><option value="save_dc">{t('dndActorSheet.saveAction')}</option><option value="damage_only">{t('dndActorSheet.damageOnly')}</option><option value="utility">{t('dndActorSheet.utility')}</option></select><input value={action.attackBonus ?? ''} onChange={(event) => updateAction(action.id, { attackBonus: asNumber(event.target.value) })} disabled={!canManage} type="number" placeholder={t('dndActorSheet.attackBonus')} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs disabled:opacity-50" /><input value={action.damageFormula ?? ''} onChange={(event) => updateAction(action.id, { damageFormula: event.target.value || undefined })} disabled={!canManage} placeholder={t('dndActorSheet.damageFormula')} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs disabled:opacity-50" /><input value={action.damageType ?? ''} onChange={(event) => updateAction(action.id, { damageType: event.target.value || undefined })} disabled={!canManage} placeholder={t('dndActorSheet.damageType')} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs disabled:opacity-50" /><select value={action.saveAbility ?? ''} onChange={(event) => updateAction(action.id, { saveAbility: event.target.value ? event.target.value as DndAbilityKey : undefined })} disabled={!canManage} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs disabled:opacity-50"><option value="">{t('dndActorSheet.saveAbility')}</option>{DND_ABILITY_KEYS.map((key) => <option key={key} value={key}>{abilityNames[key][locale === 'en' ? 1 : 0]}</option>)}</select><input value={action.saveDc ?? ''} onChange={(event) => updateAction(action.id, { saveDc: asNumber(event.target.value) })} disabled={!canManage} type="number" placeholder={t('dndActorSheet.saveDc')} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs disabled:opacity-50" /><input value={action.notes ?? ''} onChange={(event) => updateAction(action.id, { notes: event.target.value || undefined })} disabled={!canManage} placeholder={t('dndActorSheet.notes')} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs disabled:opacity-50" /></div><div className="mt-2 flex flex-wrap gap-2">{onUseAction && <button type="button" onClick={() => onUseAction?.(selectedActor.campaignActorInstanceId, action.id)} disabled={!canManage} className="rounded-md border border-[#2f2a22]/15 bg-white px-2.5 py-1.5 text-xs font-bold disabled:opacity-40">{t('dndActorSheet.useInDice')}</button>}<button type="button" onClick={() => setDraft((previous) => ({ ...previous, actions: previous.actions.filter((item) => item.id !== action.id) }))} disabled={!canManage} className="rounded-md border border-[#8b3a2f]/20 bg-white px-2.5 py-1.5 text-xs font-bold text-[#8b3a2f] disabled:opacity-40">{t('dndActorSheet.remove')}</button></div></div>)}</div></div>
-          <div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3"><textarea value={draft.notes ?? ''} onChange={(event) => update({ notes: event.target.value || undefined })} disabled={!canManage || saving} placeholder={t('dndActorSheet.notes')} className="min-h-20 w-full rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm disabled:opacity-50" /><input value={(draft.tags ?? []).join(', ')} onChange={(event) => update({ tags: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) })} disabled={!canManage || saving} placeholder={t('dndActorSheet.tags')} className="mt-2 w-full rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm disabled:opacity-50" /><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => void saveSheet()} disabled={!canManage || saving} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{t('dndActorSheet.save')}</button>{onAddToCombat && <button type="button" onClick={() => onAddToCombat?.(getDndLiteCombatantPrefill(draft, selectedActor.campaignActorInstanceId))} disabled={!canManage || saving} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-xs font-bold disabled:opacity-40">{t('dndActorSheet.addToCombat')}</button>}<button type="button" onClick={() => void clearSheet()} disabled={!canManage || saving} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-xs font-bold disabled:opacity-40">{t('dndActorSheet.clear')}</button></div>{notice && <p className="mt-2 text-xs text-[#51483d]">{notice}</p>}<p className="mt-3 text-[11px] text-[#51483d]">{summary.displayName} · AC {summary.armorClass ?? '—'} · HP {summary.hpText ?? '—'} · {summary.actionCount} {t('dndActorSheet.actionCount')}</p></div>
+          <div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3"><details className="mb-3"><summary className="cursor-pointer text-sm font-bold">{locale === 'en' ? 'Resource capacities' : '资源上限'}</summary><p className="my-2 text-xs">{locale === 'en' ? 'Authored capacities. Current session values are spent at the live table; recovery requires GM adjustment.' : '在此定义资源上限；当前场次的消耗在桌面记录，恢复由主持人调整。'}</p>{(draft.resources ?? []).map((resource, index) => <div key={resource.id} className="my-2 flex flex-wrap gap-2"><input aria-label="资源名称" value={resource.name} disabled={!canManage || saving} onChange={e => update({ resources: draft.resources!.map((r, n) => n === index ? { ...r, name: e.target.value } : r) })} className="min-w-0 rounded border p-1 text-xs" /><select aria-label="资源类型" value={resource.kind} disabled={!canManage || saving} onChange={e => update({ resources: draft.resources!.map((r, n) => n === index ? { ...r, kind: e.target.value as typeof r.kind, level: e.target.value === 'spellSlot' ? 1 : undefined } : r) })} className="rounded border p-1 text-xs"><option value="custom">自定义</option><option value="classResource">职业资源</option><option value="spellSlot">法术位</option></select><input aria-label="资源上限" type="number" min="0" max="100000" value={resource.max} disabled={!canManage || saving} onChange={e => update({ resources: draft.resources!.map((r, n) => n === index ? { ...r, max: Number(e.target.value) } : r) })} className="w-20 rounded border p-1 text-xs" />{resource.kind === 'spellSlot' && <input aria-label="法术位环级" type="number" min="1" max="9" value={resource.level ?? 1} disabled={!canManage || saving} onChange={e => update({ resources: draft.resources!.map((r, n) => n === index ? { ...r, level: Number(e.target.value) } : r) })} className="w-16 rounded border p-1 text-xs" />}<button type="button" disabled={!canManage || saving} onClick={() => update({ resources: draft.resources!.filter((_, n) => n !== index) })} className="text-xs">移除</button></div>)}<button type="button" disabled={!canManage || saving} onClick={() => update({ resources: [...(draft.resources ?? []), { id: mintIntentId(), name: locale === 'en' ? 'Resource' : '资源', kind: 'custom', max: 1 }] })} className="rounded border px-2 py-1 text-xs">{locale === 'en' ? 'Add resource' : '添加资源'}</button></details><textarea value={draft.notes ?? ''} onChange={(event) => update({ notes: event.target.value || undefined })} disabled={!canManage || saving} placeholder={t('dndActorSheet.notes')} className="min-h-20 w-full rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm disabled:opacity-50" /><input value={(draft.tags ?? []).join(', ')} onChange={(event) => update({ tags: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) })} disabled={!canManage || saving} placeholder={t('dndActorSheet.tags')} className="mt-2 w-full rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm disabled:opacity-50" /><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => void saveSheet()} disabled={!canManage || saving} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{creating ? text(presetText.createActor) : t('dndActorSheet.save')}</button>{/* Add-to-combat and Clear act on a persisted actor; neither exists yet while creating. */}{onAddToCombat && !creating && <button type="button" onClick={() => onAddToCombat?.(getDndLiteCombatantPrefill(draft, selectedActor.campaignActorInstanceId))} disabled={!canManage || saving} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-xs font-bold disabled:opacity-40">{t('dndActorSheet.addToCombat')}</button>}{!creating && <button type="button" onClick={() => void clearSheet()} disabled={!canManage || saving} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-xs font-bold disabled:opacity-40">{t('dndActorSheet.clear')}</button>}</div>{notice && <p className="mt-2 text-xs text-[#51483d]">{notice}</p>}<p className="mt-3 text-[11px] text-[#51483d]">{summary.displayName} · AC {summary.armorClass ?? '—'} · HP {summary.hpText ?? '—'} · {summary.actionCount} {t('dndActorSheet.actionCount')}</p></div>
         </div>}
       </>}
       <p className="mt-3 text-[11px] leading-5 text-[#51483d]">{t('dndActorSheet.boundary')}</p>

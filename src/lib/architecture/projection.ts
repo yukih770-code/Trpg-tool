@@ -24,7 +24,7 @@ import {
   type EntitySummary,
   type EntityType,
   type EntityVisibility,
-} from './entityGraph';
+} from './entityGraph.js';
 
 // ─── Viewer model ────────────────────────────────────────────────────────────
 

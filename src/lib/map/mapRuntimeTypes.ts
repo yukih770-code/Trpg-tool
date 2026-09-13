@@ -82,6 +82,7 @@ export type MapToken = {
   actorBindingId?: string;
   displayName?: string;
   imageUrl?: string;
+  imageAssetId?: string;
   initials?: string;
   kind?: MapTokenKind;
   /** `public` shares only the safe combat display projection, never raw notes or ids. */
@@ -103,6 +104,7 @@ export type MapToken = {
 export type MapBoardState = {
   mapId: string;
   backgroundUrl?: string;
+  backgroundAssetId?: string;
   backgroundName?: string;
   backgroundPreset?: MapBackgroundPreset;
   zoom: number;

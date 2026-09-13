@@ -153,7 +153,7 @@ export function createApiClient(options: ApiClientOptions = {}) {
     }
     const headers = new Headers(init.headers);
     headers.set('Accept', 'application/json');
-    if (init.body !== undefined) headers.set('Content-Type', 'application/json');
+    if (init.body !== undefined && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
     for (const [name, value] of Object.entries(devViewerHeader(env, isDev))) headers.set(name, value);
 
     let response: Response;

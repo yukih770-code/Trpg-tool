@@ -8,6 +8,9 @@ export type CombatantStatus = 'active' | 'defeated' | 'removed';
 
 export type CombatRuntimeStatus = 'setup' | 'active' | 'paused' | 'ended';
 
+/** Opaque system-owned identity. Platform does not interpret condition semantics. */
+export type CombatantConditionState = { systemId: string; conditionId: string; level?: number };
+
 export type Combatant = {
   id: string;
   name: string;
@@ -26,6 +29,7 @@ export type Combatant = {
   temporaryHp?: number;
   armorClass?: number;
   conditions: string[];
+  conditionStates?: CombatantConditionState[];
   notes?: string;
   isDefeated: boolean;
   status: CombatantStatus;
@@ -68,6 +72,7 @@ export type CombatantInput = {
   temporaryHp?: number;
   armorClass?: number;
   conditions: string[];
+  conditionStates?: CombatantConditionState[];
   notes?: string;
   isDefeated?: boolean;
   status?: CombatantStatus;
@@ -89,6 +94,7 @@ export const COMBAT_RUNTIME_EVENT_KINDS = [
   'combat.combatant_removed',
   'combat.damage_applied',
   'combat.attack_resolved',
+  'combat.conditions_updated',
   'combat.healing_applied',
   'combat.temporary_hp_applied',
   'combat.condition_added',

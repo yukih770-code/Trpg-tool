@@ -79,6 +79,7 @@ function tokenInput(value: unknown, fallback?: MapToken): MapToken | null {
     actorBindingId: stringValue(input?.actorBindingId) ?? fallback?.actorBindingId,
     displayName: stringValue(input?.displayName) ?? fallback?.displayName,
     imageUrl: stringValue(input?.imageUrl) ?? fallback?.imageUrl,
+    imageAssetId: input?.imageAssetId === null ? undefined : stringValue(input?.imageAssetId) ?? fallback?.imageAssetId,
     initials: stringValue(input?.initials) ?? fallback?.initials,
     kind: input?.kind === 'playerCharacter' || input?.kind === 'npc' || input?.kind === 'monster' || input?.kind === 'companion' || input?.kind === 'object' || input?.kind === 'unknown' ? input.kind : fallback?.kind,
     informationVisibility: input?.informationVisibility === 'default' || input?.informationVisibility === 'public'
@@ -146,20 +147,22 @@ export function replayMapRuntimeEvents(events: ReadonlyArray<MapRuntimeReplayEve
   for (const event of ordered) {
     const payload = event.payload ?? {};
     if (event.eventKind === 'map.background_set') {
+      const assetId = stringValue(payload.backgroundAssetId);
       const url = stringValue(payload.backgroundUrl);
       const backgroundPreset = typeof payload.backgroundPreset === 'string' ? createMapBackgroundPreset(payload.backgroundPreset) : undefined;
       const clearCustomBackground = payload.clearCustomBackground === true;
-      if (url || backgroundPreset) state = {
+      if (assetId || url || backgroundPreset) state = {
         ...state,
-        backgroundUrl: url ?? (clearCustomBackground ? undefined : state.backgroundUrl),
-        backgroundName: url ? stringValue(payload.backgroundName) ?? url : clearCustomBackground ? undefined : state.backgroundName,
+        backgroundAssetId: assetId ?? (url || clearCustomBackground ? undefined : state.backgroundAssetId),
+        backgroundUrl: assetId ? undefined : url ?? (clearCustomBackground ? undefined : state.backgroundUrl),
+        backgroundName: assetId || url ? stringValue(payload.backgroundName) ?? 'Map' : clearCustomBackground ? undefined : state.backgroundName,
         backgroundPreset: backgroundPreset ?? state.backgroundPreset,
         updatedAt: event.createdAt,
       };
       continue;
     }
     if (event.eventKind === 'map.background_cleared') {
-      state = { ...state, backgroundUrl: undefined, backgroundName: undefined, updatedAt: event.createdAt };
+      state = { ...state, backgroundAssetId: undefined, backgroundUrl: undefined, backgroundName: undefined, updatedAt: event.createdAt };
       continue;
     }
     if (event.eventKind === 'map.viewport_changed') {

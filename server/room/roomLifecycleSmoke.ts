@@ -36,6 +36,8 @@ const joined = joinRoom(rooms, { inviteCodeOrRoomCode: created.room.identity.roo
 expect(joined.memberId, 'player should join before the lifecycle test');
 expect(approveMember(rooms, { roomId, memberId: joined.memberId, decidedByMemberId: hostMemberId }).decision === 'approved', 'host should approve player');
 const playerMemberId = joined.memberId;
+const recoveredJoin = joinRoom(rooms, { inviteCodeOrRoomCode: created.room.identity.roomCode, requestedDisplayName: 'Player after reload', requestedRole: 'spectator', userId: 'player-user' });
+expect(recoveredJoin.decision === 'accepted' && recoveredJoin.memberId === playerMemberId && rooms.get(roomId)?.members.length === 2, 'same authenticated user duplicated its room membership');
 
 expect(appendRuntimeLogEvent(rooms, logs, { roomId, authorMemberId: hostMemberId, kind: 'host.note', visibility: 'public', text: 'Preserved history' }).decision === 'appended', 'history event should append before disband');
 expect(appendRoomMapEvent(rooms, maps, { roomId, authorMemberId: hostMemberId, mapId: 'main', eventKind: 'map.grid_updated', payload: { enabled: true } }).decision === 'appended', 'map history should append before disband');

@@ -122,7 +122,9 @@ const MOCK_WORLD_SERVERS: DisplayWorldServer[] = [
     role: 'owner',
     memberCount: 8,
     activeCampaigns: 3,
-    enabledSystems: ['DND 5e', 'COC 7e', 'Cyberpunk RED'],
+    // Dev-only demo seed (VITE_SERVER_WORKSPACE_DEMO). Kept D&D-only so a
+    // developer with the flag on never sees a paused system look enabled.
+    enabledSystems: ['DND 5e'],
     lastActive: '刚刚',
     source: 'demo',
   },
@@ -133,7 +135,7 @@ const MOCK_WORLD_SERVERS: DisplayWorldServer[] = [
     role: 'member',
     memberCount: 5,
     activeCampaigns: 1,
-    enabledSystems: ['COC 7e', '通用百分骰'],
+    enabledSystems: ['DND 5e'],
     lastActive: '昨天',
     source: 'demo',
   },

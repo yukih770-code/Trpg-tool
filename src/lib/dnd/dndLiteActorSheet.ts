@@ -1,4 +1,4 @@
-import { parseDndDiceFormula } from './dndDiceRoller';
+import { parseDndDiceFormula } from './dndDiceRoller.js';
 import type {
   DndAbilityKey,
   DndLiteActorAction,
@@ -7,7 +7,7 @@ import type {
   DndLiteActorValidation,
   DndLiteCombatantPrefill,
   DndSkillKey,
-} from './dndLiteActorTypes';
+} from './dndLiteActorTypes.js';
 
 const SKILL_ABILITY: Record<DndSkillKey, DndAbilityKey> = {
   acrobatics: 'dexterity', animalHandling: 'wisdom', arcana: 'intelligence', athletics: 'strength',
@@ -64,6 +64,14 @@ export function validateDndLiteActorSheet(sheet: DndLiteActorSheet): DndLiteActo
     if (!finiteInteger(value) || value < -100 || value > 100) errors.push(`Invalid ${key} skill.`);
   }
   const actionIds = new Set<string>();
+  const resourceIds = new Set<string>();
+  for (const resource of sheet.resources ?? []) {
+    if (!resource.id?.trim() || resourceIds.has(resource.id) || !resource.name?.trim()) errors.push('Resource names and unique IDs are required.');
+    resourceIds.add(resource.id);
+    if (!finiteInteger(resource.max) || resource.max < 0 || resource.max > 100000) errors.push('Invalid resource capacity.');
+    if (!['spellSlot', 'classResource', 'custom'].includes(resource.kind)) errors.push('Invalid resource kind.');
+    if (resource.kind === 'spellSlot' && (!finiteInteger(resource.level) || resource.level < 1 || resource.level > 9)) errors.push('Invalid spell slot level.');
+  }
   for (const action of sheet.actions) {
     if (!action.id.trim() || actionIds.has(action.id)) errors.push('Action ids must be unique.');
     actionIds.add(action.id);

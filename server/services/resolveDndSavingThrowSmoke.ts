@@ -1,0 +1,54 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
+import { t12Fixture } from './t12TestFixture.js';
+import { resolveDndSavingThrow } from './resolveDndSavingThrow.js';
+import { ResolvedIntentIndex } from './resolvedIntentIndex.js';
+import type { CurrentViewerContext } from '../auth/currentViewerContext.js';
+import { projectRuntimeLogEventsForViewer } from '../room/roomRuntimeVisibilityProjection.js';
+import { readAuthoritativeCombat } from './applyRuntimeResolution.js';
+import { appendRuntimeLogEvent } from './appendRuntimeLogEvent.js';
+
+const f = t12Fixture(); let rolls = 0, storage = true;
+const deps = { ...f, sessions: f.persistence, intents: new ResolvedIntentIndex(1), random: () => { rolls++; return 0.5; }, confirm: async (event: Parameters<typeof f.confirm>[0]) => storage ? f.confirm(event) : false };
+for (const actor of f.actors.values()) actor.overridePayload = { dndLiteActorSheetV1: { schemaVersion: 1, abilities: { strength: 10, dexterity: 14, constitution: 12, intelligence: 10, wisdom: 10, charisma: 10 }, savingThrows: { dexterity: 5 } } };
+const viewer = (id: string): CurrentViewerContext => ({ viewerUserId: id, isAuthenticated: true, authTrustLevel: 'dev_header', isDevOnly: true, isServiceInternal: false, notes: [] });
+const input = (body = {}, memberId = 'player') => ({ roomId: f.room.identity.roomId, memberId, viewer: viewer(`${memberId}-user`), body: { intentId: randomUUID(), actorInstanceId: 'pc-actor', operation: 'roll', ability: 'dexterity', ...body } });
+const original = input({ modifier: 999, savingThrowBonus: 999, total: 999 });
+const [a, b] = await Promise.all([resolveDndSavingThrow(deps, original), resolveDndSavingThrow(deps, original)]);
+assert.equal(a.event.eventId, b.event.eventId); assert.equal(rolls, 1);
+assert.equal((a.event.payload as any).resolution.total, 16);
+assert.equal((a.event.payload as any).resolution.modifier, 5);
+assert.equal((a.event.payload as any).resolution.dc, undefined);
+await assert.rejects(resolveDndSavingThrow(deps, input({ dc: 1 })), { code: 'host_defines_dc' });
+await assert.rejects(resolveDndSavingThrow(deps, input({}, 'other')), { code: 'actor_not_controlled' });
+await assert.rejects(resolveDndSavingThrow(deps, input({ actorInstanceId: 'npc-actor' })), { code: 'actor_not_controlled' });
+assert.equal(rolls, 1);
+const request = await resolveDndSavingThrow(deps, input({ operation: 'request', dc: 16, mode: 'advantage' }, 'host'));
+assert.equal(rolls, 1, 'requests never roll');
+const answer = input({ ability: undefined, challengeEventId: request.event.eventId });
+const reply = await resolveDndSavingThrow(deps, answer);
+assert.equal((reply.event.payload as any).resolution.outcome, 'success');
+assert.equal((reply.event.payload as any).resolution.dc, 16); assert.equal(rolls, 3);
+await assert.rejects(resolveDndSavingThrow(deps, input({ ability: undefined, challengeEventId: request.event.eventId })), { code: 'save_request_already_resolved' });
+assert.equal((await resolveDndSavingThrow(deps, original)).replayed, true); assert.equal(rolls, 3);
+await assert.rejects(resolveDndSavingThrow(deps, { ...original, body: { ...original.body, ability: 'strength' } }), { code: 'intent_reuse_mismatch' });
+const failed = input({}, 'host'); storage = false;
+await assert.rejects(resolveDndSavingThrow(deps, failed), { code: 'durableAppendUnavailable' });
+storage = true; await resolveDndSavingThrow(deps, failed);
+const combat = readAuthoritativeCombat(f.log, f.room.identity.roomId);
+assert.equal(combat.combatants[0].hpCurrent, 20, 'saves do not apply damage or spell effects');
+for (const member of ['host', 'player', 'other', 'spectator']) {
+  const projected = projectRuntimeLogEventsForViewer(f.room, member, f.log.list(f.room.identity.roomId).events, []).find(e => e.eventId === reply.event.eventId)!;
+  const p = projected.payload as any;
+  assert.equal(p.resolution.total, 16); assert.equal(p.resolution.dc, 16);
+  assert.equal(p.resolution.savingThrowBonus, undefined); assert.equal(p.fingerprint, undefined); assert.equal(p.mutations, undefined);
+}
+// Restore plain persisted outcomes with a fresh intent cache: no RNG on retry.
+deps.intents = new ResolvedIntentIndex();
+const count = rolls; await resolveDndSavingThrow(deps, answer); assert.equal(rolls, count);
+const naturalOne = await resolveDndSavingThrow({ ...deps, random: () => 0 }, input({ dc: 6 }, 'host'));
+assert.equal((naturalOne.event.payload as any).resolution.outcome, 'success', 'saves have no automatic natural-one failure');
+const naturalTwenty = await resolveDndSavingThrow({ ...deps, random: () => 0.999 }, input({ dc: 26 }, 'host'));
+assert.equal((naturalTwenty.event.payload as any).resolution.outcome, 'failure', 'saves have no automatic natural-twenty success');
+assert.equal(appendRuntimeLogEvent(f.rooms, f.log, { roomId: f.room.identity.roomId, authorMemberId: 'host', kind: 'runtime.saving_throw_resolved' }).decision, 'serverResolvedKind');
+console.log('Saving throw smoke passed: authoritative bonuses, host-only DC/request, player response, one answer per request, concurrent retry/history fallback, no mutation, projection and no RNG on replay.');

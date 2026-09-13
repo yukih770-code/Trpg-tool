@@ -28,12 +28,13 @@ export function tokenInitials(displayName: string): string {
   return words.length ? words.slice(0, 2).map((word) => word.slice(0, 1).toUpperCase()).join('') : '?';
 }
 
-export function combatantTokenSummary(combatant: Combatant): Pick<MapTokenPresenceCandidate, 'hpSummary' | 'conditionSummary'> {
+export function combatantTokenSummary(combatant: Combatant, conditionLabel?: (state: NonNullable<Combatant['conditionStates']>[number]) => string): Pick<MapTokenPresenceCandidate, 'hpSummary' | 'conditionSummary'> {
   return {
     hpSummary: combatant.hpCurrent === undefined && combatant.hpMax === undefined && combatant.temporaryHp === undefined
       ? undefined
       : { current: combatant.hpCurrent, max: combatant.hpMax, temporary: combatant.temporaryHp },
-    conditionSummary: combatant.conditions.length ? [...combatant.conditions] : undefined,
+    conditionSummary: combatant.conditions.length || combatant.conditionStates?.length
+      ? [...combatant.conditions, ...(combatant.conditionStates ?? []).map(state => conditionLabel?.(state) ?? state.conditionId)] : undefined,
   };
 }
 
@@ -74,7 +75,7 @@ export function linkedTokenForCandidate(tokens: readonly MapToken[], candidate: 
 }
 
 /** Combat remains authoritative. This is a visual projection only. */
-export function tokenWithCombatProjection(token: MapToken, combatants: readonly Combatant[]): MapToken {
+export function tokenWithCombatProjection(token: MapToken, combatants: readonly Combatant[], conditionLabel?: (state: NonNullable<Combatant['conditionStates']>[number]) => string): MapToken {
   const id = token.combatantId ?? token.sourceCombatantId;
   const combatant = id
     ? combatants.find((item) => item.id === id)
@@ -84,7 +85,7 @@ export function tokenWithCombatProjection(token: MapToken, combatants: readonly 
   return combatant
     ? {
         ...token,
-        ...combatantTokenSummary(combatant),
+        ...combatantTokenSummary(combatant, conditionLabel),
         hpDisplay: combatant.hpDisplay ?? token.hpDisplay,
         acDisplay: combatant.acDisplay ?? token.acDisplay,
         visibility: combatant.visibility ?? token.visibility,

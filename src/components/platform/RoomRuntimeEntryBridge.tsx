@@ -45,6 +45,8 @@ import { RuntimeSceneFocusPanel, type RuntimeSceneFocus } from './RuntimeSceneFo
 import { RuntimeMapStage } from './RuntimeMapStage';
 import { BasicMapBoard } from './BasicMapBoard';
 import { RoomRuntimeCombatPanel } from './RoomRuntimeCombatPanel';
+import { DndRuntimeActorActions } from '../dnd/DndRuntimeActorActions';
+import { changeRoomDndCondition } from '../../lib/platform/roomServerHttpClient';
 import { RuntimeTokenInspectPanel } from './RuntimeTokenInspectPanel';
 import { entryCharacterFromRoomBinding, entryCharacterToPresenceCandidate } from '../../lib/platform/entryCharacterRef';
 import type { MapTokenPresenceCandidate } from '../../lib/map/actorPresence';
@@ -52,6 +54,7 @@ import type { MapInteractionPreview, MapRuntimeEventDraft, MapToken } from '../.
 import { replayMapRuntimeEvents } from '../../lib/map/mapRuntimeReplay';
 import { advanceTurn, type CombatRuntimeEventDraft } from '../../lib/combat/combatRuntimeTypes';
 import { findCombatantLinkedToMapToken, findCombatantForActorBinding } from '../../lib/combat/roomRuntimeCombatLink';
+import { dndConditionLabel } from '../../lib/dnd/dndConditions';
 
 /**
  * RoomRuntimeEntryBridge (v0 / UI1a) — multiplayer Runtime Alpha surface.
@@ -697,6 +700,11 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
 
   const actorRail = <div>{rosterEntries.map((entry) => <div className="live-party-row" key={entry.memberId}><i style={{ opacity: entry.online ? 1 : .3 }} /><div><strong>{entry.actorName || entry.name}</strong><span>{entry.name} · {entry.role === 'host' ? '主持人' : entry.role === 'spectator' ? '旁观' : entry.ready ? '已准备' : '玩家'}{entry.online ? '' : ' · 离线'}</span></div></div>)}</div>;
   const inspector = (<RoomRuntimeCombatPanel
+        onChangeCondition={async intent => {
+          const result = await changeRoomDndCondition({ baseUrl: context.serverBaseUrl }, context.roomId, context.currentMemberId, intent);
+          setLogLiveEvents(previous => [...previous, result.event]);
+          setRecentEvents(previous => previous.some(event => event.eventId === result.event.eventId) ? previous : [...previous, result.event].sort((a, b) => a.seq - b.seq));
+        }}
         locale={readStoredLocale()}
         scopeKey={`room:${context.roomId}`}
         role={shellMode}
@@ -757,6 +765,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
 
   const mainStage = context.systemId === 'dnd5e-2024' ? (
     <BasicMapBoard
+      assetContext={{ baseUrl: context.serverBaseUrl, roomId: context.roomId, memberId: context.currentMemberId }}
       locale={readStoredLocale()}
       mapId={roomMapId}
       mapEvents={roomMapEvents}
@@ -799,7 +808,13 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                     scopeKey={`${context.serverBaseUrl}:${context.roomId}:${context.currentMemberId}:${currentRoom?.identity.sessionId}`}
                     actorCombatantId={attackActorId}
                     onRefreshActions={() => setActionsRevision((revision) => revision + 1)}
-                    actorVitals={myRuntimeCombatant ? [runtimeHpDisplayLabel(myRuntimeCombatant.hpDisplay), runtimeAcDisplayLabel(myRuntimeCombatant.acDisplay)].join(" · ") : undefined}
+                    actorVitals={myRuntimeCombatant ? [
+                      runtimeHpDisplayLabel(myRuntimeCombatant.hpDisplay),
+                      runtimeAcDisplayLabel(myRuntimeCombatant.acDisplay),
+                      ...(myRuntimeCombatant.conditionStates?.length
+                        ? [myRuntimeCombatant.conditionStates.map((state) => dndConditionLabel(state, readStoredLocale() === 'en')).join('、')]
+                        : []),
+                    ].join(' · ') : undefined}
                     actors={shellMode === 'host' ? dndActionTargets : undefined}
                     onSelectActor={setHostAttackActorId}
                     onDeclare={handleDeclareAttack}
@@ -810,6 +825,18 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                     selectedTargetId={selectedCombatantId}
                     onSelectTarget={setSelectedCombatantId}
                     onRoll={handleRoomDiceRoll}
+                  /><DndRuntimeActorActions
+                    events={recentEvents}
+                    baseUrl={context.serverBaseUrl} roomId={context.roomId} memberId={context.currentMemberId} sessionId={currentRoom?.identity.sessionId}
+                    revision={`${campaignActorRevision}:${recentEvents.filter(e => e.kind === 'runtime.resource_changed').at(-1)?.seq ?? 0}`}
+                    actors={[...new Map([
+                      ...runtimeActorProjections.filter(actor => shellMode === 'host' || actor.bindingId === context.approvedActorBindingId).flatMap(actor => actor.campaignActorInstanceId ? [{ id: actor.campaignActorInstanceId, name: actor.displayName }] : []),
+                      ...(shellMode === 'host' ? campaignActorCandidates.flatMap(actor => actor.campaignActorId ? [{ id: actor.campaignActorId, name: actor.displayName }] : []) : []),
+                    ].map(actor => [actor.id, actor])).values()]}
+                    onEvent={event => {
+                      setLogLiveEvents(previous => [...previous, event]);
+                      setRecentEvents(previous => previous.some(e => e.eventId === event.eventId) ? previous : [...previous, event].sort((a, b) => a.seq - b.seq));
+                    }}
                   /></div>
                 ) : undefined;
 

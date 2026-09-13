@@ -28,21 +28,26 @@ export function useMapRuntimeBoard(mapId: string) {
     setState(createMapBoardState(mapId));
   }, [mapId]);
 
+  const setBackgroundAsset = useCallback((assetId: string, title: string): MapRuntimeEventDraft => {
+    setState(previous => ({ ...previous, backgroundAssetId: assetId, backgroundUrl: undefined, backgroundName: title }));
+    return { eventKind: 'map.background_set', payload: { backgroundAssetId: assetId, backgroundName: title } };
+  }, []);
+
   const setBackground = useCallback((backgroundUrl: string, backgroundName?: string): MapRuntimeEventDraft | null => {
     const url = backgroundUrl.trim();
     if (!url) return null;
-    setState((previous) => ({ ...previous, backgroundUrl: url, backgroundName: backgroundName?.trim() || url, updatedAt: new Date().toISOString() }));
-    return { eventKind: 'map.background_set', payload: { backgroundUrl: url, backgroundName: backgroundName?.trim() || url } };
+    setState((previous) => ({ ...previous, backgroundAssetId: undefined, backgroundUrl: url, backgroundName: backgroundName?.trim() || url, updatedAt: new Date().toISOString() }));
+    return { eventKind: 'map.background_set', payload: { backgroundAssetId: undefined, backgroundUrl: url, backgroundName: backgroundName?.trim() || url } };
   }, []);
 
   const setBackgroundPreset = useCallback((backgroundPreset: unknown): MapRuntimeEventDraft => {
     const preset = createMapBackgroundPreset(backgroundPreset);
-    setState((previous) => ({ ...previous, backgroundPreset: preset, backgroundUrl: undefined, backgroundName: undefined, updatedAt: new Date().toISOString() }));
+    setState((previous) => ({ ...previous, backgroundPreset: preset, backgroundAssetId: undefined, backgroundUrl: undefined, backgroundName: undefined, updatedAt: new Date().toISOString() }));
     return { eventKind: 'map.background_set', payload: { backgroundPreset: preset, clearCustomBackground: true } };
   }, []);
 
   const clearBackground = useCallback((): MapRuntimeEventDraft => {
-    setState((previous) => ({ ...previous, backgroundUrl: undefined, backgroundName: undefined, updatedAt: new Date().toISOString() }));
+    setState((previous) => ({ ...previous, backgroundAssetId: undefined, backgroundUrl: undefined, backgroundName: undefined, updatedAt: new Date().toISOString() }));
     return { eventKind: 'map.background_cleared', payload: {} };
   }, []);
 
@@ -149,5 +154,5 @@ export function useMapRuntimeBoard(mapId: string) {
     return normalized;
   }, [mapId]);
 
-  return { state, setBackground, setBackgroundPreset, clearBackground, updateGrid, changeViewport, addToken, moveToken, updateToken, removeToken, selectToken, addTemplate, updateTemplate, removeTemplate, clearTemplates, selectTemplate, restore, replaceState };
+  return { state, setBackgroundAsset, setBackground, setBackgroundPreset, clearBackground, updateGrid, changeViewport, addToken, moveToken, updateToken, removeToken, selectToken, addTemplate, updateTemplate, removeTemplate, clearTemplates, selectTemplate, restore, replaceState };
 }

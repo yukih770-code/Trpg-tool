@@ -114,7 +114,6 @@ export function DndWorkspaceShell({
     dndChar.jobClass ||
     dndChar.isCompleted,
   );
-  const [plannedSlotLabelKey, setPlannedSlotLabelKey] = useState<string | null>(null);
   const [campaignActorAddContext, setCampaignActorAddContext] =
     useState<CampaignActorAddReturnContext | null>(null);
   const [campaignActorSelectContext, setCampaignActorSelectContext] =
@@ -148,7 +147,6 @@ export function DndWorkspaceShell({
       ? { kind: 'forCampaign', actor, campaign: campaignActorAddContext }
       : { kind: 'standalone', actor });
     setCreatingActorId(null);
-    setPlannedSlotLabelKey(null);
     onViewChange('create');
   }, [campaignActorAddContext, creatingActorId, dndChar.id, dndChar.isCompleted, dndChar.name, onViewChange]);
 
@@ -367,29 +365,18 @@ export function DndWorkspaceShell({
     badgePlanned: 'border-[#58180d]/30 text-[#58180d]/70',
     kindBadge: 'border-[#58180d]/30 text-[#58180d]/70',
   };
-  // AI-LANDMARK: DND_CHARACTER_VAULT_CREATION_METHOD_ENTRY
-  // Creation now enters through a method picker; only Standard Creation opens the existing Builder.
-  const creationMethodCards: { labelKey: string; noteKey: string; planned?: boolean; onClick: () => void }[] = [
-    {
-      labelKey: 'dndWorkspace.creation.standard',
-      noteKey: 'dndWorkspace.creation.standardNote',
-      onClick: () => {
-        resetDndCreator();
-        setCreatingActorId(useCharacterStore.getState().character.id);
-        onOpenPlayTab('creator');
-      },
-    },
-    { labelKey: 'dndWorkspace.creation.quick', noteKey: 'dndWorkspace.creation.quickNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.quick') },
-    { labelKey: 'dndWorkspace.creation.localImport', noteKey: 'dndWorkspace.creation.localImportNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.localImport') },
-    { labelKey: 'dndWorkspace.creation.workshop', noteKey: 'dndWorkspace.creation.workshopNote', planned: true, onClick: () => setPlannedSlotLabelKey('dndWorkspace.creation.workshop') },
-  ];
+  const openCanonicalCharacterCreator = () => {
+    resetDndCreator();
+    setCreatingActorId(useCharacterStore.getState().character.id);
+    onOpenPlayTab('creator');
+  };
 
   const handleRequestAddActorForCampaign = (context: CampaignActorAddReturnContext) => {
     setCampaignActorAddContext(context);
     setCampaignActorSelectContext(null);
     setCampaignSelectForActorContext(null);
     setActorCreationCompletionContext(null);
-    onViewChange('create');
+    openCanonicalCharacterCreator();
   };
 
   const handleRequestSelectActorForCampaign = (context: CampaignActorSelectReturnContext) => {
@@ -633,51 +620,7 @@ export function DndWorkspaceShell({
                   onSelectCampaign={handleSelectCampaignForCompletedActor}
                   onReturnToCampaignEntry={handleReturnCreatedActorToCampaign}
                 />
-              ) : (
-                <>
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-bold text-[#58180d]">{t('dndWorkspace.creation.title')}</h2>
-                  <p className="mt-1 text-sm text-[#58180d]/70">{t('dndWorkspace.creation.subtitle')}</p>
-                </div>
-                <span className="border border-[#58180d]/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#58180d]/70">
-                  {t('dndWorkspace.creation.builderBoundary')}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                {creationMethodCards.map((card) => (
-                  <button
-                    key={card.labelKey}
-                    type="button"
-                    onClick={card.onClick}
-                    className="min-h-32 border border-[#58180d]/30 bg-white/60 p-4 text-left transition hover:-translate-y-0.5 hover:border-[#58180d] hover:shadow-md"
-                  >
-                    <span className="flex items-start justify-between gap-3">
-                      <span className="font-bold text-[#58180d]">{t(card.labelKey)}</span>
-                      {card.planned && (
-                        <span className="shrink-0 border border-[#58180d]/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-[#58180d]/70">
-                          {t('multiWorkspace.status.planned')}
-                        </span>
-                      )}
-                    </span>
-                    <span className="mt-3 block text-xs font-normal leading-relaxed text-[#58180d]/65">{t(card.noteKey)}</span>
-                  </button>
-                ))}
-              </div>
-              {plannedSlotLabelKey && (
-                <div className="mt-4 border border-dashed border-[#58180d]/40 bg-white/40 p-4">
-                  <div className="text-xs font-bold uppercase tracking-wider text-[#58180d]/70">
-                    {t('multiWorkspace.status.planned')}
-                  </div>
-                  <h3 className="mt-2 font-bold text-[#58180d]">{t(plannedSlotLabelKey)}</h3>
-                  <p className="mt-2 text-sm text-[#58180d]/75">{t('dndWorkspace.creation.plannedMessage')}</p>
-                </div>
-              )}
-              <p className="mt-4 border-t border-[#58180d]/15 pt-3 text-[10px] text-[#58180d]/50">
-                {t('dndWorkspace.creation.actorFlowNote')}
-              </p>
-                </>
-              )}
+              ) : null}
             </section>
           )}
 
@@ -704,7 +647,7 @@ export function DndWorkspaceShell({
                   setSuggestedCampaignActor(null);
                 }
                 setActorCreationCompletionContext(null);
-                onViewChange('create');
+                openCanonicalCharacterCreator();
               }}
               purpose={
                 campaignActorSelectContext
@@ -811,10 +754,6 @@ export function DndWorkspaceShell({
                   tone="dnd"
                   panelClassName={panelClass}
                   onBackOverrideChange={onGlobalBackOverrideChange}
-                  onOpenFullCharacterCreator={() => {
-                    resetDndCreator();
-                    onOpenPlayTab('creator');
-                  }}
                 />
               )}
             </div>

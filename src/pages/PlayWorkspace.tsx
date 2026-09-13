@@ -5,14 +5,15 @@ import { Gameplay } from './Gameplay';
 import { useAppStore } from '../store/appStore';
 
 import { DndWorkspaceShell, type DndWorkspaceView } from './dndWorkspace/DndWorkspaceShell';
-import { CocInvestigatorBuilderShell, CocWorkspaceShell } from './cocWorkspace/CocWorkspaceShell';
-import { CpEdgerunnerBuilderShell, CpEdgerunnerSheetShell, CpWorkspaceShell } from './cpWorkspace/CpWorkspaceShell';
+// AI-LANDMARK: PUBLIC_SYSTEM_SCOPE_DND_ONLY_V1
+// The CoC / CP RED workspace shells, builders, sheets, gameplay panels and
+// market were the ONLY consumers of src/pages/coc*, src/pages/cp* — those page
+// files are deleted with this pass. Their domain code (src/lib/coc-*,
+// src/lib/cp-*, src/lib/cp2024, src/store/cocStore, src/store/cpStore) stays.
+import { PausedGameSystemNotice } from '../components/platform/PausedGameSystemNotice';
+import { readStoredLocale } from '../i18n';
 
-import { CocSheet } from './CocSheet';
-import { CocGameplay } from './CocGameplay';
 
-import { CpGameplay } from './CpGameplay';
-import { CpMarket } from './CpMarket';
 import type { PlatformRulesetSystem } from '../lib/data-contract/export-envelope';
 
 // ── Decorative SVG Backgrounds ────────────────────────────
@@ -120,237 +121,7 @@ function DndBackground() {
 }
 
 /** CoC — eldritch horror: Cthulhu silhouette, Elder Sign, tentacles, stars */
-function CocBackground() {
-  return (
-    <svg className="absolute inset-0 w-full h-full pointer-events-none select-none"
-         viewBox="0 0 900 650" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-
-      {/* Elder Sign — five-pointed star with concentric rings, center */}
-      <g transform="translate(450,310)" fill="none" stroke="#059669" strokeWidth="1.5" opacity="0.055">
-        {/* Outer ring */}
-        <circle r="200"/>
-        <circle r="155"/>
-        <circle r="110"/>
-        {/* Five-pointed star (pentagram) */}
-        <polygon points="0,-155 47,-64 147,-47 90,35 115,129 0,75 -115,129 -90,35 -147,-47 -47,-64"
-                 strokeWidth="1.5" fill="none"/>
-        {/* Inner pentagon */}
-        <polygon points="0,-60 57,-18 35,47 -35,47 -57,-18"/>
-        {/* Eye in center */}
-        <ellipse rx="28" ry="18" fill="none" strokeWidth="2"/>
-        <ellipse rx="12" ry="12" fill="#059669" opacity="0.25"/>
-        <circle r="5" fill="#059669" opacity="0.5"/>
-      </g>
-
-      {/* Cthulhu / deep one silhouette — center bottom */}
-      <g transform="translate(450,590)" fill="#059669" stroke="none" opacity="0.045">
-        {/* Mantle / robe */}
-        <path d="M0,-180 C-60,-170 -100,-140 -120,-90 C-140,-40 -135,20 -110,60
-                 C-80,100 -40,115 0,118 C40,115 80,100 110,60
-                 C135,20 140,-40 120,-90 C100,-140 60,-170 0,-180 Z"/>
-        {/* Head */}
-        <ellipse cx="0" cy="-200" rx="55" ry="45"/>
-        {/* Tentacles on face */}
-        <path d="M-45,-195 C-65,-210 -75,-230 -65,-248 C-55,-240 -50,-225 -45,-210 Z"/>
-        <path d="M-25,-205 C-35,-225 -30,-248 -15,-258 C-10,-245 -15,-228 -20,-215 Z"/>
-        <path d="M0,-210 C0,-235 5,-258 15,-268 C18,-252 15,-235 10,-220 Z"/>
-        <path d="M20,-208 C30,-228 38,-248 52,-255 C50,-240 43,-225 35,-212 Z"/>
-        <path d="M42,-195 C58,-210 70,-228 64,-248 C56,-240 52,-222 45,-208 Z"/>
-        {/* Wings */}
-        <path d="M-80,-120 C-120,-100 -160,-60 -170,-10 C-155,-5 -135,-30 -115,-65
-                 C-100,-80 -90,-100 -80,-120 Z"/>
-        <path d="M80,-120 C120,-100 160,-60 170,-10 C155,-5 135,-30 115,-65
-                 C100,-80 90,-100 80,-120 Z"/>
-      </g>
-
-      {/* Tentacles — bottom-left corner */}
-      <g fill="none" stroke="#059669" strokeWidth="2" opacity="0.07">
-        <path d="M0,650 C15,600 25,545 8,490 C-5,445 12,400 30,365"/>
-        <path d="M45,650 C55,605 42,555 22,510 C5,470 22,428 40,395"/>
-        <path d="M90,650 C85,615 75,575 92,535 C108,498 90,458 70,425"/>
-        {/* Sucker dots */}
-        <circle cx="12" cy="520" r="3" fill="#059669" opacity="0.5"/>
-        <circle cx="35" cy="475" r="2.5" fill="#059669" opacity="0.5"/>
-        <circle cx="52" cy="440" r="2" fill="#059669" opacity="0.5"/>
-      </g>
-
-      {/* Tentacles — bottom-right corner */}
-      <g fill="none" stroke="#059669" strokeWidth="2" opacity="0.07">
-        <path d="M900,650 C885,600 875,545 892,490 C905,445 888,400 870,365"/>
-        <path d="M855,650 C845,605 858,555 878,510 C895,470 878,428 860,395"/>
-        <path d="M810,650 C815,615 825,575 808,535 C792,498 810,458 830,425"/>
-        <circle cx="888" cy="520" r="3" fill="#059669" opacity="0.5"/>
-        <circle cx="865" cy="475" r="2.5" fill="#059669" opacity="0.5"/>
-        <circle cx="848" cy="440" r="2" fill="#059669" opacity="0.5"/>
-      </g>
-
-      {/* Stars — scattered across sky area */}
-      {([
-        [80,55],[190,35],[310,80],[500,45],[640,70],[770,40],[850,90],
-        [130,155],[280,130],[420,170],[570,140],[720,165],[860,135],
-        [50,250],[200,230],[380,270],[600,240],[800,260],
-        [160,340],[490,310],[730,330],
-      ] as [number,number][]).map(([x,y],i) => (
-        <g key={i} transform={`translate(${x},${y})`} fill="#059669" opacity="0.12">
-          <circle r="1.5"/>
-          <line x1="0" y1="-7" x2="0" y2="7"  stroke="#059669" strokeWidth="0.8"/>
-          <line x1="-7" y1="0" x2="7" y2="0"  stroke="#059669" strokeWidth="0.8"/>
-          <line x1="-5" y1="-5" x2="5" y2="5" stroke="#059669" strokeWidth="0.5"/>
-          <line x1="5" y1="-5" x2="-5" y2="5" stroke="#059669" strokeWidth="0.5"/>
-        </g>
-      ))}
-
-      {/* Old tome — lower-left */}
-      <g transform="translate(110,490)" fill="none" stroke="#059669" strokeWidth="1.5" opacity="0.08">
-        <rect x="-38" y="-55" width="76" height="100" rx="3"/>
-        {/* Spine */}
-        <line x1="-18" y1="-55" x2="-18" y2="45"/>
-        {/* Pages / lines */}
-        <line x1="-38" y1="-20" x2="-18" y2="-20"/>
-        <line x1="-38" y1="0"   x2="-18" y2="0"/>
-        <line x1="-38" y1="20"  x2="-18" y2="20"/>
-        {/* Clasp */}
-        <path d="M30,-5 L38,-5 L38,5 L30,5"/>
-      </g>
-    </svg>
-  );
-}
-
 /** CP RED — cyberpunk: Night City skyline, circuit traces, cyborg face */
-function CpBackground() {
-  return (
-    <svg className="absolute inset-0 w-full h-full pointer-events-none select-none"
-         viewBox="0 0 900 650" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-
-      {/* Night City skyline silhouette — bottom */}
-      <g fill="#00e5ff" opacity="0.038">
-        {/* Left cluster */}
-        <rect x="0"   y="455" width="28"  height="195"/>
-        <rect x="23"  y="385" width="22"  height="265"/>
-        <rect x="40"  y="415" width="18"  height="235"/>
-        <rect x="55"  y="348" width="32"  height="302"/>
-        <rect x="83"  y="388" width="24"  height="262"/>
-        <rect x="103" y="428" width="18"  height="222"/>
-        <rect x="118" y="358" width="38"  height="292"/>
-        <rect x="152" y="398" width="28"  height="252"/>
-        <rect x="176" y="338" width="18"  height="312"/>
-        <rect x="191" y="368" width="42"  height="282"/>
-        <rect x="228" y="408" width="22"  height="242"/>
-        <rect x="246" y="378" width="28"  height="272"/>
-        <rect x="270" y="348" width="48"  height="302"/>
-        <rect x="314" y="388" width="18"  height="262"/>
-        <rect x="329" y="418" width="26"  height="232"/>
-        <rect x="351" y="358" width="22"  height="292"/>
-        {/* Center mega-tower */}
-        <rect x="392" y="268" width="55"  height="382"/>
-        <rect x="407" y="248" width="25"  height="20"/>
-        <rect x="412" y="225" width="15"  height="23"/>
-        <rect x="416" y="205" width="7"   height="20"/>
-        {/* Tower antennae */}
-        <line x1="419" y1="205" x2="419" y2="170" stroke="#00e5ff" strokeWidth="2"/>
-        <circle cx="419" cy="168" r="3" fill="#00e5ff"/>
-        {/* Right cluster */}
-        <rect x="495" y="368" width="38"  height="282"/>
-        <rect x="528" y="398" width="22"  height="252"/>
-        <rect x="546" y="348" width="32"  height="302"/>
-        <rect x="574" y="388" width="28"  height="262"/>
-        <rect x="598" y="328" width="18"  height="322"/>
-        <rect x="613" y="358" width="42"  height="292"/>
-        <rect x="651" y="398" width="22"  height="252"/>
-        <rect x="669" y="368" width="28"  height="282"/>
-        <rect x="694" y="338" width="48"  height="312"/>
-        <rect x="738" y="378" width="22"  height="272"/>
-        <rect x="756" y="348" width="38"  height="302"/>
-        <rect x="790" y="388" width="28"  height="262"/>
-        <rect x="814" y="418" width="22"  height="232"/>
-        <rect x="833" y="358" width="42"  height="292"/>
-        <rect x="870" y="395" width="30"  height="255"/>
-      </g>
-
-      {/* Neon sign hints on buildings */}
-      <g fill="#f5c518" opacity="0.055">
-        <rect x="62"  y="368" width="16" height="4"/>
-        <rect x="62"  y="376" width="10" height="4"/>
-        <rect x="200" y="358" width="20" height="4"/>
-        <rect x="550" y="360" width="18" height="4"/>
-        <rect x="615" y="345" width="22" height="4"/>
-        <rect x="700" y="355" width="16" height="4"/>
-      </g>
-
-      {/* Circuit board traces — top-left corner */}
-      <g fill="none" stroke="#00e5ff" strokeWidth="1.2" opacity="0.065">
-        <path d="M15,15 L110,15 L110,55 L195,55"/>
-        <path d="M195,55 L195,30 L295,30 L295,75 L395,75"/>
-        <path d="M110,15 L110,-5"/>
-        <path d="M75,75 L75,140 L175,140 L175,110 L275,110"/>
-        <path d="M275,110 L275,90 L355,90"/>
-        <path d="M75,75 L15,75"/>
-        <path d="M175,140 L175,165 L255,165"/>
-        {/* IC pads */}
-        <rect x="106" y="11"  width="8" height="8" fill="#00e5ff" opacity="0.7"/>
-        <rect x="191" y="51"  width="8" height="8" fill="#00e5ff" opacity="0.7"/>
-        <rect x="71"  y="71"  width="8" height="8" fill="#00e5ff" opacity="0.7"/>
-        <rect x="171" y="136" width="8" height="8" fill="#00e5ff" opacity="0.7"/>
-        <rect x="271" y="106" width="8" height="8" fill="#00e5ff" opacity="0.7"/>
-      </g>
-
-      {/* Circuit board traces — bottom-right corner */}
-      <g fill="none" stroke="#f5c518" strokeWidth="1.2" opacity="0.06">
-        <path d="M885,635 L785,635 L785,595 L685,595"/>
-        <path d="M685,595 L685,615 L585,615 L585,575 L505,575"/>
-        <path d="M785,635 L785,650"/>
-        <path d="M825,575 L825,515 L725,515 L725,535 L625,535"/>
-        <path d="M625,535 L625,555 L545,555"/>
-        <path d="M825,575 L885,575"/>
-        <path d="M725,515 L725,495 L645,495"/>
-        <rect x="781" y="631" width="8" height="8" fill="#f5c518" opacity="0.7"/>
-        <rect x="681" y="591" width="8" height="8" fill="#f5c518" opacity="0.7"/>
-        <rect x="821" y="571" width="8" height="8" fill="#f5c518" opacity="0.7"/>
-        <rect x="721" y="511" width="8" height="8" fill="#f5c518" opacity="0.7"/>
-        <rect x="621" y="531" width="8" height="8" fill="#f5c518" opacity="0.7"/>
-      </g>
-
-      {/* Cyborg face silhouette — upper right */}
-      <g transform="translate(790,130)" fill="#f5c518" stroke="none" opacity="0.04">
-        {/* Skull outline */}
-        <path d="M0,-75 C-42,-75 -65,-48 -65,0 C-65,32 -50,55 -28,68 L-28,85 L28,85 L28,68 C50,55 65,32 65,0 C65,-48 42,-75 0,-75 Z"/>
-        {/* Left eye socket */}
-        <rect x="-45" y="-18" width="30" height="24" rx="4" fill="#0d0d0d"/>
-        <ellipse cx="-30" cy="-6" rx="10" ry="9" fill="#f5c518" opacity="0.5"/>
-        {/* Right eye — cybernetic ring */}
-        <path d="M8,-18 L42,-18 L48,0 L36,6 L8,6 Z" fill="#0d0d0d"/>
-        <circle cx="26" cy="-6" r="9" fill="#f5c518" opacity="0.5"/>
-        <circle cx="26" cy="-6" r="4"/>
-        {/* Nose bridge */}
-        <rect x="-6" y="12" width="12" height="18" rx="2"/>
-        {/* Jaw / mouth grill */}
-        <rect x="-28" y="36" width="56" height="12" rx="2" fill="#0d0d0d"/>
-        <rect x="-28" y="36" width="56" height="12" rx="2" fill="none" stroke="#f5c518" strokeWidth="0.8" opacity="0.8"/>
-        <line x1="-12" y1="36" x2="-12" y2="48" stroke="#f5c518" strokeWidth="1.5"/>
-        <line x1="0"   y1="36" x2="0"   y2="48" stroke="#f5c518" strokeWidth="1.5"/>
-        <line x1="12"  y1="36" x2="12"  y2="48" stroke="#f5c518" strokeWidth="1.5"/>
-        {/* Ear implants */}
-        <rect x="-72" y="-8" width="10" height="20" rx="2"/>
-        <rect x="62"  y="-8" width="10" height="20" rx="2"/>
-        {/* Data port on neck */}
-        <rect x="-8" y="78" width="16" height="10" rx="1"/>
-      </g>
-
-      {/* Hex grid overlay — faint background pattern, mid area */}
-      <g fill="none" stroke="#00e5ff" strokeWidth="0.6" opacity="0.025">
-        {([
-          [200,180],[244,180],[266,217],[244,253],[200,253],[178,217],
-          [288,180],[332,180],[354,217],[332,253],[288,253],[266,217],
-          [222,253],[266,253],[288,290],[266,326],[222,326],[200,290],
-          [310,253],[354,253],[376,290],[354,326],[310,326],[288,290],
-        ] as [number,number][]).map(([cx,cy],i) => (
-          <polygon key={i} points={`${cx},${cy-36} ${cx+31},${cy-18} ${cx+31},${cy+18} ${cx},${cy+36} ${cx-31},${cy+18} ${cx-31},${cy-18}`}/>
-        ))}
-      </g>
-    </svg>
-  );
-}
-
 // ── Theme config ──────────────────────────────────────────
 const THEMES = {
   'D&D': {
@@ -455,7 +226,6 @@ export function PlayWorkspace({
   );
   const [dndSheetInitialSection, setDndSheetInitialSection] = useState<string | undefined>();
   const { system } = useAppStore();
-  const theme = THEMES[system];
 
   useEffect(() => {
     if (!navigationState) return;
@@ -491,22 +261,11 @@ export function PlayWorkspace({
     emitNavigationState({ systemWorkspaceView: 'vault' });
   };
 
-  const openWorkspaceTab = (nextTab: string) => {
-    navigatePlayWorkspace({ tab: nextTab, systemWorkspaceView: 'play' }, () => {
-      setTab(nextTab);
-      setSystemWorkspaceView('play');
-    });
-  };
   const openDndPlayTab = (nextTab: 'creator' | 'sheet' | 'gameplay', sheetInitialSection?: string) => {
     navigatePlayWorkspace({ tab: nextTab, dndWorkspaceView: 'play' }, () => {
       setTab(nextTab);
       setDndWorkspaceView('play');
       setDndSheetInitialSection(nextTab === 'sheet' ? sheetInitialSection : undefined);
-    });
-  };
-  const openWorkspaceView = (nextView: NonDndWorkspaceView) => {
-    navigatePlayWorkspace({ systemWorkspaceView: nextView }, () => {
-      setSystemWorkspaceView(nextView);
     });
   };
   // AI-LANDMARK: COC_CPRED_DND_ALIGNED_WORKSPACE_RECONSTRUCTION
@@ -553,78 +312,17 @@ export function PlayWorkspace({
     );
   }
 
-  // AI-LANDMARK: LEGACY_RUNTIME_EMBEDDED_MODE
-  // Non-DND workspaces own the navigation chrome. This body renders only the selected
-  // legacy content section so old toolbars, system selectors, and internal tabs stay hidden.
-  const embeddedPlayBody = (
-    <div className={`min-h-screen p-4 transition-colors duration-500 md:p-6 ${theme.bg} ${theme.text} ${theme.selection}`}>
-      <div className="mx-auto w-full max-w-6xl">
-        <div className={`${theme.panelBg} relative min-h-[70vh] overflow-hidden p-4 md:p-6 ${
-          system === 'CP'
-            ? 'cp-scanlines shadow-[inset_0_0_44px_rgba(245,197,24,0.045),0_0_0_1px_rgba(245,197,24,0.045)]'
-            : ''
-        }`}>
-          {system === 'CoC' && <CocBackground />}
-          {system === 'CP' && <CpBackground />}
-
-          <div className="relative z-10">
-            {system === 'CoC' && tab === 'creator' && (
-              <CocInvestigatorBuilderShell
-                onOpenSheet={() => openWorkspaceView('sheet')}
-                onStartInvestigation={() => openWorkspaceTab('gameplay')}
-              />
-            )}
-            {system === 'CoC' && tab === 'sheet' && <CocSheet />}
-            {tab === 'gameplay' && <p className="mb-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm">本地角色游玩：使用角色库数据；联机战斗请进入房间桌面。</p>}
-            {system === 'CoC' && tab === 'gameplay' && <CocGameplay embedded />}
-
-            {system === 'CP' && tab === 'creator' && (
-              <CpEdgerunnerBuilderShell
-                onOpenSheet={() => openWorkspaceTab('sheet')}
-                onStartMission={() => openWorkspaceTab('gameplay')}
-              />
-            )}
-            {system === 'CP' && tab === 'sheet' && (
-              <CpEdgerunnerSheetShell
-                onContinueEditing={() => openWorkspaceTab('creator')}
-                onStartMission={() => openWorkspaceTab('gameplay')}
-              />
-            )}
-            {system === 'CP' && tab === 'gameplay' && <CpGameplay embedded />}
-            {system === 'CP' && tab === 'market' && <CpMarket />}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  if (system === 'CoC') {
-    return (
-      <CocWorkspaceShell
-        view={systemWorkspaceView}
-        currentPlayTab={tab}
-        onViewChange={openWorkspaceView}
-        onOpenPlayTab={openWorkspaceTab}
-        onBack={navigateBackOrVault}
-        canGoBack={canGoBack}
-        onGlobalBackOverrideChange={onBackOverrideChange}
-      >
-        {embeddedPlayBody}
-      </CocWorkspaceShell>
-    );
-  }
-
+  // AI-LANDMARK: PUBLIC_SYSTEM_SCOPE_DND_ONLY_V1
+  // Call of Cthulhu and Cyberpunk Red are paused in the public frontend. The
+  // old embedded legacy body (CocBackground / CpBackground / builder / sheet /
+  // gameplay / market branches) is removed rather than left beside the new IA.
+  // Reaching here now means a stored non-D&D selection, so say so plainly
+  // instead of opening a retired editor.
   return (
-    <CpWorkspaceShell
-      view={systemWorkspaceView}
-      currentPlayTab={tab}
-      onViewChange={openWorkspaceView}
-      onOpenPlayTab={openWorkspaceTab}
-      onBack={navigateBackOrVault}
-      canGoBack={canGoBack}
-      onGlobalBackOverrideChange={onBackOverrideChange}
-    >
-      {embeddedPlayBody}
-    </CpWorkspaceShell>
+    <PausedGameSystemNotice
+      locale={readStoredLocale()}
+      systemId={system === 'CoC' ? 'coc7e' : 'cp-red'}
+      onBack={canGoBack ? navigateBackOrVault : undefined}
+    />
   );
 }

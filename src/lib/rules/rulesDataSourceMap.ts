@@ -431,7 +431,7 @@ const COC_ENTRIES: RulesDataSourceMapEntry[] = [
     systemId: 'coc7e',
     datasetId: 'sanityBasics',
     label: 'Sanity Basics',
-    currentLocation: ['src/lib/coc-utils.ts', 'src/pages/cocGameplay/CocSanCheckPanel.tsx'],
+    currentLocation: ['src/lib/coc-utils.ts', 'src/pages/cocGameplay/cocSanUtils.ts'],
     status: 'partial',
     priority: 'P1',
     blocksCompleteCharacterSheet: false,

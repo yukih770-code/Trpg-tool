@@ -67,19 +67,22 @@ export function findProjectionForToken(
 /**
  * Produces the combat seed for a token.
  *
- * `armorClass` and `initiativeModifier` come from the projection because the map
- * token has never carried either. HP and conditions stay token-first: the bridge
- * already fills a token's HP summary from this same projection, and a host may
- * have adjusted the token since.
+ * Exact AC may already be carried by a host-authored campaign token. Otherwise
+ * it comes from the authoritative room projection. HP and conditions stay
+ * token-first: the bridge already fills a token's HP summary from this same
+ * projection, and a host may have adjusted the token since.
  */
 export function combatantSeedFromProjection(
-  token: Pick<MapToken, 'actorBindingId' | 'campaignActorId' | 'sourceActorInstanceId' | 'hpSummary' | 'conditionSummary'>,
+  token: Pick<MapToken, 'actorBindingId' | 'campaignActorId' | 'sourceActorInstanceId' | 'hpSummary' | 'acDisplay' | 'conditionSummary'>,
   projection: RoomRuntimeActorProjection | undefined,
 ): CombatantProjectionSeed {
   const seededFromProjection: CombatantProjectionSeed['seededFromProjection'] = [];
 
-  const armorClass = isFiniteNumber(projection?.armorClass) ? projection.armorClass : undefined;
-  if (armorClass !== undefined) seededFromProjection.push('armorClass');
+  const tokenArmorClass = token.acDisplay?.kind === 'exact' && isFiniteNumber(token.acDisplay.value)
+    ? token.acDisplay.value
+    : undefined;
+  const armorClass = tokenArmorClass ?? (isFiniteNumber(projection?.armorClass) ? projection.armorClass : undefined);
+  if (tokenArmorClass === undefined && armorClass !== undefined) seededFromProjection.push('armorClass');
 
   const projectedInitiative = isFiniteNumber(projection?.initiativeModifier) ? projection.initiativeModifier : undefined;
   if (projectedInitiative !== undefined) seededFromProjection.push('initiativeModifier');

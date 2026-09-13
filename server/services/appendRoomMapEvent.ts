@@ -2,6 +2,7 @@
  * explicitly grant active players permission to pin new range markers only. */
 
 import { randomUUID } from 'node:crypto';
+import { checkMapBackgroundSource } from '../../src/lib/map/mapBackgroundSource.js';
 
 import type { RoomRegistry } from '../room-registry.js';
 import type { RoomMapRegistry } from '../room-map-registry.js';
@@ -60,6 +61,14 @@ export function appendRoomMapEvent(
     return { decision: 'invalidMapEvent', message: 'A valid mapId, map event kind, and object payload are required.' };
   }
 
+  if (input.eventKind === 'map.background_set') {
+    const { backgroundAssetId, backgroundUrl } = input.payload;
+    if ((backgroundAssetId != null && (typeof backgroundAssetId !== 'string' || !/^[0-9a-f-]{36}$/.test(backgroundAssetId))) ||
+      (backgroundAssetId != null && backgroundUrl != null) ||
+      (backgroundUrl != null && (typeof backgroundUrl !== 'string' || !checkMapBackgroundSource(backgroundUrl).ok))) {
+      return { decision: 'invalidMapEvent', message: 'Use an asset ID or a durable image URL.' };
+    }
+  }
   const event = mapRegistry.append(input.roomId, {
     mapEventId: `mapevent_${randomUUID()}`,
     roomId: input.roomId,

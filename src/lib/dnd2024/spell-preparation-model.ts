@@ -1,15 +1,15 @@
-import type { AttributeName, CharacterData } from '../dnd-types';
+import type { AttributeName, CharacterData } from '../dnd-types.js';
 import type {
   DndClassKey,
   SpellPreparationMode,
   SpellSlotProgression,
   SpellcastingAbility,
-} from './progression-types';
+} from './progression-types.js';
 import {
   getClassProgression,
   getPactMagicAtLevel,
   getSpellSlotsAtLevel,
-} from './progression-utils';
+} from './progression-utils.js';
 
 const CLASS_NAME_TO_KEY: Record<string, DndClassKey> = {
   野蛮人: 'barbarian',

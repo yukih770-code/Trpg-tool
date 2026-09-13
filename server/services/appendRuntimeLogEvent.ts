@@ -28,6 +28,7 @@ import type {
 } from '../protocol/room-protocol.js';
 import { ROOM_RUNTIME_LOG_EVENT_KINDS, SERVER_RESOLVED_EVENT_KINDS } from '../../src/lib/platform/roomRuntimeLogTypes.js';
 import { requiresLiveRoomDurableAppend } from './liveRoomDurableAppendConfirmation.js';
+import { replayCombatRuntimeEvents } from '../../src/lib/combat/combatRuntimeReplay.js';
 
 const VALID_VISIBILITIES: readonly RoomRuntimeLogVisibility[] = ['public', 'hostOnly', 'actorPrivate'];
 
@@ -91,10 +92,24 @@ export function appendRuntimeLogEvent(
   const author = room.members.find((m) => m.memberId === input.authorMemberId);
   const requiresHost = input.kind === 'host.note' || visibility === 'hostOnly' || input.kind.startsWith('combat.');
   if ((requiresHost && author?.role !== 'host') || (input.kind === 'chat.message' && !author)) return { decision: 'memberNotAuthorized' };
+  let payload = input.payload;
+  // Generic host edits retain their HP/initiative/legacy-marker authority, but
+  // typed system conditions are supplied only by the resolved condition path.
+  if (input.kind.startsWith('combat.') && payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    const states = replayCombatRuntimeEvents(logRegistry.list(input.roomId).events.map(e => ({ eventKind: e.kind, payload: e.payload as Record<string, unknown> ?? {}, seq: e.seq, createdAt: e.createdAt }))).combatants;
+    const preserve = (value: unknown) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+      const { conditionStates: _untrusted, ...fields } = value as Record<string, unknown>;
+      const current = states.find(c => c.id === fields.id)?.conditionStates;
+      return { ...fields, ...(current ? { conditionStates: current } : {}) };
+    };
+    const record = payload as Record<string, unknown>;
+    payload = { ...record, ...(record.combatant ? { combatant: preserve(record.combatant) } : {}), ...(Array.isArray(record.combatants) ? { combatants: record.combatants.map(preserve) } : {}) };
+  }
   const event = logRegistry.append(input.roomId, {
     eventId: 'logevent_' + randomUUID(), roomId: input.roomId, createdAt: new Date().toISOString(),
     authorMemberId: input.authorMemberId, actorBindingId: input.actorBindingId,
-    campaignRef: room.campaignRef, kind: input.kind, visibility, text: input.text, payload: input.payload,
+    campaignRef: room.campaignRef, kind: input.kind, visibility, text: input.text, payload,
   }, { pending: requiresLiveRoomDurableAppend(room) });
   return { decision: 'appended', event };
 }

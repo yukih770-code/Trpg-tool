@@ -175,6 +175,10 @@ export function entryCharacterFromDndLiteActor(
       max: sheet.defenses.maxHp,
       temporary: sheet.defenses.temporaryHp,
     },
+    armorClass: sheet.defenses.armorClass,
+    acDisplay: sheet.defenses.armorClass === undefined
+      ? undefined
+      : { kind: 'exact', value: sheet.defenses.armorClass },
   });
 }
 

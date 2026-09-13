@@ -6,6 +6,10 @@ import { useAppStore } from '../store/appStore';
 import { useCharacterStore } from '../store/characterStore';
 import { useCocStore } from '../store/cocStore';
 import { useCpStore } from '../store/cpStore';
+import {
+  isPubliclyAvailableWorkspaceSystem,
+  pausedSystemDisplayName,
+} from '../lib/platform/publicGameSystemAvailability';
 
 type System = 'D&D' | 'CoC' | 'CP';
 
@@ -92,12 +96,17 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
   const cocChar = useCocStore((state) => state.character);
   const cpChar  = useCpStore((state) => state.character);
 
-  const activeSystemCard = systemCards.find((c) => c.system === system) ?? systemCards[0];
+  // AI-LANDMARK: PUBLIC_SYSTEM_SCOPE_DND_ONLY_V1
+  // A stored selection can still name a paused system. The launchpad always
+  // resumes into a supported one rather than offering a retired workspace.
+  const resumeSystem = isPubliclyAvailableWorkspaceSystem(system) ? system : 'D&D';
+  const activeSystemCard = systemCards.find((c) => c.system === resumeSystem) ?? systemCards[0];
+  const availableSystemCards = systemCards.filter((card) => isPubliclyAvailableWorkspaceSystem(card.system));
+  const pausedSystemNames = systemCards
+    .filter((card) => !isPubliclyAvailableWorkspaceSystem(card.system))
+    .map((card) => pausedSystemDisplayName(card.system === 'CoC' ? 'coc7e' : 'cp-red', locale === 'en' ? 'en' : 'zh-CN'));
 
-  const activeCharacter =
-    system === 'CoC' ? cocChar
-    : system === 'CP'  ? cpChar
-    : dndChar;
+  const activeCharacter = resumeSystem === 'CoC' ? cocChar : resumeSystem === 'CP' ? cpChar : dndChar;
   const activeCharName = (activeCharacter as { name?: string } | null)?.name?.trim();
 
   const charNameBySystem = {
@@ -135,7 +144,7 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
                   </span>
                 </div>
               </div>
-              <Button onClick={() => onEnterPlay(system)} className="w-fit rounded-md">
+              <Button onClick={() => onEnterPlay(resumeSystem)} className="w-fit rounded-md">
                 <Play className="mr-2 h-4 w-4" />
                 {t('home.resume.continueButton')}
               </Button>
@@ -149,7 +158,7 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
             {t('home.recent.sectionTitle')}
           </h2>
           <div className="grid gap-2 md:grid-cols-3">
-            {systemCards.map((card) => (
+            {availableSystemCards.map((card) => (
               <button
                 key={card.system}
                 type="button"
@@ -166,6 +175,15 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
               </button>
             ))}
           </div>
+          {/* Honest one-liner rather than dead cards: users with saved CoC or
+              Cyberpunk Red records should not have to guess where they went. */}
+          {pausedSystemNames.length > 0 && (
+            <p className="mt-2 text-[11px] leading-5 text-[#51483d]" data-paused-systems-note>
+              {locale === 'en'
+                ? `${pausedSystemNames.join(' and ')} are temporarily unavailable while the current release focuses on D&D 2024. Saved records are kept.`
+                : `${pausedSystemNames.join(' 与 ')} 暂时不可用，当前版本专注于 D&D 2024。已保存的记录仍然保留。`}
+            </p>
+          )}
         </section>
 
         <section aria-label={locale === 'en' ? 'Quick access' : '常用入口'}>
@@ -181,7 +199,7 @@ export function Home({ locale, onEnterPlay, onOpenPlaceholder }: HomeProps) {
                   return;
                 }
                 if (entry.action === 'currentSystem') {
-                  onEnterPlay(system);
+                  onEnterPlay(resumeSystem);
                   return;
                 }
                 onOpenPlaceholder(entry.action);

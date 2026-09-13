@@ -19,8 +19,8 @@
  * Types + pure helpers + mock seed only. No upload, no object store, no image
  * processing. `*Ref.ref` values are opaque (NOT real URLs, NOT base64).
  */
-import type { EntityStatus, EntityType, EntityVisibility } from './entityGraph';
-import { ANONYMOUS_VIEWER, decideProjection, type ProjectionDecision, type ViewerContext } from './projection';
+import type { EntityStatus, EntityType, EntityVisibility } from './entityGraph.js';
+import { ANONYMOUS_VIEWER, decideProjection, type ProjectionDecision, type ViewerContext } from './projection.js';
 
 export type MediaAssetId = string;
 

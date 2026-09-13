@@ -35,10 +35,14 @@ const spoofedBindingToken = createMapToken({ ...ownToken, id: 'spoofed-binding',
 const ownSourceTokens = (['vaultActor', 'quickDraft', 'dndLiteActor', 'campaign_actor'] as const).map((sourceType) =>
   createMapToken({ ...ownToken, id: `token-${sourceType}`, sourceType, sourceId: 'actor-a' }),
 );
+const projectedOwnToken = createMapToken({ ...ownToken, id: 'projected-own', sourceType: 'unknown', sourceId: undefined });
+const spoofedProjectedToken = createMapToken({ ...projectedOwnToken, id: 'projected-spoofed', sourceId: 'untrusted-source' });
 
 const cases: Array<{ name: string; run: () => void }> = [
   { name: 'approved player recognizes own binding token', run: () => expect(isTokenLinkedToApprovedRoomMember(room, 'player-a', ownToken), 'own approved token was not recognized') },
   ...ownSourceTokens.map((token) => ({ name: `approved player recognizes own ${token.sourceType} token when binding-linked`, run: () => expect(isTokenLinkedToApprovedRoomMember(room, 'player-a', token), `${token.sourceType} token was not recognized`) })),
+  { name: 'player recognizes their privacy-projected token by exact room binding', run: () => expect(isTokenLinkedToApprovedRoomMember(room, 'player-a', projectedOwnToken), 'projected own token was not recognized') },
+  { name: 'unknown-source token carrying an untrusted source id is rejected', run: () => expect(!isTokenLinkedToApprovedRoomMember(room, 'player-a', spoofedProjectedToken), 'untrusted projected source id was accepted') },
   { name: 'player does not recognize another binding token', run: () => expect(!isTokenLinkedToApprovedRoomMember(room, 'player-a', otherToken), 'other player token was recognized') },
   { name: 'manual host token is not player controlled', run: () => expect(!isTokenLinkedToApprovedRoomMember(room, 'player-a', manualToken), 'manual token was recognized') },
   { name: 'owner metadata alone grants nothing', run: () => expect(!isTokenLinkedToApprovedRoomMember(room, 'player-a', spoofedOwnerToken), 'spoofed owner metadata was trusted') },

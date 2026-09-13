@@ -40,6 +40,8 @@ export type DndLiteActorSheet = {
   savingThrows?: Partial<Record<DndAbilityKey, number>>;
   skills?: Partial<Record<DndSkillKey, number>>;
   actions: DndLiteActorAction[];
+  /** Explicit authored capacities, with current-session values stored in RuntimeLog. */
+  resources?: Array<{ id: string; name: string; kind: 'spellSlot' | 'classResource' | 'custom'; max: number; level?: number }>;
   notes?: string;
   tags?: string[];
 };

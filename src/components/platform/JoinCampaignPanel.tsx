@@ -69,6 +69,7 @@ function normalizeJoinError(error: unknown): { message: string; detail: string }
 }
 
 export interface JoinCampaignPanelProps {
+  initialDisplayName?: string;
   systemId?: RoomSystemId;
   tone?: string;
   panelClassName?: string;
@@ -77,7 +78,7 @@ export interface JoinCampaignPanelProps {
   onOpenFullCharacterCreator?: () => void;
 }
 
-export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChange, onOpenFullCharacterCreator }: JoinCampaignPanelProps) {
+export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChange, onOpenFullCharacterCreator, initialDisplayName }: JoinCampaignPanelProps) {
   const [baseUrl, setBaseUrl] = useState(DEFAULT_BASE_URL);
   const [rooms, setRooms] = useState<RoomServerRoomListItem[]>([]);
   const [healthOk, setHealthOk] = useState<boolean | null>(null);
@@ -87,7 +88,7 @@ export function JoinCampaignPanel({ systemId, panelClassName, onBackOverrideChan
   const [diagnosticDetail, setDiagnosticDetail] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [joinCode, setJoinCode] = useState('');
-  const [joinName, setJoinName] = useState('玩家');
+  const [joinName, setJoinName] = useState(initialDisplayName?.trim() || '玩家');
   const [joinResult, setJoinResult] = useState<RoomJoinResult | null>(null);
   const [pendingJoin, setPendingJoin] = useState<{
     baseUrl: string;

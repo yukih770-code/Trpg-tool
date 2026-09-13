@@ -8,6 +8,8 @@
  */
 
 import { replayCombatRuntimeEvents } from '../../src/lib/combat/combatRuntimeReplay.js';
+import { projectDndResourceEvent } from './projectDndResourceEvent.js';
+import { projectDndSavingThrowEvent } from './projectDndSavingThrowEvent.js';
 import { projectAttackResolvedFacts } from './projectAttackResolvedFacts.js';
 import type { Combatant } from '../../src/lib/combat/combatRuntimeTypes.js';
 import { replayMapRuntimeEvents } from '../../src/lib/map/mapRuntimeReplay.js';
@@ -71,7 +73,7 @@ function acFor(visibility: RuntimeVisibility, armorClass?: number): RuntimeAcDis
     : { kind: 'unknown' };
 }
 
-function visibleConditions(visibility: RuntimeVisibility, conditions: readonly string[] | undefined): string[] {
+function visibleConditions<T>(visibility: RuntimeVisibility, conditions: readonly T[] | undefined): T[] {
   // Existing conditions do not carry individual public/revealed metadata. Until
   // such metadata exists, only owner/host receive the complete set.
   return visibility === 'hostFull' || visibility === 'ownerFull' || visibility === 'partyPublic' || visibility === 'publicShared' ? [...(conditions ?? [])] : [];
@@ -93,6 +95,7 @@ function projectToken(scope: ViewerScope, token: MapToken): MapToken {
     height: token.height,
     sourceType: 'unknown',
     imageUrl: token.imageUrl,
+    imageAssetId: token.imageAssetId,
     initials: token.initials,
     kind: token.kind,
     informationVisibility: undefined,
@@ -134,6 +137,7 @@ function projectCombatant(scope: ViewerScope, combatant: Combatant, token?: MapT
     initiative: combatant.initiative,
     initiativeModifier: 0,
     conditions: visibleConditions(visibility, combatant.conditions),
+    conditionStates: visibleConditions(visibility, combatant.conditionStates).map(c => ({ systemId: c.systemId, conditionId: c.conditionId, ...(c.level !== undefined ? { level: c.level } : {}) })),
     isDefeated: combatant.isDefeated,
     status: combatant.status,
     hpCurrent: own ? combatant.hpCurrent : undefined,
@@ -249,6 +253,14 @@ export function projectRuntimeLogEventsForViewer(room: RoomSnapshot, memberId: s
     history.push(event);
     if (event.visibility === 'actorPrivate') continue;
     if (event.visibility === 'hostOnly' && scope.role !== 'host') continue;
+    if (event.kind === 'runtime.saving_throw_requested' || event.kind === 'runtime.saving_throw_resolved') {
+      output.push({ ...event, payload: projectDndSavingThrowEvent(event) });
+      continue;
+    }
+    if (event.kind === 'runtime.resource_changed') {
+      output.push({ ...event, payload: projectDndResourceEvent(room, memberId, event) });
+      continue;
+    }
     if (event.kind.startsWith('combat.')) {
       output.push({ ...event, payload: projectCombatPayload(scope, event, history, allMapEvents) });
       continue;

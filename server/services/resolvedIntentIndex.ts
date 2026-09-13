@@ -1,4 +1,5 @@
 import type { RoomRuntimeLogEvent } from '../../src/lib/platform/roomRuntimeLogTypes.js';
+import { SERVER_RESOLVED_EVENT_KINDS } from '../../src/lib/platform/roomRuntimeLogTypes.js';
 import { RuntimeResolutionError } from './applyRuntimeResolution.js';
 
 /** Single-process T7 authority. Cache accelerates reads; history owns correctness. */
@@ -24,7 +25,7 @@ export class ResolvedIntentIndex {
     const cached = this.completed.get(key);
     const prior = cached ?? input.history().find((event) => {
       const p = event.payload as Record<string, unknown> | undefined;
-      return event.kind === 'combat.attack_resolved' && event.authorMemberId === input.memberId
+      return (SERVER_RESOLVED_EVENT_KINDS as readonly string[]).includes(event.kind) && event.authorMemberId === input.memberId
         && p?.sessionId === input.sessionId && p.intentId === input.intentId;
     });
     if (prior) {

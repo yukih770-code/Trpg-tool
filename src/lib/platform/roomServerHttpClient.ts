@@ -369,3 +369,22 @@ export function listRoomDndAttackActions(config: RoomServerHttpClientConfig, roo
   const query = new URLSearchParams({ memberId, actorCombatantId });
   return request(config, `/rooms/${encodeURIComponent(roomId)}/runtime/dnd-actions?${query}`);
 }
+
+export function changeRoomDndCondition(config: RoomServerHttpClientConfig, roomId: string, memberId: string, intent: {
+  intentId: string; targetCombatantId: string; conditionId: import('../dnd/dndConditions').DndConditionId; level: number;
+}): Promise<{ event: RoomRuntimeLogEvent; replayed: boolean }> {
+  return request(config, `/rooms/${encodeURIComponent(roomId)}/runtime/dnd-condition`, { method: 'POST', body: JSON.stringify({ memberId, ...intent }) });
+}
+
+export function listRoomDndResources(config: RoomServerHttpClientConfig, roomId: string, memberId: string, actorInstanceId: string): Promise<{
+  actorInstanceId: string; resources: import('../dnd/dndRuntimeResources').DndRuntimeResource[]; spells: import('../dnd/dndRuntimeResources').DndRuntimeSpell[]; canAdjust: boolean;
+}> {
+  return request(config, `/rooms/${encodeURIComponent(roomId)}/runtime/dnd-resources?${new URLSearchParams({ memberId, actorInstanceId })}`);
+}
+export function changeRoomDndResource(config: RoomServerHttpClientConfig, roomId: string, memberId: string, intent: import('../dnd/dndRuntimeResources').DndResourceIntent): Promise<{ event: RoomRuntimeLogEvent; replayed: boolean }> {
+  return request(config, `/rooms/${encodeURIComponent(roomId)}/runtime/dnd-resource`, { method: 'POST', body: JSON.stringify({ memberId, ...intent }) });
+}
+
+export function resolveRoomDndSavingThrow(config: RoomServerHttpClientConfig, roomId: string, memberId: string, intent: import('../dnd/dndSavingThrows').DndSavingThrowIntent): Promise<{ event: RoomRuntimeLogEvent; replayed: boolean }> {
+  return request(config, `/rooms/${encodeURIComponent(roomId)}/runtime/dnd-saving-throw`, { method: 'POST', body: JSON.stringify({ memberId, ...intent }) });
+}

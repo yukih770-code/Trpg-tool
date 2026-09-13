@@ -1,6 +1,6 @@
 import type { DndAttackIntent } from './dndAttackIntent.js';
 
-function mintIntentId(): string {
+export function mintIntentId(): string {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   // Ordinary HTTP LAN origins may lack randomUUID but support getRandomValues.
   const bytes = crypto.getRandomValues(new Uint8Array(16));

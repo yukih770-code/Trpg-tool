@@ -120,6 +120,7 @@ function sanitizeToken(value: unknown): MapToken | null {
     actorBindingId: stringValue(input?.actorBindingId),
     displayName: stringValue(input?.displayName),
     imageUrl: stringValue(input?.imageUrl),
+    imageAssetId: stringValue(input?.imageAssetId),
     initials: stringValue(input?.initials),
     kind: oneOf<MapTokenKind>(input?.kind, ['playerCharacter', 'npc', 'monster', 'companion', 'object', 'unknown'], 'unknown'),
     hpSummary: isRecord(input?.hpSummary) ? { current: numberValue(input.hpSummary.current), max: numberValue(input.hpSummary.max), temporary: numberValue(input.hpSummary.temporary) } : undefined,
@@ -190,6 +191,7 @@ function sanitizeMap(value: unknown): MapBoardState | undefined {
   return {
     ...base,
     backgroundUrl: stringValue(value.backgroundUrl),
+    backgroundAssetId: stringValue(value.backgroundAssetId),
     backgroundName: stringValue(value.backgroundName),
     backgroundPreset: createMapBackgroundPreset(value.backgroundPreset),
     zoom: clamp(numberValue(value.zoom) ?? base.zoom, 0.5, 2.5),
@@ -269,6 +271,6 @@ export function summarizeSceneRuntimeSnapshot(snapshot: SceneRuntimeSnapshot): S
     hasMap: Boolean(snapshot.map),
     combatantCount: snapshot.combat?.combatants.length ?? 0,
     tokenCount: snapshot.map?.board.tokens.length ?? 0,
-    hasMapBackground: Boolean(snapshot.map?.board.backgroundUrl),
+    hasMapBackground: Boolean(snapshot.map?.board.backgroundAssetId || snapshot.map?.board.backgroundUrl),
   };
 }

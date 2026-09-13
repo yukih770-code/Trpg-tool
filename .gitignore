@@ -3,6 +3,7 @@ build/
 dist/
 dist-server/
 coverage/
+.data/assets/
 .DS_Store
 *.log
 .env*

@@ -14,17 +14,17 @@ export type CharacterEntryAction = {
 export function getCharacterEntryActions(role?: RoomMemberRole): CharacterEntryAction[] {
   if (role === 'host') {
     return [
-      { id: 'existing', label: '选择主持人角色' },
-      { id: 'quickDraft', label: '创建主持人角色' },
-      { id: 'fullSheet', label: '完整车卡创建' },
-      { id: 'skipHostCharacter', label: '跳过，直接主持' },
+      { id: 'existing', label: '选择已有角色' },
+      { id: 'quickDraft', label: '使用临时角色' },
+      { id: 'fullSheet', label: '创建角色' },
+      { id: 'skipHostCharacter', label: '仅主持，不扮演角色' },
     ];
   }
 
   return [
     { id: 'existing', label: '选择已有角色' },
-    { id: 'quickDraft', label: '创建快速角色' },
-    { id: 'fullSheet', label: '完整车卡创建' },
+    { id: 'quickDraft', label: '使用临时角色' },
+    { id: 'fullSheet', label: '创建角色' },
     { id: 'spectator', label: '以旁观者加入' },
   ];
 }

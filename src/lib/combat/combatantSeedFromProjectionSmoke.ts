@@ -43,6 +43,7 @@ function token(input: Partial<MapToken> = {}): SeedToken {
     campaignActorId: undefined,
     sourceActorInstanceId: undefined,
     hpSummary: { current: 12, max: 12 },
+    acDisplay: undefined,
     conditionSummary: undefined,
     ...input,
   } as SeedToken;
@@ -153,6 +154,11 @@ combatantSeedForToken(token(), [fighterProjection]);
 check('seeding does not mutate the projection', JSON.stringify(fighterProjection) === projectionBefore);
 check('a non-finite projection AC is ignored',
   combatantSeedFromProjection(token(), { ...fighterProjection, armorClass: Number.NaN }).armorClass === undefined);
+const authoredNpc = token({ actorBindingId: undefined, acDisplay: { kind: 'exact', value: 16 } });
+const authoredNpcSeed = combatantSeedForToken(authoredNpc, []);
+check('a canonical campaign token carries exact authored AC into combat', authoredNpcSeed.armorClass === 16);
+check('token-carried AC is not reported as projection-sourced', !authoredNpcSeed.seededFromProjection.includes('armorClass'));
+check('an unknown token AC cannot become combat authority', combatantSeedForToken(token({ acDisplay: { kind: 'unknown' } }), []).armorClass === undefined);
 
 // ── No CharacterData read from the combat layer ────────────────────────────
 const FORBIDDEN = ['characterStore', 'CharacterData', 'dnd-types', 'dndCharacterToLiteActorSheet', 'useCharacterStore'];

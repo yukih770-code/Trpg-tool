@@ -22,6 +22,7 @@ import { SavedSceneLibraryPanel } from './SavedSceneLibraryPanel';
 import { SceneRuntimeSnapshotPanel } from './SceneRuntimeSnapshotPanel';
 import { LanRuntimeHostPanel } from './LanRuntimeHostPanel';
 import { HostedRoomLaunchPanel } from './HostedRoomLaunchPanel';
+import { JoinCampaignPanel } from './JoinCampaignPanel';
 import { CampaignAiArtifactPanel } from './CampaignAiArtifactPanel';
 import type { CombatRuntimeEventDraft, CombatRuntimeTableState } from '../../lib/combat/combatRuntimeTypes';
 import type { CombatDamagePreset } from '../../lib/combat/combatComfort';
@@ -34,6 +35,7 @@ import {
 } from '../../lib/platform/entryCharacterRef';
 import {
   projectDndLiteActorSheets,
+  withDndActorPresetProvenance,
   withDndLiteActorSheetOverride,
   withoutDndLiteActorSheetOverride,
 } from '../../lib/platform/campaignActorOverride';
@@ -43,6 +45,16 @@ import type { DndLiteActorSheet, DndLiteCombatantPrefill } from '../../lib/dnd/d
 import { getDndLiteCombatantPrefill } from '../../lib/dnd/dndLiteActorSheet';
 import { dndMonsterToLiteActorSheet, type DndMonsterAction, type DndPrivateMonsterTemplate } from '../../lib/dnd/dndMonsterTemplateTypes';
 import { useDndMonsterTemplates } from '../../lib/dnd/useDndMonsterTemplates';
+import {
+  materializeDndActorPreset,
+  type DndActorPresetId,
+} from '../../lib/dnd/dndActorPresets';
+import {
+  isPausedPublicSystemId,
+  isPubliclyAvailableSystemId,
+  pausedSystemDisplayName,
+  pausedSystemNotice,
+} from '../../lib/platform/publicGameSystemAvailability';
 import {
   launchHostedRoomFromCampaign,
   resumeHostedRoomFromCampaign,
@@ -99,6 +111,15 @@ function actorLabel(actor: CampaignActorInstance, fallback: string): string {
   return actor.displayName || fallback;
 }
 
+/**
+ * Sentinel id for the unsaved creation draft.
+ *
+ * Deliberately not a UUID: it must be impossible to confuse with a real
+ * `campaign_actor_instance_id`, and `onSave` keys off it to choose create
+ * rather than update.
+ */
+const DRAFT_CAMPAIGN_ACTOR_ID = '__draft-campaign-actor__';
+
 function isDndCampaign(systemId: string | undefined): boolean {
   return systemId?.toLowerCase().startsWith('dnd') ?? false;
 }
@@ -113,6 +134,7 @@ function toRoomSystemId(systemId: string): RoomSystemId {
 
 function gameSystemLabel(systemId: string, gameSystems: WorldServerGameSystemBinding[], locale: Locale): string {
   return gameSystems.find((system) => system.gameSystemId === systemId)?.displayName
+    ?? (isDndCampaign(systemId) ? 'D&D 2024' : undefined)
     ?? (locale === 'en' ? 'Custom system' : '自定义系统');
 }
 
@@ -218,7 +240,12 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [campaignTitle, setCampaignTitle] = useState('');
   const [campaignDescription, setCampaignDescription] = useState('');
-  const [campaignSystemId, setCampaignSystemId] = useState(defaultGameSystemId ?? gameSystems[0]?.gameSystemId ?? '');
+  const [campaignSystemId, setCampaignSystemId] = useState(() => {
+    // Never open the create form pre-selected on a system that cannot be created.
+    const preferred = [defaultGameSystemId, ...gameSystems.map((system) => system.gameSystemId)]
+      .find((id) => id && isPubliclyAvailableSystemId(id));
+    return preferred ?? defaultGameSystemId ?? gameSystems[0]?.gameSystemId ?? '';
+  });
   const [roomName, setRoomName] = useState('');
   const [eventText, setEventText] = useState('');
   const [runtimeCombatState, setRuntimeCombatState] = useState<CombatRuntimeTableState>({ combatants: [], turn: { status: 'setup', roundNumber: 1, turnIndex: -1 } });
@@ -231,11 +258,17 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
   const [dndMonsterActionPreset, setDndMonsterActionPreset] = useState<{ monsterName: string; action: DndMonsterAction; nonce: number }>();
   const [dndDamagePreset, setDndDamagePreset] = useState<CombatDamagePreset>();
   const [snapshotImportVersion, setSnapshotImportVersion] = useState(0);
-  const [actorName, setActorName] = useState('');
-  const [actorKind, setActorKind] = useState<'pc' | 'npc' | 'monster'>('pc');
+  const [actorTask, setActorTask] = useState<'players' | 'npc' | 'monster' | 'customMonster' | null>(null);
+  /**
+   * Which kind of actor the host is creating right now, or undefined when they
+   * are not creating one. It exists only to tell the canonical sheet which
+   * archetype list to offer; the draft itself lives inside that sheet.
+   */
+  const [creatingActorKind, setCreatingActorKind] = useState<'npc' | 'monster'>();
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<ApiClientError | null>(null);
   const [liveRoomSession, setLiveRoomSession] = useState<HostedRoomLaunchSession | null>(null);
+  const [joiningLiveRoom, setJoiningLiveRoom] = useState(false);
   const [liveRoomLaunchState, setLiveRoomLaunchState] = useState<RoomLaunchActionState>('idle');
   const [liveRoomError, setLiveRoomError] = useState<string | null>(null);
   const lanConnectionTitle = locale === 'en' ? 'LAN connection' : '局域网连接';
@@ -254,13 +287,13 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
     }
   }, [campaigns, selectedCampaignId]);
 
-  useEffect(() => { setActorEntry(null); }, [selectedCampaignId]);
+  useEffect(() => { setActorEntry(null); setActorTask(null); }, [selectedCampaignId]);
 
   const selectedCampaign: CampaignListItem | undefined = useMemo(
     () => campaigns.find((item) => item.campaign.campaignId === selectedCampaignId),
     [campaigns, selectedCampaignId],
   );
-  const dndMonsters = useDndMonsterTemplates(isDndCampaign(selectedCampaign?.campaign.systemId) ? worldServerId : '');
+  const dndMonsters = useDndMonsterTemplates(worldServerId);
   const campaignDetail = useCampaignDetail(worldServerId, selectedCampaignId, { enabled: selectedCampaignId !== '' });
   const dndActorSheets = useMemo(
     () => projectDndLiteActorSheets(campaignDetail.actors),
@@ -312,6 +345,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
     event.preventDefault();
     const title = campaignTitle.trim();
     if (!title || !campaignSystemId.trim()) return;
+    if (isPausedPublicSystemId(campaignSystemId)) return;
     await runAction(async () => {
       const created = await createCampaign({ title, description: campaignDescription.trim(), systemId: campaignSystemId.trim() });
       setCampaignTitle('');
@@ -449,10 +483,13 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
       const actor = await campaignRoomApiClient.createCampaignActor(worldServerId, selectedCampaignId, {
         displayName: monster.name,
         actorKind: 'monster',
-        sourceActorId: `private-monster:${monster.monsterTemplateId}`,
+        // A catalog template is not an Actor/Vault identity (sourceActorId FK).
+        snapshotPayload: { dndPrivateMonsterTemplateRefV1: { monsterTemplateId: monster.monsterTemplateId, worldServerId: monster.worldServerId } },
         overridePayload: withDndLiteActorSheetOverride({}, dndMonsterToLiteActorSheet(monster)),
       });
       await campaignDetail.refresh();
+      setActorTask(null);
+      setActorEntry({ actorId: actor.campaignActorInstanceId, source: actorEntry?.source ?? 'campaign' });
     });
   };
 
@@ -470,32 +507,97 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
     setSnapshotImportVersion((previous) => previous + 1);
   };
 
-  const handleCreateCampaignActor = async (event: FormEvent) => {
-    event.preventDefault();
-    const displayName = actorName.trim();
-    if (!displayName || !selectedCampaignId || !canManageServer) return;
+  /**
+   * Creates one campaign actor from a completed draft.
+   *
+   * DRAFT-FIRST: nothing is persisted until the host has seen the canonical
+   * sheet and pressed Create, so the campaign never accumulates half-empty
+   * actors. The sheet is written through the SAME `overridePayload` path a host
+   * edit uses, so there is one creation pipeline and one actor shape. The
+   * preset id is recorded beside the sheet as a label only. There is no
+   * intermediate creator or earlier persistence step.
+   */
+  const createActorFromDraft = async (sheet: DndLiteActorSheet, presetId: DndActorPresetId, presetVersion: number) => {
+    if (!selectedCampaignId || !canManageServer || !creatingActorKind) return;
+    const displayName = sheet.displayName.trim();
+    if (!displayName) return;
     await runAction(async () => {
-      const actor = await campaignRoomApiClient.createCampaignActor(worldServerId, selectedCampaignId, { displayName, actorKind });
-      setActorName('');
+      const overridePayload = withDndActorPresetProvenance(
+        withDndLiteActorSheetOverride({}, { ...sheet, displayName }),
+        { presetId, presetVersion, materializedAt: new Date().toISOString() },
+      );
+      const actor = await campaignRoomApiClient.createCampaignActor(worldServerId, selectedCampaignId, {
+        displayName, actorKind: creatingActorKind, overridePayload,
+      });
+      setCreatingActorKind(undefined);
+      setActorTask(null);
       await campaignDetail.refresh();
-      if (isDndCampaign(selectedCampaign?.campaign.systemId)) setActorEntry({ actorId: actor.campaignActorInstanceId, source: actorEntry?.source ?? 'campaign' });
+      setActorEntry({ actorId: actor.campaignActorInstanceId, source: actorEntry?.source ?? 'campaign' });
     });
   };
 
-  const actorCreationForm = <form onSubmit={(event) => void handleCreateCampaignActor(event)} className="flex flex-wrap gap-2">
-    <input value={actorName} onChange={(event) => setActorName(event.target.value)} placeholder={t('campaignRoom.actorName')} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm" />
-    <select aria-label={locale === 'en' ? 'Actor kind' : '角色类型'} value={actorKind} onChange={event => setActorKind(event.target.value as typeof actorKind)} className="rounded-md border px-2 text-sm"><option value="pc">{locale === 'en' ? 'Player character' : '玩家角色'}</option><option value="npc">NPC</option><option value="monster">{locale === 'en' ? 'Monster' : '怪物'}</option></select>
-    <button type="submit" disabled={busy || !actorName.trim()} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-xs font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.bindActor')}</button>
-  </form>;
-
+  const openActorTask = (task: NonNullable<typeof actorTask>) => {
+    setActorTask(task);
+    // Create NPC and Create custom monster open the canonical sheet directly.
+    // There is no lightweight creator in between: the archetype is an option
+    // inside that sheet, so the fast path is good defaults, not a second editor.
+    setCreatingActorKind(task === 'npc' ? 'npc' : task === 'customMonster' ? 'monster' : undefined);
+    setActorEntry({ source: actorEntry?.source ?? 'campaign' });
+  };
+  const castKind = (actor: CampaignActorInstance) => ['pc', 'npc', 'monster'].includes(actor.actorKind ?? 'pc') ? actor.actorKind ?? 'pc' : 'other';
+  const actorIntentControls = <div className="flex flex-wrap gap-2" data-campaign-cast-actions>
+    <button type="button" className="rounded border bg-white px-3 py-2 text-sm font-bold" onClick={() => openActorTask('players')}>{locale === 'en' ? 'Add player characters' : '添加玩家角色'}</button>
+    <button type="button" className="rounded border bg-white px-3 py-2 text-sm font-bold" onClick={() => openActorTask('npc')}>{locale === 'en' ? 'Create NPC' : '创建 NPC'}</button>
+    <button type="button" className="rounded border bg-white px-3 py-2 text-sm font-bold" onClick={() => openActorTask('monster')}>{locale === 'en' ? 'Add monster' : '添加怪物'}</button>
+  </div>;
   const liveOwnedRoom = Boolean(selectedRoom && isRecoverableLiveLobby(selectedRoom));
-  const actorSurface = <Dialog open={actorEntry !== null} onOpenChange={open => { if (!open) setActorEntry(null); }}>
+  const actorSurface = <Dialog open={actorEntry !== null} onOpenChange={open => { if (!open) { setActorEntry(null); setActorTask(null); setCreatingActorKind(undefined); } }}>
     <DialogContent className="z-[150] max-h-[90dvh] overflow-y-auto sm:max-w-5xl" data-entry-source={actorEntry?.source}>
-      <button type="button" className="w-fit text-xs font-bold underline" onClick={() => void campaignDetail.refresh()}>{locale === 'en' ? 'Refresh actor records' : '刷新角色资料'}</button>
-      <DialogTitle>{locale === 'en' ? 'Campaign combat sheet' : '战役战斗卡'}</DialogTitle>
-      <DialogDescription>{locale === 'en' ? 'Edit the campaign definition. Current encounter HP and the player’s source character stay separate.' : '编辑战役中的战斗资料；当前战斗 HP 与玩家角色库原件分别保留。'}</DialogDescription>
-      {canManageServer && <details className="rounded border p-3"><summary className="cursor-pointer font-bold">{t('campaignRoom.bindActor')}</summary><div className="mt-3">{actorCreationForm}</div>{actionError && <p role="alert" className="mt-2 text-sm text-[#8b3a2f]">{errorText(actionError, locale) || actionError.message}</p>}</details>}
-      {actorEntry && <DndLiteActorSheetPanel
+      {!actorTask && <button type="button" className="w-fit text-xs font-bold underline" onClick={() => void campaignDetail.refresh()}>{locale === 'en' ? 'Refresh list' : '刷新列表'}</button>}
+      <DialogTitle>{actorTask ? actorTask === 'monster' ? '添加怪物' : actorTask === 'npc' ? '创建 NPC' : actorTask === 'players' ? '添加玩家角色' : '创建自定义怪物' : locale === 'en' ? 'Character sheet' : '角色卡'}</DialogTitle>
+      <DialogDescription>{actorTask ? '准备这场战役中的角色。玩家角色由玩家在大厅提交，NPC 和怪物保存在本战役。' : locale === 'en' ? 'Edit this character as the campaign stores it. Hit points during an encounter and the player’s own character are kept separately.' : '编辑本战役保存的这份角色卡。战斗中的生命值与玩家自己的角色分开保存。'}</DialogDescription>
+      {canManageServer && !actorTask && actorIntentControls}
+      {actorTask && <button type="button" className="w-fit text-xs underline" onClick={() => { setActorTask(null); setCreatingActorKind(undefined); }}>返回角色列表</button>}
+      {actorTask === 'players' && <div className="rounded border p-4 text-sm" data-player-cast-guidance>
+        <h3 className="font-bold">邀请玩家带入自己的角色</h3><p className="mt-2">在房间大厅复制房间码发给玩家。玩家从角色库选择角色，或创建角色后提交给主持人；审核通过后会出现在这里。</p>
+        <p className="mt-2">主持人也扮演角色时，请在大厅展开“我也扮演角色”。</p>
+        <button type="button" className="mt-3 rounded border px-3 py-2 font-bold" onClick={() => { setActorEntry(null); setActorTask(null); document.getElementById('campaign-room-entry')?.scrollIntoView({ behavior: 'smooth' }); }}>返回房间入口</button>
+      </div>}
+      {/* THE canonical D&D actor surface, in create mode. Same component, same
+          fields and same layout as editing an existing actor — only the
+          archetype picker, the CTA and the absence of persisted-only sections
+          differ. Nothing is written until the host presses Create actor. */}
+      {creatingActorKind && <DndLiteActorSheetPanel
+        locale={locale} canManage={canManageServer}
+        campaignActors={[{
+          campaignActorInstanceId: DRAFT_CAMPAIGN_ACTOR_ID,
+          campaignId: selectedCampaignId,
+          actorKind: creatingActorKind,
+          displayName: '',
+          instanceStatus: 'active',
+          snapshotPayload: {},
+          overridePayload: withDndLiteActorSheetOverride({}, materializeDndActorPreset(
+            creatingActorKind === 'monster' ? 'brute' : 'commoner',
+            { displayName: '', actorKind: creatingActorKind, locale: locale === 'en' ? 'en' : 'zh-CN' },
+          )),
+        }]}
+        sheets={{ [DRAFT_CAMPAIGN_ACTOR_ID]: materializeDndActorPreset(
+          creatingActorKind === 'monster' ? 'brute' : 'commoner',
+          { displayName: '', actorKind: creatingActorKind, locale: locale === 'en' ? 'en' : 'zh-CN' },
+        ) }}
+        initialActorInstanceId={DRAFT_CAMPAIGN_ACTOR_ID}
+        draftActorInstanceId={DRAFT_CAMPAIGN_ACTOR_ID}
+        presetAudience={creatingActorKind === 'monster' ? 'monster' : 'npc'}
+        onCreate={createActorFromDraft}
+        onSave={async () => undefined}
+        onClear={async () => setCreatingActorKind(undefined)}
+      />}
+      {actorTask === 'monster' && <><DndMonsterTemplateLibraryPanel selectionOnly locale={locale} canManage={canManageServer} monsters={dndMonsters.monsters} loading={dndMonsters.loading} error={dndMonsters.error} onRefresh={dndMonsters.refresh} onCreateActorDraft={handleCreateMonsterActorDraft}
+        onAddToCombat={!liveRoomSession && !liveOwnedRoom && runtimeSessionId ? monster => { setDndActorPrefill({ ...getDndLiteCombatantPrefill(dndMonsterToLiteActorSheet(monster)), nonce: Date.now() }); setActorEntry(null); setActorTask(null); } : undefined}
+        onUseAction={!liveRoomSession && !liveOwnedRoom && runtimeSessionId ? (monster, action) => { setDndMonsterActionPreset({ monsterName: monster.name, action, nonce: Date.now() }); setActorEntry(null); setActorTask(null); } : undefined}
+      /><details><summary className="cursor-pointer text-sm">没有合适的怪物？</summary><button type="button" className="mt-2 underline" onClick={() => openActorTask('customMonster')}>创建自定义怪物</button></details></>}
+      {actionError && <p role="alert" className="text-sm text-[#8b3a2f]">{errorText(actionError, locale) || actionError.message}</p>}
+      {actorEntry && !actorTask && (isDndCampaign(selectedCampaign?.campaign.systemId) || Boolean(actorEntry.actorId && dndActorSheets[actorEntry.actorId])) && <DndLiteActorSheetPanel
         locale={locale} canManage={canManageServer} campaignActors={campaignDetail.actors} sheets={dndActorSheets}
         initialActorInstanceId={actorEntry.actorId}
         onSave={handleSaveDndActorSheet} onClear={handleClearDndActorSheet}
@@ -505,6 +607,8 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
       />}
     </DialogContent>
   </Dialog>;
+
+  if (joiningLiveRoom) return <section className="space-y-3"><button type="button" onClick={() => setJoiningLiveRoom(false)} className="rounded border bg-white px-3 py-2 text-sm">{t('campaignRoom.backToWorkspace')}</button><JoinCampaignPanel systemId={toRoomSystemId(selectedCampaign?.campaign.systemId ?? 'dnd5e-2024')} initialDisplayName={hostDisplayName} /></section>;
 
   if (liveRoomSession) {
     return (
@@ -563,7 +667,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                 <button key={campaign.campaignId} type="button" onClick={() => { setSelectedCampaignId(campaign.campaignId); setSelectedRoomId(''); }} className={`rounded-xl border p-3 text-left transition ${campaign.campaignId === selectedCampaignId ? 'border-[#58180d]/45 bg-[#fff8e6]' : 'border-[#2f2a22]/10 bg-[#f7f3ea] hover:border-[#58180d]/30'}`}>
                   <div className="flex items-start justify-between gap-2">
                     <span className="font-bold">{campaign.title}</span>
-                    <span className="text-[11px] text-[#51483d]">{gameSystemLabel(campaign.systemId, gameSystems, locale)}</span>
+                    <span className="text-[11px] text-[#51483d]">{gameSystemLabel(campaign.systemId, gameSystems, locale)}{isPausedPublicSystemId(campaign.systemId) ? (locale === 'en' ? ' · unavailable' : ' · 暂不可用') : ''}</span>
                   </div>
                   <div className="mt-1 text-xs text-[#51483d]">{campaign.description || t('campaignRoom.noDescription')}</div>
                 </button>
@@ -576,10 +680,18 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
             <div className="mt-3 flex flex-col gap-2">
               <input value={campaignTitle} onChange={(event) => setCampaignTitle(event.target.value)} placeholder={t('campaignRoom.campaignTitle')} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm" />
               <textarea value={campaignDescription} onChange={(event) => setCampaignDescription(event.target.value)} placeholder={t('campaignRoom.campaignDescription')} className="min-h-20 rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm" />
+              {/* AI-LANDMARK: PUBLIC_SYSTEM_SCOPE_DND_ONLY_V1 — a paused system is
+                  shown disabled rather than silently dropped, so a host can see it
+                  exists and is not selectable right now. */}
               {gameSystems.length > 0 ? (
                 <select value={campaignSystemId} onChange={(event) => setCampaignSystemId(event.target.value)} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm">
                   <option value="">{t('campaignRoom.chooseSystem')}</option>
-                  {gameSystems.map((system) => <option key={system.gameSystemId} value={system.gameSystemId}>{system.displayName}</option>)}
+                  {gameSystems.map((system) => {
+                    const paused = isPausedPublicSystemId(system.gameSystemId);
+                    return <option key={system.gameSystemId} value={system.gameSystemId} disabled={paused}>
+                      {system.displayName}{paused ? (locale === 'en' ? ' — temporarily unavailable' : ' — 暂时不可用') : ''}
+                    </option>;
+                  })}
                 </select>
               ) : (
                 <input value={campaignSystemId} onChange={(event) => setCampaignSystemId(event.target.value)} placeholder={t('campaignRoom.systemId')} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm" />
@@ -594,7 +706,22 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
           {!selectedCampaignId && <div className="rounded-2xl border border-dashed border-[#2f2a22]/18 bg-white/70 p-6 text-sm text-[#51483d]">{t('campaignRoom.chooseCampaign')}</div>}
           {selectedCampaignId && campaignDetail.loading && <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-6 text-sm text-[#51483d]">{t('campaignRoom.loadingDetail')}</div>}
           {selectedCampaignId && campaignDetail.error && <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-6 text-sm text-[#51483d]">{errorText(campaignDetail.error, locale)} <button type="button" onClick={() => void campaignDetail.refresh()} className="ml-2 font-bold underline">{t('campaignRoom.retry')}</button></div>}
-          {campaignDetail.detail && (
+          {/* AI-LANDMARK: PUBLIC_SYSTEM_SCOPE_DND_ONLY_V1 — an existing CoC or
+              Cyberpunk Red campaign is still listed and still readable, but its
+              preparation surfaces are replaced by an honest notice rather than
+              by a retired editor. The record itself is untouched. */}
+          {campaignDetail.detail && isPausedPublicSystemId(campaignDetail.detail.campaign.systemId) && (
+            <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm" data-paused-campaign={campaignDetail.detail.campaign.systemId}>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-[#51483d]">{locale === 'en' ? 'Temporarily unavailable' : '暂时不可用'}</div>
+              <h3 className="mt-1 text-2xl font-black">{campaignDetail.detail.campaign.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-[#51483d]">{pausedSystemNotice(campaignDetail.detail.campaign.systemId, locale === 'en' ? 'en' : 'zh-CN')}</p>
+              <p className="mt-2 text-xs leading-5 text-[#51483d]">{locale === 'en'
+                ? `${pausedSystemDisplayName(campaignDetail.detail.campaign.systemId, 'en')} preparation and live play will return once rebuilt on the current information architecture.`
+                : `${pausedSystemDisplayName(campaignDetail.detail.campaign.systemId, 'zh-CN')} 的准备与开桌会在按当前信息架构重建后回归。`}</p>
+              <button type="button" onClick={() => { setSelectedCampaignId(''); setSelectedRoomId(''); }} className="mt-4 rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white">{locale === 'en' ? 'Back to campaigns' : '返回战役列表'}</button>
+            </div>
+          )}
+          {campaignDetail.detail && !isPausedPublicSystemId(campaignDetail.detail.campaign.systemId) && (
             <div className="rounded-2xl border border-[#2f2a22]/12 bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -609,11 +736,11 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
               <p className="mt-3 text-xs text-[#51483d]">{campaignDetail.actors.length} {t('campaignRoom.actorCount')} · {activeRooms.length} {t('campaignRoom.roomCount')}</p>
               {campaignDetail.partialErrors.length > 0 && <p className="mt-3 text-xs text-[#51483d]">{t('campaignRoom.partialSync')}</p>}
               <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
-                <h4 className="font-bold">{t('campaignRoom.rooms')}</h4>
-                <form onSubmit={(event) => void handleCreateRoom(event)} className="flex flex-wrap gap-2">
+                <h4 id="campaign-room-entry" className="font-bold">{t('campaignRoom.rooms')}</h4>
+                <details><summary className="cursor-pointer text-xs">{locale === 'en' ? 'Advanced: room records' : '高级：房间记录'}</summary><form onSubmit={(event) => void handleCreateRoom(event)} className="flex flex-wrap gap-2">
                   <input value={roomName} onChange={(event) => setRoomName(event.target.value)} placeholder={t('campaignRoom.roomName')} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm" />
                   <button type="submit" disabled={busy} className="rounded-md border border-[#2f2a22]/15 px-3 py-2 text-sm font-bold text-[#51483d] disabled:opacity-40">{t('campaignRoom.createRoom')}</button>
-                </form>
+                </form></details>
               </div>
               {canManageServer && (
                 <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[#58180d]/18 bg-[#fff8e6] p-3">
@@ -628,6 +755,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                 </div>
               )}
               {activeRooms.length === 0 && <p className="mt-2 text-sm text-[#51483d]">{t('campaignRoom.noRooms')}</p>}
+              {!canManageServer && <button type="button" onClick={() => setJoiningLiveRoom(true)} className="mt-3 rounded-md bg-[#17130f] px-3 py-2 text-sm font-bold text-white">{locale === 'en' ? 'Join live room' : '加入联机房间'}</button>}
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                 {activeRooms.map((room) => (
                   <div key={room.roomId} className={`rounded-xl border p-3 ${room.roomId === selectedRoomId ? 'border-[#58180d]/45 bg-[#fff8e6]' : 'border-[#2f2a22]/10 bg-[#f7f3ea]'}`}>
@@ -644,28 +772,28 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                 ))}
               </div>
               <details className="mt-5 border-t border-[#2f2a22]/15 pt-4"><summary className="cursor-pointer font-bold">{locale === 'en' ? 'Campaign preparation & characters' : '战役准备与角色管理'}</summary>
-              <CampaignAiArtifactPanel locale={locale} worldServerId={worldServerId} campaignId={campaignDetail.detail.campaign.campaignId} canManage={canManageServer} />
+
               <div className="mt-4 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <h4 className="font-bold">{t('campaignRoom.actorBindings')}</h4>
                     <p className="mt-1 text-xs text-[#51483d]">{t('campaignRoom.actorBindingsNote')}</p>
                   </div>
-                  {canManageServer && actorCreationForm}
+                  {canManageServer && actorIntentControls}
                 </div>
                 {isDndCampaign(selectedCampaign?.campaign.systemId) && <button type="button" onClick={() => setActorEntry({ source: 'campaign' })} className="mt-3 rounded border px-3 py-2 text-sm font-bold">{locale === 'en' ? 'Open campaign combat sheet' : '打开战役战斗卡'}</button>}
                 {campaignDetail.actors.length === 0 && <p className="mt-3 text-xs text-[#51483d]">{t('campaignRoom.noActors')}</p>}
-                {campaignDetail.actors.length > 0 && (
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {campaignDetail.actors.map((actor) => (
-                      <div key={actor.campaignActorInstanceId} className="rounded-lg border border-[#2f2a22]/10 bg-white px-3 py-2 text-xs">
-                        <div className="font-bold">{actorLabel(actor, t('campaignRoom.actorRecord'))}</div>
-                        <div className="mt-1 text-[#51483d]">{isDndCampaign(selectedCampaign?.campaign.systemId) && <button type="button" className="mr-2 font-bold underline" onClick={() => setActorEntry({ actorId: actor.campaignActorInstanceId, source: 'campaign' })}>{locale === 'en' ? 'Open campaign combat sheet' : '打开战役战斗卡'}</button>}{actor.instanceStatus} · {actor.sourceActorId ? t('campaignRoom.sourceActorConnected') : t('campaignRoom.sourceActorLocal')}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {(['pc', 'npc', 'monster', 'other'] as const).filter(kind => kind !== 'other' || campaignDetail.actors.some(actor => castKind(actor) === kind)).map(kind => <section key={kind} className="mt-4" data-cast-group={kind}>
+                  <h5 className="font-bold">{kind === 'pc' ? '玩家角色' : kind === 'npc' ? 'NPC' : kind === 'monster' ? '怪物' : '其他角色'} · {campaignDetail.actors.filter(actor => castKind(actor) === kind).length}</h5>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">{campaignDetail.actors.filter(actor => castKind(actor) === kind).map(actor => <div key={actor.campaignActorInstanceId} className="rounded-lg border bg-white p-3 text-sm">
+                    <div className="font-bold">{actorLabel(actor, t('campaignRoom.actorRecord'))}</div>
+                    <p className="mt-1 text-xs text-[#51483d]">{actor.instanceStatus === 'archived' ? '已归档' : kind === 'pc' ? actor.sourceActorId ? '玩家角色已关联' : '战役准备角色' : '本战役角色'}</p>
+                    {(isDndCampaign(selectedCampaign?.campaign.systemId) || Boolean(dndActorSheets[actor.campaignActorInstanceId])) && <button type="button" className="mt-2 font-bold underline" onClick={() => { setActorTask(null); setActorEntry({ actorId: actor.campaignActorInstanceId, source: 'campaign' }); }}>{locale === 'en' ? 'Open campaign combat sheet' : '打开战役战斗卡'}</button>}
+                  </div>)}</div>
+                  {!campaignDetail.actors.some(actor => castKind(actor) === kind) && <p className="mt-1 text-xs text-[#51483d]">{kind === 'pc' ? '邀请玩家在大厅选择并提交自己的角色。' : kind === 'npc' ? '创建故事中的人物，保存在本战役。' : '从怪物资料中选择，或创建自定义怪物。'}</p>}
+                </section>)}
               </div>
+              <details className="mt-4"><summary className="cursor-pointer text-sm font-bold">AI 备团与回顾（可选）</summary><CampaignAiArtifactPanel locale={locale} worldServerId={worldServerId} campaignId={campaignDetail.detail.campaign.campaignId} canManage={canManageServer} /></details>
               </details>
               {canManageServer && (
                 <details className="mt-5 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3">
@@ -735,18 +863,7 @@ export function ServerCampaignWorkspace({ worldServerId, locale, gameSystems, de
                     onAppendEvent={handleAppendMapEvent}
                   />
                   {isDndCampaign(selectedCampaign?.campaign.systemId) && <button type="button" onClick={() => setActorEntry({ source: 'campaign' })} className="my-3 rounded border px-3 py-2 text-sm font-bold">{locale === 'en' ? 'Open campaign combat sheet' : '打开战役战斗卡'}</button>}
-                  {isDndCampaign(selectedCampaign?.campaign.systemId) && <DndMonsterTemplateLibraryPanel
-                    locale={locale}
-                    worldServerId={worldServerId}
-                    canManage={canManageServer}
-                    monsters={dndMonsters.monsters}
-                    loading={dndMonsters.loading}
-                    error={dndMonsters.error}
-                    onRefresh={dndMonsters.refresh}
-                    onAddToCombat={(monster) => setDndActorPrefill({ ...getDndLiteCombatantPrefill(dndMonsterToLiteActorSheet(monster)), nonce: Date.now() })}
-                    onCreateActorDraft={handleCreateMonsterActorDraft}
-                    onUseAction={(monster, action) => setDndMonsterActionPreset({ monsterName: monster.name, action, nonce: Date.now() })}
-                  />}
+                  {isDndCampaign(selectedCampaign?.campaign.systemId) && <button type="button" className="my-3 rounded border px-3 py-2 text-sm" onClick={() => openActorTask('monster')}>添加怪物</button>}
                   <CombatRuntimeTable
                     locale={locale}
                     scopeKey={`${worldServerId}:${selectedCampaignId}:${selectedRoomId}:${runtimeSessionId}`}

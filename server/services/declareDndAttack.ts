@@ -41,7 +41,7 @@ export function readDndAttackIntent(body: Record<string, unknown>): DndAttackInt
   return { intentId, actorCombatantId: requiredId(body.actorCombatantId), targetCombatantId: requiredId(body.targetCombatantId), actionId: requiredId(body.actionId), mode };
 }
 
-function authorizedRoom(deps: DndAttackDependencies, roomId: string, memberId: string, viewer: CurrentViewerContext) {
+export function authorizedRoom(deps: DndAttackDependencies, roomId: string, memberId: string, viewer: CurrentViewerContext) {
   const room = deps.rooms.get(roomId);
   if (!room) fail('roomNotFound', 404);
   const permission = resolveRoomRuntimePermission({ room, viewer, memberId, action: 'combat.action.declare' });
@@ -51,7 +51,7 @@ function authorizedRoom(deps: DndAttackDependencies, roomId: string, memberId: s
   return room;
 }
 
-async function validRuntime(deps: DndAttackDependencies, roomId: string, memberId: string, viewer: CurrentViewerContext) {
+export async function validRuntime(deps: DndAttackDependencies, roomId: string, memberId: string, viewer: CurrentViewerContext) {
   const room = authorizedRoom(deps, roomId, memberId, viewer);
   const result = await deps.sessions.getRuntimeSessionById(room.identity.sessionId!);
   if (!result.ok) fail('runtime_unavailable', 503);

@@ -36,22 +36,23 @@ const SYSTEM_ENTRIES: SystemEntry[] = [
   },
   {
     id: 'coc7e',
-    system: 'CoC',
+    // AI-LANDMARK: PUBLIC_SYSTEM_SCOPE_DND_ONLY_V1 — frontend paused; `system`
+    // removed so the card cannot launch a retired workspace. Domain code kept.
     nameKey: 'systemLibrary.systems.coc7e.name',
     typeLabel: 'TRPG',
     descKey: 'systemLibrary.systems.coc7e.desc',
-    availability: 'available',
+    availability: 'unavailable',
     source: 'builtin',
     category: 'trpg',
     tagKeys: ['systemLibrary.tags.trpg', 'systemLibrary.tags.investigation', 'systemLibrary.tags.horror', 'systemLibrary.tags.builtin'],
   },
   {
     id: 'cyberpunkRed',
-    system: 'CP',
+    // AI-LANDMARK: PUBLIC_SYSTEM_SCOPE_DND_ONLY_V1 — frontend paused.
     nameKey: 'systemLibrary.systems.cyberpunkRed.name',
     typeLabel: 'TRPG',
     descKey: 'systemLibrary.systems.cyberpunkRed.desc',
-    availability: 'available',
+    availability: 'unavailable',
     source: 'builtin',
     category: 'trpg',
     tagKeys: ['systemLibrary.tags.trpg', 'systemLibrary.tags.cyberpunk', 'systemLibrary.tags.scifi', 'systemLibrary.tags.builtin'],

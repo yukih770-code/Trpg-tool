@@ -33,6 +33,18 @@ export function joinRoom(registry: RoomRegistry, request: RoomJoinRequest): Room
     return { decision: 'roomClosed', roomId: room.identity.roomId };
   }
 
+  // Authenticated room identity survives browser reloads. Rejoining with the
+  // same account must recover the existing admission instead of manufacturing
+  // a second player slot and a second host approval request.
+  const existing = request.userId
+    ? room.members.find(member => member.userId === request.userId && (member.status === 'active' || member.status === 'pendingApproval'))
+    : undefined;
+  if (existing) {
+    return existing.status === 'active'
+      ? { decision: 'accepted', roomId: room.identity.roomId, memberId: existing.memberId, assignedRole: existing.role }
+      : { decision: 'pendingHostApproval', roomId: room.identity.roomId, memberId: existing.memberId, assignedRole: existing.role, requiresHostApproval: true };
+  }
+
   const now = new Date().toISOString();
   // Joining never grants host; coerce a host request down to player.
   const role: RoomMemberRole =

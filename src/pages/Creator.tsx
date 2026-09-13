@@ -19,7 +19,7 @@ import {
 } from '../lib/platform/dndPersonalContentAdapter';
 import { createTranslator, readStoredLocale } from '../i18n';
 import { buildStarterEquipmentPlan } from '../lib/dnd2024/dndStarterEquipmentPlan';
-import { getDndCharacterSpellIndex } from '../lib/dnd2024/dndSpellAvailability';
+import { DndSpellManager } from '../components/dnd/DndSpellManager';
 import { getDndSpellPreparationModel } from '../lib/dnd2024/spell-preparation-model';
 import {
   evaluateDndLevelOneReadiness,
@@ -178,27 +178,7 @@ export function Creator({
   const selectedBackground = AVAILABLE_BACKGROUND_DATA.find(b => b.name === character.background);
   const selectedFeatNames = character.feats ?? [];
   const unselected = t('dndBuilder.common.unselected');
-  const selectedKnownSpells = character.spellbook.known;
   const spellPreparationModel = getDndSpellPreparationModel(character);
-  const selectableSpellLevels = [
-    0,
-    ...Object.entries(makeSpellSlotState(spellPreparationModel.spellSlots)).map(([level]) => Number(level)),
-  ];
-  const spellAvailability = selectedClass
-    ? getDndCharacterSpellIndex({
-        className: selectedClass.name,
-        classLevel: character.level,
-        subclassName: character.subclass,
-        availableSpellLevels: selectableSpellLevels,
-      })
-    : null;
-  const availableBaseSpellNames = new Set(
-    spellAvailability?.characterSpellIndex.map((spell) => spell.nameEn) ?? [],
-  );
-  const selectableSpells = [
-    ...baseSpellData.filter((spell) => availableBaseSpellNames.has(spell.name_en)),
-    ...personalSpellData,
-  ];
   const readinessContext = {
     requiresSubspecies: Boolean(selectedRace?.subraces.length),
     requiresSubclass: Boolean(selectedClass?.subclasses.some((subclass) => subclass.unlockLevel === 1)),
@@ -228,25 +208,6 @@ export function Creator({
     commitCompletedCharacter(result.character);
     toast(t('dndBuilder.readiness.saved'));
     onComplete(result.character.id);
-  };
-
-  const toggleKnownSpell = (spell: SpellInfo) => {
-    const isKnown = character.spellbook.known.some((known) => known.name_cn === spell.name_cn);
-    const known = isKnown
-      ? character.spellbook.known.filter((known) => known.name_cn !== spell.name_cn)
-      : [...character.spellbook.known, spell];
-    const prepared = isKnown
-      ? character.spellbook.prepared.filter((name) => name !== spell.name_cn)
-      : character.spellbook.prepared;
-    updateField('spellbook', { ...character.spellbook, known, prepared });
-  };
-
-  const togglePreparedSpell = (spell: SpellInfo) => {
-    if (!character.spellbook.known.some((known) => known.name_cn === spell.name_cn)) return;
-    const prepared = character.spellbook.prepared.includes(spell.name_cn)
-      ? character.spellbook.prepared.filter((name) => name !== spell.name_cn)
-      : [...character.spellbook.prepared, spell.name_cn];
-    updateField('spellbook', { ...character.spellbook, prepared });
   };
 
   const finalAttrValue = (attr: AttributeName) => {
@@ -789,42 +750,7 @@ export function Creator({
   const renderSpells = () => (
     <section className={panelClass}>
       {renderSectionHeader(t('dndBuilder.sections.spells'), t('dndBuilder.descriptions.spells'))}
-      <div className="rounded-md border border-[#a35b11]/25 bg-[#fff1c7]/45 p-3 text-xs leading-relaxed text-[#58180d]/75">
-        <p>{selectedPersonalPackContentLoading ? '正在载入个人法术…' : '基础法术会按当前职业与可用法术环阶筛选；个人资料包中的自定义法术会单独保留，供房间审核。已知与准备状态会保存到角色卡。'}</p>
-        {!selectedClass && <p className="mt-1">请先选择职业，才能查看当前角色可用的基础法术。</p>}
-        {selectedClass && <p className="mt-1">{spellAvailability?.reason}</p>}
-        {spellPreparationModel.isCaster && <p className="mt-1">当前施法模式：{spellPreparationModel.ruleHint}</p>}
-        <p className="mt-1">完整职业法术表、子职业赠法术与施法效果仍需要后续规则资料补齐；这里只展示当前可安全映射的条目。</p>
-        {selectedPersonalPackContentError && <span className="mt-1 block text-[#a52a2a]">{selectedPersonalPackContentError}</span>}
-      </div>
-      <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
-        {selectableSpells.map((spell) => {
-          const isKnown = selectedKnownSpells.some((known) => known.name_cn === spell.name_cn);
-          const isPrepared = character.spellbook.prepared.includes(spell.name_cn);
-          const isPersonalSpell = personalSpellData.some((personalSpell) => personalSpell.name_cn === spell.name_cn);
-          return <article key={spell.id ?? spell.name_cn} className={`${subPanelClass} border-[#58180d]/20`}>
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <h3 className="font-bold text-[#58180d]">{spell.name_cn}</h3>
-                <p className="mt-1 text-xs text-[#58180d]/70">{spell.level === 0 ? '戏法' : `${spell.level} 环`} · {spell.school} · {spell.cast_time}</p>
-              </div>
-              <span className="rounded-full border border-[#58180d]/20 bg-white px-2 py-0.5 text-[10px] font-bold text-[#58180d]">{isPersonalSpell ? '个人资料' : '基础资料'}</span>
-            </div>
-            <p className="mt-3 text-xs leading-relaxed text-[#2c1810]/75">{spell.desc}</p>
-            <p className="mt-2 text-[11px] text-[#58180d]/65">范围：{spell.range} · 构材：{[spell.component.v && 'V', spell.component.s && 'S', spell.component.m && 'M'].filter(Boolean).join(', ') || '无'} · 持续：{spell.duration}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button type="button" size="sm" variant={isKnown ? 'outline' : 'default'} onClick={() => toggleKnownSpell(spell)}>{isKnown ? '移出已知' : '加入已知'}</Button>
-              {spell.level > 0 && <Button type="button" size="sm" variant="outline" disabled={!isKnown} onClick={() => togglePreparedSpell(spell)}>{isPrepared ? '取消准备' : '标记准备'}</Button>}
-            </div>
-          </article>;
-        })}
-      </div>
-      {selectableSpells.length === 0 && (
-        <p className="mt-3 rounded-md border border-dashed border-[#58180d]/25 bg-white/45 p-3 text-sm text-[#58180d]/70">
-          {selectedClass ? '当前职业和等级没有可安全映射的基础法术。可在个人资料包加入自定义法术，并在进入房间后交由主持人审核。' : '请先选择职业，或在个人资料包中准备自定义法术。'}
-        </p>
-      )}
-      <p className="mt-3 text-xs text-[#58180d]/65">当前已知 {selectedKnownSpells.length} 个法术；准备 {selectedKnownSpells.filter((spell) => character.spellbook.prepared.includes(spell.name_cn)).length} 个。</p>
+      <DndSpellManager character={character} baseSpells={baseSpellData} personalSpells={personalSpellData} onChange={book => updateField('spellbook', book)} />
     </section>
   );
 

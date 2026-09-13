@@ -25,6 +25,9 @@ export const ROOM_RUNTIME_LOG_BASE_EVENT_KINDS = [
   'dice.roll',
   'host.note',
   'state.manualChange',
+  'runtime.resource_changed',
+  'runtime.saving_throw_requested',
+  'runtime.saving_throw_resolved',
 ] as const;
 
 /**
@@ -43,7 +46,7 @@ export const ROOM_RUNTIME_LOG_EVENT_KINDS = [
 export type RoomRuntimeLogEventKind = typeof ROOM_RUNTIME_LOG_EVENT_KINDS[number];
 
 /** Internal resolution producers only; never accepted by generic append. */
-export const SERVER_RESOLVED_EVENT_KINDS = ['combat.attack_resolved'] as const;
+export const SERVER_RESOLVED_EVENT_KINDS = ['combat.attack_resolved', 'combat.conditions_updated', 'runtime.resource_changed', 'runtime.saving_throw_requested', 'runtime.saving_throw_resolved'] as const;
 
 export type RoomRuntimeLogVisibility = 'public' | 'hostOnly' | 'actorPrivate';
 

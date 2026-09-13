@@ -88,7 +88,7 @@ export function describeRoomPlayerFlow(
     return {
       state: 'chooseCharacter',
       label: '等待选择角色',
-      detail: '请选择旧角色、创建快速角色，或以旁观者加入。',
+      detail: '选择角色库中的角色，或使用本系统的角色创建工具。',
       nextAction: '选择入场角色并提交给主持人。',
     };
   }
@@ -117,7 +117,7 @@ export function describeRoomPlayerFlow(
   if (ready === 'ready') {
     return {
       state: 'readyToEnter',
-      label: '已 Ready',
+      label: '已准备',
       detail: '你已准备，可以进入跑团桌面。',
       nextAction: '进入跑团桌面，等待主持人放置你的角色 Token。',
     };
@@ -125,8 +125,8 @@ export function describeRoomPlayerFlow(
 
   return {
     state: 'waitingForReady',
-    label: '已准入，等待 Ready',
-    detail: '角色已准入。准备好后点击 Ready。',
+    label: '角色已通过，等待准备',
+    detail: '角色已通过审核。准备好后点击“我已准备”。',
     nextAction: '点击“我已准备”。',
   };
 }

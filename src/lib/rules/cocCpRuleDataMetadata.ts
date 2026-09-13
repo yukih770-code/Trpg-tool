@@ -192,7 +192,7 @@ const COC_METADATA: ExistingRulesDataMetadataEntry[] = [
     systemId: 'coc7e',
     datasetId: 'coc-sanity-basics',
     label: 'Sanity Basics',
-    currentLocation: ['src/lib/coc-utils.ts', 'src/pages/cocGameplay/CocSanCheckPanel.tsx'],
+    currentLocation: ['src/lib/coc-utils.ts', 'src/pages/cocGameplay/cocSanUtils.ts'],
     sourceStatus: 'in-repo-existing-data',
     trustLevel: 'needs-human-check',
     blocksCompleteCharacterSheet: false,
