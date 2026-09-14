@@ -9,10 +9,10 @@
   },
   "classificationRule": "The first blocking gate controls classification. A display-only catalog row without a sourced weapon profile, canonical Action/Effect, and governing-ability contract is MISSING_APPROVED_DATA even when its label contains numeric text.",
   "canonicalWeaponCount": 38,
-  "safeNowCount": 1,
+  "safeNowCount": 4,
   "classificationCounts": {
-    "SAFE_NOW": 1,
-    "MISSING_APPROVED_DATA": 37,
+    "SAFE_NOW": 4,
+    "MISSING_APPROVED_DATA": 34,
     "ACTION_SCHEMA_LIMITATION": 0,
     "CREATOR_IDENTITY_LIMITATION": 0,
     "RULE_ENGINE_LIMITATION": 0,
@@ -226,30 +226,27 @@
       "displayLabel": "硬头锤",
       "englishLabel": "Mace",
       "catalogWeaponCategory": "simpleMelee",
-      "canonicalActionDefinitionExists": false,
-      "canonicalDamageEffectExists": false,
+      "canonicalActionDefinitionExists": true,
+      "canonicalDamageEffectExists": true,
       "damageDiceAvailable": true,
-      "damageDiceAuthority": "DISPLAY_ONLY",
+      "damageDiceAuthority": "EXECUTABLE_APPROVED",
       "damageTypeAvailable": true,
-      "damageTypeAuthority": "DISPLAY_ONLY",
-      "governingAbilityRuleRepresented": false,
+      "damageTypeAuthority": "EXECUTABLE_APPROVED",
+      "governingAbilityRuleRepresented": true,
       "proficiencyMappingRepresented": true,
-      "executableAttackModesRepresented": [],
+      "executableAttackModesRepresented": [
+        "melee"
+      ],
       "specialModeOrPropertyRequired": [],
       "characterCreatorCanPreserveCanonicalId": true,
       "dndEquipmentSnapshotV1CanPreserveCanonicalId": true,
-      "currentActionSchemaCanExpressCorrectly": false,
-      "t12CanResolveWithoutNewRuleLogic": false,
-      "finalClassification": "MISSING_APPROVED_DATA",
-      "blockingReasons": [
-        "catalog damage/property row is explicitly display-only",
-        "no source-backed executable weaponProfile",
-        "no canonical gameplay Action definition",
-        "no canonical gameplay damage Effect",
-        "no approved governing-ability rule",
-        "no executable melee/ranged mode definition"
+      "currentActionSchemaCanExpressCorrectly": true,
+      "t12CanResolveWithoutNewRuleLogic": true,
+      "finalClassification": "SAFE_NOW",
+      "blockingReasons": [],
+      "supportedModes": [
+        "melee"
       ],
-      "supportedModes": [],
       "deferredModes": []
     },
     {
@@ -526,30 +523,27 @@
       "displayLabel": "链枷",
       "englishLabel": "Flail",
       "catalogWeaponCategory": "martialMelee",
-      "canonicalActionDefinitionExists": false,
-      "canonicalDamageEffectExists": false,
+      "canonicalActionDefinitionExists": true,
+      "canonicalDamageEffectExists": true,
       "damageDiceAvailable": true,
-      "damageDiceAuthority": "DISPLAY_ONLY",
+      "damageDiceAuthority": "EXECUTABLE_APPROVED",
       "damageTypeAvailable": true,
-      "damageTypeAuthority": "DISPLAY_ONLY",
-      "governingAbilityRuleRepresented": false,
+      "damageTypeAuthority": "EXECUTABLE_APPROVED",
+      "governingAbilityRuleRepresented": true,
       "proficiencyMappingRepresented": true,
-      "executableAttackModesRepresented": [],
+      "executableAttackModesRepresented": [
+        "melee"
+      ],
       "specialModeOrPropertyRequired": [],
       "characterCreatorCanPreserveCanonicalId": true,
       "dndEquipmentSnapshotV1CanPreserveCanonicalId": true,
-      "currentActionSchemaCanExpressCorrectly": false,
-      "t12CanResolveWithoutNewRuleLogic": false,
-      "finalClassification": "MISSING_APPROVED_DATA",
-      "blockingReasons": [
-        "catalog damage/property row is explicitly display-only",
-        "no source-backed executable weaponProfile",
-        "no canonical gameplay Action definition",
-        "no canonical gameplay damage Effect",
-        "no approved governing-ability rule",
-        "no executable melee/ranged mode definition"
+      "currentActionSchemaCanExpressCorrectly": true,
+      "t12CanResolveWithoutNewRuleLogic": true,
+      "finalClassification": "SAFE_NOW",
+      "blockingReasons": [],
+      "supportedModes": [
+        "melee"
       ],
-      "supportedModes": [],
       "deferredModes": []
     },
     {
@@ -797,30 +791,27 @@
       "displayLabel": "钉头锤",
       "englishLabel": "Morningstar",
       "catalogWeaponCategory": "martialMelee",
-      "canonicalActionDefinitionExists": false,
-      "canonicalDamageEffectExists": false,
+      "canonicalActionDefinitionExists": true,
+      "canonicalDamageEffectExists": true,
       "damageDiceAvailable": true,
-      "damageDiceAuthority": "DISPLAY_ONLY",
+      "damageDiceAuthority": "EXECUTABLE_APPROVED",
       "damageTypeAvailable": true,
-      "damageTypeAuthority": "DISPLAY_ONLY",
-      "governingAbilityRuleRepresented": false,
+      "damageTypeAuthority": "EXECUTABLE_APPROVED",
+      "governingAbilityRuleRepresented": true,
       "proficiencyMappingRepresented": true,
-      "executableAttackModesRepresented": [],
+      "executableAttackModesRepresented": [
+        "melee"
+      ],
       "specialModeOrPropertyRequired": [],
       "characterCreatorCanPreserveCanonicalId": true,
       "dndEquipmentSnapshotV1CanPreserveCanonicalId": true,
-      "currentActionSchemaCanExpressCorrectly": false,
-      "t12CanResolveWithoutNewRuleLogic": false,
-      "finalClassification": "MISSING_APPROVED_DATA",
-      "blockingReasons": [
-        "catalog damage/property row is explicitly display-only",
-        "no source-backed executable weaponProfile",
-        "no canonical gameplay Action definition",
-        "no canonical gameplay damage Effect",
-        "no approved governing-ability rule",
-        "no executable melee/ranged mode definition"
+      "currentActionSchemaCanExpressCorrectly": true,
+      "t12CanResolveWithoutNewRuleLogic": true,
+      "finalClassification": "SAFE_NOW",
+      "blockingReasons": [],
+      "supportedModes": [
+        "melee"
       ],
-      "supportedModes": [],
       "deferredModes": []
     },
     {

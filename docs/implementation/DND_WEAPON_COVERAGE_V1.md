@@ -2,17 +2,19 @@
 
 ## 1. Executive verdict
 
-**PASS — DAGGER REMAINS THE ONLY SAFE COVERAGE.**
+**CURRENT RESULT — FOUR SOURCE-BACKED MELEE PROFILES ARE SAFE.**
 
-The approved local registry contains 38 canonical weapon definitions. Only `weapon.dagger` has the complete authoritative chain required to materialize a T12 Action. The other 37 rows are explicitly display-only and lack a sourced executable weapon profile, canonical Action, canonical damage Effect, governing-ability rule, and executable mode definition. No new weapon Action was added.
+The approved local registry contains 38 canonical weapon definitions. `weapon.dagger`, `weapon.mace`, `weapon.flail`, and `weapon.morningstar` now have the complete authoritative chain required to materialize a T12 melee Action. The remaining 34 rows keep their display-only catalog status and lack a reviewed executable weapon profile, canonical Action, canonical damage Effect, governing-ability rule, and executable mode definition.
+
+The committed audit baseline was 1 `SAFE_NOW` and 37 `MISSING_APPROVED_DATA`. The D&D Weapon Gameplay Profiles V1 expansion promoted three deliberately narrow, property-free melee rows from the same approved local sources; it did not reinterpret the other catalog rows.
 
 The audit did find and fix a separate Creator identity/quantity defect affecting counted choice options. This preserves canonical IDs for existing approved items without treating those items as executable weapons.
 
 ## 2. Approved sources inspected
 
 - `src/data/dnd2024/equipment.ts`: 38 owner-source-matched catalog weapon rows, explicitly marked `usagePolicy: display-only`.
-- `src/lib/dnd2024/dndItemDefinitions.ts` and `dndItemRegistry.ts`: canonical identities, normalized simple/martial category, equipment slots, and the dagger-only gameplay bridge.
-- `src/lib/dnd2024/gameplay/dndActionDefinitions.ts` and `dndEffectDefinitions.ts`: canonical dagger melee/thrown Actions and shared piercing damage Effect.
+- `src/lib/dnd2024/dndItemDefinitions.ts` and `dndItemRegistry.ts`: canonical identities, normalized simple/martial category, equipment slots, and reviewed gameplay bridges.
+- `src/lib/dnd2024/gameplay/dndActionDefinitions.ts`, `dndEffectDefinitions.ts`, and `dndStandardMeleeWeaponProfiles.ts`: canonical dagger data plus source-normalized mace, flail, and morningstar melee profiles.
 - gameplay Action, Effect, weapon-profile, and dice types.
 - `CharacterData`, `dndEquipmentSnapshotV1`, resolved weapon proficiencies, and typed inventory/equip state.
 - Creator starter parsing, canonical resolution, and materialization.
@@ -42,7 +44,7 @@ Legend:
 | `weapon.handaxe` | 手斧 | N | N | N | N | N | Y | — | 轻型、投掷 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
 | `weapon.javelin` | 标枪 | N | N | N | N | N | Y | — | 投掷 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
 | `weapon.light-hammer` | 轻锤 | N | N | N | N | N | Y | — | 轻型、投掷 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
-| `weapon.mace` | 硬头锤 | N | N | N | N | N | Y | — | — | Y | Y | N | N | `MISSING_APPROVED_DATA` |
+| `weapon.mace` | 硬头锤 | Y | Y | Y | Y | Y | Y | melee | — | Y | Y | Y | Y | `SAFE_NOW` |
 | `weapon.quarterstaff` | 长棍 | N | N | N | N | N | Y | — | 多用（1d8） | Y | Y | N | N | `MISSING_APPROVED_DATA` |
 | `weapon.sickle` | 镰刀 | N | N | N | N | N | Y | — | 轻型 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
 | `weapon.spear` | 矛 | N | N | N | N | N | Y | — | 投掷、多用（1d8） | Y | Y | N | N | `MISSING_APPROVED_DATA` |
@@ -51,7 +53,7 @@ Legend:
 | `weapon.shortbow` | 短弓 | N | N | N | N | N | Y | — | 弹药、双手 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
 | `weapon.sling` | 投石索 | N | N | N | N | N | Y | — | 弹药 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
 | `weapon.battleaxe` | 战斧 | N | N | N | N | N | Y | — | 多用（1d10） | Y | Y | N | N | `MISSING_APPROVED_DATA` |
-| `weapon.flail` | 链枷 | N | N | N | N | N | Y | — | — | Y | Y | N | N | `MISSING_APPROVED_DATA` |
+| `weapon.flail` | 链枷 | Y | Y | Y | Y | Y | Y | melee | — | Y | Y | Y | Y | `SAFE_NOW` |
 | `weapon.glaive` | 长柄刀 | N | N | N | N | N | Y | — | 重型、触及、双手 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
 | `weapon.greataxe` | 巨斧 | N | N | N | N | N | Y | — | 重型、双手 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
 | `weapon.greatsword` | 巨剑 | N | N | N | N | N | Y | — | 重型、双手 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
@@ -59,7 +61,7 @@ Legend:
 | `weapon.lance` | 骑枪 | N | N | N | N | N | Y | — | 重型、触及、骑乘双手例外 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
 | `weapon.longsword` | 长剑 | N | N | N | N | N | Y | — | 多用（1d10） | Y | Y | N | N | `MISSING_APPROVED_DATA` |
 | `weapon.maul` | 巨锤 | N | N | N | N | N | Y | — | 重型、双手 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
-| `weapon.morningstar` | 钉头锤 | N | N | N | N | N | Y | — | — | Y | Y | N | N | `MISSING_APPROVED_DATA` |
+| `weapon.morningstar` | 钉头锤 | Y | Y | Y | Y | Y | Y | melee | — | Y | Y | Y | Y | `SAFE_NOW` |
 | `weapon.pike` | 长矛 | N | N | N | N | N | Y | — | 重型、触及、双手 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
 | `weapon.rapier` | 刺剑 | N | N | N | N | N | Y | — | 灵巧 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
 | `weapon.scimitar` | 弯刀 | N | N | N | N | N | Y | — | 灵巧、轻型 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
@@ -75,15 +77,22 @@ Legend:
 | `weapon.musket` | 火铳 | N | N | N | N | N | Y | — | 弹药、装填、双手 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
 | `weapon.pistol` | 手铳 | N | N | N | N | N | Y | — | 弹药、装填 | Y | Y | N | N | `MISSING_APPROVED_DATA` |
 
-Classification totals: `SAFE_NOW: 1`, `MISSING_APPROVED_DATA: 37`, and zero for `ACTION_SCHEMA_LIMITATION`, `CREATOR_IDENTITY_LIMITATION`, `RULE_ENGINE_LIMITATION`, or `DEFERRED_COMPLEX_MODE`. Classification uses the first blocking gate. Secondary schema/rule complexities are still recorded so they can be addressed after the missing approved gameplay definitions exist.
+Current classification totals: `SAFE_NOW: 4`, `MISSING_APPROVED_DATA: 34`, and zero for `ACTION_SCHEMA_LIMITATION`, `CREATOR_IDENTITY_LIMITATION`, `RULE_ENGINE_LIMITATION`, or `DEFERRED_COMPLEX_MODE`. Classification uses the first blocking gate. Secondary schema/rule complexities are still recorded so they can be addressed after the missing approved gameplay definitions exist.
 
 ## 4. SAFE_NOW weapons
 
-Only `weapon.dagger`, and only its melee mode, is supported. It retains the established canonical Action ID `action.item.dagger.melee-weapon-attack`. Two ordinary canonical dagger records still produce one type-level Action.
+Four weapons have a supported melee mode:
+
+- `weapon.dagger` retains `action.item.dagger.melee-weapon-attack`; its thrown mode remains withheld.
+- `weapon.mace` uses `action.item.mace.melee-weapon-attack` and `effect.item.mace.bludgeoning-damage`.
+- `weapon.flail` uses `action.item.flail.melee-weapon-attack` and `effect.item.flail.bludgeoning-damage`.
+- `weapon.morningstar` uses `action.item.morningstar.melee-weapon-attack` and `effect.item.morningstar.piercing-damage`.
+
+Duplicate equipped records still collapse to one stable type-level Action.
 
 ## 5. Unsupported weapons and blocking categories
 
-All other canonical weapons are `MISSING_APPROVED_DATA`. Their catalog rows prove display labels and display table fields, but the catalog explicitly prohibits executable use. They lack source-backed `weaponProfile` data, canonical Actions, canonical damage Effects, approved governing-ability options, and executable modes.
+The remaining 34 canonical weapons are `MISSING_APPROVED_DATA`. Their catalog rows prove display labels and display table fields, but no reviewed executable normalization has been approved for them. They lack source-backed `weaponProfile` data, canonical Actions, canonical damage Effects, approved governing-ability options, and executable modes.
 
 Secondary work that would remain after adding approved definitions:
 
@@ -113,7 +122,8 @@ Compound strings such as `轻弩与20支弩矢`, `短弓及20支箭`, and `长�
 - Added a repeatable audit generator that reads the canonical registries and emits the machine-readable matrix without copying the weapon table.
 - Preserved per-option starter equipment quantity while resolving exact canonical labels.
 - Added focused regression coverage for counted choices, counted fixed items, unresolved compound bundles, and unknown source text.
-- Added no weapon gameplay definition or T12 rule.
+- Added source-backed, property-free melee gameplay profiles for mace, flail, and morningstar without changing T12 rules.
+- Replaced the audit's obsolete hardcoded safe-weapon expectation with consistency checks derived from registry fields.
 
 ## 8. Derivation architecture and stable IDs
 
@@ -130,15 +140,15 @@ accepted Character snapshot
 → T12
 ```
 
-The derivation remains definition-driven. It does not contain a weapon-ID switch or a second weapon table. Dagger identity remains canonical, deterministic, and type-level.
+The derivation remains definition-driven. It does not contain a weapon-ID switch or a second weapon table. All supported identities remain canonical, deterministic, and type-level.
 
 ## 9. Ability, proficiency, and damage handling
 
-- Ability selection considers only explicitly sourced profile options. Dagger retains higher STR/DEX modifier selection with source-order tie handling.
+- Ability selection considers only explicitly sourced profile options. Dagger retains higher STR/DEX modifier selection with source-order tie handling. The three property-free melee profiles explicitly use Strength.
 - Proficiency reads the accepted Character's resolved weapon proficiency facts and the canonical item's simple/martial identity. Class progression rules are not rerun.
 - Damage follows canonical Action → canonical Effect → Character-specific allowed modifier. T12 critical rolling is unchanged.
 
-No other weapon has enough approved data to enter these steps.
+The other 34 weapon rows do not enter these steps.
 
 ## 10. Multi-mode policy
 
@@ -153,9 +163,8 @@ Dagger's canonical thrown Action remains present as approved data but is not mat
 
 ## 12. Tests and builds
 
-Focused closure results:
+The committed baseline closure results remain historical evidence. D&D Weapon Gameplay Profiles V1 adds a separate final verification record in `DND_WEAPON_GAMEPLAY_PROFILES_V1.md`, including the generated matrix result of 38 canonical weapons and 4 `SAFE_NOW` profiles.
 
-- weapon coverage matrix invariant: 38 canonical weapons, 1 `SAFE_NOW`, dagger only
 - starter equipment plan: 12 checks
 - existing dagger derivation: 22/22 checks
 - Character → Lite Sheet: passed
@@ -168,20 +177,15 @@ Focused closure results:
 
 ## 13. Real browser acceptance
 
-Because no additional `SAFE_NOW` weapon exists, no new-weapon browser result was fabricated. A real browser regression check reopened the persisted accepted `Derived Dagger Hero` campaign card and confirmed the existing derived dagger Action remained present with +4 attack and `1d4+2` piercing damage, without a campaign Action override.
-
-- [Dagger Action browser regression](dnd-weapon-coverage-v1/01-dagger-regression-browser.png)
-- [Accepted-source derived summary](dnd-weapon-coverage-v1/02-dagger-derived-summary.png)
-
-The previously committed end-to-end result remains the authoritative acceptance evidence: dagger attack total 17, 5 piercing damage, target HP 20 → 15; after restart, total 12, 4 piercing damage, target HP 15 → 11.
+The committed dagger browser evidence remains historical baseline evidence. The newer profile task records its required new-weapon browser and restart/reconnect evidence in `DND_WEAPON_GAMEPLAY_PROFILES_V1.md`.
 
 ## 14. PostgreSQL and restart
 
-No schema or persistence change was required. The existing accepted Character snapshot and campaign actor paths remain in use. Local PostgreSQL reports 12 migrations applied, 0 pending, and all 11 schema groups ready. The committed dagger path already passed server restart/reconnect and a post-restart T12 attack.
+No schema or persistence change was required. The existing accepted Character snapshot and campaign actor paths remain in use. Current database and restart results are recorded in the gameplay-profile implementation report.
 
 ## 15. Remaining limitations
 
-Authoritative Character-derived coverage remains dagger melee only. Display-only weapon rows are not executable. Free-text inventory cannot generate Actions. Ranged/thrown/versatile/ammunition/loading/reach/mounted/mastery behavior remains deferred, as do magic weapons, per-instance modifiers, resistance, vulnerability, dual wielding, and action economy.
+Authoritative Character-derived coverage is four melee profiles. The other display-only weapon rows are not executable. Free-text inventory cannot generate Actions. Ranged/thrown/versatile/ammunition/loading/reach/mounted/mastery behavior remains deferred, as do magic weapons, per-instance modifiers, resistance, vulnerability, dual wielding, and action economy.
 
 ## 16. Recommended next data-contract work
 
