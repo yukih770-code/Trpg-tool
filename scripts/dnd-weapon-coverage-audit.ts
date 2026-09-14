@@ -108,9 +108,19 @@ const report = {
   rows,
 };
 
-if (rows.length !== 38 || report.safeNowCount !== 1
-  || rows.find((row) => row.finalClassification === 'SAFE_NOW')?.canonicalDefinitionId !== 'weapon.dagger') {
-  throw new Error('Weapon coverage audit invariant failed: expected 38 canonical weapons and dagger as the sole SAFE_NOW definition.');
+const invalidSafeRows = rows.filter((row) => row.finalClassification === 'SAFE_NOW' && (
+  !row.canonicalActionDefinitionExists
+  || !row.canonicalDamageEffectExists
+  || !row.governingAbilityRuleRepresented
+  || !row.proficiencyMappingRepresented
+  || !row.currentActionSchemaCanExpressCorrectly
+  || !row.t12CanResolveWithoutNewRuleLogic
+  || row.supportedModes.length === 0
+));
+if (rows.length !== 38
+  || classificationCounts.SAFE_NOW !== report.safeNowCount
+  || invalidSafeRows.length > 0) {
+  throw new Error('Weapon coverage audit invariant failed: catalog count or derived SAFE_NOW classification is inconsistent.');
 }
 
 const output = `${JSON.stringify(report, null, 2)}\n`;

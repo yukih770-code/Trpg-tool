@@ -18,6 +18,7 @@ import type {
   DndItemDefinition,
 } from './equipment-types.js';
 import type { EquipmentSlot } from '../platform/characterInventory.js';
+import { DND_STANDARD_MELEE_ITEM_GAMEPLAY_BY_ID } from './gameplay/dndStandardMeleeWeaponProfiles.js';
 
 function isPackName(name: string | undefined, id: string): boolean {
   if (id.includes('pack')) return true;
@@ -127,12 +128,14 @@ function fromCatalog(row: DndEquipmentItem): DndItemDefinition {
 
 const SOURCED: DndItemDefinition[] = (DND_EQUIPMENT_CATALOG as DndEquipmentItem[]).map(fromCatalog);
 
-// ── Dagger source-backed gameplay bridge (data only) ────────────────────────
+// ── Source-backed gameplay bridges (data only) ─────────────────────────────
 // `weapon.dagger` is generated from the catalog above; here we project its
 // already-sourced data onto the v2 gameplay-facing fields. Accepted Character
 // snapshots may derive the melee Action through this bridge; the thrown mode is
 // still withheld because T12 cannot enforce range or ammunition. Only the
-// dagger is touched, and every rule value comes from the owner-source table.
+// dagger retains its established bridge, and every rule value comes from the
+// owner-source table. Additional reviewed property-free melee profiles are
+// normalized by dndStandardMeleeWeaponProfiles without changing derivation.
 const DAGGER_GAMEPLAY: Pick<DndItemDefinition, 'actionRefs' | 'weaponProfile'> = {
   actionRefs: [
     'action.item.dagger.melee-weapon-attack',
@@ -156,9 +159,11 @@ const DAGGER_GAMEPLAY: Pick<DndItemDefinition, 'actionRefs' | 'weaponProfile'> =
   },
 };
 
-const SOURCED_WITH_GAMEPLAY: DndItemDefinition[] = SOURCED.map((def) =>
-  def.id === 'weapon.dagger' ? { ...def, ...DAGGER_GAMEPLAY } : def,
-);
+const SOURCED_WITH_GAMEPLAY: DndItemDefinition[] = SOURCED.map((def) => {
+  if (def.id === 'weapon.dagger') return { ...def, ...DAGGER_GAMEPLAY };
+  const standardMeleeGameplay = DND_STANDARD_MELEE_ITEM_GAMEPLAY_BY_ID.get(def.id);
+  return standardMeleeGameplay ? { ...def, ...standardMeleeGameplay } : def;
+});
 
 export const DND_ITEM_DEFINITIONS: DndItemDefinition[] = SOURCED_WITH_GAMEPLAY;
 

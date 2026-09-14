@@ -136,6 +136,7 @@
     "frontend:verify:dnd-dice": "tsx src/lib/dnd/dndDiceRollerSmoke.ts",
     "frontend:verify:character-lite-sheet": "tsx src/lib/dnd/dndCharacterToLiteActorSheetSmoke.ts",
     "frontend:verify:dnd-character-weapon-actions": "tsx src/lib/dnd/dndCharacterWeaponActionsSmoke.ts",
+    "frontend:verify:dnd-weapon-gameplay-profiles": "tsx src/lib/dnd/dndWeaponGameplayProfilesSmoke.ts",
     "frontend:verify:dnd-starter-equipment-plan": "tsx src/lib/dnd2024/dndStarterEquipmentPlanSmoke.ts",
     "runtime:verify:combatant-seed": "tsx src/lib/combat/combatantSeedFromProjectionSmoke.ts",
     "frontend:verify:character-combat-relevant-fields": "tsx src/lib/dnd/dndCharacterCombatRelevantFieldsSmoke.ts",

@@ -3,8 +3,9 @@
  *
  * AI-LANDMARK: DND_GAMEPLAY_ACTION_DEFINITIONS_V1
  *
- * Source-backed action data for the dagger Weapon Attack MVP bridge: a melee and
- * a thrown attack, both referencing the SAME shared piercing-damage effect. This
+ * Source-backed action data for the Weapon Attack bridge. Dagger keeps its melee
+ * and thrown definitions; reviewed property-free melee weapons are normalized
+ * from the same approved local source layer. This
  * is data only — no snapshot selection, rolling, or state mutation. The
  * accepted-Character adapter selects STR/DEX and proficiency from authoritative
  * Character data. Reach, range disadvantage, ammunition/retrieval, and
@@ -12,6 +13,7 @@
  */
 
 import type { DndActionDefinition } from './actionTypes.js';
+import { DND_STANDARD_MELEE_ACTION_DEFINITIONS } from './dndStandardMeleeWeaponProfiles.js';
 
 export const DND_2024_ACTION_DEFINITIONS: Record<string, DndActionDefinition> = {
   'action.item.dagger.melee-weapon-attack': {
@@ -60,6 +62,7 @@ export const DND_2024_ACTION_DEFINITIONS: Record<string, DndActionDefinition> = 
     sourceStatus: 'sourced',
     note: 'Thrown weapon attack data only. It is not materialized by the current Character adapter because range and ammunition are not enforced.',
   },
+  ...DND_STANDARD_MELEE_ACTION_DEFINITIONS,
 };
 
 /** Look up an action definition by id (data only; no generator). */
