@@ -1,0 +1,31 @@
+{
+  "capturedAt": "2026-09-14T23:55:00+09:00",
+  "browser": "Google Chrome headless",
+  "appUrl": "http://127.0.0.1:3000/",
+  "backendHealth": {
+    "status": 200,
+    "service": "room-server",
+    "version": "m26",
+    "authMode": "localDev",
+    "readiness": "ready"
+  },
+  "room": {
+    "roomCode": "V599VT",
+    "systemId": "dnd5e-2024",
+    "mapEventCount": 5,
+    "latestMapSeq": 5
+  },
+  "visibleGridControls": {
+    "gridPixelSize": 50,
+    "feetPerSquare": 5
+  },
+  "persistedMapEvidence": {
+    "tokenCoordinateShape": "normalized x/y values in the inclusive 0..100 range",
+    "observedCoordinates": [[50, 50], [35, 25], [56, 56], [56, 56]],
+    "persistedBoardWidth": false,
+    "persistedBoardHeight": false,
+    "persistedWorldExtent": false,
+    "persistedGeometryRule": false
+  },
+  "verdict": "The browser can render a pixel grid and convert with its current DOM extent, but the server cannot reproduce that distance from persisted map state without guessing the render extent."
+}

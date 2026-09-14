@@ -6,7 +6,7 @@
 
 The approved local registry contains 38 canonical weapon definitions. `weapon.dagger`, `weapon.mace`, `weapon.flail`, and `weapon.morningstar` now have the complete authoritative chain required to materialize a T12 melee Action. The remaining 34 rows keep their display-only catalog status and lack a reviewed executable weapon profile, canonical Action, canonical damage Effect, governing-ability rule, and executable mode definition.
 
-The committed audit baseline was 1 `SAFE_NOW` and 37 `MISSING_APPROVED_DATA`. The D&D Weapon Gameplay Profiles V1 expansion promoted three deliberately narrow, property-free melee rows from the same approved local sources; it did not reinterpret the other catalog rows.
+The committed audit baseline was 1 `SAFE_NOW` and 37 `MISSING_APPROVED_DATA`. The D&D Weapon Gameplay Profiles V1 expansion promoted three deliberately narrow, property-free melee rows from the same approved local sources. Weapon Mode & Range Contract V1 keeps the result at 4/38 while adding canonical mode identity and source-backed reach/range fields; runtime distance enforcement remains blocked by the Platform spatial scale.
 
 The audit did find and fix a separate Creator identity/quantity defect affecting counted choice options. This preserves canonical IDs for existing approved items without treating those items as executable weapons.
 
@@ -15,6 +15,8 @@ The audit did find and fix a separate Creator identity/quantity defect affecting
 - `src/data/dnd2024/equipment.ts`: 38 owner-source-matched catalog weapon rows, explicitly marked `usagePolicy: display-only`.
 - `src/lib/dnd2024/dndItemDefinitions.ts` and `dndItemRegistry.ts`: canonical identities, normalized simple/martial category, equipment slots, and reviewed gameplay bridges.
 - `src/lib/dnd2024/gameplay/dndActionDefinitions.ts`, `dndEffectDefinitions.ts`, and `dndStandardMeleeWeaponProfiles.ts`: canonical dagger data plus source-normalized mace, flail, and morningstar melee profiles.
+- `src/lib/dnd2024/gameplay/dndWeaponRangeSource.ts` and `dndWeaponAttackModes.ts`: pinned ordinary-melee, dagger-thrown, and long-range sources plus the explicit D&D-owned mode registry.
+- Approved local `玩家手册2024/装备/武器.htm` (`DFFA…89F7`), `进行游戏/近战攻击.htm` (`5B16…D2CE`), and `进行游戏/远程攻击.htm` (`3F79…FC2D`).
 - gameplay Action, Effect, weapon-profile, and dice types.
 - `CharacterData`, `dndEquipmentSnapshotV1`, resolved weapon proficiencies, and typed inventory/equip state.
 - Creator starter parsing, canonical resolution, and materialization.
@@ -32,7 +34,7 @@ Legend:
 - **Dice/Type:** executable-approved value exists. Every other row has numeric/type text only in the explicitly display-only catalog; that text is recorded separately in the JSON and is not executable authority.
 - **Ability:** governing ability options are explicitly represented.
 - **Prof:** canonical simple/martial identity maps to the accepted Character's resolved proficiency vocabulary.
-- **Mode:** executable Action mode represented, rather than a display hint inferred from category/property text.
+- **Mode:** explicit canonical mode represented. Dagger has stable melee and thrown mode IDs; only melee is executable.
 - **Schema/T12:** the current Action/T12 path is proven to express and resolve the represented mode without new rule logic. `N` means unproven with current definitions, not necessarily that the TypeScript shape could never be extended.
 - **Creator/Snapshot:** an exact canonical label/ID can retain `definitionId`; compound starter bundles are audited separately below.
 
@@ -79,11 +81,13 @@ Legend:
 
 Current classification totals: `SAFE_NOW: 4`, `MISSING_APPROVED_DATA: 34`, and zero for `ACTION_SCHEMA_LIMITATION`, `CREATOR_IDENTITY_LIMITATION`, `RULE_ENGINE_LIMITATION`, or `DEFERRED_COMPLEX_MODE`. Classification uses the first blocking gate. Secondary schema/rule complexities are still recorded so they can be addressed after the missing approved gameplay definitions exist.
 
+The schema-v2 JSON additionally records `canonicalAttackModeIds`, `attackModeContractRepresented`, `rangeOrReachMetadataRepresented`, `rangeExecutionStatus`, and `otherRequiredMechanics`. The four represented melee modes and dagger thrown mode report `BLOCKED_SPATIAL_SCALE` for automatic range execution; this does not revoke the existing GM-adjudicated melee Actions.
+
 ## 4. SAFE_NOW weapons
 
 Four weapons have a supported melee mode:
 
-- `weapon.dagger` retains `action.item.dagger.melee-weapon-attack`; its thrown mode remains withheld.
+- `weapon.dagger` retains `action.item.dagger.melee-weapon-attack` and maps it to `mode.item.dagger.melee-weapon-attack`; `mode.item.dagger.thrown-weapon-attack` remains deferred.
 - `weapon.mace` uses `action.item.mace.melee-weapon-attack` and `effect.item.mace.bludgeoning-damage`.
 - `weapon.flail` uses `action.item.flail.melee-weapon-attack` and `effect.item.flail.bludgeoning-damage`.
 - `weapon.morningstar` uses `action.item.morningstar.melee-weapon-attack` and `effect.item.morningstar.piercing-damage`.
@@ -98,7 +102,7 @@ Secondary work that would remain after adding approved definitions:
 
 - Plain/light/finesse melee weapons need sourced gameplay profiles, canonical Actions/Effects, and explicit ability options.
 - Versatile weapons need an authoritative wield/mode selection contract before alternate damage can be exposed.
-- Thrown weapons need independent canonical melee/thrown modes plus range enforcement.
+- Thrown weapons need independent canonical melee/thrown modes plus range enforcement and item removal/retrieval. Dagger now proves the multi-mode data shape without activating thrown execution.
 - Bows, crossbows, sling, blowgun, and firearms need ranged-mode, range-band, ammunition, and loading contracts that current T12 does not enforce.
 - Reach/heavy/two-handed/mounted cases need honest mode/equipment restrictions where they materially affect attack availability.
 - Blowgun needs an approved flat-damage representation accepted by the Character adapter; V1 currently accepts sourced dice only.
@@ -124,6 +128,8 @@ Compound strings such as `轻弩与20支弩矢`, `短弓及20支箭`, and `长�
 - Added focused regression coverage for counted choices, counted fixed items, unresolved compound bundles, and unknown source text.
 - Added source-backed, property-free melee gameplay profiles for mace, flail, and morningstar without changing T12 rules.
 - Replaced the audit's obsolete hardcoded safe-weapon expectation with consistency checks derived from registry fields.
+- Added deterministic D&D weapon mode IDs, source-backed ordinary melee reach, dagger thrown range, explicit execution/deferred state, and a pure future range-decision seam.
+- Updated derivation to consume the mode registry instead of inferring executability from tags.
 
 ## 8. Derivation architecture and stable IDs
 
@@ -140,7 +146,7 @@ accepted Character snapshot
 → T12
 ```
 
-The derivation remains definition-driven. It does not contain a weapon-ID switch or a second weapon table. All supported identities remain canonical, deterministic, and type-level.
+The derivation now follows `Item → Action → D&D weapon attack mode → Effect → Lite Action`. It remains definition-driven and contains no weapon-name switch or second weapon table. All supported identities remain canonical, deterministic, and type-level.
 
 ## 9. Ability, proficiency, and damage handling
 
@@ -152,7 +158,7 @@ The other 34 weapon rows do not enter these steps.
 
 ## 10. Multi-mode policy
 
-Dagger's canonical thrown Action remains present as approved data but is not materialized because T12 cannot enforce range or ammunition. No versatile, thrown, ranged, loading, reach, mounted, or mastery mode was flattened into a misleading basic Action.
+Dagger's canonical melee and thrown Actions now map to two deterministic mode IDs. The thrown mode carries its approved 20/60-foot profile but remains `deferred` because persisted Scene state cannot produce authoritative feet, long-range consequences cannot be selected from authoritative distance, and thrown-item removal/retrieval is unresolved. No ranged weapon was promoted.
 
 ## 11. T9, T11, override, and T12 behavior
 
@@ -174,27 +180,29 @@ The committed baseline closure results remain historical evidence. D&D Weapon Ga
 - TypeScript typecheck: passed
 - server production build: passed
 - frontend production build: passed
+- Mode & Range focused suite: 27/27 checks
+- coverage matrix schema v2 regeneration: 38 rows, 4 `SAFE_NOW`
 
 ## 13. Real browser acceptance
 
-The committed dagger browser evidence remains historical baseline evidence. The newer profile task records its required new-weapon browser and restart/reconnect evidence in `DND_WEAPON_GAMEPLAY_PROFILES_V1.md`.
+The committed dagger and mace browser evidence remains historical baseline evidence. Mode & Range Contract V1 restored the real D&D room after a fresh server production build/restart, opened the live grid panel, and verified `格子像素 50` plus `每格英尺 5`. A browser-side read of persisted map events showed token `x/y` percentages but no persisted board width/height. Evidence is recorded in `dnd-weapon-mode-range-contract-v1/browser-spatial-model.png` and the dedicated implementation report.
 
 ## 14. PostgreSQL and restart
 
-No schema or persistence change was required. The existing accepted Character snapshot and campaign actor paths remain in use. Current database and restart results are recorded in the gameplay-profile implementation report.
+No schema or persistence change was required. The final read-only gate reports 12 applied migrations, 0 pending, and 11/11 schema groups ready. Backend startup recovery restored the room/map/runtime streams after rebuilding `dist-server`.
 
 ## 15. Remaining limitations
 
-Authoritative Character-derived coverage is four melee profiles. The other display-only weapon rows are not executable. Free-text inventory cannot generate Actions. Ranged/thrown/versatile/ammunition/loading/reach/mounted/mastery behavior remains deferred, as do magic weapons, per-instance modifiers, resistance, vulnerability, dual wielding, and action economy.
+Authoritative Character-derived coverage is four melee profiles. Their 5-foot reach is represented but remains GM-adjudicated because token coordinates are normalized percentages while grid size is stored in render pixels and board extent is absent. The other display-only weapon rows are not executable. Free-text inventory cannot generate Actions. Thrown/ranged/versatile/ammunition/loading/special-reach/mounted/mastery behavior remains deferred, as do magic weapons, per-instance modifiers, resistance, vulnerability, dual wielding, and action economy.
 
 ## 16. Recommended next data-contract work
 
 Expansion should begin with an owner-source extraction into executable definitions, not derivation code:
 
-1. Add source-backed `weaponProfile` records with typed dice/type, explicit ability options, and canonical mode references.
-2. Add canonical Action and damage Effect definitions with matching `sourceRef` for a coherent group of simple melee weapons.
-3. Verify exact Character proficiency vocabulary against those canonical categories.
-4. Add explicit wield-mode data before versatile weapons.
-5. Add range/ammunition/loading enforcement to the D&D/T12 contract before ranged and thrown modes.
-6. Add a typed flat-damage contract before considering blowgun.
+1. Add a system-neutral persisted Scene coordinate/extent and geometry contract that can yield authoritative world distance independent of browser layout.
+2. Integrate the D&D range decision before T12 RNG only after that Platform primitive exists.
+3. Add source-backed `weaponProfile` records with typed dice/type, explicit ability options, and canonical mode references.
+4. Add canonical Action and damage Effect definitions with matching `sourceRef` for a coherent group of simple melee weapons.
+5. Add thrown inventory/retrieval and ranged ammunition/loading state before activating those modes.
+6. Add explicit wield-mode data before versatile weapons and a typed flat-damage contract before blowgun.
 7. Only then rerun this matrix and promote rows whose entire chain becomes provable.

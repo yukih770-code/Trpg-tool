@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "auditScope": "D&D canonical weapon definitions present in approved local repository data",
   "catalogAuthority": {
     "source": "dnd-local-chm-primary",
@@ -8,6 +8,7 @@
     "sourceRef": "dnd-local-chm-primary:玩家手册2024/装备"
   },
   "classificationRule": "The first blocking gate controls classification. A display-only catalog row without a sourced weapon profile, canonical Action/Effect, and governing-ability contract is MISSING_APPROVED_DATA even when its label contains numeric text.",
+  "spatialRangePolicy": "D&D range/reach metadata is source-backed, but runtime enforcement remains blocked until persisted Platform Scene data can produce authoritative world distance without render-pixel guesses.",
   "canonicalWeaponCount": 38,
   "safeNowCount": 4,
   "classificationCounts": {
@@ -32,6 +33,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "轻型"
@@ -65,9 +71,19 @@
       "damageTypeAuthority": "EXECUTABLE_APPROVED",
       "governingAbilityRuleRepresented": true,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [
+        "mode.item.dagger.melee-weapon-attack",
+        "mode.item.dagger.thrown-weapon-attack"
+      ],
+      "attackModeContractRepresented": true,
+      "rangeOrReachMetadataRepresented": true,
+      "rangeExecutionStatus": "BLOCKED_SPATIAL_SCALE",
+      "otherRequiredMechanics": [
+        "long-range-consequence",
+        "thrown-inventory-lifecycle"
+      ],
       "executableAttackModesRepresented": [
-        "melee",
-        "thrown"
+        "melee"
       ],
       "specialModeOrPropertyRequired": [
         "灵巧",
@@ -100,6 +116,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "双手"
@@ -133,6 +154,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "轻型",
@@ -167,6 +193,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "投掷"
@@ -200,6 +231,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "轻型",
@@ -234,6 +270,13 @@
       "damageTypeAuthority": "EXECUTABLE_APPROVED",
       "governingAbilityRuleRepresented": true,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [
+        "mode.item.mace.melee-weapon-attack"
+      ],
+      "attackModeContractRepresented": true,
+      "rangeOrReachMetadataRepresented": true,
+      "rangeExecutionStatus": "BLOCKED_SPATIAL_SCALE",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [
         "melee"
       ],
@@ -262,6 +305,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "多用（1d8）"
@@ -295,6 +343,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "轻型"
@@ -328,6 +381,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "投掷",
@@ -362,6 +420,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "灵巧",
@@ -396,6 +459,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "弹药（弩矢）",
@@ -431,6 +499,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "弹药（箭矢）",
@@ -465,6 +538,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "弹药（子弹）"
@@ -498,6 +576,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "多用（1d10）"
@@ -531,6 +614,13 @@
       "damageTypeAuthority": "EXECUTABLE_APPROVED",
       "governingAbilityRuleRepresented": true,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [
+        "mode.item.flail.melee-weapon-attack"
+      ],
+      "attackModeContractRepresented": true,
+      "rangeOrReachMetadataRepresented": true,
+      "rangeExecutionStatus": "BLOCKED_SPATIAL_SCALE",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [
         "melee"
       ],
@@ -559,6 +649,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "重型",
@@ -594,6 +689,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "重型",
@@ -628,6 +728,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "重型",
@@ -662,6 +767,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "重型",
@@ -697,6 +807,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "重型",
@@ -732,6 +847,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "多用（1d10）"
@@ -765,6 +885,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "重型",
@@ -799,6 +924,13 @@
       "damageTypeAuthority": "EXECUTABLE_APPROVED",
       "governingAbilityRuleRepresented": true,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [
+        "mode.item.morningstar.melee-weapon-attack"
+      ],
+      "attackModeContractRepresented": true,
+      "rangeOrReachMetadataRepresented": true,
+      "rangeExecutionStatus": "BLOCKED_SPATIAL_SCALE",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [
         "melee"
       ],
@@ -827,6 +959,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "重型",
@@ -862,6 +999,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "灵巧"
@@ -895,6 +1037,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "灵巧",
@@ -929,6 +1076,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "灵巧",
@@ -963,6 +1115,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "投掷",
@@ -997,6 +1154,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "多用（1d10）"
@@ -1030,6 +1192,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "多用（1d10）"
@@ -1063,6 +1230,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "灵巧",
@@ -1097,6 +1269,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "弹药（吹矢）",
@@ -1131,6 +1308,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "弹药（弩矢）",
@@ -1166,6 +1348,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "弹药（弩矢）",
@@ -1202,6 +1389,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "弹药（箭矢）",
@@ -1237,6 +1429,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "弹药（子弹）",
@@ -1272,6 +1469,11 @@
       "damageTypeAuthority": "DISPLAY_ONLY",
       "governingAbilityRuleRepresented": false,
       "proficiencyMappingRepresented": true,
+      "canonicalAttackModeIds": [],
+      "attackModeContractRepresented": false,
+      "rangeOrReachMetadataRepresented": false,
+      "rangeExecutionStatus": "NO_MODE_CONTRACT",
+      "otherRequiredMechanics": [],
       "executableAttackModesRepresented": [],
       "specialModeOrPropertyRequired": [
         "弹药（子弹）",
