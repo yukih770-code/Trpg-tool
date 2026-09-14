@@ -8,12 +8,13 @@
  * from the same approved local source layer. This
  * is data only — no snapshot selection, rolling, or state mutation. The
  * accepted-Character adapter selects STR/DEX and proficiency from authoritative
- * Character data. Reach, range disadvantage, ammunition/retrieval, and
- * inventory mutation remain outside the current T12 contract.
+ * Character data. Source-backed reach/range is represented, while spatial
+ * enforcement, ammunition/retrieval, and inventory mutation remain outside T12.
  */
 
 import type { DndActionDefinition } from './actionTypes.js';
 import { DND_STANDARD_MELEE_ACTION_DEFINITIONS } from './dndStandardMeleeWeaponProfiles.js';
+import { DND_2024_DAGGER_THROWN_DISTANCE, DND_2024_ORDINARY_MELEE_DISTANCE } from './dndWeaponRangeSource.js';
 
 export const DND_2024_ACTION_DEFINITIONS: Record<string, DndActionDefinition> = {
   'action.item.dagger.melee-weapon-attack': {
@@ -25,6 +26,7 @@ export const DND_2024_ACTION_DEFINITIONS: Record<string, DndActionDefinition> = 
     actionCost: { type: 'action' },
     targeting: {
       targetType: 'creature',
+      range: DND_2024_ORDINARY_MELEE_DISTANCE,
     },
     rollProfile: {
       mode: 'attack',
@@ -32,6 +34,7 @@ export const DND_2024_ACTION_DEFINITIONS: Record<string, DndActionDefinition> = 
       note: 'The accepted-Character adapter chooses STR or DEX from the dagger Finesse options.',
     },
     effectRefs: ['effect.item.dagger.piercing-damage'],
+    weaponModeRef: 'mode.item.dagger.melee-weapon-attack',
     tags: ['weapon', 'melee', 'dagger'],
     sourceStatus: 'sourced',
     note: 'Melee weapon attack definition. Ability and proficiency are derived from the accepted Character snapshot.',
@@ -46,11 +49,7 @@ export const DND_2024_ACTION_DEFINITIONS: Record<string, DndActionDefinition> = 
     actionCost: { type: 'action' },
     targeting: {
       targetType: 'creature',
-      range: {
-        normal: 20,
-        long: 60,
-        unit: 'ft',
-      },
+      range: DND_2024_DAGGER_THROWN_DISTANCE,
     },
     rollProfile: {
       mode: 'attack',
@@ -58,6 +57,7 @@ export const DND_2024_ACTION_DEFINITIONS: Record<string, DndActionDefinition> = 
       note: 'Thrown attack uses the same STR/DEX Finesse options as the melee attack.',
     },
     effectRefs: ['effect.item.dagger.piercing-damage'],
+    weaponModeRef: 'mode.item.dagger.thrown-weapon-attack',
     tags: ['weapon', 'thrown', 'dagger'],
     sourceStatus: 'sourced',
     note: 'Thrown weapon attack data only. It is not materialized by the current Character adapter because range and ammunition are not enforced.',

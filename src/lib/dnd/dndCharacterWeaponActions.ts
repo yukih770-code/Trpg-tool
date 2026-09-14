@@ -10,6 +10,7 @@ import { getDndAbilityModifier, getDndAbilityScore, getDndCharacterProficiencyBo
 import { getDndItemDefinition } from '../dnd2024/dndItemRegistry.js';
 import { getDndActionDefinition } from '../dnd2024/gameplay/dndActionDefinitions.js';
 import { getDndEffectDefinition } from '../dnd2024/gameplay/dndEffectDefinitions.js';
+import { getDndWeaponAttackModeByActionId } from '../dnd2024/gameplay/dndWeaponAttackModes.js';
 import type { DndAbilityKey as GameplayAbilityKey, DndDiceFormula } from '../dnd2024/gameplay/rollTypes.js';
 import type { DndItemDefinition } from '../dnd2024/equipment-types.js';
 import type { DndLiteActorAction } from './dndLiteActorTypes.js';
@@ -81,14 +82,18 @@ function deriveForDefinition(character: CharacterData, definition: DndItemDefini
   const ability = selectedAbility(character, profile.abilityOptions ?? []);
   if (!ability) return undefined;
 
-  // Current T12 cannot enforce range/ammunition. V1 therefore materializes
-  // only an explicitly sourced melee mode and leaves thrown/ranged modes out.
+  // The mode registry is authoritative for mode identity and availability.
+  // Current T12 has no authoritative spatial scale, so deferred thrown/ranged
+  // modes are never flattened into a misleading executable Lite Action.
   const action = (profile.generatedActionRefs ?? definition.actionRefs ?? [])
     .map((id) => getDndActionDefinition(id))
     .find((candidate) => candidate?.sourceStatus === 'sourced'
       && candidate.sourceRef === definition.id
       && candidate.kind === 'attack'
-      && candidate.tags?.includes('melee'));
+      && (() => {
+        const mode = getDndWeaponAttackModeByActionId(candidate.id);
+        return mode?.attackKind === 'melee' && mode.availability === 'executable';
+      })());
   if (!action) return undefined;
   const effect = action.effectRefs.map((id) => getDndEffectDefinition(id))
     .find((candidate) => candidate?.sourceStatus === 'sourced'
@@ -136,4 +141,3 @@ export function deriveDndWeaponActionsFromCharacterSnapshot(
   }
   return { actions: actions.sort((a, b) => a.id.localeCompare(b.id)), unsupportedDefinitionIds };
 }
-

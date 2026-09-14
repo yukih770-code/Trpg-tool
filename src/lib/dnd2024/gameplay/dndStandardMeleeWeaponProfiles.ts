@@ -10,6 +10,7 @@ import type { DndItemDefinition } from '../equipment-types.js';
 import type { DndActionDefinition } from './actionTypes.js';
 import type { DndEffectDefinition, DndDamageType } from './effectTypes.js';
 import type { DndDiceFormula } from './rollTypes.js';
+import { DND_2024_ORDINARY_MELEE_DISTANCE } from './dndWeaponRangeSource.js';
 
 export const DND_STANDARD_MELEE_PROFILE_PROVENANCE = {
   sourceId: 'dnd-local-chm-primary',
@@ -88,6 +89,7 @@ function buildBundle(weaponDefinitionId: typeof STANDARD_MELEE_COHORT[number]): 
         properties: [],
         damage: { dice, damageType },
         abilityOptions: ['str'],
+        reach: DND_2024_ORDINARY_MELEE_DISTANCE.reach,
         generatedActionRefs: [actionId],
         sourceStatus: 'sourced',
         note: 'Property-free melee profile normalized from owner-approved weapon, attack-roll, damage-roll, and damage-type sources.',
@@ -100,7 +102,7 @@ function buildBundle(weaponDefinitionId: typeof STANDARD_MELEE_COHORT[number]): 
       sourceRef: source.id,
       kind: 'attack',
       actionCost: { type: 'action' },
-      targeting: { targetType: 'creature' },
+      targeting: { targetType: 'creature', range: DND_2024_ORDINARY_MELEE_DISTANCE },
       rollProfile: {
         mode: 'attack',
         targetDefense: 'ac',
@@ -108,6 +110,7 @@ function buildBundle(weaponDefinitionId: typeof STANDARD_MELEE_COHORT[number]): 
         note: 'Ordinary melee weapon attack uses Strength per the approved attack-roll source.',
       },
       effectRefs: [effectId],
+      weaponModeRef: `mode.item.${slug}.melee-weapon-attack`,
       tags: ['weapon', 'melee', slug],
       sourceStatus: 'sourced',
       note: 'Canonical property-free melee attack normalized from approved local sources.',

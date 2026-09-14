@@ -19,6 +19,7 @@ import type {
 } from './equipment-types.js';
 import type { EquipmentSlot } from '../platform/characterInventory.js';
 import { DND_STANDARD_MELEE_ITEM_GAMEPLAY_BY_ID } from './gameplay/dndStandardMeleeWeaponProfiles.js';
+import { DND_2024_ORDINARY_MELEE_DISTANCE } from './gameplay/dndWeaponRangeSource.js';
 
 function isPackName(name: string | undefined, id: string): boolean {
   if (id.includes('pack')) return true;
@@ -132,7 +133,7 @@ const SOURCED: DndItemDefinition[] = (DND_EQUIPMENT_CATALOG as DndEquipmentItem[
 // `weapon.dagger` is generated from the catalog above; here we project its
 // already-sourced data onto the v2 gameplay-facing fields. Accepted Character
 // snapshots may derive the melee Action through this bridge; the thrown mode is
-// still withheld because T12 cannot enforce range or ammunition. Only the
+// still withheld because T12 cannot enforce range or thrown-item lifecycle. Only the
 // dagger retains its established bridge, and every rule value comes from the
 // owner-source table. Additional reviewed property-free melee profiles are
 // normalized by dndStandardMeleeWeaponProfiles without changing derivation.
@@ -148,6 +149,7 @@ const DAGGER_GAMEPLAY: Pick<DndItemDefinition, 'actionRefs' | 'weaponProfile'> =
       damageType: 'piercing',
     },
     range: { normal: 20, long: 60, unit: 'ft' },
+    reach: DND_2024_ORDINARY_MELEE_DISTANCE.reach,
     abilityOptions: ['str', 'dex'],
     generatedActionRefs: [
       'action.item.dagger.melee-weapon-attack',

@@ -8,6 +8,7 @@ import { getDndItemDefinition } from '../src/lib/dnd2024/dndItemRegistry.js';
 import { getDndActionDefinition } from '../src/lib/dnd2024/gameplay/dndActionDefinitions.js';
 import { getDndEffectDefinition } from '../src/lib/dnd2024/gameplay/dndEffectDefinitions.js';
 import { resolveDndItemDefinition } from '../src/lib/dnd2024/dndItemRegistry.js';
+import { getDndWeaponAttackModesForDefinition } from '../src/lib/dnd2024/gameplay/dndWeaponAttackModes.js';
 
 type Classification =
   | 'SAFE_NOW'
@@ -25,8 +26,11 @@ const rows = DND_BASIC_WEAPONS.map((catalogWeapon) => {
   const effects = actions.flatMap((action) => action.effectRefs)
     .map((effectId) => getDndEffectDefinition(effectId))
     .filter((effect) => effect !== undefined && effect.type === 'damage');
-  const executableModes = [...new Set(actions.flatMap((action) => action.tags ?? [])
-    .filter((tag) => tag === 'melee' || tag === 'ranged' || tag === 'thrown'))].sort();
+  const attackModes = definition ? getDndWeaponAttackModesForDefinition(definition) : [];
+  const executableModes = [...new Set(attackModes.filter((mode) => mode.availability === 'executable')
+    .map((mode) => mode.attackKind))].sort();
+  const deferredModes = [...new Set(attackModes.filter((mode) => mode.availability === 'deferred')
+    .map((mode) => mode.attackKind))].sort();
   const hasCanonicalAction = actions.length > 0;
   const hasCanonicalDamageEffect = effects.length > 0;
   const hasApprovedAbilityRule = (definition?.weaponProfile?.abilityOptions?.length ?? 0) > 0;
@@ -64,6 +68,13 @@ const rows = DND_BASIC_WEAPONS.map((catalogWeapon) => {
     damageTypeAuthority: safeNow ? 'EXECUTABLE_APPROVED' : 'DISPLAY_ONLY',
     governingAbilityRuleRepresented: hasApprovedAbilityRule,
     proficiencyMappingRepresented: hasProficiencyMapping,
+    canonicalAttackModeIds: attackModes.map((mode) => mode.modeId),
+    attackModeContractRepresented: attackModes.length > 0,
+    rangeOrReachMetadataRepresented: attackModes.some((mode) => mode.distanceProfile.reach !== undefined
+      || mode.distanceProfile.normal !== undefined || mode.distanceProfile.long !== undefined),
+    rangeExecutionStatus: attackModes.length > 0 ? 'BLOCKED_SPATIAL_SCALE' : 'NO_MODE_CONTRACT',
+    otherRequiredMechanics: [...new Set(attackModes.flatMap((mode) => mode.blockers)
+      .filter((blocker) => blocker !== 'authoritative-spatial-scale'))],
     executableAttackModesRepresented: executableModes,
     specialModeOrPropertyRequired: catalogWeapon.properties,
     characterCreatorCanPreserveCanonicalId:
@@ -74,8 +85,8 @@ const rows = DND_BASIC_WEAPONS.map((catalogWeapon) => {
     t12CanResolveWithoutNewRuleLogic: Boolean(safeNow),
     finalClassification: classification,
     blockingReasons,
-    supportedModes: safeNow ? ['melee'] : [],
-    deferredModes: safeNow && executableModes.includes('thrown') ? ['thrown'] : [],
+    supportedModes: safeNow ? executableModes : [],
+    deferredModes,
   };
 });
 
@@ -92,7 +103,7 @@ const classificationCounts = rows.reduce<Record<Classification, number>>((counts
 });
 
 const report = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   auditScope: 'D&D canonical weapon definitions present in approved local repository data',
   catalogAuthority: {
     source: DND_EQUIPMENT_DATA_ACCURACY.source,
@@ -102,6 +113,7 @@ const report = {
   },
   classificationRule:
     'The first blocking gate controls classification. A display-only catalog row without a sourced weapon profile, canonical Action/Effect, and governing-ability contract is MISSING_APPROVED_DATA even when its label contains numeric text.',
+  spatialRangePolicy: 'D&D range/reach metadata is source-backed, but runtime enforcement remains blocked until persisted Platform Scene data can produce authoritative world distance without render-pixel guesses.',
   canonicalWeaponCount: rows.length,
   safeNowCount: rows.filter((row) => row.finalClassification === 'SAFE_NOW').length,
   classificationCounts,

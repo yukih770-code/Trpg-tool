@@ -109,6 +109,8 @@ export interface DndActionDefinition {
   resourceCost?: DndResourceCost[];
   /** Ids of the effects this action produces (see effectTypes). */
   effectRefs: string[];
+  /** Canonical D&D weapon-mode identity when this Action is a weapon attack. */
+  weaponModeRef?: string;
   tags?: string[];
   sourceStatus?: 'sourced' | 'pending-source' | 'platform';
   note?: string;
