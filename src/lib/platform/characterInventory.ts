@@ -340,6 +340,7 @@ export function isLegacyStarterSummaryItem(item: CharacterInventoryItem): boolea
 
 export interface StarterChoiceOption {
   name: string;
+  quantity: number;
   /** Vague option such as "任意简易武器" — cannot be auto-resolved. */
   vague: boolean;
 }
@@ -401,17 +402,20 @@ export function parseStarterEquipment(text: string): ParsedStarterEquipment {
   const fixed: StarterFixedItem[] = [];
   let gi = 0;
   for (const seg of segments) {
-    const { name: body, quantity: qty } = readStarterItemQuantity(seg);
-    if (/或|任选|二选|选择其一|\bor\b/i.test(body)) {
-      const options = body
+    if (/或|任选|二选|选择其一|\bor\b/i.test(seg)) {
+      const options = seg
         .split(/或者|或|\bor\b/i)
         .map((o) => o.trim())
         .filter(Boolean)
-        .map((name) => ({ name, vague: /任意|任选|any/i.test(name) }));
+        .map((option) => {
+          const { name, quantity } = readStarterItemQuantity(option);
+          return { name, quantity, vague: /任意|任选|any/i.test(name) };
+        });
       if (options.length > 1) groups.push({ id: `g${gi++}`, options });
-      else if (options[0]) fixed.push({ name: options[0].name, quantity: qty });
-    } else if (body) {
-      fixed.push({ name: body, quantity: qty });
+      else if (options[0]) fixed.push({ name: options[0].name, quantity: options[0].quantity });
+    } else {
+      const { name, quantity } = readStarterItemQuantity(seg);
+      if (name) fixed.push({ name, quantity });
     }
   }
   return { groups, fixed, raw, hasChoices: groups.length > 0 };

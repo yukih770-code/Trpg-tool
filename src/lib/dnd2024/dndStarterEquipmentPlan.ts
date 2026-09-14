@@ -66,7 +66,7 @@ export function buildStarterEquipmentPlan(sourceText: string, sourceRef?: string
       else resolvedCount += 1;
       return {
         label: o.name,
-        quantity: 1,
+        quantity: o.quantity,
         definitionId: def?.id,
         vague: o.vague || undefined,
         pendingSource: pendingSource || undefined,
