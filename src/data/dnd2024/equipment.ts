@@ -18,8 +18,8 @@ import type {
   DndEquipmentItem,
   DndGearItem,
   DndWeaponItem,
-} from '../../lib/dnd2024/equipment-types';
-import type { RuleDataMetadata } from '../../lib/rules/rule-data-metadata';
+} from '../../lib/dnd2024/equipment-types.js';
+import type { RuleDataMetadata } from '../../lib/rules/rule-data-metadata.js';
 
 export const DND_EQUIPMENT_DATA_ACCURACY: RuleDataMetadata = {
   source: 'dnd-local-chm-primary',

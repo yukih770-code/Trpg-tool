@@ -25,13 +25,14 @@
 
 import type { AttributeName, CharacterData } from '../dnd-types.js';
 import { readDndCharacterSnapshot, DND_ATTRIBUTE_TO_ABILITY_KEY } from './dndCharacterToLiteActorSheet.js';
+import { readDndCharacterEquipmentSnapshot } from './dndCharacterEquipmentSnapshot.js';
 
 /**
  * Field-set version. Bump when the covered set changes: a stored hash carrying
  * an older version must read as UNKNOWN, never as "unchanged", because the two
  * strings are not comparable.
  */
-export const DND_CHARACTER_COMBAT_RELEVANT_FIELD_VERSION = 1;
+export const DND_CHARACTER_COMBAT_RELEVANT_FIELD_VERSION = 2;
 
 /**
  * Tier name for this covered set.
@@ -84,6 +85,10 @@ export interface DndCharacterCombatRelevantFields {
   savingThrowProficiencies: string[];
   /** Sorted and de-duplicated: the derivation reads these as sets. */
   skillProficiencies: string[];
+  /** Sorted and de-duplicated: weapon action derivation reads these as a set. */
+  weaponProficiencies: string[];
+  /** Stable definition references and equip state consumed by action derivation. */
+  equipment: Array<{ definitionId: string; quantity: number; equipSlot?: string }>;
 }
 
 /**
@@ -96,7 +101,7 @@ export interface DndCharacterCombatRelevantFields {
  *  - `race`, `subrace`, `background`, `subclass`, `gender`, `age`, `size`,
  *    `description`, `appearanceDescription`: the derivation reads none of them
  *    for a combat number.
- *  - `inventory`, `coin`, `spellbook`, `feats`, `weaponProficiencies`,
+ *  - Legacy string `inventory`, `coin`, `spellbook`, `feats`,
  *    `armorTraining`, `activeMods`, `customModsData`, `customLanguages`,
  *    `personalContentReferences`: outside the eleven-field lite combat sheet.
  *    When a later milestone derives from them, extend the covered set and bump
@@ -121,7 +126,6 @@ export const DND_CHARACTER_COMBAT_RELEVANT_EXCLUDED_FIELDS: readonly string[] = 
   'coin',
   'spellbook',
   'feats',
-  'weaponProficiencies',
   'armorTraining',
   'activeMods',
   'customModsData',
@@ -193,6 +197,8 @@ export function extractDndCharacterCombatRelevantFields(
     speed: trimmedString(character.speed),
     savingThrowProficiencies: sortedUniqueStrings(character.savingThrowProficiencies),
     skillProficiencies: sortedUniqueStrings(character.skillProficiencies),
+    weaponProficiencies: sortedUniqueStrings(character.weaponProficiencies),
+    equipment: readDndCharacterEquipmentSnapshot(character)?.items ?? [],
   };
 }
 

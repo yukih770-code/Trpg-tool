@@ -33,6 +33,7 @@ import { CLASS_DATA } from '../../data/classes.js';
 import { readDndNumericSpeed } from './dndMonsterTemplateTypes.js';
 import { DND_ABILITY_KEYS, DND_SKILL_KEYS } from './dndLiteActorTypes.js';
 import type { DndAbilityKey, DndLiteActorSheet, DndSkillKey } from './dndLiteActorTypes.js';
+import { deriveDndWeaponActionsFromCharacterSnapshot } from './dndCharacterWeaponActions.js';
 
 /** `CharacterData` attribute key -> lite sheet ability key. */
 export const DND_ATTRIBUTE_TO_ABILITY_KEY: Record<AttributeName, DndAbilityKey> = {
@@ -260,11 +261,11 @@ export function dndCharacterToLiteActorSheet(
   }
   approximations.push('skills');
 
-  // ── Deliberate omissions ──────────────────────────────────────────────────
-  // Actions stay empty: deriving an attack bonus or damage formula needs a
-  // weapon resolver that does not exist, and an invented attack is worse than
-  // no attack because the table would trust it.
-  omissions.push('actions', 'spellSlots', 'classResources', 'inventory', 'conditions');
+  // ── Approved weapon actions and deliberate omissions ─────────────────────
+  const weaponActions = deriveDndWeaponActionsFromCharacterSnapshot(character);
+  if (weaponActions.actions.length === 0) omissions.push('actions');
+  if (weaponActions.unsupportedDefinitionIds.length > 0) omissions.push('unsupportedWeaponActions');
+  omissions.push('spellSlots', 'classResources', 'inventory', 'conditions');
 
   const summary = classSummary(character);
   const notes = [
@@ -292,7 +293,7 @@ export function dndCharacterToLiteActorSheet(
     },
     savingThrows,
     skills,
-    actions: [],
+    actions: weaponActions.actions,
     ...(notes ? { notes } : {}),
     tags,
   };

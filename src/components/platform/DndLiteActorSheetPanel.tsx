@@ -75,7 +75,7 @@ const derivationText = {
   fill: ['从角色卡填充', 'Fill from character'],
   noSnapshot: ['该角色没有可读取的角色卡快照，请手动填写。', 'No readable character snapshot for this actor — fill the sheet manually.'],
   filled: ['已从角色卡填充。请复核后再保存。', 'Filled from the character sheet. Review it before saving.'],
-  frozen: ['数据来自加入战役时冻结的角色卡快照，不会随角色升级自动更新。', 'Values come from the character snapshot frozen when this actor joined the campaign; they do not update as the character levels up.'],
+  frozen: ['数据来自本战役当前已批准的角色卡快照；角色后续变化需经复核和接受后才会生效。', 'Values come from the character snapshot currently accepted by this campaign; later character changes take effect only after review and acceptance.'],
   needsReview: ['需复核', 'Needs review'],
   notDerived: ['未导出', 'Not derived'],
   overwriteWarning: ['将覆盖当前草稿；已保存的卡片在你按下保存前不受影响。', 'This replaces the current draft. The saved sheet is untouched until you press save.'],
@@ -94,7 +94,7 @@ const reviewText = {
   privacy: ['以下仅为推导出的战斗相关数值；主持人不会看到玩家的角色卡原文。', 'These are derived, combat-relevant values only. The host never sees the player\u2019s character data.'],
   accept: ['接受新版本', 'Accept new source version'],
   accepting: ['接受中…', 'Accepting…'],
-  accepted: ['已接受新版本。战斗数据未改变——如需应用，请使用“从角色卡填充”。', 'New source version accepted. Nothing in play changed \u2014 use \u201cFill from character\u201d to apply it to the combat sheet.'],
+  accepted: ['已接受新版本。已有战役覆盖保持不变；未覆盖的角色现在使用新批准的推导数据。', 'New source version accepted. Existing campaign overrides are unchanged; actors without one now use the newly accepted derived data.'],
   acceptNote: ['接受只会更新战役记录的角色卡版本，不会改动当前生命值、状态或先攻。', 'Accepting only updates the version this campaign records. It does not touch current HP, conditions or initiative.'],
   conflict: ['角色卡在你复核之后又发生了变化，请重新检查。', 'The character changed again after you reviewed it. Review it once more.'],
   failed: ['无法读取角色卡来源。', 'The character source could not be read.'],
@@ -132,6 +132,7 @@ const presetFieldText: Record<string, [string, string]> = {
   savingThrows: ['豁免', 'Saving throws'],
   skills: ['技能', 'Skills'],
   actions: ['动作', 'Actions'],
+  unsupportedWeaponActions: ['尚不支持的已装备武器', 'Unsupported equipped weapons'],
 };
 
 const reviewGroupText: Record<string, [string, string]> = {
@@ -139,6 +140,7 @@ const reviewGroupText: Record<string, [string, string]> = {
   defenses: ['防御', 'Defences'],
   abilities: ['属性', 'Abilities'],
   proficiencies: ['豁免与技能', 'Saves and skills'],
+  actions: ['武器动作', 'Weapon actions'],
 };
 
 const derivedFieldText: Record<string, [string, string]> = {
@@ -203,12 +205,16 @@ export function DndLiteActorSheetPanel({ locale, canManage, campaignActors, shee
 
   useEffect(() => {
     if (!selectedActor) return;
-    setDraft(sheets[selectedActor.campaignActorInstanceId] ?? createDefaultDndLiteActorSheet({ displayName: selectedActor.displayName, actorKind: actorKindFromCampaign(selectedActor) }));
+    const saved = sheets[selectedActor.campaignActorInstanceId];
+    const hasExplicitOverride = Object.prototype.hasOwnProperty.call(selectedActor.overridePayload, 'dndLiteActorSheetV1');
+    const sourceDerived = !saved && !hasExplicitOverride
+      ? deriveDndLiteActorSheetFromSnapshot(selectedActor.snapshotPayload, { displayNameFallback: selectedActor.displayName })
+      : undefined;
+    setDraft(saved ?? sourceDerived?.sheet ?? createDefaultDndLiteActorSheet({ displayName: selectedActor.displayName, actorKind: actorKindFromCampaign(selectedActor) }));
     setNotice('');
-    // Deliberately does NOT derive here. Filling is an explicit host action:
-    // an automatic fill would let a host save derived numbers without ever
-    // having looked at them.
-    setDerivation(undefined);
+    // Source-derived values are displayed as the current authority when no
+    // campaign sheet exists. Saving still creates an explicit override.
+    setDerivation(sourceDerived);
     setSourceNotice('');
     setSourceDetailOpen(false);
   }, [selectedActor, sheets]);

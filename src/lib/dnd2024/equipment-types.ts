@@ -16,13 +16,13 @@
  * equipment shapes.
  */
 
-import type { EquipmentSlot } from '../platform/characterInventory';
+import type { EquipmentSlot } from '../platform/characterInventory.js';
 import type {
   DndArmorProfile,
   DndConsumableProfile,
   DndContainerProfile,
   DndWeaponProfile,
-} from './gameplay/itemGameplayTypes';
+} from './gameplay/itemGameplayTypes.js';
 
 export type DndEquipmentCategory =
   | 'weapon'

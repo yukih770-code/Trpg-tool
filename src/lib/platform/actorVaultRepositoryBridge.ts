@@ -20,6 +20,12 @@ import { useCocStore } from '../../store/cocStore';
 import { useCpStore } from '../../store/cpStore';
 import type { CharacterData } from '../dnd-types';
 import { isPristineDndCharacterDraft } from '../dnd2024/dndLevelOneCharacter';
+import { useCharacterInventoryStore } from './characterInventoryStore';
+import { makeActorInventoryKey } from './characterInventory';
+import {
+  buildDndCharacterEquipmentSnapshot,
+  DND_CHARACTER_EQUIPMENT_SNAPSHOT_KEY,
+} from '../dnd/dndCharacterEquipmentSnapshot';
 import type { CocCharacter } from '../coc-types';
 import type { CpCharacter } from '../cp-types';
 import {
@@ -218,8 +224,25 @@ export function getActorVaultLocalSnapshot(
     }
   })();
 
+  if (!snapshot) return undefined;
+
+  // The typed inventory is an existing, separate local store. At the DND Vault
+  // snapshot boundary, copy only stable definition references and equip state
+  // into the character payload that T11 can freeze and review. No item names or
+  // client-copied rule numbers become authoritative through this bridge.
+  const withEquipment = systemId === 'dnd5e-2024'
+    ? {
+        ...snapshot,
+        [DND_CHARACTER_EQUIPMENT_SNAPSHOT_KEY]: buildDndCharacterEquipmentSnapshot(
+          useCharacterInventoryStore.getState().getActorInventory(
+            makeActorInventoryKey('dnd5e-2024', resolvedActorId),
+          ),
+        ),
+      }
+    : snapshot;
+
   // Do not return a mutable reference into a Zustand store to the API layer.
-  return snapshot ? JSON.parse(JSON.stringify(snapshot)) as Record<string, unknown> : undefined;
+  return JSON.parse(JSON.stringify(withEquipment)) as Record<string, unknown>;
 }
 
 export function getActiveActorVaultRecord(

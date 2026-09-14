@@ -5,12 +5,13 @@
  *
  * Source-backed action data for the dagger Weapon Attack MVP bridge: a melee and
  * a thrown attack, both referencing the SAME shared piercing-damage effect. This
- * is data only — no action generator, no resolver, no rolling. Ability modifier
- * (STR/DEX via Finesse), proficiency, reach, range disadvantage, ammunition /
- * retrieval, and inventory changes are future resolver responsibilities.
+ * is data only — no snapshot selection, rolling, or state mutation. The
+ * accepted-Character adapter selects STR/DEX and proficiency from authoritative
+ * Character data. Reach, range disadvantage, ammunition/retrieval, and
+ * inventory mutation remain outside the current T12 contract.
  */
 
-import type { DndActionDefinition } from './actionTypes';
+import type { DndActionDefinition } from './actionTypes.js';
 
 export const DND_2024_ACTION_DEFINITIONS: Record<string, DndActionDefinition> = {
   'action.item.dagger.melee-weapon-attack': {
@@ -26,12 +27,12 @@ export const DND_2024_ACTION_DEFINITIONS: Record<string, DndActionDefinition> = 
     rollProfile: {
       mode: 'attack',
       targetDefense: 'ac',
-      note: 'Ability modifier is chosen by the future resolver from dagger Finesse options: STR or DEX.',
+      note: 'The accepted-Character adapter chooses STR or DEX from the dagger Finesse options.',
     },
     effectRefs: ['effect.item.dagger.piercing-damage'],
     tags: ['weapon', 'melee', 'dagger'],
     sourceStatus: 'sourced',
-    note: 'Melee weapon attack action data only. Range/reach and proficiency are future resolver responsibilities.',
+    note: 'Melee weapon attack definition. Ability and proficiency are derived from the accepted Character snapshot.',
   },
 
   'action.item.dagger.thrown-weapon-attack': {
@@ -52,12 +53,12 @@ export const DND_2024_ACTION_DEFINITIONS: Record<string, DndActionDefinition> = 
     rollProfile: {
       mode: 'attack',
       targetDefense: 'ac',
-      note: 'Thrown attack uses the same ability as the melee attack; future resolver chooses STR or DEX from Finesse.',
+      note: 'Thrown attack uses the same STR/DEX Finesse options as the melee attack.',
     },
     effectRefs: ['effect.item.dagger.piercing-damage'],
     tags: ['weapon', 'thrown', 'dagger'],
     sourceStatus: 'sourced',
-    note: 'Thrown weapon attack action data only. Ammunition, retrieval, inventory changes, and range disadvantage are deferred.',
+    note: 'Thrown weapon attack data only. It is not materialized by the current Character adapter because range and ammunition are not enforced.',
   },
 };
 

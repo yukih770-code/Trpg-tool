@@ -12,6 +12,7 @@ import { resolveRoomRuntimePermission } from '../room/roomRuntimePermissionGuard
 import { applyRuntimeResolution, readAuthoritativeCombat, RuntimeResolutionError } from './applyRuntimeResolution.js';
 import { resolveDndAttackAction, readAuthoredDndAttack } from './resolveDndAttackAction.js';
 import { ResolvedIntentIndex } from './resolvedIntentIndex.js';
+import { resolveDndActorSheetAuthority } from '../../src/lib/dnd/dndActorSheetAuthority.js';
 
 /** Uniform over 2^32 points, not a perfectly uniform mapping to every die.
  * floor(u*sides) has < sides/2^32 relative bias (d20 worst ~3.7e-9).
@@ -92,10 +93,11 @@ async function actingSource(deps: DndAttackDependencies, roomId: string, memberI
 export async function listDndAttackActions(deps: DndAttackDependencies, input: { roomId: string; memberId: string; viewer: CurrentViewerContext; actorCombatantId: string }) {
   await validRuntime(deps, input.roomId, input.memberId, input.viewer);
   const { record } = await actingSource(deps, input.roomId, input.memberId, input.viewer, requiredId(input.actorCombatantId));
-  const sheet = record.overridePayload.dndLiteActorSheetV1 as { actions?: Array<{ id?: unknown }> } | undefined;
+  const actionPayload = resolveDndActorSheetAuthority(record).actionPayload;
+  const sheet = actionPayload.dndLiteActorSheetV1 as { actions?: Array<{ id?: unknown }> } | undefined;
   return (Array.isArray(sheet?.actions) ? sheet.actions : []).flatMap((action) => {
     if (!action || typeof action.id !== 'string') return [];
-    try { const resolved = readAuthoredDndAttack(record.overridePayload, action.id); return [{ id: resolved.id, name: resolved.name, kind: resolved.kind }]; }
+    try { const resolved = readAuthoredDndAttack(actionPayload, action.id); return [{ id: resolved.id, name: resolved.name, kind: resolved.kind }]; }
     catch { return []; }
   });
 }
@@ -120,7 +122,10 @@ export async function declareDndAttack(deps: DndAttackDependencies, input: {
       const target = state.combatants.find((c) => c.id === intent.targetCombatantId && c.status === 'active' && !c.isDefeated);
       if (!target) fail('invalid_target_combatant');
       let proposal;
-      try { proposal = resolveDndAttackAction({ target, actionPayload: source.record.overridePayload, intent, resolutionId: randomUUID(), random: deps.random ?? cryptoDndUnitInterval }); }
+      try {
+        const actionPayload = resolveDndActorSheetAuthority(source.record).actionPayload;
+        proposal = resolveDndAttackAction({ target, actionPayload, intent, resolutionId: randomUUID(), random: deps.random ?? cryptoDndUnitInterval });
+      }
       catch (error) { fail(error instanceof Error ? error.message : 'invalid_action'); }
       return applyRuntimeResolution({ rooms: deps.rooms, log: deps.log, proposal, confirm: deps.confirm, context: {
         roomId: input.roomId, sessionId: room.identity.sessionId!, memberId: input.memberId, actorBindingId: source.bindingId,

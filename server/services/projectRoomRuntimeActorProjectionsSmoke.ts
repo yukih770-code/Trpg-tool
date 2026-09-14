@@ -100,6 +100,25 @@ async function main() {
   });
   const approvedBaseline = formatDndCharacterCombatRelevantHash(vaultCharacter());
 
+  const derivedCharacter = vaultCharacter({
+    weaponProficiencies: ['简易武器'],
+    dndEquipmentSnapshotV1: {
+      schemaVersion: 1,
+      items: [{ definitionId: 'weapon.dagger', quantity: 1, equipSlot: 'mainHand' }],
+    },
+  });
+  const derivedProjection = await projectRoomRuntimeActorProjections({
+    room,
+    currentMemberId: 'member-1',
+    repository: {
+      async getCampaignActorInstanceById() {
+        return { ok: true as const, value: { ...record, snapshotPayload: derivedCharacter, overridePayload: {} } };
+      },
+    },
+  });
+  checks.push(derivedProjection.actors[0].source === 'acceptedCharacter');
+  checks.push(derivedProjection.selfDndActions?.some((action) => action.id === 'action.item.dagger.melee-weapon-attack' && action.kind === 'weapon_attack') === true);
+
   const reviewRoom = (viewerRole: string, viewerMemberId: string) => ({
     campaignRef: { campaignId: 'campaign-1' },
     members: [

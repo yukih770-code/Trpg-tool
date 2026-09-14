@@ -110,7 +110,6 @@ const excludedMutations: Array<[string, Partial<CharacterData>]> = [
   ['inventory', { inventory: ['长剑', '绳索'] }],
   ['coin', { coin: 500 }],
   ['feats', { feats: ['警觉'] }],
-  ['weaponProficiencies', { weaponProficiencies: ['长剑'] }],
   ['armorTraining', { armorTraining: ['重甲'] }],
   ['customLanguages', { customLanguages: '矮人语' }],
   ['id', { id: 'a-different-id' }],
@@ -138,6 +137,8 @@ const includedMutations: Array<[string, Partial<CharacterData>]> = [
   ['schemaVersion', { schemaVersion: CURRENT_DND_CHARACTER_SCHEMA_VERSION - 1 }],
   ['classLevels', { classLevels: [{ className: '战士', level: 2 }, { className: '游荡者', level: 1 }] }],
   ['skillProficiencies', { skillProficiencies: ['运动', '察觉', '隐匿'] as SkillName[] }],
+  ['weaponProficiencies', { weaponProficiencies: ['简易武器'] }],
+  ['equipped weapon references', { dndEquipmentSnapshotV1: { schemaVersion: 1, items: [{ definitionId: 'weapon.dagger', quantity: 1, equipSlot: 'mainHand' }] } }],
   ['savingThrowProficiencies', { savingThrowProficiencies: ['Str', 'Con', 'Dex'] as AttributeName[] }],
 ];
 for (const [field, override] of includedMutations) {

@@ -55,7 +55,7 @@ export type CampaignActorInstance = {
 export type CampaignActorSourceReviewField = {
   key: string;
   label: string;
-  group: 'identity' | 'defenses' | 'abilities' | 'proficiencies';
+  group: 'identity' | 'defenses' | 'abilities' | 'proficiencies' | 'actions';
   before?: string;
   after?: string;
   changed: boolean;

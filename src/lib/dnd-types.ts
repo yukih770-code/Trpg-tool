@@ -258,6 +258,21 @@ export interface CharacterData {
   };
   customLanguages: string;
   inventory: string[];
+  /**
+   * Optional authoritative equipment references copied into Actor Vault
+   * snapshots from the existing typed inventory store. The legacy `inventory`
+   * strings remain display-only and are never used for combat derivation.
+   *
+   * Additive and optional by design: old local characters need no migration.
+   */
+  dndEquipmentSnapshotV1?: {
+    schemaVersion: 1;
+    items: Array<{
+      definitionId: string;
+      quantity: number;
+      equipSlot?: string;
+    }>;
+  };
   activeMods?: string[];
   customModsData?: CustomMod[];
   /** Optional private content-pack versions selected during character creation. */

@@ -6,6 +6,7 @@ import {
   compareDndCharacterCombatRelevantHash,
   sourceChangedSinceApprovalFlag,
 } from './dndCharacterCombatRelevantHash.js';
+import { resolveDndActorSheetAuthority } from '../../src/lib/dnd/dndActorSheetAuthority.js';
 
 const DND_LITE_ACTOR_SHEET_OVERRIDE_KEY = 'dndLiteActorSheetV1';
 
@@ -147,13 +148,14 @@ function readDndSpellbookActionShortcuts(payload: Record<string, unknown>): Room
   }).slice(0, 12);
 }
 
-function fromCampaignOverride(
+function fromCampaignActor(
   binding: RoomActorBindingSummary,
   record: CampaignActorInstanceRecord,
 ): RoomRuntimeActorProjection {
   const fallback = fromBinding(binding);
+  const authority = resolveDndActorSheetAuthority(record);
   const dndSheet = binding.actorRef.systemId === 'dnd5e-2024'
-    ? readDndLiteCombatSummary(record.overridePayload)
+    ? readDndLiteCombatSummary(authority.actionPayload)
     : undefined;
   if (!dndSheet) return fallback;
 
@@ -166,7 +168,7 @@ function fromCampaignOverride(
     temporaryHp: dndSheet.temporaryHp,
     armorClass: dndSheet.armorClass,
     initiativeModifier: dndSheet.initiativeModifier,
-    source: 'campaignOverride',
+    source: authority.source,
   };
 }
 
@@ -260,11 +262,12 @@ export async function projectRoomRuntimeActorProjections(input: {
         return fallback;
       }
       if (binding.memberId === input.currentMemberId && binding.actorRef.systemId === 'dnd5e-2024') {
-        const explicitActions = readDndLiteActionShortcuts(record.overridePayload);
+        const actionAuthority = resolveDndActorSheetAuthority(record);
+        const explicitActions = readDndLiteActionShortcuts(actionAuthority.actionPayload);
         const spellbookActions = readDndSpellbookActionShortcuts(record.snapshotPayload);
         selfDndActions = [...explicitActions, ...spellbookActions].slice(0, 16);
       }
-      const projection = fromCampaignOverride(binding, record);
+      const projection = fromCampaignActor(binding, record);
       if (!maySeeSourceChange(binding, input.room, input.currentMemberId)) return projection;
       const sourceChangedSinceApproval = await resolveSourceChangedSinceApproval({
         binding,

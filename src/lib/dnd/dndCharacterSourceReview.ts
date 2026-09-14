@@ -40,7 +40,7 @@ export interface DndSourceReviewField {
   key: string;
   /** Short English label; the UI supplies its own localisation. */
   label: string;
-  group: 'identity' | 'defenses' | 'abilities' | 'proficiencies';
+  group: 'identity' | 'defenses' | 'abilities' | 'proficiencies' | 'actions';
   before?: string;
   after?: string;
   changed: boolean;
@@ -92,6 +92,19 @@ function field(
   after: string | undefined,
 ): DndSourceReviewField {
   return { key, label, group, before, after, changed: before !== after };
+}
+
+function weaponActionSummary(sheet: DndLiteActorSheet): string | undefined {
+  const actions = sheet.actions
+    .filter((action) => action.kind === 'weapon_attack')
+    .map((action) => [
+      action.name,
+      action.attackBonus === undefined ? '' : signed(action.attackBonus),
+      action.damageFormula ?? '',
+      action.damageType ?? '',
+    ].filter(Boolean).join(' · '))
+    .sort();
+  return actions.length > 0 ? actions.join('; ') : undefined;
 }
 
 /**
@@ -146,6 +159,9 @@ export function compareDndLiteActorSheets(
     if (a === undefined && c === undefined) continue;
     fields.push(field(`skills.${skill}`, SKILL_LABELS[skill], 'proficiencies', signed(a), signed(c)));
   }
+
+  fields.push(field('actions.weaponAttacks', 'Weapon Actions', 'actions',
+    weaponActionSummary(accepted), weaponActionSummary(current)));
 
   return fields;
 }

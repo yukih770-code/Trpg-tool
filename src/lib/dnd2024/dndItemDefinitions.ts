@@ -11,13 +11,13 @@
  * until a dedicated owner-source extraction defines them.
  */
 
-import { DND_EQUIPMENT_CATALOG } from '../../data/dnd2024/equipment';
+import { DND_EQUIPMENT_CATALOG } from '../../data/dnd2024/equipment.js';
 import type {
   DndEquipmentItem,
   DndItemCategory,
   DndItemDefinition,
-} from './equipment-types';
-import type { EquipmentSlot } from '../platform/characterInventory';
+} from './equipment-types.js';
+import type { EquipmentSlot } from '../platform/characterInventory.js';
 
 function isPackName(name: string | undefined, id: string): boolean {
   if (id.includes('pack')) return true;
@@ -129,10 +129,10 @@ const SOURCED: DndItemDefinition[] = (DND_EQUIPMENT_CATALOG as DndEquipmentItem[
 
 // ── Dagger source-backed gameplay bridge (data only) ────────────────────────
 // `weapon.dagger` is generated from the catalog above; here we project its
-// already-sourced data onto the v2 gameplay-facing fields so it can later
-// generate a melee + thrown attack referencing a shared piercing-damage effect.
-// Nothing reads these yet (no resolver). Only the dagger is touched; no rule
-// values are invented (all from the owner-source weapon table).
+// already-sourced data onto the v2 gameplay-facing fields. Accepted Character
+// snapshots may derive the melee Action through this bridge; the thrown mode is
+// still withheld because T12 cannot enforce range or ammunition. Only the
+// dagger is touched, and every rule value comes from the owner-source table.
 const DAGGER_GAMEPLAY: Pick<DndItemDefinition, 'actionRefs' | 'weaponProfile'> = {
   actionRefs: [
     'action.item.dagger.melee-weapon-attack',
@@ -152,7 +152,7 @@ const DAGGER_GAMEPLAY: Pick<DndItemDefinition, 'actionRefs' | 'weaponProfile'> =
     ],
     masteryRef: 'mastery.nick',
     sourceStatus: 'sourced',
-    note: 'Dagger source-backed data bridge. Nick mastery mechanics are deferred to a future resolver.',
+    note: 'Dagger source-backed data bridge. Nick mastery mechanics remain deferred.',
   },
 };
 

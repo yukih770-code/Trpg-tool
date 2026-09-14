@@ -5,12 +5,13 @@
  *
  * Source-backed effect data for the Weapon Attack MVP bridge. The dagger's
  * piercing-damage effect carries only the damage DICE and TYPE (from the owner-
- * source weapon table). Ability modifier (STR/DEX via Finesse), critical hit,
- * resistance, and vulnerability are deliberately NOT encoded here — they are
- * future resolver responsibilities. No resolver / no rolling in this module.
+ * source weapon table). The accepted-Character adapter adds the selected
+ * ability modifier to the materialized Action, while T12 applies critical-hit
+ * rolling. Resistance and vulnerability remain outside the current contract.
+ * This module performs no derivation, rolling, or state mutation.
  */
 
-import type { DndEffectDefinition } from './effectTypes';
+import type { DndEffectDefinition } from './effectTypes.js';
 
 export const DND_2024_EFFECT_DEFINITIONS: Record<string, DndEffectDefinition> = {
   'effect.item.dagger.piercing-damage': {
@@ -24,7 +25,7 @@ export const DND_2024_EFFECT_DEFINITIONS: Record<string, DndEffectDefinition> = 
     sourceRef: 'weapon.dagger',
     sourceStatus: 'sourced',
     note:
-      'Damage dice and damage type are source-backed. Ability modifier, critical hit, resistance, and vulnerability are future resolver responsibilities.',
+      'Damage dice and type are source-backed. Character derivation adds the selected ability modifier; T12 handles critical rolling.',
   },
 };
 

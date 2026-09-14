@@ -6,7 +6,7 @@
  * inventory, actions, notes, owner ids, and opaque source actor ids stay on
  * their existing protected surfaces.
  */
-export type RoomRuntimeActorProjectionSource = 'roomBinding' | 'campaignOverride';
+export type RoomRuntimeActorProjectionSource = 'roomBinding' | 'campaignOverride' | 'acceptedCharacter';
 
 export interface RoomRuntimeActorProjection {
   bindingId: string;

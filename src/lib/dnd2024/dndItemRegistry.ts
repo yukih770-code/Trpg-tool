@@ -10,8 +10,8 @@
  * resolve to a (pending) definition with a stable id instead of a bare string.
  */
 
-import { DND_ITEM_DEFINITIONS } from './dndItemDefinitions';
-import type { DndItemDefinition } from './equipment-types';
+import { DND_ITEM_DEFINITIONS } from './dndItemDefinitions.js';
+import type { DndItemDefinition } from './equipment-types.js';
 
 const byId = new Map<string, DndItemDefinition>();
 const byName = new Map<string, DndItemDefinition>();

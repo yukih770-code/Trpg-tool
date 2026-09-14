@@ -16,8 +16,8 @@
  * Action / Bonus Action / Reaction / longer.
  */
 
-import type { DndRollProfile } from './rollTypes';
-import type { DndResourceCost } from './resourceTypes';
+import type { DndRollProfile } from './rollTypes.js';
+import type { DndResourceCost } from './resourceTypes.js';
 
 export type DndActionSourceType =
   | 'item'

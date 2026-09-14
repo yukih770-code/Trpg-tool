@@ -1,0 +1,158 @@
+{
+  "kind": "platformBackup",
+  "schemaVersion": 1,
+  "exportedAt": "2026-09-14T00:00:00.000Z",
+  "exportScope": "ownerBackup",
+  "source": {
+    "sourceApp": "trpg-platform",
+    "sourceVersion": "actor-vault-snapshot"
+  },
+  "payload": {
+    "schemaVersion": 1,
+    "exportKind": "actor-vault-snapshot",
+    "exportedAt": "2026-09-14T00:00:00.000Z",
+    "source": {
+      "app": "trpg-platform",
+      "mode": "local"
+    },
+    "includedSystems": [
+      "dnd5e-2024"
+    ],
+    "includedLifecycleStatuses": [
+      "active"
+    ],
+    "actors": [
+      {
+        "systemId": "dnd5e-2024",
+        "actorId": "unsupported-free-text-20260914",
+        "lifecycleStatus": "active",
+        "actorVaultRecord": {
+          "id": "unsupported-free-text-20260914",
+          "systemId": "dnd5e-2024",
+          "displayName": "Unsupported Free Text Hero"
+        },
+        "actorData": {
+          "schemaVersion": 4,
+          "id": "unsupported-free-text-20260914",
+          "name": "Unsupported Free Text Hero",
+          "age": "",
+          "gender": "",
+          "race": "人类",
+          "subrace": "",
+          "jobClass": "游荡者",
+          "subclass": "",
+          "classLevels": [
+            {
+              "className": "游荡者",
+              "classId": "rogue",
+              "level": 1
+            }
+          ],
+          "background": "士兵 (Soldier)",
+          "description": "",
+          "level": 1,
+          "hpMax": 10,
+          "hpCurrent": 10,
+          "tempHp": 0,
+          "deathSaves": {
+            "successes": 0,
+            "failures": 0
+          },
+          "hitDiceCurrent": 1,
+          "acMod": 10,
+          "speed": "30 尺",
+          "size": "中型",
+          "attrs": {
+            "Str": {
+              "base": 8,
+              "pointbuy": 0,
+              "racebonus": 0,
+              "extrabonus": 0
+            },
+            "Dex": {
+              "base": 8,
+              "pointbuy": 7,
+              "racebonus": 0,
+              "extrabonus": 0
+            },
+            "Con": {
+              "base": 8,
+              "pointbuy": 6,
+              "racebonus": 0,
+              "extrabonus": 0
+            },
+            "Int": {
+              "base": 8,
+              "pointbuy": 4,
+              "racebonus": 0,
+              "extrabonus": 0
+            },
+            "Wis": {
+              "base": 8,
+              "pointbuy": 5,
+              "racebonus": 0,
+              "extrabonus": 0
+            },
+            "Cha": {
+              "base": 8,
+              "pointbuy": 2,
+              "racebonus": 0,
+              "extrabonus": 0
+            }
+          },
+          "skillProficiencies": [
+            "运动",
+            "威吓"
+          ],
+          "savingThrowProficiencies": [
+            "Dex",
+            "Int"
+          ],
+          "weaponProficiencies": [
+            "简易武器",
+            "手弩",
+            "长剑",
+            "细剑",
+            "短剑"
+          ],
+          "armorTraining": [
+            "轻甲"
+          ],
+          "spellbook": {
+            "known": [],
+            "prepared": [],
+            "slots": {
+              "1": {
+                "max": 2,
+                "current": 2
+              }
+            }
+          },
+          "customLanguages": "通用语",
+          "inventory": [
+            "Long Sword +1 maybe"
+          ],
+          "activeMods": [
+            "玩家手册 2024 (基础规则已集成)"
+          ],
+          "customModsData": [],
+          "personalContentReferences": [],
+          "feats": [
+            "野蛮打击者 (Savage Attacker)"
+          ],
+          "coin": 0,
+          "remainingPoints": 0,
+          "isCompleted": true,
+          "classResources": []
+        }
+      }
+    ],
+    "boundaries": {
+      "includesCampaignMembership": false,
+      "includesCampaignActorInstance": false,
+      "includesRuntimeActor": false,
+      "includesRuntimeSession": false,
+      "includesBackendState": false
+    }
+  }
+}

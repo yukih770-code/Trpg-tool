@@ -1,5 +1,9 @@
 import { ensureLocalActorInCloud } from './actorVaultCloudSync';
 import type { ActorVaultApiClient, ActorVaultRecord } from '../api/actorApiClient';
+import { getActorVaultLocalSnapshot } from './actorVaultRepositoryBridge';
+import { useCharacterStore } from '../../store/characterStore';
+import { useCharacterInventoryStore } from './characterInventoryStore';
+import { makeActorInventoryKey } from './characterInventory';
 
 const localActor = {
   id: 'local_dnd_1',
@@ -24,6 +28,22 @@ function cloudActor(payload: Record<string, unknown>): ActorVaultRecord {
 }
 
 export async function verifyActorVaultCloudSync(): Promise<void> {
+  const original = useCharacterStore.getState().character;
+  const localCharacter = { ...original, id: localActor.id, name: localActor.displayName, isCompleted: true };
+  useCharacterStore.setState({ character: localCharacter, characters: [localCharacter], activeCharacterId: localCharacter.id });
+  const actorKey = makeActorInventoryKey('dnd5e-2024', localCharacter.id);
+  useCharacterInventoryStore.setState({
+    itemsByActor: {
+      [actorKey]: [
+        { instanceId: 'owned-dagger', systemId: 'dnd5e-2024', definitionId: 'weapon.dagger', name: 'client label ignored', category: 'weapon', location: 'equipped', quantity: 1, equipSlot: 'mainHand' },
+        { instanceId: 'free-text', systemId: 'dnd5e-2024', name: 'Long Sword +1 maybe', category: 'weapon', location: 'equipped', quantity: 1, equipSlot: 'offHand' },
+      ],
+    },
+  });
+  const localSnapshot = getActorVaultLocalSnapshot('dnd5e-2024', localCharacter.id) as { dndEquipmentSnapshotV1?: { items?: unknown[] } } | undefined;
+  if (localSnapshot?.dndEquipmentSnapshotV1?.items?.length !== 1) throw new Error('cloud snapshot did not carry the narrow typed equipment reference');
+  if (JSON.stringify(localSnapshot).includes('Long Sword +1 maybe')) throw new Error('free-text equipment leaked into the authoritative equipment block');
+
   let created = false;
   const createClient = {
     listActors: async () => [],

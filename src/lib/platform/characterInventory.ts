@@ -359,6 +359,40 @@ export interface ParsedStarterEquipment {
   hasChoices: boolean;
 }
 
+const STARTER_QUANTITY_WORDS: Record<string, number> = {
+  一: 1,
+  二: 2,
+  两: 2,
+  三: 3,
+  四: 4,
+  五: 5,
+  六: 6,
+  七: 7,
+  八: 8,
+  九: 9,
+  十: 10,
+};
+
+function readStarterItemQuantity(segment: string): { name: string; quantity: number } {
+  const suffix = segment.match(/[×xX*]\s*(\d+)\s*$/);
+  if (suffix && suffix.index !== undefined) {
+    return {
+      name: segment.slice(0, suffix.index).trim(),
+      quantity: Math.max(1, parseInt(suffix[1], 10) || 1),
+    };
+  }
+
+  // Owner-source summaries also use natural Chinese counters, for example
+  // `两把匕首` and `4根标枪`. Strip only an explicit leading count + counter;
+  // embedded counts such as `短弓及20支箭` remain one unresolved bundle.
+  const prefix = segment.match(/^(?:(\d+)|([一二两三四五六七八九十]))\s*(?:把|根|支|个|件|套|枚|柄|张|本|瓶|卷|束)\s*(.+)$/);
+  if (!prefix) return { name: segment, quantity: 1 };
+  const quantity = prefix[1]
+    ? Math.max(1, parseInt(prefix[1], 10) || 1)
+    : STARTER_QUANTITY_WORDS[prefix[2]] ?? 1;
+  return { name: prefix[3].trim(), quantity };
+}
+
 export function parseStarterEquipment(text: string): ParsedStarterEquipment {
   const raw = (text ?? '').trim();
   const normalized = raw.replace(/[、；;]/g, '，').replace(/\s*,\s*/g, '，');
@@ -367,13 +401,7 @@ export function parseStarterEquipment(text: string): ParsedStarterEquipment {
   const fixed: StarterFixedItem[] = [];
   let gi = 0;
   for (const seg of segments) {
-    const qtyMatch = seg.match(/[×xX*]\s*(\d+)\s*$/);
-    let body = seg;
-    let qty = 1;
-    if (qtyMatch && qtyMatch.index !== undefined) {
-      qty = Math.max(1, parseInt(qtyMatch[1], 10) || 1);
-      body = seg.slice(0, qtyMatch.index).trim();
-    }
+    const { name: body, quantity: qty } = readStarterItemQuantity(seg);
     if (/或|任选|二选|选择其一|\bor\b/i.test(body)) {
       const options = body
         .split(/或者|或|\bor\b/i)

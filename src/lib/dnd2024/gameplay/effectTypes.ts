@@ -12,7 +12,7 @@
  * instantaneous / time span) — confirmed.
  */
 
-import type { DndAbilityKey, DndDiceFormula } from './rollTypes';
+import type { DndAbilityKey, DndDiceFormula } from './rollTypes.js';
 
 export type DndEffectType =
   | 'damage'

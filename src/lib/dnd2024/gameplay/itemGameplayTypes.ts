@@ -16,9 +16,9 @@
  * is left optional with `sourceStatus: 'pending-source'` / `note`.
  */
 
-import type { DndAbilityKey, DndDiceFormula } from './rollTypes';
-import type { DndDamageType } from './effectTypes';
-import type { DndActionDefinition } from './actionTypes';
+import type { DndAbilityKey, DndDiceFormula } from './rollTypes.js';
+import type { DndDamageType } from './effectTypes.js';
+import type { DndActionDefinition } from './actionTypes.js';
 
 export type DndWeaponPropertyKey =
   | 'ammunition'
