@@ -178,3 +178,7 @@ The exact next blocker is a system-neutral persisted Scene spatial contract: aut
 ## 24. Recommended next task
 
 Implement a Platform Scene Spatial Distance Contract V1. Persist a render-independent coordinate/world extent and explicit geometry, expose a server-side generic distance primitive, prove restart stability and map-token linkage, and only then integrate `evaluateDndWeaponRange` into T12 before RNG. Keep D&D reach/range rules in the D&D layer.
+
+## 25. Historical follow-up: Platform Scene Spatial Contract V1
+
+Before the Platform spatial contract, the server lacked render-independent Scene geometry. After the spatial contract, authoritative Scene/world extent, generic square-grid geometry, generic scale, and deterministic normalized-to-world conversion exist. Exact combat range remains blocked because Token footprint or bounds are still non-authoritative; T12 range enforcement therefore remains inactive.

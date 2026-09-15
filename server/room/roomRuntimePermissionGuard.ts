@@ -44,7 +44,7 @@ export function mapRuntimeActionForMapEvent(eventKind: RoomMapEventKind): RoomRu
   if (eventKind === 'map.template_added') return 'map.template.fix';
   if (eventKind === 'map.template_updated') return 'map.template.edit';
   if (eventKind === 'map.template_removed' || eventKind === 'map.templates_cleared') return 'map.template.delete';
-  if (eventKind === 'map.grid_updated') return 'map.grid.edit';
+  if (eventKind === 'map.grid_updated' || eventKind === 'map.spatial_updated') return 'map.grid.edit';
   if (eventKind === 'map.background_set' || eventKind === 'map.background_cleared') return 'map.background.edit';
   if (eventKind === 'map.token_added') return 'map.token.create.any';
   if (eventKind === 'map.token_updated') return 'map.token.update.any';

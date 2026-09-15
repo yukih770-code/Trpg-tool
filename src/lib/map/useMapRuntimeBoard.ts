@@ -14,6 +14,7 @@ import {
   type MapTokenInput,
   type MapViewportPatch,
 } from './mapRuntimeTypes';
+import { parseSceneSpatialV1, type SceneSpatialV1 } from './sceneSpatial';
 import { replayMapRuntimeEvents, type MapRuntimeReplayEvent } from './mapRuntimeReplay';
 
 function newId(prefix = 'map-token'): string {
@@ -56,6 +57,13 @@ export function useMapRuntimeBoard(mapId: string) {
     setState((previous) => ({ ...previous, grid, updatedAt: new Date().toISOString() }));
     return { eventKind: 'map.grid_updated', payload: { grid } };
   }, [state.grid]);
+
+  const updateSpatial = useCallback((input: SceneSpatialV1): MapRuntimeEventDraft => {
+    const spatial = parseSceneSpatialV1(input);
+    if (!spatial) throw new Error('invalid_scene_spatial_configuration');
+    setState((previous) => ({ ...previous, spatial, updatedAt: new Date().toISOString() }));
+    return { eventKind: 'map.spatial_updated', payload: { spatial } };
+  }, []);
 
   const changeViewport = useCallback((patch: MapViewportPatch): MapRuntimeEventDraft => {
     const zoom = patch.zoom === undefined ? state.zoom : Math.min(2.5, Math.max(0.5, patch.zoom));
@@ -141,6 +149,7 @@ export function useMapRuntimeBoard(mapId: string) {
       mapId,
       backgroundPreset: createMapBackgroundPreset(nextState.backgroundPreset),
       grid: createMapGridConfig(nextState.grid),
+      spatial: parseSceneSpatialV1(nextState.spatial),
       templates: (nextState.templates ?? []).map((template) => createMapAreaTemplate({ ...template, id: template.id })),
       tokens: nextState.tokens.map((token) => createMapToken({ ...token, id: token.id })),
       selectedTokenId: nextState.selectedTokenId && nextState.tokens.some((token) => token.id === nextState.selectedTokenId)
@@ -154,5 +163,5 @@ export function useMapRuntimeBoard(mapId: string) {
     return normalized;
   }, [mapId]);
 
-  return { state, setBackgroundAsset, setBackground, setBackgroundPreset, clearBackground, updateGrid, changeViewport, addToken, moveToken, updateToken, removeToken, selectToken, addTemplate, updateTemplate, removeTemplate, clearTemplates, selectTemplate, restore, replaceState };
+  return { state, setBackgroundAsset, setBackground, setBackgroundPreset, clearBackground, updateGrid, updateSpatial, changeViewport, addToken, moveToken, updateToken, removeToken, selectToken, addTemplate, updateTemplate, removeTemplate, clearTemplates, selectTemplate, restore, replaceState };
 }

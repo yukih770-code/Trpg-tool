@@ -10,6 +10,7 @@ import { campaignActorPresenceCandidate, combatantPresenceCandidate, linkedToken
 import { dndConditionLabel } from '../../lib/dnd/dndConditions';
 import { resolveTokenVisualIdentity } from '../../lib/map/tokenVisualIdentity';
 import { MAP_BACKGROUND_PRESETS, createMapAreaTemplate, measureMapDistance, snapMapPosition, type MapAreaTemplate, type MapAreaTemplateInput, type MapBackgroundPreset, type MapBoardState, type MapInteractionPreview, type MapRuntimeEventDraft, type MapTemplateShape, type MapToken, type MapTokenSize } from '../../lib/map/mapRuntimeTypes';
+import { createSceneSpatialV1, measureSceneSpatialDelta, snapSceneNormalizedPosition } from '../../lib/map/sceneSpatial';
 import { AssetPicker } from './AssetPicker';
 import { assetContentUrl, type AssetViewContext } from '../../lib/api/assetApiClient';
 import { checkMapBackgroundSource, mapBackgroundRejectionText } from '../../lib/map/mapBackgroundSource';
@@ -195,7 +196,7 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
   const [templateDraft, setTemplateDraft] = useState<MapAreaTemplate>();
   const [templateGesture, setTemplateGesture] = useState<{ start: Point; end: Point }>();
   const [templateCommitMode, setTemplateCommitMode] = useState<TemplateCommitMode>('preview');
-  const [lastMovement, setLastMovement] = useState<{ name: string; feet: number; squares: number }>();
+  const [lastMovement, setLastMovement] = useState<{ name: string; value: number; unitLabel: string; squares: number }>();
   const [backgroundUrl, setBackgroundUrl] = useState('');
   /**
    * Why the last background submission was refused.
@@ -213,6 +214,10 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
   const [selectedNotes, setSelectedNotes] = useState('');
   const [gridSize, setGridSize] = useState('50');
   const [feetPerSquare, setFeetPerSquare] = useState('5');
+  const [sceneColumns, setSceneColumns] = useState('20');
+  const [sceneRows, setSceneRows] = useState('12');
+  const [sceneUnitsPerCell, setSceneUnitsPerCell] = useState('5');
+  const [sceneUnitLabel, setSceneUnitLabel] = useState('ft');
   const [templateShape, setTemplateShape] = useState<MapTemplateShape>('circle');
   const [templateSize, setTemplateSize] = useState('15');
   const [templateWidth, setTemplateWidth] = useState('5');
@@ -284,6 +289,14 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
     setFeetPerSquare(String(grid?.feetPerSquare ?? 5));
   }, [grid?.feetPerSquare, grid?.sizePx]);
   useEffect(() => {
+    const spatial = board.state.spatial;
+    if (!spatial?.grid) return;
+    setSceneColumns(String(spatial.world.width / spatial.grid.cellSize));
+    setSceneRows(String(spatial.world.height / spatial.grid.cellSize));
+    setSceneUnitsPerCell(String(spatial.scale?.unitsPerGridCell ?? 1));
+    setSceneUnitLabel(spatial.scale?.unitLabel ?? 'unit');
+  }, [board.state.spatial]);
+  useEffect(() => {
     if (!tokenMenu) return;
     const close = (event?: globalThis.PointerEvent) => {
       if ((event?.target as HTMLElement | null)?.closest('[data-token-context-menu]')) return;
@@ -341,6 +354,36 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
       x: Math.min(100, Math.max(0, ((event.clientX - rect.left - board.state.panX) / board.state.zoom / rect.width) * 100)),
       y: Math.min(100, Math.max(0, ((event.clientY - rect.top - board.state.panY) / board.state.zoom / rect.height) * 100)),
     };
+  };
+
+  const measureForDisplay = (start: Point, end: Point): { value: number; unitLabel: string; squares: number } | undefined => {
+    const spatial = measureSceneSpatialDelta(board.state.spatial, start, end);
+    if (spatial.status === 'measured') return {
+      value: spatial.scaledDistance ?? spatial.directDistance,
+      unitLabel: spatial.scaledDistance === undefined ? 'world units' : spatial.unitLabel ?? 'units',
+      squares: spatial.gridCells ?? spatial.directDistance,
+    };
+    const rect = boardRef.current?.getBoundingClientRect();
+    if (!rect) return undefined;
+    const legacy = measureMapDistance(start, end, grid, rect.width / board.state.zoom, rect.height / board.state.zoom);
+    return { value: legacy.feet, unitLabel: 'ft', squares: legacy.squares };
+  };
+
+  const configureSpatial = () => {
+    const columns = Number(sceneColumns);
+    const rows = Number(sceneRows);
+    const unitsPerGridCell = Number(sceneUnitsPerCell);
+    try {
+      const spatial = createSceneSpatialV1({
+        width: columns,
+        height: rows,
+        grid: { cellSize: 1 },
+        scale: { unitsPerGridCell, unitLabel: sceneUnitLabel },
+      });
+      emit(board.updateSpatial(spatial));
+    } catch {
+      setEventError(locale === 'en' ? 'Enter positive scene columns, rows, and units per cell.' : '请输入大于零的场景列数、行数和每格单位。');
+    }
   };
 
   const selectToken = (token: MapToken) => {
@@ -510,7 +553,11 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
     }
     if (drag.kind === 'token' || drag.kind === 'template') {
       const raw = { x: drag.originX + ((event.clientX - drag.startX) / rect.width) * 100 / board.state.zoom, y: drag.originY + ((event.clientY - drag.startY) / rect.height) * 100 / board.state.zoom };
-      const next = drag.kind === 'token' ? snapMapPosition(raw.x, raw.y, grid, rect.width / board.state.zoom, rect.height / board.state.zoom) : raw;
+      const next = drag.kind === 'token'
+        ? board.state.spatial && grid?.snap
+          ? snapSceneNormalizedPosition(board.state.spatial, raw)
+          : snapMapPosition(raw.x, raw.y, grid, rect.width / board.state.zoom, rect.height / board.state.zoom)
+        : raw;
       dragRef.current = { ...drag, last: next };
       if (drag.kind === 'token') board.moveToken(drag.tokenId, next.x, next.y);
       else board.updateTemplate(drag.templateId, { x: next.x, y: next.y });
@@ -529,9 +576,8 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
       if (token && (drag.last.x !== drag.originX || drag.last.y !== drag.originY)) {
         emit(board.moveToken(token.id, drag.last.x, drag.last.y));
         if (element) {
-          const rect = element.getBoundingClientRect();
-          const distance = measureMapDistance({ x: drag.originX, y: drag.originY }, drag.last, grid, rect.width / board.state.zoom, rect.height / board.state.zoom);
-          setLastMovement({ name: token.name, ...distance });
+          const distance = measureForDisplay({ x: drag.originX, y: drag.originY }, drag.last);
+          if (distance) setLastMovement({ name: token.name, ...distance });
         }
       }
     } else if (drag.kind === 'template') {
@@ -611,7 +657,7 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
       </span>
     </>;
   };
-  const measurementDistance = measurement && boardRef.current ? measureMapDistance(measurement.start, measurement.end, grid, boardRef.current.getBoundingClientRect().width / board.state.zoom, boardRef.current.getBoundingClientRect().height / board.state.zoom) : undefined;
+  const measurementDistance = measurement ? measureForDisplay(measurement.start, measurement.end) : undefined;
   const pointerLabelStyle = (point: Point): CSSProperties => ({
     left: `${point.x}%`,
     top: `${point.y}%`,
@@ -631,10 +677,15 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
     };
   };
   const anchorStyle = (point: Point): CSSProperties => ({ left: `${point.x}%`, top: `${point.y}%` });
+  const spatialGrid = board.state.spatial?.grid;
   const gridStyle: CSSProperties | undefined = grid?.enabled ? {
     backgroundImage: 'linear-gradient(to right, rgba(88,24,13,.24) 1px, transparent 1px), linear-gradient(to bottom, rgba(88,24,13,.24) 1px, transparent 1px)',
-    backgroundSize: `${grid.sizePx}px ${grid.sizePx}px`,
-    backgroundPosition: `${grid.originX}px ${grid.originY}px`,
+    backgroundSize: spatialGrid && board.state.spatial
+      ? `${spatialGrid.cellSize / board.state.spatial.world.width * 100}% ${spatialGrid.cellSize / board.state.spatial.world.height * 100}%`
+      : `${grid.sizePx}px ${grid.sizePx}px`,
+    backgroundPosition: spatialGrid && board.state.spatial
+      ? `${spatialGrid.originX / board.state.spatial.world.width * 100}% ${spatialGrid.originY / board.state.spatial.world.height * 100}%`
+      : `${grid.originX}px ${grid.originY}px`,
   } : undefined;
   const sharedAreaPreviews = sharedPreviews.flatMap(({ authorMemberId, authorDisplayName, preview }) => {
     if (preview.kind !== 'area' || !preview.shape) return [];
@@ -643,9 +694,7 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
   });
   const sharedRulerPreviews = sharedPreviews.filter(({ preview }) => preview.kind === 'ruler');
   const previewDistance = (preview: MapInteractionPreview) => {
-    if (!boardRef.current) return undefined;
-    const rect = boardRef.current.getBoundingClientRect();
-    return measureMapDistance(preview.start, preview.end, grid, rect.width / board.state.zoom, rect.height / board.state.zoom);
+    return measureForDisplay(preview.start, preview.end);
   };
   const sharedPreviewLayer = <>
     {sharedAreaPreviews.map(({ authorMemberId, authorDisplayName, template, start }) => <div key={`${authorMemberId}:${template.id}`} aria-hidden="true" className="pointer-events-none absolute inset-0 z-10"><div className="absolute border-2 border-dashed border-[#2563eb] bg-[#60a5fa]/20 shadow-sm" style={templateStyle(template, board.state)}><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-[#1e3a5f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white">{authorDisplayName} · {templateDimensionLabel(template, locale)}</span></div><span className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#2563eb] shadow" style={anchorStyle(start)} /></div>)}
@@ -654,7 +703,7 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
       return <div key={`${authorMemberId}:ruler`} aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
         <div className="absolute h-0 origin-left border-t-2 border-dashed border-[#2563eb]" style={dragLineStyle(preview.start, preview.end)} />
         <span className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#2563eb] shadow" style={anchorStyle(preview.start)} />
-        {distance && <span className="absolute rounded bg-[#1e3a5f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white" style={pointerLabelStyle(preview.end)}>{authorDisplayName} · {distance.feet.toFixed(1)} ft</span>}
+        {distance && <span className="absolute rounded bg-[#1e3a5f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white" style={pointerLabelStyle(preview.end)}>{authorDisplayName} · {distance.value.toFixed(1)} {distance.unitLabel}</span>}
       </div>;
     })}
   </>;
@@ -666,7 +715,7 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
   const measurementLayer = measurement && <>
     <div aria-hidden="true" className="absolute h-0 origin-left border-t-2 border-dashed border-[#294966]" style={dragLineStyle(measurement.start, measurement.end)} />
     <span aria-hidden="true" className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#294966] shadow" style={anchorStyle(measurement.start)} />
-    {measurementDistance && <span className="pointer-events-none absolute rounded bg-[#17130f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white" style={pointerLabelStyle(measurement.end)}>{measurementDistance.feet.toFixed(1)} ft</span>}
+    {measurementDistance && <span className="pointer-events-none absolute rounded bg-[#17130f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white" style={pointerLabelStyle(measurement.end)}>{measurementDistance.value.toFixed(1)} {measurementDistance.unitLabel}</span>}
   </>;
   const tokenMenuLayer = tokenMenu && <div
     data-token-context-menu
@@ -768,7 +817,7 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
 
       {canManage && activePanel === 'background' && <div className={compactPanelClass}><div className="flex items-center justify-between gap-3"><div><div className="text-sm font-black text-slate-800">基础地形</div><p className="mt-0.5 text-[11px] text-slate-500">选择一张底图；网格会叠加在上方。</p></div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div><div className="mt-3 grid grid-cols-2 gap-2">{MAP_BACKGROUND_PRESETS.map((preset) => <button key={preset} type="button" onClick={() => emit(board.setBackgroundPreset(preset))} className={`h-16 rounded-lg border p-2 text-left text-[11px] font-bold shadow-sm ${board.state.backgroundPreset === preset ? 'border-[#58180d] ring-2 ring-[#f5c518]/60' : 'border-slate-300/80'}`} style={backgroundPresetStyle(preset)}><span className="rounded bg-white/80 px-1.5 py-0.5 text-[#17130f]">{presetLabel(preset, locale)}</span></button>)}</div><AssetPicker kind="map" context={assetContext} english={locale === 'en'} onSelect={asset => emit(board.setBackgroundAsset(asset.id, asset.title))} /><details className="mt-2"><summary className="cursor-pointer text-xs">{locale === 'en' ? 'External image URL' : '外部图片地址'}</summary><form onSubmit={(event) => { event.preventDefault(); const checked = checkMapBackgroundSource(backgroundUrl); if (checked.ok === false) { setBackgroundSourceError(mapBackgroundRejectionText(checked.reason, locale === 'en' ? 'en' : 'zh-CN')); return; } setBackgroundSourceError(''); emit(board.setBackground(checked.url, backgroundName)); }} className="mt-3 grid gap-2"><input value={backgroundUrl} onChange={(event) => setBackgroundUrl(event.target.value)} placeholder={t('mapRuntime.backgroundUrl')} className="rounded-md border border-slate-300 bg-white px-2.5 py-2 text-xs" /><div className="flex gap-2"><input value={backgroundName} onChange={(event) => setBackgroundName(event.target.value)} placeholder={t('mapRuntime.backgroundName')} className="min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2.5 py-2 text-xs" /><button type="submit" disabled={!backgroundUrl.trim()} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">使用图片</button></div>{backgroundSourceError && <p role="alert" className="text-[10px] leading-4 text-[#8b3a2f]">{backgroundSourceError}</p>}</form></details>{(board.state.backgroundAssetId || board.state.backgroundUrl) && <button type="button" onClick={() => emit(board.clearBackground())} className="mt-2 text-xs font-bold text-[#8b3a2f]">{t('mapRuntime.resetToPreset')}</button>}</div>}
 
-      {canManage && activePanel === 'grid' && <div className={compactPanelClass}><div className="flex items-center justify-between"><div className="text-sm font-black text-slate-800">网格与测距</div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div><div className="mt-3 grid gap-2 text-xs"><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={grid?.enabled ?? false} onChange={(event) => emit(board.updateGrid({ enabled: event.target.checked }))} />显示网格</label><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={grid?.snap ?? false} onChange={(event) => emit(board.updateGrid({ snap: event.target.checked }))} />拖拽吸附</label><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={grid?.showCoordinates ?? false} onChange={(event) => emit(board.updateGrid({ showCoordinates: event.target.checked }))} />显示坐标</label><div className="grid grid-cols-2 gap-2"><label className="grid gap-1 text-[11px] text-slate-600">格子像素<input value={gridSize} onChange={(event) => setGridSize(event.target.value)} onBlur={() => emit(board.updateGrid({ sizePx: Number(gridSize) }))} type="number" min="12" className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" /></label><label className="grid gap-1 text-[11px] text-slate-600">每格英尺<input value={feetPerSquare} onChange={(event) => setFeetPerSquare(event.target.value)} onBlur={() => emit(board.updateGrid({ feetPerSquare: Number(feetPerSquare) }))} type="number" min="1" className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" /></label></div></div></div>}
+      {canManage && activePanel === 'grid' && <div className={compactPanelClass}><div className="flex items-center justify-between"><div className="text-sm font-black text-slate-800">网格与测距</div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div><div className="mt-3 grid gap-2 text-xs"><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={grid?.enabled ?? false} onChange={(event) => emit(board.updateGrid({ enabled: event.target.checked }))} />显示网格</label><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={grid?.snap ?? false} onChange={(event) => emit(board.updateGrid({ snap: event.target.checked }))} />拖拽吸附</label><label className="flex items-center gap-2 font-bold"><input type="checkbox" checked={grid?.showCoordinates ?? false} onChange={(event) => emit(board.updateGrid({ showCoordinates: event.target.checked }))} />显示坐标</label>{!board.state.spatial && <p className="rounded-md bg-amber-50 px-2 py-1.5 text-[10px] text-amber-800">当前场景尚未配置权威空间；测距仅作主持人裁定。</p>}<div className="grid grid-cols-2 gap-2"><label className="grid gap-1 text-[11px] text-slate-600">{locale === 'en' ? 'Grid columns' : '场景格列数'}<input value={sceneColumns} onChange={(event) => setSceneColumns(event.target.value)} type="number" min="1" className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" /></label><label className="grid gap-1 text-[11px] text-slate-600">{locale === 'en' ? 'Grid rows' : '场景格行数'}<input value={sceneRows} onChange={(event) => setSceneRows(event.target.value)} type="number" min="1" className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" /></label><label className="grid gap-1 text-[11px] text-slate-600">{locale === 'en' ? 'Units per cell' : '每格单位数'}<input value={sceneUnitsPerCell} onChange={(event) => setSceneUnitsPerCell(event.target.value)} type="number" min="0.0001" step="any" className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" /></label><label className="grid gap-1 text-[11px] text-slate-600">{locale === 'en' ? 'Unit label' : '单位名称'}<input value={sceneUnitLabel} onChange={(event) => setSceneUnitLabel(event.target.value)} maxLength={24} className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" /></label></div><button type="button" onClick={configureSpatial} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white">{board.state.spatial ? (locale === 'en' ? 'Update scene scale' : '更新场景尺度') : (locale === 'en' ? 'Configure scene scale' : '配置场景尺度')}</button><details><summary className="cursor-pointer text-[10px] text-slate-500">{locale === 'en' ? 'Legacy display settings' : '旧版显示设置'}</summary><div className="mt-2 grid grid-cols-2 gap-2"><label className="grid gap-1 text-[11px] text-slate-600">格子像素<input value={gridSize} onChange={(event) => setGridSize(event.target.value)} onBlur={() => emit(board.updateGrid({ sizePx: Number(gridSize) }))} type="number" min="12" className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" /></label><label className="grid gap-1 text-[11px] text-slate-600">每格英尺<input value={feetPerSquare} onChange={(event) => setFeetPerSquare(event.target.value)} onBlur={() => emit(board.updateGrid({ feetPerSquare: Number(feetPerSquare) }))} type="number" min="1" className="rounded-md border border-slate-300 px-2 py-1.5 text-xs" /></label></div></details></div></div>}
 
       {activePanel === 'template' && <div className={compactPanelClass}><div className="flex items-center justify-between"><div className="text-sm font-black text-slate-800">范围工具</div><button type="button" onClick={() => setActivePanel(undefined)} className="text-xs font-bold text-slate-500">收起</button></div><div className={`mt-3 grid gap-1.5 ${mayPinRanges ? 'grid-cols-2' : 'grid-cols-1'}`}><button type="button" onClick={() => setTemplateCommitMode('preview')} className={`rounded-md border px-2.5 py-2 text-left text-xs font-bold ${templateCommitMode === 'preview' ? 'border-[#294966]/50 bg-[#edf4ff] text-[#294966]' : 'border-slate-300 bg-white'}`}><span className="block">临时范围</span><span className="mt-0.5 block text-[10px] font-normal opacity-80">{canShareTemporaryRanges ? '房间成员可见，松开即消失' : '仅在当前视图显示，松开即消失'}</span></button>{mayPinRanges && <button type="button" onClick={() => setTemplateCommitMode('pinned')} className={`rounded-md border px-2.5 py-2 text-left text-xs font-bold ${templateCommitMode === 'pinned' ? 'border-[#58180d]/50 bg-[#fff0d6] text-[#58180d]' : 'border-slate-300 bg-white'}`}><span className="flex items-center gap-1"><Pin size={12} />固定范围</span><span className="mt-0.5 block text-[10px] font-normal opacity-80">会保存到地图记录</span></button>}</div><p className="mt-3 text-[11px] text-slate-500">{templateDragHint(templateShape, locale)}</p><div className="mt-3 grid grid-cols-2 gap-1.5">{([{ shape: 'circle', icon: Circle }, { shape: 'cone', icon: Triangle }, { shape: 'line', icon: Minus }, { shape: 'square', icon: Square }, { shape: 'rectangle', icon: RectangleHorizontal }] as const).map(({ shape, icon: Icon }) => <button key={shape} type="button" onClick={() => setTemplateShape(shape)} className={`flex items-center gap-2 rounded-md border px-2 py-2 text-left text-xs font-bold ${templateShape === shape ? 'border-[#58180d]/50 bg-[#fff0d6] text-[#58180d]' : 'border-slate-300 bg-white'}`}><Icon size={15} />{templateLabel(shape, locale)}</button>)}</div>{canManage && (onSetCanPinRanges || onSetCanMoveOwnToken) && mapCollaborators.length > 0 && <div className="mt-3 border-t border-slate-200 pt-3"><div className="text-[11px] font-black text-slate-700">玩家权限</div><p className="mt-0.5 text-[10px] text-slate-500">移动授权只适用于该玩家已准入的角色 Token；怪物、NPC 和其他玩家 Token 始终由主持人控制。</p><div className="mt-2 grid gap-1">{mapCollaborators.map((member) => <div key={member.memberId} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] font-bold text-slate-700"><span>{member.displayName}</span><span className="flex items-center gap-2 text-[10px]">{onSetCanMoveOwnToken && <label className="flex items-center gap-1.5"><span className="text-slate-500">移动角色</span><input type="checkbox" checked={member.canMoveOwnToken} onChange={(event) => { void onSetCanMoveOwnToken(member.memberId, event.target.checked).catch((error) => setEventError(error instanceof Error ? error.message : String(error))); }} /></label>}{onSetCanPinRanges && <label className="flex items-center gap-1.5"><span className="text-slate-500">固定范围</span><input type="checkbox" checked={member.canPinRanges} onChange={(event) => { void onSetCanPinRanges(member.memberId, event.target.checked).catch((error) => setEventError(error instanceof Error ? error.message : String(error))); }} /></label>}</span></div>)}</div></div>}</div>}
 
@@ -781,7 +830,7 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
 
       {!canManage && tokenControlHint && (toolMode === 'move' || !!eventError) && <div className="pointer-events-none absolute right-3 top-3 z-20 max-w-60 rounded-lg border border-slate-300/80 bg-white/95 px-3 py-2 text-[11px] font-bold text-slate-700 shadow-lg">{tokenControlHint}</div>}
 
-      {lastMovement && <div className="pointer-events-none absolute bottom-20 right-2 z-20 rounded-md bg-white/90 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 shadow md:bottom-4 md:right-3">{lastMovement.name} · {lastMovement.feet.toFixed(1)} ft</div>}
+      {lastMovement && <div className="pointer-events-none absolute bottom-20 right-2 z-20 rounded-md bg-white/90 px-2.5 py-1.5 text-[11px] font-bold text-slate-700 shadow md:bottom-4 md:right-3">{lastMovement.name} · {lastMovement.value.toFixed(1)} {lastMovement.unitLabel}</div>}
       {eventError && <div className="absolute bottom-20 left-2 z-20 rounded-md bg-[#fff0eb]/95 px-2.5 py-1.5 text-xs font-bold text-[#8b3a2f] shadow md:bottom-3 md:left-3">{eventError}</div>}
       <div className="absolute bottom-20 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-slate-300/70 bg-white/90 p-1 shadow-lg backdrop-blur-sm md:bottom-3"><button type="button" title="缩小" aria-label="缩小" onClick={() => changeViewport({ zoom: board.state.zoom - 0.1 })} className="grid h-8 w-8 place-items-center rounded-md hover:bg-slate-100"><Minus size={16} /></button><span className="min-w-12 text-center text-[11px] font-bold text-slate-600">{Math.round(board.state.zoom * 100)}%</span><button type="button" title="放大" aria-label="放大" onClick={() => changeViewport({ zoom: board.state.zoom + 0.1 })} className="grid h-8 w-8 place-items-center rounded-md hover:bg-slate-100"><Plus size={16} /></button><button type="button" title={t('mapRuntime.resetView')} aria-label={t('mapRuntime.resetView')} onClick={() => changeViewport({ zoom: 1, panX: 0, panY: 0 })} className="grid h-8 w-8 place-items-center rounded-md hover:bg-slate-100"><RotateCcw size={15} /></button>{hasMapRuntimeEvents(mapEvents) && <button type="button" title={t('mapRuntime.restore')} aria-label={t('mapRuntime.restore')} onClick={() => { board.restore(mapEvents); restoredScopeRef.current = `${mapId}:${mapEventKey}`; }} className="rounded-md px-2 text-[11px] font-bold text-slate-700 hover:bg-slate-100">恢复</button>}</div>
       {statusNote && <div title={statusNote} className="pointer-events-none absolute bottom-20 right-2 z-10 hidden max-w-40 truncate rounded bg-slate-900/45 px-2 py-1 text-[9px] font-bold text-white/90 md:bottom-3 md:right-3 md:block">{canManage ? '主持人地图控制' : mayPinRanges ? '可固定范围' : canShareTemporaryRanges ? '可共享临时范围' : '本地测距'}</div>}
@@ -802,7 +851,13 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
 
     {canManage && activePanel === 'background' && <div className="mt-3 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3"><div className="text-sm font-bold">{t('mapRuntime.backgroundPresets')}</div><p className="mt-1 text-xs text-[#51483d]">{t('mapRuntime.backgroundPresetHint')}</p><div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">{MAP_BACKGROUND_PRESETS.map((preset) => <button key={preset} type="button" onClick={() => emit(board.setBackgroundPreset(preset))} className={`min-h-14 rounded-md border p-2 text-left text-[11px] font-bold ${board.state.backgroundPreset === preset ? 'border-[#58180d] ring-2 ring-[#f5c518]/60' : 'border-[#2f2a22]/15'}`} style={backgroundPresetStyle(preset)}><span className="rounded bg-white/75 px-1 py-0.5 text-[#17130f]">{presetLabel(preset, locale)}</span></button>)}</div><AssetPicker kind="map" context={assetContext} english={locale === 'en'} onSelect={asset => emit(board.setBackgroundAsset(asset.id, asset.title))} /><details className="mt-2"><summary className="cursor-pointer text-xs">{locale === 'en' ? 'External image URL' : '外部图片地址'}</summary><form onSubmit={(event) => { event.preventDefault(); const checked = checkMapBackgroundSource(backgroundUrl); if (checked.ok === false) { setBackgroundSourceError(mapBackgroundRejectionText(checked.reason, locale === 'en' ? 'en' : 'zh-CN')); return; } setBackgroundSourceError(''); emit(board.setBackground(checked.url, backgroundName)); }} className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto]"><input value={backgroundUrl} onChange={(event) => setBackgroundUrl(event.target.value)} placeholder={t('mapRuntime.backgroundUrl')} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm" /><input value={backgroundName} onChange={(event) => setBackgroundName(event.target.value)} placeholder={t('mapRuntime.backgroundName')} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-sm" /><button type="submit" disabled={!backgroundUrl.trim()} className="rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{t('mapRuntime.setBackground')}</button><button type="button" onClick={() => emit(board.clearBackground())} disabled={!board.state.backgroundAssetId && !board.state.backgroundUrl} className="rounded-md border border-[#2f2a22]/15 bg-white px-3 py-2 text-xs font-bold disabled:opacity-40">{t('mapRuntime.resetToPreset')}</button></form></details>{backgroundSourceError && <p role="alert" className="mt-2 text-[11px] text-[#8b3a2f]">{backgroundSourceError}</p>}</div>}
 
-    {canManage && activePanel === 'grid' && <div className="mt-3 grid gap-2 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3 sm:grid-cols-2 lg:grid-cols-4"><label className="flex items-center gap-2 text-xs font-bold"><input type="checkbox" checked={grid?.enabled ?? false} onChange={(event) => emit(board.updateGrid({ enabled: event.target.checked }))} />{t('mapRuntime.grid')}</label><label className="flex items-center gap-2 text-xs font-bold"><input type="checkbox" checked={grid?.snap ?? false} onChange={(event) => emit(board.updateGrid({ snap: event.target.checked }))} />{t('mapRuntime.snap')}</label><label className="flex items-center gap-2 text-xs font-bold"><input type="checkbox" checked={grid?.showCoordinates ?? false} onChange={(event) => emit(board.updateGrid({ showCoordinates: event.target.checked }))} />{t('mapRuntime.coordinates')}</label><div className="flex gap-2"><input value={gridSize} onChange={(event) => setGridSize(event.target.value)} onBlur={() => emit(board.updateGrid({ sizePx: Number(gridSize) }))} type="number" min="12" placeholder={t('mapRuntime.gridSize')} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs" /><input value={feetPerSquare} onChange={(event) => setFeetPerSquare(event.target.value)} onBlur={() => emit(board.updateGrid({ feetPerSquare: Number(feetPerSquare) }))} type="number" min="1" placeholder={t('mapRuntime.feetPerSquare')} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs" /></div></div>}
+    {canManage && activePanel === 'grid' && <div className="mt-3 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3">
+      <div className="flex flex-wrap gap-4"><label className="flex items-center gap-2 text-xs font-bold"><input type="checkbox" checked={grid?.enabled ?? false} onChange={(event) => emit(board.updateGrid({ enabled: event.target.checked }))} />{t('mapRuntime.grid')}</label><label className="flex items-center gap-2 text-xs font-bold"><input type="checkbox" checked={grid?.snap ?? false} onChange={(event) => emit(board.updateGrid({ snap: event.target.checked }))} />{t('mapRuntime.snap')}</label><label className="flex items-center gap-2 text-xs font-bold"><input type="checkbox" checked={grid?.showCoordinates ?? false} onChange={(event) => emit(board.updateGrid({ showCoordinates: event.target.checked }))} />{t('mapRuntime.coordinates')}</label></div>
+      {!board.state.spatial && <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">{locale === 'en' ? 'This legacy scene has no authoritative space. Measurement remains GM-adjudicated until configured.' : '这个旧场景尚无权威空间；配置前测距仍由主持人裁定。'}</p>}
+      <div className="mt-3 grid gap-2 sm:grid-cols-4"><label className="grid gap-1 text-[11px] text-slate-600">{locale === 'en' ? 'Grid columns' : '场景格列数'}<input value={sceneColumns} onChange={(event) => setSceneColumns(event.target.value)} type="number" min="1" className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs" /></label><label className="grid gap-1 text-[11px] text-slate-600">{locale === 'en' ? 'Grid rows' : '场景格行数'}<input value={sceneRows} onChange={(event) => setSceneRows(event.target.value)} type="number" min="1" className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs" /></label><label className="grid gap-1 text-[11px] text-slate-600">{locale === 'en' ? 'Units per cell' : '每格单位数'}<input value={sceneUnitsPerCell} onChange={(event) => setSceneUnitsPerCell(event.target.value)} type="number" min="0.0001" step="any" className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs" /></label><label className="grid gap-1 text-[11px] text-slate-600">{locale === 'en' ? 'Unit label' : '单位名称'}<input value={sceneUnitLabel} onChange={(event) => setSceneUnitLabel(event.target.value)} maxLength={24} className="rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs" /></label></div>
+      <button type="button" onClick={configureSpatial} className="mt-3 rounded-md bg-[#17130f] px-3 py-2 text-xs font-bold text-white">{board.state.spatial ? (locale === 'en' ? 'Update scene scale' : '更新场景尺度') : (locale === 'en' ? 'Configure scene scale' : '配置场景尺度')}</button>
+      <details className="mt-3"><summary className="cursor-pointer text-xs text-[#51483d]">{locale === 'en' ? 'Legacy display settings' : '旧版显示设置'}</summary><div className="mt-2 flex gap-2"><input value={gridSize} onChange={(event) => setGridSize(event.target.value)} onBlur={() => emit(board.updateGrid({ sizePx: Number(gridSize) }))} type="number" min="12" placeholder={t('mapRuntime.gridSize')} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs" /><input value={feetPerSquare} onChange={(event) => setFeetPerSquare(event.target.value)} onBlur={() => emit(board.updateGrid({ feetPerSquare: Number(feetPerSquare) }))} type="number" min="1" placeholder={t('mapRuntime.feetPerSquare')} className="min-w-0 flex-1 rounded-md border border-[#2f2a22]/15 bg-white px-2 py-1.5 text-xs" /></div></details>
+    </div>}
 
     {(canManage || mayPinRanges) && activePanel === 'template' && <div className="mt-3 rounded-xl border border-[#2f2a22]/10 bg-[#f7f3ea] p-3"><div className="text-sm font-bold">{t('mapRuntime.templates')}</div><p className="mt-1 text-xs text-[#51483d]">拖拽用于范围预览；只有“固定范围”会写入地图记录。</p><div className="mt-2 flex flex-wrap gap-2"><button type="button" onClick={() => setTemplateCommitMode('preview')} className={`rounded-md border px-2.5 py-1.5 text-xs font-bold ${templateCommitMode === 'preview' ? 'border-[#294966]/45 bg-[#edf4ff] text-[#294966]' : 'border-[#2f2a22]/15 bg-white'}`}>临时范围</button>{mayPinRanges && <button type="button" onClick={() => setTemplateCommitMode('pinned')} className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-bold ${templateCommitMode === 'pinned' ? 'border-[#58180d]/45 bg-[#fff0d6] text-[#58180d]' : 'border-[#2f2a22]/15 bg-white'}`}><Pin size={12} />固定范围</button>}</div><div className="mt-2 flex flex-wrap gap-2">{templateShapes.map((shape) => <button key={shape} type="button" onClick={() => setTemplateShape(shape)} className={`rounded-md border px-2.5 py-1.5 text-xs font-bold ${templateShape === shape ? 'border-[#58180d]/45 bg-[#fff0d6] text-[#58180d]' : 'border-[#2f2a22]/15 bg-white'}`}>{templateLabel(shape, locale)}</button>)}</div><div className="mt-2 flex flex-wrap gap-1.5">{quickTemplateSizes.map((size) => <button key={size} type="button" onClick={() => setTemplateSize(String(size))} className={`rounded-full border px-2 py-1 text-[11px] font-bold ${templateSize === String(size) ? 'border-[#58180d]/45 bg-[#fff0d6] text-[#58180d]' : 'border-[#2f2a22]/15 bg-white'}`}>{size} ft</button>)}</div></div>}
 
@@ -820,10 +875,10 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
           {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => selectToken(token)} onDoubleClick={() => onInspectToken?.(token)} onKeyDown={(event) => { if ((event.key === 'Enter' && event.shiftKey) || event.key === 'ContextMenu') { event.preventDefault(); onInspectToken?.(token); } }} onContextMenu={(event) => openTokenMenu(event, token)} className={`group absolute z-20 flex max-w-40 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold hover:z-30 focus-visible:z-30 ${token.isHidden ? 'opacity-70' : ''} ${isCurrentTurnToken(token) ? 'drop-shadow-[0_0_10px_rgba(245,197,24,.95)]' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title="双击、右键或 Shift+Enter 查看信息">{tokenContents(token)}{isCurrentTurnToken(token) && <span className="rounded bg-[#f5c518] px-1 text-[9px] font-black text-[#17130f]">当前回合</span>}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
       </div>
       {tokenMenuLayer}
-      {measurementDistance && <div className="absolute bottom-3 left-3 rounded-md bg-[#17130f]/85 px-2 py-1 text-xs font-bold text-white">{measurementDistance.feet.toFixed(1)} ft · {measurementDistance.squares.toFixed(1)} {t('mapRuntime.squares')}</div>}
+      {measurementDistance && <div className="absolute bottom-3 left-3 rounded-md bg-[#17130f]/85 px-2 py-1 text-xs font-bold text-white">{measurementDistance.value.toFixed(1)} {measurementDistance.unitLabel} · {measurementDistance.squares.toFixed(1)} {t('mapRuntime.squares')}</div>}
     </div>
 
-    {lastMovement && <p className="mt-2 rounded-lg bg-[#edf4ff] px-3 py-2 text-xs text-[#294966]">{locale === 'en' ? `${lastMovement.name} moved ${lastMovement.feet.toFixed(1)} ft (${lastMovement.squares.toFixed(1)} squares, straight-line measure).` : `${lastMovement.name} 移动 ${lastMovement.feet.toFixed(1)} 英尺（${lastMovement.squares.toFixed(1)} 格，直线测量）。`}</p>}
+    {lastMovement && <p className="mt-2 rounded-lg bg-[#edf4ff] px-3 py-2 text-xs text-[#294966]">{locale === 'en' ? `${lastMovement.name} moved ${lastMovement.value.toFixed(1)} ${lastMovement.unitLabel} (${lastMovement.squares.toFixed(1)} cells, straight-line measure).` : `${lastMovement.name} 移动 ${lastMovement.value.toFixed(1)} ${lastMovement.unitLabel}（${lastMovement.squares.toFixed(1)} 格，直线测量）。`}</p>}
     {eventError && <p className="mt-2 rounded-lg bg-[#fff0eb] px-3 py-2 text-xs text-[#8b3a2f]">{eventError}</p>}
 
     {canManage && <div className="mt-4 grid gap-3 lg:grid-cols-2">

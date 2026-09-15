@@ -1,5 +1,6 @@
 import { createCombatant, createCombatRuntimeTableState } from '../combat/combatRuntimeTypes';
 import { createMapAreaTemplate, createMapBoardState, createMapGridConfig, createMapToken } from '../map/mapRuntimeTypes';
+import { createSceneSpatialV1 } from '../map/sceneSpatial';
 import {
   createSceneRuntimeSnapshot,
   importSceneRuntimeSnapshot,
@@ -35,6 +36,7 @@ map.zoom = 1.2;
 map.panX = 10;
 map.panY = -4;
 map.grid = createMapGridConfig({ enabled: true, sizePx: 40, feetPerSquare: 5, snap: true });
+map.spatial = createSceneSpatialV1({ width: 24, height: 16, grid: { cellSize: 1 }, scale: { unitsPerGridCell: 5, unitLabel: 'ft' } });
 map.templates = [createMapAreaTemplate({ id: 'template-1', shape: 'circle', x: 50, y: 50, sizeFeet: 20 })];
 map.tokens = [createMapToken({ id: 'token-1', name: 'Hero', x: 45, y: 60, size: 'medium', sourceType: 'roomActorBinding', sourceId: 'binding-hero', actorBindingId: 'binding-hero', roomMemberId: 'member-hero', kind: 'playerCharacter', sourceCombatantId: combatant.id })];
 
@@ -47,6 +49,7 @@ check('exports empty snapshot', !empty.combat && !empty.map);
 check('exports combat state', both.combat?.combatants[0]?.displayName === 'Hero' && both.combat.turn.roundNumber === 2);
 check('exports map board', both.map?.board.backgroundUrl === 'https://example.test/scene.png' && both.map.board.tokens.length === 1);
 check('exports grid and templates', both.map?.board.grid?.sizePx === 40 && both.map.board.templates?.[0]?.shape === 'circle');
+check('exports versioned spatial contract', both.map?.board.spatial?.world.width === 24 && both.map.board.spatial?.tokenAnchor === 'center');
 check('exports background preset with custom URL', both.map?.board.backgroundPreset === 'stone_floor' && both.map.board.backgroundUrl === 'https://example.test/scene.png');
 check('exports room token linkage metadata', both.map?.board.tokens[0]?.actorBindingId === 'binding-hero' && both.map.board.tokens[0]?.roomMemberId === 'member-hero');
 

@@ -15,6 +15,7 @@ import {
   restoreLiveRoomMaps,
 } from './liveRoomMapPersistence.js';
 import { createLiveRoomDurableEventPersistenceCoordinator } from './liveRoomDurableEventPersistence.js';
+import { replayMapRuntimeEvents } from '../../src/lib/map/mapRuntimeReplay.js';
 
 type Repository = Pick<
   PostgresRuntimeEventRepository,
@@ -102,10 +103,12 @@ function mapEvent(roomId: string, seq: number): RoomMapEvent {
     seq,
     createdAt: `2026-08-13T00:00:${String(seq % 60).padStart(2, '0')}.000Z`,
     authorMemberId: 'host-member',
-    eventKind: seq === 1 ? 'map.token_added' : 'map.grid_updated',
+    eventKind: seq === 1 ? 'map.token_added' : seq === 2 ? 'map.spatial_updated' : 'map.grid_updated',
     payload: seq === 1
       ? { token: { id: 'hidden-token', name: 'Secret', notes: 'host-only clue', isHidden: true } }
-      : { grid: { enabled: true, sizePx: 40 + seq } },
+      : seq === 2
+        ? { spatial: { schemaVersion: 1, coordinateSystem: 'normalized-100', tokenAnchor: 'center', world: { width: 24, height: 16 }, grid: { kind: 'square', originX: 0, originY: 0, cellSize: 1 }, scale: { unitsPerGridCell: 5, unitLabel: 'ft' } } }
+        : { grid: { enabled: true, sizePx: 40 + seq } },
   };
 }
 
@@ -160,6 +163,7 @@ async function main(): Promise<void> {
   const restoredRegistry = createInMemoryRoomMapRegistry();
   const restore = await restoreLiveRoomMaps(repository, roomRegistry, restoredRegistry);
   const restoredStream = restoredRegistry.list(room.identity.roomId);
+  const restoredBoard = replayMapRuntimeEvents(restoredStream.events, 'map-1');
   const hiddenToken = restoredStream.events[0]?.payload.token as Record<string, unknown> | undefined;
   const nextEvent = restoredRegistry.append(room.identity.roomId, {
     ...mapEvent(room.identity.roomId, 999),
@@ -194,6 +198,7 @@ async function main(): Promise<void> {
     stored.find((record) => record.idempotencyKey === firstPersist.idempotencyKey)?.visibility === 'hostOnly',
     restore.decision === 'restored' && restore.restoredRoomCount === 1 && restore.restoredEventCount === 205,
     restoredStream.events.length === 205 && restoredStream.latestSeq === 205,
+    restoredBoard.spatial?.world.width === 24 && restoredBoard.spatial?.scale?.unitsPerGridCell === 5,
     hiddenToken?.isHidden === true && hiddenToken.notes === 'host-only clue',
     nextEvent.seq === 206,
     repository.maxActiveAppends === 1,

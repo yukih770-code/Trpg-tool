@@ -1,4 +1,5 @@
 import { replayMapRuntimeEvents, type MapRuntimeReplayEvent } from './mapRuntimeReplay';
+import { createSceneSpatialV1 } from './sceneSpatial';
 
 const mapId = 'room-session-map';
 const createdAt = '2026-07-16T00:00:00.000Z';
@@ -16,6 +17,7 @@ function assertEqual<T>(actual: T, expected: T, message: string): void {
 }
 
 const events: MapRuntimeReplayEvent[] = [
+  event(3.05, 'map.spatial_updated', { spatial: createSceneSpatialV1({ width: 24, height: 16, grid: { cellSize: 1 }, scale: { unitsPerGridCell: 5, unitLabel: 'ft' } }) }),
   event(10, 'map.unknown_future_event', { ignored: true }),
   event(9, 'map.token_removed', { tokenId: 'npc-1', name: 'Guard' }),
   event(8, 'map.token_updated', { token: { id: 'hero-1', name: 'Hero', size: 'large', notes: 'Marked' } }),
@@ -78,6 +80,14 @@ const cases: Array<{ name: string; run: () => void }> = [
       assertEqual(state.grid?.sizePx, 40, 'grid size should replay');
       assertEqual(state.grid?.snap, true, 'grid snap should replay');
       assertEqual(state.templates?.length, 0, 'template clear should replay');
+    },
+  },
+  {
+    name: 'versioned Scene spatial state replays',
+    run: () => {
+      const state = replayMapRuntimeEvents(events, mapId);
+      assertEqual(state.spatial?.world, { width: 24, height: 16 }, 'world extent should replay');
+      assertEqual(state.spatial?.grid?.cellSize, 1, 'generic grid geometry should replay');
     },
   },
   {

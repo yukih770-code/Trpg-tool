@@ -10,6 +10,7 @@ import { resolveRoomMemberTokenMove } from '../room/roomTokenControlGuard.js';
 import { ROOM_MAP_EVENT_KINDS } from '../../src/lib/platform/roomMapTypes.js';
 import type { RoomMapEvent, RoomMapEventKind } from '../protocol/room-protocol.js';
 import { requiresLiveRoomDurableAppend } from './liveRoomDurableAppendConfirmation.js';
+import { parseSceneSpatialV1 } from '../../src/lib/map/sceneSpatial.js';
 
 export interface AppendRoomMapEventInput {
   roomId: string;
@@ -68,6 +69,11 @@ export function appendRoomMapEvent(
       (backgroundUrl != null && (typeof backgroundUrl !== 'string' || !checkMapBackgroundSource(backgroundUrl).ok))) {
       return { decision: 'invalidMapEvent', message: 'Use an asset ID or a durable image URL.' };
     }
+  }
+  if (input.eventKind === 'map.spatial_updated') {
+    const spatial = parseSceneSpatialV1(input.payload.spatial);
+    if (!spatial) return { decision: 'invalidMapEvent', message: 'A valid versioned Scene spatial configuration is required.' };
+    input = { ...input, payload: { spatial } };
   }
   const event = mapRegistry.append(input.roomId, {
     mapEventId: `mapevent_${randomUUID()}`,

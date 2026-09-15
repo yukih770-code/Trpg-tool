@@ -9,6 +9,7 @@ import {
   type CombatantStatus,
 } from '../combat/combatRuntimeTypes';
 import { createMapAreaTemplate, createMapBackgroundPreset, createMapBoardState, createMapGridConfig, createMapToken, type MapAreaTemplate, type MapBoardState, type MapGridConfig, type MapToken, type MapTokenKind, type MapTokenSize, type MapTokenSourceType } from '../map/mapRuntimeTypes';
+import { parseSceneSpatialV1 } from '../map/sceneSpatial';
 import {
   SCENE_RUNTIME_SNAPSHOT_SCHEMA_VERSION,
   type SceneRuntimeSnapshot,
@@ -198,6 +199,7 @@ function sanitizeMap(value: unknown): MapBoardState | undefined {
     panX: numberValue(value.panX) ?? base.panX,
     panY: numberValue(value.panY) ?? base.panY,
     grid: sanitizeGrid(value.grid),
+    spatial: parseSceneSpatialV1(value.spatial),
     templates: uniqueTemplates,
     tokens: uniqueTokens,
     selectedTokenId: selectedTokenId && uniqueTokens.some((token) => token.id === selectedTokenId) ? selectedTokenId : undefined,

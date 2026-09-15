@@ -10,6 +10,7 @@ export type MapTokenKind = 'playerCharacter' | 'npc' | 'monster' | 'companion' |
 export type MapTokenInformationVisibility = 'default' | 'public';
 
 import type { RuntimeAcDisplay, RuntimeHpDisplay, RuntimeTokenRelation, RuntimeVisibility } from '../platform/roomRuntimeVisibility.js';
+import type { SceneSpatialV1 } from './sceneSpatial.js';
 
 export type MapTokenHpSummary = {
   current?: number;
@@ -103,6 +104,8 @@ export type MapToken = {
 
 export type MapBoardState = {
   mapId: string;
+  /** Absent means legacy or intentionally spatial-unconfigured. */
+  spatial?: SceneSpatialV1;
   backgroundUrl?: string;
   backgroundAssetId?: string;
   backgroundName?: string;
@@ -134,6 +137,7 @@ export const MAP_RUNTIME_EVENT_KINDS = [
   'map.token_updated',
   'map.token_removed',
   'map.grid_updated',
+  'map.spatial_updated',
   'map.template_added',
   'map.template_updated',
   'map.template_removed',

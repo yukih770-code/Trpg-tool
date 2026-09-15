@@ -24,6 +24,15 @@ const first = appendRoomMapEvent(rooms, mapEvents, {
 });
 expect(first.decision === 'appended' && first.event?.seq === 1, 'host should append the first room map event');
 
+const spatial = appendRoomMapEvent(rooms, mapEvents, {
+  roomId: room.identity.roomId,
+  authorMemberId: host.memberId,
+  mapId: 'room-map-smoke',
+  eventKind: 'map.spatial_updated',
+  payload: { spatial: { schemaVersion: 1, coordinateSystem: 'normalized-100', tokenAnchor: 'center', world: { width: 20, height: 12 }, grid: { kind: 'square', originX: 0, originY: 0, cellSize: 1 }, scale: { unitsPerGridCell: 5, unitLabel: 'ft' } } },
+});
+expect(spatial.decision === 'appended' && spatial.event?.seq === 2, 'host should append authoritative Scene geometry');
+
 const second = appendRoomMapEvent(rooms, mapEvents, {
   roomId: room.identity.roomId,
   authorMemberId: host.memberId,
@@ -31,7 +40,7 @@ const second = appendRoomMapEvent(rooms, mapEvents, {
   eventKind: 'map.token_added',
   payload: { token: { id: 'token-smoke', name: 'Scout', x: 25, y: 50, size: 'medium', sourceType: 'manual' } },
 });
-expect(second.decision === 'appended' && second.event?.seq === 2, 'room map events should be monotonic');
+expect(second.decision === 'appended' && second.event?.seq === 3, 'room map events should be monotonic');
 
 const playerId = 'member_player_smoke';
 rooms.update(room.identity.roomId, (current) => ({
@@ -62,7 +71,7 @@ const playerRange = appendRoomMapEvent(rooms, mapEvents, {
   eventKind: 'map.template_added',
   payload: { template: { id: 'range-smoke', shape: 'circle', x: 50, y: 50, sizeFeet: 15, rotation: 0 } },
 });
-expect(playerRange.decision === 'appended' && playerRange.event?.seq === 3, 'a granted player should be able to pin a range');
+expect(playerRange.decision === 'appended' && playerRange.event?.seq === 4, 'a granted player should be able to pin a range');
 
 const playerStillRejected = appendRoomMapEvent(rooms, mapEvents, {
   roomId: room.identity.roomId,
@@ -83,7 +92,7 @@ const unknownRejected = appendRoomMapEvent(rooms, mapEvents, {
 expect(unknownRejected.decision === 'memberNotFound', 'unknown members must not mutate the room map');
 
 const listed = listRoomMapEvents(rooms, mapEvents, { roomId: room.identity.roomId, mapId: 'room-map-smoke' });
-expect(listed.decision === 'ok' && listed.result?.events.length === 3, 'map listing should replay host and delegated range events');
+expect(listed.decision === 'ok' && listed.result?.events.length === 4, 'map listing should replay host and delegated range events');
 expect(listed.result?.events[0]?.eventKind === 'map.grid_updated', 'map event order must be preserved');
 
 // eslint-disable-next-line no-console

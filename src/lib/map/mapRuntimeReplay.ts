@@ -10,6 +10,7 @@ import {
   type MapToken,
   type MapTokenInput,
 } from './mapRuntimeTypes.js';
+import { parseSceneSpatialV1 } from './sceneSpatial.js';
 import type { RuntimeAcDisplay, RuntimeHpDisplay, RuntimeTokenRelation, RuntimeVisibility } from '../platform/roomRuntimeVisibility.js';
 
 /**
@@ -174,6 +175,11 @@ export function replayMapRuntimeEvents(events: ReadonlyArray<MapRuntimeReplayEve
     }
     if (event.eventKind === 'map.grid_updated') {
       state = { ...state, grid: gridConfig(payload.grid, state.grid), updatedAt: event.createdAt };
+      continue;
+    }
+    if (event.eventKind === 'map.spatial_updated') {
+      const spatial = parseSceneSpatialV1(payload.spatial);
+      if (spatial) state = { ...state, spatial, updatedAt: event.createdAt };
       continue;
     }
     if (event.eventKind === 'map.token_added') {
