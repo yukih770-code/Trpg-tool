@@ -1,0 +1,33 @@
+{
+  "status": "passed",
+  "product": "production frontend and dist-server",
+  "roomCode": "V599VT",
+  "sceneWorld": { "width": 20, "height": 12 },
+  "token": {
+    "id": "d93809f5-c22a-4fb6-bab3-a993af1596e3",
+    "name": "Derived Dagger Hero",
+    "beforeMove": { "x": 55, "y": 54.790419161676645 },
+    "afterMove": { "x": 62.5, "y": 46.51016438460658 },
+    "footprint": {
+      "schemaVersion": 1,
+      "shape": "axis-aligned-rectangle",
+      "coordinateSpace": "scene-world",
+      "anchor": "center",
+      "width": 1.5,
+      "height": 2
+    }
+  },
+  "events": { "footprintUpdateSeq": 9, "boundedTokenMoveSeq": 11, "latestSeq": 13 },
+  "presentationChecks": {
+    "mapZooms": [1, 1.2],
+    "overlayWidthPercent": 7.5,
+    "overlayHeightPercent": 16.6667,
+    "storedDimensionsUnchanged": true
+  },
+  "reloadReentryPreserved": true,
+  "backendRestartPreserved": true,
+  "freshReloadAndRoomReentryAfterBackendRestart": true,
+  "databaseStatus": "ok",
+  "startupRecovery": { "status": "ready", "restoredRoomMapEventCount": 44 },
+  "t12AttackAcceptancePerformed": false
+}

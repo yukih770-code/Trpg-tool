@@ -93,6 +93,7 @@ function projectToken(scope: ViewerScope, token: MapToken): MapToken {
     size: token.size,
     width: token.width,
     height: token.height,
+    footprint: token.footprint,
     sourceType: 'unknown',
     imageUrl: token.imageUrl,
     imageAssetId: token.imageAssetId,

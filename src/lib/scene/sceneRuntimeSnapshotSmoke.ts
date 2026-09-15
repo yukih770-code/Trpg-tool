@@ -1,6 +1,7 @@
 import { createCombatant, createCombatRuntimeTableState } from '../combat/combatRuntimeTypes';
 import { createMapAreaTemplate, createMapBoardState, createMapGridConfig, createMapToken } from '../map/mapRuntimeTypes';
 import { createSceneSpatialV1 } from '../map/sceneSpatial';
+import { createTokenSpatialFootprintV1 } from '../map/tokenSpatialFootprint';
 import {
   createSceneRuntimeSnapshot,
   importSceneRuntimeSnapshot,
@@ -38,7 +39,7 @@ map.panY = -4;
 map.grid = createMapGridConfig({ enabled: true, sizePx: 40, feetPerSquare: 5, snap: true });
 map.spatial = createSceneSpatialV1({ width: 24, height: 16, grid: { cellSize: 1 }, scale: { unitsPerGridCell: 5, unitLabel: 'ft' } });
 map.templates = [createMapAreaTemplate({ id: 'template-1', shape: 'circle', x: 50, y: 50, sizeFeet: 20 })];
-map.tokens = [createMapToken({ id: 'token-1', name: 'Hero', x: 45, y: 60, size: 'medium', sourceType: 'roomActorBinding', sourceId: 'binding-hero', actorBindingId: 'binding-hero', roomMemberId: 'member-hero', kind: 'playerCharacter', sourceCombatantId: combatant.id })];
+map.tokens = [createMapToken({ id: 'token-1', name: 'Hero', x: 45, y: 60, size: 'medium', footprint: createTokenSpatialFootprintV1({ width: 1.5, height: 2 }), sourceType: 'roomActorBinding', sourceId: 'binding-hero', actorBindingId: 'binding-hero', roomMemberId: 'member-hero', kind: 'playerCharacter', sourceCombatantId: combatant.id })];
 
 const context = { roomId: 'room-1', campaignId: 'campaign-1', runtimeSessionId: 'runtime-1' };
 const both = createSceneRuntimeSnapshot({ context, combat, map, exportedAt: '2026-07-16T00:00:00.000Z' });
@@ -52,6 +53,7 @@ check('exports grid and templates', both.map?.board.grid?.sizePx === 40 && both.
 check('exports versioned spatial contract', both.map?.board.spatial?.world.width === 24 && both.map.board.spatial?.tokenAnchor === 'center');
 check('exports background preset with custom URL', both.map?.board.backgroundPreset === 'stone_floor' && both.map.board.backgroundUrl === 'https://example.test/scene.png');
 check('exports room token linkage metadata', both.map?.board.tokens[0]?.actorBindingId === 'binding-hero' && both.map.board.tokens[0]?.roomMemberId === 'member-hero');
+check('exports versioned Token footprint', both.map?.board.tokens[0]?.footprint?.width === 1.5 && both.map.board.tokens[0]?.footprint?.anchor === 'center');
 
 const valid = validateSceneRuntimeSnapshot(JSON.parse(JSON.stringify(both)), context);
 check('validates exported snapshot', valid.ok && valid.snapshot.map?.board.tokens[0]?.id === 'token-1');
@@ -66,6 +68,9 @@ const imported = importSceneRuntimeSnapshot(JSON.parse(JSON.stringify(both)), co
 check('imports combat and map deterministically', imported.ok && imported.snapshot.combat?.combatants.length === 1 && imported.snapshot.map?.board.tokens.length === 1);
 check('imports combat HUD turn state', imported.ok && imported.snapshot.combat?.turn.status === 'active' && imported.snapshot.combat.turn.roundNumber === 2 && imported.snapshot.combat.turn.activeCombatantId === 'hero-1' && imported.snapshot.combat.combatants[0]?.initiative === 17);
 check('imports room token linkage metadata', imported.ok && imported.snapshot.map?.board.tokens[0]?.actorBindingId === 'binding-hero' && imported.snapshot.map?.board.tokens[0]?.roomMemberId === 'member-hero');
+check('imports Token footprint deterministically', imported.ok && imported.snapshot.map?.board.tokens[0]?.footprint?.height === 2);
+const legacySnapshot = sanitizeSceneRuntimeSnapshot({ ...both, map: { board: { ...map, tokens: [{ ...map.tokens[0], footprint: undefined, width: 96, height: 96 }] } } });
+check('legacy snapshot presentation dimensions do not imply occupied bounds', legacySnapshot.map?.board.tokens[0]?.footprint === undefined);
 check('missing grid, template, and preset snapshot fields stay compatible', sanitizeSceneRuntimeSnapshot({ ...both, map: { board: { ...map, grid: undefined, templates: undefined, backgroundPreset: undefined } } }).map?.board.grid?.feetPerSquare === 5 && sanitizeSceneRuntimeSnapshot({ ...both, map: { board: { ...map, backgroundPreset: undefined } } }).map?.board.backgroundPreset === 'tactical_gray');
 const mismatched = importSceneRuntimeSnapshot(JSON.parse(JSON.stringify(both)), { roomId: 'room-2', campaignId: 'campaign-2', runtimeSessionId: 'runtime-2' });
 check('warns about context mismatch', mismatched.ok && mismatched.warnings.length === 3);

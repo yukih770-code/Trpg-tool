@@ -109,3 +109,7 @@ There is still no authoritative Token spatial footprint or bounds. Optional Toke
 ## 23. Recommended next task
 
 Implement **AUTHORITATIVE TOKEN SPATIAL FOOTPRINT / BOUNDS CONTRACT** as a separate Platform task. Define versioned occupied bounds in world units, preserve them through map events/replay/snapshots/restart, and specify how Game Systems consume those bounds. Only after that contract is authoritative should D&D connect weapon reach and range to T12 before RNG.
+
+## Follow-up: Token footprint capability
+
+At this task's historical completion, every Token remained point-only. The subsequent Platform Token Spatial Footprint / Bounds Contract V1 adds an optional, explicit, centered axis-aligned footprint in Scene world units and deterministic bounds/separation helpers. Legacy Tokens without that field remain point-only, and this follow-up does not change the Scene Spatial Contract verdict above.

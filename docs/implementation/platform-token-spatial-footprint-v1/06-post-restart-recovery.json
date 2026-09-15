@@ -1,0 +1,76 @@
+{
+  "capturedAt": "2026-09-15T20:37:13.4819022+09:00",
+  "databaseStatus": "ok",
+  "readiness": "ready",
+  "startupRecovery": {
+    "required": true,
+    "status": "ready",
+    "startedAt": "2026-09-15T11:36:54.613Z",
+    "completedAt": "2026-09-15T11:36:54.666Z",
+    "restoredRoomCount": 6,
+    "restoredAdmissionCount": 1,
+    "restoredRuntimeLogEventCount": 13,
+    "restoredRoomMapEventCount": 44
+  },
+  "latestSeq": 13,
+  "footprintEvent": {
+    "mapEventId": "mapevent_aefde360-2ace-4c15-856e-c1964f816252",
+    "roomId": "room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+    "mapId": "room:room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+    "seq": 9,
+    "createdAt": "2026-09-15T11:34:15.362Z",
+    "authorMemberId": "member_697bf5d3-9fd2-4095-92bb-403170500888",
+    "eventKind": "map.token_updated",
+    "payload": {
+      "token": {
+        "x": 55,
+        "y": 54.790419161676645,
+        "id": "d93809f5-c22a-4fb6-bab3-a993af1596e3",
+        "kind": "playerCharacter",
+        "name": "Derived Dagger Hero",
+        "size": "medium",
+        "initials": "DD",
+        "isHidden": false,
+        "sourceId": "campaign_actor_55b43824-c71d-4894-afa0-870a7f71a391",
+        "footprint": {
+          "shape": "axis-aligned-rectangle",
+          "width": 1.5,
+          "anchor": "center",
+          "height": 2,
+          "schemaVersion": 1,
+          "coordinateSpace": "scene-world"
+        },
+        "sourceType": "campaign_actor",
+        "displayName": "Derived Dagger Hero",
+        "ownerUserId": "dev-user-001",
+        "campaignActorId": "campaign_actor_55b43824-c71d-4894-afa0-870a7f71a391",
+        "controlledByUserId": "dev-user-001",
+        "sourceActorInstanceId": "campaign_actor_55b43824-c71d-4894-afa0-870a7f71a391"
+      }
+    }
+  },
+  "moveEvent": {
+    "mapEventId": "mapevent_4743e205-9f57-4cdf-a7ae-c2dc5eb807c0",
+    "roomId": "room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+    "mapId": "room:room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+    "seq": 11,
+    "createdAt": "2026-09-15T11:35:10.928Z",
+    "authorMemberId": "member_697bf5d3-9fd2-4095-92bb-403170500888",
+    "eventKind": "map.token_moved",
+    "payload": {
+      "x": 62.5,
+      "y": 46.51016438460658,
+      "tokenId": "d93809f5-c22a-4fb6-bab3-a993af1596e3"
+    }
+  },
+  "resolvedWorldBounds": {
+    "centerX": 12.5,
+    "centerY": 5.58121972615279,
+    "minX": 11.75,
+    "maxX": 13.25,
+    "minY": 4.58121972615279,
+    "maxY": 6.58121972615279,
+    "width": 1.5,
+    "height": 2
+  }
+}

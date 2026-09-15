@@ -10,6 +10,7 @@ import {
 } from '../combat/combatRuntimeTypes';
 import { createMapAreaTemplate, createMapBackgroundPreset, createMapBoardState, createMapGridConfig, createMapToken, type MapAreaTemplate, type MapBoardState, type MapGridConfig, type MapToken, type MapTokenKind, type MapTokenSize, type MapTokenSourceType } from '../map/mapRuntimeTypes';
 import { parseSceneSpatialV1 } from '../map/sceneSpatial';
+import { parseTokenSpatialFootprintV1 } from '../map/tokenSpatialFootprint';
 import {
   SCENE_RUNTIME_SNAPSHOT_SCHEMA_VERSION,
   type SceneRuntimeSnapshot,
@@ -111,6 +112,7 @@ function sanitizeToken(value: unknown): MapToken | null {
     size: oneOf<MapTokenSize>(input?.size, ['tiny', 'small', 'medium', 'large', 'huge', 'gargantuan', 'custom'], 'medium'),
     width: numberValue(input?.width),
     height: numberValue(input?.height),
+    footprint: parseTokenSpatialFootprintV1(input?.footprint),
     sourceType: oneOf<MapTokenSourceType>(input?.sourceType, ['combatant', 'campaign_actor', 'dndLiteActor', 'monsterTemplate', 'vaultActor', 'roomActorBinding', 'quickDraft', 'manual', 'unknown'], 'unknown'),
     sourceId: stringValue(input?.sourceId),
     campaignActorId: stringValue(input?.campaignActorId),

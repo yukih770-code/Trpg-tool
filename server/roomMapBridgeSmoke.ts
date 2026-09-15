@@ -42,6 +42,15 @@ const second = appendRoomMapEvent(rooms, mapEvents, {
 });
 expect(second.decision === 'appended' && second.event?.seq === 3, 'room map events should be monotonic');
 
+const footprint = appendRoomMapEvent(rooms, mapEvents, {
+  roomId: room.identity.roomId,
+  authorMemberId: host.memberId,
+  mapId: 'room-map-smoke',
+  eventKind: 'map.token_updated',
+  payload: { token: { id: 'token-smoke', footprint: { schemaVersion: 1, shape: 'axis-aligned-rectangle', coordinateSpace: 'scene-world', anchor: 'center', width: 1.5, height: 2 } } },
+});
+expect(footprint.decision === 'appended' && footprint.event?.seq === 4, 'host should append authoritative Token bounds');
+
 const playerId = 'member_player_smoke';
 rooms.update(room.identity.roomId, (current) => ({
   ...current,
@@ -71,7 +80,7 @@ const playerRange = appendRoomMapEvent(rooms, mapEvents, {
   eventKind: 'map.template_added',
   payload: { template: { id: 'range-smoke', shape: 'circle', x: 50, y: 50, sizeFeet: 15, rotation: 0 } },
 });
-expect(playerRange.decision === 'appended' && playerRange.event?.seq === 4, 'a granted player should be able to pin a range');
+expect(playerRange.decision === 'appended' && playerRange.event?.seq === 5, 'a granted player should be able to pin a range');
 
 const playerStillRejected = appendRoomMapEvent(rooms, mapEvents, {
   roomId: room.identity.roomId,
@@ -92,7 +101,7 @@ const unknownRejected = appendRoomMapEvent(rooms, mapEvents, {
 expect(unknownRejected.decision === 'memberNotFound', 'unknown members must not mutate the room map');
 
 const listed = listRoomMapEvents(rooms, mapEvents, { roomId: room.identity.roomId, mapId: 'room-map-smoke' });
-expect(listed.decision === 'ok' && listed.result?.events.length === 4, 'map listing should replay host and delegated range events');
+expect(listed.decision === 'ok' && listed.result?.events.length === 5, 'map listing should replay host and delegated range events');
 expect(listed.result?.events[0]?.eventKind === 'map.grid_updated', 'map event order must be preserved');
 
 // eslint-disable-next-line no-console

@@ -1,5 +1,6 @@
 import { replayMapRuntimeEvents, type MapRuntimeReplayEvent } from './mapRuntimeReplay';
 import { createSceneSpatialV1 } from './sceneSpatial';
+import { createTokenSpatialFootprintV1 } from './tokenSpatialFootprint';
 
 const mapId = 'room-session-map';
 const createdAt = '2026-07-16T00:00:00.000Z';
@@ -20,7 +21,7 @@ const events: MapRuntimeReplayEvent[] = [
   event(3.05, 'map.spatial_updated', { spatial: createSceneSpatialV1({ width: 24, height: 16, grid: { cellSize: 1 }, scale: { unitsPerGridCell: 5, unitLabel: 'ft' } }) }),
   event(10, 'map.unknown_future_event', { ignored: true }),
   event(9, 'map.token_removed', { tokenId: 'npc-1', name: 'Guard' }),
-  event(8, 'map.token_updated', { token: { id: 'hero-1', name: 'Hero', size: 'large', notes: 'Marked' } }),
+  event(8, 'map.token_updated', { token: { id: 'hero-1', name: 'Hero', size: 'large', notes: 'Marked', footprint: createTokenSpatialFootprintV1({ width: 2, height: 1.5 }) } }),
   event(7, 'map.token_moved', { tokenId: 'hero-1', x: 65, y: 40 }),
   event(6, 'map.token_added', { token: { id: 'npc-1', name: 'Guard', x: 80, y: 25, size: 'medium', sourceType: 'manual_npc' } }),
   event(5, 'map.token_added', { token: { id: 'hero-1', name: 'Hero', x: 20, y: 30, size: 'medium', sourceType: 'campaign_actor', sourceActorInstanceId: 'actor-1' } }),
@@ -71,6 +72,7 @@ const cases: Array<{ name: string; run: () => void }> = [
       assertEqual(state.tokens[0]?.x, 65, 'token move should replay');
       assertEqual(state.tokens[0]?.size, 'large', 'token size update should replay');
       assertEqual(state.tokens[0]?.notes, 'Marked', 'token notes update should replay');
+      assertEqual(state.tokens[0]?.footprint?.width, 2, 'token footprint should replay and survive movement');
     },
   },
   {

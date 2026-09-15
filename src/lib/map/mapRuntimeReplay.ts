@@ -11,6 +11,7 @@ import {
   type MapTokenInput,
 } from './mapRuntimeTypes.js';
 import { parseSceneSpatialV1 } from './sceneSpatial.js';
+import { parseTokenSpatialFootprintV1 } from './tokenSpatialFootprint.js';
 import type { RuntimeAcDisplay, RuntimeHpDisplay, RuntimeTokenRelation, RuntimeVisibility } from '../platform/roomRuntimeVisibility.js';
 
 /**
@@ -62,6 +63,11 @@ function tokenInput(value: unknown, fallback?: MapToken): MapToken | null {
   const input = record(value);
   const id = stringValue(input?.id) ?? fallback?.id;
   if (!id) return null;
+  const suppliedFootprint = input && Object.prototype.hasOwnProperty.call(input, 'footprint');
+  const parsedFootprint = parseTokenSpatialFootprintV1(input?.footprint);
+  const footprint = suppliedFootprint
+    ? input?.footprint === null ? undefined : parsedFootprint ?? fallback?.footprint
+    : fallback?.footprint;
   const next: MapTokenInput = {
     id,
     name: stringValue(input?.name) ?? fallback?.name ?? 'Token',
@@ -70,6 +76,7 @@ function tokenInput(value: unknown, fallback?: MapToken): MapToken | null {
     size: input?.size === undefined ? fallback?.size ?? 'medium' : input.size as MapToken['size'],
     width: numberValue(input?.width) ?? fallback?.width,
     height: numberValue(input?.height) ?? fallback?.height,
+    footprint,
     sourceType: input?.sourceType === undefined ? fallback?.sourceType ?? 'unknown' : input.sourceType as MapToken['sourceType'],
     sourceId: stringValue(input?.sourceId) ?? fallback?.sourceId,
     campaignActorId: stringValue(input?.campaignActorId) ?? fallback?.campaignActorId,

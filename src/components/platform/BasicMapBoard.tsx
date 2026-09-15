@@ -11,6 +11,7 @@ import { dndConditionLabel } from '../../lib/dnd/dndConditions';
 import { resolveTokenVisualIdentity } from '../../lib/map/tokenVisualIdentity';
 import { MAP_BACKGROUND_PRESETS, createMapAreaTemplate, measureMapDistance, snapMapPosition, type MapAreaTemplate, type MapAreaTemplateInput, type MapBackgroundPreset, type MapBoardState, type MapInteractionPreview, type MapRuntimeEventDraft, type MapTemplateShape, type MapToken, type MapTokenSize } from '../../lib/map/mapRuntimeTypes';
 import { createSceneSpatialV1, measureSceneSpatialDelta, snapSceneNormalizedPosition } from '../../lib/map/sceneSpatial';
+import { createTokenSpatialFootprintV1 } from '../../lib/map/tokenSpatialFootprint';
 import { AssetPicker } from './AssetPicker';
 import { assetContentUrl, type AssetViewContext } from '../../lib/api/assetApiClient';
 import { checkMapBackgroundSource, mapBackgroundRejectionText } from '../../lib/map/mapBackgroundSource';
@@ -212,6 +213,8 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
   const [selectedName, setSelectedName] = useState('');
   const [selectedSize, setSelectedSize] = useState<MapTokenSize>('medium');
   const [selectedNotes, setSelectedNotes] = useState('');
+  const [selectedFootprintWidth, setSelectedFootprintWidth] = useState('');
+  const [selectedFootprintHeight, setSelectedFootprintHeight] = useState('');
   const [gridSize, setGridSize] = useState('50');
   const [feetPerSquare, setFeetPerSquare] = useState('5');
   const [sceneColumns, setSceneColumns] = useState('20');
@@ -284,6 +287,10 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
     setSelectedSize(selectedToken?.size ?? 'medium');
     setSelectedNotes(selectedToken?.notes ?? '');
   }, [selectedToken?.id]);
+  useEffect(() => {
+    setSelectedFootprintWidth(selectedToken?.footprint ? String(selectedToken.footprint.width) : '');
+    setSelectedFootprintHeight(selectedToken?.footprint ? String(selectedToken.footprint.height) : '');
+  }, [selectedToken?.id, selectedToken?.footprint?.width, selectedToken?.footprint?.height]);
   useEffect(() => {
     setGridSize(String(grid?.sizePx ?? 50));
     setFeetPerSquare(String(grid?.feetPerSquare ?? 5));
@@ -486,6 +493,23 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
   const saveSelectedToken = () => {
     if (!selectedToken || !canManage) return;
     emit(board.updateToken(selectedToken.id, { name: selectedName, size: selectedSize, notes: selectedNotes.trim() || undefined }));
+  };
+  const saveSelectedFootprint = () => {
+    if (!selectedToken || !canManage) return;
+    if (!board.state.spatial) {
+      setEventError(locale === 'en' ? 'Configure authoritative Scene space before setting a footprint.' : '请先配置权威场景空间，再设置占地范围。');
+      return;
+    }
+    try {
+      const footprint = createTokenSpatialFootprintV1({ width: Number(selectedFootprintWidth), height: Number(selectedFootprintHeight) });
+      emit(board.updateToken(selectedToken.id, { footprint }));
+    } catch {
+      setEventError(locale === 'en' ? 'Enter positive footprint width and height in Scene world units.' : '请输入大于零的占地宽度和高度（场景世界单位）。');
+    }
+  };
+  const clearSelectedFootprint = () => {
+    if (!selectedToken || !canManage) return;
+    emit(board.updateToken(selectedToken.id, { footprint: null }));
   };
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
@@ -717,6 +741,25 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
     <span aria-hidden="true" className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#294966] shadow" style={anchorStyle(measurement.start)} />
     {measurementDistance && <span className="pointer-events-none absolute rounded bg-[#17130f]/85 px-1.5 py-0.5 text-[10px] font-bold text-white" style={pointerLabelStyle(measurement.end)}>{measurementDistance.value.toFixed(1)} {measurementDistance.unitLabel}</span>}
   </>;
+  const footprintOverlayLayer = canManage && selectedToken?.footprint && board.state.spatial && <div
+    aria-hidden="true"
+    data-token-footprint={selectedToken.id}
+    className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 border-2 border-dashed border-amber-600/80 bg-amber-300/15"
+    style={{
+      left: `${selectedToken.x}%`,
+      top: `${selectedToken.y}%`,
+      width: `${selectedToken.footprint.width / board.state.spatial.world.width * 100}%`,
+      height: `${selectedToken.footprint.height / board.state.spatial.world.height * 100}%`,
+    }}
+  ><span className="absolute left-1 top-1 whitespace-nowrap rounded bg-amber-950/80 px-1 py-0.5 text-[9px] font-bold text-white">{selectedToken.footprint.width} × {selectedToken.footprint.height} world</span></div>;
+  const footprintEditor = selectedToken && canManage && <div data-token-footprint-editor className="rounded-lg border border-amber-300/70 bg-amber-50/80 p-2.5">
+    <div className="text-[11px] font-black text-slate-800">{locale === 'en' ? 'Authoritative footprint' : '权威占地范围'}</div>
+    <p className="mt-0.5 text-[10px] leading-4 text-slate-600">{board.state.spatial
+      ? (locale === 'en' ? 'Centered width and height in Scene world units. Visual Token size is unchanged.' : '以 Token 中心为锚点，宽高使用场景世界单位；不会改变棋子视觉大小。')
+      : (locale === 'en' ? 'Configure authoritative Scene space first.' : '请先配置权威场景空间。')}</p>
+    <div className="mt-2 grid grid-cols-2 gap-1.5"><label className="grid gap-1 text-[10px] font-bold text-slate-600">{locale === 'en' ? 'Width' : '宽度'}<input aria-label="Footprint width" value={selectedFootprintWidth} onChange={(event) => setSelectedFootprintWidth(event.target.value)} type="number" min="0.0001" step="any" disabled={!board.state.spatial} className="min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs disabled:opacity-50" /></label><label className="grid gap-1 text-[10px] font-bold text-slate-600">{locale === 'en' ? 'Height' : '高度'}<input aria-label="Footprint height" value={selectedFootprintHeight} onChange={(event) => setSelectedFootprintHeight(event.target.value)} type="number" min="0.0001" step="any" disabled={!board.state.spatial} className="min-w-0 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs disabled:opacity-50" /></label></div>
+    <div className="mt-2 flex gap-1.5"><button type="button" onClick={saveSelectedFootprint} disabled={!board.state.spatial} className="flex-1 rounded-md bg-[#17130f] px-2 py-1.5 text-[10px] font-bold text-white disabled:opacity-40">{selectedToken.footprint ? (locale === 'en' ? 'Update bounds' : '更新占地') : (locale === 'en' ? 'Set bounds' : '设置占地')}</button>{selectedToken.footprint && <button type="button" onClick={clearSelectedFootprint} className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-[10px] font-bold text-slate-700">{locale === 'en' ? 'Clear' : '清除'}</button>}</div>
+  </div>;
   const tokenMenuLayer = tokenMenu && <div
     data-token-context-menu
     className="absolute z-40 w-40 rounded-lg border border-slate-300 bg-white/95 p-1.5 text-[11px] text-slate-800 shadow-xl backdrop-blur-sm"
@@ -795,6 +838,7 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
           {templateDraftLayer}
           {measurementLayer}
           {sharedPreviewLayer}
+          {footprintOverlayLayer}
           {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => selectToken(token)} onDoubleClick={() => onInspectToken?.(token)} onKeyDown={(event) => { if ((event.key === 'Enter' && event.shiftKey) || event.key === 'ContextMenu') { event.preventDefault(); onInspectToken?.(token); } }} onContextMenu={(event) => openTokenMenu(event, token)} className={`group absolute z-20 flex max-w-36 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold hover:z-30 focus-visible:z-30 ${mayMoveToken(token) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'} ${isCurrentTurnToken(token) ? 'drop-shadow-[0_0_10px_rgba(245,197,24,.95)]' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title={mayMoveToken(token) ? '你的角色，可移动；双击可查看信息。' : '右键、双击或 Shift+Enter 查看信息'}>{tokenContents(token)}{isCurrentTurnToken(token) && <span className="rounded bg-[#f5c518] px-1 text-[9px] font-black text-[#17130f]">当前回合</span>}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
         </div>
         {tokenMenuLayer}
@@ -827,6 +871,8 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
       </div>}
 
       {selectedToken && canManage && <div className="absolute right-3 top-3 z-20 w-56 rounded-xl border border-slate-300/80 bg-white/95 p-3 shadow-xl backdrop-blur-sm"><div className="flex items-center justify-between gap-2"><div className="text-sm font-black text-slate-800">{selectedToken.name}</div><button type="button" onClick={() => board.selectToken(undefined)} className="text-xs font-bold text-slate-500">关闭</button></div><p className="mt-1 text-[11px] text-slate-500">{sourceLabel(selectedToken.sourceType, locale)}</p><details className="mt-2"><summary className="cursor-pointer text-xs">{locale === 'en' ? 'Token image' : '棋子图片'}</summary><AssetPicker kind="image" context={assetContext} english={locale === 'en'} onSelect={asset => { setFailedTokenImages(previous => ({ ...previous, [selectedToken.id]: false })); emit(board.updateToken(selectedToken.id, { imageAssetId: asset.id })); }} /></details><div className="mt-3 flex gap-2"><button type="button" onClick={() => emit(board.updateToken(selectedToken.id, { isHidden: !selectedToken.isHidden }))} className="rounded-md border border-slate-300 px-2 py-1.5 text-xs font-bold">{selectedToken.isHidden ? t('mapRuntime.showToken') : t('mapRuntime.hideToken')}</button><button type="button" onClick={() => emit(board.removeToken(selectedToken.id))} className="rounded-md border border-[#8b3a2f]/30 px-2 py-1.5 text-xs font-bold text-[#8b3a2f]">{t('mapRuntime.removeToken')}</button></div></div>}
+
+      {selectedToken && canManage && <div className="absolute right-3 top-48 z-20 w-56 rounded-xl border border-slate-300/80 bg-white/95 p-2 shadow-xl backdrop-blur-sm">{footprintEditor}</div>}
 
       {!canManage && tokenControlHint && (toolMode === 'move' || !!eventError) && <div className="pointer-events-none absolute right-3 top-3 z-20 max-w-60 rounded-lg border border-slate-300/80 bg-white/95 px-3 py-2 text-[11px] font-bold text-slate-700 shadow-lg">{tokenControlHint}</div>}
 
@@ -872,6 +918,7 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
         {templateDraftLayer}
         {measurementLayer}
         {sharedPreviewLayer}
+        {footprintOverlayLayer}
           {visibleTokens.map((token) => <button key={token.id} type="button" data-map-token={token.id} onClick={() => selectToken(token)} onDoubleClick={() => onInspectToken?.(token)} onKeyDown={(event) => { if ((event.key === 'Enter' && event.shiftKey) || event.key === 'ContextMenu') { event.preventDefault(); onInspectToken?.(token); } }} onContextMenu={(event) => openTokenMenu(event, token)} className={`group absolute z-20 flex max-w-40 flex-col items-center gap-1 -translate-x-1/2 -translate-y-1/2 bg-transparent text-xs font-bold hover:z-30 focus-visible:z-30 ${token.isHidden ? 'opacity-70' : ''} ${isCurrentTurnToken(token) ? 'drop-shadow-[0_0_10px_rgba(245,197,24,.95)]' : ''}`} style={{ left: `${token.x}%`, top: `${token.y}%` }} title="双击、右键或 Shift+Enter 查看信息">{tokenContents(token)}{isCurrentTurnToken(token) && <span className="rounded bg-[#f5c518] px-1 text-[9px] font-black text-[#17130f]">当前回合</span>}{grid?.showCoordinates && <span className="rounded bg-white/90 px-1 text-[9px] text-slate-700 shadow">{Math.round(token.x)},{Math.round(token.y)}</span>}</button>)}
       </div>
       {tokenMenuLayer}
@@ -888,6 +935,7 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
     </div>}
 
     {selectedToken && canManage && <div className="mt-3 rounded-xl border border-[#2f2a22]/10 bg-white p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div className="font-bold text-sm">{t('mapRuntime.selectedToken')} · {sourceLabel(selectedToken.sourceType, locale)}</div><div className="flex gap-2"><button type="button" onClick={() => emit(board.updateToken(selectedToken.id, { isHidden: !selectedToken.isHidden }))} className="rounded-md border border-[#2f2a22]/15 px-2 py-1.5 text-xs font-bold">{selectedToken.isHidden ? t('mapRuntime.showToken') : t('mapRuntime.hideToken')}</button><button type="button" onClick={() => emit(board.removeToken(selectedToken.id))} className="rounded-md border border-[#8b3a2f]/20 px-2 py-1.5 text-xs font-bold text-[#8b3a2f]">{t('mapRuntime.removeToken')}</button></div></div><div className="mt-2 grid gap-2 sm:grid-cols-3"><input value={selectedName} onChange={(event) => setSelectedName(event.target.value)} onBlur={saveSelectedToken} className="rounded-md border border-[#2f2a22]/15 px-2 py-1.5 text-xs" /><select value={selectedSize} onChange={(event) => setSelectedSize(event.target.value as MapTokenSize)} onBlur={saveSelectedToken} className="rounded-md border border-[#2f2a22]/15 px-2 py-1.5 text-xs">{sizes.map((size) => <option key={size} value={size}>{sizeLabel(size, locale)}</option>)}</select><input value={selectedNotes} onChange={(event) => setSelectedNotes(event.target.value)} onBlur={saveSelectedToken} placeholder={t('mapRuntime.tokenNotes')} className="rounded-md border border-[#2f2a22]/15 px-2 py-1.5 text-xs" /></div><details className="mt-2"><summary className="cursor-pointer text-xs">{locale === 'en' ? 'Token image' : '棋子图片'}</summary><AssetPicker kind="image" context={assetContext} english={locale === 'en'} onSelect={asset => { setFailedTokenImages(previous => ({ ...previous, [selectedToken.id]: false })); emit(board.updateToken(selectedToken.id, { imageAssetId: asset.id })); }} /></details><p className="mt-2 text-[11px] text-[#51483d]">地图上可见的 Token 默认公开基础信息；需要剧情保密时，请隐藏 Token。主持人备注不会公开。</p></div>}
+    {selectedToken && canManage && <div className="mt-3">{footprintEditor}</div>}
     <p className="mt-3 text-[11px] leading-5 text-[#51483d]">{t('mapRuntime.gridBoundary')}</p>
   </section>;
 }

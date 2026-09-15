@@ -83,6 +83,7 @@ const movementGrantedRoom = registry.get(roomId);
 expect(movementGrantedRoom, 'movement-granted room should be present');
 expect(resolveRoomRuntimePermission({ room: movementGrantedRoom, viewer: viewer('user_player'), memberId: playerMemberId, action: 'map.token.move.own' }).allowed, 'explicit grant should allow own-token movement');
 expect(!resolveRoomRuntimePermission({ room: movementGrantedRoom, viewer: viewer('user_player'), memberId: playerMemberId, action: 'map.token.move.any' }).allowed, 'own-token grant must not allow broad token movement');
+expect(!resolveRoomRuntimePermission({ room: movementGrantedRoom, viewer: viewer('user_player'), memberId: playerMemberId, action: 'map.token.update.any' }).allowed, 'own-token movement grant must not allow authoritative footprint edits');
 
 const revoke = setRoomMapMemberPermission(registry, {
   roomId,

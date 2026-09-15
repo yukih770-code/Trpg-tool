@@ -9,6 +9,8 @@ import { approveActorBinding } from '../services/approveActorBinding.js';
 import { appendRoomMapEvent } from '../services/appendRoomMapEvent.js';
 import { setRoomMapMemberPermission } from '../services/setRoomMapMemberPermission.js';
 import { resolveVerifiedRoomTokenMove } from './roomTokenControlGuard.js';
+import { replayMapRuntimeEvents } from '../../src/lib/map/mapRuntimeReplay.js';
+import { createTokenSpatialFootprintV1 } from '../../src/lib/map/tokenSpatialFootprint.js';
 import type { CurrentViewerContext } from '../auth/currentViewerContext.js';
 
 function expect(condition: unknown, message: string): asserts condition {
@@ -57,7 +59,7 @@ function hostAdd(id: string, token: Record<string, unknown>): void {
   expect(result.decision === 'appended', `host should place ${id}`);
 }
 
-hostAdd('token-a', { name: 'Ariadne', sourceType: 'roomActorBinding', sourceId: bindingA, actorBindingId: bindingA, roomMemberId: playerA, kind: 'playerCharacter' });
+hostAdd('token-a', { name: 'Ariadne', footprint: createTokenSpatialFootprintV1({ width: 1.5, height: 2 }), sourceType: 'roomActorBinding', sourceId: bindingA, actorBindingId: bindingA, roomMemberId: playerA, kind: 'playerCharacter' });
 hostAdd('token-vault', { name: 'Ariadne vault', sourceType: 'vaultActor', sourceId: 'actor-a', actorBindingId: bindingA, roomMemberId: playerA, kind: 'playerCharacter' });
 hostAdd('token-draft', { name: 'Ariadne draft', sourceType: 'quickDraft', sourceId: 'actor-a', actorBindingId: bindingA, roomMemberId: playerA, kind: 'playerCharacter' });
 hostAdd('token-lite', { name: 'Ariadne lite', sourceType: 'dndLiteActor', sourceId: 'actor-a', actorBindingId: bindingA, roomMemberId: playerA, kind: 'playerCharacter' });
@@ -97,6 +99,7 @@ const cases: Array<{ name: string; run: () => void }> = [
   { name: 'malformed token move is rejected safely', run: () => expect(verify('user-a', playerA, { tokenId: 'token-a', x: 'bad', y: 30 }).code === 'invalidMove', 'malformed move was not rejected') },
   { name: 'null token move payload is rejected safely', run: () => expect(verify('user-a', playerA, null).code === 'invalidMove', 'null move payload was not rejected') },
   { name: 'verified player move appends through room map service', run: () => expect(appendRoomMapEvent(rooms, maps, { roomId, authorMemberId: playerA, mapId, eventKind: 'map.token_moved', payload: movePayload('token-a') }).decision === 'appended', 'verified player move did not append') },
+  { name: 'verified movement preserves authoritative footprint', run: () => expect(replayMapRuntimeEvents(maps.list(roomId).events, mapId).tokens.find((token) => token.id === 'token-a')?.footprint?.height === 2, 'movement discarded footprint') },
 ];
 
 const results = cases.map((test) => {

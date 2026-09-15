@@ -11,6 +11,7 @@ import { ROOM_MAP_EVENT_KINDS } from '../../src/lib/platform/roomMapTypes.js';
 import type { RoomMapEvent, RoomMapEventKind } from '../protocol/room-protocol.js';
 import { requiresLiveRoomDurableAppend } from './liveRoomDurableAppendConfirmation.js';
 import { parseSceneSpatialV1 } from '../../src/lib/map/sceneSpatial.js';
+import { parseTokenSpatialFootprintV1 } from '../../src/lib/map/tokenSpatialFootprint.js';
 
 export interface AppendRoomMapEventInput {
   roomId: string;
@@ -74,6 +75,18 @@ export function appendRoomMapEvent(
     const spatial = parseSceneSpatialV1(input.payload.spatial);
     if (!spatial) return { decision: 'invalidMapEvent', message: 'A valid versioned Scene spatial configuration is required.' };
     input = { ...input, payload: { spatial } };
+  }
+  if (input.eventKind === 'map.token_added' || input.eventKind === 'map.token_updated') {
+    const token = input.payload.token;
+    if (token && typeof token === 'object' && !Array.isArray(token) && Object.prototype.hasOwnProperty.call(token, 'footprint')) {
+      const rawFootprint = (token as Record<string, unknown>).footprint;
+      const footprint = parseTokenSpatialFootprintV1(rawFootprint);
+      if (rawFootprint !== null && !footprint) {
+        return { decision: 'invalidMapEvent', message: 'A valid versioned Token spatial footprint is required.' };
+      }
+      const sanitizedToken = { ...(token as Record<string, unknown>), footprint: footprint ?? null };
+      input = { ...input, payload: { ...input.payload, token: sanitizedToken } };
+    }
   }
   const event = mapRegistry.append(input.roomId, {
     mapEventId: `mapevent_${randomUUID()}`,

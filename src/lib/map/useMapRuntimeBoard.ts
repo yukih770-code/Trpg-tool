@@ -15,6 +15,7 @@ import {
   type MapViewportPatch,
 } from './mapRuntimeTypes';
 import { parseSceneSpatialV1, type SceneSpatialV1 } from './sceneSpatial';
+import { parseTokenSpatialFootprintV1, type TokenSpatialFootprintV1 } from './tokenSpatialFootprint';
 import { replayMapRuntimeEvents, type MapRuntimeReplayEvent } from './mapRuntimeReplay';
 
 function newId(prefix = 'map-token'): string {
@@ -88,12 +89,13 @@ export function useMapRuntimeBoard(mapId: string) {
     return { eventKind: 'map.token_moved', payload: { tokenId: id, x: nextX, y: nextY } };
   }, [state.tokens]);
 
-  const updateToken = useCallback((id: string, patch: Partial<Omit<MapToken, 'id'>>): MapRuntimeEventDraft | null => {
+  const updateToken = useCallback((id: string, patch: Partial<Omit<MapToken, 'id' | 'footprint'>> & { footprint?: TokenSpatialFootprintV1 | null }): MapRuntimeEventDraft | null => {
     const token = state.tokens.find((item) => item.id === id);
     if (!token) return null;
-    const updated = createMapToken({ ...token, ...patch, id });
+    const footprint = patch.footprint === null ? undefined : patch.footprint === undefined ? token.footprint : parseTokenSpatialFootprintV1(patch.footprint);
+    const updated = createMapToken({ ...token, ...patch, footprint, id });
     setState((previous) => ({ ...previous, tokens: previous.tokens.map((item) => item.id === id ? updated : item), selectedTokenId: id, updatedAt: new Date().toISOString() }));
-    return { eventKind: 'map.token_updated', payload: { token: updated } };
+    return { eventKind: 'map.token_updated', payload: { token: patch.footprint === null ? { ...updated, footprint: null } : updated } };
   }, [state.tokens]);
 
   const removeToken = useCallback((id: string): MapRuntimeEventDraft | null => {

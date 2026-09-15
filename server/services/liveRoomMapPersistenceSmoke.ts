@@ -103,12 +103,14 @@ function mapEvent(roomId: string, seq: number): RoomMapEvent {
     seq,
     createdAt: `2026-08-13T00:00:${String(seq % 60).padStart(2, '0')}.000Z`,
     authorMemberId: 'host-member',
-    eventKind: seq === 1 ? 'map.token_added' : seq === 2 ? 'map.spatial_updated' : 'map.grid_updated',
+    eventKind: seq === 1 ? 'map.token_added' : seq === 2 ? 'map.spatial_updated' : seq === 3 ? 'map.token_updated' : 'map.grid_updated',
     payload: seq === 1
       ? { token: { id: 'hidden-token', name: 'Secret', notes: 'host-only clue', isHidden: true } }
       : seq === 2
         ? { spatial: { schemaVersion: 1, coordinateSystem: 'normalized-100', tokenAnchor: 'center', world: { width: 24, height: 16 }, grid: { kind: 'square', originX: 0, originY: 0, cellSize: 1 }, scale: { unitsPerGridCell: 5, unitLabel: 'ft' } } }
-        : { grid: { enabled: true, sizePx: 40 + seq } },
+        : seq === 3
+          ? { token: { id: 'hidden-token', footprint: { schemaVersion: 1, shape: 'axis-aligned-rectangle', coordinateSpace: 'scene-world', anchor: 'center', width: 2, height: 3 } } }
+          : { grid: { enabled: true, sizePx: 40 + seq } },
   };
 }
 
@@ -199,6 +201,7 @@ async function main(): Promise<void> {
     restore.decision === 'restored' && restore.restoredRoomCount === 1 && restore.restoredEventCount === 205,
     restoredStream.events.length === 205 && restoredStream.latestSeq === 205,
     restoredBoard.spatial?.world.width === 24 && restoredBoard.spatial?.scale?.unitsPerGridCell === 5,
+    restoredBoard.tokens[0]?.footprint?.width === 2 && restoredBoard.tokens[0]?.footprint?.height === 3,
     hiddenToken?.isHidden === true && hiddenToken.notes === 'host-only clue',
     nextEvent.seq === 206,
     repository.maxActiveAppends === 1,

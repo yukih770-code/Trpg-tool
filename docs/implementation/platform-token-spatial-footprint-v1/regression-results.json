@@ -1,0 +1,30 @@
+{
+  "status": "passed",
+  "checks": {
+    "sceneSpatial": 14,
+    "tokenFootprint": 19,
+    "tokenFootprintAuthority": 15,
+    "mapReplay": "10/10",
+    "sceneSnapshot": "23/23",
+    "liveMapPersistence": 12,
+    "tokenMovement": "21/21",
+    "tokenPermissions": "passed",
+    "mapBridge": "passed",
+    "runtimeVisibilityProjection": "passed",
+    "assetRoutes": "passed",
+    "backgroundAndPublicSystem": 49,
+    "weaponModeRange": "27/27",
+    "weaponGameplayProfiles": "41/41",
+    "t12Resolver": "passed",
+    "t12KernelRecovery": "passed",
+    "t12IntentIdempotency": "passed",
+    "t12Visibility": "passed",
+    "t12HttpAuthority": "passed",
+    "t12Boundaries": "passed",
+    "t12FrontendIntents": "passed",
+    "t12FrontendRendering": "passed",
+    "frontendTypecheck": "passed",
+    "serverProductionBuild": "passed",
+    "frontendProductionBuild": "passed"
+  }
+}

@@ -11,6 +11,7 @@ export type MapTokenInformationVisibility = 'default' | 'public';
 
 import type { RuntimeAcDisplay, RuntimeHpDisplay, RuntimeTokenRelation, RuntimeVisibility } from '../platform/roomRuntimeVisibility.js';
 import type { SceneSpatialV1 } from './sceneSpatial.js';
+import { parseTokenSpatialFootprintV1, type TokenSpatialFootprintV1 } from './tokenSpatialFootprint.js';
 
 export type MapTokenHpSummary = {
   current?: number;
@@ -67,8 +68,11 @@ export type MapToken = {
   x: number;
   y: number;
   size: MapTokenSize;
+  /** Legacy presentation metadata with no authoritative units or bounds semantics. */
   width?: number;
   height?: number;
+  /** Optional authoritative occupied bounds in Scene world units. */
+  footprint?: TokenSpatialFootprintV1;
   sourceType: MapTokenSourceType;
   /** Additive source metadata; old manual tokens intentionally omit it. */
   sourceId?: string;
@@ -256,6 +260,7 @@ export function createMapToken(input: MapTokenInput): MapToken {
     x: clamp(Number.isFinite(input.x) ? input.x as number : 50, 0, 100),
     y: clamp(Number.isFinite(input.y) ? input.y as number : 50, 0, 100),
     size: input.size ?? 'medium',
+    footprint: parseTokenSpatialFootprintV1(input.footprint),
     sourceType: input.sourceType ?? 'unknown',
     isHidden: input.isHidden ?? false,
   };
