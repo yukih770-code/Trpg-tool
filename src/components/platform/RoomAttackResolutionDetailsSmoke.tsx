@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { RoomAttackResolutionDetails } from './RoomAttackResolutionDetails';
-import { RuntimeDndActionPanel } from './RuntimeDndActionPanel';
+import { dndAttackErrorText, RuntimeDndActionPanel } from './RuntimeDndActionPanel';
+import { RoomServerHttpError } from '../../lib/platform/roomServerHttpClient';
 import { projectAttackResolvedFacts } from '../../../server/room/projectAttackResolvedFacts';
 
 const raw = {
@@ -29,4 +30,5 @@ assert.ok(!panel.includes('攻击掷骰'));
 assert.ok(!panel.includes('掷伤害'));
 const empty = renderToStaticMarkup(<RuntimeDndActionPanel scopeKey="empty" actorCombatantId="pc" actions={[]} />);
 assert.ok(empty.includes('暂无已编写的攻击'));
+assert.equal(dndAttackErrorText(new RoomServerHttpError(409, 'dnd_attack_out_of_range')), '目标超出此攻击的近战范围。');
 console.log('T12 rendering smoke passed: structured attack details, projection-gated vitals, no hidden-value fallback, intent button and authored-action empty state.');

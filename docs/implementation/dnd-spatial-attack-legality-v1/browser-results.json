@@ -1,0 +1,70 @@
+{
+  "task": "D&D Spatial Attack Legality V1",
+  "acceptedAt": "2026-09-16",
+  "browser": "real Chrome via CDP",
+  "room": {
+    "code": "V599VT",
+    "roomId": "room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+    "mapId": "room:room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+    "systemId": "dnd5e-2024"
+  },
+  "scene": {
+    "gridKind": "square",
+    "worldWidth": 20,
+    "worldHeight": 12,
+    "cellSize": 1,
+    "unitsPerGridCell": 5,
+    "unitLabel": "ft"
+  },
+  "actor": {
+    "combatantId": "e9e3959e-ffc3-4891-9e13-f07c16d5a299",
+    "tokenId": "d93809f5-c22a-4fb6-bab3-a993af1596e3",
+    "footprint": { "width": 1, "height": 1, "coordinateSpace": "scene-world" },
+    "acceptedPosition": { "xPercent": 52.5, "yPercent": 45.83333333333333 }
+  },
+  "target": {
+    "combatantId": "fa406bea-a02b-4bbc-b3a8-a2a24f6a8f10",
+    "tokenId": "320b5c2b-61a4-4c4d-9abf-13b9888014a5",
+    "footprint": { "width": 1, "height": 1, "coordinateSpace": "scene-world" },
+    "adjacentPosition": { "xPercent": 57.5, "yPercent": 45.83333333333333 },
+    "outOfRangePosition": { "xPercent": 62.5, "yPercent": 45.83333333333333 },
+    "hpBeforeIllegal": 17,
+    "hpAfterIllegal": 17
+  },
+  "boundarySequence": [
+    { "state": "adjacent", "distanceFeet": 5, "result": "resolved through T12" },
+    { "state": "one-intervening-square", "distanceFeet": 10, "result": "dnd_attack_out_of_range" },
+    { "state": "adjacent", "distanceFeet": 5, "result": "resolved miss", "attackTotal": 8, "runtimeLogSeq": 15 }
+  ],
+  "restart": {
+    "productionServerStart": true,
+    "databaseStatus": "ok",
+    "readiness": "ready",
+    "readySchemaCount": 11,
+    "requiredSchemaCount": 11,
+    "restoredRoomCount": 6,
+    "restoredAdmissionCount": 1,
+    "restoredRuntimeLogEventCount": 17,
+    "restoredRoomMapEventCount": 55,
+    "recoveredAcceptanceRoomPositionsAndFootprints": true,
+    "postRestartMapSeq": 25,
+    "postRestartIllegalResult": "dnd_attack_out_of_range",
+    "runtimeLogSeqBefore": 15,
+    "runtimeLogSeqAfter": 15,
+    "runtimeLogCountBefore": 15,
+    "runtimeLogCountAfter": 15,
+    "targetHpBefore": 17,
+    "targetHpAfter": 17
+  },
+  "migrationAdded": false,
+  "screenshots": [
+    "01-live-room-before.png",
+    "02-in-range-geometry.png",
+    "03-in-range-success.png",
+    "04-out-of-range-geometry.png",
+    "05-out-of-range-rejection.png",
+    "06-back-in-range-success.png",
+    "07-post-restart-recovered-state.png",
+    "08-post-restart-illegal.png"
+  ]
+}

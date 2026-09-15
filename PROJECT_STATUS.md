@@ -747,6 +747,17 @@ Landmark: `CAMPAIGN_AI_CURATED_MEMORY_ADOPTION_V1`.
 - 草稿仍是有 TTL、房间/成员/用户绑定的一次性 Server State。主持人逐字预览后选择 `hostOnly` 或 `public`，确认时比对最新 RuntimeLog seq，并且只追加新事件而不改写历史。
 - 本批次没有 Actor、Campaign、RuntimeActor、GeneratedArtifact、AI Memory、schema/migration 或后台自动生成写入；把草稿正式绑定角色或转成可管理战役文档仍是后续独立链。
 
+## D&D Spatial Attack Legality V1
+
+- Canonical D&D Dagger, Mace, Flail, and Morningstar melee modes now consult a server-owned tri-state spatial seam before T12 RNG. The seam reads only replayed square Scene data, combatant-to-Token links, explicit authoritative Token footprints, and registry reach metadata.
+- Source-backed occupied-square distance uses the shortest adjacent-square count at 5 feet per square, including diagonal adjacency. A fully supported attack beyond reach returns stable HTTP 409 `dnd_attack_out_of_range` before RNG, HP mutation, RuntimeLog append, or broadcast.
+- Missing or ambiguous links, absent/unsupported footprints, incompatible Scene scale, and unsupported action modes remain `unavailable`, preserving theater-of-the-mind and existing T12 behavior.
+- Current Actor size remains free text and is not projected into Runtime authority, so V1 performs no automatic footprint materialization. Real Chrome boundary acceptance, PostgreSQL restart recovery, focused/broad regression suites, TypeScript, and production builds pass with no migration.
+
+Landmark: `DND_SPATIAL_ATTACK_LEGALITY_V1`.
+
+---
+
 Landmark: `EMBEDDED_RUNTIME_SESSION_AI_DRAFTS_V1`.
 
 ---

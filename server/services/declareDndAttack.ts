@@ -13,6 +13,8 @@ import { applyRuntimeResolution, readAuthoritativeCombat, RuntimeResolutionError
 import { resolveDndAttackAction, readAuthoredDndAttack } from './resolveDndAttackAction.js';
 import { ResolvedIntentIndex } from './resolvedIntentIndex.js';
 import { resolveDndActorSheetAuthority } from '../../src/lib/dnd/dndActorSheetAuthority.js';
+import { getDndWeaponAttackModeByActionId } from '../../src/lib/dnd2024/gameplay/dndWeaponAttackModes.js';
+import { resolveAuthoritativeDndSpatialAttackLegality } from './resolveDndSpatialAttackLegality.js';
 
 /** Uniform over 2^32 points, not a perfectly uniform mapping to every die.
  * floor(u*sides) has < sides/2^32 relative bias (d20 worst ~3.7e-9).
@@ -119,11 +121,26 @@ export async function declareDndAttack(deps: DndAttackDependencies, input: {
       const source = await actingSource(deps, input.roomId, input.memberId, input.viewer, intent.actorCombatantId);
       if (deps.log.list(input.roomId).latestSeq !== expectedSeq || deps.maps.list(input.roomId).latestSeq !== mapSeq) fail('stale_resolution', 409);
       const state = readAuthoritativeCombat(deps.log, input.roomId);
+      const actor = state.combatants.find((c) => c.id === intent.actorCombatantId && c.status === 'active' && !c.isDefeated);
+      if (!actor) fail('invalid_actor_combatant');
       const target = state.combatants.find((c) => c.id === intent.targetCombatantId && c.status === 'active' && !c.isDefeated);
       if (!target) fail('invalid_target_combatant');
+      let actionPayload;
+      try {
+        actionPayload = resolveDndActorSheetAuthority(source.record).actionPayload;
+        readAuthoredDndAttack(actionPayload, intent.actionId);
+      } catch (error) { fail(error instanceof Error ? error.message : 'invalid_action'); }
+      const currentMap = deps.maps.list(input.roomId);
+      if (currentMap.latestSeq !== mapSeq) fail('stale_resolution', 409);
+      const spatial = resolveAuthoritativeDndSpatialAttackLegality({
+        mapEvents: currentMap.events,
+        actor,
+        target,
+        mode: getDndWeaponAttackModeByActionId(intent.actionId),
+      });
+      if (spatial.status === 'illegal') fail('dnd_attack_out_of_range', 409);
       let proposal;
       try {
-        const actionPayload = resolveDndActorSheetAuthority(source.record).actionPayload;
         proposal = resolveDndAttackAction({ target, actionPayload, intent, resolutionId: randomUUID(), random: deps.random ?? cryptoDndUnitInterval });
       }
       catch (error) { fail(error instanceof Error ? error.message : 'invalid_action'); }

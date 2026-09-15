@@ -122,3 +122,7 @@ Legacy Tokens remain point-only until explicitly configured. V1 represents axis-
 ## 25. Recommended next task
 
 Create a separate D&D spatial legality task that consumes authoritative Scene and Token bounds, defines D&D size-to-footprint adaptation and distance policy, and validates the selected weapon mode before T12 rolls. That task should preserve this Platform contract and keep all D&D interpretation in the Game System layer.
+
+## 26. Follow-up: D&D Spatial Attack Legality V1
+
+The D&D layer now consumes replayed Scene geometry and Token bounds without changing this Platform contract. It converts supported grid-aligned occupied spaces into the approved D&D square-distance metric and enforces only the four existing canonical simple-melee modes before T12 RNG. Point-only, ambiguous, off-grid, or otherwise unsupported Platform facts remain unavailable and preserve GM adjudication. Free-text Actor size does not initialize or overwrite footprints.

@@ -34,6 +34,13 @@ const ROLL_MODE_OPTIONS: Array<{ id: SharedDiceRollMode; label: string }> = [
   { id: 'disadvantage', label: '劣势' },
 ];
 
+export function dndAttackErrorText(error: unknown): string {
+  if (error instanceof RoomServerHttpError && error.message === 'dnd_attack_out_of_range') {
+    return '目标超出此攻击的近战范围。';
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
 /**
  * Player-facing DND action palette for the Room Runtime.
  *
@@ -73,7 +80,7 @@ export function RuntimeDndActionPanel({
       const result = await onDeclare(intent);
       setAttackResult(result); pendingStore.complete(intent.intentId); setPendingAttack(undefined);
     } catch (error) {
-      setRollError(error instanceof Error ? error.message : String(error));
+      setRollError(dndAttackErrorText(error));
       // Only a definite rejected request may be abandoned automatically. Lost
       // responses / 5xx keep the same frozen intent for the explicit retry.
       if (error instanceof RoomServerHttpError && error.status >= 400 && error.status < 500) {

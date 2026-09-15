@@ -182,3 +182,7 @@ Implement a Platform Scene Spatial Distance Contract V1. Persist a render-indepe
 ## 25. Historical follow-up: Platform Scene Spatial Contract V1
 
 Before the Platform spatial contract, the server lacked render-independent Scene geometry. After the spatial contract, authoritative Scene/world extent, generic square-grid geometry, generic scale, and deterministic normalized-to-world conversion exist. Exact combat range remains blocked because Token footprint or bounds are still non-authoritative; T12 range enforcement therefore remains inactive.
+
+## 26. Follow-up: D&D Spatial Attack Legality V1
+
+The previously inactive seam is active for Dagger melee, Mace, Flail, and Morningstar when a D&D Room has an explicit 5-unit square Scene scale, unique same-Scene combatant/Token links, and supported grid-aligned authoritative footprints. The canonical mode registry now marks those four modes for square-grid footprint enforcement. Illegal attacks return `dnd_attack_out_of_range` before T12 RNG; missing or unsupported spatial authority remains GM-adjudicated. Dagger thrown and all ranged/reach modes remain deferred.

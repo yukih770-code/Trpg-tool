@@ -49,7 +49,8 @@ for (const actionId of meleeActionIds) {
   const action = getDndActionDefinition(actionId);
   const mode = getDndWeaponAttackModeByActionId(actionId);
   check(`${actionId}: deterministic Action-to-mode identity`, action?.weaponModeRef === canonicalDndWeaponModeId(actionId));
-  check(`${actionId}: executable ordinary melee mode`, mode?.availability === 'executable' && mode.attackKind === 'melee');
+  check(`${actionId}: executable ordinary melee mode`, mode?.availability === 'executable' && mode.attackKind === 'melee'
+    && mode.spatialEnforcement === 'active-square-grid-footprint-v1');
   check(`${actionId}: one normalized source-backed reach`, mode?.distanceProfile.reach === DND_2024_ORDINARY_MELEE_DISTANCE.reach
     && mode.distanceProfile.unit === 'ft');
 }

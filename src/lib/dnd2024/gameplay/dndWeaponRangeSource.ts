@@ -25,8 +25,18 @@ export const DND_WEAPON_RANGE_PROVENANCE = {
       sourceRef: 'dnd-local-chm-primary:玩家手册2024/装备/词条.htm',
       sha256: '7DDBE92400A0E8A97940AD67D57249268F47418E48F1618CD71BA29BBEB9022A',
     },
+    movementAndPosition: {
+      sourceRef: 'dnd-local-chm-primary:玩家手册2024/进行游戏/移动和位置.htm',
+      sha256: '0C7E72DC0BCEF6FB95F1ABB16DC0800896D7E854B527DD42A21B26DD61F4C6E1',
+    },
   },
 } as const;
+
+/** The approved grid rule gives every square this D&D distance. */
+export const DND_2024_GRID_CELL_DISTANCE_FEET = 5 as const;
+
+/** Approved occupied-space widths, normalized without binding free-text Actor size. */
+export const DND_2024_CREATURE_SPACE_WIDTHS_IN_CELLS = [0.5, 1, 2, 3, 4] as const;
 
 /** Ordinary melee reach, normalized once from the approved general rule. */
 export const DND_2024_ORDINARY_MELEE_DISTANCE: Readonly<DndRangeProfile> = {

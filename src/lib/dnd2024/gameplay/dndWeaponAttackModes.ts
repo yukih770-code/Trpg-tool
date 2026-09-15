@@ -7,7 +7,7 @@ import { DND_2024_ORDINARY_MELEE_DISTANCE, DND_WEAPON_RANGE_PROVENANCE } from '.
 
 export type DndWeaponAttackKind = 'melee' | 'thrown' | 'ranged';
 export type DndWeaponModeAvailability = 'executable' | 'deferred';
-export type DndWeaponSpatialEnforcement = 'blocked-spatial-scale';
+export type DndWeaponSpatialEnforcement = 'active-square-grid-footprint-v1' | 'blocked-spatial-scale';
 export type DndWeaponModeBlocker =
   | 'authoritative-spatial-scale'
   | 'long-range-consequence'
@@ -77,8 +77,10 @@ function buildMode(spec: ModeSpec): DndWeaponAttackMode {
     proficiencyRule: { weaponCategory: spec.weaponCategory },
     distanceProfile,
     availability: spec.availability,
-    spatialEnforcement: 'blocked-spatial-scale',
-    blockers: spec.blockers ?? ['authoritative-spatial-scale'],
+    spatialEnforcement: spec.availability === 'executable' && spec.attackKind === 'melee'
+      ? 'active-square-grid-footprint-v1'
+      : 'blocked-spatial-scale',
+    blockers: spec.blockers ?? [],
     sourceRefs: [
       DND_WEAPON_RANGE_PROVENANCE.sources.weapons.sourceRef,
       DND_WEAPON_RANGE_PROVENANCE.sources.attackAbilities.sourceRef,
@@ -131,11 +133,7 @@ export function getDndWeaponAttackModesForDefinition(definition: Pick<DndItemDef
   return DND_2024_WEAPON_ATTACK_MODES.filter((mode) => mode.weaponDefinitionId === definition.id);
 }
 
-/**
- * D&D-only range comparison for a future authoritative platform distance.
- * Current T12 deliberately does not call this: persisted map state cannot
- * produce authoritative feet. Missing distance therefore remains GM-adjudicated.
- */
+/** D&D-only comparison helper; missing distance remains GM-adjudicated. */
 export function evaluateDndWeaponRange(
   mode: DndWeaponAttackMode,
   authoritativeDistanceFeet?: number,
