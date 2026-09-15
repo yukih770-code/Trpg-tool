@@ -1,0 +1,48 @@
+{
+  "verdict": "PASS — SPATIAL CONTRACT ESTABLISHED, EXACT COMBAT DISTANCE STILL BLOCKED",
+  "checkedAt": "2026-09-14T23:51:05.3903847Z",
+  "databaseStatus": "ok",
+  "startupRecovery": "ready",
+  "roomId": "room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+  "mapId": "room:room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+  "latestSeq": 8,
+  "spatialEventSeq": 7,
+  "movementEventSeq": 8,
+  "spatial": {
+    "grid": {
+      "kind": "square",
+      "originX": 0,
+      "originY": 0,
+      "cellSize": 1
+    },
+    "scale": {
+      "unitLabel": "ft",
+      "unitsPerGridCell": 5
+    },
+    "world": {
+      "width": 20,
+      "height": 12
+    },
+    "tokenAnchor": "center",
+    "schemaVersion": 1,
+    "coordinateSystem": "normalized-100"
+  },
+  "movement": {
+    "x": 55,
+    "y": 54.790419161676645,
+    "tokenId": "d93809f5-c22a-4fb6-bab3-a993af1596e3"
+  },
+  "derivedWorldPosition": {
+    "x": 11.0,
+    "y": 6.574850299401197,
+    "formula": "world = normalized / 100 × worldExtent"
+  },
+  "assertions": {
+    "spatialRecoveredAfterBackendRestart": true,
+    "movementRecoveredAfterBackendRestart": true,
+    "normalizedMovementRemainsAuthoritative": true,
+    "renderIndependentConversion": true,
+    "exactCombatDistanceEnabled": false,
+    "reason": "Token footprint remains point-only/non-authoritative."
+  }
+}

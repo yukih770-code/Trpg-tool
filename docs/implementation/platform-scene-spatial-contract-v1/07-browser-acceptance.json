@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "product": "built production frontend with PostgreSQL-backed room server",
+  "roomCode": "V599VT",
+  "roomId": "room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+  "checks": {
+    "legacySceneWasExplicitlyUnconfigured": true,
+    "hostConfiguredSpatialThroughRealGridPanel": true,
+    "configuredWorld": { "width": 20, "height": 12 },
+    "configuredGrid": { "kind": "square", "originX": 0, "originY": 0, "cellSize": 1 },
+    "configuredScale": { "unitsPerGridCell": 5, "unitLabel": "ft" },
+    "gridStillRendered": true,
+    "tokenMovedThroughPointerInput": true,
+    "movedTokenNormalizedPosition": { "x": 55, "y": 54.790419161676645 },
+    "derivedWorldPosition": { "x": 11, "y": 6.574850299401197 },
+    "hostOnlyControls": true,
+    "ordinaryPlayerServerWriteDenied": true,
+    "spectatorServerWriteDenied": true,
+    "reloadAndRoomReentryRetainedSpatial": true,
+    "backendRestartRetainedSpatial": true,
+    "backendRestartRetainedTokenPosition": true,
+    "dndRangeEnforcementActivated": false
+  },
+  "permissionEvidence": "sceneSpatialAuthoritySmoke.ts: 6/6",
+  "durabilityEvidence": "05-post-restart-recovery.json",
+  "screenshots": [
+    "01-legacy-unconfigured.png",
+    "02-configured-scene.png",
+    "03-token-moved.png",
+    "06-post-restart-recovered.png"
+  ]
+}

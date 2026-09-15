@@ -1,0 +1,37 @@
+{
+  "status": "passed",
+  "focused": {
+    "sceneSpatialContract": "14/14",
+    "sceneSpatialAuthority": "6/6",
+    "mapRuntimeReplay": "10/10",
+    "sceneRuntimeSnapshot": "20/20",
+    "roomMapBridge": "passed",
+    "liveRoomMapPersistence": "11/11",
+    "roomTokenControl": "20/20",
+    "roomRuntimePermissions": "passed",
+    "assetAndMapBackground": "passed"
+  },
+  "lockedRegressions": {
+    "weaponModeRange": "27/27",
+    "weaponGameplayProfiles": "41/41",
+    "characterWeaponDerivation": "22/22",
+    "t9FrontendCombatFields": "129 assertions",
+    "t9ServerSourceHash": "73 assertions",
+    "t11SourceReview": "79 assertions",
+    "campaignActorOverride": "6/6",
+    "t12Resolver": "passed",
+    "t12KernelRecovery": "passed",
+    "t12IntentIdempotency": "passed",
+    "t12Visibility": "passed",
+    "t12HttpAuthority": "passed",
+    "t12Boundaries": "passed",
+    "t12FrontendIntent": "passed",
+    "t12Rendering": "passed on isolated rerun after one concurrent no-output exit"
+  },
+  "builds": {
+    "typescriptNoEmit": "passed",
+    "serverProductionBuild": "passed",
+    "frontendProductionBuild": "passed; 2208 modules"
+  },
+  "packageJsonChanged": false
+}

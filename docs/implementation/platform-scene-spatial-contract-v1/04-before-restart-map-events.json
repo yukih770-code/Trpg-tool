@@ -1,0 +1,212 @@
+{
+  "roomId": "room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+  "latestSeq": 8,
+  "events": [
+    {
+      "mapEventId": "mapevent_148e1ce5-b2b2-4da9-bdcf-e1c76ca8e9b0",
+      "roomId": "room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "mapId": "room:room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "seq": 1,
+      "createdAt": "2026-09-13T16:26:51.328Z",
+      "authorMemberId": "member_697bf5d3-9fd2-4095-92bb-403170500888",
+      "eventKind": "map.token_added",
+      "payload": {
+        "token": {
+          "x": 50,
+          "y": 50,
+          "id": "d93809f5-c22a-4fb6-bab3-a993af1596e3",
+          "kind": "playerCharacter",
+          "name": "Derived Dagger Hero",
+          "size": "medium",
+          "initials": "DD",
+          "isHidden": false,
+          "sourceId": "campaign_actor_55b43824-c71d-4894-afa0-870a7f71a391",
+          "sourceType": "campaign_actor",
+          "displayName": "Derived Dagger Hero",
+          "ownerUserId": "dev-user-001",
+          "campaignActorId": "campaign_actor_55b43824-c71d-4894-afa0-870a7f71a391",
+          "controlledByUserId": "dev-user-001",
+          "sourceActorInstanceId": "campaign_actor_55b43824-c71d-4894-afa0-870a7f71a391"
+        }
+      }
+    },
+    {
+      "mapEventId": "mapevent_00eb4f48-7771-451c-9320-7c11ef81d2ea",
+      "roomId": "room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "mapId": "room:room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "seq": 2,
+      "createdAt": "2026-09-13T16:26:59.942Z",
+      "authorMemberId": "member_697bf5d3-9fd2-4095-92bb-403170500888",
+      "eventKind": "map.token_added",
+      "payload": {
+        "token": {
+          "x": 35,
+          "y": 25,
+          "id": "320b5c2b-61a4-4c4d-9abf-13b9888014a5",
+          "kind": "unknown",
+          "name": "Training Dummy",
+          "size": "medium",
+          "initials": "TD",
+          "isHidden": false,
+          "sourceType": "manual",
+          "displayName": "Training Dummy"
+        }
+      }
+    },
+    {
+      "mapEventId": "mapevent_b50db5ae-a910-44b1-916b-d7aa986d5cb3",
+      "roomId": "room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "mapId": "room:room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "seq": 3,
+      "createdAt": "2026-09-14T04:54:42.128Z",
+      "authorMemberId": "member_697bf5d3-9fd2-4095-92bb-403170500888",
+      "eventKind": "map.token_added",
+      "payload": {
+        "token": {
+          "x": 56,
+          "y": 56,
+          "id": "47dff400-7e36-49db-bbd4-321067c08c47",
+          "kind": "playerCharacter",
+          "name": "Unsupported Free Text Hero",
+          "size": "medium",
+          "initials": "UF",
+          "isHidden": false,
+          "sourceId": "binding_9a7f6c21-ef7b-4a7f-b971-db84ecbef93f",
+          "hpSummary": {
+            "max": 10,
+            "current": 10
+          },
+          "sourceType": "roomActorBinding",
+          "displayName": "Unsupported Free Text Hero",
+          "ownerUserId": "dev-user-001",
+          "roomMemberId": "member_697bf5d3-9fd2-4095-92bb-403170500888",
+          "actorBindingId": "binding_9a7f6c21-ef7b-4a7f-b971-db84ecbef93f",
+          "campaignActorId": "campaign_actor_0b604771-9416-4e73-832f-7b8eb99f32c9",
+          "controlledByUserId": "dev-user-001",
+          "sourceActorInstanceId": "campaign_actor_0b604771-9416-4e73-832f-7b8eb99f32c9"
+        }
+      }
+    },
+    {
+      "mapEventId": "mapevent_02a7129a-90ac-4b20-86a2-a5c295f3fecd",
+      "roomId": "room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "mapId": "room:room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "seq": 4,
+      "createdAt": "2026-09-14T13:59:49.01Z",
+      "authorMemberId": "member_697bf5d3-9fd2-4095-92bb-403170500888",
+      "eventKind": "map.token_removed",
+      "payload": {
+        "name": "Unsupported Free Text Hero",
+        "tokenId": "47dff400-7e36-49db-bbd4-321067c08c47"
+      }
+    },
+    {
+      "mapEventId": "mapevent_d7f07349-6394-4778-848d-8d50259b6ebc",
+      "roomId": "room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "mapId": "room:room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "seq": 5,
+      "createdAt": "2026-09-14T13:59:58.936Z",
+      "authorMemberId": "member_697bf5d3-9fd2-4095-92bb-403170500888",
+      "eventKind": "map.token_added",
+      "payload": {
+        "token": {
+          "x": 56,
+          "y": 56,
+          "id": "316f9c7b-f9b9-48db-acda-3d75741e0f9e",
+          "kind": "playerCharacter",
+          "name": "Mace Profile Hero",
+          "size": "medium",
+          "initials": "MP",
+          "isHidden": false,
+          "sourceId": "binding_9a7f6c21-ef7b-4a7f-b971-db84ecbef93f",
+          "hpSummary": {
+            "max": 10,
+            "current": 10
+          },
+          "sourceType": "roomActorBinding",
+          "displayName": "Mace Profile Hero",
+          "ownerUserId": "dev-user-001",
+          "roomMemberId": "member_697bf5d3-9fd2-4095-92bb-403170500888",
+          "actorBindingId": "binding_9a7f6c21-ef7b-4a7f-b971-db84ecbef93f",
+          "campaignActorId": "campaign_actor_3719889d-8603-48e9-b349-5eba74b893bf",
+          "controlledByUserId": "dev-user-001",
+          "sourceActorInstanceId": "campaign_actor_3719889d-8603-48e9-b349-5eba74b893bf"
+        }
+      }
+    },
+    {
+      "mapEventId": "mapevent_e135c6cf-740f-4c30-a1c3-c7416a7288c8",
+      "roomId": "room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "mapId": "room:room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "createdAt": "2026-09-14T23:39:14.775Z",
+      "authorMemberId": "member_697bf5d3-9fd2-4095-92bb-403170500888",
+      "eventKind": "map.spatial_updated",
+      "payload": {
+        "spatial": {
+          "schemaVersion": 1,
+          "coordinateSystem": "normalized-100",
+          "tokenAnchor": "center",
+          "world": {
+            "width": 20,
+            "height": 12
+          },
+          "grid": {
+            "kind": "square",
+            "originX": 0,
+            "originY": 0,
+            "cellSize": 1
+          },
+          "scale": {
+            "unitsPerGridCell": 5,
+            "unitLabel": "ft"
+          }
+        }
+      },
+      "seq": 6
+    },
+    {
+      "mapEventId": "mapevent_88db0431-cf89-436a-bdbd-4921e362f03b",
+      "roomId": "room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "mapId": "room:room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "createdAt": "2026-09-14T23:46:12.556Z",
+      "authorMemberId": "member_697bf5d3-9fd2-4095-92bb-403170500888",
+      "eventKind": "map.spatial_updated",
+      "payload": {
+        "spatial": {
+          "schemaVersion": 1,
+          "coordinateSystem": "normalized-100",
+          "tokenAnchor": "center",
+          "world": {
+            "width": 20,
+            "height": 12
+          },
+          "grid": {
+            "kind": "square",
+            "originX": 0,
+            "originY": 0,
+            "cellSize": 1
+          },
+          "scale": {
+            "unitsPerGridCell": 5,
+            "unitLabel": "ft"
+          }
+        }
+      },
+      "seq": 7
+    },
+    {
+      "mapEventId": "mapevent_0dc608e8-f3be-4103-a9b3-5dc3a775976c",
+      "roomId": "room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "mapId": "room:room_fe4b1ecd-26dc-47b2-b066-1f9025835e8b",
+      "createdAt": "2026-09-14T23:48:31.46Z",
+      "authorMemberId": "member_697bf5d3-9fd2-4095-92bb-403170500888",
+      "eventKind": "map.token_moved",
+      "payload": {
+        "tokenId": "d93809f5-c22a-4fb6-bab3-a993af1596e3",
+        "x": 55,
+        "y": 54.790419161676645
+      },
+      "seq": 8
+    }
+  ]
+}
