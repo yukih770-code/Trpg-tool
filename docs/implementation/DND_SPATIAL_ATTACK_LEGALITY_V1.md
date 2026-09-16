@@ -130,3 +130,8 @@ Automatic size materialization is blocked by free-text Actor size and the missin
 ## 23. Recommended next task
 
 Define a canonical typed D&D Actor size projection and a materialize-once Token placement adapter, with explicit source acceptance and no live inheritance. Keep thrown/ranged mechanics in later, separately reviewed tasks.
+
+
+## Follow-up: typed Actor size materialization (2026-09-16)
+
+Supported new D&D Token placement now supplies the previously manual footprint automatically when accepted typed Actor size and compatible Scene scale exist. The existing legality resolver is unchanged. GM overrides/clears and old Tokens remain independent map authority; no live resizing or free-text inference occurs. PC/NPC browser acceptance and isolated PostgreSQL restart evidence are in [D&D Actor Size Materialization V1](DND_ACTOR_SIZE_FOOTPRINT_MATERIALIZATION_V1.md).

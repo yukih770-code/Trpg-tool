@@ -7,6 +7,7 @@ import {
   sourceChangedSinceApprovalFlag,
 } from './dndCharacterCombatRelevantHash.js';
 import { resolveDndActorSheetAuthority } from '../../src/lib/dnd/dndActorSheetAuthority.js';
+import { readDndCreatureSize, type DndCreatureSize } from '../../src/lib/dnd2024/gameplay/dndCreatureSize.js';
 
 const DND_LITE_ACTOR_SHEET_OVERRIDE_KEY = 'dndLiteActorSheetV1';
 
@@ -71,6 +72,7 @@ function readDndLiteCombatSummary(payload: Record<string, unknown>): {
   currentHp?: number;
   maxHp?: number;
   temporaryHp?: number;
+  dndCreatureSize?: DndCreatureSize;
   initiativeModifier?: number;
 } | undefined {
   const sheet = record(payload[DND_LITE_ACTOR_SHEET_OVERRIDE_KEY]);
@@ -88,6 +90,7 @@ function readDndLiteCombatSummary(payload: Record<string, unknown>): {
   const dexterity = safeInteger(record(sheet.abilities)?.dexterity);
   return {
     displayName: sheet.displayName.trim(), actorKind,
+    dndCreatureSize: readDndCreatureSize(sheet.creatureSize),
     armorClass: safeInteger(defenses.armorClass), currentHp, maxHp,
     temporaryHp: safeInteger(defenses.temporaryHp),
     initiativeModifier: dexterity === undefined ? undefined : Math.floor((dexterity - 10) / 2),
@@ -163,6 +166,7 @@ function fromCampaignActor(
     ...fallback,
     displayName: dndSheet.displayName,
     actorKind: dndSheet.actorKind,
+    dndCreatureSize: dndSheet.dndCreatureSize,
     hpCurrent: dndSheet.currentHp,
     hpMax: dndSheet.maxHp,
     temporaryHp: dndSheet.temporaryHp,

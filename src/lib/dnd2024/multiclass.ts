@@ -1,4 +1,4 @@
-import type { DndClassLevel } from '../dnd-types';
+import type { DndClassLevel } from '../dnd-types.js';
 
 type LegacyClassFallback = {
   className: string;

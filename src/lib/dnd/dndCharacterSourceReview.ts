@@ -26,6 +26,7 @@
  */
 
 import type { CharacterData } from '../dnd-types.js';
+import { dndCreatureSizeLabel } from '../dnd2024/gameplay/dndCreatureSize.js';
 import type { DndAbilityKey, DndLiteActorSheet, DndSkillKey } from './dndLiteActorTypes.js';
 import { DND_ABILITY_KEYS, DND_SKILL_KEYS } from './dndLiteActorTypes.js';
 import type { DndCharacterToLiteActorSheetOptions } from './dndCharacterToLiteActorSheet.js';
@@ -120,6 +121,9 @@ export function compareDndLiteActorSheets(
   current: DndLiteActorSheet,
 ): DndSourceReviewField[] {
   const fields: DndSourceReviewField[] = [];
+  fields.push(field('creatureSize', 'Creature size', 'identity',
+    accepted.creatureSize ? dndCreatureSizeLabel(accepted.creatureSize, 'en') : undefined,
+    current.creatureSize ? dndCreatureSizeLabel(current.creatureSize, 'en') : undefined));
 
   fields.push(field('displayName', 'Name', 'identity', accepted.displayName, current.displayName));
   fields.push(field('proficiencyBonus', 'Proficiency Bonus', 'identity',

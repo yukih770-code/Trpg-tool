@@ -1,0 +1,8 @@
+{
+  "beforeRestart": {
+    "error": "dnd_attack_out_of_range"
+  },
+  "afterRestart": {
+    "error": "dnd_attack_out_of_range"
+  }
+}

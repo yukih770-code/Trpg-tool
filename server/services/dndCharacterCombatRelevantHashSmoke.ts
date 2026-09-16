@@ -69,7 +69,7 @@ const baseline = formatDndCharacterCombatRelevantHash(approved);
 check('a readable character produces a hash', typeof baseline === 'string' && baseline.length > 0);
 check('the hash is self-describing', baseline!.startsWith(DND_COMBAT_RELEVANT_HASH_PREFIX));
 check('the prefix names the system', DND_COMBAT_RELEVANT_HASH_PREFIX.startsWith(`${DND_COMBAT_RELEVANT_HASH_SYSTEM_ID}:`));
-  check('the prefix names the field version', DND_COMBAT_RELEVANT_HASH_PREFIX.includes('combatRelevantV2'));
+  check('the prefix names the field version', DND_COMBAT_RELEVANT_HASH_PREFIX.includes('combatRelevantV3'));
 check('the prefix names the algorithm', DND_COMBAT_RELEVANT_HASH_PREFIX.includes('sha256'));
 check('the digest is 64 hex characters', /^[0-9a-f]{64}$/.test(baseline!.slice(DND_COMBAT_RELEVANT_HASH_PREFIX.length)));
 check('the hash is deterministic', formatDndCharacterCombatRelevantHash(character()) === baseline);
@@ -101,7 +101,8 @@ const unknownCases: Array<[string, { storedHash: string | undefined | null; curr
   ['a null stored baseline', { storedHash: null, currentPayload: approved }],
   ['a blank stored baseline', { storedHash: '   ', currentPayload: approved }],
   ['a foreign stored baseline', { storedHash: clearanceHash.value, currentPayload: approved }],
-  ['a stored baseline from a newer field version', { storedHash: 'dnd5e-2024:combatRelevantV3:sha256:deadbeef', currentPayload: approved }],
+  ['a stored baseline from a newer field version', { storedHash: 'dnd5e-2024:combatRelevantV4:sha256:deadbeef', currentPayload: approved }],
+  ['a stored baseline before typed size coverage', { storedHash: 'dnd5e-2024:combatRelevantV2:sha256:deadbeef', currentPayload: approved }],
   ['a stored baseline from another system', { storedHash: 'coc7e:combatRelevantV1:sha256:deadbeef', currentPayload: approved }],
   ['an unreadable current payload', { storedHash: baseline, currentPayload: { hp: 12 } }],
   ['a missing current payload', { storedHash: baseline, currentPayload: undefined }],

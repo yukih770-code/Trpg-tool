@@ -1,3 +1,4 @@
+import { readDndCreatureSize } from './dnd2024/gameplay/dndCreatureSize.js';
 /**
  * characterMigration.ts
  *
@@ -44,8 +45,8 @@ import {
   PactMagicState,
   DndPersonalContentReference,
   CURRENT_DND_CHARACTER_SCHEMA_VERSION,
-} from './dnd-types';
-import { normalizeDndClassLevels } from './dnd2024/multiclass';
+} from './dnd-types.js';
+import { normalizeDndClassLevels } from './dnd2024/multiclass.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -231,6 +232,7 @@ export function migrateCharacter(data: unknown): CharacterData {
     acMod:          num(d.acMod, 10),
     speed:          str(d.speed, '30'),
     size:           str(d.size, '中型'),
+    dndCreatureSize: readDndCreatureSize(d.dndCreatureSize),
 
     // ── Attributes ────────────────────────────────────────────────────────
     attrs: migrateAttrs(d.attrs),

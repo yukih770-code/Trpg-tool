@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { initializeDndTokenFootprint } from '../../lib/dnd2024/gameplay/dndCreatureSize';
+import { readDndCharacterSnapshot } from '../../lib/dnd/dndCharacterToLiteActorSheet';
 import type { CampaignRuntimeContext } from '../../lib/platform/campaignFlow';
 import type { LocalCampaignSystemId } from '../../lib/platform/campaignLocalStore';
 import type {
@@ -616,6 +618,7 @@ export function CampaignRuntimeShell({
       mapId={localMapId}
       mapEvents={localMapEvents}
       actorPresenceCandidates={localHostCarriedCandidate ? [localHostCarriedCandidate] : []}
+      initializeNewToken={(token, spatial) => initializeDndTokenFootprint(token, readDndCharacterSnapshot(snapshotResult.snapshot)?.dndCreatureSize, spatial)}
       fallbackBackgroundUrl={currentScene?.mapUrl}
       sceneTitle={currentScene?.title}
       sceneDescription={currentScene?.body}

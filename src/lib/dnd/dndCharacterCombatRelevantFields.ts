@@ -24,6 +24,7 @@
  */
 
 import type { AttributeName, CharacterData } from '../dnd-types.js';
+import { readDndCreatureSize, type DndCreatureSize } from '../dnd2024/gameplay/dndCreatureSize.js';
 import { readDndCharacterSnapshot, DND_ATTRIBUTE_TO_ABILITY_KEY } from './dndCharacterToLiteActorSheet.js';
 import { readDndCharacterEquipmentSnapshot } from './dndCharacterEquipmentSnapshot.js';
 
@@ -32,7 +33,7 @@ import { readDndCharacterEquipmentSnapshot } from './dndCharacterEquipmentSnapsh
  * an older version must read as UNKNOWN, never as "unchanged", because the two
  * strings are not comparable.
  */
-export const DND_CHARACTER_COMBAT_RELEVANT_FIELD_VERSION = 2;
+export const DND_CHARACTER_COMBAT_RELEVANT_FIELD_VERSION = 3;
 
 /**
  * Tier name for this covered set.
@@ -60,6 +61,7 @@ export interface DndCombatRelevantAttributeParts {
 
 export interface DndCharacterCombatRelevantFields {
   fieldVersion: number;
+  dndCreatureSize?: DndCreatureSize;
   schemaVersion: number;
   name: string;
   level: number;
@@ -186,6 +188,7 @@ export function extractDndCharacterCombatRelevantFields(
   }
   return {
     fieldVersion: DND_CHARACTER_COMBAT_RELEVANT_FIELD_VERSION,
+    dndCreatureSize: readDndCreatureSize(character.dndCreatureSize),
     schemaVersion: finiteNumber(character.schemaVersion),
     name: trimmedString(character.name),
     level: finiteNumber(character.level),

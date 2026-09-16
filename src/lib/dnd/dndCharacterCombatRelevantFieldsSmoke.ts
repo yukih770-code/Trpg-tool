@@ -128,6 +128,7 @@ check('spellbook is excluded from the hashed set', canonical(makeCharacter({
 
 // ── INCLUDED fields must move the string ───────────────────────────────────
 const includedMutations: Array<[string, Partial<CharacterData>]> = [
+  ['dndCreatureSize', { dndCreatureSize: 'large' }],
   ['name', { name: 'Rina' }],
   ['level', { level: 4 }],
   ['jobClass', { jobClass: '法师' }],

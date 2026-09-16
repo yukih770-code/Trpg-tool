@@ -1,0 +1,287 @@
+{
+  "roomId": "room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+  "latestSeq": 9,
+  "events": [
+    {
+      "mapEventId": "mapevent_7dccaf08-3fee-4915-90b0-4bcf04ab4baa",
+      "roomId": "room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "mapId": "room:room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "seq": 1,
+      "createdAt": "2026-09-16T07:55:30.117Z",
+      "authorMemberId": "member_1b38cbc4-a20d-4c76-bba5-7ed0815aadcd",
+      "eventKind": "map.spatial_updated",
+      "payload": {
+        "spatial": {
+          "grid": {
+            "kind": "square",
+            "originX": 0,
+            "originY": 0,
+            "cellSize": 1
+          },
+          "scale": {
+            "unitLabel": "ft",
+            "unitsPerGridCell": 5
+          },
+          "world": {
+            "width": 20,
+            "height": 12
+          },
+          "tokenAnchor": "center",
+          "schemaVersion": 1,
+          "coordinateSystem": "normalized-100"
+        }
+      }
+    },
+    {
+      "mapEventId": "mapevent_8149d867-c60c-499b-ba2c-af70c8919f76",
+      "roomId": "room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "mapId": "room:room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "seq": 2,
+      "createdAt": "2026-09-16T07:55:36.368Z",
+      "authorMemberId": "member_1b38cbc4-a20d-4c76-bba5-7ed0815aadcd",
+      "eventKind": "map.token_added",
+      "payload": {
+        "token": {
+          "x": 52.5,
+          "y": 54.166666666666664,
+          "id": "b5e0d354-a196-4ebd-9972-a8b5fc38e825",
+          "kind": "playerCharacter",
+          "name": "Size Dagger Hero",
+          "size": "medium",
+          "initials": "SD",
+          "isHidden": false,
+          "sourceId": "binding_d2365f5a-5edb-4913-b308-d29312990c4e",
+          "footprint": {
+            "shape": "axis-aligned-rectangle",
+            "width": 1,
+            "anchor": "center",
+            "height": 1,
+            "schemaVersion": 1,
+            "coordinateSpace": "scene-world"
+          },
+          "hpSummary": {
+            "max": 10,
+            "current": 10
+          },
+          "sourceType": "roomActorBinding",
+          "displayName": "Size Dagger Hero",
+          "ownerUserId": "dev-user-001",
+          "roomMemberId": "member_1b38cbc4-a20d-4c76-bba5-7ed0815aadcd",
+          "actorBindingId": "binding_d2365f5a-5edb-4913-b308-d29312990c4e",
+          "campaignActorId": "campaign_actor_d260741c-75c6-4929-9365-48de296b94ca",
+          "controlledByUserId": "dev-user-001",
+          "sourceActorInstanceId": "campaign_actor_d260741c-75c6-4929-9365-48de296b94ca"
+        }
+      }
+    },
+    {
+      "mapEventId": "mapevent_0b30fab1-af3c-4afe-9277-c3073b608e99",
+      "roomId": "room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "mapId": "room:room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "seq": 3,
+      "createdAt": "2026-09-16T07:56:58.545Z",
+      "authorMemberId": "member_1b38cbc4-a20d-4c76-bba5-7ed0815aadcd",
+      "eventKind": "map.token_added",
+      "payload": {
+        "token": {
+          "x": 55.00000000000001,
+          "y": 50,
+          "id": "ebd5c7e3-c86c-4029-be35-b4416aeb49cb",
+          "kind": "npc",
+          "name": "Large Size NPC",
+          "size": "medium",
+          "initials": "LS",
+          "isHidden": false,
+          "sourceId": "531ca57a-51f6-4906-a8db-7b52ca786504",
+          "acDisplay": {
+            "kind": "exact",
+            "value": 10
+          },
+          "footprint": {
+            "shape": "axis-aligned-rectangle",
+            "width": 2,
+            "anchor": "center",
+            "height": 2,
+            "schemaVersion": 1,
+            "coordinateSpace": "scene-world"
+          },
+          "hpSummary": {
+            "max": 40,
+            "current": 40
+          },
+          "sourceType": "dndLiteActor",
+          "displayName": "Large Size NPC",
+          "ownerUserId": "dev-user-001",
+          "campaignActorId": "531ca57a-51f6-4906-a8db-7b52ca786504",
+          "controlledByUserId": "dev-user-001",
+          "sourceActorInstanceId": "531ca57a-51f6-4906-a8db-7b52ca786504"
+        }
+      }
+    },
+    {
+      "mapEventId": "mapevent_6096b08f-d4b9-4b8d-889a-43c394b3dc7a",
+      "roomId": "room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "mapId": "room:room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "seq": 4,
+      "createdAt": "2026-09-16T08:00:30.287Z",
+      "authorMemberId": "member_1b38cbc4-a20d-4c76-bba5-7ed0815aadcd",
+      "eventKind": "map.token_moved",
+      "payload": {
+        "x": 60.00000000000001,
+        "y": 50,
+        "tokenId": "ebd5c7e3-c86c-4029-be35-b4416aeb49cb"
+      }
+    },
+    {
+      "mapEventId": "mapevent_cee13e81-9aa5-4a5e-8611-e2a42017ef7f",
+      "roomId": "room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "mapId": "room:room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "seq": 5,
+      "createdAt": "2026-09-16T08:00:42.945Z",
+      "authorMemberId": "member_1b38cbc4-a20d-4c76-bba5-7ed0815aadcd",
+      "eventKind": "map.token_moved",
+      "payload": {
+        "x": 65,
+        "y": 50,
+        "tokenId": "ebd5c7e3-c86c-4029-be35-b4416aeb49cb"
+      }
+    },
+    {
+      "mapEventId": "mapevent_3ff3847b-57a7-4134-8681-9ba275a55756",
+      "roomId": "room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "mapId": "room:room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "seq": 6,
+      "createdAt": "2026-09-16T08:01:15.100Z",
+      "authorMemberId": "member_1b38cbc4-a20d-4c76-bba5-7ed0815aadcd",
+      "eventKind": "map.token_updated",
+      "payload": {
+        "token": {
+          "x": 52.5,
+          "y": 54.166666666666664,
+          "id": "b5e0d354-a196-4ebd-9972-a8b5fc38e825",
+          "kind": "playerCharacter",
+          "name": "Size Dagger Hero",
+          "size": "medium",
+          "initials": "SD",
+          "isHidden": false,
+          "sourceId": "binding_d2365f5a-5edb-4913-b308-d29312990c4e",
+          "footprint": {
+            "shape": "axis-aligned-rectangle",
+            "width": 3,
+            "anchor": "center",
+            "height": 3,
+            "schemaVersion": 1,
+            "coordinateSpace": "scene-world"
+          },
+          "hpSummary": {
+            "max": 10,
+            "current": 10
+          },
+          "sourceType": "roomActorBinding",
+          "displayName": "Size Dagger Hero",
+          "ownerUserId": "dev-user-001",
+          "roomMemberId": "member_1b38cbc4-a20d-4c76-bba5-7ed0815aadcd",
+          "actorBindingId": "binding_d2365f5a-5edb-4913-b308-d29312990c4e",
+          "campaignActorId": "campaign_actor_d260741c-75c6-4929-9365-48de296b94ca",
+          "controlledByUserId": "dev-user-001",
+          "sourceActorInstanceId": "campaign_actor_d260741c-75c6-4929-9365-48de296b94ca"
+        }
+      }
+    },
+    {
+      "mapEventId": "mapevent_bff1e54c-05da-49f1-b708-4029aaf96f44",
+      "roomId": "room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "mapId": "room:room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "seq": 7,
+      "createdAt": "2026-09-16T08:01:30.858Z",
+      "authorMemberId": "member_1b38cbc4-a20d-4c76-bba5-7ed0815aadcd",
+      "eventKind": "map.token_updated",
+      "payload": {
+        "token": {
+          "x": 65,
+          "y": 50,
+          "id": "ebd5c7e3-c86c-4029-be35-b4416aeb49cb",
+          "kind": "npc",
+          "name": "Large Size NPC",
+          "size": "medium",
+          "initials": "LS",
+          "isHidden": false,
+          "sourceId": "531ca57a-51f6-4906-a8db-7b52ca786504",
+          "acDisplay": {
+            "kind": "exact",
+            "value": 10
+          },
+          "footprint": null,
+          "hpSummary": {
+            "max": 40,
+            "current": 40
+          },
+          "sourceType": "dndLiteActor",
+          "displayName": "Large Size NPC",
+          "ownerUserId": "dev-user-001",
+          "campaignActorId": "531ca57a-51f6-4906-a8db-7b52ca786504",
+          "controlledByUserId": "dev-user-001",
+          "sourceActorInstanceId": "531ca57a-51f6-4906-a8db-7b52ca786504"
+        }
+      }
+    },
+    {
+      "mapEventId": "mapevent_f7261880-5f36-4a41-ab17-a73d4e8df200",
+      "roomId": "room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "mapId": "room:room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "seq": 8,
+      "createdAt": "2026-09-16T08:02:11.629Z",
+      "authorMemberId": "member_1b38cbc4-a20d-4c76-bba5-7ed0815aadcd",
+      "eventKind": "map.token_moved",
+      "payload": {
+        "x": 70,
+        "y": 50,
+        "tokenId": "ebd5c7e3-c86c-4029-be35-b4416aeb49cb"
+      }
+    },
+    {
+      "mapEventId": "mapevent_c1d3fa1d-ea9f-493a-9d0d-112c5b08e5bb",
+      "roomId": "room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "mapId": "room:room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+      "seq": 9,
+      "createdAt": "2026-09-16T08:03:16.517Z",
+      "authorMemberId": "member_1b38cbc4-a20d-4c76-bba5-7ed0815aadcd",
+      "eventKind": "map.token_updated",
+      "payload": {
+        "token": {
+          "x": 70,
+          "y": 50,
+          "id": "ebd5c7e3-c86c-4029-be35-b4416aeb49cb",
+          "kind": "npc",
+          "name": "Large Size NPC",
+          "size": "medium",
+          "initials": "LS",
+          "isHidden": false,
+          "sourceId": "531ca57a-51f6-4906-a8db-7b52ca786504",
+          "acDisplay": {
+            "kind": "exact",
+            "value": 10
+          },
+          "footprint": {
+            "shape": "axis-aligned-rectangle",
+            "width": 2,
+            "anchor": "center",
+            "height": 2,
+            "schemaVersion": 1,
+            "coordinateSpace": "scene-world"
+          },
+          "hpSummary": {
+            "max": 40,
+            "current": 40
+          },
+          "sourceType": "dndLiteActor",
+          "displayName": "Large Size NPC",
+          "ownerUserId": "dev-user-001",
+          "campaignActorId": "531ca57a-51f6-4906-a8db-7b52ca786504",
+          "controlledByUserId": "dev-user-001",
+          "sourceActorInstanceId": "531ca57a-51f6-4906-a8db-7b52ca786504"
+        }
+      }
+    }
+  ]
+}

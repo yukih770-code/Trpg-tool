@@ -18,6 +18,8 @@ export interface RoomRuntimeActorProjection {
   hpMax?: number;
   temporaryHp?: number;
   armorClass?: number;
+  /** Accepted D&D Actor fact; never mutable Token footprint state. */
+  dndCreatureSize?: import('../dnd2024/gameplay/dndCreatureSize.js').DndCreatureSize;
   /**
    * Initiative modifier derived from the approved combat sheet's dexterity.
    * Presentation/seed value only: it decides no turn order by itself, and the

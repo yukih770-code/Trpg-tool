@@ -1,4 +1,5 @@
 import { mintIntentId } from '../../lib/dnd/dndAttackPendingIntent';
+import { DND_CREATURE_SIZES, readDndCreatureSize, dndCreatureSizeLabel } from '../../lib/dnd2024/gameplay/dndCreatureSize';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createTranslator, type Locale } from '../../i18n';
 import type { CampaignActorInstance, CampaignActorSourceReviewResponse } from '../../lib/api/campaignRoomApiClient';
@@ -517,6 +518,16 @@ export function DndLiteActorSheetPanel({ locale, canManage, campaignActors, shee
             {presetState.status === 'unknown' && <p className="mt-2 text-[11px] leading-5 text-[#51483d]">{text(presetText.unknownVersion)}</p>}
             <p className="mt-2 text-[10px] leading-4 text-[#51483d]">{text(presetText.onlyThisActor)}</p>
           </div>}
+          <label className="rounded-xl border border-[#2f2a22]/10 bg-white p-3 text-sm font-bold">
+            {locale === 'en' ? 'D&D creature size' : 'D&D 生物体型'}
+            <select aria-label="D&D creature size" value={draft.creatureSize ?? ''} disabled={!canManage || saving}
+              onChange={event => update({ creatureSize: readDndCreatureSize(event.target.value) })}
+              className="ml-3 rounded-md border bg-white px-3 py-2 text-sm">
+              <option value="">{locale === 'en' ? 'Unspecified' : '未指定'}</option>
+              {DND_CREATURE_SIZES.map(size => <option key={size} value={size}>{dndCreatureSizeLabel(size, locale)}</option>)}
+            </select>
+            <span className="mt-1 block text-xs font-normal">{locale === 'en' ? 'Initial occupied space for newly placed tokens. Existing tokens keep their bounds.' : '用于新放置棋子的初始占地。已有棋子保留当前占地。'}</span>
+          </label>
           {onReviewSource && !creating && <div className="rounded-xl border border-[#2f2a22]/10 bg-white p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h5 className="text-sm font-bold">{text(reviewText.heading)}</h5>

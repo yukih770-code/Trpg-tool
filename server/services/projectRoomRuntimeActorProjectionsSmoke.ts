@@ -5,6 +5,7 @@ const sheet = {
   schemaVersion: 1,
   actorKind: 'pc',
   displayName: 'Maris',
+  creatureSize: 'small',
   defenses: { armorClass: 16, currentHp: 11, maxHp: 17, temporaryHp: 3 },
   abilities: { strength: 16, dexterity: 15, constitution: 14, intelligence: 10, wisdom: 12, charisma: 8 },
   actions: [
@@ -51,6 +52,7 @@ async function main() {
   const checks = [
     result.persistence === 'available',
     projection.displayName === 'Maris',
+    projection.dndCreatureSize === 'small',
     projection.hpCurrent === 11 && projection.hpMax === 17 && projection.temporaryHp === 3 && projection.armorClass === 16,
     // T10: the initiative modifier is the dexterity modifier of the approved
     // sheet, so the combat table can seed a real roll instead of a flat +0.

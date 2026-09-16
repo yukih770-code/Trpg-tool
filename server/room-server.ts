@@ -37,6 +37,8 @@ import { rollSharedDice } from './services/rollSharedDice.js';
 import { createInMemoryRuntimeLogRegistry } from './runtime-log-registry.js';
 import { createInMemoryRoomMapRegistry } from './room-map-registry.js';
 import { appendRoomMapEvent } from './services/appendRoomMapEvent.js';
+import { materializeDndActorToken } from './services/materializeDndActorToken.js';
+import { replayMapRuntimeEvents as replayMapForDndPlacement } from '../src/lib/map/mapRuntimeReplay.js';
 import { listRoomMapEvents } from './services/listRoomMapEvents.js';
 import { setRoomMapMemberPermission } from './services/setRoomMapMemberPermission.js';
 import { mapRuntimeActionForMapEvent, resolveRoomParticipant, resolveRoomRuntimePermission } from './room/roomRuntimePermissionGuard.js';
@@ -1280,12 +1282,28 @@ app.post('/rooms/:roomId/map-events', async (req, res) => {
   } catch { res.status(403).json({ error: 'asset_not_available' }); return; }
   // Recheck membership after repository I/O.
   if (assetIds.length && !requireRoomRuntimeAction(req, res, req.params.roomId, body.authorMemberId, mapRuntimeActionForMapEvent(body.eventKind))) return;
+  let mapPayload = body.payload;
+  if (body.eventKind === 'map.token_added') {
+    const placementRoom = registry.get(req.params.roomId);
+    const mapBefore = roomMapRegistry.list(req.params.roomId);
+    try {
+      mapPayload = await materializeDndActorToken({
+        systemId: placementRoom?.identity.systemId, campaignId: placementRoom?.campaignRef?.campaignId,
+        payload: body.payload, repository: platformFoundationRepository,
+        board: replayMapForDndPlacement(mapBefore.events.filter(event => event.mapId === body.mapId), body.mapId),
+      });
+    } catch { res.status(503).json({ error: 'actor_size_unavailable', retryable: true }); return; }
+    if (!requireRoomRuntimeAction(req, res, req.params.roomId, body.authorMemberId, 'map.token.create.any')) return;
+    if (roomMapRegistry.list(req.params.roomId).latestSeq !== mapBefore.latestSeq) {
+      res.status(409).json({ error: 'stale_map_placement', retryable: true }); return;
+    }
+  }
   const result = appendRoomMapEvent(registry, roomMapRegistry, {
     roomId: req.params.roomId,
     authorMemberId: body.authorMemberId,
     mapId: body.mapId,
     eventKind: body.eventKind,
-    payload: body.payload,
+    payload: mapPayload,
   });
   if (result.decision !== 'appended' || !result.event) {
     const status = result.decision === 'roomNotFound' || result.decision === 'memberNotFound' ? 404 : 400;

@@ -1,5 +1,6 @@
-import { RaceDef } from '../lib/dnd-types';
-import type { RuleDataMetadata } from '../lib/rules/rule-data-metadata';
+import type { RaceDef } from '../lib/dnd-types.js';
+import { DND_FIXED_SPECIES_SIZES } from '../lib/dnd2024/gameplay/dndSpeciesSizeSource.js';
+import type { RuleDataMetadata } from '../lib/rules/rule-data-metadata.js';
 
 // AI-LANDMARK: DND_BACKGROUND_SPECIES_CORRECTION
 // DND Background / Species Correction v1:
@@ -38,6 +39,7 @@ function makeSpecies2024(
     desc,
     strBonus: 0, dexBonus: 0, conBonus: 0, intBonus: 0, wisBonus: 0, chaBonus: 0,
     size,
+    creatureSize: DND_FIXED_SPECIES_SIZES[id]?.size,
     speed,
     baseLanguages: [],
     features,

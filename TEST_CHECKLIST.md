@@ -2,6 +2,14 @@
 
 Run this checklist after every development round before committing.
 
+## D&D size materialization V1 (2026-09-16)
+
+- Run `npm run runtime:verify:dnd-size-materialization` (70 assertions).
+- Preserve source hash/review, Campaign API, Runtime projection, map replay/persistence, spatial legality, and T12 regression expectations.
+- Run TypeScript, server production build, frontend production build, then backend readiness and browser acceptance in that order.
+- In a compatible Scene, place an accepted typed PC and canonical typed NPC without numeric bounds. Check legal/far melee, override after Actor size change, clear after reload, and recovery against the same PostgreSQL database after restart.
+- Evidence and exact results: [size materialization report](docs/implementation/DND_ACTOR_SIZE_FOOTPRINT_MATERIALIZATION_V1.md).
+
 ---
 
 ## 1. Build Checks (Required)

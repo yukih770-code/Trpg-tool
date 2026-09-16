@@ -45,6 +45,8 @@ type Props = {
   onInspectToken?: (token: MapToken) => void;
   /** Optional sources from system-specific actor/monster surfaces. */
   actorPresenceCandidates?: MapTokenPresenceCandidate[];
+  /** Local system adaptation at creation only. Live rooms initialize on the server. */
+  initializeNewToken?: (token: Omit<MapToken, 'id'>, spatial: MapBoardState['spatial']) => Omit<MapToken, 'id'>;
   canManage: boolean;
   /** Client-side affordance only; Room Runtime still verifies every live move on the server. */
   canMoveToken?: (token: MapToken) => boolean;
@@ -181,7 +183,7 @@ function templateDragHint(shape: MapTemplateShape, locale: Locale): string {
   return '起点是角点，拖动到对角。';
 }
 
-export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], activeCombatantId, locateCombatantId, onSelectCombatant, onInspectToken, actorPresenceCandidates = [], canManage, canMoveToken, tokenMoveDeniedMessage, controlledTokenBindingId, canPinRanges = false, canShareTemporaryRanges = false, sharedPreviews = [], onSharePreview, mapCollaborators = [], onSetCanPinRanges, onSetCanMoveOwnToken, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace', exclusiveRuntimePanels = false }: Props) {
+export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallbackBackgroundUrl, sceneTitle, sceneDescription, statusNote, campaignActors = [], combatants = [], activeCombatantId, locateCombatantId, onSelectCombatant, onInspectToken, actorPresenceCandidates = [], initializeNewToken, canManage, canMoveToken, tokenMoveDeniedMessage, controlledTokenBindingId, canPinRanges = false, canShareTemporaryRanges = false, sharedPreviews = [], onSharePreview, mapCollaborators = [], onSetCanPinRanges, onSetCanMoveOwnToken, onBoardChange, snapshotBoard, snapshotImportVersion, onAppendEvent, presentation = 'workspace', exclusiveRuntimePanels = false }: Props) {
   // AI-LANDMARK: HOST_FREE_TOKEN_PERSISTENT_ACTOR_VAULT_ENTRY_V1
   // AI-LANDMARK: MOBILE_RUNTIME_MAP_PANEL_COORDINATION_V1
   const { t } = createTranslator(locale);
@@ -427,7 +429,8 @@ export function BasicMapBoard({ assetContext, locale, mapId, mapEvents, fallback
     const existing = linkedTokenForCandidate(board.state.tokens, candidate);
     if (existing) { board.selectToken(existing.id); return; }
     const offset = Math.min(board.state.tokens.length, 6) * 3;
-    const result = board.addToken(toMapTokenPrototype(candidate, { x: 50 + offset, y: 50 + offset }));
+    const prototype = toMapTokenPrototype(candidate, { x: 50 + offset, y: 50 + offset });
+    const result = board.addToken(initializeNewToken?.(prototype, board.state.spatial) ?? prototype);
     emit(result.event);
   };
 

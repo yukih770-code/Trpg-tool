@@ -126,3 +126,7 @@ Create a separate D&D spatial legality task that consumes authoritative Scene an
 ## 26. Follow-up: D&D Spatial Attack Legality V1
 
 The D&D layer now consumes replayed Scene geometry and Token bounds without changing this Platform contract. It converts supported grid-aligned occupied spaces into the approved D&D square-distance metric and enforces only the four existing canonical simple-melee modes before T12 RNG. Point-only, ambiguous, off-grid, or otherwise unsupported Platform facts remain unavailable and preserve GM adjudication. Free-text Actor size does not initialize or overwrite footprints.
+
+## 27. Follow-up: D&D typed size materialization (2026-09-16)
+
+Platform footprint remains system-neutral. D&D now initializes an ordinary footprint at supported new placement from accepted typed Actor size and compatible Scene scale. Explicit GM bounds, clears, and historical Tokens are preserved; no live Actor-size inheritance exists. Free-text size remains display-only. See [D&D size materialization](DND_ACTOR_SIZE_FOOTPRINT_MATERIALIZATION_V1.md) for PC/NPC browser and PostgreSQL restart evidence.

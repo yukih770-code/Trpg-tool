@@ -1,4 +1,5 @@
 import { parseDndDiceFormula } from './dndDiceRoller.js';
+import { readDndCreatureSize } from '../dnd2024/gameplay/dndCreatureSize.js';
 import type {
   DndAbilityKey,
   DndLiteActorAction,
@@ -46,6 +47,7 @@ export function createDefaultDndLiteActorSheet(input: { displayName?: string; ac
 
 export function validateDndLiteActorSheet(sheet: DndLiteActorSheet): DndLiteActorValidation {
   const errors: string[] = [];
+  if (sheet.creatureSize !== undefined && !readDndCreatureSize(sheet.creatureSize)) errors.push('Invalid creature size.');
   if (sheet.schemaVersion !== 1) errors.push('Unsupported schema version.');
   if (!sheet.displayName.trim()) errors.push('Display name is required.');
   for (const [key, value] of Object.entries(sheet.abilities)) {

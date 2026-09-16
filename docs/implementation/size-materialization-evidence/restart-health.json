@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "service": "room-server",
+  "version": "m26",
+  "storage": "memory",
+  "environment": "localDev",
+  "runtimeMode": "local",
+  "authMode": "localDev",
+  "devUserApiEnabled": true,
+  "publicHttpUrl": "http://localhost:8787",
+  "publicWsUrl": "ws://localhost:8787",
+  "readiness": {
+    "status": "ready",
+    "blockers": [],
+    "databaseSchemasReady": true,
+    "readySchemaCount": 11,
+    "requiredSchemaCount": 11
+  },
+  "startupRecovery": {
+    "required": true,
+    "status": "ready",
+    "startedAt": "2026-09-16T08:11:41.82Z",
+    "completedAt": "2026-09-16T08:11:41.857Z",
+    "restoredRoomCount": 1,
+    "restoredAdmissionCount": 1,
+    "restoredRuntimeLogEventCount": 6,
+    "restoredRoomMapEventCount": 9
+  },
+  "liveRoomDurability": {
+    "status": "ready"
+  },
+  "lanAlpha": {
+    "enabled": false,
+    "candidateCount": 3,
+    "allowedOriginsSource": "none"
+  },
+  "database": {
+    "configured": true,
+    "status": "ok",
+    "latencyMs": 0,
+    "schema": {
+      "status": "ready",
+      "latencyMs": 5
+    },
+    "campaignSchema": {
+      "status": "ready",
+      "latencyMs": 3
+    },
+    "actorSchema": {
+      "status": "ready",
+      "latencyMs": 3
+    },
+    "assetSchema": {
+      "status": "ready",
+      "latencyMs": 3
+    },
+    "runtimeEventSchema": {
+      "status": "ready",
+      "latencyMs": 2
+    },
+    "generatedArtifactSchema": {
+      "status": "ready",
+      "latencyMs": 3
+    },
+    "worldServerSchema": {
+      "status": "ready",
+      "latencyMs": 3
+    },
+    "visibilitySchema": {
+      "status": "ready",
+      "latencyMs": 3
+    },
+    "platformFoundationSchema": {
+      "status": "ready",
+      "latencyMs": 4
+    },
+    "sceneStateSchema": {
+      "status": "ready"
+    },
+    "dndPrivateMonsterSchema": {
+      "status": "ready"
+    },
+    "allSchemasReady": true
+  }
+}

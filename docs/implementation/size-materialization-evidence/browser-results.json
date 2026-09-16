@@ -1,0 +1,72 @@
+{
+  "date": "2026-09-16",
+  "environment": "real Chrome + isolated PostgreSQL18 + production-built backend + Vite frontend",
+  "roomId": "room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+  "roomCode": "UWPWDP",
+  "campaignId": "bde77ac6-d2d4-44df-9706-8252840fb3e1",
+  "pc": {
+    "createdInCanonicalCreator": true,
+    "species": "species.dwarf",
+    "acceptedSize": "medium",
+    "initialFootprint": {
+      "width": 1,
+      "height": 1
+    },
+    "numericFootprintEntryForInitialPlacement": false,
+    "sourceWeaponUpdateAcceptedThroughT11": true,
+    "gmOverride": {
+      "width": 3,
+      "height": 3
+    },
+    "laterActorSize": "small",
+    "overrideSurvivedActorChangeReloadRestart": true
+  },
+  "npc": {
+    "createdInCanonicalCampaignEditor": true,
+    "typedSize": "large",
+    "initialFootprint": {
+      "width": 2,
+      "height": 2
+    },
+    "numericFootprintEntryForInitialPlacement": false,
+    "clearSurvivedReloadAndFirstRestart": true,
+    "restoredByExplicitSetBounds": true
+  },
+  "attack": {
+    "actionId": "action.item.dagger.melee-weapon-attack",
+    "adjacentStatus": 200,
+    "attackTotal": 20,
+    "damage": 5,
+    "targetBeforeHp": 40,
+    "targetAfterHp": 35,
+    "beyondReachStatus": 409,
+    "error": "dnd_attack_out_of_range",
+    "afterRestartStatus": 409,
+    "finalRejectedAttemptBeforeLogSeq": 6,
+    "finalRejectedAttemptAfterLogSeq": 6,
+    "finalRejectedAttemptRuntimeLogIdentical": true
+  },
+  "restart": {
+    "sameDatabase": true,
+    "finalMapSeq": 9,
+    "finalRuntimeLogSeq": 6,
+    "configuredDatabaseUntouched": true,
+    "newMigrations": 0,
+    "baselineMigrationsProvisionedInIsolatedFixture": 12
+  },
+  "incidentalControlActions": "RuntimeLog seq5 is a cleared-footprint fallback PC attack; seq6 is a manually authored NPC action. Neither is represented as an exact spatial rejection.",
+  "screenshots": [
+    "01-pc-auto-footprint.png",
+    "02-npc-typed-size.png",
+    "03-npc-auto-footprint.png",
+    "04-adjacent-dagger-resolved.png",
+    "05-out-of-reach-rejected.png",
+    "06-gm-override-three.png",
+    "07-override-survives-actor-change.png",
+    "08-cleared-footprint.png",
+    "09-cleared-after-reload.png",
+    "10-before-restart-override.png",
+    "12-restarted-out-of-range.png",
+    "13-final-restart-override-rejection.png"
+  ]
+}

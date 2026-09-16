@@ -7,6 +7,8 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { materializeDndActorToken } from '../services/materializeDndActorToken.js';
+import { replayMapRuntimeEvents } from '../../src/lib/map/mapRuntimeReplay.js';
 import {
   acceptCampaignActorSourceUpdate,
   reviewCampaignActorSourceUpdate,
@@ -992,6 +994,31 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
       if (!session) return errorResponse(404, { kind: 'not_found', message: 'Runtime session not found.' }, { requestId: requestIdOf(input) });
       const liveAppendConflict = liveRoomConflict(room.room.roomId, session.runtimeSessionId, requestIdOf(input));
       if (liveAppendConflict) return liveAppendConflict;
+      let eventPayload = recordOf(body.payload) ?? {};
+      if (eventKind.startsWith('map.')) {
+        const manager = await authorizeRoomManagement(input);
+        if (isApiResult(manager)) return manager;
+      }
+      if (eventKind === 'map.token_added' && room.access.campaign.systemId === 'dnd5e-2024') {
+        const history: RuntimeEventRecord[] = [];
+        let afterSeq = 0;
+        for (;;) {
+          const page = unwrap(await runtimeRepository.listRuntimeEvents(session.runtimeSessionId, { afterSeq, limit: 500 }), requestIdOf(input), 'Runtime event');
+          if (isApiResult(page)) return page;
+          history.push(...page);
+          if (page.length < 500) break;
+          const next = page[page.length - 1].seq;
+          if (next <= afterSeq) return errorResponse(503, { kind: 'unavailable', message: 'Map history is unavailable.' });
+          afterSeq = next;
+        }
+        try {
+          eventPayload = await materializeDndActorToken({
+            systemId: room.access.campaign.systemId, campaignId: room.access.campaign.campaignId,
+            payload: eventPayload, repository: foundationRepository,
+            board: replayMapRuntimeEvents(history.filter(event => event.eventKind.startsWith('map.')), session.runtimeSessionId),
+          });
+        } catch { return errorResponse(503, { kind: 'unavailable', message: 'Actor size is unavailable.' }); }
+      }
       const contextResult = resolveRuntimeSessionContext({
         worldServerId: room.access.server.worldServerId,
         campaignId: room.access.campaign.campaignId,
@@ -1008,7 +1035,7 @@ export function createCampaignRoomApiHandlers(options: CreateCampaignRoomApiHand
         runtimeSessionId: contextResult.context.runtimeSessionId,
         source: 'runtime_api',
         eventKind,
-        eventPayload: recordOf(body.payload) ?? {},
+        eventPayload,
         actorId: stringOf(body.actorId),
         causedByEventId: stringOf(body.causedByEventId),
         actorUserId: joinAccess.viewer.viewerUserId,

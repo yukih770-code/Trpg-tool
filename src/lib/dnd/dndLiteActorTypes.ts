@@ -1,3 +1,4 @@
+import type { DndCreatureSize } from '../dnd2024/gameplay/dndCreatureSize.js';
 export const DND_ABILITY_KEYS = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const;
 export type DndAbilityKey = typeof DND_ABILITY_KEYS[number];
 
@@ -26,6 +27,7 @@ export type DndLiteActorAction = {
 
 export type DndLiteActorSheet = {
   schemaVersion: 1;
+  creatureSize?: DndCreatureSize;
   actorKind: DndLiteActorKind;
   displayName: string;
   abilities: Record<DndAbilityKey, number>;

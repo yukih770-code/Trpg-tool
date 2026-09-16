@@ -853,6 +853,20 @@ export async function runCampaignRoomApiHandlerSmoke(): Promise<{ total: number;
   await check('84_t7_ordinary_kinds_are_unaffected', async () =>
     hasStatus(await handlers.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'roomless.note' } }), 201));
 
+  await check('size_placement_member_cannot_forge_map_authority', async () => {
+    const handler = makeFakeHandlers();
+    return hasStatus(await handler.appendRuntimeEvent({ ...room(MEMBER), body: { runtimeSessionId: SESSION_ID, eventKind: 'map.token_added', payload: { token: { id: 'forged', footprint: { width: 99 } } } } }), 403);
+  });
+  await check('size_placement_uses_accepted_snapshot_and_persists_bounds', async () => {
+    const handler = makeFakeHandlers();
+    const actor = await handler.createCampaignActor({ ...base(), body: { displayName: 'Sized PC', actorKind: 'pc', snapshotPayload: { ...SOURCE_V1, dndCreatureSize: 'medium' } } });
+    const id = (actor as { value?: { campaignActorInstanceId?: string } }).value?.campaignActorInstanceId;
+    if (!id) return false;
+    await handler.appendRuntimeEvent({ ...room(), body: { runtimeSessionId: SESSION_ID, eventKind: 'map.spatial_updated', payload: { spatial: { schemaVersion: 1, coordinateSystem: 'normalized-100', tokenAnchor: 'center', world: { width: 20, height: 12 }, grid: { kind: 'square', originX: 0, originY: 0, cellSize: 1 }, scale: { unitsPerGridCell: 5 } } } } });
+    const result = await handler.appendRuntimeEvent({ ...room(), body: { runtimeSessionId: SESSION_ID, eventKind: 'map.token_added', payload: { token: { id: 'placed', x: 50, y: 50, campaignActorId: id, dndCreatureSize: 'gargantuan' } } } });
+    const token = (result as { value?: { payload?: { token?: { footprint?: { width: number; height: number } } } } }).value?.payload?.token;
+    return hasStatus(result, 201) && token?.footprint?.width === 1 && token.footprint.height === 1;
+  });
   const passed = cases.filter((item) => item.passed).length;
   return { total: cases.length, passed, failed: cases.length - passed, cases };
 }

@@ -1,0 +1,127 @@
+{
+  "event": {
+    "eventId": "logevent_f27be2fb-0231-430d-9a07-249418f77bce",
+    "roomId": "room_ecec887e-2b34-48b3-916f-b58d6c0dac20",
+    "createdAt": "2026-09-16T08:00:30.499Z",
+    "authorMemberId": "member_1b38cbc4-a20d-4c76-bba5-7ed0815aadcd",
+    "campaignRef": {
+      "source": "unknown",
+      "worldServerId": "d6688473-35af-43a0-a927-b6e4f1a70efb",
+      "campaignId": "bde77ac6-d2d4-44df-9706-8252840fb3e1",
+      "displayName": "Size Materialization V1",
+      "systemId": "dnd5e-2024"
+    },
+    "kind": "combat.attack_resolved",
+    "visibility": "public",
+    "text": "Attack: 20, hit. 5 damage rolled.",
+    "payload": {
+      "roundNumber": 1,
+      "turnIndex": 0,
+      "combatantCount": 2,
+      "combatants": [
+        {
+          "id": "33d069e2-dd4e-46da-ad54-48dbc3bc038e",
+          "name": "Size Dagger Hero",
+          "displayName": "Size Dagger Hero",
+          "sourceType": "campaign_actor",
+          "kind": "character",
+          "sourceActorInstanceId": "campaign_actor_d260741c-75c6-4929-9365-48de296b94ca",
+          "mapTokenId": "b5e0d354-a196-4ebd-9972-a8b5fc38e825",
+          "controllerUserId": "dev-user-001",
+          "initiative": 9,
+          "initiativeModifier": 2,
+          "initiativeFormula": "1d20 + modifier",
+          "hpCurrent": 10,
+          "hpMax": 10,
+          "armorClass": 12,
+          "conditions": [],
+          "isDefeated": false,
+          "status": "active",
+          "hpDisplay": {
+            "kind": "exact",
+            "current": 10,
+            "max": 10
+          },
+          "acDisplay": {
+            "kind": "exact",
+            "value": 12
+          },
+          "visibility": "hostFull",
+          "relation": "ally",
+          "hitPoints": 10,
+          "maxHitPoints": 10
+        },
+        {
+          "id": "d28e84d7-3e87-426c-8db3-d06b8ec824cb",
+          "name": "Large Size NPC",
+          "displayName": "Large Size NPC",
+          "sourceType": "campaign_actor",
+          "kind": "npc",
+          "sourceActorInstanceId": "531ca57a-51f6-4906-a8db-7b52ca786504",
+          "mapTokenId": "ebd5c7e3-c86c-4029-be35-b4416aeb49cb",
+          "controllerUserId": "dev-user-001",
+          "initiative": 9,
+          "initiativeModifier": 0,
+          "initiativeFormula": "1d20 + modifier",
+          "hpCurrent": 35,
+          "hpMax": 40,
+          "armorClass": 10,
+          "conditions": [],
+          "isDefeated": false,
+          "status": "active",
+          "hpDisplay": {
+            "kind": "exact",
+            "current": 35,
+            "max": 40
+          },
+          "acDisplay": {
+            "kind": "exact",
+            "value": 10
+          },
+          "visibility": "hostFull",
+          "relation": "npc",
+          "hitPoints": 35,
+          "maxHitPoints": 40
+        }
+      ],
+      "targetCombatantId": "d28e84d7-3e87-426c-8db3-d06b8ec824cb",
+      "schemaVersion": 1,
+      "systemId": "dnd5e-2024",
+      "resolutionId": "9ec8d452-e1a4-4b87-a920-b93b58098c0c",
+      "intentId": "e573a92f-759d-4e78-affd-41053aa4b509",
+      "actorCombatantId": "33d069e2-dd4e-46da-ad54-48dbc3bc038e",
+      "resolution": {
+        "mode": "normal",
+        "attackRawRolls": [
+          16
+        ],
+        "attackKeptRoll": 16,
+        "attackBonus": 4,
+        "attackTotal": 20,
+        "outcome": "hit",
+        "critical": false,
+        "natural1": false,
+        "damageFormula": "1d4+2",
+        "damageRawRolls": [
+          [
+            3
+          ]
+        ],
+        "damageModifier": 2,
+        "damageTotal": 5,
+        "damageType": "piercing"
+      },
+      "privileged": {
+        "targetAc": 10,
+        "beforeHp": 40,
+        "afterHp": 35,
+        "beforeTemporaryHp": 0,
+        "afterTemporaryHp": 0,
+        "absorbedByTemporaryHp": 0,
+        "amount": 5
+      }
+    },
+    "seq": 4
+  },
+  "replayed": false
+}

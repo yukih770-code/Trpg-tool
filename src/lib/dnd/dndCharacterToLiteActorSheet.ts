@@ -22,6 +22,7 @@
  */
 
 import { CURRENT_DND_CHARACTER_SCHEMA_VERSION } from '../dnd-types.js';
+import { readDndCreatureSize } from '../dnd2024/gameplay/dndCreatureSize.js';
 import type { AttributeName, CharacterData, ClassDef, SkillName } from '../dnd-types.js';
 import {
   getDndAbilityModifier,
@@ -281,6 +282,7 @@ export function dndCharacterToLiteActorSheet(
   const sheet: DndLiteActorSheet = {
     schemaVersion: 1,
     actorKind: 'pc',
+    creatureSize: readDndCreatureSize(character.dndCreatureSize),
     displayName: character.name?.trim() || options.displayNameFallback?.trim() || 'Unnamed actor',
     abilities,
     proficiencyBonus,

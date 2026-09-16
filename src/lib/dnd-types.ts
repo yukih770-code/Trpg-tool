@@ -1,3 +1,4 @@
+import type { DndCreatureSize } from './dnd2024/gameplay/dndCreatureSize.js';
 export type AttributeName = 'Str' | 'Dex' | 'Con' | 'Int' | 'Wis' | 'Cha';
 
 export interface Attribute {
@@ -89,6 +90,8 @@ export interface RaceDef {
   intBonus: number;
   wisBonus: number;
   chaBonus: number;
+  /** Source-backed size, independent of the legacy display string. */
+  creatureSize?: DndCreatureSize;
   size: string;
   speed: number;
   baseLanguages: string[];
@@ -244,6 +247,8 @@ export interface CharacterData {
   hitDiceCurrent: number;
   acMod: number; // For manual adjustments
   speed: string;
+  /** Optional accepted-source extension; never inferred from display size. */
+  dndCreatureSize?: DndCreatureSize;
   size: string;
   attrs: CharacterAttributes;
   skillProficiencies: SkillName[];

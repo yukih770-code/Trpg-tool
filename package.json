@@ -16,6 +16,7 @@
     "runtime:verify:t12-http": "tsx server/api/dndAttackHandlersSmoke.ts",
     "runtime:verify:t12-boundaries": "tsx server/services/t12BoundarySmoke.ts",
     "runtime:verify:dnd-spatial-legality": "tsx server/services/dndSpatialAttackLegalitySmoke.ts",
+    "runtime:verify:dnd-size-materialization": "tsx server/services/dndActorSizeMaterializationSmoke.ts",
     "frontend:verify:t12-intents": "tsx src/lib/dnd/dndAttackPendingIntentSmoke.ts",
     "frontend:verify:t12-rendering": "tsx src/components/platform/RoomAttackResolutionDetailsSmoke.tsx",
     "dev": "vite --port=3000 --host=0.0.0.0",

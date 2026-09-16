@@ -1,0 +1,92 @@
+{
+  "head": "1073dbdfbec51f06d07f4f6e4bf2c4ab3f145e01",
+  "staged": false,
+  "productionModified": [
+    "package.json",
+    "server/api/campaignRoomApiHandlers.ts",
+    "server/room-server.ts",
+    "server/services/projectRoomRuntimeActorProjections.ts",
+    "src/components/platform/BasicMapBoard.tsx",
+    "src/components/platform/CampaignRuntimeShell.tsx",
+    "src/components/platform/DndLiteActorSheetPanel.tsx",
+    "src/data/races.ts",
+    "src/lib/characterMigration.ts",
+    "src/lib/dnd-types.ts",
+    "src/lib/dnd/dndCharacterCombatRelevantFields.ts",
+    "src/lib/dnd/dndCharacterSourceReview.ts",
+    "src/lib/dnd/dndCharacterToLiteActorSheet.ts",
+    "src/lib/dnd/dndLiteActorSheet.ts",
+    "src/lib/dnd/dndLiteActorTypes.ts",
+    "src/lib/dnd/dndMonsterTemplateTypes.ts",
+    "src/lib/dnd2024/multiclass.ts",
+    "src/lib/platform/roomRuntimeActorProjectionTypes.ts",
+    "src/pages/Creator.tsx"
+  ],
+  "productionAdded": [
+    "server/services/materializeDndActorToken.ts",
+    "src/lib/dnd2024/gameplay/dndCreatureSize.ts",
+    "src/lib/dnd2024/gameplay/dndSpeciesSizeSource.ts"
+  ],
+  "testModified": [
+    "server/api/campaignRoomApiHandlersSmoke.ts",
+    "server/services/dndCharacterCombatRelevantHashSmoke.ts",
+    "server/services/projectRoomRuntimeActorProjectionsSmoke.ts",
+    "src/lib/dnd/dndCharacterCombatRelevantFieldsSmoke.ts"
+  ],
+  "testAdded": [
+    "server/services/dndActorSizeMaterializationSmoke.ts",
+    "tests/size-materialization/local-infrastructure.mjs"
+  ],
+  "documentationModified": [
+    "PROJECT_STATUS.md",
+    "TEST_CHECKLIST.md",
+    "docs/ai/ACTIVE_TASK.md",
+    "docs/ai/TASK_ARCHIVE.md",
+    "docs/implementation/DND_SPATIAL_ATTACK_LEGALITY_V1.md",
+    "docs/implementation/PLATFORM_TOKEN_SPATIAL_FOOTPRINT_V1.md"
+  ],
+  "documentationAdded": [
+    "docs/ai/NEXT_CHAT_HANDOFF.md",
+    "docs/implementation/DND_ACTOR_SIZE_FOOTPRINT_MATERIALIZATION_V1.md"
+  ],
+  "evidenceFiles": [
+    "docs/implementation/size-materialization-evidence/01-pc-auto-footprint.png",
+    "docs/implementation/size-materialization-evidence/02-npc-typed-size.png",
+    "docs/implementation/size-materialization-evidence/03-npc-auto-footprint.png",
+    "docs/implementation/size-materialization-evidence/04-adjacent-dagger-resolved.png",
+    "docs/implementation/size-materialization-evidence/05-out-of-reach-rejected.png",
+    "docs/implementation/size-materialization-evidence/06-gm-override-three.png",
+    "docs/implementation/size-materialization-evidence/07-override-survives-actor-change.png",
+    "docs/implementation/size-materialization-evidence/08-cleared-footprint.png",
+    "docs/implementation/size-materialization-evidence/09-cleared-after-reload.png",
+    "docs/implementation/size-materialization-evidence/10-before-restart-override.png",
+    "docs/implementation/size-materialization-evidence/12-restarted-out-of-range.png",
+    "docs/implementation/size-materialization-evidence/13-final-restart-override-rejection.png",
+    "docs/implementation/size-materialization-evidence/actor-size-authority.json",
+    "docs/implementation/size-materialization-evidence/adjacent-attack.json",
+    "docs/implementation/size-materialization-evidence/browser-results.json",
+    "docs/implementation/size-materialization-evidence/build-results.json",
+    "docs/implementation/size-materialization-evidence/git-diff-stat.txt",
+    "docs/implementation/size-materialization-evidence/git-status.txt",
+    "docs/implementation/size-materialization-evidence/initial-map-events.json",
+    "docs/implementation/size-materialization-evidence/range-rejection.json",
+    "docs/implementation/size-materialization-evidence/README.md",
+    "docs/implementation/size-materialization-evidence/rejection-no-mutation.json",
+    "docs/implementation/size-materialization-evidence/restart-health.json",
+    "docs/implementation/size-materialization-evidence/restored-map-events.json",
+    "docs/implementation/size-materialization-evidence/restored-runtime-log.json",
+    "docs/implementation/size-materialization-evidence/source-changes.json",
+    "docs/implementation/size-materialization-evidence/verification-results.json"
+  ],
+  "protectedUnrelated": [
+    "scripts/dev-local.ps1",
+    ".work/",
+    ".yuki-*",
+    "Claude outputs/",
+    "output/",
+    "outputs/",
+    "tools/",
+    "work/",
+    "older untracked evidence directories"
+  ]
+}

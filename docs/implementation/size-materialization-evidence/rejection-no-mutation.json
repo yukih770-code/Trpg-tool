@@ -1,0 +1,10 @@
+{
+  "beforeSeq": 6,
+  "afterSeq": 6,
+  "identicalRuntimeLog": true,
+  "response": {
+    "status": 409,
+    "error": "dnd_attack_out_of_range"
+  },
+  "afterFinalProductionBuildRestart": true
+}

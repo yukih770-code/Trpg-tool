@@ -1,6 +1,10 @@
 # Project Status
 
-Last updated: 2026-08-14
+Last updated: 2026-09-16
+
+## Latest completed increment — D&D size materialization
+
+D&D Actor Size → Token Footprint Materialization V1 is implemented and verified, uncommitted after checkpoint `1073dbd`. Accepted typed size initializes bounds once on supported new placement. Real PC/NPC placement, melee legality, GM override/clear, reload, and isolated PostgreSQL restart pass. No SQL migration or later combat/spatial scope was added. See [implementation and limitations](docs/implementation/DND_ACTOR_SIZE_FOOTPRINT_MATERIALIZATION_V1.md). The configured database on port 55453 remains unavailable; acceptance used an isolated existing-schema PostgreSQL fixture.
 
 ## Project Overview
 

@@ -1,4 +1,5 @@
 import type { DndAbilityKey, DndLiteActorAction, DndLiteActorSheet, DndSkillKey } from './dndLiteActorTypes.js';
+import { readDndCreatureSize, type DndCreatureSize } from '../dnd2024/gameplay/dndCreatureSize.js';
 
 export type DndMonsterTextEntry = { name: string; description?: string };
 
@@ -12,6 +13,8 @@ export type DndPrivateMonsterTemplate = {
   name: string;
   slug: string;
   size?: string;
+  /** Trusted typed inputs only; legacy SQL size remains display text. */
+  creatureSize?: DndCreatureSize;
   creatureType?: string;
   alignment?: string;
   armorClass?: number;
@@ -67,6 +70,7 @@ export function dndMonsterToLiteActorSheet(monster: DndPrivateMonsterTemplate): 
   return {
     schemaVersion: 1,
     actorKind: 'monster',
+    creatureSize: readDndCreatureSize(monster.creatureSize),
     displayName: monster.name,
     abilities,
     proficiencyBonus: monster.proficiencyBonus ?? 2,

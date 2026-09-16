@@ -406,6 +406,7 @@ export function Creator({
               onClick={() => {
                 updateField('race', race.name);
                 updateField('subrace', '');
+                updateField('dndCreatureSize', race.creatureSize);
                 if (race.size) updateField('size', race.size);
                 if (race.speed > 0) updateField('speed', `${race.speed} 尺`);
                 if (race.baseLanguages.length > 0) updateField('customLanguages', race.baseLanguages.join(', '));

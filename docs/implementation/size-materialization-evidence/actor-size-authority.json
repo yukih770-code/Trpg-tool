@@ -1,0 +1,16 @@
+[
+  {
+    "campaignActorInstanceId": "campaign_actor_d260741c-75c6-4929-9365-48de296b94ca",
+    "displayName": "Size Dagger Hero",
+    "kind": "pc",
+    "acceptedSize": "medium",
+    "overrideSize": "small",
+    "snapshotHash": "dnd5e-2024:combatRelevantV3:sha256:298d5ebcc40345511d5d7c7a1cbc4b86b214891eb48f8cec235fda7c03e55356"
+  },
+  {
+    "campaignActorInstanceId": "531ca57a-51f6-4906-a8db-7b52ca786504",
+    "displayName": "Large Size NPC",
+    "kind": "npc",
+    "overrideSize": "large"
+  }
+]

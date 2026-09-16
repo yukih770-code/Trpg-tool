@@ -1,0 +1,80 @@
+ M PROJECT_STATUS.md
+ M TEST_CHECKLIST.md
+ M docs/ai/ACTIVE_TASK.md
+ M docs/ai/TASK_ARCHIVE.md
+ M docs/implementation/DND_SPATIAL_ATTACK_LEGALITY_V1.md
+ M docs/implementation/PLATFORM_TOKEN_SPATIAL_FOOTPRINT_V1.md
+ M package.json
+ M scripts/dev-local.ps1
+ M server/api/campaignRoomApiHandlers.ts
+ M server/api/campaignRoomApiHandlersSmoke.ts
+ M server/room-server.ts
+ M server/services/dndCharacterCombatRelevantHashSmoke.ts
+ M server/services/projectRoomRuntimeActorProjections.ts
+ M server/services/projectRoomRuntimeActorProjectionsSmoke.ts
+ M src/components/platform/BasicMapBoard.tsx
+ M src/components/platform/CampaignRuntimeShell.tsx
+ M src/components/platform/DndLiteActorSheetPanel.tsx
+ M src/data/races.ts
+ M src/lib/characterMigration.ts
+ M src/lib/dnd-types.ts
+ M src/lib/dnd/dndCharacterCombatRelevantFields.ts
+ M src/lib/dnd/dndCharacterCombatRelevantFieldsSmoke.ts
+ M src/lib/dnd/dndCharacterSourceReview.ts
+ M src/lib/dnd/dndCharacterToLiteActorSheet.ts
+ M src/lib/dnd/dndLiteActorSheet.ts
+ M src/lib/dnd/dndLiteActorTypes.ts
+ M src/lib/dnd/dndMonsterTemplateTypes.ts
+ M src/lib/dnd2024/multiclass.ts
+ M src/lib/platform/roomRuntimeActorProjectionTypes.ts
+ M src/pages/Creator.tsx
+?? .work/
+?? .yuki-activity-stage/
+?? .yuki-icons-stage/
+?? .yuki-phone-nav-stage/
+?? .yuki-private-judge-stage/
+?? .yuki-room-stage/
+?? .yuki-voice-production/
+?? .yuki-voice-stage/
+?? "Claude outputs/"
+?? docs/ai/NEXT_CHAT_HANDOFF.md
+?? docs/implementation/DND_ACTOR_SIZE_FOOTPRINT_MATERIALIZATION_V1.md
+?? docs/implementation/creation-surface-cleanup/browser-results.json
+?? docs/implementation/creation-surface-cleanup/source-changes.json
+?? docs/implementation/live-play-ux/accessibility-results.json
+?? docs/implementation/live-play-ux/browser-results.json
+?? docs/implementation/live-play-ux/regression-results.json
+?? docs/implementation/product-ia-reuse/additional-regression-results.json
+?? docs/implementation/product-ia-reuse/baseline.json
+?? docs/implementation/product-ia-reuse/browser-results.json
+?? docs/implementation/product-ia-reuse/component-inventory-after.json
+?? docs/implementation/product-ia-reuse/component-inventory.json
+?? docs/implementation/product-ia-reuse/git-diff-stat.txt
+?? docs/implementation/product-ia-reuse/git-status.txt
+?? docs/implementation/product-ia-reuse/live-regression/
+?? docs/implementation/product-ia-reuse/regression-results.json
+?? docs/implementation/product-ia-reuse/source-changes.json
+?? docs/implementation/product-ia-reuse/validation-summary.json
+?? docs/implementation/production-actor-creator-proof/01-npc-full-editor-first-screen.json
+?? docs/implementation/production-actor-creator-proof/02-custom-monster-full-editor-first-screen.json
+?? docs/implementation/production-actor-creator-proof/03-npc-combat-fields.json
+?? docs/implementation/production-actor-creator-proof/04-reopened-npc-same-editor.json
+?? docs/implementation/production-actor-creator-proof/verification.json
+?? docs/implementation/session-ready/baseline.json
+?? docs/implementation/session-ready/dead-frontend.json
+?? docs/implementation/session-ready/git-diff-stat.txt
+?? docs/implementation/session-ready/git-status.txt
+?? docs/implementation/session-ready/live-session-evidence.json
+?? docs/implementation/session-ready/regression-results.json
+?? docs/implementation/session-ready/source-changes.json
+?? docs/implementation/size-materialization-evidence/
+?? docs/implementation/user-journey-ia/
+?? output/
+?? outputs/
+?? server/services/dndActorSizeMaterializationSmoke.ts
+?? server/services/materializeDndActorToken.ts
+?? src/lib/dnd2024/gameplay/dndCreatureSize.ts
+?? src/lib/dnd2024/gameplay/dndSpeciesSizeSource.ts
+?? tests/size-materialization/
+?? tools/
+?? work/
