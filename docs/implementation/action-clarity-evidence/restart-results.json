@@ -1,0 +1,91 @@
+{
+  "status": "passed",
+  "health": {
+    "ok": true,
+    "service": "room-server",
+    "version": "m26",
+    "storage": "memory",
+    "environment": "localDev",
+    "runtimeMode": "local",
+    "authMode": "localDev",
+    "devUserApiEnabled": true,
+    "publicHttpUrl": "http://localhost:8798",
+    "publicWsUrl": "ws://localhost:8798",
+    "readiness": {
+      "status": "ready",
+      "blockers": [],
+      "databaseSchemasReady": true,
+      "readySchemaCount": 11,
+      "requiredSchemaCount": 11
+    },
+    "startupRecovery": {
+      "required": true,
+      "status": "ready",
+      "startedAt": "2026-09-16T10:20:13.417Z",
+      "completedAt": "2026-09-16T10:20:13.562Z",
+      "restoredRoomCount": 2,
+      "restoredAdmissionCount": 2,
+      "restoredRuntimeLogEventCount": 8,
+      "restoredRoomMapEventCount": 4
+    },
+    "liveRoomDurability": {
+      "status": "ready"
+    },
+    "lanAlpha": {
+      "enabled": false,
+      "candidateCount": 4,
+      "allowedOriginsSource": "none"
+    },
+    "database": {
+      "configured": true,
+      "status": "ok",
+      "latencyMs": 21,
+      "schema": {
+        "status": "ready",
+        "latencyMs": 5
+      },
+      "campaignSchema": {
+        "status": "ready",
+        "latencyMs": 4
+      },
+      "actorSchema": {
+        "status": "ready",
+        "latencyMs": 5
+      },
+      "assetSchema": {
+        "status": "ready",
+        "latencyMs": 1
+      },
+      "runtimeEventSchema": {
+        "status": "ready",
+        "latencyMs": 1
+      },
+      "generatedArtifactSchema": {
+        "status": "ready",
+        "latencyMs": 1
+      },
+      "worldServerSchema": {
+        "status": "ready",
+        "latencyMs": 9
+      },
+      "visibilitySchema": {
+        "status": "ready",
+        "latencyMs": 3
+      },
+      "platformFoundationSchema": {
+        "status": "ready",
+        "latencyMs": 3
+      },
+      "sceneStateSchema": {
+        "status": "ready"
+      },
+      "dndPrivateMonsterSchema": {
+        "status": "ready"
+      },
+      "allSchemasReady": true
+    }
+  },
+  "roomId": "room_ed54c7fa-25aa-4817-92b9-24476b7f6d7e",
+  "sameEventIds": true,
+  "latestSeq": 4
+}

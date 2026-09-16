@@ -1,0 +1,65 @@
+{
+  "baseCommit": "75686c9",
+  "committed": false,
+  "productionModified": [
+    "src/components/platform/RuntimeDndActionPanel.tsx",
+    "src/components/platform/RoomRuntimeEntryBridge.tsx",
+    "src/components/platform/livePlay.css"
+  ],
+  "testModified": [
+    "src/components/platform/RoomAttackResolutionDetailsSmoke.tsx",
+    "tests/size-materialization/local-infrastructure.mjs"
+  ],
+  "testAdded": [
+    "tests/action-clarity/browser.mjs",
+    "tests/action-clarity/live-browser.mjs",
+    "tests/action-clarity/run-browser.mjs",
+    "tests/action-clarity/index.html",
+    "tests/action-clarity/live.tsx",
+    "tests/action-clarity/README.md"
+  ],
+  "documentationModified": [
+    "docs/ai/ACTIVE_TASK.md",
+    "docs/ai/NEXT_CHAT_HANDOFF.md",
+    "docs/ai/TASK_ARCHIVE.md"
+  ],
+  "documentationAdded": [
+    "docs/development/PRODUCT_BENCHMARK_AND_ROADMAP_V1.md",
+    "docs/development/FIRST_SESSION_PILOT_V1.md",
+    "docs/implementation/DND_FIRST_SESSION_ACTION_CLARITY_V1.md"
+  ],
+  "protectedUnrelated": [
+    "scripts/dev-local.ps1",
+    ".work/",
+    ".yuki-*",
+    "Claude outputs/",
+    "output/",
+    "outputs/",
+    "tools/",
+    "work/",
+    "older evidence"
+  ],
+  "evidenceFiles": [
+    "docs/implementation/action-clarity-evidence/browser-results.json",
+    "docs/implementation/action-clarity-evidence/final-build-results.json",
+    "docs/implementation/action-clarity-evidence/host-rejection.png",
+    "docs/implementation/action-clarity-evidence/player-mobile.png",
+    "docs/implementation/action-clarity-evidence/real-browser-results.json",
+    "docs/implementation/action-clarity-evidence/real-player-rejection.png",
+    "docs/implementation/action-clarity-evidence/real-player-retry.png",
+    "docs/implementation/action-clarity-evidence/restart-results.json",
+    "docs/implementation/action-clarity-evidence/live-regression/browser-results.json",
+    "docs/implementation/action-clarity-evidence/live-regression/campaign-entry-1440.png",
+    "docs/implementation/action-clarity-evidence/live-regression/custom-exploration-1440.png",
+    "docs/implementation/action-clarity-evidence/live-regression/host-combat-1920.png",
+    "docs/implementation/action-clarity-evidence/live-regression/host-combat-inspector-1024.png",
+    "docs/implementation/action-clarity-evidence/live-regression/host-exploration-1440.png",
+    "docs/implementation/action-clarity-evidence/live-regression/host-lobby-1440.png",
+    "docs/implementation/action-clarity-evidence/live-regression/player-character-1440.png",
+    "docs/implementation/action-clarity-evidence/live-regression/player-combat-1440.png",
+    "docs/implementation/action-clarity-evidence/live-regression/player-fallback-390.png",
+    "docs/implementation/action-clarity-evidence/live-regression/player-result-activity-1440.png",
+    "docs/implementation/action-clarity-evidence/live-regression/spectator-1440.png",
+    "docs/implementation/action-clarity-evidence/source-changes.json"
+  ]
+}

@@ -1,15 +1,17 @@
 # Active Task
 
-D&D Actor Size → Token Footprint Materialization V1 is complete and verified, uncommitted, at starting HEAD `1073dbd`.
+2026-09-16: the user requested committing the former work and proceeding with the roadmap.
 
-The requested scope ends here. Do not begin T13/T14 or later spatial expansion without a new request. Do not stage, commit, or push under this task.
+Completed checkpoint: **75686c9 — feat(dnd): materialize token footprints from accepted actor size**. Exactly the prior milestone's 63 manifest-listed files were committed. Nothing pushed; unrelated files excluded.
 
-Read [the complete implementation report](../implementation/DND_ACTOR_SIZE_FOOTPRINT_MATERIALIZATION_V1.md) and its evidence directory for the exact authority chain, limitations, A–V answers, file manifest, tests, browser walkthrough, and PostgreSQL restart results.
+Current slice: **D&D First-Session Action Clarity V1 — implemented and verified, uncommitted.** Read [the report](../implementation/DND_FIRST_SESSION_ACTION_CLARITY_V1.md) and [roadmap](../development/PRODUCT_BENCHMARK_AND_ROADMAP_V1.md). Do not repeat the size or product architecture audits.
 
-Implemented: six-value optional typed size; seven source-backed fixed species; canonical NPC/custom Monster selector; V3 T11 hash/review; accepted Actor server lookup at creation; pure size/grid mapping; normal map persistence; diagnostic Runtime projection; local-only initializer. No live inheritance, old-Token resize, new migration, or T12 resolver changes.
+Implemented: projected actor/action/target summary, frozen pending display, separate rejection/unconfirmed feedback, labeled prior-result disclosure, action loading, existing character/source-review navigation and localized errors. Intent/replay/visibility/permission authority remains unchanged.
 
-Acceptance: canonical dwarf PC 1×1 and Large NPC 2×2 without numeric bounds; adjacent dagger resolves; farther dagger returns 409; GM 3×3 override survives Actor Small size and reload; clear persists; same isolated PostgreSQL backend restarted and recovered footprints/legality.
+Evidence: 19 new browser checks, 47 established live-tabletop checks, eight real PostgreSQL/backend host/player/spectator checks, lost-response retry, unchanged event identities after restart, focused T12 smokes and successful builds. Real acceptance uses authored training actions and localDev identities; it is not a human pilot or deployed-auth acceptance.
 
-Environment: configured database localhost:55453 is unavailable. Acceptance used a dedicated temporary PostgreSQL 18 cluster on 55459, backend8787/frontend3000, leaving .env and existing databases untouched. The harness is tests/size-materialization/local-infrastructure.mjs; it provisions only existing schema.
+Next gate: two real 60–90-minute group sessions using [the pilot protocol](../development/FIRST_SESSION_PILOT_V1.md). Observe actual friction before choosing gameplay expansion. Do not fabricate human participation or automatically expand T13/T14, visibility, weapons or movement.
 
-Preserve unrelated dirt: scripts/dev-local.ps1, .work/, .yuki-*, Claude outputs/, output/, outputs/, tools/, work/, and earlier untracked evidence. The task source manifest separates its own files.
+Normal backend8787/frontend3000 and configured DB55453 were healthy in the assessment. This slice used and stopped a separate temporary PostgreSQL55460/backend8798. Existing database/.env and normal services were untouched. The harness now supports alternate ports and test-user seeding.
+
+New work remains unstaged/uncommitted for review. Preserve scripts/dev-local.ps1, .work/, .yuki-*, Claude outputs/, output/, outputs/, tools/, work/, and older evidence. Do not blanket-stage or reset unrelated files.

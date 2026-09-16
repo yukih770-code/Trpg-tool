@@ -1,15 +1,15 @@
 # Continuation checkpoint — 2026-09-16
 
-The earlier preimplementation handoff is superseded. **D&D Actor Size → Token Footprint Materialization V1 is implemented and verified, with no commit or staging.** Do not restart its audit or reimplement it.
+The user authorized committing the previous work and proceeding with the development roadmap. Size materialization is committed as **75686c9** (63 manifest-listed files). No push occurred.
 
-Start with [the complete report](../implementation/DND_ACTOR_SIZE_FOOTPRINT_MATERIALIZATION_V1.md), including its A–V answers and evidence. HEAD remains `1073dbd`; source-changes.json identifies task-owned modifications and additions.
+**First-Session Action Clarity V1 is implemented, verified and uncommitted.** Read [its report](../implementation/DND_FIRST_SESSION_ACTION_CLARITY_V1.md), [roadmap](../development/PRODUCT_BENCHMARK_AND_ROADMAP_V1.md) and [pilot protocol](../development/FIRST_SESSION_PILOT_V1.md). Do not restart completed audits.
 
-Locked principles: typed owner-approved D&D rules only; Character source passes through T11; Campaign override wins; server loads Actor authority; placement materializes once into generic Platform map state; explicit bounds/null and old Tokens remain untouched; replay never derives size or rolls; existing visibility policy stays authoritative. No SQL migration, T13/T14, ranged/thrown/reach expansion, movement redesign, Mods, or scripting was added.
+The action UI preserves frozen intent retries, server authorization, projection and replay. Real player/GM attacks, rejection after source change, response-loss replay, spectator restrictions and database restart passed. Evidence distinguishes fixture integration, real localDev backend checks, and human testing (not performed).
 
-Browser evidence covers PC/NPC automatic placement, accepted dagger action, adjacent/far range, 3×3 GM override after Actor Small size, clearing/reload, and backend recovery. Final recovered map sequence9 and RuntimeLog sequence6; repeated illegal dagger attack leaves log unchanged.
+Next: obtain actual group-session observations. Two human sessions cannot be substituted with browser automation. Gameplay expansion should follow those observations; footprint-aware movement is a future slice. Build revision reporting and deployment/backup restoration remain operational follow-ups.
 
-Local runtime caveat: configured localhost:55453 database was stopped. Docker startup also failed. Acceptance ran in an isolated PostgreSQL18 cluster using existing baseline migrations. Existing databases/.env were not changed. The new test harness can recreate an isolated fixture; it prints its temporary data path and supports restart/stop on stdin. This is not a claim that the user’s configured database was repaired.
+Normal service/database access was healthy at assessment, superseding the former DB-down note. Acceptance used and stopped separate backend8798/PostgreSQL55460 without altering .env or normal database content. Reproduce using tests/action-clarity/README.md.
 
-Future work requires a new scope: source-backed Small/Medium choice for variable species; typed Monster catalog persistence; possibly an explicit D&D apply-default action for historical Tokens. Tiny/off-grid exact legality and larger spatial/combat mechanics remain deferred.
+Locked boundaries remain: approved rule sources, accepted Character/T11 authority, campaign overrides, generic Platform geometry, creation-only size defaults, explicit Token override/clear, recorded-fact replay and current visibility. No new migration, rules engine, equipment system or T13/T14 expansion.
 
-Preserve unrelated scripts/dev-local.ps1, .work/, .yuki-*, Claude outputs/, output/, outputs/, tools/, work/, and older evidence. Do not git add . / -A, clean, or hard reset. Current task forbids staging, committing, and pushing; checkpoint only if the user explicitly asks in a later turn.
+Preserve unrelated work and older evidence; no blanket staging/cleanup/reset. The former milestone commit request is fulfilled. New action-clarity changes remain available for review.

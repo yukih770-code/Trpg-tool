@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "kind": "real PostgreSQL + compiled backend + separate localDev browser identities",
+  "checks": [
+    "owned player attack resolves through real server",
+    "host NPC attack resolves through real server",
+    "server rereads actions and rejects removed action; old success is collapsed",
+    "lost response retry returns identical persisted event",
+    "real server denies player control of NPC",
+    "real spectator has no attack controls",
+    "three deliberate attacks persisted exactly once each",
+    "player can reload and re-enter accepted character"
+  ],
+  "roomId": "room_ed54c7fa-25aa-4817-92b9-24476b7f6d7e",
+  "hostMember": "member_4a5da684-00df-4970-b40c-2136b2cd1c96",
+  "playerMember": "member_b991383e-a97d-4d64-8317-332c6bc9aff2",
+  "eventIds": [
+    "logevent_45b493d1-2e62-423c-a327-59ce727d03f7",
+    "logevent_3b6305b6-2a09-4002-873d-a13f74f8517e",
+    "logevent_67b19a6d-7655-49ec-a865-0f336ba17499",
+    "logevent_64f8aef7-1eb8-4ec0-9393-6117738ffa31"
+  ],
+  "latestSeq": 4
+}

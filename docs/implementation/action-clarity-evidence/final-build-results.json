@@ -1,0 +1,17 @@
+[
+  {
+    "command": "npx tsc --noEmit",
+    "exitCode": 0,
+    "output": "npm notice\r\nnpm notice New major version of npm available! 11.12.1 -> 12.0.2\r\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2\r\nnpm notice To update run: npm install -g npm@12.0.2\r\nnpm notice\r\n"
+  },
+  {
+    "command": "npm run frontend:verify:t12-rendering",
+    "exitCode": 0,
+    "output": "\r\n> react-example@0.0.0 frontend:verify:t12-rendering\r\n> tsx src/components/platform/RoomAttackResolutionDetailsSmoke.tsx\r\n\r\nT12 rendering smoke passed: structured attack details, projection-gated vitals, no hidden-value fallback, intent summary, loading and source-aware empty state.\r\n"
+  },
+  {
+    "command": "npm run build",
+    "exitCode": 0,
+    "output": "\r\n> react-example@0.0.0 build\r\n> vite build\r\n\r\nvite v6.4.2 building for production...\r\ntransforming...\r\n✓ 2211 modules transformed.\r\nrendering chunks...\r\n[plugin vite:singlefile] \r\n\r\n[plugin vite:singlefile] Inlining: index-KKm0I22Z.js\r\n[plugin vite:singlefile] Inlining: style-khCBXKUO.css\r\ncomputing gzip size...\r\ndist/index.html  3,147.80 kB │ gzip: 776.55 kB\r\n✓ built in 4.48s\r\nnpm notice\r\nnpm notice New major version of npm available! 11.12.1 -> 12.0.2\r\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2\r\nnpm notice To update run: npm install -g npm@12.0.2\r\nnpm notice\r\n"
+  }
+]

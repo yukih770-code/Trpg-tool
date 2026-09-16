@@ -1,0 +1,26 @@
+{
+  "status": "passed",
+  "kind": "deterministic browser integration",
+  "checks": [
+    "host actor/action/target summary matches selection",
+    "map target selection does not change acting host combatant",
+    "self target is explicit without inventing a prohibition",
+    "confirmed result has a history label",
+    "success then rejection collapses previous result",
+    "rejection is localized and does not append a fixture event",
+    "rejection keeps original actor after changing selection",
+    "parent actor/target changes cannot retarget pending intent",
+    "pending summary never borrows new actor action label",
+    "pending controls remain disabled",
+    "retry resends identical intent and applies once",
+    "player guidance explains equipment plus host acceptance",
+    "player has no host character selector",
+    "guidance opens existing character panel",
+    "guidance returns to existing lobby",
+    "keyboard activates authoritative-intent submission",
+    "mobile action controls stay within viewport",
+    "spectator has no attack submission controls",
+    "no browser runtime exceptions"
+  ],
+  "errors": []
+}

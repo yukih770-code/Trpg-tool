@@ -176,6 +176,7 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   const [hostAttackActorId, setHostAttackActorId] = useState('');
   const [authoredAttacks, setAuthoredAttacks] = useState<{ actorId: string; actions: RoomRuntimeDndActionShortcut[] }>({ actorId: '', actions: [] });
   const [attackActionsError, setAttackActionsError] = useState<string>();
+  const [attackActionsLoading, setAttackActionsLoading] = useState(false);
   const [actionsRevision, setActionsRevision] = useState(0);
   const [selectedCombatantId, setSelectedCombatantId] = useState<string | undefined>();
   const [combatantToLocate, setCombatantToLocate] = useState<string | undefined>();
@@ -683,10 +684,13 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
   useEffect(() => {
     let cancelled = false;
     setAttackActionsError(undefined);
+    setAttackActionsLoading(false);
     if (context.systemId !== 'dnd5e-2024' || !context.currentMemberId || !attackActorId || shellMode === 'spectator') return;
+    setAttackActionsLoading(true);
     listRoomDndAttackActions({ baseUrl: context.serverBaseUrl }, context.roomId, context.currentMemberId, attackActorId)
       .then((result) => { if (!cancelled) setAuthoredAttacks({ actorId: attackActorId, actions: result.actions }); })
-      .catch((error) => { if (!cancelled) { setAuthoredAttacks({ actorId: attackActorId, actions: [] }); setAttackActionsError(error instanceof Error ? error.message : String(error)); } });
+      .catch((error) => { if (!cancelled) { setAuthoredAttacks({ actorId: attackActorId, actions: [] }); setAttackActionsError(error instanceof Error ? error.message : String(error)); } })
+      .finally(() => { if (!cancelled) setAttackActionsLoading(false); });
     return () => { cancelled = true; };
   }, [attackActorId, context.currentMemberId, context.roomId, context.serverBaseUrl, context.systemId, shellMode, connState, actionsRevision, campaignActorRevision]);
   const handleDeclareAttack = async (intent: DndAttackIntent) => {
@@ -819,6 +823,15 @@ export function RoomRuntimeEntryBridge({ context, room, serverLabel, onBackToLob
                     onSelectActor={setHostAttackActorId}
                     onDeclare={handleDeclareAttack}
                     actionsError={attackActionsError}
+                    actionsLoading={attackActionsLoading || (!!attackActorId && authoredAttacks.actorId !== attackActorId)}
+                    actionGuidance={shellMode === 'host' ? <>
+                      <p>检查战役战斗卡中的已接受角色来源与装备；战役覆盖中的攻击需在该卡中编辑。</p>
+                      {onOpenCampaignActor && <button type="button" className="underline" onClick={() => onOpenCampaignActor(roomCombatState.combatants.find(actor => actor.id === attackActorId)?.sourceActorInstanceId, 'combat')}>检查战役战斗卡与来源</button>}
+                    </> : <>
+                      <p>装备受支持武器后，返回大厅提交角色更新，请主持人复核接受，再刷新动作。若仍无攻击，请主持人检查战役战斗卡。</p>
+                      <button type="button" className="underline" onClick={() => setPanelRequest({ panel: 'character', nonce: Date.now() })}>查看已准入角色</button>
+                      {onBackToLobby && <>{' · '}<button type="button" className="underline" onClick={onBackToLobby}>返回大厅更新角色</button></>}
+                    </>}
                     characterName={shellMode === 'host' ? dndActionTargets.find((actor) => actor.id === attackActorId)?.label : characterSummary?.displayName ?? context.actorRef?.displayName}
                     actions={[...(authoredAttacks.actorId === attackActorId ? authoredAttacks.actions : []), ...(shellMode === 'player' ? selfDndActions.filter((action) => action.kind !== 'weapon_attack' && action.kind !== 'spell_attack') : [])]}
                     targets={dndActionTargets}
