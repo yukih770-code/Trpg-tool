@@ -37,7 +37,7 @@ async function run(): Promise<void> {
     }),
     check('package_has_build_then_start_path', async () => {
       assert(packageJson.includes('"build": "vite build"'), 'Frontend build command is missing.');
-      assert(packageJson.includes('"server:build": "tsc -p server/tsconfig.build.json"'), 'Server build command is missing.');
+      assert(packageJson.includes('"server:build": "tsc -p server/tsconfig.build.json && node scripts/copy-server-migrations.mjs"'), 'Server build must compile code and retain migration SQL.');
       assert(packageJson.includes('"server:start": "node dist-server/server/room-server.js"'), 'Server start command does not use built output.');
     }),
   ]);

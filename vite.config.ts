@@ -19,15 +19,12 @@ function localRuntimeDiagnosticsPlugin(authMode: 'localDev' | 'privateAlpha'): P
 }
 
 export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
+  const env = loadEnv(mode, '.', 'VITE_');
   const privateAlphaEnabled = process.env.VITE_PRIVATE_ALPHA_AUTH_ENABLED ?? env.VITE_PRIVATE_ALPHA_AUTH_ENABLED;
   const authMode = privateAlphaEnabled === 'true' ? 'privateAlpha' : 'localDev';
   return {
     plugins: [react(), tailwindcss(), viteSingleFile(), localRuntimeDiagnosticsPlugin(authMode)],
     base: './',
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

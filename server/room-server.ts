@@ -19,6 +19,7 @@ import { createServer, type IncomingMessage } from 'node:http';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express, { type Request } from 'express';
+import { createPilotOriginGuard, createPilotLoginLimiter, isAllowedBrowserOrigin } from './transport/pilotHttpBoundary.js';
 
 import { createInMemoryRoomRegistry } from './room-registry.js';
 import { createRoom, validateCampaignRef, type CreateRoomInput } from './services/createRoom.js';
@@ -187,6 +188,10 @@ const liveRoomTrafficGate = createLiveRoomTrafficGate();
 // Origins come from the shared server runtime config. Local dev defaults remain
 // localhost-friendly; cloud/production must use explicit env configuration.
 const ALLOWED_ORIGINS = serverRuntimeConfig.allowedOrigins;
+if (serverRuntimeConfig.environment !== 'localDev') {
+  app.use(createPilotOriginGuard(ALLOWED_ORIGINS));
+  app.use('/api/auth/private-alpha/login', createPilotLoginLimiter());
+}
 const ALLOW_ALL_ORIGINS = ALLOWED_ORIGINS.includes('*');
 const ALLOWED_REQUEST_HEADERS = ['Content-Type'];
 if (serverRuntimeConfig.devUserApiEnabled === true) {
@@ -194,9 +199,8 @@ if (serverRuntimeConfig.devUserApiEnabled === true) {
 }
 
 // Minimal dependency-free CORS. Reflects an allowlisted Origin (or "*" when the
-// operator opted in). Non-allowlisted origins simply get no CORS header (the
-// browser then blocks the cross-origin read) — the server does not hard-reject,
-// so same-origin/non-browser callers (curl, health probes) keep working.
+// operator opted in locally). The cloud boundary above rejects foreign browser
+// origins before mutations. Origin-less authenticated tools remain supported.
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (ALLOW_ALL_ORIGINS) {
@@ -385,6 +389,8 @@ const roomSocketServer = createRoomSocketServer({
   server: httpServer,
   registry,
   path: '/ws',
+  isOriginAllowed: serverRuntimeConfig.environment === 'localDev'
+    ? undefined : (origin) => isAllowedBrowserOrigin(origin, ALLOWED_ORIGINS),
   isReady: () => startupRecoveryReadiness.isReady() && liveRoomDurabilityCircuit.isReady() && liveRoomTrafficGate.isIdle(),
   resolveViewer: resolveRoomSocketViewer,
   projectRoomSnapshot: projectRoomSnapshotForViewer,

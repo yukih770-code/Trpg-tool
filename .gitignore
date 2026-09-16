@@ -4,6 +4,7 @@ dist/
 dist-server/
 coverage/
 .data/assets/
+.pilot-private/
 .DS_Store
 *.log
 .env*

@@ -1,0 +1,31 @@
+{
+  "baseCommit": "8d9ed1c",
+  "committed": false,
+  "files": [
+    ".env.cloud.backend.example",
+    ".env.cloud.frontend.example",
+    ".gitignore",
+    "package.json",
+    "vite.config.ts",
+    "scripts/build-pilot.ts",
+    "scripts/copy-server-migrations.mjs",
+    "server/config/serverRuntimeConfig.ts",
+    "server/config/cloudProductionBuildSmoke.ts",
+    "server/config/onlinePilotReadinessSmoke.ts",
+    "server/config/verifyOnlinePilotDeployment.ts",
+    "server/room-server.ts",
+    "server/transport/pilotHttpBoundary.ts",
+    "server/transport/roomSocketServer.ts",
+    "src/lib/platform/roomServerEndpoint.ts",
+    "tests/online-pilot/endpoints.ts",
+    "tests/online-pilot/release-artifacts.mjs",
+    "tests/online-pilot/README.md",
+    "docs/implementation/DND_ONLINE_PILOT_READINESS_V1.md",
+    "docs/implementation/DND_FIRST_SESSION_ACTION_CLARITY_V1.md",
+    "docs/implementation/online-pilot-readiness-files.json",
+    "docs/ai/ACTIVE_TASK.md",
+    "docs/ai/NEXT_CHAT_HANDOFF.md",
+    "docs/ai/TASK_ARCHIVE.md"
+  ],
+  "excluded": "Existing scripts/dev-local.ps1 modification and unrelated untracked files; no push, deployment, .env change or gameplay expansion."
+}

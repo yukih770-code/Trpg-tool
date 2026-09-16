@@ -54,6 +54,7 @@ export interface CreateRoomSocketServerOptions {
   resolveViewer?: (request: IncomingMessage) => Promise<CurrentViewerContext>;
   /** Rejects the upgrade while durable live-room startup recovery is incomplete. */
   isReady?: () => boolean;
+  isOriginAllowed?: (origin: string | undefined) => boolean;
 }
 
 export interface RoomSocketServerHandle {
@@ -71,7 +72,11 @@ export function createRoomSocketServer(options: CreateRoomSocketServerOptions): 
   const wss = new WebSocketServer({
     server: options.server,
     path,
-    verifyClient: (_info, done) => {
+    verifyClient: (info, done) => {
+      if (options.isOriginAllowed?.(info.req.headers.origin) === false) {
+        done(false, 403, 'Request origin is not allowed.');
+        return;
+      }
       if (options.isReady?.() === false) {
         done(false, 503, 'Startup recovery is not ready.');
         return;

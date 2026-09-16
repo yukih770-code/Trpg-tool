@@ -21,6 +21,9 @@
     "frontend:verify:t12-rendering": "tsx src/components/platform/RoomAttackResolutionDetailsSmoke.tsx",
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
+    "build:pilot": "tsx scripts/build-pilot.ts",
+    "pilot:verify:readiness": "tsx server/config/onlinePilotReadinessSmoke.ts && tsx tests/online-pilot/endpoints.ts",
+    "pilot:verify:deployment": "tsx server/config/verifyOnlinePilotDeployment.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
@@ -212,7 +215,7 @@
     "lan:verify:config": "tsx server/config/lanRuntimeConfigSmoke.ts",
     "frontend:verify:lan-runtime": "tsx src/lib/platform/lanRuntimeEndpointOverrideSmoke.ts",
     "server:dev": "tsx server/room-server.ts",
-    "server:build": "tsc -p server/tsconfig.build.json",
+    "server:build": "tsc -p server/tsconfig.build.json && node scripts/copy-server-migrations.mjs",
     "server:start": "node dist-server/server/room-server.js"
   },
   "dependencies": {

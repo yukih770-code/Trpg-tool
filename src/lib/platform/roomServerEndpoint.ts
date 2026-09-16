@@ -36,7 +36,8 @@ export function deriveRoomServerWsUrl(httpUrl: string): string {
 export function resolveRoomServerHttpUrl(env: RoomServerEndpointEnv = getViteEnv()): string {
   const lanOverride = resolveLanRuntimeEndpointOverride();
   if (lanOverride.apiBaseUrl) return lanOverride.apiBaseUrl;
-  return readEnv(env.VITE_ROOM_SERVER_HTTP_URL) ?? DEFAULT_ROOM_SERVER_HTTP_URL;
+  return readEnv(env.VITE_ROOM_SERVER_HTTP_URL)
+    ?? (env.PROD === true && typeof window !== 'undefined' ? window.location.origin : DEFAULT_ROOM_SERVER_HTTP_URL);
 }
 
 export function resolveRoomServerWsUrl(env: RoomServerEndpointEnv = getViteEnv()): string {

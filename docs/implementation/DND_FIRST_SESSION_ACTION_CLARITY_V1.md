@@ -1,6 +1,6 @@
 # D&D First-Session Action Clarity V1
 
-2026-09-16. Starting checkpoint: `75686c9`. **Implemented and verified; new work is uncommitted.**
+2026-09-16. Starting checkpoint: `75686c9`. **Implemented and verified; committed on 2026-09-17 as `8d9ed1c`.** The original 38-file evidence manifest describes the pre-commit checkpoint. See [Online Pilot Readiness V1](DND_ONLINE_PILOT_READINESS_V1.md) for the subsequent deployment preparation.
 
 ## Requested checkpoint
 

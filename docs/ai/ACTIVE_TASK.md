@@ -1,5 +1,15 @@
 # Active Task
 
+## Current checkpoint — 2026-09-17
+
+**Online Pilot Readiness V1 repository work is complete and uncommitted.** The prior Action Clarity milestone was verified and committed atomically as **8d9ed1c** (38 files); no push. Read [the readiness report/runbook](../implementation/DND_ONLINE_PILOT_READINESS_V1.md) and its source manifest before continuing. This supersedes the uncommitted Action Clarity status below.
+
+The provider-neutral plan is one HTTPS/WSS origin, one Node process, PostgreSQL and persistent asset storage. Implemented production endpoint fallback, explicit pilot build, safe Vite env handling, fail-closed cloud config, HTTP/WS origin checks, a coarse login cap, personal-invite-compatible config, compiled SQL packaging and deployment preflight. New readiness checks (19 + 4), existing auth/cloud/reconnect checks, builds and TypeScript pass. No hosted TLS, cloud database, volume replacement, backup restore or human sessions have been tested.
+
+Next: select target/domain and storage, configure secrets privately, review/commit readiness changes, build for the actual origin and complete the hosted acceptance/restore gate before the two human sessions. Current generated bundle targets `https://pilot.example.test` for verification only. No gameplay expansion or provider-specific deployment files. Preserve `.env`, normal services/database and unrelated worktree dirt. Only Action Clarity was authorized for this checkpoint commit; readiness remains reviewable.
+
+## Previous checkpoint (historical)
+
 2026-09-16: the user requested committing the former work and proceeding with the roadmap.
 
 Completed checkpoint: **75686c9 — feat(dnd): materialize token footprints from accepted actor size**. Exactly the prior milestone's 63 manifest-listed files were committed. Nothing pushed; unrelated files excluded.

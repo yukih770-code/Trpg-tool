@@ -40,6 +40,7 @@ export interface ServerRuntimeConfig {
   /** LAN Alpha is localDev-only and exposes no credentials or permission bypass. */
   lanAlpha?: LanRuntimeConfig;
   warnings?: string[];
+  configurationErrors?: string[];
 }
 
 export type ServerStartupValidation = {
@@ -136,6 +137,25 @@ function readDevUserApiEnabled(environment: ServerDeploymentEnvironment, request
 export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRuntimeConfig {
   const environment = readEnvironment(env);
   const runtimeMode = readRuntimeMode(env);
+  const configurationErrors: string[] = [];
+  for (const key of ['ROOM_SERVER_ENV', 'SERVER_DEPLOYMENT_ENVIRONMENT']) {
+    const value = readString(env, key);
+    if (value && !['localDev', 'cloudPrivateAlpha', 'production'].includes(value)) {
+      configurationErrors.push(`${key} must name a supported deployment environment.`);
+    }
+  }
+  for (const key of ['ROOM_SERVER_RUNTIME_MODE', 'SERVER_RUNTIME_MODE']) {
+    const value = readString(env, key);
+    if (value && !['local', 'cloud'].includes(value)) configurationErrors.push(`${key} must be local or cloud.`);
+  }
+  if (env.NODE_ENV === 'production' && environment === 'localDev') {
+    configurationErrors.push('NODE_ENV=production requires an explicit cloud deployment environment.');
+  }
+  for (const [alias, canonical] of [['ROOM_SERVER_ENV', 'SERVER_DEPLOYMENT_ENVIRONMENT'], ['ROOM_SERVER_RUNTIME_MODE', 'SERVER_RUNTIME_MODE']]) {
+    if (readString(env, alias) && readString(env, canonical) && readString(env, alias) !== readString(env, canonical)) {
+      configurationErrors.push(`${alias} conflicts with ${canonical}.`);
+    }
+  }
   const requestedLanAlpha = readLanRuntimeConfig(env, { backendPort: readPort(env) });
   const lanAlpha = environment === 'localDev'
     ? requestedLanAlpha
@@ -165,7 +185,6 @@ export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRun
   const devAuthRequested = readDevAuthRequested(env);
   const privateAlphaAuthEnabled = readString(env, 'PRIVATE_ALPHA_AUTH_ENABLED') === 'true';
   const privateAlphaAuthConfigured = privateAlphaAuthEnabled
-    && readString(env, 'PRIVATE_ALPHA_INVITE_CODE') !== undefined
     && readString(env, 'PRIVATE_ALPHA_SESSION_SECRET') !== undefined;
   if (environment !== 'localDev' && devAuthRequested) {
     warnings.push('Dev auth was requested but is disabled outside localDev.');
@@ -196,11 +215,20 @@ export function readServerRuntimeConfigFromEnv(env: ServerRuntimeEnv): ServerRun
     privateAlphaAuthConfigured,
     lanAlpha,
     warnings: warnings.length > 0 ? warnings : undefined,
+    configurationErrors,
   };
 }
 
-function isLocalUrl(value: string | undefined): boolean {
-  return !value || /(?:localhost|127\.0\.0\.1)/i.test(value);
+export function isPublicSecureOrigin(value: string | undefined, protocol: 'https:' | 'wss:'): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase().replace(/\.$/, '');
+    return url.protocol === protocol && !url.username && !url.password
+      && !url.search && !url.hash && url.pathname === '/'
+      && !['localhost', '[::1]', '[::]', '0.0.0.0'].includes(host)
+      && !host.endsWith('.localhost') && !host.startsWith('127.');
+  } catch { return false; }
 }
 
 /**
@@ -211,7 +239,7 @@ export function validateServerStartupConfig(
   config: ServerRuntimeConfig,
   databaseConfigured: boolean,
 ): ServerStartupValidation {
-  const errors: string[] = [];
+  const errors: string[] = [...(config.configurationErrors ?? [])];
   const warnings = [...(config.warnings ?? [])];
   if (config.environment === 'localDev') return { errors, warnings };
 
@@ -222,7 +250,10 @@ export function validateServerStartupConfig(
   if (config.devAuthRequested) errors.push('Cloud deployment mode must not enable POSTGRES_USER_DEV_API_ENABLED.');
   if (!config.privateAlphaAuthEnabled) errors.push('Cloud deployment mode requires PRIVATE_ALPHA_AUTH_ENABLED=true.');
   if (!config.privateAlphaAuthConfigured) errors.push('Cloud deployment mode requires private alpha invite and session secret configuration.');
-  if (isLocalUrl(config.publicHttpUrl)) errors.push('Cloud deployment mode requires a non-local APP_PUBLIC_HTTP_URL.');
-  if (isLocalUrl(config.publicWsUrl)) errors.push('Cloud deployment mode requires a non-local APP_PUBLIC_WS_URL.');
+  if (!isPublicSecureOrigin(config.publicHttpUrl, 'https:')) errors.push('Cloud deployment mode requires a non-local HTTPS origin in APP_PUBLIC_HTTP_URL.');
+  if (!isPublicSecureOrigin(config.publicWsUrl, 'wss:')) errors.push('Cloud deployment mode requires a non-local WSS origin in APP_PUBLIC_WS_URL.');
+  if (config.allowedOrigins.some((origin) => !isPublicSecureOrigin(origin, 'https:') || new URL(origin).origin !== origin)) {
+    errors.push('ROOM_ALLOWED_ORIGINS must contain exact HTTPS origins without paths, credentials or trailing slashes.');
+  }
   return { errors, warnings };
 }

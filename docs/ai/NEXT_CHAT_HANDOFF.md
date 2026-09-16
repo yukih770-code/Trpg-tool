@@ -1,4 +1,12 @@
-# Continuation checkpoint — 2026-09-16
+# Continuation checkpoint — 2026-09-17
+
+**Current:** Action Clarity committed as **8d9ed1c**; **Online Pilot Readiness V1 implemented/verified, uncommitted**. Nothing pushed or deployed. Read [the readiness report](../implementation/DND_ONLINE_PILOT_READINESS_V1.md) and `docs/implementation/online-pilot-readiness-files.json`. The older checkpoint below is historical.
+
+Single-origin HTTPS/WSS → one Node process → PostgreSQL plus persistent asset volume. Config/origin/build/migration packaging blockers are fixed; tests pass. `.env`, unrelated files and normal local services/database were preserved. Hosted TLS/cookies, multi-user real-host acceptance, volume durability, backup restore and the two human sessions remain pending. The test bundle uses `pilot.example.test`; rebuild for the selected real domain. Bootstrap code is GM-only; use personal player invites and keep session secret stable because identity derivation also depends on it.
+
+Next work needs the deployment target/domain/storage choices, then the report's release and acceptance procedure. Do not restart completed gameplay audits, expand gameplay, push or deploy automatically. New work is not committed. Preserve unrelated `scripts/dev-local.ps1` and older untracked evidence. The user requested committing the former Action Clarity milestone, which is fulfilled.
+
+## Previous checkpoint (historical)
 
 The user authorized committing the previous work and proceeding with the development roadmap. Size materialization is committed as **75686c9** (63 manifest-listed files). No push occurred.
 
