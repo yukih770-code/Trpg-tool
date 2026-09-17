@@ -1,6 +1,7 @@
 import { accessSync, constants } from 'node:fs';
 import { isAbsolute } from 'node:path';
 import { readServerRuntimeConfigFromEnv, validateServerStartupConfig } from './serverRuntimeConfig.js';
+import { isAllowedPilotDatabaseTransport } from './pilotDatabaseTransport.js';
 
 const runtime = readServerRuntimeConfigFromEnv(process.env);
 const errors = validateServerStartupConfig(runtime, Boolean(process.env.DATABASE_URL)).errors;
@@ -21,9 +22,8 @@ try {
   if (['sslmode', 'sslcert', 'sslkey', 'sslrootcert'].some((key) => database.searchParams.has(key))) {
     errors.push('Remove SSL query overrides from DATABASE_URL; configure verified TLS through DATABASE_SSL_MODE=require.');
   }
-  const sslMode = process.env.DATABASE_SSL_MODE;
-  if (sslMode !== 'require' && !(sslMode === 'disable' && ['localhost', '127.0.0.1', '[::1]'].includes(database.hostname))) {
-    errors.push('Use DATABASE_SSL_MODE=require; disable is allowed only for loopback PostgreSQL.');
+  if (!isAllowedPilotDatabaseTransport(database, process.env)) {
+    errors.push('Use verified database TLS, loopback PostgreSQL, or explicit Railway private-network transport.');
   }
 } catch { errors.push('DATABASE_URL must be a valid server-only PostgreSQL URL.'); }
 if (runtime.publicHttpUrl && runtime.publicWsUrl) {

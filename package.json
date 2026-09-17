@@ -24,6 +24,7 @@
     "build:pilot": "tsx scripts/build-pilot.ts",
     "pilot:verify:readiness": "tsx server/config/onlinePilotReadinessSmoke.ts && tsx tests/online-pilot/endpoints.ts",
     "pilot:verify:deployment": "tsx server/config/verifyOnlinePilotDeployment.ts",
+    "pilot:verify:railway": "tsx tests/online-pilot/railway-contract.ts",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
@@ -244,6 +245,11 @@
     "vite": "^6.2.3",
     "ws": "^8.18.0",
     "zustand": "^5.0.13"
+  },
+  "overrides": {
+    "express": {
+      "qs": "6.16.0"
+    }
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

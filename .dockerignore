@@ -1,0 +1,27 @@
+# Explicit build context: no credentials, local state, evidence or Git history.
+**
+!Dockerfile
+!package.json
+!package-lock.json
+!index.html
+!tsconfig.json
+!vite.config.ts
+!components/
+!components/**
+!lib/
+!lib/**
+!src/
+!src/**
+!server/
+!server/**
+!public/
+!public/manifest.json
+!scripts/
+!scripts/build-pilot.ts
+!scripts/copy-server-migrations.mjs
+!deploy/
+!deploy/railway-*.mjs
+!tests/
+!tests/online-pilot/
+!tests/online-pilot/endpoints.ts
+!tests/online-pilot/railway-contract.ts
