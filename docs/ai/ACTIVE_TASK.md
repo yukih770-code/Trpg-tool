@@ -1,12 +1,16 @@
 # Active Task
 
-## Authoritative continuation checkpoint — 2026-09-17, Hosted Pilot Deployment V1
+## Authoritative checkpoint — 2026-09-17, Hosted Pilot Deployment V1 complete
 
-**Readiness is committed as `4754c0d`; Railway preparation is committed as `a66001f`. Actual hosted deployment is blocked on Railway account login.** The current user explicitly authorized audited GitHub push and Railway provisioning/deployment. This supersedes older no-push/provider-unselected/uncommitted statements below. Read [the hosted report](../implementation/DND_HOSTED_PILOT_DEPLOYMENT_V1.md) for push status, exact manifest and acceptance ledger.
+**Live: https://dnd-web-production.up.railway.app.** Railway project `dnd-private-pilot` has one app, private PostgreSQL 18.6 and persistent DB/asset volumes. Twelve existing migrations are applied. The explicit deployed revision is `84215fe`; auto-deploy is disabled. Read [the final hosted report](../implementation/DND_HOSTED_PILOT_DEPLOYMENT_V1.md), its continuation manifest and sanitized evidence. Final documentation HEAD is available through `git log -1 -- docs/implementation/DND_HOSTED_PILOT_DEPLOYMENT_V1.md`.
 
-Railway is selected: one app process, private PostgreSQL, persistent app asset volume and generated HTTPS domain only. Docker builds plus 23 readiness, 11 Railway contract and seven isolated PostgreSQL/container checks passed. The history/tracked-file audit found no known live secrets; dependency remediation leaves one low Windows esbuild development-server advisory. No Railway service or URL exists yet. No hosted role/WS/reconnect/retry/restart/backup/restore result may be claimed from these local checks.
+Actual hosted checks passed: 90 protocol, 20 gameplay/role browser, six origin/health/asset, login throttle, backend-secret bundle exclusion, ten real-restart recovery, 24 preparation/25 restart protocol and nine final-release recovery checks. GM/player/spectator had separate authenticated browser contexts. A real hosted PostgreSQL dump plus asset archive was restored into an isolated local PostgreSQL 18.4 cluster: all 59 tables, 12 migration records and asset bytes matched. Target stopped; live database never overwritten. No native volume snapshots, scheduled backups or human sessions are claimed.
 
-User's minimal next action: run `npx --yes @railway/cli login`, complete browser authorization and report success without sharing credentials. Continue provisioning and actual acceptance from [the runbook](../../deploy/RAILWAY_PILOT.md). Pause only for account-owner authorization/billing boundaries. Preserve `.env`, normal services/database, `scripts/dev-local.ps1` and 1,412 unrelated untracked files. Do not start Pilot Character Builder or another product milestone.
+Readiness `4754c0d`, deployment preparation `a66001f`, preparation handoff `cd9715a`, correction `84215fe` are committed and pushed. Final evidence is committed/pushed separately. New Railway services require the explicit API settings in `deploy/railway-service-settings.*`; obsolete `railway.json` was removed. Use the runbook and an explicit reviewed commit for future releases, not automatic redeploy of an old manifest. Do not repeat completed audits or provision duplicate services.
+
+Next user action: sign in at the live URL with the GM bootstrap code retrieved privately from Railway Variables, issue personal player invitations, then run two human pilot sessions. Trial/billing and ongoing paired off-device backups need owner attention before valuable campaign use. Technical deployment gate is ready for a separately authorized Pilot Character Builder V1; do not start it automatically.
+
+Keep current backend authority, PostgreSQL, replay and visibility/permission rules. Secrets, session state, backups and operator SSH key remain in protected ignored `.pilot-private/`; never expose them. Preserve `.env`, normal local services/database, unrelated `scripts/dev-local.ps1` and 1,412 untracked files. No gameplay expansion, custom domain or T13/T14 work.
 
 ## Earlier checkpoints (historical)
 

@@ -1,0 +1,27 @@
+{
+  "baseCommit": "cd9715ad3e66b7e95232e9c7dbd28161f68982ae",
+  "releaseCommit": "84215fe",
+  "status": "hosted-acceptance-restart-and-isolated-restoration-passed",
+  "files": [
+    "deploy/RAILWAY_PILOT.md",
+    "deploy/railway-service-settings.graphql",
+    "deploy/railway-service-settings.json",
+    "railway.json",
+    "server/api/verifyPrivateAlphaTwoAccountProtocol.ts",
+    "docs/implementation/DND_HOSTED_PILOT_DEPLOYMENT_V1.md",
+    "docs/implementation/hosted-pilot-acceptance-files.json",
+    "docs/implementation/evidence/hosted-pilot/results.json",
+    "docs/implementation/evidence/hosted-pilot/player-rejection.png",
+    "docs/implementation/evidence/hosted-pilot/spectator.png",
+    "docs/ai/ACTIVE_TASK.md",
+    "docs/ai/NEXT_CHAT_HANDOFF.md",
+    "docs/ai/TASK_ARCHIVE.md"
+  ],
+  "deletedFiles": [
+    "railway.json"
+  ],
+  "preservedUnrelatedTracked": [
+    "scripts/dev-local.ps1"
+  ],
+  "preExistingUntrackedFileCount": 1412
+}

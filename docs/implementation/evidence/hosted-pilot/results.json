@@ -1,0 +1,1113 @@
+{
+  "date": "2026-09-17",
+  "origin": "https://dnd-web-production.up.railway.app",
+  "kind": "automated acceptance against actual hosted production origin",
+  "suites": {
+    "protocol": {
+      "status": "passed",
+      "checks": [
+        {
+          "name": "anonymous_health",
+          "status": "passed"
+        },
+        {
+          "name": "anonymous_auth_me",
+          "status": "passed"
+        },
+        {
+          "name": "host_private_alpha_login",
+          "status": "passed"
+        },
+        {
+          "name": "host_auth_me",
+          "status": "passed"
+        },
+        {
+          "name": "host_create_world_server",
+          "status": "passed"
+        },
+        {
+          "name": "host_create_personal_invite",
+          "status": "passed"
+        },
+        {
+          "name": "player_private_alpha_login",
+          "status": "passed"
+        },
+        {
+          "name": "player_auth_me",
+          "status": "passed"
+        },
+        {
+          "name": "two_distinct_user_ids",
+          "status": "passed"
+        },
+        {
+          "name": "player_list_joined_world_servers",
+          "status": "passed"
+        },
+        {
+          "name": "player_world_membership_visible",
+          "status": "passed"
+        },
+        {
+          "name": "host_create_campaign",
+          "status": "passed"
+        },
+        {
+          "name": "host_create_live_room",
+          "status": "passed"
+        },
+        {
+          "name": "player_join_live_room",
+          "status": "passed"
+        },
+        {
+          "name": "player_pending_room_snapshot_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "player_pending_join_status",
+          "status": "passed"
+        },
+        {
+          "name": "pending_player_websocket_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "player_host_action_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "host_authority_boundary_confirmed",
+          "status": "passed"
+        },
+        {
+          "name": "host_approve_player_member",
+          "status": "passed"
+        },
+        {
+          "name": "player_active_join_status",
+          "status": "passed"
+        },
+        {
+          "name": "two_account_websocket_subscribed",
+          "status": "passed"
+        },
+        {
+          "name": "player_room_entry_by_verified_identity",
+          "status": "passed"
+        },
+        {
+          "name": "player_cross_member_snapshot_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "player_submit_quick_draft_actor",
+          "status": "passed"
+        },
+        {
+          "name": "player_ready_before_actor_approval_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "host_approve_actor_binding",
+          "status": "passed"
+        },
+        {
+          "name": "player_set_player_ready",
+          "status": "passed"
+        },
+        {
+          "name": "two_account_websocket_ready_converged",
+          "status": "passed"
+        },
+        {
+          "name": "player_host_only_runtime_log_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "player_append_public_runtime_log",
+          "status": "passed"
+        },
+        {
+          "name": "host_append_host_only_runtime_log",
+          "status": "passed"
+        },
+        {
+          "name": "player_list_projected_runtime_log",
+          "status": "passed"
+        },
+        {
+          "name": "host_list_host_runtime_log",
+          "status": "passed"
+        },
+        {
+          "name": "two_account_runtime_log_projection_confirmed",
+          "status": "passed"
+        },
+        {
+          "name": "player_host_map_write_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "host_place_standalone_npc_token",
+          "status": "passed"
+        },
+        {
+          "name": "standalone_npc_token_projected",
+          "status": "passed"
+        },
+        {
+          "name": "host_place_hidden_host_token",
+          "status": "passed"
+        },
+        {
+          "name": "host_place_approved_character_token",
+          "status": "passed"
+        },
+        {
+          "name": "player_own_token_move_before_grant_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "host_grant_own_token_movement",
+          "status": "passed"
+        },
+        {
+          "name": "player_move_own_approved_token",
+          "status": "passed"
+        },
+        {
+          "name": "player_manual_token_move_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "player_list_projected_map_events",
+          "status": "passed"
+        },
+        {
+          "name": "host_list_host_map_events",
+          "status": "passed"
+        },
+        {
+          "name": "two_account_map_authority_projection_confirmed",
+          "status": "passed"
+        },
+        {
+          "name": "player_combat_start_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "host_start_combat",
+          "status": "passed"
+        },
+        {
+          "name": "host_advance_combat_to_player",
+          "status": "passed"
+        },
+        {
+          "name": "two_account_combat_turn_converged",
+          "status": "passed"
+        },
+        {
+          "name": "player_roll_on_player_turn",
+          "status": "passed"
+        },
+        {
+          "name": "player_roll_advantage_with_dc",
+          "status": "passed"
+        },
+        {
+          "name": "two_account_advantage_roll_is_server_resolved",
+          "status": "passed"
+        },
+        {
+          "name": "two_account_dice_request_fabrication_ignored",
+          "status": "passed"
+        },
+        {
+          "name": "two_account_advantage_projection_converged",
+          "status": "passed"
+        },
+        {
+          "name": "player_advantage_on_pool_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "player_dc_on_pool_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "player_invalid_roll_mode_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "t7_live_room_owns_a_runtime_session",
+          "status": "passed"
+        },
+        {
+          "name": "player_read_t7_baseline_cursor",
+          "status": "passed"
+        },
+        {
+          "name": "host_t7_campaign_append_into_live_session_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "t7_live_append_reports_ownership_conflict",
+          "status": "passed"
+        },
+        {
+          "name": "host_t7_campaign_create_session_while_live_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "host_t7_campaign_update_session_while_live_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "t7_live_session_lifecycle_is_live_room_only",
+          "status": "passed"
+        },
+        {
+          "name": "host_t7_reserved_runtime_log_kind_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "host_t7_reserved_map_event_kind_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "t7_reserved_kinds_rejected_independently_of_liveness",
+          "status": "passed"
+        },
+        {
+          "name": "host_t7_campaign_session_read_still_allowed",
+          "status": "passed"
+        },
+        {
+          "name": "host_t7_campaign_events_read_still_allowed",
+          "status": "passed"
+        },
+        {
+          "name": "t7_live_session_reads_remain_open",
+          "status": "passed"
+        },
+        {
+          "name": "player_read_t7_post_rejection_cursor",
+          "status": "passed"
+        },
+        {
+          "name": "t7_rejected_writes_left_the_log_untouched",
+          "status": "passed"
+        },
+        {
+          "name": "host_t7_same_intent_via_live_room_succeeds",
+          "status": "passed"
+        },
+        {
+          "name": "player_read_t7_post_live_intent_cursor",
+          "status": "passed"
+        },
+        {
+          "name": "two_account_single_runtime_write_path_confirmed",
+          "status": "passed"
+        },
+        {
+          "name": "player_read_reconnect_runtime_cursor",
+          "status": "passed"
+        },
+        {
+          "name": "player_read_reconnect_map_cursor",
+          "status": "passed"
+        },
+        {
+          "name": "host_append_offline_host_only_event",
+          "status": "passed"
+        },
+        {
+          "name": "host_append_offline_combat_turn",
+          "status": "passed"
+        },
+        {
+          "name": "host_append_offline_map_event",
+          "status": "passed"
+        },
+        {
+          "name": "player_read_post_disconnect_runtime_cursor",
+          "status": "passed"
+        },
+        {
+          "name": "player_read_post_disconnect_map_cursor",
+          "status": "passed"
+        },
+        {
+          "name": "player_socket_missing_suffix_recovered",
+          "status": "passed"
+        },
+        {
+          "name": "player_read_final_room_state",
+          "status": "passed"
+        },
+        {
+          "name": "player_ready_state_visible",
+          "status": "passed"
+        },
+        {
+          "name": "host_cleanup_disband_live_room",
+          "status": "passed"
+        },
+        {
+          "name": "host_cleanup_archive_campaign",
+          "status": "passed"
+        },
+        {
+          "name": "host_cleanup_archive_world_server",
+          "status": "passed"
+        }
+      ]
+    },
+    "play": {
+      "status": "passed",
+      "checks": [
+        {
+          "name": "GM opens hosted tabletop",
+          "status": "passed"
+        },
+        {
+          "name": "player opens hosted tabletop",
+          "status": "passed"
+        },
+        {
+          "name": "spectator opens hosted tabletop",
+          "status": "passed"
+        },
+        {
+          "name": "spectator has no attack controls",
+          "status": "passed"
+        },
+        {
+          "name": "server materialized medium 1x1 and large 2x2 footprints",
+          "status": "passed"
+        },
+        {
+          "name": "pending freezes the original actor/action/target",
+          "status": "passed"
+        },
+        {
+          "name": "player attack returns one authoritative result",
+          "status": "passed"
+        },
+        {
+          "name": "GM resolves an NPC attack",
+          "status": "passed"
+        },
+        {
+          "name": "unconfirmed attack keeps previous result distinct",
+          "status": "passed"
+        },
+        {
+          "name": "retry preserves exact original intent and event identity",
+          "status": "passed"
+        },
+        {
+          "name": "concurrent duplicate retries return the same persisted event",
+          "status": "passed"
+        },
+        {
+          "name": "same intent ID with different fingerprint returns 409",
+          "status": "passed"
+        },
+        {
+          "name": "out-of-range attack rejected by hosted backend",
+          "status": "passed"
+        },
+        {
+          "name": "spatial rejection leaves authoritative event history unchanged",
+          "status": "passed"
+        },
+        {
+          "name": "rejected attack leaves prior success collapsed",
+          "status": "passed"
+        },
+        {
+          "name": "three deliberate attacks persisted exactly once each",
+          "status": "passed"
+        },
+        {
+          "name": "player sees consistent permitted attack event IDs",
+          "status": "passed"
+        },
+        {
+          "name": "spectator sees consistent permitted attack event IDs",
+          "status": "passed"
+        },
+        {
+          "name": "browser uses production HTTPS/WSS with no localhost endpoints",
+          "status": "passed"
+        },
+        {
+          "name": "browser reconnect does not duplicate attacks",
+          "status": "passed"
+        }
+      ]
+    },
+    "security": {
+      "status": "passed",
+      "checks": [
+        {
+          "name": "actual HTTPS health and all schemas ready",
+          "status": "passed"
+        },
+        {
+          "name": "production HTTP origin accepted",
+          "status": "passed"
+        },
+        {
+          "name": "unapproved HTTP origin rejected",
+          "status": "passed"
+        },
+        {
+          "name": "unapproved authenticated WSS origin rejected",
+          "status": "passed"
+        },
+        {
+          "name": "hosted persistent asset upload",
+          "status": "passed"
+        },
+        {
+          "name": "hosted asset read",
+          "status": "passed"
+        }
+      ]
+    },
+    "recovery": {
+      "status": "passed",
+      "checks": [
+        {
+          "name": "actual Railway restart completed and startup recovery is ready",
+          "status": "passed"
+        },
+        {
+          "name": "existing browser reconnects after hosted service restart",
+          "status": "passed"
+        },
+        {
+          "name": "attack IDs, HP/result payloads and event sequence survive restart",
+          "status": "passed"
+        },
+        {
+          "name": "map events, spatial contract and footprints survive restart",
+          "status": "passed"
+        },
+        {
+          "name": "room and approved player actor binding survive restart",
+          "status": "passed"
+        },
+        {
+          "name": "campaign Actors survive restart",
+          "status": "passed"
+        },
+        {
+          "name": "retry after process cache loss recovers original RuntimeLog event",
+          "status": "passed"
+        },
+        {
+          "name": "post-restart retry does not duplicate an event",
+          "status": "passed"
+        },
+        {
+          "name": "spectator projection remains available after restart",
+          "status": "passed"
+        },
+        {
+          "name": "persistent asset bytes survive hosted restart",
+          "status": "passed"
+        }
+      ]
+    },
+    "restart-prepare": {
+      "status": "prepared",
+      "checks": [
+        {
+          "name": "prepare_private_alpha_login",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_world_server",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_player_invite",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_private_alpha_login",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_campaign",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_live_room",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_player_join",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_player_member_approval",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_player_actor_binding",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_player_actor_approval",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_player_ready",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_combat_started",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_combat_turn",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_map_event",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_player_character_token",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_player_token_permission",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_live_room_owns_a_runtime_session",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_forged_runtime_log_kind_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_forged_map_event_kind_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_campaign_write_into_live_session_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_reserved_and_live_campaign_writes_rejected",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_player_runtime_log_projection",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_player_projection_excludes_rejected_writes",
+          "status": "passed"
+        },
+        {
+          "name": "prepare_restart_fixture",
+          "status": "passed"
+        }
+      ]
+    },
+    "restart-verify": {
+      "status": "passed",
+      "checks": [
+        {
+          "name": "verify_existing_session",
+          "status": "passed"
+        },
+        {
+          "name": "verify_session_identity",
+          "status": "passed"
+        },
+        {
+          "name": "verify_world_server_recovered",
+          "status": "passed"
+        },
+        {
+          "name": "verify_campaign_recovered",
+          "status": "passed"
+        },
+        {
+          "name": "verify_durable_platform_records",
+          "status": "passed"
+        },
+        {
+          "name": "verify_room_entry_attempt_1",
+          "status": "passed"
+        },
+        {
+          "name": "verify_live_room_recovered",
+          "status": "passed"
+        },
+        {
+          "name": "verify_player_existing_session",
+          "status": "passed"
+        },
+        {
+          "name": "verify_player_session_identity",
+          "status": "passed"
+        },
+        {
+          "name": "verify_player_room_entry",
+          "status": "passed"
+        },
+        {
+          "name": "verify_player_lobby_recovered",
+          "status": "passed"
+        },
+        {
+          "name": "verify_player_runtime_log_after_restart",
+          "status": "passed"
+        },
+        {
+          "name": "verify_recovered_state_equals_what_players_saw",
+          "status": "passed"
+        },
+        {
+          "name": "verify_player_unready_after_restart",
+          "status": "passed"
+        },
+        {
+          "name": "verify_player_reready_after_restart",
+          "status": "passed"
+        },
+        {
+          "name": "verify_player_admission_recovered",
+          "status": "passed"
+        },
+        {
+          "name": "verify_runtime_log_after_restart",
+          "status": "passed"
+        },
+        {
+          "name": "verify_combat_runtime_log_recovered",
+          "status": "passed"
+        },
+        {
+          "name": "verify_map_after_restart_attempt_1",
+          "status": "passed"
+        },
+        {
+          "name": "verify_map_restart_recovered",
+          "status": "passed"
+        },
+        {
+          "name": "verify_player_token_move_after_restart",
+          "status": "passed"
+        },
+        {
+          "name": "verify_player_token_authority_recovered",
+          "status": "passed"
+        },
+        {
+          "name": "cleanup_disband_room",
+          "status": "passed"
+        },
+        {
+          "name": "cleanup_archive_campaign",
+          "status": "passed"
+        },
+        {
+          "name": "cleanup_archive_world_server",
+          "status": "passed"
+        }
+      ]
+    },
+    "throttle": {
+      "status": "passed",
+      "checks": [
+        {
+          "name": "hosted login throttle rejects excessive attempts despite spoofed forwarding headers",
+          "status": "passed"
+        }
+      ]
+    },
+    "release": {
+      "status": "passed",
+      "checks": [
+        {
+          "name": "released application has completed startup recovery",
+          "status": "passed"
+        },
+        {
+          "name": "attack IDs, HP/result payloads and event sequence survive restart",
+          "status": "passed"
+        },
+        {
+          "name": "map events, spatial contract and footprints survive restart",
+          "status": "passed"
+        },
+        {
+          "name": "room and approved player actor binding survive restart",
+          "status": "passed"
+        },
+        {
+          "name": "campaign Actors survive restart",
+          "status": "passed"
+        },
+        {
+          "name": "retry after process cache loss recovers original RuntimeLog event",
+          "status": "passed"
+        },
+        {
+          "name": "post-restart retry does not duplicate an event",
+          "status": "passed"
+        },
+        {
+          "name": "spectator projection remains available after restart",
+          "status": "passed"
+        },
+        {
+          "name": "persistent asset bytes survive hosted restart",
+          "status": "passed"
+        }
+      ]
+    }
+  },
+  "bundleSecretValuesChecked": 3,
+  "bundleSecretCheck": "passed",
+  "restore": {
+    "status": "passed",
+    "source": "Railway PostgreSQL 18.6, production private database",
+    "backupLocation": "D:\\Download\\dnd\\.pilot-private\\backups\\20260917-151841",
+    "dumpSha256": "b09765b1d2bdad2848aaa42a043f92e3675b513674c017b79b215e23b375eca9",
+    "dumpBytes": 266046,
+    "assetsSha256": "461f0988e00d0c9dd937edcafd74d548fb2ae6d1d9d365cb1480ad98dc1edd3f",
+    "assetFiles": [
+      {
+        "path": "./910e6b89-425b-4559-9fc6-e7f4e0340f18.webp",
+        "sha256": "ff26002b86036d43df4d2722224f4615c1ed71e384c5b486338bb23ba4621f4c"
+      }
+    ],
+    "restoreTarget": {
+      "directory": "D:\\Download\\dnd\\.pilot-private\\restore-20260917-151841",
+      "database": "pilot_restore",
+      "address": "127.0.0.1",
+      "port": 50969,
+      "version": "PostgreSQL 18.4"
+    },
+    "migrationCount": 12,
+    "tablesCompared": 59,
+    "sourceUnchangedDuringBackup": true,
+    "targetStoppedAfterVerification": true,
+    "tables": [
+      {
+        "name": "account_security_audit_records",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "actors",
+        "rows": 1,
+        "digestMatched": true
+      },
+      {
+        "name": "ai_context_sources",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "ai_memory_entries",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "ai_operation_audit_records",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "asset_metadata",
+        "rows": 1,
+        "digestMatched": true
+      },
+      {
+        "name": "auth_sessions",
+        "rows": 11,
+        "digestMatched": true
+      },
+      {
+        "name": "campaign_actor_bindings",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "campaign_actor_instances",
+        "rows": 2,
+        "digestMatched": true
+      },
+      {
+        "name": "campaign_pack_bindings",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "campaign_ruleset_snapshots",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "campaigns",
+        "rows": 4,
+        "digestMatched": true
+      },
+      {
+        "name": "compendium_entries",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "compendium_pack_versions",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "compendium_packs",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "content_documents",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "content_messages",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "content_publication_reviews",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "content_rights_policies",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "content_threads",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "content_visibility_records",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "dnd_private_monster_import_batches",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "dnd_private_monster_templates",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "game_system_registry",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "generated_artifacts",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "map_records",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "moderation_actions",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "object_storage_refs",
+        "rows": 1,
+        "digestMatched": true
+      },
+      {
+        "name": "permission_decision_audit_records",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "private_import_batches",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "room_lobby_slots",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "room_participants",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "room_records",
+        "rows": 4,
+        "digestMatched": true
+      },
+      {
+        "name": "ruleset_templates",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "ruleset_versions",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "runtime_actor_slots",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "runtime_events",
+        "rows": 37,
+        "digestMatched": true
+      },
+      {
+        "name": "runtime_session_bindings",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "runtime_sessions",
+        "rows": 4,
+        "digestMatched": true
+      },
+      {
+        "name": "scene_map_bindings",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "scene_state_documents",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "schema_migrations",
+        "rows": 12,
+        "digestMatched": true
+      },
+      {
+        "name": "server_audit_log",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "service_identities",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "user_identities",
+        "rows": 9,
+        "digestMatched": true
+      },
+      {
+        "name": "user_notifications",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "user_profiles",
+        "rows": 9,
+        "digestMatched": true
+      },
+      {
+        "name": "users",
+        "rows": 9,
+        "digestMatched": true
+      },
+      {
+        "name": "world_server_campaign_bindings",
+        "rows": 4,
+        "digestMatched": true
+      },
+      {
+        "name": "world_server_game_system_bindings",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "world_server_invites",
+        "rows": 5,
+        "digestMatched": true
+      },
+      {
+        "name": "world_server_join_requests",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "world_server_memberships",
+        "rows": 5,
+        "digestMatched": true
+      },
+      {
+        "name": "world_server_pack_bindings",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "world_server_roles",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "world_server_ruleset_versions",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "world_server_settings_versions",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "world_server_update_notices",
+        "rows": 0,
+        "digestMatched": true
+      },
+      {
+        "name": "world_servers",
+        "rows": 4,
+        "digestMatched": true
+      }
+    ]
+  },
+  "humanSessionsRun": 0,
+  "secretsOmitted": true
+}
