@@ -21,6 +21,10 @@ type ResponseResult = {
 const baseUrl = (process.env.E2E_API_BASE_URL?.trim() || 'http://localhost:8787').replace(/\/+$/, '');
 const bootstrapCode = process.env.E2E_PRIVATE_ALPHA_ACCESS_CODE?.trim();
 const strict = process.argv.includes('--strict');
+// Keep the local default while allowing bounded remote TLS/socket latency.
+const configuredSocketTimeout = Number(process.env.E2E_SOCKET_TIMEOUT_MS);
+const socketTimeoutMs = Number.isInteger(configuredSocketTimeout) && configuredSocketTimeout >= 5_000 && configuredSocketTimeout <= 60_000
+  ? configuredSocketTimeout : 5_000;
 const steps: Step[] = [];
 
 let worldRoot: string | undefined;
@@ -130,7 +134,7 @@ class RoomSocketProbe {
     const socket = new WebSocket(socketUrl(), { headers: { Cookie: cookie } });
     socket.on('error', () => undefined);
     await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error(`${label}_socket_open_timeout`)), 5_000);
+      const timeout = setTimeout(() => reject(new Error(`${label}_socket_open_timeout`)), socketTimeoutMs);
       socket.once('open', () => {
         clearTimeout(timeout);
         resolve();
@@ -169,7 +173,7 @@ class RoomSocketProbe {
         timeout: setTimeout(() => {
           this.waiters.delete(waiter);
           reject(new Error(`${this.label}_${name}_timeout`));
-        }, 5_000),
+        }, socketTimeoutMs),
       };
       this.waiters.add(waiter);
     });
