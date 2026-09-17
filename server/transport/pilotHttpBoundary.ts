@@ -9,8 +9,11 @@ export function isAllowedBrowserOrigin(origin: string | undefined, allowedOrigin
 
 export function createPilotOriginGuard(allowedOrigins: readonly string[]): RequestHandler {
   return (req, res, next) => {
+    // Following a link from another site can send cross-site Fetch Metadata
+    // without Origin. Permit GET/HEAD reads; keep mutations protected below.
+    const isRead = req.method === 'GET' || req.method === 'HEAD';
     if (!isAllowedBrowserOrigin(req.headers.origin, allowedOrigins)
-      || (req.headers.origin === undefined && req.headers['sec-fetch-site'] === 'cross-site')) {
+      || (!isRead && req.headers.origin === undefined && req.headers['sec-fetch-site'] === 'cross-site')) {
       res.status(403).json({ ok: false, error: { kind: 'forbidden', message: 'Request origin is not allowed.' } });
       return;
     }
