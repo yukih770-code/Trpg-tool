@@ -1,5 +1,15 @@
 # Continuation checkpoint — 2026-09-17
 
+## Current: Railway preparation verified; account authorization pending
+
+Read [DND_HOSTED_PILOT_DEPLOYMENT_V1](../implementation/DND_HOSTED_PILOT_DEPLOYMENT_V1.md) first. Readiness is committed as `4754c0d`; deployment code/runbook as `a66001f`. The report records GitHub push status and the exact 17-file deployment manifest. The user now authorizes commits, an audited push to `origin/main` and Railway deployment. Older no-push or provider-choice instructions below are historical.
+
+The production Docker image passed 41 checks in total, including an isolated real PostgreSQL migration/startup rehearsal. No Railway services, generated URL, hosted sessions, hosted restart, backup or isolated restore exist yet. Local evidence must not be presented as hosted acceptance. Railway login is unavailable on this computer; the user was asked to run `npx --yes @railway/cli login` and complete browser authorization. Never ask them to paste a token.
+
+After login: follow `deploy/RAILWAY_PILOT.md` to create one app, private PostgreSQL and app asset volume, generate the HTTPS domain, inject server secrets privately, deploy existing migrations, then run separate GM/player/spectator sessions and the full hosted gameplay/origin/WS/reconnect/restart/restore ledger. Account-owner billing approval may be a separate manual boundary. Do not restart gameplay audits or begin the next product milestone. Preserve current server authority, permissions/visibility, `.env`, normal services/database and unrelated dirt (`scripts/dev-local.ps1` plus 1,412 untracked files).
+
+## Earlier checkpoint (historical)
+
 **Current:** Action Clarity committed as **8d9ed1c**; **Online Pilot Readiness V1 implemented/verified, uncommitted**. Nothing pushed or deployed. Read [the readiness report](../implementation/DND_ONLINE_PILOT_READINESS_V1.md) and `docs/implementation/online-pilot-readiness-files.json`. The older checkpoint below is historical.
 
 Single-origin HTTPS/WSS → one Node process → PostgreSQL plus persistent asset volume. Config/origin/build/migration packaging blockers are fixed; tests pass. `.env`, unrelated files and normal local services/database were preserved. Hosted TLS/cookies, multi-user real-host acceptance, volume durability, backup restore and the two human sessions remain pending. The test bundle uses `pilot.example.test`; rebuild for the selected real domain. Bootstrap code is GM-only; use personal player invites and keep session secret stable because identity derivation also depends on it.

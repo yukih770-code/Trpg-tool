@@ -1,0 +1,24 @@
+{
+  "baseCommit": "4754c0d",
+  "implementationCommit": "a66001f",
+  "status": "prepared-and-locally-verified; hosted-execution-awaits-Railway-login",
+  "files": [
+    ".dockerignore",
+    "Dockerfile",
+    "railway.json",
+    "package.json",
+    "package-lock.json",
+    "deploy/RAILWAY_PILOT.md",
+    "deploy/railway-predeploy.mjs",
+    "deploy/railway-start.mjs",
+    "server/config/pilotDatabaseTransport.ts",
+    "server/config/verifyOnlinePilotDeployment.ts",
+    "tests/online-pilot/railway-contract.ts",
+    "tests/online-pilot/railway-image.mjs",
+    "docs/implementation/DND_HOSTED_PILOT_DEPLOYMENT_V1.md",
+    "docs/implementation/hosted-pilot-deployment-files.json",
+    "docs/ai/ACTIVE_TASK.md",
+    "docs/ai/NEXT_CHAT_HANDOFF.md",
+    "docs/ai/TASK_ARCHIVE.md"
+  ]
+}

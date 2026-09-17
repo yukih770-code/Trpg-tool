@@ -1,5 +1,15 @@
 # Active Task
 
+## Authoritative continuation checkpoint — 2026-09-17, Hosted Pilot Deployment V1
+
+**Readiness is committed as `4754c0d`; Railway preparation is committed as `a66001f`. Actual hosted deployment is blocked on Railway account login.** The current user explicitly authorized audited GitHub push and Railway provisioning/deployment. This supersedes older no-push/provider-unselected/uncommitted statements below. Read [the hosted report](../implementation/DND_HOSTED_PILOT_DEPLOYMENT_V1.md) for push status, exact manifest and acceptance ledger.
+
+Railway is selected: one app process, private PostgreSQL, persistent app asset volume and generated HTTPS domain only. Docker builds plus 23 readiness, 11 Railway contract and seven isolated PostgreSQL/container checks passed. The history/tracked-file audit found no known live secrets; dependency remediation leaves one low Windows esbuild development-server advisory. No Railway service or URL exists yet. No hosted role/WS/reconnect/retry/restart/backup/restore result may be claimed from these local checks.
+
+User's minimal next action: run `npx --yes @railway/cli login`, complete browser authorization and report success without sharing credentials. Continue provisioning and actual acceptance from [the runbook](../../deploy/RAILWAY_PILOT.md). Pause only for account-owner authorization/billing boundaries. Preserve `.env`, normal services/database, `scripts/dev-local.ps1` and 1,412 unrelated untracked files. Do not start Pilot Character Builder or another product milestone.
+
+## Earlier checkpoints (historical)
+
 ## Current checkpoint — 2026-09-17
 
 **Online Pilot Readiness V1 repository work is complete and uncommitted.** The prior Action Clarity milestone was verified and committed atomically as **8d9ed1c** (38 files); no push. Read [the readiness report/runbook](../implementation/DND_ONLINE_PILOT_READINESS_V1.md) and its source manifest before continuing. This supersedes the uncommitted Action Clarity status below.
